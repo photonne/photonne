@@ -1,0 +1,12 @@
+@inherits LayoutComponentBase
+@inject LayoutService LayoutService
+@inject ThemeService ThemeService
+
+<MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="login-layout">
+    @Body
+</div>
