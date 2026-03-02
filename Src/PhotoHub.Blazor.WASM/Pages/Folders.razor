@@ -1480,7 +1480,11 @@ else
             return;
         }
 
-        Navigation.NavigateTo($"/asset/{asset.Id}");
+        var returnTo = _selectedFolder != null
+            ? $"folders/{_selectedFolder.Id}"
+            : (_activeTab == 1 ? "folders/shared" : "folders/own");
+        var returnToEncoded = System.Net.WebUtility.UrlEncode(returnTo);
+        Navigation.NavigateTo($"/asset/{asset.Id}?returnTo={returnToEncoded}");
     }
 
     private void OpenCreateFolderDialog(bool isSharedSpace = false)
