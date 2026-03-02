@@ -216,9 +216,26 @@
         UpdateSearchQueryFromUri();
     }
 
+    protected override void OnParametersSet()
+    {
+        // Sincronizar navbar con la URL: si el Body ya cambió (ej. volvimos a Device) pero
+        // LocationChanged no se ha procesado aún, la barra sigue siendo la del detalle.
+        EnsureNavbarMatchesLocation();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUserAsync();
+    }
+
+    private void EnsureNavbarMatchesLocation()
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
+        if (!path.StartsWith("asset/", StringComparison.OrdinalIgnoreCase) && LayoutService.IsNavbarCustom)
+        {
+            LayoutService.ResetNavbar();
+            _drawerOpen = true;
+        }
     }
 
     private async void HandleAuthStateChanged()
@@ -297,13 +314,9 @@
 
     private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        var path = new Uri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
-        if (!path.StartsWith("asset/", StringComparison.OrdinalIgnoreCase))
-        {
-            LayoutService.ResetNavbar();
-        }
+        EnsureNavbarMatchesLocation();
         UpdateSearchQueryFromUri();
-        // Solo forzar refresh cuando no se llamó ResetNavbar (ej. entrando en /asset/), para evitar doble refresco al salir
+        var path = new Uri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
         if (path.StartsWith("asset/", StringComparison.OrdinalIgnoreCase))
         {
             StateHasChanged();

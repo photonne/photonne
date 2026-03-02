@@ -553,6 +553,9 @@ else
 
     private void GoBack()
     {
+        // Restaurar navbar y menú lateral antes de navegar para que al llegar a la página destino se vea el drawer
+        LayoutService.ResetNavbar();
+
         if (!string.IsNullOrEmpty(ReturnTo))
         {
             var path = ReturnTo.TrimStart('/');
