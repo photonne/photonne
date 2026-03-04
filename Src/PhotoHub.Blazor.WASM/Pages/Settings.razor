@@ -50,13 +50,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _assetsPath = await SettingsService.GetSettingAsync("AssetsPath");
         _currentServerPath = await SettingsService.GetAssetsPathAsync();
-        
-        if (string.IsNullOrEmpty(_assetsPath))
-        {
-            _assetsPath = _currentServerPath;
-        }
+        _assetsPath = _currentServerPath;
     }
 
     private async Task SaveAssetsPath()
