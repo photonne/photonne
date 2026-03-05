@@ -915,21 +915,6 @@
         await AddSelectionToAlbumAsync();
     }
 
-    private void ShareSelection()
-    {
-        Snackbar.Add("Compartir desde selección aún no está disponible.", Severity.Info);
-    }
-
-    private void ToggleFavorites()
-    {
-        Snackbar.Add("Favoritos desde selección aún no está disponible.", Severity.Info);
-    }
-
-    private void HandleMoreOption(string option)
-    {
-        Snackbar.Add($"{option} aún no está disponible en selección.", Severity.Info);
-    }
-
     private void ExitSelectionFromNavbar()
     {
         ExitSelectionMode();
@@ -987,24 +972,15 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
-                <MudTooltip Text="Compartir">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Share" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ShareSelection" />
-                </MudTooltip>
                 <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
                 </MudTooltip>
                 <MudTooltip Text="Añadir a álbum">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Add" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
                 </MudTooltip>
-                <MudTooltip Text="Favoritos">
-                    <MudIconButton Icon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ToggleFavorites" />
+                <MudTooltip Text="Eliminar">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
                 </MudTooltip>
-                <MudMenu Icon="@Icons.Material.Outlined.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="@(() => HandleMoreOption("Editar fecha y hora"))">Editar fecha y hora</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Outlined.LocationOn" OnClick="@(() => HandleMoreOption("Editar ubicación"))">Editar ubicación</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Archive" OnClick="@(() => HandleMoreOption("Archivar"))">Archivar</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="@OpenDeleteAssetsDialog">Eliminar</MudMenuItem>
-                </MudMenu>
             </text>
         , keepDrawerVisible: true);
     }
