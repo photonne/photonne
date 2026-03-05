@@ -417,6 +417,9 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+# FFmpeg binaries (auto-downloaded on first run via Xabe.FFmpeg.Downloader)
+**/ffmpeg/
+
 # JetBrains IDEs
 .idea/
 
