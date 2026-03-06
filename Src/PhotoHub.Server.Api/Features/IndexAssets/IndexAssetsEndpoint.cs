@@ -1404,64 +1404,89 @@ public class IndexAssetsEndpoint : IEndpoint
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
 
-        var folder = await dbContext.Folders
-            .FirstOrDefaultAsync(f => f.Path == normalizedPath, cancellationToken);
-
-        var parentPath = GetParentVirtualPath(normalizedPath);
-        Folder? parentFolder = null;
-
-        if (!string.IsNullOrEmpty(parentPath) && !string.Equals(parentPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
+        // Build the ancestor chain iteratively (deepest first, then reversed to root → leaf)
+        var pathChain = new List<string>();
+        var current = normalizedPath;
+        while (!string.IsNullOrEmpty(current))
         {
-            parentFolder = await GetOrCreateFolderForPathAsync(dbContext, settingsService, parentPath, cancellationToken);
+            pathChain.Add(current);
+            var parent = GetParentVirtualPath(current);
+            if (string.IsNullOrEmpty(parent) || string.Equals(parent, current, StringComparison.OrdinalIgnoreCase))
+                break;
+            current = parent;
+        }
+        pathChain.Reverse(); // root → leaf
+
+        // Pre-fetch all folders for these paths in one query
+        var allPaths = pathChain.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var existingFolders = await dbContext.Folders
+            .Where(f => allPaths.Contains(f.Path))
+            .ToDictionaryAsync(f => f.Path, f => f, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+        // Physical-path fallback: a folder may have been stored with its original (non-virtualized)
+        // path before virtualization was introduced. Check only for the leaf node.
+        var physicalNormalized = NormalizeVirtualPath(folderPath);
+        if (!string.Equals(physicalNormalized, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+            !existingFolders.ContainsKey(normalizedPath))
+        {
+            var byPhysical = await dbContext.Folders
+                .FirstOrDefaultAsync(f => f.Path == physicalNormalized, cancellationToken);
+            if (byPhysical != null)
+                existingFolders[physicalNormalized] = byPhysical;
         }
 
-        if (folder != null)
+        Folder? parentFolder = null;
+        Folder? resultFolder = null;
+
+        foreach (var path in pathChain)
         {
-            if (folder.ParentFolderId != parentFolder?.Id || !string.Equals(folder.Path, normalizedPath, StringComparison.OrdinalIgnoreCase))
+            existingFolders.TryGetValue(path, out var folder);
+
+            // For the leaf, also check the physical-path fallback bucket
+            if (folder == null &&
+                string.Equals(path, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(physicalNormalized, normalizedPath, StringComparison.OrdinalIgnoreCase))
             {
-                folder.Path = normalizedPath;
-                folder.Name = GetVirtualFolderName(normalizedPath);
-                folder.ParentFolderId = parentFolder?.Id;
-                await dbContext.SaveChangesAsync(cancellationToken);
+                existingFolders.TryGetValue(physicalNormalized, out folder);
             }
 
-            return folder;
+            if (folder != null)
+            {
+                // Update path or parent if they drifted
+                if (folder.ParentFolderId != parentFolder?.Id ||
+                    !string.Equals(folder.Path, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    folder.Path = path;
+                    folder.Name = GetVirtualFolderName(path);
+                    folder.ParentFolderId = parentFolder?.Id;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+            else
+            {
+                folder = new Folder
+                {
+                    Path = path,
+                    Name = GetVirtualFolderName(path),
+                    ParentFolderId = parentFolder?.Id,
+                    CreatedAt = DateTime.UtcNow
+                };
+                dbContext.Folders.Add(folder);
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                // Auto-assign primary admin as owner for folders outside personal user spaces.
+                // Folders under /assets/users/{id}/ are owned implicitly by their user; everything
+                // else (shared, external) must have an explicit owner so it's not invisible to all
+                // non-admin users and won't be pruned as an orphan on subsequent scans.
+                if (!IsPersonalUserPath(path))
+                    await AssignAdminOwnerAsync(dbContext, folder.Id, cancellationToken);
+            }
+
+            parentFolder = folder;
+            resultFolder = folder;
         }
 
-        var normalizedPhysical = NormalizeVirtualPath(folderPath);
-        folder = await dbContext.Folders
-            .FirstOrDefaultAsync(f => f.Path == normalizedPhysical, cancellationToken);
-
-        if (folder != null)
-        {
-            folder.Path = normalizedPath;
-            folder.Name = GetVirtualFolderName(normalizedPath);
-            folder.ParentFolderId = parentFolder?.Id;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return folder;
-        }
-
-        folder = new Folder
-        {
-            Path = normalizedPath,
-            Name = GetVirtualFolderName(normalizedPath),
-            ParentFolderId = parentFolder?.Id,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        dbContext.Folders.Add(folder);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // Auto-assign primary admin as owner for folders outside personal user spaces.
-        // Folders under /assets/users/{id}/ are owned implicitly by their user; everything
-        // else (shared, external) must have an explicit owner so it's not invisible to all
-        // non-admin users and won't be pruned as an orphan on subsequent scans.
-        if (!IsPersonalUserPath(normalizedPath))
-        {
-            await AssignAdminOwnerAsync(dbContext, folder.Id, cancellationToken);
-        }
-
-        return folder;
+        return resultFolder;
     }
 
     private static bool IsPersonalUserPath(string normalizedPath) =>
