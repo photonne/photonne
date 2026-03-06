@@ -33,11 +33,14 @@ public class AssetService : IAssetService
         }
     }
 
-    public async Task<List<TimelineItem>> GetTimelineAsync()
+    public async Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>("/api/assets/timeline");
-        return response ?? new List<TimelineItem>();
+        var url = $"/api/assets/timeline?pageSize={pageSize}";
+        if (cursor.HasValue)
+            url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
+        var response = await _httpClient.GetFromJsonAsync<TimelinePageResult>(url);
+        return response ?? new TimelinePageResult();
     }
 
     public async Task<List<TimelineItem>> GetDeviceAssetsAsync()
@@ -50,8 +53,21 @@ public class AssetService : IAssetService
     public async Task<TimelineItem?> GetAssetByIdAsync(Guid id)
     {
         await SetAuthHeaderAsync();
-        var timeline = await GetTimelineAsync();
-        return timeline.FirstOrDefault(a => a.Id == id);
+        var detail = await GetAssetDetailAsync(id);
+        if (detail == null) return null;
+        return new TimelineItem
+        {
+            Id = detail.Id,
+            FileName = detail.FileName,
+            FullPath = detail.FullPath,
+            CreatedDate = detail.CreatedDate,
+            ModifiedDate = detail.ModifiedDate,
+            Extension = detail.Extension,
+            Type = detail.Type,
+            SyncStatus = AssetSyncStatus.Synced,
+            Width = detail.Exif?.Width,
+            Height = detail.Exif?.Height
+        };
     }
 
     public async Task<AssetDetail?> GetAssetDetailAsync(Guid id)

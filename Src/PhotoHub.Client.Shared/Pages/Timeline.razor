@@ -56,6 +56,17 @@
                                     Title="No hay fotografías disponibles"
                                     Description="Indexa un directorio para comenzar." />
                     }
+
+                    @if (_hasMore)
+                    {
+                        <div id="timeline-load-more-sentinel" style="height: 4px; margin-bottom: 8px;"></div>
+                    }
+                    @if (_loadingMore)
+                    {
+                        <div class="d-flex justify-center py-4">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -501,6 +512,9 @@
     private List<TimelineItem> _assets = new();
     private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
     private bool _loading = true;
+    private bool _loadingMore = false;
+    private bool _hasMore = false;
+    private DateTime? _nextCursor = null;
     private string _activeGroup = "";
     private DotNetObjectReference<Timeline>? _objRef;
     private bool _selectionMode = false;
@@ -566,6 +580,16 @@
 
             await Task.Delay(200);
             await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+        }
+
+        // (Re)attach the load-more sentinel observer whenever _hasMore state changes
+        if (_hasMore && _objRef != null)
+        {
+            await JS.InvokeVoidAsync("setupLoadMoreObserver", "timeline-load-more-sentinel", _objRef, nameof(LoadNextPageAsync));
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("disconnectLoadMoreObserver");
         }
     }
 
@@ -678,12 +702,18 @@
         {
             _loading = true;
             _scrollSetupDone = false;
-            _assets = await AssetService.GetTimelineAsync();
+            _assets = new();
+            _hasMore = false;
+            _nextCursor = null;
+
+            var page = await AssetService.GetTimelinePageAsync();
+            _assets = page.Items;
+            _hasMore = page.HasMore;
+            _nextCursor = page.NextCursor;
+
             GroupAssets();
             if (_groupedAssets.Any())
-            {
                 _activeGroup = _groupedAssets.Keys.First();
-            }
         }
         catch (Exception ex)
         {
@@ -692,6 +722,34 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    [JSInvokable]
+    public async Task LoadNextPageAsync()
+    {
+        if (_loadingMore || !_hasMore || _nextCursor == null) return;
+
+        try
+        {
+            _loadingMore = true;
+            StateHasChanged();
+
+            var page = await AssetService.GetTimelinePageAsync(cursor: _nextCursor);
+            _assets.AddRange(page.Items);
+            _hasMore = page.HasMore;
+            _nextCursor = page.NextCursor;
+
+            GroupAssets();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error cargando más fotos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingMore = false;
+            StateHasChanged();
         }
     }
 
@@ -1026,6 +1084,7 @@
         _objRef?.Dispose();
         JS.InvokeVoidAsync("scrollHelpers.disableTimelineScroll");
         JS.InvokeVoidAsync("scrubberHelpers.cleanup");
+        JS.InvokeVoidAsync("disconnectLoadMoreObserver");
         LayoutService.ResetNavbar();
     }
 }

@@ -466,7 +466,15 @@ else
                 }
                 else
                 {
-                    _allAssets = await AssetService.GetTimelineAsync();
+                    var assets = new List<TimelineItem>();
+                    DateTime? cursor = null;
+                    do
+                    {
+                        var page = await AssetService.GetTimelinePageAsync(cursor, pageSize: 500);
+                        assets.AddRange(page.Items);
+                        cursor = page.NextCursor;
+                    } while (cursor.HasValue);
+                    _allAssets = assets;
                 }
             }
             

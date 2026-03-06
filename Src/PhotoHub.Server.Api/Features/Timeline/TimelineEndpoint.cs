@@ -34,8 +34,13 @@ public class TimelineEndpoint : IEndpoint
         [FromServices] DirectoryScanner directoryScanner,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
+        [FromQuery] DateTime? cursor,
+        [FromQuery] int pageSize,
         CancellationToken cancellationToken)
     {
+        if (pageSize <= 0) pageSize = 150;
+        if (pageSize > 500) pageSize = 500;
+
         try
         {
             if (!TryGetUserId(user, out var userId))
@@ -56,21 +61,32 @@ public class TimelineEndpoint : IEndpoint
 
             if (!isAdmin)
             {
-                // Filtrar por permisos de carpeta
                 var allowedFolderIds = await GetAllowedFolderIdsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
-                
                 query = query.Where(a => a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
             }
 
-            var assets = await query
-                .OrderByDescending(a => a.ScannedAt)
+            // Apply cursor (exclusive upper bound on CreatedDate)
+            if (cursor.HasValue)
+            {
+                var cursorUtc = cursor.Value.ToUniversalTime();
+                query = query.Where(a => a.CreatedDate < cursorUtc);
+            }
+
+            // Fetch one extra item to determine hasMore
+            var dbItems = await query
+                .OrderByDescending(a => a.CreatedDate)
                 .ThenByDescending(a => a.ModifiedDate)
+                .Take(pageSize + 1)
                 .ToListAsync(cancellationToken);
 
+            var hasMore = dbItems.Count > pageSize;
+            var assets = hasMore ? dbItems.Take(pageSize).ToList() : dbItems;
+
             // Obtener rutas de carpetas permitidas para filtrar assets no indexados
+            // (solo se usa en el scan de filesystem, que solo ocurre en la primera página)
             var allowedFolderPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             List<string> normalizedAllowedFolderPaths = new();
-            if (!isAdmin)
+            if (!isAdmin && !cursor.HasValue)
             {
                 allowedFolderPaths = await GetAllowedFolderPathsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
                 normalizedAllowedFolderPaths = allowedFolderPaths
@@ -109,13 +125,14 @@ public class TimelineEndpoint : IEndpoint
                 .Select(a => a.FileName)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            // 1. Primero detectar archivos copiados pero no indexados en el directorio interno
+            // Copied assets (in internal dir but not indexed) are only scanned on the first page
+            // to avoid expensive filesystem scans on every pagination call.
             var internalAssetsPath = settingsService.GetInternalAssetsPath();
             int copiedCount = 0;
             var copiedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var internalScannedFiles = new List<ScannedFile>();
             
-            if (Directory.Exists(internalAssetsPath))
+            if (!cursor.HasValue && Directory.Exists(internalAssetsPath))
             {
                 Console.WriteLine($"[DEBUG] Scanning internal directory for copied but not indexed assets: {internalAssetsPath}");
                 internalScannedFiles = (await directoryScanner.ScanDirectoryAsync(internalAssetsPath, cancellationToken)).ToList();
@@ -222,7 +239,14 @@ public class TimelineEndpoint : IEndpoint
                 .ThenByDescending(a => a.FileName)
                 .ToList();
 
-            return Results.Ok(orderedTimeline);
+            var nextCursor = hasMore ? assets.Last().CreatedDate : (DateTime?)null;
+
+            return Results.Ok(new TimelinePageResponse
+            {
+                Items = orderedTimeline,
+                HasMore = hasMore,
+                NextCursor = nextCursor
+            });
         }
         catch (Exception ex)
         {

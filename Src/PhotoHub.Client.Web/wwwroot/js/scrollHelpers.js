@@ -136,6 +136,33 @@ window.scrollHelpers = {
     getTimelineHoverPosition: function () {},
 };
 
+window.setupLoadMoreObserver = function (sentinelId, dotnetHelper, methodName) {
+    if (window._loadMoreObserver) {
+        window._loadMoreObserver.disconnect();
+        window._loadMoreObserver = null;
+    }
+    var sentinel = document.getElementById(sentinelId);
+    if (!sentinel) return;
+
+    var scrollContainer = document.getElementById('timeline-scroll-container');
+    window._loadMoreObserver = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) {
+            dotnetHelper.invokeMethodAsync(methodName);
+        }
+    }, {
+        root: scrollContainer || null,
+        threshold: 0.1
+    });
+    window._loadMoreObserver.observe(sentinel);
+};
+
+window.disconnectLoadMoreObserver = function () {
+    if (window._loadMoreObserver) {
+        window._loadMoreObserver.disconnect();
+        window._loadMoreObserver = null;
+    }
+};
+
 window.scrubberHelpers = {
     _sc: null,
     _track: null,

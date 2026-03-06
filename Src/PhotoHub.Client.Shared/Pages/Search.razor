@@ -73,10 +73,15 @@ else
         try
         {
             _loading = true;
-            _allAssets = await AssetService.GetTimelineAsync();
-            _allAssets = _allAssets
-                .OrderByDescending(a => a.CreatedDate)
-                .ToList();
+            _allAssets = new();
+            DateTime? cursor = null;
+            do
+            {
+                var page = await AssetService.GetTimelinePageAsync(cursor, pageSize: 500);
+                _allAssets.AddRange(page.Items);
+                cursor = page.NextCursor;
+            } while (cursor.HasValue);
+            _allAssets = _allAssets.OrderByDescending(a => a.CreatedDate).ToList();
         }
         catch (Exception ex)
         {
