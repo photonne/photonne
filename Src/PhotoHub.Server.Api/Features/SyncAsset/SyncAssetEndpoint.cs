@@ -26,6 +26,7 @@ public class SyncAssetEndpoint : IEndpoint
         [FromServices] FileHashService hashService,
         [FromServices] ExifExtractorService exifService,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IServiceScopeFactory serviceScopeFactory,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -175,17 +176,27 @@ public class SyncAssetEndpoint : IEndpoint
             // Aplicar metadatos de tiempo
             File.SetCreationTimeUtc(targetPath, originalCreation);
             File.SetLastWriteTimeUtc(targetPath, originalLastWrite);
-            
+
             // Verificar que el archivo se copió correctamente
             if (!File.Exists(targetPath))
             {
                 throw new Exception($"Error: El archivo no se copió correctamente a {targetPath}");
             }
-            
+
             Console.WriteLine($"[SYNC] File verified at target path: {targetPath}");
 
-            return Results.Ok(new { 
-                message = "Archivo sincronizado correctamente. Ejecuta la indexación para indexarlo.", 
+            // Lanzar indexación en segundo plano
+            var capturedTargetPath = targetPath;
+            var capturedUserId = userId;
+            _ = Task.Run(async () =>
+            {
+                using var scope = serviceScopeFactory.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<PhotoHub.Server.Api.Shared.Services.AssetIndexingService>();
+                await svc.IndexFileAsync(capturedTargetPath, capturedUserId, CancellationToken.None);
+            });
+
+            return Results.Ok(new {
+                message = "Archivo sincronizado. Indexando en segundo plano...",
                 targetPath = await settingsService.VirtualizePathAsync(targetPath)
             });
         }

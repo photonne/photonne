@@ -25,6 +25,7 @@ public static class DependencyInjection
         
         // Registrar UserInitializationService
         builder.Services.AddScoped<UserInitializationService>();
+        builder.Services.AddScoped<AssetIndexingService>();
 
         // Configure FFmpeg
         ConfigureFFmpeg(builder.Configuration);
