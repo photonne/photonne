@@ -29,7 +29,8 @@ public class IndexAssetsEndpoint : IEndpoint
             CancellationToken cancellationToken) => HandleStream(directoryScanner, hashService, exifService, thumbnailService, mediaRecognitionService, mlJobService, settingsService, dbContext, serviceProvider, cancellationToken))
         .WithName("IndexAssetsStream")
         .WithTags("Assets")
-        .WithDescription("Streams the scanning process progress for the internal assets directory");
+        .WithDescription("Streams the scanning process progress for the internal assets directory")
+        .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         app.MapGet("/api/assets/index", Handle)
         .CodeSample(
@@ -43,7 +44,8 @@ public class IndexAssetsEndpoint : IEndpoint
             operation.Summary = "Scans the internal assets directory";
             operation.Description = "This endpoint recursively scans the internal assets directory (ASSETS_PATH), extracts metadata, generates thumbnails, and updates the database with all found media files. Supports images (JPG, PNG, etc.) and videos (MP4, AVI, etc.)";
             return Task.CompletedTask;
-        });
+        })
+        .RequireAuthorization(policy => policy.RequireRole("Admin"));
     }
 
     private async IAsyncEnumerable<IndexProgressUpdate> HandleStream(
