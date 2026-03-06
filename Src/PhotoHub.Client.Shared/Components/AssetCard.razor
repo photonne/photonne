@@ -1,6 +1,7 @@
 @using PhotoHub.Client.Shared.Services
 @using PhotoHub.Client.Shared.Models
 @using Microsoft.JSInterop
+@implements IAsyncDisposable
 
 <div class="asset-card-container" @onclick="@OnClick" @onmouseover="HandleMouseOver" @onmouseleave="HandleMouseLeave">
     <style>
@@ -80,6 +81,13 @@
         .asset-pending {
             opacity: 0.6;
         }
+        /* Lazy loading: imagen oculta hasta que el observer cargue el src */
+        .lazy-img {
+            transition: opacity 0.3s ease;
+        }
+        .lazy-img[data-src] {
+            opacity: 0;
+        }
     </style>
     
     <div class="@(Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied ? "asset-pending" : "") h-100 w-100">
@@ -88,13 +96,13 @@
             @if (Asset.Type == "VIDEO")
             {
                 <div class="video-preview-container">
-                    <img src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail" loading="lazy" />
+                    <img @ref="_imgRef" data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail lazy-img" />
                     <video @ref="_videoRef" src="@_contentUrl" muted loop class="asset-card-image preview-video" preload="metadata" playsinline></video>
                 </div>
             }
             else
             {
-                <img src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image" loading="lazy" />
+                <img @ref="_imgRef" data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image lazy-img" />
             }
         }
         else
@@ -152,12 +160,31 @@
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
 
     private ElementReference _videoRef;
+    private ElementReference _imgRef;
     private string _thumbnailUrl = string.Empty;
     private string _contentUrl = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
         await UpdateAssetUrlsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _imgRef.Context != null)
+        {
+            await JS.InvokeVoidAsync("lazyImageHelpers.observe", _imgRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_imgRef.Context != null)
+                await JS.InvokeVoidAsync("lazyImageHelpers.unobserve", _imgRef);
+        }
+        catch (JSDisconnectedException) { }
     }
 
     private async Task UpdateAssetUrlsAsync()

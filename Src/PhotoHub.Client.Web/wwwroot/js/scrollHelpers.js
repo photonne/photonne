@@ -456,3 +456,40 @@ window.masonryHelpers = {
         this.justifyDayGroup(group);
     }
 };
+
+window.lazyImageHelpers = {
+    _observer: null,
+
+    _getOrCreateObserver: function () {
+        if (this._observer) return this._observer;
+        var self = this;
+        this._observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                var img = entry.target;
+                var src = img.getAttribute('data-src');
+                if (src) {
+                    img.src = src;
+                    img.removeAttribute('data-src');
+                }
+                self._observer.unobserve(img);
+            });
+        }, {
+            rootMargin: '300px 0px', // pre-cargar 300px antes de entrar en vista
+            threshold: 0
+        });
+        return this._observer;
+    },
+
+    observe: function (imgElement) {
+        if (!imgElement) return;
+        // Si data-src ya fue eliminado (imagen cargada), no re-observar
+        if (!imgElement.getAttribute || !imgElement.getAttribute('data-src')) return;
+        this._getOrCreateObserver().observe(imgElement);
+    },
+
+    unobserve: function (imgElement) {
+        if (!imgElement || !this._observer) return;
+        this._observer.unobserve(imgElement);
+    }
+};
