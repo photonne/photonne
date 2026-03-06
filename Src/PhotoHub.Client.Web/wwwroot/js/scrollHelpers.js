@@ -351,13 +351,17 @@ window.masonryHelpers = {
             this.justifyDayGroup(dayGroup);
         });
         
-        // Configurar listener para recalcular al cambiar tamaño de ventana
+        // Configurar listener para recalcular al cambiar tamaño de ventana (con debounce)
         if (!window._masonryResizeHandler) {
+            let resizeTimer = null;
             window._masonryResizeHandler = () => {
-                const dayGroups = document.querySelectorAll('.day-group');
-                dayGroups.forEach(dayGroup => {
-                    window.masonryHelpers.justifyDayGroup(dayGroup);
-                });
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    const dayGroups = document.querySelectorAll('.day-group');
+                    dayGroups.forEach(dayGroup => {
+                        window.masonryHelpers.justifyDayGroup(dayGroup);
+                    });
+                }, 100);
             };
             window.addEventListener('resize', window._masonryResizeHandler, { passive: true });
         }
