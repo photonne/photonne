@@ -13,6 +13,7 @@ public class AuthService : IAuthService
     private const string UserKey = "authUser";
     private const string DeviceIdKey = "deviceId";
     private UserDto? _currentUser;
+    private Task<UserDto?>? _getUserTask;
 
     public event Action? OnAuthStateChanged;
 
@@ -57,6 +58,7 @@ public class AuthService : IAuthService
         await RemoveRefreshTokenAsync();
         await RemoveUserAsync();
         _currentUser = null;
+        _getUserTask = null;
         OnAuthStateChanged?.Invoke();
     }
 
@@ -78,29 +80,44 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<UserDto?> GetCurrentUserAsync()
+    public Task<UserDto?> GetCurrentUserAsync()
     {
         if (_currentUser != null)
-            return _currentUser;
+            return Task.FromResult<UserDto?>(_currentUser);
 
+        // All concurrent callers share the same Task — only one API call is made
+        return _getUserTask ??= FetchCurrentUserAsync();
+    }
+
+    private async Task<UserDto?> FetchCurrentUserAsync()
+    {
         try
         {
+            // Deserialize from localStorage directly — no API call needed
             var userJson = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", UserKey);
             if (!string.IsNullOrEmpty(userJson))
             {
-                // Necesitaríamos deserializar el JSON, pero por simplicidad lo haremos con el endpoint
-                var token = await GetTokenAsync();
-                if (!string.IsNullOrEmpty(token))
+                var cached = System.Text.Json.JsonSerializer.Deserialize<UserDto>(userJson);
+                if (cached != null)
                 {
-                    _httpClient.DefaultRequestHeaders.Authorization = 
-                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-                    var response = await _httpClient.GetFromJsonAsync<UserDto>("/api/users/me");
-                    if (response != null)
-                    {
-                        _currentUser = response;
-                        await SaveUserAsync(response);
-                        return response;
-                    }
+                    _currentUser = cached;
+                    return cached;
+                }
+            }
+
+            // Fallback: localStorage empty/invalid — fetch from API once
+            var token = await GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                var response = await _httpClient.GetFromJsonAsync<UserDto>("/api/users/me");
+                if (response != null)
+                {
+                    _currentUser = response;
+                    await _jsRuntime.InvokeVoidAsync("localStorage.setItem", UserKey,
+                        System.Text.Json.JsonSerializer.Serialize(response));
+                    return response;
                 }
             }
         }
@@ -168,9 +185,10 @@ public class AuthService : IAuthService
 
     public async Task SaveUserAsync(UserDto user)
     {
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", UserKey, 
+        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", UserKey,
             System.Text.Json.JsonSerializer.Serialize(user));
         _currentUser = user;
+        _getUserTask = null;
         OnAuthStateChanged?.Invoke();
     }
 
