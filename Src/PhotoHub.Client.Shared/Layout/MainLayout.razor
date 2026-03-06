@@ -14,7 +14,7 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="0" Dense="false" Color="Color.Surface" Class="@GetAppBarClass()">
+    <MudAppBar Elevation="0" Dense="false" Color="Color.Surface" Class="@GetAppBarClass()" Style="@GetAppBarStyle()">
         @if (!LayoutService.IsNavbarCustom)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" Class="mr-2" />
@@ -192,7 +192,14 @@
 
     private string GetAppBarClass()
     {
+        if (LayoutService.IsOverlayNavbar) return "px-4";
         return LayoutService.IsNavbarCustom ? "px-4 custom-navbar" : "px-4 border-b";
+    }
+
+    private string GetAppBarStyle()
+    {
+        if (!LayoutService.IsOverlayNavbar) return string.Empty;
+        return "background: rgba(0,0,0,0.75) !important; backdrop-filter: blur(8px); color: white !important;";
     }
 
     private string GetDrawerClass()

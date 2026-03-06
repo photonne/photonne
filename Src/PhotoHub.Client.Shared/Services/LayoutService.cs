@@ -97,19 +97,35 @@ public class LayoutService
         }
     }
 
-    public void SetCustomNavbar(RenderFragment? content, bool keepDrawerVisible = false)
+    private bool _isOverlayNavbar;
+    public bool IsOverlayNavbar
+    {
+        get => _isOverlayNavbar;
+        private set
+        {
+            if (_isOverlayNavbar != value)
+            {
+                _isOverlayNavbar = value;
+                NotifyUpdate();
+            }
+        }
+    }
+
+    public void SetCustomNavbar(RenderFragment? content, bool keepDrawerVisible = false, bool overlay = false)
     {
         IsNavbarCustom = true;
+        IsOverlayNavbar = overlay;
         NavbarContent = content;
         KeepDrawerVisible = keepDrawerVisible;
     }
 
     public void ResetNavbar()
     {
-        var changed = _isNavbarCustom || _navbarContent != null || _keepDrawerVisible;
+        var changed = _isNavbarCustom || _navbarContent != null || _keepDrawerVisible || _isOverlayNavbar;
         _isNavbarCustom = false;
         _navbarContent = null;
         _keepDrawerVisible = false;
+        _isOverlayNavbar = false;
         if (changed)
         {
             NotifyUpdate();
