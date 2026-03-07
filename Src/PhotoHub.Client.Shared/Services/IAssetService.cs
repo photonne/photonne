@@ -23,6 +23,7 @@ public interface IAssetService
     Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100);
     Task<bool> ToggleFavoriteAsync(Guid assetId);
     Task<TimelinePageResult> GetFavoritesPageAsync(DateTime? cursor = null, int pageSize = 150);
+    Task<List<TimelineItem>> GetMemoriesAsync();
 }
 
 public class SearchResult

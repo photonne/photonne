@@ -1,0 +1,135 @@
+@using PhotoHub.Client.Shared.Services
+@using PhotoHub.Client.Shared.Models
+
+@if (_yearGroups.Any())
+{
+    <div class="memories-widget">
+        <div class="memories-header">
+            <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Size="Size.Small" Class="memories-icon" />
+            <MudText Typo="Typo.subtitle2" Class="memories-title">En este día, @_dateLabel</MudText>
+        </div>
+
+        @foreach (var group in _yearGroups)
+        {
+            var yearsAgo = DateTime.Today.Year - group.Key;
+            <div class="memories-year-block">
+                <MudText Typo="Typo.caption" Class="memories-year-label">
+                    Hace @yearsAgo @(yearsAgo == 1 ? "año" : "años") &middot; @group.Value.Count @(group.Value.Count == 1 ? "foto" : "fotos")
+                </MudText>
+                <div class="memories-strip">
+                    @foreach (var asset in group.Value.Take(12))
+                    {
+                        <div class="memories-thumb" @onclick="() => OnThumbClick.InvokeAsync(asset)">
+                            <img src="@asset.ThumbnailUrl" alt="@asset.FileName" loading="lazy" />
+                            @if (asset.Type == "VIDEO")
+                            {
+                                <div class="memories-video-badge">
+                                    <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .memories-widget {
+        margin-bottom: 32px;
+        padding: 12px 4px 4px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .memories-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .memories-icon {
+        color: var(--mud-palette-primary);
+        opacity: 0.9;
+    }
+
+    .memories-title {
+        font-weight: 600;
+        text-transform: capitalize;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .memories-year-block {
+        margin-bottom: 12px;
+    }
+
+    .memories-year-label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .memories-strip {
+        display: flex;
+        gap: 3px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+
+    .memories-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .memories-thumb {
+        flex-shrink: 0;
+        width: 110px;
+        height: 110px;
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+        position: relative;
+        background: #2a2a2a;
+        transition: opacity 0.15s;
+    }
+
+    .memories-thumb:hover {
+        opacity: 0.85;
+    }
+
+    .memories-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .memories-video-badge {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        color: white;
+        filter: drop-shadow(0 0 2px rgba(0,0,0,0.6));
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback<TimelineItem> OnThumbClick { get; set; }
+    [Inject] private IAssetService AssetService { get; set; } = null!;
+
+    private Dictionary<int, List<TimelineItem>> _yearGroups = new();
+    private string _dateLabel = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateTime.Today;
+        _dateLabel = today.ToString("d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
+
+        var items = await AssetService.GetMemoriesAsync();
+        _yearGroups = items
+            .GroupBy(a => a.CreatedDate.Year)
+            .OrderByDescending(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+}

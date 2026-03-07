@@ -313,6 +313,20 @@ public class AssetService : IAssetService
         return (response?.Items ?? new(), response?.HasMore ?? false);
     }
 
+    public async Task<List<TimelineItem>> GetMemoriesAsync()
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>("/api/assets/memories");
+            return response ?? new();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
     public async Task<bool> ToggleFavoriteAsync(Guid assetId)
     {
         await SetAuthHeaderAsync();

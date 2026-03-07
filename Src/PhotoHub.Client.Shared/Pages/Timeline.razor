@@ -22,6 +22,8 @@
 
             <div class="timeline-container" id="timeline-scroll-container">
                 <div class="timeline-content">
+                    <MemoriesWidget OnThumbClick="OpenAsset" />
+
                     @if (_groupedAssets.Any())
                     {
                         @foreach (var group in _groupedAssets)
