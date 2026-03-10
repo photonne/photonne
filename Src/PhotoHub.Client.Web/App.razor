@@ -36,7 +36,7 @@
         }
 
         var path = context.Path.Trim('/').ToLowerInvariant();
-        if (path.StartsWith("login"))
+        if (path.StartsWith("login") || path.StartsWith("share"))
         {
             return;
         }

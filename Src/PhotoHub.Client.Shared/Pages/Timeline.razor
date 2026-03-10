@@ -7,6 +7,7 @@
 @inject IJSRuntime JS
 @inject LayoutService LayoutService
 @inject IAssetListNavigationState AssetListNavigationState
+@inject IDialogService DialogService
 @implements IDisposable
 
 <PageTitle>Timeline - PhotoHub</PageTitle>
@@ -887,6 +888,43 @@
         UpdateSelectionNavbar();
     }
 
+    private async Task OpenShareSelectionDialog()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        var parameters = new DialogParameters<ShareSelectionDialog>
+        {
+            { x => x.AssetIds, new HashSet<Guid>(_selectedAssetIds) }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+        var dialogRef = await DialogService.ShowAsync<ShareSelectionDialog>("Compartir selección", parameters, options);
+        var result = await dialogRef.Result;
+
+        if (result is { Canceled: false, Data: AlbumItem album })
+        {
+            ExitSelectionMode();
+            var shareParams = new DialogParameters<ShareDialog>
+            {
+                { x => x.AlbumId, album.Id },
+                { x => x.AlbumName, album.Name }
+            };
+            var shareOptions = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+            await DialogService.ShowAsync<ShareDialog>($"Compartir álbum", shareParams, shareOptions);
+        }
+    }
+
     private void OpenAddToAlbumDialog()
     {
         if (!_selectedAssetIds.Any())
@@ -1068,6 +1106,9 @@
                 <MudSpacer />
                 <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+                <MudTooltip Text="Compartir selección">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Link" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog" />
                 </MudTooltip>
                 <MudTooltip Text="Añadir a álbum">
                     <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />

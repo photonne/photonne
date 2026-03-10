@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AlbumAsset> AlbumAssets { get; set; }
     public DbSet<AlbumPermission> AlbumPermissions { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<SharedLink> SharedLinks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -413,6 +414,48 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(
                     v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
                     v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        });
+
+        // Configure SharedLink entity
+        modelBuilder.Entity<SharedLink>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => e.Token).IsUnique();
+
+            entity.HasOne(e => e.Asset)
+                .WithMany()
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Album)
+                .WithMany()
+                .HasForeignKey(e => e.AlbumId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.CreatedBy)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedById)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(
+                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
+                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+            entity.Property(e => e.ExpiresAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(
+                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc
+                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : v,
+                    v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null);
+
+            entity.Property(e => e.PasswordHash).HasMaxLength(200);
+            entity.Property(e => e.AllowDownload).HasDefaultValue(true);
+            entity.Property(e => e.MaxViews);
+            entity.Property(e => e.ViewCount).HasDefaultValue(0);
+
         });
 
         // Configure RefreshToken entity

@@ -124,6 +124,39 @@
         z-index: 5;
     }
 
+    .album-link-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 3px 5px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        z-index: 5;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .album-link-badge:hover {
+        background: var(--mud-palette-primary);
+    }
+
+    .album-link-badge.with-group-badge {
+        top: 40px;
+    }
+
+    .album-list-share-btn {
+        opacity: 0;
+        transition: opacity 0.15s;
+        flex-shrink: 0;
+    }
+
+    .album-list-item:hover .album-list-share-btn {
+        opacity: 1;
+    }
+
     .album-list-shared-badge {
         display: flex;
         align-items: center;
@@ -335,6 +368,15 @@
                                             <span>@album.SharedWithCount</span>
                                         </div>
                                     }
+                                    @if (album.HasActiveShareLink && album.IsOwner)
+                                    {
+                                        <div class="album-link-badge @(album.SharedWithCount > 1 ? "with-group-badge" : "")"
+                                             title="Gestionar enlace público"
+                                             @onclick:stopPropagation="true"
+                                             @onclick="() => OpenShareDialogForAlbum(album.Id, album.Name)">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Link" Size="Size.Small" />
+                                        </div>
+                                    }
                                     <MudCard Class="album-card" Style="cursor: pointer;">
                                         <MudCardContent Style="padding: 0;">
                                             <div style="position: relative; width: 100%; aspect-ratio: 1 / 1; overflow: hidden;">
@@ -404,11 +446,29 @@
                                                 <span>@album.SharedWithCount</span>
                                             </div>
                                         }
+                                        @if (album.HasActiveShareLink)
+                                        {
+                                            <div class="album-list-shared-badge" title="Tiene enlace público activo">
+                                                <MudIcon Icon="@Icons.Material.Outlined.Link" Size="Size.Small" />
+                                            </div>
+                                        }
                                     </MudText>
                                     <MudText Typo="Typo.body2" Class="album-list-meta">
                                         @album.AssetCount @(album.AssetCount == 1 ? "foto" : "fotos")
                                     </MudText>
                                 </div>
+                                @if (album.IsOwner)
+                                {
+                                    <div @onclick:stopPropagation="true">
+                                        <MudTooltip Text="@(album.HasActiveShareLink ? "Gestionar enlace" : "Compartir álbum")">
+                                            <MudIconButton Icon="@(album.HasActiveShareLink ? Icons.Material.Outlined.Link : Icons.Material.Outlined.AddLink)"
+                                                           Size="Size.Small"
+                                                           Color="@(album.HasActiveShareLink ? Color.Primary : Color.Default)"
+                                                           Class="album-list-share-btn"
+                                                           OnClick="() => OpenShareDialogForAlbum(album.Id, album.Name)" />
+                                        </MudTooltip>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
@@ -433,19 +493,27 @@ else
         </div>
 
         <div class="album-hero-actions">
-            @if (_selectedAlbum?.CanManagePermissions == true || _selectedAlbum?.IsOwner == true)
+            @if (_selectedAlbum?.IsOwner == true)
             {
-                <MudIconButton Icon="@Icons.Material.Outlined.Share" 
-                               Color="Color.Inherit"
-                               OnClick="@(() => Navigation.NavigateTo($"/albums/{AlbumId}/permissions"))"
-                               Title="Compartir álbum" />
+                <MudTooltip Text="Compartir">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Link"
+                                   Color="Color.Inherit"
+                                   OnClick="OpenAlbumShareDialog" />
+                </MudTooltip>
             }
-            
+
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                 @if (_selectedAlbum?.CanEdit == true || _selectedAlbum?.IsOwner == true)
                 {
                     <MudMenuItem Icon="@Icons.Material.Outlined.AddPhotoAlternate" OnClick="@(() => Navigation.NavigateTo("/"))">Añadir fotos</MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="OpenEditDialog">Editar nombre/descripción</MudMenuItem>
+                }
+                @if (_selectedAlbum?.CanManagePermissions == true || _selectedAlbum?.IsOwner == true)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Group"
+                                 OnClick="@(() => Navigation.NavigateTo($"/albums/{AlbumId}/permissions"))">
+                        Colaboradores
+                    </MudMenuItem>
                 }
                 @if (_selectedAlbum?.IsOwner != true)
                 {
@@ -881,6 +949,33 @@ else
         {
             Snackbar.Add("Error al crear el álbum", Severity.Error);
         }
+    }
+
+    private async Task OpenAlbumShareDialog()
+    {
+        if (_selectedAlbum == null) return;
+        await OpenShareDialogForAlbum(_selectedAlbum.Id, _selectedAlbum.Name);
+    }
+
+    private async Task OpenShareDialogForAlbum(Guid albumId, string albumName)
+    {
+        var parameters = new DialogParameters<ShareDialog>
+        {
+            { x => x.AlbumId, albumId },
+            { x => x.AlbumName, albumName }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+        var dialog = await DialogService.ShowAsync<ShareDialog>("Compartir álbum", parameters, options);
+        var result = await dialog.Result;
+        // Reload albums to refresh HasActiveShareLink badge
+        if (result != null)
+            await LoadAlbums();
     }
 
     private void OpenEditDialog()
@@ -1364,7 +1459,7 @@ else
                     <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                     <MudSpacer />
                     <MudButton Variant="Variant.Text" Disabled="@(!CanManagePermissionsSelectedAlbum())" OnClick="OpenPermissionsForSelectedAlbum">
-                        Permisos
+                        Colaboradores
                     </MudButton>
                     <MudButton Variant="Variant.Text" Disabled="@(!CanEditSelectedAlbum())" OnClick="OpenEditSelectedAlbum">
                         Editar

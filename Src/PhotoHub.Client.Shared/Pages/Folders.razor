@@ -197,12 +197,12 @@
     </div>
 
     <div class="d-flex align-center gap-2">
-        @if (_selectedFolder != null && _selectedFolder.IsOwner && _selectedFolder.IsShared)
+        @if (_selectedFolder != null && _selectedFolder.IsOwner && _selectedFolder.IsShared && !IsAtRoot)
         {
-            <MudIconButton Icon="@Icons.Material.Outlined.Share" 
+            <MudIconButton Icon="@Icons.Material.Outlined.Group"
                            Color="Color.Inherit"
                            OnClick="@(() => Navigation.NavigateTo($"/folders/{_selectedFolder.Id}/permissions"))"
-                           Title="Compartir carpeta" />
+                           Title="Colaboradores" />
         }
         <MudTextField @bind-Value="_searchQuery"
                       Placeholder="Buscar"
@@ -1677,7 +1677,7 @@ else
                     if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
                     {
                         <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))">
-                            Permisos
+                            Colaboradores
                         </MudButton>
                     }
                     <MudButton Variant="Variant.Text" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection">

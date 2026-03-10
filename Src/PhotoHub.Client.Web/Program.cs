@@ -90,5 +90,11 @@ builder.Services.AddScoped<IAdminStatsService>(sp =>
     var authService = sp.GetRequiredService<PhotoHub.Client.Web.Services.AuthService>();
     return new AdminStatsService(httpClient, async () => await authService.GetTokenAsync());
 });
+builder.Services.AddScoped<IShareService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var authService = sp.GetRequiredService<PhotoHub.Client.Web.Services.AuthService>();
+    return new ShareService(httpClient, async () => await authService.GetTokenAsync());
+});
 
 await builder.Build().RunAsync();

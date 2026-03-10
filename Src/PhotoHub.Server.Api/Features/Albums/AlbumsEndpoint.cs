@@ -49,6 +49,10 @@ public class AlbumsEndpoint : IEndpoint
             .WithName("AddAssetToAlbum")
             .WithDescription("Adds an asset to an album");
 
+        group.MapPost("{albumId:guid}/assets/batch", AddAssetsToAlbumBatch)
+            .WithName("AddAssetsToAlbumBatch")
+            .WithDescription("Adds multiple assets to an album in a single request");
+
         group.MapDelete("{albumId:guid}/assets/{assetId:guid}", RemoveAssetFromAlbum)
             .WithName("RemoveAssetFromAlbum")
             .WithDescription("Removes an asset from an album");
@@ -130,6 +134,16 @@ public class AlbumsEndpoint : IEndpoint
                 })
                 .ToDictionary(x => x.AlbumId, x => x.Count);
 
+            var now = DateTime.UtcNow;
+            var albumsWithActiveLinks = await dbContext.SharedLinks
+                .Where(l => l.AlbumId.HasValue &&
+                            albumIds.Contains(l.AlbumId.Value) &&
+                            (l.ExpiresAt == null || l.ExpiresAt > now) &&
+                            (l.MaxViews == null || l.ViewCount < l.MaxViews))
+                .Select(l => l.AlbumId!.Value)
+                .Distinct()
+                .ToHashSetAsync(cancellationToken);
+
             var response = albums.Select(a => new AlbumResponse
             {
                 Id = a.Id,
@@ -145,6 +159,7 @@ public class AlbumsEndpoint : IEndpoint
                 CanEdit = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanEdit),
                 CanDelete = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
+                HasActiveShareLink = albumsWithActiveLinks.Contains(a.Id),
                 CoverThumbnailUrl = a.CoverAsset?.Thumbnails
                     .FirstOrDefault(t => t.Size == ThumbnailSize.Medium) != null
                     ? $"/api/assets/{a.CoverAssetId}/thumbnail?size=Medium"
@@ -637,6 +652,59 @@ public class AlbumsEndpoint : IEndpoint
         }
     }
 
+    private async Task<IResult> AddAssetsToAlbumBatch(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromRoute] Guid albumId,
+        [FromBody] AddAssetsBatchRequest request,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        var (hasAccess, canEdit, _, _) = await CheckAlbumPermissionsAsync(dbContext, albumId, userId, cancellationToken);
+        if (!hasAccess || !canEdit)
+            return Results.Forbid();
+
+        var album = await dbContext.Albums.FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
+        if (album == null) return Results.NotFound();
+
+        if (request.AssetIds.Count == 0)
+            return Results.BadRequest(new { error = "AssetIds must not be empty" });
+
+        // Load existing entries to skip duplicates
+        var existingIds = await dbContext.AlbumAssets
+            .Where(aa => aa.AlbumId == albumId)
+            .Select(aa => aa.AssetId)
+            .ToHashSetAsync(cancellationToken);
+
+        var toAdd = request.AssetIds.Distinct().Where(id => !existingIds.Contains(id)).ToList();
+
+        // Validate all asset IDs exist
+        var validIds = await dbContext.Assets
+            .Where(a => toAdd.Contains(a.Id) && a.DeletedAt == null)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken);
+
+        var order = await dbContext.AlbumAssets
+            .Where(aa => aa.AlbumId == albumId)
+            .CountAsync(cancellationToken);
+
+        foreach (var assetId in validIds)
+        {
+            dbContext.AlbumAssets.Add(new AlbumAsset { AlbumId = albumId, AssetId = assetId, Order = ++order });
+        }
+
+        if (album.CoverAssetId == null && validIds.Count > 0)
+            album.CoverAssetId = validIds[0];
+
+        album.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new { added = validIds.Count, skipped = request.AssetIds.Count - validIds.Count });
+    }
+
     private async Task<IResult> RemoveAssetFromAlbum(
         [FromServices] ApplicationDbContext dbContext,
         [FromRoute] Guid albumId,
@@ -776,6 +844,7 @@ public class AlbumResponse
     public bool CanEdit { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
+    public bool HasActiveShareLink { get; set; }
 }
 
 public class CreateAlbumRequest
@@ -793,6 +862,11 @@ public class UpdateAlbumRequest
 public class AddAssetRequest
 {
     public Guid AssetId { get; set; }
+}
+
+public class AddAssetsBatchRequest
+{
+    public List<Guid> AssetIds { get; set; } = new();
 }
 
 public class SetCoverRequest

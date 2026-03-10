@@ -224,6 +224,26 @@ public class AlbumService : IAlbumService
         }
     }
 
+    public async Task<bool> AddAssetsToAlbumAsync(Guid albumId, IEnumerable<Guid> assetIds)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var request = new { AssetIds = assetIds.ToList() };
+            var response = await _httpClient.PostAsJsonAsync($"/api/albums/{albumId}/assets/batch", request);
+            ThrowIfForbidden(response);
+            return response.IsSuccessStatusCode;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<bool> RemoveAssetFromAlbumAsync(Guid albumId, Guid assetId)
     {
         try

@@ -12,7 +12,7 @@ using PhotoHub.Server.Api.Shared.Data;
 namespace PhotoHub.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260120093624_InitialCreate")]
+    [Migration("20260310114749_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -182,6 +182,9 @@ namespace PhotoHub.Server.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsFavorite")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("ModifiedDate")
                         .HasColumnType("timestamp without time zone");
@@ -545,6 +548,63 @@ namespace PhotoHub.Server.Api.Migrations
                     b.ToTable("Settings");
                 });
 
+            modelBuilder.Entity("PhotoHub.Server.Api.Shared.Models.SharedLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AlbumId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AllowDownload")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid?>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("MaxViews")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("ViewCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlbumId");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("SharedLinks");
+                });
+
             modelBuilder.Entity("PhotoHub.Server.Api.Shared.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -824,6 +884,31 @@ namespace PhotoHub.Server.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PhotoHub.Server.Api.Shared.Models.SharedLink", b =>
+                {
+                    b.HasOne("PhotoHub.Server.Api.Shared.Models.Album", "Album")
+                        .WithMany()
+                        .HasForeignKey("AlbumId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("PhotoHub.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("PhotoHub.Server.Api.Shared.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Album");
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("PhotoHub.Server.Api.Shared.Models.UserTag", b =>

@@ -5,6 +5,7 @@
 @inject IPendingAssetsProvider PendingAssetsProvider
 @inject IAuthService AuthService
 @inject IAlbumService AlbumService
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject LayoutService LayoutService
@@ -421,8 +422,8 @@ else
                         </MudTooltip>
 
                         <MudTooltip Text="Compartir">
-                            <MudIconButton Icon="@Icons.Material.Outlined.Share"
-                                           Color="Color.Inherit" OnClick="ShareAsset" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Link"
+                                           Color="Color.Inherit" OnClick="OpenShareDialog" />
                         </MudTooltip>
 
                         <MudTooltip Text="Información">
@@ -697,11 +698,22 @@ else
         }
     }
 
-    private async Task ShareAsset()
+    private async Task OpenShareDialog()
     {
-        var result = await JSRuntime.InvokeAsync<string>("shareOrCopyUrl", Navigation.Uri, _asset?.FileName ?? "PhotoHub");
-        if (result == "shared" || result == "copied")
-            Snackbar.Add(result == "shared" ? "Compartido" : "Enlace copiado al portapapeles", Severity.Success);
+        if (_asset == null || _asset.Id == Guid.Empty) return;
+        var parameters = new DialogParameters<ShareDialog>
+        {
+            { x => x.AssetId, _asset.Id },
+            { x => x.AssetFileName, _asset.FileName }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+        await DialogService.ShowAsync<ShareDialog>($"Compartir {_asset.FileName}", parameters, options);
     }
 
     private async Task DownloadAsset()

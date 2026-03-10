@@ -83,6 +83,7 @@ namespace PhotoHub.Server.Api.Migrations
                     ScannedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     OwnerId = table.Column<Guid>(type: "uuid", nullable: true),
                     FolderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    IsFavorite = table.Column<bool>(type: "boolean", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedFromPath = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     DeletedFromFolderId = table.Column<Guid>(type: "uuid", nullable: true),
@@ -408,6 +409,45 @@ namespace PhotoHub.Server.Api.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "SharedLinks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Token = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    AssetId = table.Column<Guid>(type: "uuid", nullable: true),
+                    AlbumId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CreatedById = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    PasswordHash = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    AllowDownload = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    MaxViews = table.Column<int>(type: "integer", nullable: true),
+                    ViewCount = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SharedLinks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SharedLinks_Albums_AlbumId",
+                        column: x => x.AlbumId,
+                        principalTable: "Albums",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_SharedLinks_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_SharedLinks_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AlbumAssets_AlbumId",
                 table: "AlbumAssets",
@@ -573,6 +613,27 @@ namespace PhotoHub.Server.Api.Migrations
                 columns: new[] { "UserId", "DeviceId" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_SharedLinks_AlbumId",
+                table: "SharedLinks",
+                column: "AlbumId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SharedLinks_AssetId",
+                table: "SharedLinks",
+                column: "AssetId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SharedLinks_CreatedById",
+                table: "SharedLinks",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SharedLinks_Token",
+                table: "SharedLinks",
+                column: "Token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
                 table: "Users",
                 column: "Email",
@@ -630,10 +691,13 @@ namespace PhotoHub.Server.Api.Migrations
                 name: "Settings");
 
             migrationBuilder.DropTable(
-                name: "Albums");
+                name: "SharedLinks");
 
             migrationBuilder.DropTable(
                 name: "UserTags");
+
+            migrationBuilder.DropTable(
+                name: "Albums");
 
             migrationBuilder.DropTable(
                 name: "Assets");

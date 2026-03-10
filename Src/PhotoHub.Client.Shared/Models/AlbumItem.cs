@@ -16,4 +16,5 @@ public class AlbumItem
     public bool CanEdit { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
+    public bool HasActiveShareLink { get; set; }
 }

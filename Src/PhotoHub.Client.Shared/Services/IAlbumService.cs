@@ -12,6 +12,7 @@ public interface IAlbumService
     Task<bool> DeleteAlbumAsync(Guid id);
     Task<bool> LeaveAlbumAsync(Guid albumId);
     Task<bool> AddAssetToAlbumAsync(Guid albumId, Guid assetId);
+    Task<bool> AddAssetsToAlbumAsync(Guid albumId, IEnumerable<Guid> assetIds);
     Task<bool> RemoveAssetFromAlbumAsync(Guid albumId, Guid assetId);
     Task<bool> SetAlbumCoverAsync(Guid albumId, Guid assetId);
 }
