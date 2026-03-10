@@ -119,12 +119,12 @@ public class FoldersEndpoint : IEndpoint
                 {
                     var samplePath = g.First().Folder.Path;
                     var hasOwner = TryGetUserIdFromPath(samplePath, out var ownerId);
-                    var countWithoutOwner = g.Count(p => !hasOwner || p.UserId != ownerId);
-                    return new
-                    {
-                        FolderId = g.Key,
-                        Count = countWithoutOwner + (hasOwner ? 1 : 0)
-                    };
+                    // Carpetas personales: excluir al dueño por ruta.
+                    // Carpetas compartidas: excluir al creador (permiso auto-concedido).
+                    var count = hasOwner
+                        ? g.Count(p => p.UserId != ownerId)
+                        : g.Count(p => p.GrantedByUserId != p.UserId);
+                    return new { FolderId = g.Key, Count = count };
                 })
                 .ToDictionary(x => x.FolderId, x => x.Count);
 
@@ -201,9 +201,11 @@ public class FoldersEndpoint : IEndpoint
 
             var sharedCount = await dbContext.FolderPermissions
                 .CountAsync(p => p.FolderId == folderId && p.CanRead &&
-                                 (!ownerIdFromPath.HasValue || p.UserId != ownerIdFromPath.Value),
-                    cancellationToken)
-                + (ownerIdFromPath.HasValue ? 1 : 0);
+                                 // Carpetas personales: excluir dueño por ruta
+                                 (!ownerIdFromPath.HasValue || p.UserId != ownerIdFromPath.Value) &&
+                                 // Carpetas compartidas: excluir al creador (permiso auto-concedido)
+                                 (ownerIdFromPath.HasValue || p.GrantedByUserId != p.UserId),
+                    cancellationToken);
 
             var userPermission = await dbContext.FolderPermissions
                 .FirstOrDefaultAsync(p => p.FolderId == folderId && p.UserId == userId, cancellationToken);
@@ -362,12 +364,12 @@ public class FoldersEndpoint : IEndpoint
                 {
                     var samplePath = g.First().Folder.Path;
                     var hasOwner = TryGetUserIdFromPath(samplePath, out var ownerId);
-                    var countWithoutOwner = g.Count(p => !hasOwner || p.UserId != ownerId);
-                    return new
-                    {
-                        FolderId = g.Key,
-                        Count = countWithoutOwner + (hasOwner ? 1 : 0)
-                    };
+                    // Carpetas personales: excluir al dueño por ruta.
+                    // Carpetas compartidas: excluir al creador (permiso auto-concedido).
+                    var count = hasOwner
+                        ? g.Count(p => p.UserId != ownerId)
+                        : g.Count(p => p.GrantedByUserId != p.UserId);
+                    return new { FolderId = g.Key, Count = count };
                 })
                 .ToDictionary(x => x.FolderId, x => x.Count);
 

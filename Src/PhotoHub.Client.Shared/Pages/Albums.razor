@@ -361,7 +361,7 @@
                                                      Value="@IsAlbumSelected(album.Id)"
                                                      ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAlbumSelection(album.Id, value)))" />
                                     </div>
-                                    @if (album.SharedWithCount > 1)
+                                    @if (album.SharedWithCount > 0)
                                     {
                                         <div class="album-shared-badge" title="Compartido con @album.SharedWithCount usuarios">
                                             <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
@@ -370,7 +370,7 @@
                                     }
                                     @if (album.HasActiveShareLink && album.IsOwner)
                                     {
-                                        <div class="album-link-badge @(album.SharedWithCount > 1 ? "with-group-badge" : "")"
+                                        <div class="album-link-badge @(album.SharedWithCount > 0 ? "with-group-badge" : "")"
                                              title="Gestionar enlace público"
                                              @onclick:stopPropagation="true"
                                              @onclick="() => OpenShareDialogForAlbum(album.Id, album.Name)">
@@ -439,7 +439,7 @@
                                 <div class="album-list-info">
                                     <MudText Typo="Typo.subtitle1" Class="album-list-title">
                                         @album.Name
-                                        @if (album.SharedWithCount > 1)
+                                        @if (album.SharedWithCount > 0)
                                         {
                                             <div class="album-list-shared-badge" title="Compartido con @album.SharedWithCount usuarios">
                                                 <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
@@ -603,16 +603,22 @@ else
         <MudText Typo="Typo.h6">Crear Álbum</MudText>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="_newAlbumName" 
-                      Label="Nombre del álbum" 
-                      Variant="Variant.Outlined" 
+        <MudTextField @bind-Value="_newAlbumName"
+                      Label="Nombre del álbum"
+                      Variant="Variant.Outlined"
                       FullWidth="true"
                       Class="mb-3" />
-        <MudTextField @bind-Value="_newAlbumDescription" 
-                      Label="Descripción (opcional)" 
-                      Variant="Variant.Outlined" 
+        <MudTextField @bind-Value="_newAlbumDescription"
+                      Label="Descripción (opcional)"
+                      Variant="Variant.Outlined"
                       FullWidth="true"
                       Lines="3" />
+        @if (_albumFilter == AlbumFilter.Shared)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-3" Dense="true">
+                Al crear podrás añadir colaboradores de inmediato.
+            </MudAlert>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="CloseCreateDialog">Cancelar</MudButton>
@@ -675,7 +681,7 @@ else
     private string PageHeader => Filter?.ToLower() switch
     {
         "own" => "Mis Álbumes",
-        "shared" => "Compartidos conmigo",
+        "shared" => "Compartidos",
         "public" => "Públicos",
         _ => "Álbumes"
     };
@@ -877,8 +883,8 @@ else
 
         query = _albumFilter switch
         {
-            AlbumFilter.Own => query.Where(album => album.IsOwner && !album.HasActiveShareLink),
-            AlbumFilter.Shared => query.Where(album => !album.IsOwner),
+            AlbumFilter.Own => query.Where(album => album.IsOwner && !album.IsShared),
+            AlbumFilter.Shared => query.Where(album => !album.IsOwner || album.IsShared),
             AlbumFilter.Public => query.Where(album => album.IsOwner && album.HasActiveShareLink),
             _ => query
         };
@@ -947,7 +953,10 @@ else
         {
             Snackbar.Add("Álbum creado correctamente", Severity.Success);
             _createDialogVisible = false;
-            await LoadAlbums();
+            if (_albumFilter == AlbumFilter.Shared)
+                Navigation.NavigateTo($"/albums/{album.Id}/permissions");
+            else
+                await LoadAlbums();
         }
         else
         {

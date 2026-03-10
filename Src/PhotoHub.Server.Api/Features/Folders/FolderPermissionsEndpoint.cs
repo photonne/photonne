@@ -64,19 +64,29 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.Forbid();
         }
 
-        var permissions = folder.Permissions.Select(p => new FolderPermissionDto
-        {
-            Id = p.Id,
-            UserId = p.UserId,
-            Username = p.User.Username,
-            Email = p.User.Email,
-            CanRead = p.CanRead,
-            CanWrite = p.CanWrite,
-            CanDelete = p.CanDelete,
-            CanManagePermissions = p.CanManagePermissions,
-            GrantedAt = p.GrantedAt,
-            GrantedByUserId = p.GrantedByUserId
-        }).ToList();
+        var permissions = folder.Permissions
+            .Where(p =>
+            {
+                // Excluir la entrada del propietario: en carpetas personales el dueño se identifica
+                // por la ruta; en carpetas compartidas, el creador tiene un permiso auto-concedido.
+                var isOwnerEntry = folder.Path.Contains($"/users/{p.UserId}") ||
+                    (folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase) &&
+                     p.GrantedByUserId == p.UserId);
+                return !isOwnerEntry;
+            })
+            .Select(p => new FolderPermissionDto
+            {
+                Id = p.Id,
+                UserId = p.UserId,
+                Username = p.User.Username,
+                Email = p.User.Email,
+                CanRead = p.CanRead,
+                CanWrite = p.CanWrite,
+                CanDelete = p.CanDelete,
+                CanManagePermissions = p.CanManagePermissions,
+                GrantedAt = p.GrantedAt,
+                GrantedByUserId = p.GrantedByUserId
+            }).ToList();
 
         return Results.Ok(permissions);
     }

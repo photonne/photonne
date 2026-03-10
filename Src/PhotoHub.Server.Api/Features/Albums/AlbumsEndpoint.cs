@@ -154,7 +154,7 @@ public class AlbumsEndpoint : IEndpoint
                 AssetCount = a.AlbumAssets.Count,
                 IsOwner = a.OwnerId == userId,
                 IsShared = a.Permissions.Any(p => p.CanView),
-                SharedWithCount = (albumSharedCounts.TryGetValue(a.Id, out var count) ? count : 0) + 1,
+                SharedWithCount = albumSharedCounts.TryGetValue(a.Id, out var count) ? count : 0,
                 CanView = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanView),
                 CanEdit = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanEdit),
                 CanDelete = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanDelete),
