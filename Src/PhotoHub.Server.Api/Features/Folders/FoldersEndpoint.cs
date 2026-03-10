@@ -320,6 +320,7 @@ public class FoldersEndpoint : IEndpoint
                 Checksum = asset.Checksum,
                 HasExif = asset.Exif != null,
                 HasThumbnails = asset.Thumbnails.Any(),
+                IsFavorite = asset.IsFavorite,
                 DeletedAt = asset.DeletedAt
             }).ToList();
 

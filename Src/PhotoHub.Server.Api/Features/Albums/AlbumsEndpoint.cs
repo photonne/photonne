@@ -311,6 +311,7 @@ public class AlbumsEndpoint : IEndpoint
                 Checksum = aa.Asset.Checksum,
                 HasExif = aa.Asset.Exif != null,
                 HasThumbnails = aa.Asset.Thumbnails.Any(),
+                IsFavorite = aa.Asset.IsFavorite,
                 SyncStatus = PhotoHub.Client.Shared.Models.AssetSyncStatus.Synced,
                 DeletedAt = aa.Asset.DeletedAt
             }).ToList();
