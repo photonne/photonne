@@ -21,6 +21,13 @@
     <div class="timeline-main-container">
         <div class="timeline-content-wrapper">
 
+            <div class="filter-chips-bar">
+                <MudChip T="string" Color="@(_activeFilter == "All" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("All"))">Todas</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "Photos" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Photos"))">Fotos</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "Videos" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Videos"))">Vídeos</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "Favorites" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Favorites"))">Favoritos</MudChip>
+            </div>
+
             <div class="timeline-container" id="timeline-scroll-container">
                 <div class="timeline-content">
                     <MemoriesWidget OnThumbClick="OpenAsset" />
@@ -55,9 +62,18 @@
                     }
                     else if (!_loading)
                     {
-                        <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
-                                    Title="No hay fotografías disponibles"
-                                    Description="Indexa un directorio para comenzar." />
+                        @if (_activeFilter != "All")
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.FilterAlt"
+                                        Title="Sin resultados"
+                                        Description="No hay elementos que coincidan con el filtro seleccionado." />
+                        }
+                        else
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
+                                        Title="No hay fotografías disponibles"
+                                        Description="Indexa un directorio para comenzar." />
+                        }
                     }
 
                     @if (_hasMore)
@@ -154,6 +170,16 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
+    }
+
+    /* Barra de filtros */
+    .filter-chips-bar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 0 4px 0;
+        flex-shrink: 0;
+        flex-wrap: wrap;
     }
 
     /* Contenedor del timeline es el único con scroll */
@@ -531,7 +557,28 @@
     private string _newAlbumName = "";
     private string? _newAlbumDescription = "";
     private bool _deleteDialogVisible = false;
-    
+    private string _activeFilter = "All"; // All, Photos, Videos, Favorites
+
+    private IEnumerable<TimelineItem> FilteredAssets => _activeFilter switch
+    {
+        "Photos"    => _assets.Where(a => a.Type.Equals("IMAGE", StringComparison.OrdinalIgnoreCase)),
+        "Videos"    => _assets.Where(a => a.Type.Equals("VIDEO", StringComparison.OrdinalIgnoreCase)),
+        "Favorites" => _assets.Where(a => a.IsFavorite),
+        _           => _assets
+    };
+
+    private async Task SetFilter(string filter)
+    {
+        if (_activeFilter == filter) return;
+        _activeFilter = filter;
+        GroupAssets();
+        if (_groupedAssets.Any())
+            _activeGroup = _groupedAssets.Keys.First();
+        StateHasChanged();
+        await Task.Delay(50);
+        if (_groupedAssets.Any() && _scrollSetupDone)
+            await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(_groupedAssets.Keys.First()));
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -791,7 +838,7 @@
 
     private void GroupAssets()
     {
-        _groupedAssets = _assets
+        _groupedAssets = FilteredAssets
             .OrderByDescending(a => a.CreatedDate)
             .GroupBy(a => a.CreatedDate.Date)
             .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
