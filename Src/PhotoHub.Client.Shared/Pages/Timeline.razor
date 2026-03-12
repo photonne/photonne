@@ -180,6 +180,7 @@
         padding: 0 0 4px 0;
         flex-shrink: 0;
         flex-wrap: wrap;
+        margin-bottom: 4px;
     }
 
     /* Contenedor del timeline es el único con scroll */
@@ -204,7 +205,7 @@
 
     .timeline-content {
         flex: 1;
-        padding-right: 80px;
+        padding-right: 40px;
         padding-bottom: 200px;
     }
 
@@ -319,7 +320,7 @@
         right: 0;
         top: 0;
         bottom: 0;
-        width: 80px;
+        width: 40px;
         z-index: 100;
         pointer-events: none;
     }
@@ -330,7 +331,7 @@
         right: 4px;
         top: 8px;
         bottom: 8px;
-        width: 72px;
+        width: 32px;
         pointer-events: auto;
         cursor: pointer;
     }
@@ -352,15 +353,18 @@
         background: rgba(128, 128, 128, 0.35);
     }
 
-    /* Thumb: label + bar side by side */
+    /* Thumb: horizontal bar spanning the full track width */
     .scrubber-thumb {
         position: absolute;
         top: 0;
+        left: 0;
         right: 0;
+        width: 100%;
+        height: 32px;
         display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 48px;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
         cursor: grab;
         user-select: none;
         will-change: transform;
@@ -372,17 +376,17 @@
     }
 
     .scrubber-thumb-bar {
-        width: 5px;
-        height: 48px;
+        width: 100%;
+        height: 4px;
         background: var(--mud-palette-primary);
-        border-radius: 3px;
+        border-radius: 2px;
         flex-shrink: 0;
-        transition: width 0.15s ease;
+        transition: height 0.15s ease;
     }
 
     .scrubber-track:hover .scrubber-thumb-bar,
     .scrubber-thumb.dragging .scrubber-thumb-bar {
-        width: 8px;
+        height: 6px;
     }
 
     .scrubber-thumb-label {
@@ -396,8 +400,10 @@
         opacity: 0;
         transition: opacity 0.15s ease;
         pointer-events: none;
-        flex-shrink: 0;
-        order: -1;
+        position: absolute;
+        right: calc(100% + 8px);
+        top: 50%;
+        transform: translateY(-50%);
     }
 
     .scrubber-track:hover .scrubber-thumb-label,
