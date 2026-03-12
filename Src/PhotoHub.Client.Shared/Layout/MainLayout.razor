@@ -231,6 +231,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LayoutService.InitializeAsync();
         await LoadCurrentUserAsync();
     }
 
