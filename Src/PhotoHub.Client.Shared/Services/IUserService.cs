@@ -25,6 +25,7 @@ public class UserDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public long? StorageQuotaBytes { get; set; }
 }
 
 public class ShareableUserDto
@@ -53,6 +54,8 @@ public class UpdateUserRequest
     public string? LastName { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
+    /// <summary>Cuota en bytes. Pasar -1 para ilimitado.</summary>
+    public long? StorageQuotaBytes { get; set; }
 }
 
 public class ResetPasswordRequest

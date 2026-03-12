@@ -34,7 +34,9 @@ public class User
     
     [MaxLength(50)]
     public string Role { get; set; } = "User";
-    
+
+    public long? StorageQuotaBytes { get; set; }
+
     // Navigation properties
     public ICollection<FolderPermission> FolderPermissions { get; set; } = new List<FolderPermission>();
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();

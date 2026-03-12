@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PhotoHub.Server.Api.Shared.Data;
@@ -39,6 +40,20 @@ public class UploadAssetsEndpoint : IEndpoint
         if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
             return Results.Unauthorized();
+        }
+
+        // Validar cuota de almacenamiento
+        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (dbUser?.StorageQuotaBytes.HasValue == true)
+        {
+            var usedBytes = await dbContext.Assets
+                .Where(a => a.OwnerId == userId && a.DeletedAt == null)
+                .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
+
+            if (usedBytes + file.Length > dbUser.StorageQuotaBytes.Value)
+                return Results.Problem(
+                    detail: "Has alcanzado el límite de almacenamiento asignado.",
+                    statusCode: StatusCodes.Status409Conflict);
         }
 
         // Guardar los uploads del usuario en su carpeta dedicada dentro del NAS

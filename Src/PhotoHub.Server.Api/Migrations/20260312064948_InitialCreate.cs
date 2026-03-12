@@ -60,7 +60,8 @@ namespace PhotoHub.Server.Api.Migrations
                     IsEmailVerified = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     LastLoginAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
-                    Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "User")
+                    Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "User"),
+                    StorageQuotaBytes = table.Column<long>(type: "bigint", nullable: true)
                 },
                 constraints: table =>
                 {

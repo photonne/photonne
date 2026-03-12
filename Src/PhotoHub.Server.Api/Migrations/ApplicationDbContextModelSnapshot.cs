@@ -645,6 +645,9 @@ namespace PhotoHub.Server.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("User");
 
+                    b.Property<long?>("StorageQuotaBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)

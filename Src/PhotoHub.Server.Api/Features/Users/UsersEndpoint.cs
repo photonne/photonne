@@ -57,6 +57,10 @@ public class UsersEndpoint : IEndpoint
             .WithDescription("Resets a user's password (Admin only)")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
+        group.MapGet("me/storage", GetStorageInfo)
+            .WithName("GetStorageInfo")
+            .WithDescription("Gets storage usage and quota for the current user");
+
         group.MapPut("me", UpdateProfile)
             .WithName("UpdateProfile")
             .WithDescription("Updates the current user's own profile");
@@ -81,7 +85,8 @@ public class UsersEndpoint : IEndpoint
                 LastName = u.LastName,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt,
-                LastLoginAt = u.LastLoginAt
+                LastLoginAt = u.LastLoginAt,
+                StorageQuotaBytes = u.StorageQuotaBytes
             })
             .ToListAsync(cancellationToken);
 
@@ -104,7 +109,8 @@ public class UsersEndpoint : IEndpoint
                 LastName = u.LastName,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt,
-                LastLoginAt = u.LastLoginAt
+                LastLoginAt = u.LastLoginAt,
+                StorageQuotaBytes = u.StorageQuotaBytes
             })
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
@@ -136,7 +142,8 @@ public class UsersEndpoint : IEndpoint
                 LastName = u.LastName,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt,
-                LastLoginAt = u.LastLoginAt
+                LastLoginAt = u.LastLoginAt,
+                StorageQuotaBytes = u.StorageQuotaBytes
             })
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
@@ -244,6 +251,7 @@ public class UsersEndpoint : IEndpoint
         if (request.LastName != null) user.LastName = request.LastName;
         if (request.Role != null) user.Role = request.Role;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
+        if (request.StorageQuotaBytes.HasValue) user.StorageQuotaBytes = request.StorageQuotaBytes == -1 ? null : request.StorageQuotaBytes;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -303,6 +311,30 @@ public class UsersEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return Results.Ok(new { message = "Password reset successfully" });
+    }
+
+    private async Task<IResult> GetStorageInfo(
+        ClaimsPrincipal user,
+        [FromServices] ApplicationDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (dbUser == null)
+            return Results.NotFound();
+
+        var usedBytes = await dbContext.Assets
+            .Where(a => a.OwnerId == userId && a.DeletedAt == null)
+            .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
+
+        return Results.Ok(new StorageInfoDto
+        {
+            UsedBytes = usedBytes,
+            QuotaBytes = dbUser.StorageQuotaBytes
+        });
     }
 
     private async Task<IResult> UpdateProfile(
@@ -403,6 +435,14 @@ public class UpdateUserRequest
     public string? LastName { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
+    /// <summary>Storage quota in bytes. Pass -1 to remove the quota (unlimited).</summary>
+    public long? StorageQuotaBytes { get; set; }
+}
+
+public class StorageInfoDto
+{
+    public long UsedBytes { get; set; }
+    public long? QuotaBytes { get; set; }
 }
 
 public class ResetPasswordRequest

@@ -12,7 +12,7 @@ using PhotoHub.Server.Api.Shared.Data;
 namespace PhotoHub.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260310114749_InitialCreate")]
+    [Migration("20260312064948_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -647,6 +647,9 @@ namespace PhotoHub.Server.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("User");
+
+                    b.Property<long?>("StorageQuotaBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Username")
                         .IsRequired()

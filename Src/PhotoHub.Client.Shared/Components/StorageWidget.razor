@@ -1,0 +1,76 @@
+@using System.Net.Http.Json
+@using PhotoHub.Client.Shared.Models
+@inject HttpClient Http
+
+@if (_info != null)
+{
+    <div class="storage-widget">
+        <div class="storage-widget-header">
+            <MudIcon Icon="@Icons.Material.Outlined.CloudQueue" Size="Size.Small" Class="storage-icon" />
+            @if (_info.QuotaBytes.HasValue)
+            {
+                <MudText Typo="Typo.caption">@_info.UsedFormatted de @_info.QuotaFormatted (@_info.UsedPercent.ToString("0")%)</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption">@_info.UsedFormatted utilizados</MudText>
+            }
+        </div>
+        @if (_info.QuotaBytes.HasValue)
+        {
+            <MudProgressLinear Value="@_info.UsedPercent"
+                               Color="@GetBarColor()"
+                               Rounded="true"
+                               Size="Size.Small"
+                               Class="storage-bar" />
+        }
+    </div>
+}
+
+<style>
+    .storage-widget {
+        padding: 12px 16px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .storage-widget-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .storage-icon {
+        opacity: 0.6;
+        flex-shrink: 0;
+    }
+
+    .storage-bar {
+        width: 100%;
+    }
+</style>
+
+@code {
+    private StorageInfoDto? _info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _info = await Http.GetFromJsonAsync<StorageInfoDto>("/api/users/me/storage");
+        }
+        catch
+        {
+            // Widget silently fails — non-critical
+        }
+    }
+
+    private Color GetBarColor() => _info!.UsedPercent switch
+    {
+        >= 95 => Color.Error,
+        >= 80 => Color.Warning,
+        _     => Color.Primary
+    };
+}

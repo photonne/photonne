@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject NavigationManager Navigation
 
+<div class="nav-wrapper">
 <MudNavMenu Class="mt-4">
     <AuthorizeView Roles="Admin">
         <Authorized>
@@ -95,6 +96,30 @@
         </NotAuthorized>
     </AuthorizeView>
 </MudNavMenu>
+
+<AuthorizeView>
+    <Authorized>
+        @if (!IsAdminSection)
+        {
+            <div class="nav-spacer"></div>
+            <MudDivider />
+            <StorageWidget />
+        }
+    </Authorized>
+</AuthorizeView>
+</div>
+
+<style>
+    .nav-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .nav-spacer {
+        flex: 1;
+    }
+</style>
 
 @code {
     private bool IsAdminSection

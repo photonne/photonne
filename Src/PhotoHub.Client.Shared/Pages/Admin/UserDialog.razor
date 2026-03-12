@@ -49,10 +49,32 @@
                 <MudSelectItem Value="@("Admin")">Administrador</MudSelectItem>
             </MudSelect>
             
-            <MudSwitch @bind-Value="_isActive" 
-                      Label="Usuario activo" 
+            <MudSwitch @bind-Value="_isActive"
+                      Label="Usuario activo"
                       Color="Color.Success"
                       Class="mb-3" />
+
+            <MudSelect @bind-Value="_quotaPreset"
+                       Label="Cuota de almacenamiento"
+                       Variant="Variant.Outlined"
+                       Class="mb-3">
+                <MudSelectItem Value="@(-1L)">Ilimitado</MudSelectItem>
+                <MudSelectItem Value="@(1L * 1024 * 1024 * 1024)">1 GB</MudSelectItem>
+                <MudSelectItem Value="@(5L * 1024 * 1024 * 1024)">5 GB</MudSelectItem>
+                <MudSelectItem Value="@(10L * 1024 * 1024 * 1024)">10 GB</MudSelectItem>
+                <MudSelectItem Value="@(50L * 1024 * 1024 * 1024)">50 GB</MudSelectItem>
+                <MudSelectItem Value="@(100L * 1024 * 1024 * 1024)">100 GB</MudSelectItem>
+                <MudSelectItem Value="@(0L)">Personalizado</MudSelectItem>
+            </MudSelect>
+
+            @if (_quotaPreset == 0)
+            {
+                <MudNumericField @bind-Value="_quotaCustomGb"
+                                 Label="Cuota personalizada (GB)"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Class="mb-3" />
+            }
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -90,6 +112,8 @@
     private string? _lastName;
     private string _role = "User";
     private bool _isActive = true;
+    private long _quotaPreset = -1L; // -1 = ilimitado, 0 = personalizado, resto = bytes
+    private int _quotaCustomGb = 10;
 
     protected override void OnParametersSet()
     {
@@ -103,7 +127,34 @@
             _lastName = User.LastName;
             _role = User.Role;
             _isActive = User.IsActive;
+            InitQuotaFromUser(User.StorageQuotaBytes);
         }
+    }
+
+    private void InitQuotaFromUser(long? quotaBytes)
+    {
+        if (quotaBytes == null)
+        {
+            _quotaPreset = -1L;
+            return;
+        }
+        long[] presets = [1L * 1024 * 1024 * 1024, 5L * 1024 * 1024 * 1024, 10L * 1024 * 1024 * 1024, 50L * 1024 * 1024 * 1024, 100L * 1024 * 1024 * 1024];
+        if (Array.IndexOf(presets, quotaBytes.Value) >= 0)
+        {
+            _quotaPreset = quotaBytes.Value;
+        }
+        else
+        {
+            _quotaPreset = 0L;
+            _quotaCustomGb = (int)(quotaBytes.Value / (1024 * 1024 * 1024));
+        }
+    }
+
+    private long? GetQuotaBytes()
+    {
+        if (_quotaPreset == -1L) return null;
+        if (_quotaPreset == 0L) return (long)_quotaCustomGb * 1024 * 1024 * 1024;
+        return _quotaPreset;
     }
 
     private async Task Save()
@@ -124,7 +175,8 @@
                     FirstName = _firstName,
                     LastName = _lastName,
                     Role = _role,
-                    IsActive = _isActive
+                    IsActive = _isActive,
+                    StorageQuotaBytes = GetQuotaBytes() ?? -1
                 };
                 await UserService.UpdateUserAsync(User.Id, updateRequest);
                 Snackbar.Add("Usuario actualizado correctamente", Severity.Success);
