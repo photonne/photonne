@@ -133,16 +133,16 @@
         @if (Asset.SyncStatus == AssetSyncStatus.Copied)
         {
             <MudTooltip Text="Pendiente de indexar">
-                <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Default" />
+                <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Inherit" />
             </MudTooltip>
         }
         else if (Asset.SyncStatus == AssetSyncStatus.Pending)
         {
             <MudTooltip Text="Sincronizar ahora">
                 <span @onclick:stopPropagation="true">
-                    <MudIconButton Icon="@Icons.Material.Filled.CloudUpload" 
-                                   Size="Size.Small" 
-                                   Color="Color.Default" 
+                    <MudIconButton Icon="@Icons.Material.Filled.CloudUpload"
+                                   Size="Size.Small"
+                                   Color="Color.Inherit"
                                    OnClick="SyncNow" />
                 </span>
             </MudTooltip>
