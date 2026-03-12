@@ -550,6 +550,7 @@
     private HashSet<Guid> _selectedAssetIds = new();
     private bool _addToAlbumDialogVisible = false;
     private bool _deleteAssetsDialogVisible = false;
+    private bool _downloadingZip = false;
     private List<AlbumItem> _availableAlbums = new();
     private bool _loadingAlbums = false;
     private Guid? _selectedAlbumId = null;
@@ -1109,6 +1110,31 @@
         _deleteAssetsDialogVisible = false;
     }
 
+    private async Task DownloadSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        _downloadingZip = true;
+        UpdateSelectionNavbar();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedAssetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photohub_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            UpdateSelectionNavbar();
+        }
+    }
+
     private async Task DeleteSelectedAsync()
     {
         if (!_selectedAssetIds.Any())
@@ -1159,6 +1185,9 @@
                 </MudTooltip>
                 <MudTooltip Text="Añadir a álbum">
                     <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
+                </MudTooltip>
+                <MudTooltip Text="Descargar">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
                 </MudTooltip>
                 <MudTooltip Text="Eliminar">
                     <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />

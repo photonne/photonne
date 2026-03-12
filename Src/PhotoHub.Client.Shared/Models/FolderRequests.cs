@@ -40,3 +40,9 @@ public class PurgeAssetsRequest
 {
     public List<Guid> AssetIds { get; set; } = new();
 }
+
+public class DownloadZipRequest
+{
+    public List<Guid> AssetIds { get; set; } = new();
+    public string? FileName { get; set; }
+}

@@ -2,11 +2,13 @@
 @page "/albums/{Filter}"
 @page "/albums/{AlbumId:guid}"
 @inject IAlbumService AlbumService
+@inject IAssetService AssetService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject LayoutService LayoutService
 @inject IAssetListNavigationState AssetListNavigationState
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Álbumes - PhotoHub</PageTitle>
@@ -502,6 +504,16 @@ else
                 </MudTooltip>
             }
 
+            @if (_albumAssets.Any())
+            {
+                <MudTooltip Text="Descargar álbum">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Download"
+                                   Color="Color.Inherit"
+                                   Disabled="@_downloadingZip"
+                                   OnClick="DownloadAlbumAsync" />
+                </MudTooltip>
+            }
+
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                 @if (_selectedAlbum?.CanEdit == true || _selectedAlbum?.IsOwner == true)
                 {
@@ -721,6 +733,8 @@ else
     private AlbumViewMode _albumViewMode = AlbumViewMode.Grid;
     private AlbumSort _albumSort = AlbumSort.Recent;
     private bool _groupByYear = true;
+
+    private bool _downloadingZip = false;
 
     // Dialogs
     private bool _createDialogVisible = false;
@@ -1504,8 +1518,62 @@ else
                     <MudButton Variant="Variant.Text" Disabled="@(!canEdit || _selectedAlbumAssetIds.Count != 1)" OnClick="SetCoverFromSelectionAsync">
                         Portada
                     </MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="@(!_selectedAlbumAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAssetsAsync">
+                        Descargar
+                    </MudButton>
                 </text>
             , keepDrawerVisible: true);
+        }
+    }
+
+    private async Task DownloadAlbumAsync()
+    {
+        if (_selectedAlbum == null || !_albumAssets.Any()) return;
+
+        _downloadingZip = true;
+        StateHasChanged();
+        try
+        {
+            var assetIds = _albumAssets.Select(a => a.Id).ToList();
+            var bytes = await AssetService.DownloadZipAsync(assetIds, _selectedAlbum.Name);
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", $"{_selectedAlbum.Name}.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadSelectedAssetsAsync()
+    {
+        if (!_selectedAlbumAssetIds.Any()) return;
+
+        _downloadingZip = true;
+        UpdateSelectionNavbar();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedAlbumAssetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photohub_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            UpdateSelectionNavbar();
         }
     }
 

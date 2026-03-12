@@ -346,6 +346,16 @@ public class AssetService : IAssetService
         return response ?? new TimelinePageResult();
     }
 
+    public async Task<byte[]?> DownloadZipAsync(List<Guid> assetIds, string? fileName = null)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsJsonAsync("/api/assets/download-zip",
+            new DownloadZipRequest { AssetIds = assetIds, FileName = fileName });
+        if (!response.IsSuccessStatusCode)
+            return null;
+        return await response.Content.ReadAsByteArrayAsync();
+    }
+
     public async Task RestoreTrashAsync()
     {
         await SetAuthHeaderAsync();
