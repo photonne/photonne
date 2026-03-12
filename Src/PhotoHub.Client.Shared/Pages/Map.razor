@@ -9,7 +9,7 @@
 
 <PageTitle>Mapa - PhotoHub</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.False" Class="pa-0 map-fullscreen" Style="height: calc(100vh - 64px - 48px); position: relative; margin: -24px; width: calc(100% + 48px);">
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-0 map-fullscreen" Style="height: calc(100vh - 64px); position: relative; margin: -24px; width: calc(100% + 48px);">
     @if (_loading)
     {
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;">
@@ -192,11 +192,6 @@
                 Console.WriteLine("[MAP] No clusters found");
                 _clusters = newClusters;
                 await UpdateMapMarkers(false);
-                // Solo mostrar el mensaje si no estamos en carga inicial
-                if (!loadAll)
-                {
-                    Snackbar.Add("No se encontraron fotografías con coordenadas GPS en esta área", Severity.Info);
-                }
                 return;
             }
 
@@ -205,8 +200,6 @@
 
             // Luego actualizamos los marcadores en el mapa
             await UpdateMapMarkers(fitBounds);
-            
-            Snackbar.Add($"Se encontraron {_clusters.Count} ubicaciones con {_clusters.Sum(c => c.Count)} fotografías", Severity.Success);
         }
         catch (Exception ex)
         {
