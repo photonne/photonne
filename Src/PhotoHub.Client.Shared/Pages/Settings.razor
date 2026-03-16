@@ -2,6 +2,7 @@
 @inject ISettingsService SettingsService
 @inject IUserService UserService
 @inject ISnackbar Snackbar
+@inject LayoutService LayoutService
 
 <PageTitle>Configuración de cuenta - PhotoHub</PageTitle>
 
@@ -152,6 +153,34 @@ else
                                 Cambiar contraseña
                             </MudButton>
                         </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Apariencia" Icon="@Icons.Material.Filled.Palette">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Tema</MudText>
+                                <MudText Typo="Typo.body2">Elige entre el modo claro y oscuro.</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.LightMode" Class="mr-3" />
+                                <MudSwitch T="bool"
+                                           Value="LayoutService.IsDarkMode"
+                                           ValueChanged="@(async v => await LayoutService.ToggleDarkModeAsync())"
+                                           Color="Color.Primary" />
+                                <MudIcon Icon="@Icons.Material.Filled.DarkMode" Class="ml-1" />
+                                <MudText Typo="Typo.body1" Class="ml-4">
+                                    @(LayoutService.IsDarkMode ? "Modo oscuro" : "Modo claro")
+                                </MudText>
+                            </div>
+                        </MudCardContent>
                     </MudCard>
                 </MudItem>
             </MudGrid>
