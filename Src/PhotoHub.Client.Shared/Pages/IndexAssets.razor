@@ -91,7 +91,7 @@ else
                 
                 @if (_indexingDuration.HasValue && _statistics != null)
                 {
-                    <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
+                    <MudAlert Severity="Severity.Info" Class="mb-3" >
                         <strong>Duración de la indexación:</strong> @FormatDuration(_indexingDuration.Value)
                         @if (_statistics.TotalFilesFound > 0)
                         {

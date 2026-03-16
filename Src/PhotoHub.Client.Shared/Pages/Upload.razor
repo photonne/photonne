@@ -16,11 +16,12 @@
                 </CardHeaderContent>
             </MudCardHeader>
             <MudCardContent>
-                <MudFileUpload T="IReadOnlyList<IBrowserFile>" OnFilesChanged="UploadFiles">
+                <MudFileUpload T="IReadOnlyList<IBrowserFile>" @ref="_fileUpload" OnFilesChanged="UploadFiles">
                     <ActivatorContent>
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.CloudUpload">
+                                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                                   OnClick="@_fileUpload!.OpenFilePickerAsync">
                             Seleccionar Archivos
                         </MudButton>
                     </ActivatorContent>
@@ -32,7 +33,7 @@
                         @foreach (var file in _uploadingFiles)
                         {
                             <MudListItem Icon="@(file.Value ? Icons.Material.Filled.Check : Icons.Material.Filled.HourglassEmpty)" 
-                                         IconColor="@(file.Value ? Color.Success : Color.Default)">
+                                         IconColor="@(file.Value ? Color.Success : Color.Inherit)">
                                 @file.Key
                             </MudListItem>
                         }
@@ -44,6 +45,7 @@
 </MudGrid>
 
 @code {
+    private MudFileUpload<IReadOnlyList<IBrowserFile>> _fileUpload = null!;
     private Dictionary<string, bool> _uploadingFiles = new();
 
     private async Task UploadFiles(InputFileChangeEventArgs e)

@@ -14,7 +14,7 @@
 }
 else
 {
-    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" PanelClass="pt-6">
+    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" TabPanelsClass="pt-6">
 
         <MudTabPanel Text="Perfil" Icon="@Icons.Material.Filled.Person">
             <MudGrid>
@@ -33,8 +33,8 @@ else
 
                             <MudDivider Class="my-2" />
 
-                            <MudList T="string" Dense="true" ReadOnly="true">
-                                <MudListItem Icon="@Icons.Material.Filled.CalendarToday" IconColor="Color.Default">
+                            <MudList T="string" ReadOnly="true">
+                                <MudListItem Icon="@Icons.Material.Filled.CalendarToday" IconColor="Color.Inherit">
                                     <div>
                                         <MudText Typo="Typo.caption" Class="mud-text-secondary">Cuenta creada</MudText>
                                         <MudText Typo="Typo.body2">@_currentUser?.CreatedAt.ToString("dd MMM yyyy")</MudText>
@@ -42,7 +42,7 @@ else
                                 </MudListItem>
                                 @if (_currentUser?.LastLoginAt != null)
                                 {
-                                    <MudListItem Icon="@Icons.Material.Filled.Login" IconColor="Color.Default">
+                                    <MudListItem Icon="@Icons.Material.Filled.Login" IconColor="Color.Inherit">
                                         <div>
                                             <MudText Typo="Typo.caption" Class="mud-text-secondary">Último acceso</MudText>
                                             <MudText Typo="Typo.body2">@_currentUser.LastLoginAt.Value.ToString("dd MMM yyyy HH:mm")</MudText>

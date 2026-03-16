@@ -22,10 +22,10 @@
         <div class="timeline-content-wrapper">
 
             <div class="filter-chips-bar">
-                <MudChip T="string" Color="@(_activeFilter == "All" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("All"))">Todas</MudChip>
-                <MudChip T="string" Color="@(_activeFilter == "Photos" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Photos"))">Fotos</MudChip>
-                <MudChip T="string" Color="@(_activeFilter == "Videos" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Videos"))">Vídeos</MudChip>
-                <MudChip T="string" Color="@(_activeFilter == "Favorites" ? Color.Primary : Color.Default)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Favorites"))">Favoritos</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "All" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("All"))">Todas</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "Photos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Photos"))">Fotos</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "Videos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Videos"))">Vídeos</MudChip>
+                <MudChip T="string" Color="@(_activeFilter == "Favorites" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Favorites"))">Favoritos</MudChip>
             </div>
 
             <div class="timeline-container" id="timeline-scroll-container">

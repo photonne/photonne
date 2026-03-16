@@ -14,7 +14,7 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="0" Dense="false" Color="Color.Surface" Class="@GetAppBarClass()" Style="@GetAppBarStyle()">
+    <MudAppBar Elevation="0" Color="Color.Surface" Class="@GetAppBarClass()" Style="@GetAppBarStyle()">
         @if (!LayoutService.IsNavbarCustom)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" Class="mr-2" />
@@ -55,7 +55,7 @@
                 </MudTooltip>
                 <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     <ActivatorContent>
-                        <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" OnClick="@context.ToggleAsync" />
                     </ActivatorContent>
                     <ChildContent>
                         <div class="d-flex justify-space-between align-center px-4 pt-3">
@@ -65,7 +65,7 @@
                             </MudButton>
                         </div>
                         <MudDivider Class="my-2" />
-                        <MudList T="NotificationItem" Dense="true" Class="px-2 pb-2">
+                        <MudList T="NotificationItem" Class="px-2 pb-2">
                             @if (_notifications.Any())
                             {
                                 @foreach (var notification in _notifications)
@@ -95,9 +95,11 @@
                     <Authorized>
                         <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                             <ActivatorContent>
-                                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Class="ml-2" Style="width: 32px; height: 32px;">
-                                    @UserInitial
-                                </MudAvatar>
+                                <div @onclick="@context.ToggleAsync" style="cursor: pointer;">
+                                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Class="ml-2" Style="width: 32px; height: 32px;">
+                                        @UserInitial
+                                    </MudAvatar>
+                                </div>
                             </ActivatorContent>
                             <ChildContent>
                                 <div class="d-flex flex-column align-center pa-4" style="min-width: 240px;">
@@ -360,7 +362,7 @@
                 BackdropClick = false
             };
 
-            DialogService.Show<ApiErrorDialog>(info.Title, parameters, options);
+            DialogService.ShowAsync<ApiErrorDialog>(info.Title, parameters, options);
         });
     }
 

@@ -41,7 +41,7 @@
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
         }
         
-        <MudTable Items="@_permissions" Hover="true" Striped="true" Dense="true" Loading="@_loading" Class="mt-4">
+        <MudTable Items="@_permissions" Hover="true" Striped="true"  Loading="@_loading" Class="mt-4">
             <HeaderContent>
                 <MudTh>Usuario</MudTh>
                 <MudTh>Email</MudTh>
@@ -190,7 +190,7 @@
         var permission = _permissions.FirstOrDefault(p => p.UserId == userId);
         if (permission == null) return;
 
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Confirmar eliminación",
             $"¿Está seguro de que desea revocar los permisos de '{permission.Username}'?",
             yesText: "Eliminar",

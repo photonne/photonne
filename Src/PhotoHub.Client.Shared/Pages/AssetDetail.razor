@@ -144,7 +144,7 @@ else if (_asset != null)
             }
             else
             {
-                <MudIcon Icon="@GetAssetIcon(_asset.Type)" Size="Size.Large" Color="Color.Default" Style="width: 128px; height: 128px;" />
+                <MudIcon Icon="@GetAssetIcon(_asset.Type)" Size="Size.Large" Color="Color.Inherit" Style="width: 128px; height: 128px;" />
             }
 
             <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
@@ -165,7 +165,7 @@ else if (_asset != null)
                 </div>
 
                 <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Detalles del archivo</MudText>
-                <MudList T="string" Dense="true" ReadOnly="true">
+                <MudList T="string"  ReadOnly="true">
                     <MudListItem Icon="@Icons.Material.Filled.InsertDriveFile" IconColor="Color.Info">
                         <MudText Typo="Typo.body2">@_asset.FileName</MudText>
                     </MudListItem>
@@ -187,7 +187,7 @@ else if (_asset != null)
                 {
                     <MudDivider Class="my-4" Style="background-color: #333;" />
                     <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Información técnica</MudText>
-                    <MudList T="string" Dense="true" ReadOnly="true">
+                    <MudList T="string"  ReadOnly="true">
                         @if (_asset.Exif.CameraMake != null)
                         {
                             <MudListItem Icon="@Icons.Material.Filled.Camera" IconColor="Color.Info">
@@ -222,7 +222,7 @@ else if (_asset != null)
                     {
                         <MudDivider Class="my-4" Style="background-color: #333;" />
                         <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Ubicación</MudText>
-                        <MudList T="string" Dense="true" ReadOnly="true">
+                        <MudList T="string"  ReadOnly="true">
                             <MudListItem Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Info">
                                 <div class="d-flex flex-column">
                                     <MudText Typo="Typo.body2">@_asset.Exif.Latitude.Value.ToString("F6"), @_asset.Exif.Longitude.Value.ToString("F6")</MudText>
@@ -276,8 +276,7 @@ else if (_asset != null)
                                       Placeholder="Añadir etiqueta"
                                       Variant="Variant.Outlined"
                                       Margin="Margin.Dense"
-                                      Dense="true"
-                                      Immediate="true"
+                                                                           Immediate="true"
                                       Disabled="@_tagBusy"
                                       Class="flex-grow-1" />
                         <MudButton Variant="Variant.Filled"
@@ -383,7 +382,7 @@ else
                         {
                             <MudTooltip Text="Sincronizar ahora">
                                 <MudIconButton Icon="@Icons.Material.Filled.CloudUpload"
-                                               Color="Color.Default"
+                                               Color="Color.Inherit"
                                                OnClick="SyncAsset"
                                                Disabled="@_syncing" />
                             </MudTooltip>
@@ -392,7 +391,7 @@ else
                         {
                             <MudTooltip Text="Pendiente de indexar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Schedule"
-                                               Color="Color.Default"
+                                               Color="Color.Inherit"
                                                OnClick="NavigateToIndex" />
                             </MudTooltip>
                         }

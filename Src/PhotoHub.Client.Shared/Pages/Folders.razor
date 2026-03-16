@@ -220,21 +220,19 @@
                       Placeholder="Buscar"
                       Variant="Variant.Outlined"
                       Margin="Margin.Dense"
-                      Dense="true"
-                      Immediate="true"
+                                            Immediate="true"
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       Class="folders-search d-none d-sm-flex" />
         
-        <MudMenu Icon="@Icons.Material.Filled.Tune" Label="Opciones de vista" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Variant="Variant.Outlined" Dense="true" Size="Size.Small">
+        <MudMenu Icon="@Icons.Material.Filled.Tune" Label="Opciones de vista" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Variant="Variant.Outlined" Size="Size.Small">
             <div class="pa-4" style="min-width: 250px;">
                 <MudText Typo="Typo.subtitle2" Class="mb-2">Ordenar por</MudText>
                 <MudSelect T="FolderSort"
                            @bind-Value="_folderSort"
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense"
-                           Dense="true"
-                           Class="mb-4">
+                                                      Class="mb-4">
                     <MudSelectItem Value="FolderSort.Name">Nombre</MudSelectItem>
                     <MudSelectItem Value="FolderSort.AssetCount">Cantidad de archivos</MudSelectItem>
                 </MudSelect>

@@ -38,7 +38,7 @@ else
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
     }
     
-    <MudTable Items="@_users" Hover="true" Striped="true" Dense="true" Loading="@_loading" Class="mt-4">
+    <MudTable Items="@_users" Hover="true" Striped="true"  Loading="@_loading" Class="mt-4">
         <HeaderContent>
             <MudTh>ID</MudTh>
             <MudTh>Usuario</MudTh>
@@ -220,7 +220,7 @@ else
         var user = _users.FirstOrDefault(u => u.Id == id);
         if (user == null) return;
 
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Confirmar eliminación",
             $"¿Está seguro de que desea eliminar al usuario '{user.Username}'?",
             yesText: "Eliminar",
