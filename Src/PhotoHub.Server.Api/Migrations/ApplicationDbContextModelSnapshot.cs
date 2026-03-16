@@ -180,6 +180,9 @@ namespace PhotoHub.Server.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("boolean");
 

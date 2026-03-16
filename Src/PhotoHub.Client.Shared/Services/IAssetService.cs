@@ -25,6 +25,20 @@ public interface IAssetService
     Task<TimelinePageResult> GetFavoritesPageAsync(DateTime? cursor = null, int pageSize = 150);
     Task<List<TimelineItem>> GetMemoriesAsync();
     Task<byte[]?> DownloadZipAsync(List<Guid> assetIds, string? fileName = null);
+    Task<TimelinePageResult> GetArchivedPageAsync(DateTime? cursor = null, int pageSize = 150);
+    Task ArchiveAssetsAsync(ArchiveAssetsRequest request);
+    Task UnarchiveAssetsAsync(UnarchiveAssetsRequest request);
+    Task UnarchiveAllAsync();
+}
+
+public class ArchiveAssetsRequest
+{
+    public List<Guid> AssetIds { get; set; } = new();
+}
+
+public class UnarchiveAssetsRequest
+{
+    public List<Guid> AssetIds { get; set; } = new();
 }
 
 public class SearchResult

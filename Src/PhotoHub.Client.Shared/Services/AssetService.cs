@@ -149,7 +149,8 @@ public class AssetService : IAssetService
             }).ToList(),
             Tags = response.Tags,
             SyncStatus = response.SyncStatus,
-            IsFavorite = response.IsFavorite
+            IsFavorite = response.IsFavorite,
+            IsArchived = response.IsArchived
         };
     }
 
@@ -354,6 +355,37 @@ public class AssetService : IAssetService
         if (!response.IsSuccessStatusCode)
             return null;
         return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    public async Task<TimelinePageResult> GetArchivedPageAsync(DateTime? cursor = null, int pageSize = 150)
+    {
+        await SetAuthHeaderAsync();
+        var url = $"/api/assets/archived?pageSize={pageSize}";
+        if (cursor.HasValue)
+            url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
+        var response = await _httpClient.GetFromJsonAsync<TimelinePageResult>(url);
+        return response ?? new TimelinePageResult();
+    }
+
+    public async Task ArchiveAssetsAsync(ArchiveAssetsRequest request)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsJsonAsync("/api/assets/archive", request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UnarchiveAssetsAsync(UnarchiveAssetsRequest request)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsJsonAsync("/api/assets/unarchive", request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UnarchiveAllAsync()
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsync("/api/assets/archive/unarchive-all", null);
+        response.EnsureSuccessStatusCode();
     }
 
     public async Task RestoreTrashAsync()

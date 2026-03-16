@@ -43,7 +43,7 @@ public class FavoritesEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
             .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && a.IsFavorite);
+            .Where(a => a.DeletedAt == null && !a.IsArchived && a.IsFavorite);
 
         if (!isAdmin)
         {

@@ -85,6 +85,7 @@ namespace PhotoHub.Server.Api.Migrations
                     OwnerId = table.Column<Guid>(type: "uuid", nullable: true),
                     FolderId = table.Column<Guid>(type: "uuid", nullable: true),
                     IsFavorite = table.Column<bool>(type: "boolean", nullable: false),
+                    IsArchived = table.Column<bool>(type: "boolean", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedFromPath = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     DeletedFromFolderId = table.Column<Guid>(type: "uuid", nullable: true),

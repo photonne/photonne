@@ -21,6 +21,7 @@ public class AssetDetailResponse
     public List<string> Tags { get; set; } = new();
     public AssetSyncStatus SyncStatus { get; set; } = AssetSyncStatus.Synced;
     public bool IsFavorite { get; set; }
+    public bool IsArchived { get; set; }
 }
 
 public class ExifDataResponse

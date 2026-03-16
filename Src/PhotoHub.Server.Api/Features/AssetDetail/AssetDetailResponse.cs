@@ -21,6 +21,7 @@ public class AssetDetailResponse
     public List<string> Tags { get; set; } = new();
     public PhotoHub.Client.Shared.Models.AssetSyncStatus SyncStatus { get; set; } = PhotoHub.Client.Shared.Models.AssetSyncStatus.Synced;
     public bool IsFavorite { get; set; }
+    public bool IsArchived { get; set; }
 }
 
 public class ExifDataResponse

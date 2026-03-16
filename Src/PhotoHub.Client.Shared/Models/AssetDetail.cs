@@ -21,7 +21,8 @@ public class AssetDetail
     public List<string> Tags { get; set; } = new();
     public AssetSyncStatus SyncStatus { get; set; } = AssetSyncStatus.Pending;
     public bool IsFavorite { get; set; }
-    
+    public bool IsArchived { get; set; }
+
     public string ThumbnailUrl => Id != Guid.Empty
         ? $"/api/assets/{Id}/thumbnail?size=Large" 
         : $"/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";

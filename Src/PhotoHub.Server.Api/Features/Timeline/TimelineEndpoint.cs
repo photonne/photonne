@@ -57,7 +57,7 @@ public class TimelineEndpoint : IEndpoint
                 .Include(a => a.Tags)
                 .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-                .Where(a => a.DeletedAt == null);
+                .Where(a => a.DeletedAt == null && !a.IsArchived);
 
             if (!isAdmin)
             {
@@ -113,7 +113,8 @@ public class TimelineEndpoint : IEndpoint
                 Height = asset.Exif?.Height,
                 DeletedAt = asset.DeletedAt,
                 Tags = BuildTagList(asset),
-                IsFavorite = asset.IsFavorite
+                IsFavorite = asset.IsFavorite,
+                IsArchived = asset.IsArchived
             }).ToList();
 
             // Normalizar rutas existentes en BD para comparación

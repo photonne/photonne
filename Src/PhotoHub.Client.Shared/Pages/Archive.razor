@@ -1,0 +1,575 @@
+@page "/archive"
+@using PhotoHub.Client.Shared.Models
+@inject IAssetService AssetService
+@inject LayoutService LayoutService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Archivo - PhotoHub</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Archivo</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+
+<div class="archive-toolbar">
+    <MudSpacer />
+    <MudButton Variant="Variant.Text" Disabled="@(!_assets.Any())" OnClick="OpenUnarchiveAllDialog">
+        Desarchivar todo
+    </MudButton>
+</div>
+
+<div class="timeline-wrapper">
+    <div class="timeline-main-container">
+        <div class="timeline-content-wrapper">
+            <div class="timeline-container" id="timeline-scroll-container">
+                <div class="timeline-content">
+                    @if (_groupedAssets.Any())
+                    {
+                        @foreach (var group in _groupedAssets)
+                        {
+                            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+                            <div class="day-group" id="@GetGroupId(group.Key)">
+                                <MudText Typo="Typo.h6" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                                <div class="masonry-grid" data-day-group="@GetGroupId(group.Key)">
+                                    @foreach (var asset in group.Value)
+                                    {
+                                        <div class="masonry-item"
+                                             data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                                             data-width="@(asset.Width?.ToString() ?? "0")"
+                                             data-height="@(asset.Height?.ToString() ?? "0")">
+                                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")">
+                                                <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                                                <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                                    <MudCheckBox T="bool"
+                                                                 Value="@IsAssetSelected(asset.Id)"
+                                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else if (!_loading)
+                    {
+                        <EmptyState Icon="@Icons.Material.Filled.Archive"
+                                    Title="El archivo está vacío" />
+                    }
+                </div>
+            </div>
+
+            @if (_hasMore)
+            {
+                <div class="d-flex justify-center pa-4">
+                    <MudButton Variant="Variant.Text" OnClick="LoadMoreAsync" Disabled="_loadingMore">
+                        @if (_loadingMore)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Cargar más
+                    </MudButton>
+                </div>
+            }
+        </div>
+        <div class="timeline-sidebar"></div>
+    </div>
+
+    @if (_groupedAssets.Any())
+    {
+        <div class="timeline-nav-wrapper">
+            <div id="timeline-nav-container" class="vertical-timeline-nav">
+                @{
+                    var renderedYears = new HashSet<string>();
+                }
+                @foreach (var group in _groupedAssets)
+                {
+                    var groupKey = group.Key;
+                    var year = GetYearFromGroup(groupKey);
+                    if (!renderedYears.Contains(year))
+                    {
+                        renderedYears.Add(year);
+                        var pos = GetGroupPosition(groupKey);
+                        var posStr = pos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                        <div class="timeline-nav-item @(IsActiveYear(year) ? "active" : "")"
+                             style="top: @($"{posStr}%");"
+                             @onclick="@(() => ScrollToGroup(groupKey))">
+                            <span class="timeline-nav-label">@year</span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<MudDialog @bind-Visible="_unarchiveAllDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Desarchivar todo</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres mover todos los elementos de vuelta a tu biblioteca?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _unarchiveAllDialogVisible = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="UnarchiveAllAsync">Desarchivar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    :global(body.timeline-page) {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+
+    :global(body.timeline-page .mud-layout) {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+
+    :global(body.timeline-page .mud-main-content) {
+        overflow: hidden !important;
+        height: 100vh !important;
+        position: relative !important;
+    }
+
+    .archive-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 4px;
+        border-bottom: 1px solid var(--mud-palette-divider);
+        margin-bottom: 8px;
+    }
+
+    .asset-select-container {
+        position: relative;
+        height: 100%;
+    }
+
+    .asset-select-checkbox {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 5;
+        opacity: 0;
+        transition: opacity 0.2s;
+        background: rgba(0,0,0,0.4);
+        border-radius: 999px;
+        padding: 2px;
+        color: white;
+    }
+
+    .asset-select-checkbox .mud-icon-root {
+        color: white !important;
+    }
+
+    .asset-select-container:hover .asset-select-checkbox {
+        opacity: 1;
+    }
+
+    .asset-select-container.selection-mode .asset-select-checkbox,
+    .asset-select-container.selected .asset-select-checkbox {
+        opacity: 1;
+    }
+
+    .timeline-wrapper {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 64px - 48px);
+    }
+
+    .timeline-main-container {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        position: relative;
+    }
+
+    .timeline-content-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .timeline-container {
+        display: flex;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-gutter: stable;
+    }
+
+    .timeline-container::-webkit-scrollbar { width: 8px; }
+    .timeline-container::-webkit-scrollbar-track { background: transparent; }
+    .timeline-container::-webkit-scrollbar-thumb {
+        background-color: var(--mud-palette-primary);
+        border-radius: 4px;
+    }
+    .timeline-container {
+        scrollbar-width: thin;
+        scrollbar-color: var(--mud-palette-primary) transparent;
+    }
+
+    .timeline-content {
+        flex: 1;
+        padding-right: 24px;
+        padding-bottom: 200px;
+    }
+
+    .timeline-sidebar { display: none; }
+
+    .day-group { margin-bottom: 48px; }
+
+    .day-header {
+        margin-bottom: 16px !important;
+        margin-left: 4px;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        text-transform: capitalize;
+    }
+
+    .masonry-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        width: 100%;
+        align-items: flex-start;
+        justify-content: flex-start;
+        align-content: flex-start;
+    }
+
+    .masonry-item {
+        height: 180px;
+        flex-shrink: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    @@media (min-width: 600px)  { .masonry-item { height: 200px; } }
+    @@media (min-width: 960px)  { .masonry-item { height: 220px; } }
+    @@media (min-width: 1280px) { .masonry-item { height: 240px; } }
+    @@media (min-width: 1920px) { .masonry-item { height: 260px; } }
+
+    .masonry-item .asset-card-container {
+        width: 100%;
+        height: 100%;
+        border-radius: 0 !important;
+    }
+
+    .masonry-item img, .masonry-item video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .vertical-timeline-nav {
+        position: absolute;
+        top: 80px;
+        right: 8px;
+        bottom: 80px;
+        width: 80px;
+        pointer-events: none;
+    }
+
+    .timeline-nav-item {
+        position: absolute;
+        left: 0;
+        transform: translateY(-50%);
+        pointer-events: auto;
+        cursor: pointer;
+        padding: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .timeline-nav-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        background-color: var(--mud-palette-surface);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--mud-palette-divider);
+        white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .timeline-nav-item.active .timeline-nav-label {
+        color: var(--mud-palette-primary);
+        border-color: var(--mud-palette-primary);
+        font-size: 0.85rem;
+        z-index: 10;
+    }
+</style>
+
+@code {
+    private List<TimelineItem> _assets = new();
+    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    private bool _loading = true;
+    private bool _loadingMore;
+    private bool _hasMore;
+    private DateTime? _cursor;
+    private string _activeGroup = "";
+    private DotNetObjectReference<Archive>? _objRef;
+    private bool _selectionMode;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _unarchiveAllDialogVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("scrollHelpers.enableTimelineScroll");
+
+            if (_groupedAssets.Any())
+            {
+                await SetupScrollListener();
+                if (_objRef != null)
+                {
+                    await Task.Delay(100);
+                    await JS.InvokeVoidAsync("scrollHelpers.updateScrollProgress", _objRef);
+                }
+                await Task.Delay(200);
+                await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+            }
+        }
+        else if (_groupedAssets.Any())
+        {
+            await Task.Delay(200);
+            await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _loading = true;
+            var result = await AssetService.GetArchivedPageAsync();
+            _assets = result.Items;
+            _hasMore = result.HasMore;
+            _cursor = result.NextCursor;
+            GroupAssets();
+            if (_groupedAssets.Any())
+                _activeGroup = _groupedAssets.Keys.First();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar el archivo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (!_hasMore || _loadingMore) return;
+        try
+        {
+            _loadingMore = true;
+            var result = await AssetService.GetArchivedPageAsync(cursor: _cursor);
+            _assets.AddRange(result.Items);
+            _hasMore = result.HasMore;
+            _cursor = result.NextCursor;
+            GroupAssets();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar más: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    private void GroupAssets()
+    {
+        _groupedAssets = _assets
+            .OrderByDescending(a => a.CreatedDate)
+            .GroupBy(a => a.CreatedDate.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
+    }
+
+    private string FormatDayHeader(DateTime date)
+    {
+        var today = DateTime.Today;
+        if (date.Date == today) return "Hoy";
+        if (date.Date == today.AddDays(-1)) return "Ayer";
+        if (date.Year == today.Year)
+            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
+        return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        if (_selectionMode)
+        {
+            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            return;
+        }
+        Navigation.NavigateTo($"/asset/{asset.Id}");
+    }
+
+    private string GetGroupId(string groupName) => "group-" + groupName.Replace(" ", "-").ToLower();
+
+    private async Task SetupScrollListener()
+    {
+        _objRef ??= DotNetObjectReference.Create(this);
+        var groupIds = _groupedAssets.Keys.Select(GetGroupId).ToList();
+        await JS.InvokeVoidAsync("scrollHelpers.onWindowScroll", _objRef, groupIds);
+    }
+
+    [JSInvokable]
+    public void OnScrollUpdated(string activeGroupId, double percentage, double handleTopPixels)
+    {
+        var groupName = _groupedAssets.Keys.FirstOrDefault(k => GetGroupId(k) == activeGroupId);
+        if (!string.IsNullOrEmpty(groupName))
+            _activeGroup = groupName;
+    }
+
+    private double GetGroupPosition(string groupName)
+    {
+        if (!_groupedAssets.Any()) return 0;
+        var keys = _groupedAssets.Keys.ToList();
+        var index = keys.IndexOf(groupName);
+        if (index == -1) return 0;
+        return (double)index / Math.Max(keys.Count - 1, 1) * 100;
+    }
+
+    private bool IsActiveYear(string year)
+        => !string.IsNullOrEmpty(_activeGroup) && GetYearFromGroup(_activeGroup) == year;
+
+    private string GetYearFromGroup(string groupKey)
+    {
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
+            return date.Year.ToString();
+        return "";
+    }
+
+    private async Task ScrollToGroup(string groupName)
+    {
+        _activeGroup = groupName;
+        await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(groupName));
+    }
+
+    private void ToggleAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_selectionMode) _selectionMode = true;
+
+        if (selected)
+            _selectedAssetIds.Add(assetId);
+        else
+        {
+            _selectedAssetIds.Remove(assetId);
+            if (_selectedAssetIds.Count == 0) ExitSelectionMode();
+            else UpdateSelectionNavbar();
+            return;
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private bool IsAssetSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        LayoutService.ResetNavbar();
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (_selectedAssetIds.Count == _assets.Count && _assets.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+        _selectedAssetIds = _assets.Select(a => a.Id).ToHashSet();
+        UpdateSelectionNavbar();
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectedAssetIds.Count;
+        var allSelected = _assets.Any() && selectedCount == _assets.Count;
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+                <MudTooltip Text="Desarchivar seleccionadas">
+                    <MudIconButton Icon="@Icons.Material.Filled.Unarchive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="UnarchiveSelectedAsync" />
+                </MudTooltip>
+            </text>
+        , keepDrawerVisible: true);
+    }
+
+    private async Task UnarchiveSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+        try
+        {
+            await AssetService.UnarchiveAssetsAsync(new UnarchiveAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            });
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al desarchivar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenUnarchiveAllDialog() => _unarchiveAllDialogVisible = true;
+
+    private async Task UnarchiveAllAsync()
+    {
+        try
+        {
+            await AssetService.UnarchiveAllAsync();
+            _unarchiveAllDialogVisible = false;
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al desarchivar todo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        _objRef?.Dispose();
+        JS.InvokeVoidAsync("scrollHelpers.disableTimelineScroll");
+        LayoutService.ResetNavbar();
+    }
+}

@@ -12,7 +12,7 @@ using PhotoHub.Server.Api.Shared.Data;
 namespace PhotoHub.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260312064948_InitialCreate")]
+    [Migration("20260316095353_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -182,6 +182,9 @@ namespace PhotoHub.Server.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("boolean");

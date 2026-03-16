@@ -317,6 +317,7 @@ else
     private bool _deleteConfirmOpen = false;
     private bool _tagBusy = false;
     private bool _favoriteBusy = false;
+    private bool _archiveBusy = false;
     private string _newTag = string.Empty;
     
     private TimelineItem? _prevAsset;
@@ -429,6 +430,13 @@ else
                         <MudTooltip Text="Descargar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Download"
                                            Color="Color.Inherit" OnClick="DownloadAsset" />
+                        </MudTooltip>
+
+                        <MudTooltip Text="@(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")">
+                            <MudIconButton Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
+                                           Color="Color.Inherit"
+                                           OnClick="ToggleArchiveAsync"
+                                           Disabled="@_archiveBusy" />
                         </MudTooltip>
 
                         <MudTooltip Text="Eliminar">
@@ -689,6 +697,36 @@ else
         finally
         {
             _favoriteBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleArchiveAsync()
+    {
+        if (_asset == null || _asset.Id == Guid.Empty || _archiveBusy) return;
+        try
+        {
+            _archiveBusy = true;
+            UpdateNavbar();
+            if (_asset.IsArchived)
+            {
+                await AssetService.UnarchiveAssetsAsync(new UnarchiveAssetsRequest { AssetIds = [_asset.Id] });
+                _asset.IsArchived = false;
+            }
+            else
+            {
+                await AssetService.ArchiveAssetsAsync(new ArchiveAssetsRequest { AssetIds = [_asset.Id] });
+                _asset.IsArchived = true;
+            }
+            UpdateNavbar();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al archivar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _archiveBusy = false;
             StateHasChanged();
         }
     }

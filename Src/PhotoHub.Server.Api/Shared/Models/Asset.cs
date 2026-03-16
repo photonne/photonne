@@ -46,6 +46,8 @@ public class Asset
 
     public bool IsFavorite { get; set; }
 
+    public bool IsArchived { get; set; }
+
     public DateTime? DeletedAt { get; set; }
     [MaxLength(1000)]
     public string? DeletedFromPath { get; set; }

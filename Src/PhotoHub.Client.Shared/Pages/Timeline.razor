@@ -1146,6 +1146,25 @@
         }
     }
 
+    private async Task ArchiveSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+        try
+        {
+            await AssetService.ArchiveAssetsAsync(new ArchiveAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            });
+            ExitSelectionMode();
+            await LoadTimeline();
+            Snackbar.Add("Assets archivados correctamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al archivar: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task DeleteSelectedAsync()
     {
         if (!_selectedAssetIds.Any())
@@ -1199,6 +1218,9 @@
                 </MudTooltip>
                 <MudTooltip Text="Descargar">
                     <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
+                </MudTooltip>
+                <MudTooltip Text="Archivar">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Archive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync" />
                 </MudTooltip>
                 <MudTooltip Text="Eliminar">
                     <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
