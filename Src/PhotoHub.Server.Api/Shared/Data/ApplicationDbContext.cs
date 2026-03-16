@@ -41,6 +41,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FirstName).HasMaxLength(100);
             entity.Property(e => e.LastName).HasMaxLength(100);
             entity.Property(e => e.Role).HasMaxLength(50).HasDefaultValue("User");
+            entity.Property(e => e.IsPrimaryAdmin).HasDefaultValue(false);
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.CreatedAt)

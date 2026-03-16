@@ -37,6 +37,8 @@ public class User
 
     public long? StorageQuotaBytes { get; set; }
 
+    public bool IsPrimaryAdmin { get; set; } = false;
+
     // Navigation properties
     public ICollection<FolderPermission> FolderPermissions { get; set; } = new List<FolderPermission>();
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();

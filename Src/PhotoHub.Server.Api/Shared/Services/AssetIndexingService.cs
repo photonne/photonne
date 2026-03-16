@@ -112,9 +112,27 @@ public class AssetIndexingService
                 isNew = true;
             }
 
-            // Owner from path
+            // Owner from path — validate that the extracted user actually exists in the DB.
+            // If not, fall back to the primary admin to avoid FK constraint violations.
             if (TryGetOwnerIdFromVirtualPath(virtualPath, out var parsedOwner))
-                asset.OwnerId = parsedOwner;
+            {
+                var ownerExists = await _dbContext.Users.AnyAsync(u => u.Id == parsedOwner, ct);
+                if (ownerExists)
+                {
+                    asset.OwnerId = parsedOwner;
+                }
+                else
+                {
+                    var primaryAdmin = await GetPrimaryAdminIdAsync(ct);
+                    asset.OwnerId = primaryAdmin;
+                    Console.WriteLine($"[INDEX-FILE] Owner {parsedOwner} not found, assigned to primary admin ({primaryAdmin}).");
+                }
+            }
+            else
+            {
+                // Non-user path (e.g. /shared) — assign to primary admin
+                asset.OwnerId = await GetPrimaryAdminIdAsync(ct);
+            }
 
             // Folder
             var folderPath = Path.GetDirectoryName(physicalPath);
@@ -264,29 +282,43 @@ public class AssetIndexingService
         return resultFolder;
     }
 
-    private async Task AssignAdminOwnerAsync(Guid folderId, CancellationToken ct)
+    private async Task<Guid?> GetPrimaryAdminIdAsync(CancellationToken ct)
     {
         var primaryAdmin = await _dbContext.Users
-            .Where(u => u.Role == "Admin" && u.IsActive)
-            .OrderBy(u => u.CreatedAt)
+            .Where(u => u.IsPrimaryAdmin)
+            .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync(ct);
 
-        if (primaryAdmin == null) return;
+        if (primaryAdmin != null)
+            return primaryAdmin;
+
+        // Fallback: first active admin by creation date (in case IsPrimaryAdmin was never set)
+        return await _dbContext.Users
+            .Where(u => u.Role == "Admin" && u.IsActive)
+            .OrderBy(u => u.CreatedAt)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    private async Task AssignAdminOwnerAsync(Guid folderId, CancellationToken ct)
+    {
+        var primaryAdminId = await GetPrimaryAdminIdAsync(ct);
+        if (primaryAdminId == null) return;
 
         var exists = await _dbContext.FolderPermissions
-            .AnyAsync(p => p.UserId == primaryAdmin.Id && p.FolderId == folderId, ct);
+            .AnyAsync(p => p.UserId == primaryAdminId.Value && p.FolderId == folderId, ct);
 
         if (exists) return;
 
         _dbContext.FolderPermissions.Add(new FolderPermission
         {
-            UserId = primaryAdmin.Id,
+            UserId = primaryAdminId.Value,
             FolderId = folderId,
             CanRead = true,
             CanWrite = true,
             CanDelete = true,
             CanManagePermissions = true,
-            GrantedByUserId = primaryAdmin.Id
+            GrantedByUserId = primaryAdminId.Value
         });
 
         await _dbContext.SaveChangesAsync(ct);

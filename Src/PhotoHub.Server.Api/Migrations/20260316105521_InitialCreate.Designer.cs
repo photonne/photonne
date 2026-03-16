@@ -12,7 +12,7 @@ using PhotoHub.Server.Api.Shared.Data;
 namespace PhotoHub.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260316095353_InitialCreate")]
+    [Migration("20260316105521_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -631,6 +631,11 @@ namespace PhotoHub.Server.Api.Migrations
 
                     b.Property<bool>("IsEmailVerified")
                         .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimaryAdmin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp without time zone");

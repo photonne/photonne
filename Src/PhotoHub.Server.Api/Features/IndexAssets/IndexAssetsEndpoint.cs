@@ -672,7 +672,7 @@ public class IndexAssetsEndpoint : IEndpoint
         var dbPath = await settingsService.VirtualizePathAsync(file.FullPath);
 
         var existingByPath = existingAssetsByPath.GetValueOrDefault(dbPath);
-        Guid? ownerId = TryGetOwnerIdFromVirtualPath(dbPath, out var parsedOwnerId) ? parsedOwnerId : null;
+        Guid? ownerId = await GetValidatedOwnerIdAsync(dbPath, dbContext, cancellationToken);
         var fileDirectory = Path.GetDirectoryName(file.FullPath);
         var needsFullCheck = existingByPath == null || 
             hashService.HasFileChanged(file.FullPath, existingByPath.FileSize, existingByPath.ModifiedDate);
@@ -1246,7 +1246,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 {
                     dbAssetToKeep.FullPath = mostRecentPath;
                     dbAssetToKeep.FileName = Path.GetFileName(mostRecentPath);
-                    dbAssetToKeep.OwnerId = TryGetOwnerIdFromVirtualPath(mostRecentPath, out var ownerId) ? ownerId : null;
+                    dbAssetToKeep.OwnerId = await GetValidatedOwnerIdAsync(mostRecentPath, dbContext, cancellationToken);
                     assetsToUpdate.Add(dbAssetToKeep);
                 }
             }
@@ -1591,6 +1591,38 @@ public class IndexAssetsEndpoint : IEndpoint
 
     private static int ParseWorkerSetting(string value, int min = 1, int max = 32, int defaultValue = 2)
         => Math.Clamp(int.TryParse(value, out var n) ? n : defaultValue, min, max);
+
+    /// <summary>
+    /// Extracts OwnerId from a virtual path and validates the user exists in the DB.
+    /// Falls back to the primary admin if the user does not exist or path is not a user path.
+    /// </summary>
+    private static async Task<Guid?> GetValidatedOwnerIdAsync(
+        string virtualPath,
+        ApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        if (TryGetOwnerIdFromVirtualPath(virtualPath, out var parsedOwnerId))
+        {
+            var exists = await dbContext.Users.AnyAsync(u => u.Id == parsedOwnerId, ct);
+            if (exists)
+                return parsedOwnerId;
+        }
+
+        // Fallback: primary admin (prevents FK violations for shared/external directories)
+        var primaryAdminId = await dbContext.Users
+            .Where(u => u.IsPrimaryAdmin)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (primaryAdminId != null)
+            return primaryAdminId;
+
+        return await dbContext.Users
+            .Where(u => u.Role == "Admin" && u.IsActive)
+            .OrderBy(u => u.CreatedAt)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+    }
 
     private static bool TryGetOwnerIdFromVirtualPath(string path, out Guid ownerId)
     {

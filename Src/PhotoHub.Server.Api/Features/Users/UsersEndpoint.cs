@@ -84,6 +84,7 @@ public class UsersEndpoint : IEndpoint
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 IsActive = u.IsActive,
+                IsPrimaryAdmin = u.IsPrimaryAdmin,
                 CreatedAt = u.CreatedAt,
                 LastLoginAt = u.LastLoginAt,
                 StorageQuotaBytes = u.StorageQuotaBytes
@@ -108,6 +109,7 @@ public class UsersEndpoint : IEndpoint
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 IsActive = u.IsActive,
+                IsPrimaryAdmin = u.IsPrimaryAdmin,
                 CreatedAt = u.CreatedAt,
                 LastLoginAt = u.LastLoginAt,
                 StorageQuotaBytes = u.StorageQuotaBytes
@@ -141,6 +143,7 @@ public class UsersEndpoint : IEndpoint
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 IsActive = u.IsActive,
+                IsPrimaryAdmin = u.IsPrimaryAdmin,
                 CreatedAt = u.CreatedAt,
                 LastLoginAt = u.LastLoginAt,
                 StorageQuotaBytes = u.StorageQuotaBytes
@@ -233,6 +236,14 @@ public class UsersEndpoint : IEndpoint
         if (user == null)
             return Results.NotFound();
 
+        if (user.IsPrimaryAdmin)
+        {
+            if (request.Role != null && request.Role != "Admin")
+                return Results.BadRequest(new { error = "No se puede cambiar el rol del administrador principal." });
+            if (request.IsActive.HasValue && !request.IsActive.Value)
+                return Results.BadRequest(new { error = "No se puede desactivar el administrador principal." });
+        }
+
         if (!string.IsNullOrEmpty(request.Username) && request.Username != user.Username)
         {
             if (await dbContext.Users.AnyAsync(u => u.Username == request.Username && u.Id != id, cancellationToken))
@@ -264,6 +275,7 @@ public class UsersEndpoint : IEndpoint
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsActive = user.IsActive,
+            IsPrimaryAdmin = user.IsPrimaryAdmin,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt
         });
@@ -277,6 +289,9 @@ public class UsersEndpoint : IEndpoint
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user == null)
             return Results.NotFound();
+
+        if (user.IsPrimaryAdmin)
+            return Results.BadRequest(new { error = "El administrador principal del sistema no puede ser eliminado." });
 
         dbContext.Users.Remove(user);
         await dbContext.SaveChangesAsync(cancellationToken);

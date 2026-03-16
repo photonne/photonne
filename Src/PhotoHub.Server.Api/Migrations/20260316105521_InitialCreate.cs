@@ -61,7 +61,8 @@ namespace PhotoHub.Server.Api.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     LastLoginAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "User"),
-                    StorageQuotaBytes = table.Column<long>(type: "bigint", nullable: true)
+                    StorageQuotaBytes = table.Column<long>(type: "bigint", nullable: true),
+                    IsPrimaryAdmin = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
