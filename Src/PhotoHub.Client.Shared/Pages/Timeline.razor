@@ -26,10 +26,29 @@
                 <MudChip T="string" Color="@(_activeFilter == "Photos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Photos"))">Fotos</MudChip>
                 <MudChip T="string" Color="@(_activeFilter == "Videos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Videos"))">Vídeos</MudChip>
                 <MudChip T="string" Color="@(_activeFilter == "Favorites" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Favorites"))">Favoritos</MudChip>
+                <MudSpacer />
+                <MudTooltip Text="Compacto">
+                    <MudIconButton Icon="@Icons.Material.Outlined.GridOn"
+                                   Size="Size.Small"
+                                   Color="@(_density == "S" ? Color.Primary : Color.Inherit)"
+                                   OnClick="@(async () => await SetDensity("S"))" />
+                </MudTooltip>
+                <MudTooltip Text="Mediano">
+                    <MudIconButton Icon="@Icons.Material.Outlined.GridView"
+                                   Size="Size.Small"
+                                   Color="@(_density == "M" ? Color.Primary : Color.Inherit)"
+                                   OnClick="@(async () => await SetDensity("M"))" />
+                </MudTooltip>
+                <MudTooltip Text="Grande">
+                    <MudIconButton Icon="@Icons.Material.Outlined.PhotoSizeSelectLarge"
+                                   Size="Size.Small"
+                                   Color="@(_density == "L" ? Color.Primary : Color.Inherit)"
+                                   OnClick="@(async () => await SetDensity("L"))" />
+                </MudTooltip>
             </div>
 
             <div class="timeline-container" id="timeline-scroll-container">
-                <div class="timeline-content">
+                <div class="timeline-content @(_density == "S" ? "density-s" : _density == "L" ? "density-l" : "")"  >
                     <MemoriesWidget OnThumbClick="OpenAsset" />
 
                     @if (_groupedAssets.Any())
@@ -177,7 +196,7 @@
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 0 0 4px 0;
+        padding: 0 48px 4px 0;
         flex-shrink: 0;
         flex-wrap: wrap;
         margin-bottom: 4px;
@@ -268,6 +287,20 @@
             height: 260px;
         }
     }
+
+    /* ── Density: Small ── */
+    .density-s .masonry-item { height: 100px !important; }
+    @@media (min-width: 600px)  { .density-s .masonry-item { height: 110px !important; } }
+    @@media (min-width: 960px)  { .density-s .masonry-item { height: 120px !important; } }
+    @@media (min-width: 1280px) { .density-s .masonry-item { height: 130px !important; } }
+    @@media (min-width: 1920px) { .density-s .masonry-item { height: 140px !important; } }
+
+    /* ── Density: Large ── */
+    .density-l .masonry-item { height: 260px !important; }
+    @@media (min-width: 600px)  { .density-l .masonry-item { height: 300px !important; } }
+    @@media (min-width: 960px)  { .density-l .masonry-item { height: 340px !important; } }
+    @@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; } }
+    @@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; } }
 
     .masonry-item .asset-card-container {
         width: 100%;
@@ -570,6 +603,7 @@
     private string? _newAlbumDescription = "";
     private bool _deleteDialogVisible = false;
     private string _activeFilter = "All"; // All, Photos, Videos, Favorites
+    private string _density = "M"; // S, M, L
 
     private IEnumerable<TimelineItem> FilteredAssets => _activeFilter switch
     {
@@ -578,6 +612,16 @@
         "Favorites" => _assets.Where(a => a.IsFavorite),
         _           => _assets
     };
+
+    private async Task SetDensity(string density)
+    {
+        if (_density == density) return;
+        _density = density;
+        StateHasChanged();
+        await JS.InvokeVoidAsync("localStorage.setItem", "timelineDensity", density);
+        await Task.Delay(50); // wait for CSS to apply
+        await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+    }
 
     private async Task SetFilter(string filter)
     {
@@ -594,6 +638,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var savedDensity = await JS.InvokeAsync<string?>("localStorage.getItem", "timelineDensity");
+        if (savedDensity is "S" or "M" or "L") _density = savedDensity;
         await LoadTimeline();
     }
 
