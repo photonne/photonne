@@ -22,7 +22,7 @@
 }
 else if (_asset != null)
 {
-    <div class="asset-detail-container" @ref="_containerRef" @onkeydown="HandleKeyDown" tabindex="0">
+    <div class="asset-detail-container" @ref="_containerRef" @onkeydown="HandleKeyDown" @onmousemove="OnSlideshowMouseMove" tabindex="0">
         <style>
             .asset-detail-container {
                 position: fixed;
@@ -122,6 +122,66 @@ else if (_asset != null)
                 width: auto;
                 height: auto;
             }
+            /* ── Slideshow ── */
+            .slideshow-controls-bar {
+                position: absolute;
+                bottom: 48px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 60;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                background: rgba(0, 0, 0, 0.65);
+                backdrop-filter: blur(10px);
+                border-radius: 999px;
+                padding: 6px 16px;
+                color: white;
+                transition: opacity 0.4s ease;
+            }
+            .slideshow-controls-bar.controls-hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+            .slideshow-speed-btn {
+                min-width: 36px !important;
+                padding: 0 8px !important;
+                border-radius: 999px !important;
+                font-size: 0.75rem !important;
+                min-height: 28px !important;
+                color: white !important;
+            }
+            .slideshow-speed-btn.active {
+                background: rgba(255,255,255,0.2) !important;
+            }
+            .slideshow-divider {
+                width: 1px;
+                height: 24px;
+                background: rgba(255,255,255,0.25);
+                margin: 0 6px;
+            }
+            @@keyframes slideshow-advance {
+                from { width: 0%; }
+                to   { width: 100%; }
+            }
+            .slideshow-progress {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: rgba(255,255,255,0.15);
+                z-index: 60;
+            }
+            .slideshow-progress-fill {
+                height: 3px;
+                width: 0%;
+                background: var(--mud-palette-primary, #818cf8);
+                animation: slideshow-advance linear forwards;
+            }
+            .slideshow-progress-fill.paused {
+                animation-play-state: paused;
+            }
         </style>
 
         <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "") @(_infoOpen ? "info-open" : "")" @onclick="ToggleToolbar">
@@ -158,6 +218,39 @@ else if (_asset != null)
                                Disabled="@(_nextAsset == null)" />
             </span>
         </div>
+
+        @if (_slideshowActive)
+        {
+            <div class="slideshow-controls-bar @(_slideshowControlsVisible ? "" : "controls-hidden")">
+                <MudTooltip Text="Anterior">
+                    <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious" Color="Color.Inherit" Size="Size.Medium"
+                                   OnClick="NavigatePrev" Disabled="@(_prevAsset == null)" />
+                </MudTooltip>
+                <MudIconButton Icon="@(_slideshowPaused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
+                               Color="Color.Inherit" Size="Size.Large"
+                               OnClick="ToggleSlideshowPause" />
+                <MudTooltip Text="Siguiente">
+                    <MudIconButton Icon="@Icons.Material.Filled.SkipNext" Color="Color.Inherit" Size="Size.Medium"
+                                   OnClick="NavigateNext" Disabled="@(_nextAsset == null)" />
+                </MudTooltip>
+                <div class="slideshow-divider"></div>
+                @foreach (var secs in new[] { 3, 5, 10 })
+                {
+                    <button class="slideshow-speed-btn @(_slideshowInterval == secs ? "active" : "")"
+                            @onclick="@(() => SetSlideshowInterval(secs))">@secs s</button>
+                }
+                <div class="slideshow-divider"></div>
+                <MudTooltip Text="Salir (Esc)">
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Medium"
+                                   OnClick="StopSlideshow" />
+                </MudTooltip>
+            </div>
+            <div class="slideshow-progress">
+                <div @key="_slideshowProgressKey"
+                     class="slideshow-progress-fill @(_slideshowPaused ? "paused" : "")"
+                     style="animation-duration: @(_slideshowInterval)s;"></div>
+            </div>
+        }
 
         <div class="asset-info-drawer @(_infoOpen ? "" : "closed")">
             <div class="pa-4">
@@ -333,6 +426,15 @@ else
     private TimelineItem? _nextAsset;
     private List<TimelineItem> _allAssets = new();
 
+    // Slideshow
+    private bool _slideshowActive = false;
+    private bool _slideshowPaused = false;
+    private int _slideshowInterval = 5;
+    private bool _slideshowControlsVisible = true;
+    private int _slideshowProgressKey = 0;
+    private System.Timers.Timer? _slideshowTimer;
+    private System.Timers.Timer? _controlsHideTimer;
+
     private ElementReference _containerRef;
 
     /// <summary>Evita cargar dos veces el mismo asset (OnInitializedAsync y OnParametersSetAsync se ejecutan ambos al navegar).</summary>
@@ -375,6 +477,7 @@ else
     {
         _navigatingAway = true;
         LayoutService.ResetNavbar();
+        DisposeSlideshowTimers();
         _ = JSRuntime.InvokeVoidAsync("miniMapHelpers.destroy", "asset-mini-map").AsTask();
     }
 
@@ -421,7 +524,7 @@ else
                     }
                     else
                     {
-                        @* Indexado: Zoom + Favorite + Share + Info + Download + Delete + Add to album *@
+                        @* Indexado: Favorito · Zoom · Info · Descargar · Añadir álbum · Slideshow · Archivar · Eliminar *@
                         <MudTooltip Text="@(_asset != null && _asset.IsFavorite ? "Quitar de favoritos" : "Añadir a favoritos")">
                             <MudIconButton Icon="@(_asset != null && _asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
                                            Color="@(_asset != null && _asset.IsFavorite ? Color.Error : Color.Inherit)"
@@ -444,6 +547,19 @@ else
                                            Color="Color.Inherit" OnClick="DownloadAsset" />
                         </MudTooltip>
 
+                        <MudTooltip Text="Añadir a álbum">
+                            <MudIconButton Icon="@Icons.Material.Outlined.AddPhotoAlternate"
+                                           Color="Color.Inherit" OnClick="OpenAddToAlbumDialog" />
+                        </MudTooltip>
+
+                        @if (_allAssets.Count > 1)
+                        {
+                            <MudTooltip Text="Presentación">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Slideshow"
+                                               Color="Color.Inherit" OnClick="StartSlideshow" />
+                            </MudTooltip>
+                        }
+
                         <MudTooltip Text="@(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")">
                             <MudIconButton Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
                                            Color="Color.Inherit"
@@ -453,14 +569,9 @@ else
 
                         <MudTooltip Text="Eliminar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Delete"
-                                           Color="Color.Inherit"
+                                           Color="Color.Error"
                                            OnClick="@(() => _deleteConfirmOpen = true)"
                                            Disabled="@_deleting" />
-                        </MudTooltip>
-
-                        <MudTooltip Text="Añadir a álbum">
-                            <MudIconButton Icon="@Icons.Material.Outlined.AddPhotoAlternate"
-                                           Color="Color.Inherit" OnClick="OpenAddToAlbumDialog" />
                         </MudTooltip>
                     }
                 </div>
@@ -522,8 +633,15 @@ else
             }
             
             UpdateNavigation();
+            UpdateNavbar(); // refresh after _allAssets is populated (slideshow button visibility)
             _lastLoadedAssetId = AssetId;
             _lastLoadedPath = Path ?? string.Empty;
+
+            if (_slideshowActive && !_slideshowPaused)
+            {
+                _slideshowProgressKey++;
+                StartSlideshowTimer();
+            }
         }
         catch (Exception ex)
         {
@@ -621,17 +739,12 @@ else
     {
         if (e.Key == "ArrowLeft") NavigatePrev();
         else if (e.Key == "ArrowRight") NavigateNext();
+        else if (e.Key == " ") { if (_slideshowActive) ToggleSlideshowPause(); }
         else if (e.Key == "Escape")
         {
-            if (_zoomed)
-            {
-                _zoomed = false;
-                UpdateNavbar();
-            }
-            else
-            {
-                GoBack();
-            }
+            if (_slideshowActive) StopSlideshow();
+            else if (_zoomed) { _zoomed = false; UpdateNavbar(); }
+            else GoBack();
         }
     }
 
@@ -914,6 +1027,127 @@ else
         var baseClass = isPrev ? "nav-button prev" : "nav-button next";
         var hasAsset = isPrev ? _prevAsset != null : _nextAsset != null;
         return _toolbarVisible && hasAsset ? baseClass : $"{baseClass} hidden";
+    }
+
+    // ── Slideshow ──────────────────────────────────────────────────────────
+
+    private void StartSlideshow()
+    {
+        if (_allAssets.Count < 2) return;
+        _slideshowActive = true;
+        _slideshowPaused = false;
+        _slideshowControlsVisible = true;
+        _slideshowProgressKey++;
+        UpdateNavbar();
+        StateHasChanged();
+        StartSlideshowTimer();
+        ResetControlsHideTimer();
+    }
+
+    private void StopSlideshow()
+    {
+        _slideshowActive = false;
+        _slideshowPaused = false;
+        DisposeSlideshowTimers();
+        UpdateNavbar();
+        StateHasChanged();
+    }
+
+    private void ToggleSlideshowPause()
+    {
+        if (!_slideshowActive) return;
+        _slideshowPaused = !_slideshowPaused;
+        if (_slideshowPaused)
+        {
+            _slideshowTimer?.Stop();
+        }
+        else
+        {
+            _slideshowProgressKey++;
+            StartSlideshowTimer();
+        }
+        StateHasChanged();
+    }
+
+    private void SetSlideshowInterval(int seconds)
+    {
+        _slideshowInterval = seconds;
+        if (_slideshowActive && !_slideshowPaused)
+        {
+            _slideshowProgressKey++;
+            StartSlideshowTimer();
+        }
+        StateHasChanged();
+    }
+
+    private void StartSlideshowTimer()
+    {
+        _slideshowTimer?.Stop();
+        _slideshowTimer?.Dispose();
+        _slideshowTimer = new System.Timers.Timer(_slideshowInterval * 1000);
+        _slideshowTimer.Elapsed += OnSlideshowTick;
+        _slideshowTimer.AutoReset = false;
+        _slideshowTimer.Start();
+    }
+
+    private void OnSlideshowTick(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (!_slideshowActive || _slideshowPaused) return;
+
+        InvokeAsync(() =>
+        {
+            if (_nextAsset != null)
+            {
+                NavigateNext();
+            }
+            else
+            {
+                // Loop back to first asset
+                if (_allAssets.Count > 0)
+                {
+                    NavigateToAsset(_allAssets[0]);
+                }
+            }
+        });
+    }
+
+    private void ResetControlsHideTimer()
+    {
+        _slideshowControlsVisible = true;
+        _controlsHideTimer?.Stop();
+        _controlsHideTimer?.Dispose();
+        _controlsHideTimer = new System.Timers.Timer(3000);
+        _controlsHideTimer.Elapsed += (_, _) =>
+        {
+            InvokeAsync(() =>
+            {
+                _slideshowControlsVisible = false;
+                StateHasChanged();
+            });
+        };
+        _controlsHideTimer.AutoReset = false;
+        _controlsHideTimer.Start();
+    }
+
+    private void OnSlideshowMouseMove()
+    {
+        if (!_slideshowActive) return;
+        if (!_slideshowControlsVisible)
+        {
+            _slideshowControlsVisible = true;
+            StateHasChanged();
+        }
+        ResetControlsHideTimer();
+    }
+
+    private void DisposeSlideshowTimers()
+    {
+        _slideshowTimer?.Stop();
+        _slideshowTimer?.Dispose();
+        _slideshowTimer = null;
+        _controlsHideTimer?.Stop();
+        _controlsHideTimer?.Dispose();
+        _controlsHideTimer = null;
     }
 
     // Add to Album functionality
