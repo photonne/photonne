@@ -341,7 +341,7 @@
 
     @if (_loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
     }
     else
     {
@@ -584,7 +584,7 @@ else
     
     @if (_loadingAssets)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
     }
     else if (_albumAssets.Any())
     {

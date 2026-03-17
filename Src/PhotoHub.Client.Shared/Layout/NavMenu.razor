@@ -23,82 +23,11 @@
             }
             else
             {
-                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhotoLibrary" IconColor="Color.Inherit">
-                    Fotos
-                </MudNavLink>
-
-                <MudNavLink Href="/favorites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FavoriteBorder" IconColor="Color.Inherit">
-                    Favoritos
-                </MudNavLink>
-
-                <MudNavGroup Title="Carpetas" Icon="@Icons.Material.Outlined.Folder" Expanded="true">
-                    <MudNavLink Href="/folders/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mi Espacio</MudNavLink>
-                    <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
-                </MudNavGroup>
-
-                <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
-                    Mapa
-                </MudNavLink>
-
-                <MudNavGroup Title="Álbumes" Icon="@Icons.Material.Outlined.Collections" Expanded="true">
-                    <MudNavLink Href="/albums/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mis Álbumes</MudNavLink>
-                    <MudNavLink Href="/albums/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Compartidos</MudNavLink>
-                    <MudNavLink Href="/albums/public" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Share">Públicos</MudNavLink>
-                </MudNavGroup>
-
-                <MudDivider Class="my-2" />
-
-                <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">
-                    Mi Dispositivo
-                </MudNavLink>
-                <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
-                    Utilidades
-                </MudNavLink>
-                <MudNavLink Href="/archive" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Archive" IconColor="Color.Inherit">
-                    Archivo
-                </MudNavLink>
-                <MudNavLink Href="/trash" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Inherit">
-                    Papelera
-                </MudNavLink>
+                @UserNavLinks
             }
         </Authorized>
         <NotAuthorized>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhotoLibrary" IconColor="Color.Inherit">
-                Fotos
-            </MudNavLink>
-
-            <MudNavLink Href="/favorites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FavoriteBorder" IconColor="Color.Inherit">
-                Favoritos
-            </MudNavLink>
-
-            <MudNavGroup Title="Carpetas" Icon="@Icons.Material.Outlined.Folder" Expanded="true">
-                <MudNavLink Href="/folders/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mi Espacio</MudNavLink>
-                <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
-            </MudNavGroup>
-
-            <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
-                Mapa
-            </MudNavLink>
-
-            <MudNavGroup Title="Álbumes" Icon="@Icons.Material.Outlined.Collections" Expanded="true">
-                <MudNavLink Href="/albums/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mis Álbumes</MudNavLink>
-                <MudNavLink Href="/albums/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Compartidos</MudNavLink>
-            </MudNavGroup>
-
-            <MudDivider Class="my-2" />
-
-            <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">
-                Mi Dispositivo
-            </MudNavLink>
-            <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
-                Utilidades
-            </MudNavLink>
-            <MudNavLink Href="/archive" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Archive" IconColor="Color.Inherit">
-                Archivo
-            </MudNavLink>
-            <MudNavLink Href="/trash" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Inherit">
-                Papelera
-            </MudNavLink>
+            @UserNavLinks
         </NotAuthorized>
     </AuthorizeView>
 </MudNavMenu>
@@ -128,6 +57,46 @@
 </style>
 
 @code {
+    private RenderFragment UserNavLinks => @<text>
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhotoLibrary" IconColor="Color.Inherit">
+            Fotos
+        </MudNavLink>
+
+        <MudNavLink Href="/favorites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FavoriteBorder" IconColor="Color.Inherit">
+            Favoritos
+        </MudNavLink>
+
+        <MudNavGroup Title="Carpetas" Icon="@Icons.Material.Outlined.Folder" Expanded="true">
+            <MudNavLink Href="/folders/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mi Espacio</MudNavLink>
+            <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
+        </MudNavGroup>
+
+        <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
+            Mapa
+        </MudNavLink>
+
+        <MudNavGroup Title="Álbumes" Icon="@Icons.Material.Outlined.Collections" Expanded="true">
+            <MudNavLink Href="/albums/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mis Álbumes</MudNavLink>
+            <MudNavLink Href="/albums/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Compartidos</MudNavLink>
+            <MudNavLink Href="/albums/public" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Share">Públicos</MudNavLink>
+        </MudNavGroup>
+
+        <MudDivider Class="my-2" />
+
+        <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">
+            Mi Dispositivo
+        </MudNavLink>
+        <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
+            Utilidades
+        </MudNavLink>
+        <MudNavLink Href="/archive" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Archive" IconColor="Color.Inherit">
+            Archivo
+        </MudNavLink>
+        <MudNavLink Href="/trash" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Inherit">
+            Papelera
+        </MudNavLink>
+    </text>;
+
     private bool IsAdminSection
         => new Uri(Navigation.Uri).AbsolutePath.Trim('/').StartsWith("admin", StringComparison.OrdinalIgnoreCase);
 

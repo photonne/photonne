@@ -60,13 +60,13 @@ else if (_asset != null)
             .asset-info-drawer {
                 width: 360px;
                 background-color: #1a1a1a;
-                height: 100%;
                 overflow-y: auto;
                 transition: transform 0.3s ease;
-                position: absolute;
+                position: fixed;
                 right: 0;
-                top: 0;
-                z-index: 40;
+                top: var(--mud-appbar-height, 64px);
+                height: calc(100% - var(--mud-appbar-height, 64px));
+                z-index: 1400;
                 border-left: 1px solid #333;
                 color: #e1e1e1;
             }
@@ -80,13 +80,16 @@ else if (_asset != null)
                 z-index: 20;
                 background-color: rgba(0,0,0,0.3);
                 color: white;
-                transition: opacity 0.3s ease, background-color 0.2s;
+                transition: opacity 0.3s ease, background-color 0.2s, right 0.3s ease;
             }
             .nav-button:hover {
                 background-color: rgba(0,0,0,0.6);
             }
             .nav-button.prev { left: 16px; }
             .nav-button.next { right: 16px; }
+            .asset-detail-content.info-open .nav-button.next {
+                right: calc(360px + 16px);
+            }
             .nav-button.hidden {
                 opacity: 0;
                 pointer-events: none;
@@ -121,7 +124,7 @@ else if (_asset != null)
             }
         </style>
 
-        <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "")" @onclick="ToggleToolbar">
+        <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "") @(_infoOpen ? "info-open" : "")" @onclick="ToggleToolbar">
             <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
                 <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" 
                                Class="@GetNavButtonClass(true)" 
@@ -221,22 +224,29 @@ else if (_asset != null)
                     @if (_asset.Exif.Latitude.HasValue && _asset.Exif.Longitude.HasValue)
                     {
                         <MudDivider Class="my-4" Style="background-color: #333;" />
-                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Ubicación</MudText>
-                        <MudList T="string"  ReadOnly="true">
-                            <MudListItem Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Info">
-                                <div class="d-flex flex-column">
-                                    <MudText Typo="Typo.body2">@_asset.Exif.Latitude.Value.ToString("F6"), @_asset.Exif.Longitude.Value.ToString("F6")</MudText>
-                                    @if (_asset.Exif.Altitude.HasValue)
-                                    {
-                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Altitud: @_asset.Exif.Altitude.Value.ToString("F0") m</MudText>
-                                    }
-                                    <MudLink Href="@($"https://www.google.com/maps/search/?api=1&query={_asset.Exif.Latitude},{_asset.Exif.Longitude}")" 
-                                             Target="_blank" Underline="Underline.Hover" Color="Color.Primary" Class="mt-1">
-                                        Ver en Google Maps
-                                    </MudLink>
-                                </div>
-                            </MudListItem>
-                        </MudList>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-2">Ubicación</MudText>
+
+                        <div id="asset-mini-map" style="width: 100%; height: 180px; border-radius: 12px; overflow: hidden;"></div>
+
+                        <div class="d-flex align-center justify-space-between mt-2">
+                            <div class="d-flex flex-column">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @_asset.Exif.Latitude.Value.ToString("F6"), @_asset.Exif.Longitude.Value.ToString("F6")
+                                </MudText>
+                                @if (_asset.Exif.Altitude.HasValue)
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        Altitud: @_asset.Exif.Altitude.Value.ToString("F0") m
+                                    </MudText>
+                                }
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           Title="Ver en OpenStreetMap"
+                                           Href="@($"https://www.openstreetmap.org/?mlat={_asset.Exif.Latitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}&mlon={_asset.Exif.Longitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}#map=15/{_asset.Exif.Latitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}/{_asset.Exif.Longitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}")"
+                                           Target="_blank" />
+                        </div>
                     }
 
                     @if (!string.IsNullOrEmpty(_asset.Exif.Description))
@@ -328,6 +338,7 @@ else
     /// <summary>Evita cargar dos veces el mismo asset (OnInitializedAsync y OnParametersSetAsync se ejecutan ambos al navegar).</summary>
     private Guid _lastLoadedAssetId = Guid.Empty;
     private string _lastLoadedPath = string.Empty;
+    private Guid _miniMapAssetId = Guid.Empty;
 
     /// <summary>Señal para evitar que LoadAsset() en vuelo llame UpdateNavbar() tras GoBack()/Dispose().</summary>
     private bool _navigatingAway;
@@ -345,6 +356,7 @@ else
         {
             await JSRuntime.InvokeVoidAsync("focusElement", _containerRef);
         }
+
     }
 
     protected override async Task OnParametersSetAsync()
@@ -363,6 +375,7 @@ else
     {
         _navigatingAway = true;
         LayoutService.ResetNavbar();
+        _ = JSRuntime.InvokeVoidAsync("miniMapHelpers.destroy", "asset-mini-map").AsTask();
     }
 
     private void UpdateNavbar()
@@ -659,6 +672,17 @@ else
         _infoOpen = !_infoOpen;
         UpdateNavbar();
         StateHasChanged();
+
+        if (_infoOpen && _asset?.Exif?.Latitude.HasValue == true && _asset.Exif.Longitude.HasValue
+            && _miniMapAssetId != _asset.Id)
+        {
+            _miniMapAssetId = _asset.Id;
+            _ = JSRuntime.InvokeVoidAsync("miniMapHelpers.initWhenVisible",
+                "asset-mini-map",
+                _asset.Exif.Latitude.Value,
+                _asset.Exif.Longitude.Value,
+                LayoutService.IsDarkMode).AsTask();
+        }
     }
 
     private void ToggleToolbar()
@@ -1025,7 +1049,7 @@ else
         {
             @if (_loadingAlbums)
             {
-                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
             }
             else if (_availableAlbums.Any())
             {

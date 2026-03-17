@@ -1,5 +1,5 @@
 html, body {
-    font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
     margin: 0;
     padding: 0;
     height: 100%;
@@ -9,19 +9,61 @@ html, body {
     height: 100%;
 }
 
+/* ── Typography overrides ────────────────────────────────── */
+* {
+    font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    line-height: 1.6;
+}
+
+/* Botones en minúscula (MudBlazor pone uppercase por defecto) */
+.mud-button-label {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.mud-text-h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.mud-text-subtitle1 {
+    font-weight: 500;
+}
+
+/* ── Page loading bar (fijo bajo el AppBar, ancho completo) ─ */
+.page-loading-bar {
+    position: fixed;
+    top: var(--mud-appbar-height, 64px);
+    left: 0;
+    right: 0;
+    z-index: 1299;
+    margin: 0 !important;
+    height: 3px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.mud-button-root.mud-button-filled,
+.mud-button-root.mud-button-outlined {
+    padding: 10px 24px;
+    min-height: 44px;
+    font-size: 0.9375rem;
+    border-radius: 22px !important;
+}
+
 .mud-icon-button {
     padding: 8px;
 }
 
+/* ── Asset cards ─────────────────────────────────────────── */
 .asset-card {
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: box-shadow 0.2s;
     height: 100%;
 }
 
 .asset-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18) !important;
 }
 
 .asset-thumbnail {
@@ -41,6 +83,31 @@ html, body {
     object-fit: cover;
 }
 
+/* ── Search field ────────────────────────────────────────── */
+.search-field .mud-input-outlined-border {
+    border: none !important;
+    border-radius: 24px !important;
+    background: var(--mud-palette-background-gray);
+    transition: background 0.2s;
+}
+
+.search-field:focus-within .mud-input-outlined-border {
+    border: 1.5px solid var(--mud-palette-primary) !important;
+    background: var(--mud-palette-surface);
+}
+
+/* ── Nav active pill ─────────────────────────────────────── */
+.mud-nav-link {
+    border-radius: 8px !important;
+    box-sizing: border-box;
+}
+
+.mud-drawer .mud-nav-menu {
+    overflow-x: hidden;
+    padding: 0 8px;
+}
+
+/* ── Blazor loading screen ───────────────────────────────── */
 .loading-progress {
     position: relative;
     display: block;
@@ -58,7 +125,7 @@ html, body {
 }
 
 .loading-progress circle:last-child {
-    stroke: #1f4e78;
+    stroke: #6366f1;
     stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
     transition: stroke-dasharray 0.05s ease-in-out;
 }
@@ -70,21 +137,32 @@ html, body {
     top: -90px;
 }
 
+/* ── Blazor error bar ────────────────────────────────────── */
 #blazor-error-ui {
-    background: lightyellow;
+    background: #1e1e2e;
+    color: #e2e8f0;
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.4);
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: 0.75rem 1.5rem;
     position: fixed;
     width: 100%;
     z-index: 1000;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    display: none;
 }
 
 #blazor-error-ui .dismiss {
     cursor: pointer;
     position: absolute;
-    right: 0.75rem;
-    top: 0.5rem;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.7;
+}
+
+#blazor-error-ui .dismiss:hover {
+    opacity: 1;
 }

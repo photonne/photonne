@@ -44,7 +44,15 @@
             <div class="d-flex align-center">
                 @if (!IsAdminSection)
                 {
-                    <MudTooltip Text="Subir">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                               Size="Size.Medium"
+                               Class="d-none d-md-flex mr-1"
+                               OnClick="@(() => Navigation.NavigateTo("/upload"))">
+                        Subir
+                    </MudButton>
+                    <MudTooltip Text="Subir" Class="d-flex d-md-none">
                         <MudIconButton Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/upload"))" />
                     </MudTooltip>
                 }
@@ -153,12 +161,6 @@
         .search-field .mud-input-control {
             margin-top: 0;
         }
-        .search-field .mud-input-outlined-border {
-            border: none;
-        }
-        .search-field:focus-within .mud-input-outlined-border {
-            border: 1px solid var(--mud-palette-primary);
-        }
         @* .custom-navbar { *@
         @*     z-index: 1200; *@
         @* } *@
@@ -169,7 +171,13 @@
         @*     z-index: 1340; *@
         @* } *@
     </style>
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0" 
+    @if (_isNavigating)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true"
+                           Style="position: fixed; top: var(--mud-appbar-height, 64px); left: 0; right: 0; z-index: 1299; margin: 0; height: 3px;" />
+    }
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0"
                Variant="@DrawerVariant.Responsive" Class="@GetDrawerClass()">
         <NavMenu />
     </MudDrawer>
@@ -191,6 +199,7 @@
 @code {
     private bool _drawerOpen = true;
     private string _searchQuery = "";
+    private bool _isNavigating = false;
 
     private string GetAppBarClass()
     {
@@ -325,11 +334,18 @@
     {
         EnsureNavbarMatchesLocation();
         UpdateSearchQueryFromUri();
-        var path = new Uri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
-        if (path.StartsWith("asset/", StringComparison.OrdinalIgnoreCase))
+        _isNavigating = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isNavigating)
         {
+            _isNavigating = false;
             StateHasChanged();
         }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
     private void HandleApiError(ApiErrorInfo info)

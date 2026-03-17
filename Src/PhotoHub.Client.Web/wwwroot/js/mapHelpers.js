@@ -377,7 +377,7 @@ window.mapHelpers = {
         console.log('[JS-MAP] removeAllMarkers called');
         const map = window.mapHelpers._mapInstance;
         if (!map) return;
-        
+
         if (window.mapHelpers._markerLayerGroup) {
             try {
                 // Eliminar todos los marcadores del LayerGroup
@@ -387,13 +387,79 @@ window.mapHelpers = {
                 console.error('[JS-MAP] Error clearing marker layer group:', e);
             }
         }
-        
-        // También nos aseguramos de que no haya marcadores sueltos en el mapa 
+
+        // También nos aseguramos de que no haya marcadores sueltos en el mapa
         // que no estén en el layer group por alguna razón
         map.eachLayer(function(layer) {
             if (layer instanceof L.Marker && layer.options && layer.options.className === 'map-cluster-icon') {
                 map.removeLayer(layer);
             }
         });
+    }
+};
+
+// Mini mapa para detalle de asset — instancia independiente del mapa principal
+window.miniMapHelpers = {
+    _instances: {},
+
+    init: function (elementId, lat, lng, isDark) {
+        if (typeof L === 'undefined') return;
+
+        // Destruir instancia previa si existe
+        this.destroy(elementId);
+
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        const map = L.map(elementId, {
+            center: [lat, lng],
+            zoom: 14,
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            touchZoom: false,
+            keyboard: false
+        });
+
+        const tileUrl = isDark
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+
+        const markerHtml = `<div style="
+            width: 14px; height: 14px;
+            background: #818cf8;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        "></div>`;
+
+        const icon = L.divIcon({
+            className: '',
+            html: markerHtml,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+
+        L.marker([lat, lng], { icon }).addTo(map);
+
+        this._instances[elementId] = map;
+    },
+
+    destroy: function (elementId) {
+        if (this._instances[elementId]) {
+            this._instances[elementId].remove();
+            delete this._instances[elementId];
+        }
+    },
+
+    initWhenVisible: function (elementId, lat, lng, isDark) {
+        // Esperar a que la transición CSS termine (300ms) antes de inicializar
+        setTimeout(() => {
+            this.init(elementId, lat, lng, isDark);
+        }, 320);
     }
 };

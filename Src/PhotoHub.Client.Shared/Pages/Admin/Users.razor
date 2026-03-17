@@ -35,7 +35,7 @@ else
     
     @if (_loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
     }
     
     <MudTable Items="@_users" Hover="true" Striped="true"  Loading="@_loading" Class="mt-4">

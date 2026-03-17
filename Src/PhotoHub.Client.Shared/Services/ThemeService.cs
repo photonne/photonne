@@ -8,29 +8,31 @@ public class ThemeService
     {
         PaletteLight = new PaletteLight()
         {
-            Primary = "#4285f4",
+            Primary = "#6366f1",
             AppbarBackground = "#ffffff",
-            AppbarText = "#202124",
+            AppbarText = "#1e1e2e",
             Background = "#f8f9fa",
             Surface = "#ffffff",
-            DrawerBackground = "#ffffff",
-            TextPrimary = "#202124",
-            TextSecondary = "#5f6368",
+            DrawerBackground = "#f1f5f9",
+            TextPrimary = "#1e1e2e",
+            TextSecondary = "#64748b",
+            ActionDefault = "#64748b",
         },
         PaletteDark = new PaletteDark()
         {
-            Primary = "#4285f4",
-            Surface = "#1a1a1a",
-            Background = "#121212",
-            BackgroundGray = "#1e1e1e",
-            AppbarBackground = "#1a1a1a",
-            DrawerBackground = "#1a1a1a",
-            TextPrimary = "#e1e1e1",
-            TextSecondary = "#aaaaaa",
+            Primary = "#818cf8",
+            Surface = "#1a1b26",
+            Background = "#0f1117",
+            BackgroundGray = "#1e1f2e",
+            AppbarBackground = "#1a1b26",
+            DrawerBackground = "#1a1b26",
+            TextPrimary = "#e2e8f0",
+            TextSecondary = "#94a3b8",
+            ActionDefault = "#94a3b8",
         },
         LayoutProperties = new LayoutProperties()
         {
-            DefaultBorderRadius = "8px",
-        }
+            DefaultBorderRadius = "12px",
+        },
     };
 }
