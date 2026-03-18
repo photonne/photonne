@@ -71,6 +71,9 @@ else
 
     @foreach (var group in _groups)
     {
+        var keepSet = _keepSelection[group.Hash];
+        int deleteCount = group.Assets.Count - keepSet.Count;
+
         <MudCard Class="mb-4" Elevation="2">
             <MudCardHeader>
                 <CardHeaderContent>
@@ -82,52 +85,83 @@ else
                         <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">
                             @group.WastedFormatted desperdiciados
                         </MudChip>
+                        @if (deleteCount > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                                     Icon="@Icons.Material.Outlined.Delete">
+                                @deleteCount a eliminar · @keepSet.Count a conservar
+                            </MudChip>
+                        }
                     </div>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary">SHA-256: @group.Hash[..12]…</MudText>
                 </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudTooltip Text="Marcar todas como eliminar excepto la más reciente">
+                        <MudIconButton Icon="@Icons.Material.Outlined.AutoAwesome"
+                                       Size="Size.Small"
+                                       OnClick="@(() => AutoSelectGroup(group))" />
+                    </MudTooltip>
+                </CardHeaderActions>
             </MudCardHeader>
             <MudCardContent Class="pt-0">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
+                    Haz clic en cada copia para marcarla como conservar
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Style="font-size:12px;vertical-align:middle;" />
+                    o eliminar
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Style="font-size:12px;vertical-align:middle;" />.
+                    Al menos una copia debe conservarse.
+                </MudText>
                 <MudGrid>
                     @foreach (var asset in group.Assets)
                     {
-                        bool isKeep = _keepSelection.TryGetValue(group.Hash, out var keepId) && keepId == asset.Id;
-                        bool isToDelete = !isKeep && _keepSelection.ContainsKey(group.Hash);
+                        bool isKeep = keepSet.Contains(asset.Id);
+                        bool isLast = isKeep && keepSet.Count == 1;
 
                         <MudItem xs="12" sm="6" md="@(12 / Math.Min(group.Assets.Count, 4))">
                             <MudPaper Elevation="0"
-                                      Style="@(isKeep ? "border:2px solid var(--mud-palette-primary);" : isToDelete ? "border:2px solid var(--mud-palette-error);opacity:.75;" : "border:2px solid transparent;")"
-                                      Class="pa-3 rounded">
+                                      Style="@GetCardStyle(isKeep)"
+                                      Class="@(isLast ? "pa-3 rounded dup-card" : "pa-3 rounded dup-card En dup-card-clickable")"
+                                      @onclick="@(() => ToggleKeep(group.Hash, asset.Id, keepSet))">
 
                                 <div class="d-flex justify-center mb-2"
                                      style="height:120px;overflow:hidden;border-radius:8px;background:#111;">
                                     <img src="@asset.ThumbnailUrl" alt="@asset.FileName"
-                                         style="height:100%;object-fit:cover;width:100%;"
+                                         style="height:100%;object-fit:cover;width:100%;@(!isKeep ? "opacity:.55;" : "")"
                                          onerror="this.style.display='none'" />
                                 </div>
 
-                                <MudLink Href="@($"/asset/{asset.Id}?returnTo=utilities/duplicates")" Underline="Underline.None">
-                                    <MudText Typo="Typo.body2" Style="word-break:break-all;font-weight:600;">@asset.FileName</MudText>
-                                </MudLink>
-                                <div class="d-flex gap-1 mt-1 flex-wrap">
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@asset.FileSizeFormatted</MudChip>
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@asset.DisplayDate</MudChip>
+                                <div class="d-flex align-start justify-space-between gap-1">
+                                    <div style="min-width:0;">
+                                        <MudLink Href="@($"/asset/{asset.Id}?returnTo=utilities/duplicates")"
+                                                 Underline="Underline.None"
+                                                 @onclick:stopPropagation="true">
+                                            <MudText Typo="Typo.body2" Style="word-break:break-all;font-weight:600;">@asset.FileName</MudText>
+                                        </MudLink>
+                                        <div class="d-flex gap-1 mt-1 flex-wrap">
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@asset.FileSizeFormatted</MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@asset.DisplayDate</MudChip>
+                                        </div>
+                                    </div>
+                                    <div class="flex-shrink-0 mt-1">
+                                        @if (isKeep)
+                                        {
+                                            <MudTooltip Text="@(isLast ? "Última copia — no se puede eliminar" : "Conservar (clic para marcar como eliminar")" Arrow="true">
+                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                         Color="@(isLast ? Color.Default : Color.Primary)"
+                                                         Style="font-size:22px;" />
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <MudTooltip Text="Eliminar (clic para conservar)" Arrow="true">
+                                                <MudIcon Icon="@Icons.Material.Filled.Cancel"
+                                                         Color="Color.Error"
+                                                         Style="font-size:22px;" />
+                                            </MudTooltip>
+                                        }
+                                    </div>
                                 </div>
 
-                                <div class="mt-2">
-                                    @if (isKeep)
-                                    {
-                                        <MudChip T="string" Color="Color.Primary" Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small">
-                                            Conservar
-                                        </MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
-                                                   OnClick="@(() => SetKeep(group.Hash, asset.Id))">
-                                            Conservar este
-                                        </MudButton>
-                                    }
-                                </div>
                             </MudPaper>
                         </MudItem>
                     }
@@ -149,20 +183,33 @@ else
     }
 }
 
+<style>
+    .dup-card-clickable {
+        cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .dup-card-clickable:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
+
 @code {
     private List<UserDuplicateGroup> _groups = new();
     private bool _loading;
     private bool _deleting;
     private bool _confirmOpen;
 
-    // Hash -> AssetId to keep
-    private Dictionary<string, Guid> _keepSelection = new();
+    // Hash → set of AssetIds to KEEP (the rest will be deleted)
+    private Dictionary<string, HashSet<Guid>> _keepSelection = new();
 
     private int TotalDuplicates => _groups.Sum(g => g.Assets.Count - 1);
     private long TotalWasted => _groups.Sum(g => g.WastedBytes);
 
-    private int SelectedToDelete => _keepSelection.Count == 0 ? 0
-        : _groups.Sum(g => _keepSelection.ContainsKey(g.Hash) ? g.Assets.Count - 1 : 0);
+    private int SelectedToDelete => _keepSelection
+        .Sum(kv => _groups.FirstOrDefault(g => g.Hash == kv.Key) is { } grp
+            ? grp.Assets.Count - kv.Value.Count
+            : 0);
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,20 +232,35 @@ else
     private void AutoSelectAll()
     {
         foreach (var group in _groups)
+            AutoSelectGroup(group);
+    }
+
+    private void AutoSelectGroup(UserDuplicateGroup group)
+    {
+        var best = group.Assets
+            .OrderByDescending(a => a.CreatedDate)
+            .ThenByDescending(a => a.FileSize)
+            .First();
+        _keepSelection[group.Hash] = new HashSet<Guid> { best.Id };
+    }
+
+    private void ToggleKeep(string hash, Guid assetId, HashSet<Guid> keepSet)
+    {
+        if (keepSet.Contains(assetId))
         {
-            // Keep the most recently created asset
-            var keep = group.Assets
-                .OrderByDescending(a => a.CreatedDate)
-                .ThenByDescending(a => a.FileSize)
-                .First();
-            _keepSelection[group.Hash] = keep.Id;
+            // Only allow deselect if more than 1 is kept
+            if (keepSet.Count > 1)
+                keepSet.Remove(assetId);
+        }
+        else
+        {
+            keepSet.Add(assetId);
         }
     }
 
-    private void SetKeep(string hash, Guid assetId)
-    {
-        _keepSelection[hash] = assetId;
-    }
+    private static string GetCardStyle(bool isKeep) => isKeep
+        ? "border:2px solid var(--mud-palette-primary);"
+        : "border:2px solid var(--mud-palette-error);";
 
     private async Task ConfirmDelete()
     {
@@ -210,7 +272,7 @@ else
         {
             var toDelete = _groups
                 .Where(g => _keepSelection.ContainsKey(g.Hash))
-                .SelectMany(g => g.Assets.Where(a => a.Id != _keepSelection[g.Hash]))
+                .SelectMany(g => g.Assets.Where(a => !_keepSelection[g.Hash].Contains(a.Id)))
                 .Select(a => a.Id)
                 .ToList();
 
@@ -219,15 +281,13 @@ else
             // Remove deleted assets from view
             foreach (var group in _groups.ToList())
             {
-                if (!_keepSelection.TryGetValue(group.Hash, out var keepId)) continue;
-                group.Assets.RemoveAll(a => a.Id != keepId);
+                if (!_keepSelection.TryGetValue(group.Hash, out var keepSet)) continue;
+                group.Assets.RemoveAll(a => !keepSet.Contains(a.Id));
             }
             _groups.RemoveAll(g => g.Assets.Count <= 1);
+            if (_groups.Count == 0) _keepSelection.Clear();
 
             Snackbar.Add($"{toDelete.Count} archivos movidos a la papelera.", Severity.Success);
-
-            if (_groups.Count == 0)
-                _keepSelection.Clear();
         }
         catch (Exception ex)
         {

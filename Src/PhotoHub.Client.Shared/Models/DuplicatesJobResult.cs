@@ -37,6 +37,7 @@ public class PhysicalDuplicateFile
     public DateTime ModifiedDate { get; set; }
     public bool IsIndexed { get; set; }
     public Guid? AssetId { get; set; }
+    public string? OwnerUsername { get; set; }
 }
 
 public class PhysicalFileDeleteRequest

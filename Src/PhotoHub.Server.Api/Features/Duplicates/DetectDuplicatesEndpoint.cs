@@ -238,10 +238,10 @@ public class DetectDuplicatesEndpoint : IEndpoint
                     Statistics = Clone(stats)
                 }, cancellationToken);
 
-                // Build a DB lookup: virtualized path → (Id, Checksum, FileSize, ModifiedDate)
+                // Build a DB lookup: virtualized path → (Id, Checksum, FileSize, ModifiedDate, OwnerUsername)
                 var dbIndex = await dbContext.Assets
                     .Where(a => a.Checksum != null && a.Checksum != string.Empty)
-                    .Select(a => new { a.Id, a.FullPath, a.Checksum, a.FileSize, a.ModifiedDate })
+                    .Select(a => new { a.Id, a.FullPath, a.Checksum, a.FileSize, a.ModifiedDate, OwnerUsername = a.Owner != null ? a.Owner.Username : null })
                     .ToListAsync(cancellationToken);
 
                 var dbByPath = dbIndex.ToDictionary(
@@ -250,7 +250,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
                     StringComparer.OrdinalIgnoreCase);
 
                 // Hash each file: use stored checksum when unchanged, recalculate otherwise
-                var fileHashes = new List<(string PhysicalPath, string VirtualPath, string Hash, long Size, bool IsIndexed, Guid? AssetId)>();
+                var fileHashes = new List<(string PhysicalPath, string VirtualPath, string Hash, long Size, bool IsIndexed, Guid? AssetId, string? OwnerUsername)>();
                 int processed = 0;
 
                 foreach (var file in scannedFiles)
@@ -264,10 +264,12 @@ public class DetectDuplicatesEndpoint : IEndpoint
                         bool isIndexed = false;
                         Guid? assetId = null;
 
+                        string? ownerUsername = null;
                         if (dbByPath.TryGetValue(virtualPath, out var dbEntry))
                         {
                             isIndexed = true;
                             assetId = dbEntry.Id;
+                            ownerUsername = dbEntry.OwnerUsername;
                             // Use stored checksum if file hasn't changed
                             if (!hashService.HasFileChanged(file.FullPath, dbEntry.FileSize, dbEntry.ModifiedDate))
                                 hash = dbEntry.Checksum!;
@@ -280,7 +282,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
                             hash = await hashService.CalculateFileHashAsync(file.FullPath, cancellationToken);
                         }
 
-                        fileHashes.Add((file.FullPath, virtualPath, hash, file.FileSize, isIndexed, assetId));
+                        fileHashes.Add((file.FullPath, virtualPath, hash, file.FileSize, isIndexed, assetId, ownerUsername));
                     }
                     catch (Exception ex)
                     {
@@ -330,7 +332,8 @@ public class DetectDuplicatesEndpoint : IEndpoint
                             FileSize = f.Size,
                             ModifiedDate = File.GetLastWriteTimeUtc(f.PhysicalPath),
                             IsIndexed = f.IsIndexed,
-                            AssetId = f.AssetId
+                            AssetId = f.AssetId,
+                            OwnerUsername = f.OwnerUsername
                         }).ToList()
                     };
 
