@@ -38,18 +38,27 @@ else
                     <MudAlert Severity="Severity.Info" Class="mb-4">
                         Se indexará el directorio interno configurado en ASSETS_PATH. Solo se indexarán los archivos que ya están en el directorio interno de la aplicación.
                     </MudAlert>
-                    
-                    <MudButton Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               OnClick="StartScan"
-                               Disabled="@_scanning"
-                               StartIcon="@Icons.Material.Filled.PlayArrow">
-                        @if (_scanning)
+
+                    <div class="d-flex gap-3 align-center">
+                        @if (!_scanning)
                         {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" />
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="StartScan"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow">
+                                Iniciar Indexación
+                            </MudButton>
                         }
-                        Iniciar Indexación
-                    </MudButton>
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       OnClick="Cancel"
+                                       StartIcon="@Icons.Material.Filled.Stop">
+                                Detener
+                            </MudButton>
+                        }
+                    </div>
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -66,42 +75,51 @@ else
                     @if (_scanning && _indexingStartTime.HasValue)
                     {
                         <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
-                            Transcurrido: @FormatDuration(DateTime.UtcNow - _indexingStartTime.Value)
+                            @FormatDuration(DateTime.UtcNow - _indexingStartTime.Value)
                         </MudChip>
+                        @if (_speed > 0)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                @($"{_speed:F1} archivos/s")
+                            </MudChip>
+                        }
+                        @if (_etaSeconds > 0)
+                        {
+                            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
+                                ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
+                            </MudChip>
+                        }
+                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
                     }
                     else if (_indexingDuration.HasValue)
                     {
                         <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
-                            Tiempo total: @FormatDuration(_indexingDuration.Value)
+                            @FormatDuration(_indexingDuration.Value)
                         </MudChip>
-                    }
-                    @if (_scanning)
-                    {
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
-                    }
-                    else if (_lastUpdate?.IsCompleted == true)
-                    {
-                        <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
+                        @if (_statistics?.TotalFilesFound > 0)
+                        {
+                            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                @FormatFilesPerSecond(_statistics.TotalFilesFound, _indexingDuration.Value)
+                            </MudChip>
+                        }
+                        @if (_lastUpdate?.IsCompleted == true)
+                        {
+                            <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
+                        }
                     }
                 </CardHeaderActions>
             </MudCardHeader>
             <MudCardContent>
                 <MudText Typo="Typo.body1" Class="mb-2">@_currentStatus</MudText>
-                <MudProgressLinear Color="Color.Primary" Value="@_progress" Class="my-4" />
-                
-                @if (_indexingDuration.HasValue && _statistics != null)
-                {
-                    <MudAlert Severity="Severity.Info" Class="mb-3" >
-                        <strong>Duración de la indexación:</strong> @FormatDuration(_indexingDuration.Value)
-                        @if (_statistics.TotalFilesFound > 0)
-                        {
-                            <span> — aproximadamente @FormatFilesPerSecond(_statistics.TotalFilesFound, _indexingDuration.Value) por segundo</span>
-                        }
-                    </MudAlert>
-                }
+                <MudProgressLinear Color="Color.Primary"
+                                   Value="@_progress"
+                                   Class="my-4"
+                                   Rounded="true"
+                                   Size="Size.Medium" />
+
                 @if (_statistics != null)
                 {
-                    <MudGrid Class="mt-4">
+                    <MudGrid Class="mt-2">
                         <MudItem xs="12" sm="6" md="3">
                             <MudPaper Elevation="1" Class="text-center pa-4">
                                 <MudText Typo="Typo.h4" Color="Color.Primary">@_statistics.TotalFilesFound</MudText>
@@ -147,8 +165,19 @@ else
 }
 
 @code {
-    private bool _isAuthorized = false;
-    private bool _scanning = false;
+    private bool _isAuthorized;
+    private bool _scanning;
+    private double _progress;
+    private string _currentStatus = "Esperando inicio...";
+    private IndexStatistics? _statistics;
+    private IndexProgressUpdate? _lastUpdate;
+    private List<IndexProgressUpdate> _updates = new();
+    private DateTime? _indexingStartTime;
+    private TimeSpan? _indexingDuration;
+    private double _speed;
+    private double _etaSeconds;
+    private CancellationTokenSource? _cts;
+
     protected override async Task OnInitializedAsync()
     {
         if (!await AuthService.IsAuthenticatedAsync())
@@ -157,50 +186,27 @@ else
             Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
             return;
         }
-
         var currentUser = await AuthService.GetCurrentUserAsync();
         _isAuthorized = currentUser?.Role == "Admin";
     }
 
-    private double _progress = 0;
-    private string _currentStatus = "Esperando inicio...";
-    private IndexStatistics? _statistics;
-    private IndexProgressUpdate? _lastUpdate;
-    private List<IndexProgressUpdate> _updates = new();
-    private DateTime? _indexingStartTime;
-    private TimeSpan? _indexingDuration;
-
-    private static string FormatDuration(TimeSpan duration)
-    {
-        if (duration.TotalHours >= 1)
-            return $"{(int)duration.TotalHours}h {duration.Minutes}min {duration.Seconds}s";
-        if (duration.TotalMinutes >= 1)
-            return $"{duration.Minutes}min {duration.Seconds}s";
-        return $"{duration.Seconds}s";
-    }
-
-    private static string FormatFilesPerSecond(int totalFiles, TimeSpan duration)
-    {
-        if (duration.TotalSeconds <= 0) return "—";
-        var perSec = totalFiles / duration.TotalSeconds;
-        return perSec >= 1 ? $"{perSec:F1} archivos" : "menos de 1 archivo";
-    }
-
     private async Task StartScan()
     {
+        _cts = new CancellationTokenSource();
+        _scanning = true;
+        _indexingStartTime = DateTime.UtcNow;
+        _indexingDuration = null;
+        _updates.Clear();
+        _progress = 0;
+        _statistics = null;
+        _lastUpdate = null;
+        _speed = 0;
+        _etaSeconds = 0;
+        _currentStatus = "Iniciando...";
+
         try
         {
-            _scanning = true;
-            _indexingStartTime = DateTime.UtcNow;
-            _indexingDuration = null;
-            _updates.Clear();
-            _progress = 0;
-            _statistics = null;
-            _lastUpdate = null;
-            
-            using var cts = new CancellationTokenSource();
-            
-            await foreach (var update in IndexService.IndexDirectoryAsync(cts.Token))
+            await foreach (var update in IndexService.IndexDirectoryAsync(_cts.Token))
             {
                 _lastUpdate = update;
                 _currentStatus = update.Message;
@@ -208,33 +214,72 @@ else
                 if (update.Statistics != null)
                 {
                     _statistics = update.Statistics;
+                    UpdateSpeedAndEta();
                 }
                 _updates.Add(update);
                 StateHasChanged();
             }
-            
+
             if (_indexingStartTime.HasValue)
-            {
                 _indexingDuration = DateTime.UtcNow - _indexingStartTime.Value;
-            }
-            
+
             if (_lastUpdate?.IsCompleted == true)
-            {
                 Snackbar.Add("Indexación completada exitosamente", Severity.Success);
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            _currentStatus = "Indexación detenida.";
+            if (_indexingStartTime.HasValue)
+                _indexingDuration = DateTime.UtcNow - _indexingStartTime.Value;
         }
         catch (Exception ex)
         {
             _currentStatus = $"Error: {ex.Message}";
             Snackbar.Add($"Error durante la indexación: {ex.Message}", Severity.Error);
             if (_indexingStartTime.HasValue)
-            {
                 _indexingDuration = DateTime.UtcNow - _indexingStartTime.Value;
-            }
         }
         finally
         {
             _scanning = false;
+            _speed = 0;
+            _etaSeconds = 0;
+            StateHasChanged();
         }
+    }
+
+    private void Cancel()
+    {
+        _cts?.Cancel();
+    }
+
+    private void UpdateSpeedAndEta()
+    {
+        if (_statistics == null || !_indexingStartTime.HasValue || _statistics.TotalFilesFound == 0) return;
+
+        var elapsed = (DateTime.UtcNow - _indexingStartTime.Value).TotalSeconds;
+        if (elapsed <= 0) return;
+
+        _speed = _statistics.TotalFilesFound / elapsed;
+
+        // ETA only makes sense if we have percentage progress
+        if (_progress > 0 && _progress < 100)
+            _etaSeconds = elapsed / (_progress / 100.0) - elapsed;
+    }
+
+    private static string FormatDuration(TimeSpan d)
+    {
+        if (d.TotalHours >= 1)
+            return $"{(int)d.TotalHours}h {d.Minutes}m {d.Seconds}s";
+        if (d.TotalMinutes >= 1)
+            return $"{d.Minutes}m {d.Seconds}s";
+        return $"{d.Seconds}s";
+    }
+
+    private static string FormatFilesPerSecond(int totalFiles, TimeSpan duration)
+    {
+        if (duration.TotalSeconds <= 0) return "—";
+        var perSec = totalFiles / duration.TotalSeconds;
+        return perSec >= 1 ? $"{perSec:F1} archivos/s" : "< 1 archivo/s";
     }
 }
