@@ -689,11 +689,20 @@ public class IndexAssetsEndpoint : IEndpoint
         
         // Check if asset exists by checksum (handles moved/renamed files)
         var existingByChecksum = existingAssetsByChecksum.GetValueOrDefault(checksum);
-        
+
         Asset? asset;
         bool isNew = false;
-        
+
+        // A checksum match at a different path is only a "move" if the old physical file no longer exists.
+        // If the old file still exists, this is a genuine duplicate — treat the current file as new.
+        bool isMove = false;
         if (existingByChecksum != null && existingByChecksum.FullPath != dbPath)
+        {
+            var oldPhysicalPath = await settingsService.ResolvePhysicalPathAsync(existingByChecksum.FullPath);
+            isMove = !File.Exists(oldPhysicalPath);
+        }
+
+        if (isMove && existingByChecksum != null)
         {
             // File was moved/renamed - update path
             existingByChecksum.FullPath = dbPath;

@@ -1,0 +1,620 @@
+@page "/admin/queues/duplicados"
+@using PhotoHub.Client.Shared.Services
+@using PhotoHub.Client.Shared.Models
+@inject IDuplicatesQueueService DuplicatesQueueService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Detección de duplicados - PhotoHub</PageTitle>
+
+@if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">Volver al inicio</MudButton>
+    </div>
+}
+else
+{
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/queues"))" Class="mb-2">
+        Volver
+    </MudButton>
+    <MudText Typo="Typo.h4" Class="mb-4">Detección de duplicados</MudText>
+
+    @* ── Options card (hidden during comparison review) ── *@
+    @if (!_showComparison)
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Opciones</MudText>
+                            <MudText Typo="Typo.body2">Identifica archivos repetidos comparando su hash SHA-256.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudRadioGroup T="DetectionMode" @bind-Value="_mode">
+                            <MudRadio T="DetectionMode" Value="DetectionMode.DbAnalyze" Color="Color.Primary">
+                                <MudText Typo="Typo.body1"><strong>Solo analizar (base de datos)</strong></MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                    Compara los checksums almacenados. Instantáneo, no modifica nada.
+                                </MudText>
+                            </MudRadio>
+                            <MudRadio T="DetectionMode" Value="DetectionMode.DbCleanup" Color="Color.Error" Class="mt-2">
+                                <MudText Typo="Typo.body1"><strong>Analizar y limpiar (base de datos)</strong></MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                    Elimina los registros duplicados de la BD. Los archivos físicos no se borran.
+                                </MudText>
+                            </MudRadio>
+                            <MudRadio T="DetectionMode" Value="DetectionMode.Physical" Color="Color.Warning" Class="mt-2">
+                                <MudText Typo="Typo.body1"><strong>Escaneo físico del directorio</strong></MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                    Lee y hashea todos los archivos en disco. Permite revisar y eliminar duplicados manualmente.
+                                </MudText>
+                            </MudRadio>
+                        </MudRadioGroup>
+
+                        @if (_mode == DetectionMode.DbCleanup)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                                Se eliminarán registros de la base de datos. Los archivos físicos no se tocan.
+                            </MudAlert>
+                        }
+
+                        <div class="mt-4 d-flex gap-3 align-center">
+                            @if (!_running)
+                            {
+                                <MudButton Variant="Variant.Filled" Color="@ButtonColor" OnClick="Start" StartIcon="@Icons.Material.Filled.PlayArrow">
+                                    @ButtonLabel
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Cancel" StartIcon="@Icons.Material.Filled.Stop">
+                                    Detener
+                                </MudButton>
+                            }
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        @* ── Progress / stats ── *@
+        @if (_running || (_lastUpdate != null && !_showComparison))
+        {
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent><MudText Typo="Typo.h6">Resultado</MudText></CardHeaderContent>
+                    <CardHeaderActions>
+                        @if (_running && _startTime.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
+                                @FormatDuration(DateTime.UtcNow - _startTime.Value)
+                            </MudChip>
+                            @if (_speed > 0)
+                            {
+                                <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                    @($"{_speed:F1} {(_runningPhysical ? "archivos/s" : "grupos/s")}")
+                                </MudChip>
+                            }
+                            @if (_etaSeconds > 0)
+                            {
+                                <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
+                                    ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
+                                </MudChip>
+                            }
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
+                        }
+                        else if (_duration.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
+                                @FormatDuration(_duration.Value)
+                            </MudChip>
+                            @if (_lastUpdate?.IsCompleted == true)
+                            {
+                                <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
+                            }
+                        }
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body1" Class="mb-2">@_currentStatus</MudText>
+
+                    @if (_runningPhysical || _runningCleanup)
+                    {
+                        <MudProgressLinear Color="@(_runningPhysical ? Color.Warning : Color.Primary)"
+                                           Value="@_progress" Class="my-4" Rounded="true" Size="Size.Medium" />
+                    }
+
+                    @if (_stats != null)
+                    {
+                        @if (_stats.DuplicateGroups == 0 && _lastUpdate?.IsCompleted == true)
+                        {
+                            <MudAlert Severity="Severity.Success" Class="mt-2">
+                                No se encontraron duplicados.
+                                @if (_stats.UnindexedFiles > 0)
+                                {
+                                    <span> Hay <strong>@_stats.UnindexedFiles archivos sin indexar</strong>.</span>
+                                }
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudGrid Class="mt-2">
+                                <MudItem xs="6" sm="3">
+                                    <MudPaper Elevation="1" Class="text-center pa-4">
+                                        <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.TotalAssets</MudText>
+                                        <MudText Typo="Typo.caption">@(_runningPhysical ? "Archivos en disco" : "Assets en BD")</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6" sm="3">
+                                    <MudPaper Elevation="1" Class="text-center pa-4">
+                                        <MudText Typo="Typo.h4" Color="Color.Warning">@_stats.DuplicateGroups</MudText>
+                                        <MudText Typo="Typo.caption">Grupos duplicados</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6" sm="3">
+                                    <MudPaper Elevation="1" Class="text-center pa-4">
+                                        <MudText Typo="Typo.h4" Color="Color.Warning">@_stats.DuplicateAssets</MudText>
+                                        <MudText Typo="Typo.caption">Copias redundantes</MudText>
+                                        @if (_stats.BytesReclaimed > 0)
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@FormatBytes(_stats.BytesReclaimed)</MudText>
+                                        }
+                                    </MudPaper>
+                                </MudItem>
+                                @if (_runningPhysical)
+                                {
+                                    <MudItem xs="6" sm="3">
+                                        <MudPaper Elevation="1" Class="text-center pa-4">
+                                            <MudText Typo="Typo.h4" Color="Color.Info">@_stats.UnindexedFiles</MudText>
+                                            <MudText Typo="Typo.caption">Sin indexar</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                                else if (_runningCleanup)
+                                {
+                                    <MudItem xs="6" sm="3">
+                                        <MudPaper Elevation="1" Class="text-center pa-4">
+                                            <MudText Typo="Typo.h4" Color="Color.Success">@_stats.Removed</MudText>
+                                            <MudText Typo="Typo.caption">Eliminados</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+
+    @* ── Comparison UI (physical mode, after scan) ── *@
+    @if (_showComparison)
+    {
+        <div class="d-flex align-center justify-space-between mb-3 flex-wrap gap-2">
+            <div>
+                <MudText Typo="Typo.h5">Revisar duplicados físicos</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    @_groups.Count grupos · @TotalToDelete archivos marcados para eliminar (@FormatBytes(BytesToDelete))
+                </MudText>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AutoFixHigh" OnClick="AutoSelectAll">
+                    Selección automática
+                </MudButton>
+                @if (!_deleting)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                               Disabled="@(TotalToDelete == 0)"
+                               OnClick="@(() => _confirmOpen = true)">
+                        Eliminar @TotalToDelete archivos
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="true">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        Eliminando...
+                    </MudButton>
+                }
+                <MudButton Variant="Variant.Text" OnClick="BackToOptions">Nueva búsqueda</MudButton>
+            </div>
+        </div>
+
+        @* Confirmation banner *@
+        @if (_confirmOpen)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Icon="@Icons.Material.Filled.Warning">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                    <span>
+                        Se eliminarán <strong>@TotalToDelete archivos físicos</strong> del disco de forma permanente. Esta acción no se puede deshacer.
+                    </span>
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="ConfirmDelete">
+                            Confirmar eliminación
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _confirmOpen = false)">
+                            Cancelar
+                        </MudButton>
+                    </div>
+                </div>
+            </MudAlert>
+        }
+
+        @* Delete result *@
+        @if (_deleteResult != null)
+        {
+            <MudAlert Severity="@(_deleteResult.Errors.Count > 0 ? Severity.Warning : Severity.Success)" Class="mb-4">
+                @_deleteResult.Deleted archivos eliminados.
+                @if (_deleteResult.Errors.Count > 0)
+                {
+                    <span> @_deleteResult.Errors.Count errores: @string.Join("; ", _deleteResult.Errors.Take(3))</span>
+                }
+            </MudAlert>
+        }
+
+        @* Duplicate group cards *@
+        @foreach (var vm in _groups)
+        {
+            <MudCard Class="mb-4" Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1">
+                            <strong>@vm.Group.Files.Count archivos idénticos</strong>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary ml-2">SHA-256: @vm.Group.Hash[..12]…</MudText>
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="pt-0">
+                    <MudGrid>
+                        @foreach (var file in vm.Group.Files)
+                        {
+                            bool isKeep = vm.KeepPath == file.PhysicalPath;
+                            <MudItem xs="12" sm="6" md="@(12 / Math.Min(vm.Group.Files.Count, 4))">
+                                <MudPaper Elevation="0"
+                                          Class="@($"pa-3 rounded {(isKeep ? "mud-theme-primary" : "")}")"
+                                          Style="@(isKeep ? "border: 2px solid var(--mud-palette-primary);" : "border: 2px solid transparent;")">
+
+                                    @* Thumbnail or icon *@
+                                    <div class="d-flex justify-center mb-2" style="height:120px; overflow:hidden; border-radius:8px; background:#111;">
+                                        @if (file.IsIndexed && file.AssetId.HasValue)
+                                        {
+                                            <img src="/api/assets/@file.AssetId/thumbnail?size=Small"
+                                                 alt="@file.FileName"
+                                                 style="height:100%; object-fit:cover; width:100%;"
+                                                 onerror="this.style.display='none'" />
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex align-center justify-center" style="width:100%; height:100%;">
+                                                <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Style="font-size:3rem; color:#555;" />
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @* File info *@
+                                    <MudText Typo="Typo.body2" Style="word-break:break-all; font-weight:600;">@file.FileName</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="word-break:break-all;">@TruncatePath(file.Directory)</MudText>
+                                    <div class="d-flex gap-1 mt-1 flex-wrap">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@FormatBytes(file.FileSize)</MudChip>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@file.ModifiedDate.ToLocalTime().ToString("dd/MM/yyyy")</MudChip>
+                                        @if (file.IsIndexed)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Indexado</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">Sin indexar</MudChip>
+                                        }
+                                    </div>
+
+                                    @* Keep/delete toggle *@
+                                    <div class="mt-2">
+                                        @if (isKeep)
+                                        {
+                                            <MudChip T="string" Color="Color.Primary" Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small">Conservar</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                                                       OnClick="@(() => vm.KeepPath = file.PhysicalPath)">
+                                                Conservar este
+                                            </MudButton>
+                                        }
+                                    </div>
+                                </MudPaper>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @* Bottom action bar *@
+        @if (_groups.Count > 3)
+        {
+            <div class="d-flex justify-end gap-2 mt-2 mb-8">
+                @if (!_deleting)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                               Disabled="@(TotalToDelete == 0)"
+                               OnClick="@(() => _confirmOpen = true)">
+                        Eliminar @TotalToDelete archivos
+                    </MudButton>
+                }
+            </div>
+        }
+    }
+}
+
+@code {
+    private enum DetectionMode { DbAnalyze, DbCleanup, Physical }
+
+    private bool _isAuthorized;
+    private DetectionMode _mode = DetectionMode.DbAnalyze;
+    private bool _running;
+    private bool _runningPhysical;
+    private bool _runningCleanup;
+    private double _progress;
+    private string _currentStatus = "Esperando inicio...";
+    private DuplicatesJobStatistics? _stats;
+    private DuplicatesProgressUpdate? _lastUpdate;
+    private DateTime? _startTime;
+    private TimeSpan? _duration;
+    private double _speed;
+    private double _etaSeconds;
+    private CancellationTokenSource? _cts;
+
+    // Comparison UI state
+    private bool _showComparison;
+    private List<GroupVm> _groups = new();
+    private bool _confirmOpen;
+    private bool _deleting;
+    private PhysicalDeleteResult? _deleteResult;
+
+    private int TotalToDelete => _groups.Sum(g => g.ToDelete.Count());
+    private long BytesToDelete => _groups.Sum(g => g.ToDelete.Sum(f => f.FileSize));
+
+    private Color ButtonColor => _mode switch
+    {
+        DetectionMode.DbCleanup => Color.Error,
+        DetectionMode.Physical  => Color.Warning,
+        _                       => Color.Primary
+    };
+
+    private string ButtonLabel => _mode switch
+    {
+        DetectionMode.DbCleanup => "Analizar y limpiar",
+        DetectionMode.Physical  => "Escanear disco",
+        _                       => "Analizar"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+
+    private async Task Start()
+    {
+        _cts = new CancellationTokenSource();
+        _running = true;
+        _runningPhysical = _mode == DetectionMode.Physical;
+        _runningCleanup = _mode == DetectionMode.DbCleanup;
+        _startTime = DateTime.UtcNow;
+        _duration = null;
+        _progress = 0;
+        _stats = null;
+        _lastUpdate = null;
+        _speed = 0;
+        _etaSeconds = 0;
+        _currentStatus = "Iniciando...";
+        _showComparison = false;
+        _groups.Clear();
+        _deleteResult = null;
+        _confirmOpen = false;
+
+        bool cleanup = _mode == DetectionMode.DbCleanup;
+        bool physical = _mode == DetectionMode.Physical;
+
+        try
+        {
+            await foreach (var update in DuplicatesQueueService.DetectDuplicatesAsync(cleanup, physical, _cts.Token))
+            {
+                _lastUpdate = update;
+                if (!string.IsNullOrEmpty(update.Message))
+                    _currentStatus = update.Message;
+                _progress = update.Percentage;
+
+                if (update.Statistics != null)
+                {
+                    _stats = update.Statistics;
+                    UpdateSpeedAndEta();
+                }
+
+                // Accumulate physical groups as they stream in
+                if (update.FoundGroup != null)
+                    _groups.Add(new GroupVm(update.FoundGroup));
+
+                StateHasChanged();
+                if (update.IsCompleted) break;
+            }
+
+            if (_startTime.HasValue)
+                _duration = DateTime.UtcNow - _startTime.Value;
+
+            // Show comparison UI if physical scan found groups
+            if (physical && _groups.Count > 0)
+            {
+                AutoSelectAll();
+                _showComparison = true;
+            }
+            else if (_lastUpdate?.IsCompleted == true)
+            {
+                if (_stats?.Removed > 0)
+                    Snackbar.Add($"{_stats.Removed} duplicados eliminados.", Severity.Success);
+                else if (_stats?.DuplicateGroups == 0)
+                    Snackbar.Add("No se encontraron duplicados.", Severity.Info);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _currentStatus = "Proceso detenido.";
+            if (_startTime.HasValue) _duration = DateTime.UtcNow - _startTime.Value;
+        }
+        catch (Exception ex)
+        {
+            _currentStatus = $"Error: {ex.Message}";
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            if (_startTime.HasValue) _duration = DateTime.UtcNow - _startTime.Value;
+        }
+        finally
+        {
+            _running = false;
+            _speed = 0;
+            _etaSeconds = 0;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => _cts?.Cancel();
+
+    private void BackToOptions()
+    {
+        _showComparison = false;
+        _groups.Clear();
+        _stats = null;
+        _lastUpdate = null;
+        _deleteResult = null;
+        _confirmOpen = false;
+    }
+
+    private void AutoSelectAll()
+    {
+        foreach (var vm in _groups)
+            vm.KeepPath = AutoSelectKeep(vm.Group);
+    }
+
+    private static string AutoSelectKeep(PhysicalDuplicateGroup group)
+    {
+        // Priority: indexed > most recently modified > largest file
+        var best = group.Files
+            .OrderByDescending(f => f.IsIndexed ? 1 : 0)
+            .ThenByDescending(f => f.ModifiedDate)
+            .ThenByDescending(f => f.FileSize)
+            .First();
+        return best.PhysicalPath;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        _confirmOpen = false;
+        _deleting = true;
+        _deleteResult = null;
+        StateHasChanged();
+
+        try
+        {
+            var requests = _groups
+                .SelectMany(g => g.ToDelete)
+                .Select(f => new PhysicalFileDeleteRequest
+                {
+                    PhysicalPath = f.PhysicalPath,
+                    AssetId = f.AssetId
+                })
+                .ToList();
+
+            _deleteResult = await DuplicatesQueueService.DeletePhysicalFilesAsync(requests);
+
+            // Remove deleted groups/files from the view
+            foreach (var vm in _groups.ToList())
+            {
+                var deletedPaths = vm.ToDelete.Select(f => f.PhysicalPath).ToHashSet();
+                vm.Group.Files.RemoveAll(f => deletedPaths.Contains(f.PhysicalPath));
+            }
+            _groups.RemoveAll(g => g.Group.Files.Count <= 1);
+
+            if (_deleteResult.Deleted > 0)
+                Snackbar.Add($"{_deleteResult.Deleted} archivos eliminados.", Severity.Success);
+
+            if (_groups.Count == 0)
+                _showComparison = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _deleting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateSpeedAndEta()
+    {
+        if (_stats == null || !_startTime.HasValue) return;
+        var elapsed = (DateTime.UtcNow - _startTime.Value).TotalSeconds;
+        if (elapsed <= 0) return;
+
+        if (_runningPhysical && _stats.TotalAssets > 0 && _progress > 2)
+        {
+            var done = (int)((_progress - 2) / 88.0 * _stats.TotalAssets);
+            if (done > 0) { _speed = done / elapsed; _etaSeconds = _speed > 0 ? (_stats.TotalAssets - done) / _speed : 0; }
+        }
+        else if (_runningCleanup && _stats.DuplicateGroups > 0 && _progress > 10)
+        {
+            var done = (int)((_progress - 10) / 90.0 * _stats.DuplicateGroups);
+            if (done > 0) { _speed = done / elapsed; _etaSeconds = _speed > 0 ? (_stats.DuplicateGroups - done) / _speed : 0; }
+        }
+    }
+
+    private static string TruncatePath(string path, int maxLength = 55)
+    {
+        if (path.Length <= maxLength) return path;
+        var parts = path.Replace('\\', '/').Split('/');
+        if (parts.Length >= 3)
+            return $"…/{parts[^2]}/{parts[^1]}";
+        return "…" + path[^maxLength..];
+    }
+
+    private static string FormatDuration(TimeSpan d)
+    {
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m {d.Seconds}s";
+        if (d.TotalMinutes >= 1) return $"{d.Minutes}m {d.Seconds}s";
+        return $"{d.Seconds}s";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1_024) return $"{bytes / 1_024.0:F1} KB";
+        return $"{bytes} B";
+    }
+
+    private class GroupVm
+    {
+        public PhysicalDuplicateGroup Group { get; }
+        public string KeepPath { get; set; } = string.Empty;
+        public IEnumerable<PhysicalDuplicateFile> ToDelete =>
+            Group.Files.Where(f => f.PhysicalPath != KeepPath);
+
+        public GroupVm(PhysicalDuplicateGroup group) => Group = group;
+    }
+}

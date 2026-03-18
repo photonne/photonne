@@ -84,12 +84,12 @@ else
                 <MudCardHeader>
                     <CardHeaderContent>
                         <MudText Typo="Typo.h6">Detección de duplicados</MudText>
-                        <MudText Typo="Typo.body2">Identifica archivos repetidos.</MudText>
+                        <MudText Typo="Typo.body2">Identifica y elimina archivos repetidos por hash SHA-256.</MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardActions Class="px-4 pb-4">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="true">
-                        Próximamente
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/duplicados"))">
+                        Abrir
                     </MudButton>
                 </MudCardActions>
             </MudCard>
