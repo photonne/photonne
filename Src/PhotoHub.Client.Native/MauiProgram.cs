@@ -81,7 +81,8 @@ public static class MauiProgram
         });
         
         builder.Services.AddScoped<IIndexService, IndexService>();
-        
+        builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
+
         builder.Services.AddScoped<IFolderService>(sp =>
         {
             var httpClient = sp.GetRequiredService<HttpClient>();

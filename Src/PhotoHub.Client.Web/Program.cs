@@ -46,6 +46,7 @@ builder.Services.AddScoped<IAssetService>(sp =>
     return new AssetService(httpClient, async () => await authService.GetTokenAsync());
 });
 builder.Services.AddScoped<IIndexService, IndexService>();
+builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
 builder.Services.AddScoped<IFolderService>(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
