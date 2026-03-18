@@ -66,37 +66,41 @@
             Favoritos
         </MudNavLink>
 
-        <MudNavGroup Title="Carpetas" Icon="@Icons.Material.Outlined.Folder" Expanded="true">
-            <MudNavLink Href="/folders/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mi Espacio</MudNavLink>
-            <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
-        </MudNavGroup>
-
-        <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
-            Mapa
-        </MudNavLink>
-
         <MudNavGroup Title="Álbumes" Icon="@Icons.Material.Outlined.Collections" Expanded="true">
             <MudNavLink Href="/albums/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mis Álbumes</MudNavLink>
             <MudNavLink Href="/albums/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Compartidos</MudNavLink>
             <MudNavLink Href="/albums/public" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Share">Públicos</MudNavLink>
         </MudNavGroup>
 
+        <MudNavGroup Title="Carpetas" Icon="@Icons.Material.Outlined.Folder" Expanded="true">
+            <MudNavLink Href="/folders/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mi Espacio</MudNavLink>
+            <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
+        </MudNavGroup>
+
+        <MudNavLink Href="/search" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Search" IconColor="Color.Inherit">
+            Búsqueda
+        </MudNavLink>
+
+        <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
+            Mapa
+        </MudNavLink>
+
         <MudDivider Class="my-2" />
 
-        <MudNavLink Href="/notifications" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Notifications" IconColor="Color.Inherit">
-            Notificaciones
-        </MudNavLink>
         <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">
             Mi Dispositivo
-        </MudNavLink>
-        <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
-            Utilidades
         </MudNavLink>
         <MudNavLink Href="/archive" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Archive" IconColor="Color.Inherit">
             Archivo
         </MudNavLink>
         <MudNavLink Href="/trash" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Inherit">
             Papelera
+        </MudNavLink>
+        <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
+            Utilidades
+        </MudNavLink>
+        <MudNavLink Href="/notifications" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Notifications" IconColor="Color.Inherit">
+            Notificaciones
         </MudNavLink>
     </text>;
 
