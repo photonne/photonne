@@ -7,7 +7,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__Postgres=Host=photohub-db;Port=5432;Database=${POSTGRES_DB:-photohub};Username=${POSTGRES_USER:-photohub_user};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Postgres=Host=photohub-db;Port=5432;Database=${POSTGRES_DB:-photohub};Username=${POSTGRES_USER:-photohub_user};Password=${POSTGRES_PASSWORD:-photohub_password}
       - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
       - Jwt__Issuer=PhotoHub
       - Jwt__Audience=PhotoHub
@@ -20,12 +20,13 @@ services:
       - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
       - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
     volumes:
-      - ${ASSETS_PATH:-/DATA/Media/Photos}:/data/assets:ro
-      - photohub_thumbnails:/data/thumbnails
+      - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
+      - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
+    depends_on:
+      photohub-db:
+        condition: service_healthy
     restart: unless-stopped
 
-  # Si ya tienes una instancia de PostgreSQL externa, comenta este servicio
-  # y ajusta ConnectionStrings__Postgres apuntando a tu instancia.   
   photohub-db:
     image: postgres:17-alpine
     container_name: photohub-db
@@ -59,4 +60,5 @@ services:
         condition: service_healthy
 
 volumes:
-  photohub_thumbnails:
+  photohub_db_data:
+  pgadmin_data:
