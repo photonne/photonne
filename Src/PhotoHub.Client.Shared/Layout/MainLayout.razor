@@ -29,16 +29,18 @@
             <MudSpacer />
 
             <div class="search-container d-none d-md-flex">
-                <MudTextField @bind-Value="_searchQuery"
-                              @bind-Value:after="@(() => OnSearchQueryChanged(_searchQuery))"
-                              Immediate="true"
-                              DebounceInterval="250"
-                              Placeholder="Buscar archivos por nombre..." 
-                              Adornment="Adornment.Start" 
-                              AdornmentIcon="@Icons.Material.Filled.Search" 
-                              Variant="Variant.Outlined" 
-                              Margin="Margin.Dense"
-                              Class="search-field" />
+                <MudPaper Class="search-box d-flex align-center px-3" Elevation="0">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Primary" Size="Size.Small" Class="mr-2 flex-shrink-0" />
+                    <MudTextField @bind-Value="_searchQuery"
+                                  @bind-Value:after="@(() => OnSearchQueryChanged(_searchQuery))"
+                                  Immediate="true"
+                                  DebounceInterval="250"
+                                  Placeholder="Buscar fotos, vídeos..."
+                                  Variant="Variant.Text"
+                                  Margin="Margin.Dense"
+                                  DisableUnderLine="true"
+                                  Class="search-input flex-grow-1" />
+                </MudPaper>
             </div>
 
             <MudSpacer />
@@ -175,10 +177,35 @@
         }
         .search-container {
             width: 100%;
-            max-width: 600px;
+            max-width: 560px;
         }
-        .search-field .mud-input-control {
+        .search-box {
+            width: 100%;
+            height: 40px;
+            border-radius: 24px;
+            border: 1.5px solid rgba(128, 128, 128, 0.35);
+            background: rgba(128, 128, 128, 0.06);
+            transition: border-color 0.2s;
+        }
+        .search-box:hover {
+            border-color: rgba(128, 128, 128, 0.65);
+        }
+        .search-box:focus-within {
+            border-color: var(--mud-palette-primary);
+        }
+        .mud-dark .search-box {
+            border-color: rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .mud-dark .search-box:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .search-input .mud-input-control {
             margin-top: 0;
+        }
+        .search-input .mud-input::before,
+        .search-input .mud-input::after {
+            display: none !important;
         }
         @* .custom-navbar { *@
         @*     z-index: 1200; *@
