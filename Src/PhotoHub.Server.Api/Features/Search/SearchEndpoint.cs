@@ -66,6 +66,7 @@ public class SearchEndpoint : IEndpoint
             query = query.Where(a =>
                 a.FileName.Contains(q) ||
                 a.FullPath.Contains(q) ||
+                (a.Description != null && a.Description.Contains(q)) ||
                 a.UserTags.Any(ut => ut.UserTag.Name.Contains(q)) ||
                 (tagTypeFilter.HasValue && a.Tags.Any(t => t.TagType == tagTypeFilter.Value)));
         }

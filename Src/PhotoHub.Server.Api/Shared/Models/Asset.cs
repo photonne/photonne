@@ -55,6 +55,9 @@ public class Asset
     
     // For videos
     public TimeSpan? Duration { get; set; }
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
     
     // Navigation properties
     public AssetExif? Exif { get; set; }

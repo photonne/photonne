@@ -22,6 +22,7 @@ public class AssetDetail
     public AssetSyncStatus SyncStatus { get; set; } = AssetSyncStatus.Pending;
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
+    public string? Description { get; set; }
 
     public string ThumbnailUrl => Id != Guid.Empty
         ? $"/api/assets/{Id}/thumbnail?size=Large" 

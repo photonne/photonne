@@ -156,6 +156,10 @@ namespace PhotoHub.Server.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<TimeSpan?>("Duration")
                         .HasColumnType("interval");
 

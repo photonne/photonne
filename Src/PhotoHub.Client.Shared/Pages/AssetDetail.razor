@@ -73,22 +73,48 @@ else if (_asset != null)
             .asset-info-drawer.closed {
                 transform: translateX(100%);
             }
+            /* Forzar inputs del drawer a colores oscuros independientemente del tema */
+            .asset-info-drawer .mud-input-root input,
+            .asset-info-drawer .mud-input-root textarea,
+            .asset-info-drawer .mud-input,
+            .asset-info-drawer .mud-input-slot {
+                color: #e1e1e1 !important;
+            }
+            .asset-info-drawer .mud-input-root input::placeholder,
+            .asset-info-drawer .mud-input-root textarea::placeholder {
+                color: #888 !important;
+                opacity: 1 !important;
+            }
+            .asset-info-drawer .mud-input-outlined fieldset {
+                border-color: #555 !important;
+            }
+            .asset-info-drawer .mud-input-outlined:hover fieldset {
+                border-color: #888 !important;
+            }
+            .asset-info-drawer .mud-input-outlined.mud-focused fieldset {
+                border-color: var(--mud-palette-primary) !important;
+            }
+            .asset-info-drawer .mud-input-control-input-slot {
+                background-color: #2a2a2a !important;
+                border-radius: 4px;
+            }
             .nav-button {
                 position: absolute;
                 top: 50%;
                 transform: translateY(-50%);
                 z-index: 20;
                 background-color: rgba(0,0,0,0.3);
-                color: white;
+                color: white !important;
+                border-radius: 50% !important;
                 transition: opacity 0.3s ease, background-color 0.2s, right 0.3s ease;
             }
             .nav-button:hover {
                 background-color: rgba(0,0,0,0.6);
             }
-            .nav-button.prev { left: 16px; }
-            .nav-button.next { right: 16px; }
+            .nav-button.prev { left: 36px; }
+            .nav-button.next { right: 36px; }
             .asset-detail-content.info-open .nav-button.next {
-                right: calc(360px + 16px);
+                right: calc(360px + 36px);
             }
             .nav-button.hidden {
                 opacity: 0;
@@ -345,10 +371,34 @@ else if (_asset != null)
                     @if (!string.IsNullOrEmpty(_asset.Exif.Description))
                     {
                         <MudDivider Class="my-4" Style="background-color: #333;" />
-                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Descripción</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Descripción EXIF</MudText>
                         <MudText Typo="Typo.body2" Class="px-4 py-2" Style="font-style: italic;">@_asset.Exif.Description</MudText>
                     }
                 }
+
+                <MudDivider Class="my-4" Style="background-color: #333;" />
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-2">Descripción</MudText>
+                <MudTextField @bind-Value="_descriptionEdit"
+                              Placeholder="Añade una descripción..."
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              MaxLength="2000"
+                              FullWidth="true"
+                              Class="mb-2"
+                              Style="font-size: 0.85rem;" />
+                <div class="d-flex justify-end">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               Disabled="@_savingDescription"
+                               OnClick="SaveDescriptionAsync">
+                        @if (_savingDescription)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                        }
+                        Guardar
+                    </MudButton>
+                </div>
 
                 <MudDivider Class="my-4" Style="background-color: #333;" />
                 <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-2">Etiquetas</MudText>
@@ -435,6 +485,8 @@ else
     private bool _tagBusy = false;
     private bool _favoriteBusy = false;
     private bool _archiveBusy = false;
+    private bool _savingDescription = false;
+    private string _descriptionEdit = string.Empty;
     private string _newTag = string.Empty;
     
     private TimelineItem? _prevAsset;
@@ -621,6 +673,7 @@ else
             // Asegurar que se actualice después de cargar el asset
             if (_asset != null && !_navigatingAway)
             {
+                _descriptionEdit = _asset.Description ?? string.Empty;
                 await UpdateAssetDisplayUrlsAsync();
                 if (!_navigatingAway)
                 {
@@ -856,6 +909,26 @@ else
         _zoomed = !_zoomed;
         UpdateNavbar();
         StateHasChanged();
+    }
+
+    private async Task SaveDescriptionAsync()
+    {
+        if (_asset == null || _asset.Id == Guid.Empty || _savingDescription) return;
+        try
+        {
+            _savingDescription = true;
+            _asset.Description = await AssetService.UpdateDescriptionAsync(_asset.Id, _descriptionEdit);
+            _descriptionEdit = _asset.Description ?? string.Empty;
+            Snackbar.Add("Descripción guardada", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al guardar la descripción: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _savingDescription = false;
+        }
     }
 
     private async Task ToggleFavoriteAsync()

@@ -90,7 +90,8 @@ namespace PhotoHub.Server.Api.Migrations
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedFromPath = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     DeletedFromFolderId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Duration = table.Column<TimeSpan>(type: "interval", nullable: true)
+                    Duration = table.Column<TimeSpan>(type: "interval", nullable: true),
+                    Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true)
                 },
                 constraints: table =>
                 {

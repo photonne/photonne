@@ -150,7 +150,8 @@ public class AssetService : IAssetService
             Tags = response.Tags,
             SyncStatus = response.SyncStatus,
             IsFavorite = response.IsFavorite,
-            IsArchived = response.IsArchived
+            IsArchived = response.IsArchived,
+            Description = response.Description
         };
     }
 
@@ -415,4 +416,18 @@ public class AssetService : IAssetService
         var result = await _httpClient.GetFromJsonAsync<List<TimelineItem>>($"/api/utilities/large-files?count={count}");
         return result ?? new List<TimelineItem>();
     }
+
+    public async Task<string?> UpdateDescriptionAsync(Guid assetId, string? description)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PatchAsJsonAsync($"/api/assets/{assetId}/description", new { description });
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<DescriptionUpdateResult>();
+        return result?.Description;
+    }
+}
+
+file class DescriptionUpdateResult
+{
+    public string? Description { get; set; }
 }

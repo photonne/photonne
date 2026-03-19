@@ -93,7 +93,8 @@ public class AssetDetailEndpoint : IEndpoint
                 Tags = BuildTagList(asset),
                 SyncStatus = PhotoHub.Client.Shared.Models.AssetSyncStatus.Synced,
                 IsFavorite = asset.IsFavorite,
-                IsArchived = asset.IsArchived
+                IsArchived = asset.IsArchived,
+                Description = asset.Description
             };
 
             return Results.Ok(response);

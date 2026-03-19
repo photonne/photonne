@@ -12,7 +12,7 @@ using PhotoHub.Server.Api.Shared.Data;
 namespace PhotoHub.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260318172653_InitialCreate")]
+    [Migration("20260319085701_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -158,6 +158,10 @@ namespace PhotoHub.Server.Api.Migrations
                     b.Property<string>("DeletedFromPath")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<TimeSpan?>("Duration")
                         .HasColumnType("interval");

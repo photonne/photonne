@@ -1,0 +1,65 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PhotoHub.Server.Api.Shared.Data;
+using PhotoHub.Server.Api.Shared.Interfaces;
+
+namespace PhotoHub.Server.Api.Features.AssetDetail;
+
+public class UpdateDescriptionEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPatch("/api/assets/{assetId}/description", Handle)
+            .WithName("UpdateAssetDescription")
+            .WithTags("Assets")
+            .WithDescription("Updates the user-defined description of an asset.")
+            .RequireAuthorization();
+    }
+
+    private static async Task<IResult> Handle(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromRoute] Guid assetId,
+        [FromBody] UpdateDescriptionRequest request,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!TryGetUserId(user, out var userId))
+            return Results.Unauthorized();
+
+        var asset = await dbContext.Assets
+            .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, ct);
+
+        if (asset == null)
+            return Results.NotFound(new { error = "Asset no encontrado." });
+
+        var isAdmin = user.IsInRole("Admin");
+        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, userId))
+            return Results.Forbid();
+
+        asset.Description = string.IsNullOrWhiteSpace(request.Description)
+            ? null
+            : request.Description.Trim()[..Math.Min(request.Description.Trim().Length, 2000)];
+
+        await dbContext.SaveChangesAsync(ct);
+
+        return Results.Ok(new { description = asset.Description });
+    }
+
+    private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
+    {
+        var claim = user.FindFirst(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(claim?.Value, out userId);
+    }
+
+    private static bool IsAssetInUserRoot(string assetPath, Guid userId)
+    {
+        var normalized = assetPath.Replace('\\', '/');
+        return normalized.Contains($"/users/{userId}/", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+public class UpdateDescriptionRequest
+{
+    public string? Description { get; set; }
+}
