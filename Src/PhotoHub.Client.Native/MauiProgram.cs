@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Reflection;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using PhotoHub.Client.Shared.Services;
@@ -21,6 +23,12 @@ public static class MauiProgram
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
 
+        // Cargar configuración desde appsettings.json embebido
+        var assembly = Assembly.GetExecutingAssembly();
+        using var configStream = assembly.GetManifestResourceStream("PhotoHub.Client.Native.appsettings.json");
+        if (configStream != null)
+            builder.Configuration.AddJsonStream(configStream);
+
         builder.Services.AddMauiBlazorWebView();
 
         // Autorización para AuthorizeView (IAuthorizationPolicyProvider, etc.)
@@ -40,19 +48,30 @@ public static class MauiProgram
         // Agregar MudBlazor
         builder.Services.AddMudServices();
 
-        // Configurar HttpClient
-        var apiBaseUrl = "http://10.0.2.2:5178"; // Android Emulator address for localhost
-#if IOS || MACCATALYST || WINDOWS
-        apiBaseUrl = "http://localhost:5178";
+        // Configurar HttpClient — URL leída desde appsettings.json embebido
+        var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7255";
+#if ANDROID
+        // En emulador Android, localhost del host es 10.0.2.2
+        if (apiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            apiBaseUrl = apiBaseUrl.Replace("localhost", "10.0.2.2", StringComparison.OrdinalIgnoreCase);
 #endif
 
         builder.Services.AddScoped<ApiErrorNotifier>();
         builder.Services.AddScoped(sp =>
         {
             var notifier = sp.GetRequiredService<ApiErrorNotifier>();
+#if DEBUG
+            // En desarrollo, ignorar errores de certificado HTTPS (dev cert no confiado por defecto en MAUI)
+            var innerHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+#else
+            var innerHandler = new HttpClientHandler();
+#endif
             var refreshHandler = new AuthRefreshHandler(() => sp.GetRequiredService<IAuthService>())
             {
-                InnerHandler = new HttpClientHandler()
+                InnerHandler = innerHandler
             };
             var errorHandler = new ApiErrorHandler(notifier)
             {
@@ -134,6 +153,20 @@ public static class MauiProgram
             var httpClient = sp.GetRequiredService<HttpClient>();
             var authService = sp.GetRequiredService<IAuthService>();
             return new AdminStatsService(httpClient, async () => await authService.GetTokenAsync());
+        });
+
+        builder.Services.AddScoped<IShareService>(sp =>
+        {
+            var httpClient = sp.GetRequiredService<HttpClient>();
+            var authService = sp.GetRequiredService<IAuthService>();
+            return new ShareService(httpClient, async () => await authService.GetTokenAsync());
+        });
+
+        builder.Services.AddScoped<INotificationService>(sp =>
+        {
+            var httpClient = sp.GetRequiredService<HttpClient>();
+            var authService = sp.GetRequiredService<IAuthService>();
+            return new NotificationService(httpClient, async () => await authService.GetTokenAsync());
         });
 
         builder.Services.AddMudBlazorDialog();

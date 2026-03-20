@@ -9,6 +9,18 @@
         <RouteView RouteData="@routeData" DefaultLayout="typeof(MainLayout)"/>
         <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
     </Found>
+    <NotFound>
+        <PageTitle>No encontrado</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <MudContainer>
+                <MudText Typo="Typo.h3">Página no encontrada</MudText>
+                <MudText>Lo sentimos, la página que buscas no existe.</MudText>
+                <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                    Volver al inicio
+                </MudButton>
+            </MudContainer>
+        </LayoutView>
+    </NotFound>
 </Router>
 
 @code {
@@ -23,7 +35,7 @@
         }
 
         var path = context.Path.Trim('/').ToLowerInvariant();
-        if (path.StartsWith("login"))
+        if (path.StartsWith("login") || path.StartsWith("share"))
         {
             return;
         }

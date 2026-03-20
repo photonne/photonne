@@ -20,6 +20,14 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationExcep
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "PhotoHub";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "PhotoHub";
 
+// CORS — cualquier origen permitido. La seguridad la gestiona el JWT, no el origen.
+// Necesario para el WebView de MAUI (origen nativo variable según plataforma/dispositivo).
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+});
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -111,6 +119,7 @@ if (builder.Configuration.GetValue<bool>("HTTPS_REDIRECT"))
 }
 
 // IMPORTANTE: Authentication y Authorization deben ir antes de UseBlazorFrameworkFiles
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 

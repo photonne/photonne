@@ -70,6 +70,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <EmbeddedResource Include="appsettings.json" LogicalName="PhotoHub.Client.Native.appsettings.json" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\PhotoHub.Client.Shared\PhotoHub.Client.Shared.csproj" />
     </ItemGroup>
 
