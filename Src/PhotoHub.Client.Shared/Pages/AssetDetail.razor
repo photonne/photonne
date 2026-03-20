@@ -209,7 +209,7 @@ else if (_asset != null)
             }
         </style>
 
-        <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "") @(_infoOpen ? "info-open" : "")" @onclick="ToggleToolbar">
+        <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "") @(_infoOpen ? "info-open" : "")" @onclick="ToggleToolbar" @ontouchstart="HandleTouchStart" @ontouchend="HandleTouchEnd">
             <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
                 <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" 
                                Class="@GetNavButtonClass(true)" 
@@ -923,8 +923,33 @@ else
         }
     }
 
+    private double _touchStartX;
+    private bool _swipeHandled;
+
+    private void HandleTouchStart(TouchEventArgs e)
+    {
+        if (e.Touches.Length > 0)
+            _touchStartX = e.Touches[0].ClientX;
+        _swipeHandled = false;
+    }
+
+    private void HandleTouchEnd(TouchEventArgs e)
+    {
+        if (e.ChangedTouches.Length == 0) return;
+        var deltaX = e.ChangedTouches[0].ClientX - _touchStartX;
+        if (Math.Abs(deltaX) < 50) return;
+        _swipeHandled = true;
+        if (deltaX < 0) NavigateNext();
+        else NavigatePrev();
+    }
+
     private void ToggleToolbar()
     {
+        if (_swipeHandled)
+        {
+            _swipeHandled = false;
+            return;
+        }
         if (_zoomed)
         {
             _zoomed = false;
