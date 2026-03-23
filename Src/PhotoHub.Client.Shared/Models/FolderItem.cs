@@ -1,3 +1,5 @@
+using PhotoHub.Client.Shared;
+
 namespace PhotoHub.Client.Shared.Models;
 
 public class FolderItem
@@ -16,10 +18,10 @@ public class FolderItem
     public List<FolderItem> SubFolders { get; set; } = new();
 
     public string? ThumbnailUrl => FirstAssetId.HasValue
-        ? $"/api/assets/{FirstAssetId.Value}/thumbnail?size=Medium"
+        ? $"{ApiConfig.BaseUrl}/api/assets/{FirstAssetId.Value}/thumbnail?size=Medium"
         : null;
 
     public List<string> PreviewThumbnailUrls => PreviewAssetIds
-        .Select(id => $"/api/assets/{id}/thumbnail?size=Small")
+        .Select(id => $"{ApiConfig.BaseUrl}/api/assets/{id}/thumbnail?size=Small")
         .ToList();
 }

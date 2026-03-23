@@ -109,13 +109,27 @@
             @if (Asset.Type == "VIDEO")
             {
                 <div class="video-preview-container">
-                    <img @ref="_imgRef" data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail lazy-img" />
+                    @if (ApiConfig.LazyLoadImages)
+                    {
+                        <img @ref="_imgRef" data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail lazy-img" />
+                    }
+                    else
+                    {
+                        <img @ref="_imgRef" src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail" />
+                    }
                     <video @ref="_videoRef" src="@_contentUrl" muted loop class="asset-card-image preview-video" preload="metadata" playsinline></video>
                 </div>
             }
             else
             {
-                <img @ref="_imgRef" data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image lazy-img" />
+                @if (ApiConfig.LazyLoadImages)
+                {
+                    <img @ref="_imgRef" data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image lazy-img" />
+                }
+                else
+                {
+                    <img @ref="_imgRef" src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image" />
+                }
             }
         }
         else

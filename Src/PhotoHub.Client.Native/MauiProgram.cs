@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
+using PhotoHub.Client.Shared;
 using PhotoHub.Client.Shared.Services;
 using PhotoHub.Client.Native.Services;
 
@@ -63,6 +64,12 @@ public static class MauiProgram
                 serverUrlService.Url = defaultUrl;
         }
         builder.Services.AddSingleton(serverUrlService);
+
+        // Inicializar la URL base estática para que los modelos generen URLs absolutas
+        // (el WebView de MAUI no resuelve URLs relativas contra el servidor)
+        ApiConfig.BaseUrl = serverUrlService.Url ?? string.Empty;
+        // Deshabilitar lazy loading: el IntersectionObserver no es fiable en WebView nativo
+        ApiConfig.LazyLoadImages = false;
 
         builder.Services.AddScoped<ApiErrorNotifier>();
         builder.Services.AddScoped(sp =>

@@ -3,6 +3,7 @@
 @using System.Linq
 @using MudBlazor
 @using PhotoHub.Client.Native.Services
+@using PhotoHub.Client.Shared
 @using PhotoHub.Client.Shared.Layout
 @using PhotoHub.Client.Shared.Services
 @inject IAuthService AuthService
@@ -114,8 +115,9 @@
         _loggingIn = true;
         try
         {
-            // Guardar la URL antes del login para que el HttpClient la use
+            // Guardar la URL antes del login para que el HttpClient y los modelos la usen
             ServerUrlService.Url = _serverUrl.TrimEnd('/');
+            ApiConfig.BaseUrl = ServerUrlService.Url ?? string.Empty;
 
             var success = await AuthService.LoginAsync(_username, _password);
             if (success)

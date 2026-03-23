@@ -1,3 +1,5 @@
+using PhotoHub.Client.Shared;
+
 namespace PhotoHub.Client.Shared.Models;
 
 public class AssetDetail
@@ -25,11 +27,11 @@ public class AssetDetail
     public string? Description { get; set; }
 
     public string ThumbnailUrl => Id != Guid.Empty
-        ? $"/api/assets/{Id}/thumbnail?size=Large" 
-        : $"/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
+        ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Large"
+        : $"{ApiConfig.BaseUrl}/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
     public string ContentUrl => Id != Guid.Empty
-        ? $"/api/assets/{Id}/content" 
-        : $"/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
+        ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/content"
+        : $"{ApiConfig.BaseUrl}/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
     public string DisplayDate => CreatedDate.ToString("dd MMM yyyy HH:mm");
     public string FileSizeFormatted => FormatFileSize(FileSize);
     
@@ -73,6 +75,6 @@ public class ThumbnailInfo
     public string Size { get; set; } = string.Empty;
     public int Width { get; set; }
     public int Height { get; set; }
-    public string Url => $"/api/assets/{AssetId}/thumbnail?size={Size}";
+    public string Url => $"{ApiConfig.BaseUrl}/api/assets/{AssetId}/thumbnail?size={Size}";
     public Guid AssetId { get; set; }
 }

@@ -1,3 +1,5 @@
+using PhotoHub.Client.Shared;
+
 namespace PhotoHub.Client.Shared.Models;
 
 public class TimelineItem
@@ -26,12 +28,12 @@ public class TimelineItem
         ? (double)Width.Value / Height.Value 
         : 1.0;
     
-    public string ThumbnailUrl => SyncStatus == AssetSyncStatus.Synced 
-        ? $"/api/assets/{Id}/thumbnail?size=Medium" 
-        : $"/api/assets/pending/thumbnail?path={System.Net.WebUtility.UrlEncode(FullPath)}&size=Medium";
-    public string ContentUrl => SyncStatus == AssetSyncStatus.Synced 
-        ? $"/api/assets/{Id}/content" 
-        : $"/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
+    public string ThumbnailUrl => SyncStatus == AssetSyncStatus.Synced
+        ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Medium"
+        : $"{ApiConfig.BaseUrl}/api/assets/pending/thumbnail?path={System.Net.WebUtility.UrlEncode(FullPath)}&size=Medium";
+    public string ContentUrl => SyncStatus == AssetSyncStatus.Synced
+        ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/content"
+        : $"{ApiConfig.BaseUrl}/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
     public string DisplayDate => CreatedDate.ToString("dd MMM yyyy");
     public string FileSizeFormatted => FormatFileSize(FileSize);
     

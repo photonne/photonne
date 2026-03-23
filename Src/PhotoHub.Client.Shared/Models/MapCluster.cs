@@ -1,3 +1,5 @@
+using PhotoHub.Client.Shared;
+
 namespace PhotoHub.Client.Shared.Models;
 
 public class MapCluster
@@ -12,8 +14,8 @@ public class MapCluster
     public Guid? FirstAssetId { get; set; }
     public bool HasThumbnail { get; set; }
     
-    public string ThumbnailUrl => FirstAssetId.HasValue && HasThumbnail 
-        ? $"/api/assets/{FirstAssetId.Value}/thumbnail?size=Medium" 
+    public string ThumbnailUrl => FirstAssetId.HasValue && HasThumbnail
+        ? $"{ApiConfig.BaseUrl}/api/assets/{FirstAssetId.Value}/thumbnail?size=Medium"
         : string.Empty;
 
     public override string ToString()
