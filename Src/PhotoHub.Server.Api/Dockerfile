@@ -13,7 +13,6 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Src/PhotoHub.Server.Api/PhotoHub.Server.Api.csproj", "Src/PhotoHub.Server.Api/"]
-COPY ["Src/PhotoHub.Client.Shared/PhotoHub.Client.Shared.csproj", "Src/PhotoHub.Client.Shared/"]
 COPY ["Src/PhotoHub.Client.Web/PhotoHub.Client.Web.csproj", "Src/PhotoHub.Client.Web/"]
 RUN dotnet restore "Src/PhotoHub.Server.Api/PhotoHub.Server.Api.csproj"
 COPY . .
