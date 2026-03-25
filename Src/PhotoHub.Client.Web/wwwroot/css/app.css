@@ -193,3 +193,38 @@ html, body {
         padding: 24px;
     }
 }
+
+/* ── Section tabs (Albums / Folders / Links) ───────────── */
+.ph-section-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+}
+.ph-section-tabs::-webkit-scrollbar { display: none; }
+.ph-section-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--mud-palette-text-secondary);
+    background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.15s, color 0.15s;
+}
+.ph-section-tab--active {
+    color: var(--mud-palette-primary-text);
+    background: var(--mud-palette-primary);
+    font-weight: 600;
+}

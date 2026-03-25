@@ -386,40 +386,7 @@
         color: var(--mud-palette-primary-text) !important;
     }
 
-    /* Section tabs — shared across Albums, MyShares, Folders */
-    .ph-section-tabs {
-        display: flex;
-        gap: 8px;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        padding-bottom: 4px;
-        margin-bottom: 12px;
-    }
-    .ph-section-tabs::-webkit-scrollbar { display: none; }
-    .ph-section-tab {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 16px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        white-space: nowrap;
-        text-decoration: none;
-        color: var(--mud-palette-text-secondary);
-        background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
-        border: none;
-        cursor: pointer;
-        font-family: inherit;
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
-        transition: background 0.15s, color 0.15s;
-    }
-    .ph-section-tab--active {
-        color: var(--mud-palette-primary-text);
-        background: var(--mud-palette-primary);
-        font-weight: 600;
-    }
+    /* Section tabs moved to `wwwroot/css/app.css` */
 </style>
 
 @if (_selectedAlbum == null)
@@ -624,6 +591,13 @@ else
 {
     <div class="album-detail-scroll">
     <div class="page-pad">
+    @* ── Section tabs (también en detalle) ── *@
+    <div class="ph-section-tabs">
+        <a href="/albums/own"    class="ph-section-tab @(_selectedAlbum?.IsOwner == true ? "ph-section-tab--active" : "")">Míos</a>
+        <a href="/albums/shared" class="ph-section-tab @(_selectedAlbum?.IsOwner == true ? "" : "ph-section-tab--active")">Compartidos</a>
+        <a href="/my-shares"     class="ph-section-tab">Links</a>
+    </div>
+
     <div class="album-hero">
         <div class="album-hero-bg" style="background-image: url('@(_selectedAlbum?.CoverThumbnailUrl ?? "")'); background-color: var(--mud-palette-primary);"></div>
 
