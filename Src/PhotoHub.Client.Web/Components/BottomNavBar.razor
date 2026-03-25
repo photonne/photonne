@@ -56,8 +56,8 @@
                 <MudIcon Icon="@(IsActive("/", exact: true) ? Icons.Material.Filled.PhotoLibrary : Icons.Material.Outlined.PhotoLibrary)" Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Fotos</span>
             </a>
-            <a href="/albums/own" class="ph-bottom-nav__tab @(IsActive("/albums") ? "ph-bottom-nav__tab--active" : "")">
-                <MudIcon Icon="@(IsActive("/albums") ? Icons.Material.Filled.Collections : Icons.Material.Outlined.Collections)" Class="ph-bottom-nav__icon" />
+            <a href="/albums/own" class="ph-bottom-nav__tab @(IsActive("/albums") || IsActive("/my-shares") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/albums") || IsActive("/my-shares") ? Icons.Material.Filled.Collections : Icons.Material.Outlined.Collections)" Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Álbumes</span>
             </a>
             <a href="/search" class="ph-bottom-nav__tab ph-bottom-nav__tab--search @(IsActive("/search") ? "ph-bottom-nav__tab--active" : "")">
@@ -108,16 +108,6 @@
                             @onclick="@(() => NavigateMore("/favorites"))">
                         <MudIcon Icon="@(IsActive("/favorites") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)" Class="ph-more-item__icon" />
                         <span class="ph-more-item__label">Favoritos</span>
-                    </button>
-                    <button class="ph-more-item @(IsActive("/albums/shared") ? "ph-more-item--active" : "")"
-                            @onclick="@(() => NavigateMore("/albums/shared"))">
-                        <MudIcon Icon="@(IsActive("/albums/shared") ? Icons.Material.Filled.People : Icons.Material.Outlined.People)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Compartidos</span>
-                    </button>
-                    <button class="ph-more-item @(IsActive("/my-shares") ? "ph-more-item--active" : "")"
-                            @onclick="@(() => NavigateMore("/my-shares"))">
-                        <MudIcon Icon="@(IsActive("/my-shares") ? Icons.Material.Filled.Share : Icons.Material.Outlined.Share)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Links</span>
                     </button>
                     <button class="ph-more-item @(IsActive("/map") ? "ph-more-item--active" : "")"
                             @onclick="@(() => NavigateMore("/map"))">
@@ -366,7 +356,7 @@
     private bool IsAdminPath       => IsActive("/admin");
 
     private bool IsMoreSection =>
-        IsActive("/favorites") || IsActive("/my-shares") || IsActive("/map") ||
-        IsActive("/device")    || IsActive("/archive")   || IsActive("/trash") ||
+        IsActive("/favorites") || IsActive("/map")     ||
+        IsActive("/device")    || IsActive("/archive") || IsActive("/trash") ||
         IsActive("/utilities");
 }

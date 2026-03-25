@@ -7,10 +7,17 @@
 <PageTitle>Mis enlaces - PhotoHub</PageTitle>
 
 <div class="page-pad">
-    <MudText Typo="Typo.h5" Class="mb-1">Mis enlaces</MudText>
-<MudText Typo="Typo.body2" Class="mud-text-secondary mb-6">
-    Gestiona todos los enlaces públicos que has creado.
-</MudText>
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">Álbumes</MudText>
+    </div>
+    <div class="ph-section-tabs">
+        <a href="/albums/own"    class="ph-section-tab">Míos</a>
+        <a href="/albums/shared" class="ph-section-tab">Compartidos</a>
+        <a href="/my-shares"     class="ph-section-tab ph-section-tab--active">Links</a>
+    </div>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+        Gestiona todos los enlaces públicos que has creado.
+    </MudText>
 
 @if (_loading)
 {

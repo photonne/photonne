@@ -304,6 +304,11 @@
 
 @if (_selectedFolder == null)
 {
+    <div class="ph-section-tabs">
+        <a href="/folders/own"    class="ph-section-tab @(_activeTab == 0 ? "ph-section-tab--active" : "")">Personal</a>
+        <a href="/folders/shared" class="ph-section-tab @(_activeTab == 1 ? "ph-section-tab--active" : "")">Compartido</a>
+    </div>
+
     @if (_folderViewMode == FolderViewMode.Grid)
     {
         @RenderFolderGrid(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))

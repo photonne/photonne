@@ -385,14 +385,49 @@
         background: var(--mud-palette-primary) !important;
         color: var(--mud-palette-primary-text) !important;
     }
+
+    /* Section tabs — shared across Albums, MyShares, Folders */
+    .ph-section-tabs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+    }
+    .ph-section-tabs::-webkit-scrollbar { display: none; }
+    .ph-section-tab {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        white-space: nowrap;
+        text-decoration: none;
+        color: var(--mud-palette-text-secondary);
+        background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .ph-section-tab--active {
+        color: var(--mud-palette-primary-text);
+        background: var(--mud-palette-primary);
+        font-weight: 600;
+    }
 </style>
 
 @if (_selectedAlbum == null)
 {
     <div class="page-pad">
-    <div class="d-flex align-center justify-space-between mb-4">
-        <MudText Typo="Typo.h5">@PageHeader</MudText>
-        
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">Álbumes</MudText>
+
         <div class="d-flex align-center gap-1">
             <MudTextField @bind-Value="_albumSearch"
                           Placeholder="Buscar"
@@ -412,6 +447,13 @@
                            Title="Opciones de vista"
                            OnClick="@(() => { _albumFilterSheetEverOpened = true; _albumFilterSheetOpen = true; })" />
         </div>
+    </div>
+
+    @* ── Section tabs ── *@
+    <div class="ph-section-tabs">
+        <a href="/albums/own"    class="ph-section-tab @(Filter?.ToLower() == "own"    || Filter == null ? "ph-section-tab--active" : "")">Míos</a>
+        <a href="/albums/shared" class="ph-section-tab @(Filter?.ToLower() == "shared" ? "ph-section-tab--active" : "")">Compartidos</a>
+        <a href="/my-shares"     class="ph-section-tab">Links</a>
     </div>
 
     @if (_loading)
