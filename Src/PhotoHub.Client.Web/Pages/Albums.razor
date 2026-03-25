@@ -357,6 +357,23 @@
         overflow-y: auto;
         opacity: 0.9;
     }
+
+    /* Album detail — fixed-height scroll container so AppBar/BottomNav stay fixed */
+    .album-detail-scroll {
+        height: calc(100vh - var(--mud-appbar-height, 64px));
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    @@media (max-width: 959.98px) {
+        .album-detail-scroll {
+            height: calc(100vh - var(--mud-appbar-height, 64px) - 64px - env(safe-area-inset-bottom));
+        }
+
+        .album-hero {
+            min-height: 260px;
+        }
+    }
 </style>
 
 @if (_selectedAlbum == null)
@@ -574,9 +591,11 @@
 }
 else
 {
+    <div class="album-detail-scroll">
+    <div class="page-pad">
     <div class="album-hero">
         <div class="album-hero-bg" style="background-image: url('@(_selectedAlbum?.CoverThumbnailUrl ?? "")'); background-color: var(--mud-palette-primary);"></div>
-        
+
         <div class="album-hero-back">
             <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))" Title="Volver a álbumes" />
         </div>
@@ -658,14 +677,14 @@ else
             }
         </div>
     </div>
-    
+
     @if (_loadingAssets)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
     }
     else if (_albumAssets.Any())
     {
-        <div class="px-4 pb-4">
+        <div class="pb-4">
             <div class="mb-3">
                 <MudText Typo="Typo.h6">Archivos</MudText>
             </div>
@@ -688,12 +707,14 @@ else
     }
     else
     {
-        <div class="px-4 pb-4">
+        <div class="pb-4">
             <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
                         Title="Este álbum está vacío"
                         Description="Añade fotos desde el detalle de cualquier foto." />
         </div>
     }
+    </div>
+    </div>
 }
 
 <MudDialog @bind-Visible="_createDialogVisible" 
