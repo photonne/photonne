@@ -3,6 +3,8 @@
 @inject LayoutService LayoutService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
 
 <PageTitle>Archivo - PhotoHub</PageTitle>
 
@@ -36,7 +38,11 @@
                     @foreach (var asset in group.Value)
                     {
                         <MudItem xs="4" sm="3" md="2">
-                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")">
+                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                                 data-asset-id="@asset.Id"
+                                 @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                                 @ontouchmove="OnCardTouchMove"
+                                 @ontouchend="OnCardTouchEnd">
                                 <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
                                 <div class="asset-select-checkbox" @onclick:stopPropagation="true">
                                     <MudCheckBox T="bool"
@@ -119,6 +125,7 @@
         left: 4px;
         z-index: 5;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 0.2s;
         background: rgba(0,0,0,0.4);
         border-radius: 999px;
@@ -132,11 +139,20 @@
 
     .asset-select-container:hover .asset-select-checkbox {
         opacity: 1;
+        pointer-events: auto;
     }
 
     .asset-select-container.selection-mode .asset-select-checkbox,
     .asset-select-container.selected .asset-select-checkbox {
         opacity: 1;
+        pointer-events: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
+        }
     }
 </style>
 
@@ -151,9 +167,21 @@
     private HashSet<Guid> _selectedAssetIds = new();
     private bool _unarchiveAllDialogVisible;
 
+    // Touch / long-press / drag-select
+    private DotNetObjectReference<Archive>? _objRef;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _objRef = DotNetObjectReference.Create(this);
     }
 
     private async Task LoadAsync()
@@ -217,8 +245,74 @@
         return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
     }
 
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_selectionMode)
+        {
+            var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAssetSelected(assetId)) return;
+        ToggleAssetSelection(assetId, select);
+        StateHasChanged();
+    }
+
     private void OpenAsset(TimelineItem asset)
     {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
         if (_selectionMode)
         {
             ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
@@ -308,6 +402,13 @@
         {
             Snackbar.Add($"Error al desarchivar: {ex.Message}", Severity.Error);
         }
+    }
+
+    public void Dispose()
+    {
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
+        LayoutService.ResetNavbar();
     }
 
     private void OpenUnarchiveAllDialog() => _unarchiveAllDialogVisible = true;

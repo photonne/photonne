@@ -521,11 +521,11 @@
         pointer-events: auto;
     }
 
-    /* En dispositivos móviles (<960px) */
+    /* En dispositivos móviles (max 959px) */
     @@media (max-width: 959.98px) {
-        .asset-select-checkbox {
-            opacity: 0.5;
-            pointer-events: auto;
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
         }
 
         /* Móvil: contenido a full width, scrubber flota encima */
@@ -1293,9 +1293,10 @@
         // Si ya estamos en modo selección, el dedo inicia el arrastre directamente
         if (_selectionMode)
         {
-            // El modo se determina por el estado inicial del asset tocado
             var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true; // suprime el click sintético post-touch
             ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
             if (_objRef != null)
                 await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
             return;
@@ -1309,7 +1310,7 @@
             {
                 _longPressHandled = true;
                 ToggleAssetSelection(asset.Id, true);
-                // Long press siempre entra en modo seleccionar (el asset no estaba seleccionado)
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
                 if (_objRef != null)
                     await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
                 StateHasChanged();

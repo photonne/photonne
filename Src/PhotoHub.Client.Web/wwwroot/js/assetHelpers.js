@@ -70,19 +70,25 @@ window.assetGridHelpers = {
     SIDE_ZONE_PX: 56,
 
     _getRowAssetIds(el) {
-        const item = el?.closest('.masonry-item');
-        if (!item) return [];
-        const grid = item.closest('.masonry-grid');
+        const container = el?.closest('[data-asset-id]');
+        if (!container) return [];
+        const grid = container.closest('.masonry-grid, .mud-grid');
         if (!grid) return [];
-        const rect = item.getBoundingClientRect();
+        const rect = container.getBoundingClientRect();
         const ids = [];
-        grid.querySelectorAll('[data-asset-id]').forEach(container => {
-            const r = container.getBoundingClientRect();
+        grid.querySelectorAll('[data-asset-id]').forEach(c => {
+            const r = c.getBoundingClientRect();
             if (r.top < rect.bottom && r.bottom > rect.top) {
-                ids.push(container.dataset.assetId);
+                ids.push(c.dataset.assetId);
             }
         });
         return ids;
+    },
+
+    suppressNextClick() {
+        // Evita el click sintético que genera el navegador tras touchend
+        // (long-press o selección táctil) para que no haga doble-toggle en Blazor.
+        document.addEventListener('click', (e) => e.stopPropagation(), { once: true, capture: true });
     },
 
     startDragSelect(dotNetRef, selectMode) {
@@ -103,7 +109,7 @@ window.assetGridHelpers = {
 
             if (inSideZone) {
                 // Modo fila: procesar todos los assets de la fila actual
-                const item = el?.closest('.masonry-item');
+                const item = el?.closest('[data-asset-id]');
                 if (!item || item === this._lastRowItem) return;
                 this._lastRowItem = item;
 

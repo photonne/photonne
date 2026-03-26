@@ -57,6 +57,7 @@
         left: 8px;
         z-index: 5;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 0.2s;
         background: rgba(0,0,0,0.4);
         border-radius: 999px;
@@ -70,11 +71,20 @@
 
     .asset-select-container:hover .asset-select-checkbox {
         opacity: 1;
+        pointer-events: auto;
     }
 
     .asset-select-container.selection-mode .asset-select-checkbox,
     .asset-select-container.selected .asset-select-checkbox {
         opacity: 1;
+        pointer-events: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
+        }
     }
 
     .albums-search {
@@ -697,7 +707,11 @@ else
                 @foreach (var asset in _albumAssets)
                 {
                     <MudItem xs="4" sm="3" md="2" lg="2" xl="1">
-                        <div class="asset-select-container @(_assetSelectionMode ? "selection-mode" : "") @(IsAlbumAssetSelected(asset.Id) ? "selected" : "")">
+                        <div class="asset-select-container @(_assetSelectionMode ? "selection-mode" : "") @(IsAlbumAssetSelected(asset.Id) ? "selected" : "")"
+                             data-asset-id="@asset.Id"
+                             @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                             @ontouchmove="OnCardTouchMove"
+                             @ontouchend="OnCardTouchEnd">
                             <AssetCard Asset="@asset" OnAssetClick="OnAlbumAssetClick" />
                             <div class="asset-select-checkbox" @onclick:stopPropagation="true">
                                 <MudCheckBox T="bool"
@@ -907,6 +921,13 @@ else
 
     private bool _downloadingZip = false;
 
+    // Touch / long-press / drag-select
+    private DotNetObjectReference<Albums>? _objRef;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
     // Dialogs
     private bool _createDialogVisible = false;
     private bool _createAlbumSheetEverOpened = false;
@@ -935,6 +956,71 @@ else
         }
         
         return "background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-dark) 100%);";
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _objRef = DotNetObjectReference.Create(this);
+    }
+
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_assetSelectionMode)
+        {
+            var selectMode = !IsAlbumAssetSelected(asset.Id);
+            _longPressHandled = true;
+            ToggleAlbumAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAlbumAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAlbumAssetSelected(assetId)) return;
+        ToggleAlbumAssetSelection(assetId, select);
+        StateHasChanged();
     }
 
     private void OnViewModeChanged(AlbumViewMode mode)
@@ -1102,6 +1188,12 @@ else
 
     private void OnAlbumAssetClick(TimelineItem asset)
     {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
         if (_assetSelectionMode)
         {
             ToggleAlbumAssetSelection(asset.Id, !IsAlbumAssetSelected(asset.Id));
@@ -1754,6 +1846,8 @@ else
 
     public void Dispose()
     {
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
         LayoutService.ResetNavbar();
     }
 
