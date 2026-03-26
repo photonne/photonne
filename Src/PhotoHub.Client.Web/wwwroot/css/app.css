@@ -31,13 +31,13 @@ html, body {
     font-weight: 500;
 }
 
-/* ── Page loading bar (fijo bajo el AppBar, ancho completo) ─ */
+/* ── Page loading bar (fijo en el borde superior, encima del AppBar) ─ */
 .page-loading-bar {
     position: fixed;
-    top: var(--mud-appbar-height, 64px);
+    top: 0;
     left: 0;
     right: 0;
-    z-index: 1299;
+    z-index: 9999;
     margin: 0 !important;
     height: 3px;
 }
