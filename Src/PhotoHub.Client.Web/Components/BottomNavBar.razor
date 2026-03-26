@@ -56,15 +56,13 @@
                 <MudIcon Icon="@(IsActive("/", exact: true) ? Icons.Material.Filled.PhotoLibrary : Icons.Material.Outlined.PhotoLibrary)" Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Fotos</span>
             </a>
+            <a href="/search" class="ph-bottom-nav__tab @(IsActive("/search") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/search") ? Icons.Material.Filled.Search : Icons.Material.Outlined.Search)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Buscar</span>
+            </a>
             <a href="/albums/own" class="ph-bottom-nav__tab @(IsActive("/albums") || IsActive("/my-shares") ? "ph-bottom-nav__tab--active" : "")">
                 <MudIcon Icon="@(IsActive("/albums") || IsActive("/my-shares") ? Icons.Material.Filled.Collections : Icons.Material.Outlined.Collections)" Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Álbumes</span>
-            </a>
-            <a href="/search" class="ph-bottom-nav__tab ph-bottom-nav__tab--search @(IsActive("/search") ? "ph-bottom-nav__tab--active" : "")">
-                <span class="ph-bottom-nav__search-pill @(IsActive("/search") ? "ph-bottom-nav__search-pill--active" : "")">
-                    <MudIcon Icon="@Icons.Material.Filled.Search" Class="ph-bottom-nav__icon" />
-                </span>
-                <span class="ph-bottom-nav__label">Buscar</span>
             </a>
             <a href="/folders/own" class="ph-bottom-nav__tab @(IsActive("/folders") ? "ph-bottom-nav__tab--active" : "")">
                 <MudIcon Icon="@(IsActive("/folders") ? Icons.Material.Filled.Folder : Icons.Material.Outlined.FolderOpen)" Class="ph-bottom-nav__icon" />
@@ -88,54 +86,48 @@
             </div>
         }
 
-        @* ── MÁS — bottom sheet ── *@
-        @if (_moreSheetEverOpened)
+        @* ── MÁS — full-screen overlay ── *@
+        @if (_moreSheetOpen)
         {
-            <MudDrawer @bind-Open="_moreSheetOpen"
-                       Anchor="Anchor.Bottom"
-                       Elevation="4"
-                       Variant="DrawerVariant.Temporary"
-                       Class="ph-bottom-sheet">
-                <div class="ph-sheet-handle"></div>
-                <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+            <div class="ph-more-overlay">
+                <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
                     <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Más</MudText>
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
                                    OnClick="@(() => _moreSheetOpen = false)" />
                 </div>
-                <MudDivider />
-                <div class="ph-more-grid px-4 py-3">
-                    <button class="ph-more-item @(IsActive("/favorites") ? "ph-more-item--active" : "")"
+                <div class="ph-more-list">
+                    <button class="ph-more-row justify-start @(IsActive("/favorites") ? "ph-more-row--active" : "")"
                             @onclick="@(() => NavigateMore("/favorites"))">
-                        <MudIcon Icon="@(IsActive("/favorites") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Favoritos</span>
+                        <MudIcon Icon="@(IsActive("/favorites") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)" Class="ph-more-row__icon" />
+                        <span class="ph-more-row__label">Favoritos</span>
                     </button>
-                    <button class="ph-more-item @(IsActive("/map") ? "ph-more-item--active" : "")"
+                    <button class="ph-more-row justify-start @(IsActive("/map") ? "ph-more-row--active" : "")"
                             @onclick="@(() => NavigateMore("/map"))">
-                        <MudIcon Icon="@(IsActive("/map") ? Icons.Material.Filled.Map : Icons.Material.Outlined.Map)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Mapa</span>
+                        <MudIcon Icon="@(IsActive("/map") ? Icons.Material.Filled.Map : Icons.Material.Outlined.Map)" Class="ph-more-row__icon" />
+                        <span class="ph-more-row__label">Mapa</span>
                     </button>
-                    <button class="ph-more-item @(IsActive("/device") ? "ph-more-item--active" : "")"
+                    <button class="ph-more-row justify-start @(IsActive("/device") ? "ph-more-row--active" : "")"
                             @onclick="@(() => NavigateMore("/device"))">
-                        <MudIcon Icon="@(IsActive("/device") ? Icons.Material.Filled.PhoneAndroid : Icons.Material.Outlined.PhoneAndroid)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Dispositivo</span>
+                        <MudIcon Icon="@(IsActive("/device") ? Icons.Material.Filled.PhoneAndroid : Icons.Material.Outlined.PhoneAndroid)" Class="ph-more-row__icon" />
+                        <span class="ph-more-row__label">Dispositivo</span>
                     </button>
-                    <button class="ph-more-item @(IsActive("/archive") ? "ph-more-item--active" : "")"
+                    <button class="ph-more-row justify-start @(IsActive("/archive") ? "ph-more-row--active" : "")"
                             @onclick="@(() => NavigateMore("/archive"))">
-                        <MudIcon Icon="@(IsActive("/archive") ? Icons.Material.Filled.Archive : Icons.Material.Outlined.Archive)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Archivo</span>
+                        <MudIcon Icon="@(IsActive("/archive") ? Icons.Material.Filled.Archive : Icons.Material.Outlined.Archive)" Class="ph-more-row__icon" />
+                        <span class="ph-more-row__label">Archivo</span>
                     </button>
-                    <button class="ph-more-item @(IsActive("/trash") ? "ph-more-item--active" : "")"
+                    <button class="ph-more-row justify-start @(IsActive("/trash") ? "ph-more-row--active" : "")"
                             @onclick="@(() => NavigateMore("/trash"))">
-                        <MudIcon Icon="@(IsActive("/trash") ? Icons.Material.Filled.Delete : Icons.Material.Outlined.Delete)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Papelera</span>
+                        <MudIcon Icon="@(IsActive("/trash") ? Icons.Material.Filled.Delete : Icons.Material.Outlined.Delete)" Class="ph-more-row__icon" />
+                        <span class="ph-more-row__label">Papelera</span>
                     </button>
-                    <button class="ph-more-item @(IsActive("/utilities") ? "ph-more-item--active" : "")"
+                    <button class="ph-more-row justify-start @(IsActive("/utilities") ? "ph-more-row--active" : "")"
                             @onclick="@(() => NavigateMore("/utilities"))">
-                        <MudIcon Icon="@(IsActive("/utilities") ? Icons.Material.Filled.Build : Icons.Material.Outlined.Build)" Class="ph-more-item__icon" />
-                        <span class="ph-more-item__label">Utilidades</span>
+                        <MudIcon Icon="@(IsActive("/utilities") ? Icons.Material.Filled.Build : Icons.Material.Outlined.Build)" Class="ph-more-row__icon" />
+                        <span class="ph-more-row__label">Utilidades</span>
                     </button>
                 </div>
-            </MudDrawer>
+            </div>
         }
     }
 }
@@ -206,34 +198,6 @@
         font-weight: 600;
     }
 
-    /* Search tab — center with pill (main nav only) */
-    .ph-bottom-nav__tab--search {
-        flex: 1.3;
-    }
-
-    .ph-bottom-nav__search-pill {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 56px;
-        height: 32px;
-        border-radius: 16px;
-        background: color-mix(in srgb, var(--mud-palette-primary) 13%, transparent);
-        transition: background 0.15s ease;
-    }
-
-    .ph-bottom-nav__search-pill--active {
-        background: color-mix(in srgb, var(--mud-palette-primary) 24%, transparent);
-    }
-
-    .ph-bottom-nav__tab--search .ph-bottom-nav__icon {
-        color: var(--mud-palette-primary);
-    }
-
-    .ph-bottom-nav__tab--search .ph-bottom-nav__label {
-        color: var(--mud-palette-primary);
-        font-weight: 600;
-    }
 
     /* "Más" tab — button reset */
     .ph-bottom-nav__tab--btn {
@@ -243,53 +207,64 @@
         font-family: inherit;
     }
 
-    /* "Más" sheet grid */
-    .ph-more-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-    }
-
-    .ph-more-item {
+    /* "Más" overlay — covers full screen except bottom nav */
+    .ph-more-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: calc(64px + env(safe-area-inset-bottom));
+        background-color: var(--mud-palette-surface);
+        z-index: 1300;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 12px 4px;
-        border-radius: 12px;
+        overflow-y: auto;
+    }
+
+    /* "Más" sheet list */
+    .ph-more-list {
+        display: flex;
+        flex-direction: column;
+        padding: 8px 0;
+    }
+
+    .ph-more-row {
+        gap: 16px;
+        padding: 16px 24px;
         background: none;
         border: none;
         cursor: pointer;
         font-family: inherit;
         color: var(--mud-palette-text-primary);
+        text-align: left;
+        width: 100%;
         -webkit-tap-highlight-color: transparent;
         transition: background 0.15s ease;
     }
 
-    .ph-more-item:active {
+    .ph-more-row:active {
         background: var(--mud-palette-action-default-hover);
     }
 
-    .ph-more-item--active {
+    .ph-more-row--active {
         color: var(--mud-palette-primary);
         background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
     }
 
-    .ph-more-item__icon {
-        font-size: 26px !important;
-        width: 26px !important;
-        height: 26px !important;
+    .ph-more-row__icon {
+        font-size: 24px !important;
+        width: 24px !important;
+        height: 24px !important;
+        flex-shrink: 0;
     }
 
-    .ph-more-item__label {
-        font-size: 11px;
+    .ph-more-row__label {
+        font-size: 16px;
         font-weight: 500;
         line-height: 1;
-        text-align: center;
     }
 
-    .ph-more-item--active .ph-more-item__label {
+    .ph-more-row--active .ph-more-row__label {
         font-weight: 600;
     }
 
@@ -317,7 +292,10 @@
     }
 
     private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-        => StateHasChanged();
+    {
+        _moreSheetOpen = false;
+        StateHasChanged();
+    }
 
     private void HandleMajorUpdate()
         => InvokeAsync(StateHasChanged);
@@ -337,13 +315,8 @@
     }
 
     private bool _moreSheetOpen = false;
-    private bool _moreSheetEverOpened = false;
 
-    private void OpenMoreSheet()
-    {
-        _moreSheetEverOpened = true;
-        _moreSheetOpen = true;
-    }
+    private void OpenMoreSheet() => _moreSheetOpen = true;
 
     private void NavigateMore(string path)
     {
