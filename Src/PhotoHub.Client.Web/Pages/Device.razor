@@ -1,6 +1,7 @@
 @page "/device"
 @inject IAssetService AssetService
 @inject IPendingAssetsProvider PendingAssetsProvider
+@inject ISettingsService SettingsService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -15,93 +16,138 @@
 <div class="page-pad">
     <MudText Typo="Typo.h5" Class="mb-4">Mi Dispositivo</MudText>
 
-@if (_pendingAssetsCount > 0 && !_syncingAll)
-{
-    <MudAlert Severity="Severity.Info"
-              Variant="Variant.Filled"
-                           Icon="@Icons.Material.Filled.CloudUpload"
-              Class="mb-4">
-        <div class="d-flex align-center justify-space-between gap-3">
-            <div class="flex-grow-1 min-width-0">
-                <MudText Typo="Typo.body1" Class="mb-1">
-                    <strong>@_pendingAssetsCount</strong> @(_pendingAssetsCount == 1 ? "foto pendiente" : "fotos pendientes") de sincronizar
-                </MudText>
-                <MudText Typo="Typo.body2" Style="opacity: 0.8;">
-                    Se copiarán al directorio interno para su indexación
-                </MudText>
-            </div>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.CloudUpload"
-                       OnClick="SyncAllPendingAssets"
-                       Disabled="@_syncingAll"
-                       Class="flex-shrink-0">
-                Sincronizar Todas
-            </MudButton>
-        </div>
-    </MudAlert>
-}
-
-@if (_syncingAll)
-{
-    <MudAlert Severity="Severity.Info"
-              Variant="Variant.Filled"
-                           Icon="@Icons.Material.Filled.CloudSync"
-              Class="mb-4">
-        <div class="d-flex align-center gap-3">
-            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="flex-shrink-0" />
-            <div class="flex-grow-1 min-width-0">
-                <MudText Typo="Typo.body2" Class="mb-1">@_syncProgressMessage</MudText>
-                <MudProgressLinear Color="Color.Primary" Value="@_syncProgress" Class="my-2" />
-                <MudText Typo="Typo.caption" Style="opacity: 0.8;">
-                    @_syncCurrent de @_syncTotal sincronizadas
-                    @if (_syncSuccessful > 0 || _syncFailed > 0)
-                    {
-                        <span>(@_syncSuccessful exitosas@(_syncFailed > 0 ? $", {_syncFailed} fallidas" : ""))</span>
-                    }
-                </MudText>
-            </div>
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Inherit"
-                       OnClick="CancelSyncAll"
-                       Size="Size.Small"
-                       Class="flex-shrink-0">
-                Cancelar
-            </MudButton>
-        </div>
-    </MudAlert>
-}
-
-@if (_groupedAssets.Any())
-{
-    @foreach (var group in _groupedAssets)
+    @* ── Ruta configurada ────────────────────────────────────────── *@
+    @if (!_loading)
     {
-        <div class="mb-6">
-            <MudText Typo="Typo.h6" Class="mb-3 font-weight-bold">@group.Key</MudText>
-            <MudGrid Spacing="1">
-                @foreach (var asset in group.Value)
+        @if (string.IsNullOrWhiteSpace(_devicePath))
+        {
+            <EmptyState Icon="@Icons.Material.Filled.FolderOff"
+                        Title="No hay ninguna ruta configurada"
+                        Description="Ve a Configuración → Dispositivo para establecer la carpeta donde están tus fotos.">
+                <Actions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Settings"
+                               OnClick="@(() => Navigation.NavigateTo("/settings/device"))">
+                        Configurar ruta
+                    </MudButton>
+                </Actions>
+            </EmptyState>
+        }
+        else
+        {
+            <MudPaper Class="d-flex align-center gap-3 px-4 py-3 mb-4" Elevation="0"
+                      Style="border: 1px solid var(--mud-palette-divider); border-radius: 12px;">
+                <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" />
+                <div class="flex-grow-1 min-width-0">
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Ruta analizada</MudText>
+                    <MudText Typo="Typo.body2" Style="word-break: break-all;">@_devicePath</MudText>
+                </div>
+                <MudTooltip Text="Re-escanear">
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                   Size="Size.Small"
+                                   Disabled="@_loading"
+                                   OnClick="@(async () => await LoadDeviceAssets())" />
+                </MudTooltip>
+            </MudPaper>
+
+            @* ── Alerta de pendientes ────────────────────────────────── *@
+            @if (_pendingAssetsCount > 0 && !_syncingAll)
+            {
+                <MudPaper Class="mb-4 pa-4" Elevation="0"
+                          Style="border: 1px solid var(--mud-palette-divider); border-radius: 12px;">
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" Size="Size.Small" />
+                        <div>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium">
+                                @_pendingAssetsCount @(_pendingAssetsCount == 1 ? "foto pendiente" : "fotos pendientes") de sincronizar
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                Se copiarán al directorio interno para su indexación
+                            </MudText>
+                        </div>
+                    </div>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                               FullWidth="true"
+                               OnClick="SyncAllPendingAssets">
+                        Sincronizar todas
+                    </MudButton>
+                </MudPaper>
+            }
+
+            @* ── Progreso de sincronización ──────────────────────────── *@
+            @if (_syncingAll)
+            {
+                <MudPaper Class="mb-4 pa-4" Elevation="0"
+                          Style="border: 1px solid var(--mud-palette-divider); border-radius: 12px;">
+                    <div class="d-flex align-center gap-3 mb-2">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" Class="flex-shrink-0" />
+                        <MudText Typo="Typo.body2" Class="font-weight-medium flex-grow-1">@_syncProgressMessage</MudText>
+                        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelSyncAll" Size="Size.Small">
+                            Cancelar
+                        </MudButton>
+                    </div>
+                    <MudProgressLinear Color="Color.Primary" Value="@_syncProgress" Rounded="true" Class="mb-2" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        @_syncCurrent de @_syncTotal sincronizadas
+                        @if (_syncSuccessful > 0 || _syncFailed > 0)
+                        {
+                            <span> · @_syncSuccessful exitosas@(_syncFailed > 0 ? $", {_syncFailed} fallidas" : "")</span>
+                        }
+                    </MudText>
+                </MudPaper>
+            }
+
+            @* ── Grid de assets ──────────────────────────────────────── *@
+            @if (_groupedAssets.Any())
+            {
+                @foreach (var group in _groupedAssets)
                 {
-                    <MudItem xs="4" sm="3" md="2" lg="2" xl="1">
-                        <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
-                    </MudItem>
+                    <div class="mb-6">
+                        <MudText Typo="Typo.body2" Class="device-date-header">@group.Key</MudText>
+                        <MudGrid Spacing="1">
+                            @foreach (var asset in group.Value)
+                            {
+                                <MudItem xs="4" sm="3" md="2" lg="2" xl="1">
+                                    <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </div>
                 }
-            </MudGrid>
-        </div>
+            }
+            else if (!_loading)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.CheckCircle"
+                            Title="Todo sincronizado"
+                            Description="@($"No hay archivos nuevos en {_devicePath}")" />
+            }
+        }
     }
-}
-else if (!_loading)
-{
-    <EmptyState Icon="@Icons.Material.Filled.CloudUpload"
-                Title="No hay fotos pendientes de sincronizar"
-                Description="Tu dispositivo está al día." />
-}
 </div>
+
+<style>
+    .device-date-header {
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: capitalize;
+        padding: 0 4px 6px 4px;
+    }
+
+    @@media (max-width: 599.98px) {
+        .device-date-header {
+            font-size: 0.78rem !important;
+        }
+    }
+</style>
 
 @code {
     private List<TimelineItem> _assets = new();
     private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
     private bool _loading = true;
-    
+    private string _devicePath = "";
+
     // Sincronización múltiple
     private int _pendingAssetsCount = 0;
     private bool _syncingAll = false;
@@ -115,7 +161,19 @@ else if (!_loading)
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDeviceAssets();
+        try
+        {
+            _loading = true;
+            _devicePath = await SettingsService.GetAssetsPathAsync();
+            if (!string.IsNullOrWhiteSpace(_devicePath))
+            {
+                await LoadDeviceAssets();
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task LoadDeviceAssets()
@@ -123,12 +181,13 @@ else if (!_loading)
         try
         {
             _loading = true;
+            StateHasChanged();
             _assets = await PendingAssetsProvider.GetPendingAssetsAsync();
             GroupAssets();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error al cargar assets del dispositivo: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error al analizar la ruta: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -142,7 +201,7 @@ else if (!_loading)
             .OrderByDescending(a => a.ModifiedDate)
             .GroupBy(a => a.ModifiedDate.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-ES")))
             .ToDictionary(g => char.ToUpper(g.Key[0]) + g.Key.Substring(1), g => g.ToList());
-        
+
         _pendingAssetsCount = _assets.Count;
     }
 
@@ -169,13 +228,13 @@ else if (!_loading)
         _syncProgress = 0;
         _syncProgressMessage = "Iniciando sincronización...";
         _syncCancellationTokenSource = new CancellationTokenSource();
-        
+
         StateHasChanged();
 
         try
         {
             var paths = pendingAssets.Select(a => a.FullPath).ToList();
-            
+
             await foreach (var update in AssetService.SyncMultipleAssetsAsync(paths, _syncCancellationTokenSource.Token))
             {
                 _syncCurrent = update.Current;
@@ -184,33 +243,23 @@ else if (!_loading)
                 _syncFailed = update.Failed;
                 _syncProgress = update.Percentage;
                 _syncProgressMessage = update.Message;
-                
-                // Actualizar el estado del asset en la lista
+
                 var asset = _assets.FirstOrDefault(a => a.FullPath == update.CurrentPath);
                 if (asset != null)
                 {
-                    if (update.Message.Contains("Error"))
-                    {
-                        asset.SyncStatus = AssetSyncStatus.Pending;
-                    }
-                    else
-                    {
-                        asset.SyncStatus = AssetSyncStatus.Copied;
-                    }
+                    asset.SyncStatus = update.Message.Contains("Error")
+                        ? AssetSyncStatus.Pending
+                        : AssetSyncStatus.Copied;
                 }
-                
+
                 StateHasChanged();
-                
-                if (update.IsCompleted)
-                {
-                    break;
-                }
+
+                if (update.IsCompleted) break;
             }
 
-            // Recargar lista para actualizar estados (los sincronizados desaparecerán)
             await LoadDeviceAssets();
-            
-            Snackbar.Add($"Sincronización completada: {_syncSuccessful} exitosas, {_syncFailed} fallidas", 
+
+            Snackbar.Add($"Sincronización completada: {_syncSuccessful} exitosas, {_syncFailed} fallidas",
                 _syncFailed > 0 ? Severity.Warning : Severity.Success);
         }
         catch (OperationCanceledException)
