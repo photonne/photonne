@@ -6,13 +6,11 @@
 
 <PageTitle>Buscar - PhotoHub</PageTitle>
 
-<div class="page-pad">
-    <div class="search-filters mb-4">
-    <MudGrid Spacing="2" AlignItems="AlignItems.End">
-        <MudItem xs="12" Class="d-md-none">
+@* ── Mobile: fixed search bar + collapsible filters ── *@
+<div class="ph-search-bar d-md-none">
+        <div class="d-flex align-center gap-2">
             <MudTextField @bind-Value="_searchTerm"
                           @bind-Value:after="OnSearchTermChangedByPage"
-                          Label="Buscar"
                           Placeholder="Buscar fotos, vídeos..."
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
@@ -20,90 +18,143 @@
                           Margin="Margin.Dense"
                           Immediate="true"
                           DebounceInterval="300"
-                          Clearable="true" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudDatePicker Label="Desde"
-                           Date="_fromDate"
-                           DateChanged="OnFromDateChanged"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           MaxDate="_toDate"
-                           Clearable="true" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudDatePicker Label="Hasta"
-                           Date="_toDate"
-                           DateChanged="OnToDateChanged"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           MinDate="_fromDate"
-                           Clearable="true" />
-        </MudItem>
-        <MudItem xs="12" md="6">
-            <MudTextField @bind-Value="_folderFilter"
-                          @bind-Value:after="OnFolderFilterChanged"
-                          Label="Ruta de carpeta"
-                          Placeholder="Ej. vacaciones, 2024/agosto..."
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Immediate="true"
-                          DebounceInterval="400"
-                          Clearable="true" />
-        </MudItem>
-    </MudGrid>
-</div>
-
-@if (_loading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
-}
-else if (!HasAnyFilter)
-{
-    <EmptyState Icon="@Icons.Material.Filled.Search"
-                Title="Escribe algo para buscar"
-                Description="Busca por nombre de archivo, etiqueta (#paisaje) o ruta de carpeta. También puedes filtrar por fecha." />
-}
-else if (!_results.Any())
-{
-    <EmptyState Icon="@Icons.Material.Filled.SearchOff"
-                Title="Sin resultados"
-                Description="Prueba con otro término o ajusta los filtros." />
-}
-else
-{
-    <div class="d-flex align-center mb-3 gap-2">
-        <MudText Typo="Typo.subtitle2">@ResultCountLabel</MudText>
-        @if (_hasMore)
+                          Clearable="true"
+                          Class="flex-grow-1" />
+            <MudBadge Content="@ActiveFilterCount" Visible="@(ActiveFilterCount > 0)"
+                      Color="Color.Primary" Overlap="true">
+                <MudIconButton Icon="@Icons.Material.Outlined.FilterList"
+                               Color="@(ActiveFilterCount > 0 ? Color.Primary : Color.Inherit)"
+                               OnClick="@(() => _filtersExpanded = !_filtersExpanded)" />
+            </MudBadge>
+        </div>
+        @if (_filtersExpanded)
         {
-            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
-                Hay más — refina la búsqueda
-            </MudChip>
+            <div class="d-flex flex-column gap-2 pt-2 pb-1">
+                <MudDatePicker Label="Desde" Date="_fromDate" DateChanged="OnFromDateChanged"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               MaxDate="_toDate" Clearable="true" />
+                <MudDatePicker Label="Hasta" Date="_toDate" DateChanged="OnToDateChanged"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               MinDate="_fromDate" Clearable="true" />
+                <MudTextField @bind-Value="_folderFilter"
+                              @bind-Value:after="OnFolderFilterChanged"
+                              Label="Ruta de carpeta"
+                              Placeholder="Ej. vacaciones, 2024/agosto..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Immediate="true"
+                              DebounceInterval="400"
+                              Clearable="true" />
+            </div>
         }
     </div>
-    <MudGrid Class="mt-1">
-        @foreach (var asset in _results)
-        {
-            <MudItem xs="12" sm="6" md="4" lg="3" xl="2">
-                <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+
+@* Spacer — reserves space occupied by the fixed bar above (mobile only) *@
+<div class="@(_filtersExpanded ? "ph-search-spacer--expanded" : "ph-search-spacer") d-md-none"></div>
+
+<div class="page-pad">
+
+    @* ── Desktop: always-visible filters (search is in AppBar) ── *@
+    <div class="search-filters mb-4 d-none d-md-block">
+        <MudGrid Spacing="2" AlignItems="AlignItems.End">
+            <MudItem xs="12" sm="6" md="3">
+                <MudDatePicker Label="Desde" Date="_fromDate" DateChanged="OnFromDateChanged"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               MaxDate="_toDate" Clearable="true" />
             </MudItem>
-        }
-    </MudGrid>
-}
+            <MudItem xs="12" sm="6" md="3">
+                <MudDatePicker Label="Hasta" Date="_toDate" DateChanged="OnToDateChanged"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               MinDate="_fromDate" Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_folderFilter"
+                              @bind-Value:after="OnFolderFilterChanged"
+                              Label="Ruta de carpeta"
+                              Placeholder="Ej. vacaciones, 2024/agosto..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Immediate="true"
+                              DebounceInterval="400"
+                              Clearable="true" />
+            </MudItem>
+        </MudGrid>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+    }
+    else if (!HasAnyFilter)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Search"
+                    Title="Escribe algo para buscar"
+                    Description="Busca por nombre de archivo, etiqueta (#paisaje) o ruta de carpeta. También puedes filtrar por fecha." />
+    }
+    else if (!_results.Any())
+    {
+        <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                    Title="Sin resultados"
+                    Description="Prueba con otro término o ajusta los filtros." />
+    }
+    else
+    {
+        <div class="d-flex align-center mb-3 gap-2">
+            <MudText Typo="Typo.subtitle2">@ResultCountLabel</MudText>
+            @if (_hasMore)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                    Hay más — refina la búsqueda
+                </MudChip>
+            }
+        </div>
+        <MudGrid Class="mt-1">
+            @foreach (var asset in _results)
+            {
+                <MudItem xs="6" sm="6" md="4" lg="3" xl="2">
+                    <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
 </div>
+
+<style>
+    /* Fixed search bar — sticky fails due to MudBlazor overflow-x:hidden on parent */
+    .ph-search-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background-color: var(--mud-palette-surface);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mud-palette-divider);
+    }
+    /* Spacer heights match the fixed bar: 64px collapsed, 208px expanded */
+    .ph-search-spacer          { height: 64px; }
+    .ph-search-spacer--expanded { height: 208px; }
+</style>
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? SearchTerm { get; set; }
 
     private List<TimelineItem> _results = new();
-    private bool _loading = false;
-    private bool _hasMore = false;
+    private bool _loading;
+    private bool _hasMore;
     private string _searchTerm = string.Empty;
     private DateTime? _fromDate;
     private DateTime? _toDate;
     private string _folderFilter = string.Empty;
+    private bool _filtersExpanded;
+
+    private int ActiveFilterCount =>
+        (_fromDate.HasValue ? 1 : 0) +
+        (_toDate.HasValue ? 1 : 0) +
+        (!string.IsNullOrWhiteSpace(_folderFilter) ? 1 : 0);
 
     private string ResultCountLabel => _hasMore
         ? $"Mostrando los primeros {_results.Count} resultados"
