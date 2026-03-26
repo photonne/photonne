@@ -6,7 +6,8 @@
 <PageTitle>Archivos grandes - PhotoHub</PageTitle>
 
 <div class="page-pad">
-    <div class="d-flex align-center gap-3 mb-4 flex-wrap">
+
+    <div class="d-flex align-center gap-3 mb-2 flex-wrap">
         <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
                    OnClick="@(() => Navigation.NavigateTo("/utilities"))">
             Utilidades
@@ -14,85 +15,183 @@
         <MudText Typo="Typo.h5">Archivos grandes</MudText>
     </div>
 
-<MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
-    Los @_count elementos que más espacio ocupan en tu biblioteca.
-</MudText>
-
-<div class="d-flex align-center gap-3 mb-4 flex-wrap">
-    <MudSelect T="int" Value="_count" ValueChanged="OnCountChanged" Label="Mostrar" Variant="Variant.Outlined"
-               Style="width:120px;" Dense="true">
-        <MudSelectItem Value="25">25</MudSelectItem>
-        <MudSelectItem Value="50">50</MudSelectItem>
-        <MudSelectItem Value="100">100</MudSelectItem>
-        <MudSelectItem Value="200">200</MudSelectItem>
-    </MudSelect>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
-               OnClick="LoadAsync" Disabled="_loading">
-        Actualizar
-    </MudButton>
-</div>
-
-@if (_loading)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-}
-else if (_items.Count == 0)
-{
-    <MudAlert Severity="Severity.Info">No se encontraron archivos.</MudAlert>
-}
-else
-{
-    <MudTable Items="_items" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm"
-              Class="mb-4" RowStyleFunc="@((_, _) => "cursor:pointer")">
-        <HeaderContent>
-            <MudTh Style="width:56px"></MudTh>
-            <MudTh>Nombre</MudTh>
-            <MudTh>Tipo</MudTh>
-            <MudTh>
-                <MudTableSortLabel SortBy="@(new Func<TimelineItem,object>(x => x.FileSize))" InitialDirection="SortDirection.Descending">
-                    Tamaño
-                </MudTableSortLabel>
-            </MudTh>
-            <MudTh>Fecha</MudTh>
-            <MudTh></MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd>
-                <div style="width:44px;height:44px;border-radius:4px;overflow:hidden;background:#111;">
-                    <img src="@context.ThumbnailUrl" alt="@context.FileName"
-                         style="width:100%;height:100%;object-fit:cover;"
-                         onerror="this.style.display='none'" />
-                </div>
-            </MudTd>
-            <MudTd>
-                <MudLink Href="@($"/asset/{context.Id}?returnTo=utilities/large-files")" Underline="Underline.None">
-                    <MudText Typo="Typo.body2" Style="word-break:break-all;">@context.FileName</MudText>
-                </MudLink>
-            </MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
-                         Color="@(context.Type == "Video" ? Color.Secondary : Color.Default)">
-                    @context.Type
-                </MudChip>
-            </MudTd>
-            <MudTd>
-                <MudText Typo="Typo.body2"><strong>@context.FileSizeFormatted</strong></MudText>
-            </MudTd>
-            <MudTd>
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.DisplayDate</MudText>
-            </MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small"
-                               Href="@($"/asset/{context.Id}?returnTo=utilities/large-files")" Title="Ver detalle" />
-            </MudTd>
-        </RowTemplate>
-    </MudTable>
-
-    <MudText Typo="Typo.caption" Class="mud-text-secondary">
-        Total mostrado: @FormatBytes(_items.Sum(i => i.FileSize))
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+        Los @_count elementos que más espacio ocupan en tu biblioteca.
     </MudText>
-}
+
+    <div class="d-flex align-center gap-3 mb-4 flex-wrap">
+        <MudSelect T="int" Value="_count" ValueChanged="OnCountChanged" Label="Mostrar"
+                   Variant="Variant.Outlined" Style="width:120px;" Dense="true">
+            <MudSelectItem Value="25">25</MudSelectItem>
+            <MudSelectItem Value="50">50</MudSelectItem>
+            <MudSelectItem Value="100">100</MudSelectItem>
+            <MudSelectItem Value="200">200</MudSelectItem>
+        </MudSelect>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadAsync" Disabled="_loading">
+            Actualizar
+        </MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No se encontraron archivos.</MudAlert>
+    }
+    else
+    {
+        <div class="lf-list">
+            @for (int i = 0; i < _items.Count; i++)
+            {
+                var item   = _items[i];
+                var rank   = i + 1;
+                var href   = $"/asset/{item.Id}?returnTo=utilities/large-files";
+                var isVideo = item.Type == "Video";
+
+                <a class="lf-item" href="@href">
+                    <div class="lf-thumb">
+                        <img src="@item.ThumbnailUrl" alt="@item.FileName"
+                             onerror="this.style.display='none'" />
+                        <span class="lf-rank">#@rank</span>
+                    </div>
+
+                    <div class="lf-body">
+                        <MudText Typo="Typo.body2" Class="lf-name">@item.FileName</MudText>
+                        <div class="lf-meta">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                     Color="@(isVideo ? Color.Secondary : Color.Default)"
+                                     Class="lf-type-chip">
+                                @item.Type
+                            </MudChip>
+                            <MudText Typo="Typo.caption" Class="lf-size">@item.FileSizeFormatted</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary lf-date">@item.DisplayDate</MudText>
+                        </div>
+                    </div>
+
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Class="lf-chevron mud-text-secondary" />
+                </a>
+            }
+        </div>
+
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-3 d-block">
+            Total mostrado: @FormatBytes(_items.Sum(x => x.FileSize))
+        </MudText>
+    }
+
 </div>
+
+<style>
+    .lf-list {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .lf-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s;
+    }
+
+    .lf-item:not(:last-child) {
+        border-bottom: 1px solid var(--mud-palette-divider);
+    }
+
+    .lf-item:hover {
+        background: var(--mud-palette-action-default-hover);
+    }
+
+    /* Thumbnail */
+    .lf-thumb {
+        position: relative;
+        flex-shrink: 0;
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--mud-palette-surface);
+    }
+
+    .lf-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .lf-rank {
+        position: absolute;
+        bottom: 2px;
+        right: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0,0,0,.7);
+        line-height: 1;
+    }
+
+    /* Body */
+    .lf-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lf-name {
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .lf-meta {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 2px;
+    }
+
+    .lf-type-chip {
+        height: 20px !important;
+        font-size: 11px !important;
+        padding: 0 6px !important;
+        margin: 0 !important;
+    }
+
+    .lf-size {
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .lf-date {
+        white-space: nowrap;
+    }
+
+    .lf-chevron {
+        flex-shrink: 0;
+        font-size: 20px !important;
+    }
+
+    /* Desktop: thumbnail un poco más grande */
+    @@media (min-width: 600px) {
+        .lf-thumb {
+            width: 72px;
+            height: 72px;
+        }
+
+        .lf-item {
+            padding: 12px 16px;
+        }
+    }
+</style>
 
 @code {
     private List<TimelineItem> _items = new();

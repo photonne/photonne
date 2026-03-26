@@ -6,191 +6,287 @@
 <PageTitle>Duplicados - PhotoHub</PageTitle>
 
 <div class="page-pad">
-    <div class="d-flex align-center gap-3 mb-4 flex-wrap">
-    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
-               OnClick="@(() => Navigation.NavigateTo("/utilities"))">
-        Utilidades
-    </MudButton>
-    <MudText Typo="Typo.h5">Buscar duplicados</MudText>
-</div>
-
-@if (_loading)
-{
-    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Analizando tu biblioteca...</MudText>
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-}
-else if (_groups.Count == 0)
-{
-    <MudAlert Severity="Severity.Success" Icon="@Icons.Material.Filled.CheckCircle">
-        No se encontraron duplicados en tu biblioteca.
-    </MudAlert>
-}
-else
-{
-    <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2">
-        <MudText Typo="Typo.body1">
-            <strong>@_groups.Count grupos</strong> · @TotalDuplicates archivos redundantes ·
-            <span class="mud-error-text">@FormatBytes(TotalWasted) recuperables</span>
-        </MudText>
-
-        @if (!_deleting)
-        {
-            <MudButton Variant="Variant.Filled" Color="Color.Error"
-                       StartIcon="@Icons.Material.Filled.Delete"
-                       Disabled="@(SelectedToDelete == 0)"
-                       OnClick="@(() => _confirmOpen = true)">
-                Mover @SelectedToDelete a la papelera
-            </MudButton>
-        }
-        else
-        {
-            <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="true">
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                Eliminando...
-            </MudButton>
-        }
+    <div class="d-flex align-center gap-3 mb-2 flex-wrap">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/utilities"))">
+            Utilidades
+        </MudButton>
+        <MudText Typo="Typo.h5">Duplicados</MudText>
     </div>
 
-    @if (_confirmOpen)
+    @if (_loading)
     {
-        <MudAlert Severity="Severity.Warning" Class="mb-4">
-            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-                <span>Se moverán <strong>@SelectedToDelete archivos</strong> a la papelera.</span>
-                <div class="d-flex gap-2">
-                    <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="ConfirmDelete">
-                        Confirmar
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _confirmOpen = false)">
-                        Cancelar
-                    </MudButton>
-                </div>
-            </div>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Analizando tu biblioteca...</MudText>
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_groups.Count == 0)
+    {
+        <MudAlert Severity="Severity.Success" Icon="@Icons.Material.Filled.CheckCircle">
+            No se encontraron duplicados en tu biblioteca.
         </MudAlert>
     }
-
-    @foreach (var group in _groups)
+    else
     {
-        var keepSet = _keepSelection[group.Hash];
-        int deleteCount = group.Assets.Count - keepSet.Count;
+        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                <strong>@_groups.Count grupos</strong> &middot; @TotalDuplicates redundantes &middot;
+                <span class="mud-error-text">@FormatBytes(TotalWasted) recuperables</span>
+            </MudText>
 
-        <MudCard Class="mb-4" Elevation="2">
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <div class="d-flex align-center gap-2 flex-wrap">
-                        <MudText Typo="Typo.subtitle1">
-                            <strong>@group.Assets.Count copias idénticas</strong>
-                        </MudText>
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@group.TotalSizeFormatted</MudChip>
-                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">
-                            @group.WastedFormatted desperdiciados
-                        </MudChip>
-                        @if (deleteCount > 0)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
-                                     Icon="@Icons.Material.Outlined.Delete">
-                                @deleteCount a eliminar · @keepSet.Count a conservar
-                            </MudChip>
-                        }
+            @if (!_deleting)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           Disabled="@(SelectedToDelete == 0)"
+                           OnClick="@(() => _confirmOpen = true)">
+                    Mover @SelectedToDelete a la papelera
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="true">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    Eliminando...
+                </MudButton>
+            }
+        </div>
+
+        @if (_confirmOpen)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                    <span>Se moverán <strong>@SelectedToDelete archivos</strong> a la papelera.</span>
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="ConfirmDelete">
+                            Confirmar
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _confirmOpen = false)">
+                            Cancelar
+                        </MudButton>
                     </div>
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">SHA-256: @group.Hash[..12]…</MudText>
-                </CardHeaderContent>
-                <CardHeaderActions>
-                    <MudTooltip Text="Marcar todas como eliminar excepto la más reciente">
-                        <MudIconButton Icon="@Icons.Material.Outlined.AutoAwesome"
-                                       Size="Size.Small"
-                                       OnClick="@(() => AutoSelectGroup(group))" />
-                    </MudTooltip>
-                </CardHeaderActions>
-            </MudCardHeader>
-            <MudCardContent Class="pt-0">
-                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
-                    Haz clic en cada copia para marcarla como conservar
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Style="font-size:12px;vertical-align:middle;" />
-                    o eliminar
-                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Style="font-size:12px;vertical-align:middle;" />.
-                    Al menos una copia debe conservarse.
-                </MudText>
-                <MudGrid>
-                    @foreach (var asset in group.Assets)
-                    {
-                        bool isKeep = keepSet.Contains(asset.Id);
-                        bool isLast = isKeep && keepSet.Count == 1;
+                </div>
+            </MudAlert>
+        }
 
-                        <MudItem xs="12" sm="6" md="@(12 / Math.Min(group.Assets.Count, 4))">
-                            <MudPaper Elevation="0"
-                                      Style="@GetCardStyle(isKeep)"
-                                      Class="@(isLast ? "pa-3 rounded dup-card" : "pa-3 rounded dup-card En dup-card-clickable")"
-                                      @onclick="@(() => ToggleKeep(group.Hash, asset.Id, keepSet))">
+        <div class="dup-groups">
+            @foreach (var group in _groups)
+            {
+                var keepSet = _keepSelection[group.Hash];
+                int deleteCount = group.Assets.Count - keepSet.Count;
 
-                                <div class="d-flex justify-center mb-2"
-                                     style="height:120px;overflow:hidden;border-radius:8px;background:#111;">
+                <div class="dup-group">
+                    <div class="dup-group-header">
+                        <div class="dup-group-info">
+                            <span class="dup-copies">@group.Assets.Count copias</span>
+                            <span class="dup-sep">&middot;</span>
+                            <span class="dup-size">@group.TotalSizeFormatted</span>
+                            @if (deleteCount > 0)
+                            {
+                                <span class="dup-sep">&middot;</span>
+                                <span class="dup-wasted mud-error-text">@group.WastedFormatted recuperables</span>
+                            }
+                        </div>
+                        <MudTooltip Text="Auto-seleccionar: conservar la más reciente">
+                            <MudIconButton Icon="@Icons.Material.Outlined.AutoAwesome"
+                                           Size="Size.Small"
+                                           OnClick="@(() => AutoSelectGroup(group))" />
+                        </MudTooltip>
+                    </div>
+
+                    <div class="dup-strip">
+                        @foreach (var asset in group.Assets)
+                        {
+                            bool isKeep = keepSet.Contains(asset.Id);
+                            bool isLast = isKeep && keepSet.Count == 1;
+
+                            <div class="dup-item @(isKeep ? "dup-keep" : "dup-delete") @(isLast ? "" : "dup-clickable")"
+                                 @onclick="@(() => ToggleKeep(group.Hash, asset.Id, keepSet))">
+                                <div class="dup-thumb">
                                     <img src="@asset.ThumbnailUrl" alt="@asset.FileName"
-                                         style="height:100%;object-fit:cover;width:100%;@(!isKeep ? "opacity:.55;" : "")"
+                                         class="@(!isKeep ? "dup-dimmed" : "")"
                                          onerror="this.style.display='none'" />
-                                </div>
-
-                                <div class="d-flex align-start justify-space-between gap-1">
-                                    <div style="min-width:0;">
-                                        <MudLink Href="@($"/asset/{asset.Id}?returnTo=utilities/duplicates")"
-                                                 Underline="Underline.None"
-                                                 @onclick:stopPropagation="true">
-                                            <MudText Typo="Typo.body2" Style="word-break:break-all;font-weight:600;">@asset.FileName</MudText>
-                                        </MudLink>
-                                        <div class="d-flex gap-1 mt-1 flex-wrap">
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@asset.FileSizeFormatted</MudChip>
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@asset.DisplayDate</MudChip>
-                                        </div>
-                                    </div>
-                                    <div class="flex-shrink-0 mt-1">
+                                    <div class="dup-badge">
                                         @if (isKeep)
                                         {
-                                            <MudTooltip Text="@(isLast ? "Última copia — no se puede eliminar" : "Conservar (clic para marcar como eliminar")" Arrow="true">
-                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
-                                                         Color="@(isLast ? Color.Default : Color.Primary)"
-                                                         Style="font-size:22px;" />
-                                            </MudTooltip>
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                     Style="font-size:16px;color:var(--mud-palette-primary);" />
                                         }
                                         else
                                         {
-                                            <MudTooltip Text="Eliminar (clic para conservar)" Arrow="true">
-                                                <MudIcon Icon="@Icons.Material.Filled.Cancel"
-                                                         Color="Color.Error"
-                                                         Style="font-size:22px;" />
-                                            </MudTooltip>
+                                            <MudIcon Icon="@Icons.Material.Filled.Cancel"
+                                                     Style="font-size:16px;color:var(--mud-palette-error);" />
                                         }
                                     </div>
                                 </div>
+                                <div class="dup-item-name">@asset.FileName</div>
+                                <div class="dup-item-meta">@asset.FileSizeFormatted</div>
+                            </div>
+                        }
+                    </div>
 
-                            </MudPaper>
-                        </MudItem>
+                    @if (deleteCount > 0)
+                    {
+                        <div class="dup-group-footer">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @keepSet.Count a conservar &middot; @deleteCount a eliminar
+                            </MudText>
+                        </div>
                     }
-                </MudGrid>
-            </MudCardContent>
-        </MudCard>
-    }
-
-    @if (_groups.Count > 2)
-    {
-        <div class="d-flex justify-end mb-8">
-            <MudButton Variant="Variant.Filled" Color="Color.Error"
-                       StartIcon="@Icons.Material.Filled.Delete"
-                       Disabled="@(SelectedToDelete == 0 || _deleting)"
-                       OnClick="@(() => _confirmOpen = true)">
-                Mover @SelectedToDelete a la papelera
-            </MudButton>
+                </div>
+            }
         </div>
+
+        @if (_groups.Count > 2)
+        {
+            <div class="d-flex justify-end mt-4 mb-8">
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           Disabled="@(SelectedToDelete == 0 || _deleting)"
+                           OnClick="@(() => _confirmOpen = true)">
+                    Mover @SelectedToDelete a la papelera
+                </MudButton>
+            </div>
+        }
     }
-}
 </div>
 
 <style>
-    .dup-card-clickable {
-        cursor: pointer;
-        transition: transform 0.1s, box-shadow 0.1s;
+    .dup-groups {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
-    .dup-card-clickable:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+    .dup-group {
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .dup-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px 4px 12px;
+        gap: 8px;
+    }
+
+    .dup-group-info {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        font-size: 0.8rem;
+    }
+
+    .dup-copies {
+        font-weight: 600;
+    }
+
+    .dup-sep {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .dup-size {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .dup-strip {
+        display: flex;
+        gap: 8px;
+        padding: 4px 12px 8px 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .dup-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .dup-item {
+        flex-shrink: 0;
+        width: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .dup-clickable {
+        cursor: pointer;
+    }
+
+    .dup-thumb {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--mud-palette-surface);
+    }
+
+    .dup-keep .dup-thumb {
+        box-shadow: 0 0 0 2px var(--mud-palette-primary);
+    }
+
+    .dup-delete .dup-thumb {
+        box-shadow: 0 0 0 2px var(--mud-palette-error);
+    }
+
+    .dup-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 0.15s;
+    }
+
+    .dup-dimmed {
+        opacity: 0.45;
+    }
+
+    .dup-badge {
+        position: absolute;
+        bottom: 3px;
+        right: 3px;
+        background: rgba(var(--mud-palette-surface-rgb, 255,255,255), 0.85);
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dup-item-name {
+        font-size: 0.68rem;
+        line-height: 1.2;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        word-break: break-all;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .dup-item-meta {
+        font-size: 0.65rem;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+    }
+
+    .dup-group-footer {
+        padding: 0 12px 8px 12px;
+    }
+
+    @@media (min-width: 600px) {
+        .dup-item {
+            width: 96px;
+        }
+
+        .dup-thumb {
+            width: 96px;
+            height: 96px;
+        }
     }
 </style>
 
@@ -257,10 +353,6 @@ else
             keepSet.Add(assetId);
         }
     }
-
-    private static string GetCardStyle(bool isKeep) => isKeep
-        ? "border:2px solid var(--mud-palette-primary);"
-        : "border:2px solid var(--mud-palette-error);";
 
     private async Task ConfirmDelete()
     {
