@@ -67,8 +67,10 @@ window.pwaUpdate = {
             window.location.reload();
             return;
         }
+        // Fallback: reload after 3s in case controllerchange never fires
+        const reloadTimeout = setTimeout(() => window.location.reload(), 3000);
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            this._setAvailability(false);
+            clearTimeout(reloadTimeout);
             window.location.reload();
         }, { once: true });
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
