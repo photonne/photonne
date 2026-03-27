@@ -1,3 +1,5 @@
+using Microsoft.JSInterop;
+
 namespace PhotoHub.Client.Web.Services;
 
 public record LocalFileInfo(
@@ -16,6 +18,7 @@ public interface ILocalFolderService
     Task<string?> GetStoredFolderNameAsync();
     Task<bool> RequestPermissionAsync();
     Task<List<LocalFileInfo>> EnumerateFilesAsync();
+    Task StartProgressiveEnumerationAsync<T>(DotNetObjectReference<T> dotNetRef, int batchSize = 20) where T : class;
     Task<List<LocalFileInfo>?> LoadMetadataCacheAsync(string folderName);
     Task SaveMetadataCacheAsync(string folderName, IEnumerable<LocalFileInfo> files);
     Task<Dictionary<string, string>> GetBlobUrlsBatchAsync(IEnumerable<string> relativePaths);

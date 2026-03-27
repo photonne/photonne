@@ -29,6 +29,9 @@ public class LocalFolderService : ILocalFolderService
         return results ?? [];
     }
 
+    public async Task StartProgressiveEnumerationAsync<T>(DotNetObjectReference<T> dotNetRef, int batchSize = 20) where T : class
+        => await _js.InvokeVoidAsync("folderPicker.enumerateProgressive", dotNetRef, batchSize);
+
     public async Task<List<LocalFileInfo>?> LoadMetadataCacheAsync(string folderName)
         => await _js.InvokeAsync<List<LocalFileInfo>?>("folderPicker.loadMetadataCache", folderName);
 

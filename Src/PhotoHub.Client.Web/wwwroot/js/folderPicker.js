@@ -86,6 +86,80 @@ window.folderPicker = {
         } catch { }
     },
 
+    // ── Enumeración progresiva (callback por batch) ──────────────────────────
+    // Llama a dotNetRef.invokeMethodAsync('OnFilesBatch', batch, isFinal) cada batchSize ficheros.
+    // Usa BFS para procesar subdirectorios sin recursión profunda.
+
+    async enumerateProgressive(dotNetRef, batchSize) {
+        try {
+            if (!this._handle) this._handle = await this._loadHandle();
+            if (!this._handle) {
+                await dotNetRef.invokeMethodAsync('OnFilesBatch', [], true);
+                return;
+            }
+
+            let perm = await this._handle.queryPermission({ mode: 'read' });
+            if (perm !== 'granted') {
+                perm = await this._handle.requestPermission({ mode: 'read' });
+                if (perm !== 'granted') {
+                    await dotNetRef.invokeMethodAsync('OnFilesBatch', [], true);
+                    return;
+                }
+            }
+
+            const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'tiff', 'bmp', 'heic', 'heif']);
+            const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', '3gp', 'm4v', 'webm']);
+
+            let batch = [];
+            const queue = [{ handle: this._handle, basePath: '' }];
+
+            const flush = async (isFinal) => {
+                const toSend = batch.splice(0);
+                try {
+                    await dotNetRef.invokeMethodAsync('OnFilesBatch', toSend, isFinal);
+                } catch {
+                    // Componente descartado (navegación): parar
+                    queue.length = 0;
+                }
+            };
+
+            while (queue.length > 0) {
+                const { handle: dirHandle, basePath } = queue.shift();
+
+                const entries = [];
+                for await (const entry of dirHandle.entries()) entries.push(entry);
+
+                for (const [name, handle] of entries) {
+                    if (handle.kind === 'directory') {
+                        queue.push({ handle, basePath: basePath ? `${basePath}/${name}` : name });
+                    } else if (handle.kind === 'file') {
+                        const ext = (name.split('.').pop() ?? '').toLowerCase();
+                        const isImage = IMAGE_EXTS.has(ext);
+                        if (!isImage && !VIDEO_EXTS.has(ext)) continue;
+
+                        const file = await handle.getFile();
+                        batch.push({
+                            name,
+                            relativePath: basePath ? `${basePath}/${name}` : name,
+                            size: file.size,
+                            lastModified: file.lastModified,
+                            isImage,
+                            thumbnailUrl: null
+                        });
+
+                        if (batch.length >= batchSize) await flush(false);
+                    }
+                }
+            }
+
+            await flush(true); // final (puede estar vacío si el último flush fue exacto)
+
+        } catch (e) {
+            console.error('folderPicker.enumerateProgressive error:', e);
+            try { await dotNetRef.invokeMethodAsync('OnFilesBatch', [], true); } catch { }
+        }
+    },
+
     // ── Enumerar ficheros ────────────────────────────────────────────────────
 
     async enumerate() {
