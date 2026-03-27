@@ -17,5 +17,8 @@ public interface ILocalFolderService
     Task<bool> RequestPermissionAsync();
     Task<List<LocalFileInfo>> EnumerateFilesAsync();
     Task<byte[]?> ReadFileBytesAsync(string relativePath);
+    Task<string?> GetBlobUrlAsync(string relativePath);
+    Task RevokeBlobUrlAsync(string url);
+    Task<string?> ComputeChecksumAsync(string relativePath);
     Task ClearAsync();
 }

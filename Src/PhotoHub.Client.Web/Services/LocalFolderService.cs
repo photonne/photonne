@@ -32,6 +32,15 @@ public class LocalFolderService : ILocalFolderService
     public async Task<byte[]?> ReadFileBytesAsync(string relativePath)
         => await _js.InvokeAsync<byte[]?>("folderPicker.readFileBytes", relativePath);
 
+    public async Task<string?> GetBlobUrlAsync(string relativePath)
+        => await _js.InvokeAsync<string?>("folderPicker.getBlobUrl", relativePath);
+
+    public async Task RevokeBlobUrlAsync(string url)
+        => await _js.InvokeVoidAsync("folderPicker.revokeBlobUrl", url);
+
+    public async Task<string?> ComputeChecksumAsync(string relativePath)
+        => await _js.InvokeAsync<string?>("folderPicker.computeChecksum", relativePath);
+
     public async Task ClearAsync()
         => await _js.InvokeVoidAsync("folderPicker.clear");
 }

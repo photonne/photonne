@@ -425,9 +425,58 @@ public class AssetService : IAssetService
         var result = await response.Content.ReadFromJsonAsync<DescriptionUpdateResult>();
         return result?.Description;
     }
+
+    public async Task<HashSet<string>> CheckExistingAsync(
+        IEnumerable<(string Name, long Size)> files,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var body = new
+            {
+                files = files.Select(f => new { name = f.Name, size = f.Size }).ToList()
+            };
+            var response = await _httpClient.PostAsJsonAsync("/api/assets/check-existing", body, cancellationToken);
+            if (!response.IsSuccessStatusCode) return [];
+            var result = await response.Content.ReadFromJsonAsync<CheckExistingResult>(cancellationToken: cancellationToken);
+            return result?.ExistingKeys ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task<Guid?> ExistsByChecksumAsync(string checksum, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var response = await _httpClient.GetAsync($"/api/assets/exists/{checksum}", cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+            if (!response.IsSuccessStatusCode) return null;
+            var result = await response.Content.ReadFromJsonAsync<ChecksumExistsResult>(cancellationToken: cancellationToken);
+            return result?.AssetId;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
 
 file class DescriptionUpdateResult
 {
     public string? Description { get; set; }
+}
+
+file class CheckExistingResult
+{
+    public HashSet<string> ExistingKeys { get; set; } = [];
+}
+
+file class ChecksumExistsResult
+{
+    public Guid? AssetId { get; set; }
 }

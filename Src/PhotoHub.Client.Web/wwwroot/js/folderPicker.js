@@ -64,7 +64,13 @@ window.folderPicker = {
         const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'tiff', 'bmp', 'heic', 'heif']);
         const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', '3gp', 'm4v', 'webm']);
 
-        for await (const [name, handle] of dirHandle.entries()) {
+        // Recoger primero todos los entries para poder procesarlos sin bloquear
+        const entries = [];
+        for await (const entry of dirHandle.entries()) {
+            entries.push(entry);
+        }
+
+        for (const [name, handle] of entries) {
             if (handle.kind === 'file') {
                 const ext = (name.split('.').pop() ?? '').toLowerCase();
                 const isImage = IMAGE_EXTS.has(ext);
@@ -74,23 +80,64 @@ window.folderPicker = {
                 const file = await handle.getFile();
                 const relativePath = basePath ? `${basePath}/${name}` : name;
 
-                let thumbnailUrl = null;
-                if (isImage && file.type && file.type !== 'image/heic' && file.type !== 'image/heif') {
-                    thumbnailUrl = URL.createObjectURL(file);
-                }
-
                 results.push({
                     name,
                     relativePath,
                     size: file.size,
                     lastModified: file.lastModified,
                     isImage,
-                    thumbnailUrl
+                    thumbnailUrl: null
                 });
             } else if (handle.kind === 'directory') {
                 const subPath = basePath ? `${basePath}/${name}` : name;
                 await this._collectFiles(handle, subPath, results);
             }
+        }
+    },
+
+    async getBlobUrl(relativePath) {
+        try {
+            if (!this._handle) this._handle = await this._loadHandle();
+            if (!this._handle) return null;
+
+            const parts = relativePath.split('/');
+            let current = this._handle;
+            for (let i = 0; i < parts.length - 1; i++) {
+                current = await current.getDirectoryHandle(parts[i]);
+            }
+            const fileHandle = await current.getFileHandle(parts[parts.length - 1]);
+            const file = await fileHandle.getFile();
+            return URL.createObjectURL(file);
+        } catch (e) {
+            console.error('folderPicker.getBlobUrl error:', e);
+            return null;
+        }
+    },
+
+    revokeBlobUrl(url) {
+        if (url) URL.revokeObjectURL(url);
+    },
+
+    async computeChecksum(relativePath) {
+        try {
+            if (!this._handle) this._handle = await this._loadHandle();
+            if (!this._handle) return null;
+
+            const parts = relativePath.split('/');
+            let current = this._handle;
+            for (let i = 0; i < parts.length - 1; i++) {
+                current = await current.getDirectoryHandle(parts[i]);
+            }
+            const fileHandle = await current.getFileHandle(parts[parts.length - 1]);
+            const file = await fileHandle.getFile();
+            const buffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        } catch (e) {
+            console.error('folderPicker.computeChecksum error:', e);
+            return null;
         }
     },
 

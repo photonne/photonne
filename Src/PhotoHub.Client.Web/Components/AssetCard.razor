@@ -128,7 +128,19 @@
     </div>
 
     <div class="sync-status-icon">
-        @if (Asset.SyncStatus == AssetSyncStatus.Copied)
+        @if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Synced)
+        {
+            <MudTooltip Text="Ya sincronizado">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="color: #4caf50;" />
+            </MudTooltip>
+        }
+        else if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Pending)
+        {
+            <MudTooltip Text="Pendiente de subir">
+                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Small" Color="Color.Inherit" />
+            </MudTooltip>
+        }
+        else if (Asset.SyncStatus == AssetSyncStatus.Copied)
         {
             <MudTooltip Text="Pendiente de indexar">
                 <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Inherit" />

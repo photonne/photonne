@@ -13,6 +13,50 @@
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
 }
 
+@* ── Lightbox local ──────────────────────────────────────────────────── *@
+@if (_lightboxAsset != null)
+{
+    <div class="local-lightbox" @onclick="CloseLightbox">
+        <div class="local-lightbox-toolbar" @onclick:stopPropagation="true">
+            <MudText Typo="Typo.body2" Class="white-text flex-grow-1"
+                     Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                @_lightboxAsset.FileName
+            </MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary mr-3">
+                @_lightboxAsset.FileSizeFormatted
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           OnClick="CloseLightbox" />
+        </div>
+
+        <div class="local-lightbox-content" @onclick:stopPropagation="true">
+            @if (_lightboxLoading)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_lightboxBlobUrl != null)
+            {
+                @if (_lightboxAsset.Type == "VIDEO")
+                {
+                    <video src="@_lightboxBlobUrl" controls autoplay playsinline
+                           class="local-lightbox-media" />
+                }
+                else
+                {
+                    <img src="@_lightboxBlobUrl" alt="@_lightboxAsset.FileName"
+                         class="local-lightbox-media" />
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Error">No se pudo abrir el archivo.</MudAlert>
+            }
+        </div>
+    </div>
+}
+
 <div class="page-pad">
     <MudText Typo="Typo.h5" Class="mb-4">Mi Dispositivo</MudText>
 
@@ -45,7 +89,7 @@
                 <MudTooltip Text="Re-escanear">
                     <MudIconButton Icon="@Icons.Material.Filled.Refresh"
                                    Size="Size.Small"
-                                   Disabled="@_loading"
+                                   Disabled="@(_loading || _checkingExisting)"
                                    OnClick="@(async () => await LoadDeviceAssetsAsync())" />
                 </MudTooltip>
             </MudPaper>
@@ -61,30 +105,56 @@
                 </MudAlert>
             }
 
-            @* ── Alerta de pendientes ─────────────────────────────────── *@
-            @if (_assets.Count > 0 && !_uploadingAll)
+            @* ── Comprobando duplicados (Opción A) ────────────────────── *@
+            @if (_checkingExisting)
             {
-                <MudPaper Class="mb-4 pa-4" Elevation="0"
+                <MudPaper Class="d-flex align-center gap-3 px-4 py-3 mb-4" Elevation="0"
                           Style="border: 1px solid var(--mud-palette-divider); border-radius: 12px;">
-                    <div class="d-flex align-center gap-3 mb-3">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" Size="Size.Small" />
-                        <div>
-                            <MudText Typo="Typo.body2" Class="font-weight-medium">
-                                @_assets.Count @(_assets.Count == 1 ? "foto pendiente" : "fotos pendientes") de subir
-                            </MudText>
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                Se subirán al servidor para su indexación
-                            </MudText>
-                        </div>
-                    </div>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.CloudUpload"
-                               FullWidth="true"
-                               OnClick="UploadAllAsync">
-                        Subir todas
-                    </MudButton>
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" Class="flex-shrink-0" />
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Comprobando cuáles ya están en el servidor…</MudText>
                 </MudPaper>
+            }
+
+            @* ── Resumen de estado ────────────────────────────────────── *@
+            @if (!_checkingExisting && _assets.Count > 0 && !_uploadingAll)
+            {
+                var pendingCount = _assets.Count(a => a.SyncStatus == AssetSyncStatus.Pending);
+                var syncedCount  = _assets.Count(a => a.SyncStatus == AssetSyncStatus.Synced);
+
+                @if (pendingCount > 0)
+                {
+                    <MudPaper Class="mb-4 pa-4" Elevation="0"
+                              Style="border: 1px solid var(--mud-palette-divider); border-radius: 12px;">
+                        <div class="d-flex align-center gap-3 mb-3">
+                            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" Size="Size.Small" />
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.body2" Class="font-weight-medium">
+                                    @pendingCount @(pendingCount == 1 ? "foto nueva" : "fotos nuevas") para subir
+                                    @if (syncedCount > 0)
+                                    {
+                                        <span Class="mud-text-secondary font-weight-regular"> · @syncedCount ya en servidor</span>
+                                    }
+                                </MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    Se subirán al servidor para su indexación
+                                </MudText>
+                            </div>
+                        </div>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                                   FullWidth="true"
+                                   OnClick="UploadAllAsync">
+                            Subir @pendingCount @(pendingCount == 1 ? "foto" : "fotos")
+                        </MudButton>
+                    </MudPaper>
+                }
+                else if (syncedCount > 0)
+                {
+                    <MudAlert Severity="Severity.Success" Class="mb-4">
+                        Todo sincronizado — @syncedCount @(syncedCount == 1 ? "foto" : "fotos") ya en el servidor.
+                    </MudAlert>
+                }
             }
 
             @* ── Progreso de subida ──────────────────────────────────── *@
@@ -101,10 +171,14 @@
                     </div>
                     <MudProgressLinear Color="Color.Primary" Value="@_uploadProgress" Rounded="true" Class="mb-2" />
                     <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                        @_uploadCurrent de @_uploadTotal subidas
-                        @if (_uploadSuccessful > 0 || _uploadFailed > 0)
+                        @_uploadCurrent de @_uploadTotal procesadas
+                        @if (_uploadSuccessful > 0 || _uploadSkipped > 0 || _uploadFailed > 0)
                         {
-                            <span> · @_uploadSuccessful exitosas@(_uploadFailed > 0 ? $", {_uploadFailed} fallidas" : "")</span>
+                            <span>
+                                · @_uploadSuccessful subidas
+                                @if (_uploadSkipped > 0) { <span>, @_uploadSkipped ya existían</span> }
+                                @if (_uploadFailed > 0) { <span>, @_uploadFailed fallidas</span> }
+                            </span>
                         }
                     </MudText>
                 </MudPaper>
@@ -128,7 +202,7 @@
                     </div>
                 }
             }
-            else if (!_loading && !_permissionDenied)
+            else if (!_loading && !_permissionDenied && !_checkingExisting)
             {
                 <EmptyState Icon="@Icons.Material.Filled.CheckCircle"
                             Title="Todo sincronizado"
@@ -151,12 +225,47 @@
             font-size: 0.78rem !important;
         }
     }
+
+    .local-lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.96);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .local-lightbox-toolbar {
+        display: flex;
+        align-items: center;
+        padding: 8px 8px 8px 16px;
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        flex-shrink: 0;
+    }
+
+    .local-lightbox-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        padding: 8px;
+    }
+
+    .local-lightbox-media {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 4px;
+    }
 </style>
 
 @code {
     private List<TimelineItem> _assets = new();
     private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
     private bool _loading = true;
+    private bool _checkingExisting;
     private bool _permissionDenied;
     private string _folderName = "";
 
@@ -166,8 +275,14 @@
     private int _uploadCurrent;
     private int _uploadTotal;
     private int _uploadSuccessful;
+    private int _uploadSkipped;
     private int _uploadFailed;
     private CancellationTokenSource? _cts;
+
+    // Lightbox
+    private TimelineItem? _lightboxAsset;
+    private string? _lightboxBlobUrl;
+    private bool _lightboxLoading;
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,16 +311,13 @@
 
             if (_assets.Count == 0)
             {
-                // Si no hay assets y hay carpeta configurada, puede ser falta de permiso
                 var hasPermission = await LocalFolderService.RequestPermissionAsync();
                 if (!hasPermission)
                 {
                     _permissionDenied = true;
+                    return;
                 }
-                else
-                {
-                    _assets = await PendingAssetsProvider.GetPendingAssetsAsync();
-                }
+                _assets = await PendingAssetsProvider.GetPendingAssetsAsync();
             }
 
             GroupAssets();
@@ -217,6 +329,42 @@
         finally
         {
             _loading = false;
+        }
+
+        // Opción A: comprobar cuáles ya existen en el servidor por nombre+tamaño
+        await CheckExistingOnServerAsync();
+    }
+
+    // ── Opción A: check por nombre + tamaño ─────────────────────────────────
+    private async Task CheckExistingOnServerAsync()
+    {
+        if (_assets.Count == 0) return;
+
+        _checkingExisting = true;
+        StateHasChanged();
+
+        try
+        {
+            var filesToCheck = _assets.Select(a => (a.FileName, a.FileSize));
+            var existingKeys = await AssetService.CheckExistingAsync(filesToCheck);
+
+            foreach (var asset in _assets)
+            {
+                var key = $"{asset.FileName}|{asset.FileSize}";
+                if (existingKeys.Contains(key))
+                    asset.SyncStatus = AssetSyncStatus.Synced;
+            }
+
+            GroupAssets();
+        }
+        catch
+        {
+            // Si falla el check, dejamos todos como Pending (conservador)
+        }
+        finally
+        {
+            _checkingExisting = false;
+            StateHasChanged();
         }
     }
 
@@ -239,38 +387,75 @@
                 g => g.ToList());
     }
 
-    private void OpenAsset(TimelineItem asset)
+    private async Task OpenAsset(TimelineItem asset)
     {
-        // Los assets locales no tienen página de detalle en el servidor todavía.
+        _lightboxAsset = asset;
+        _lightboxBlobUrl = null;
+        _lightboxLoading = true;
+        StateHasChanged();
+
+        var url = await LocalFolderService.GetBlobUrlAsync(asset.FullPath);
+        _lightboxBlobUrl = url;
+        _lightboxLoading = false;
+        StateHasChanged();
     }
 
+    private async Task CloseLightbox()
+    {
+        if (_lightboxBlobUrl != null)
+            await LocalFolderService.RevokeBlobUrlAsync(_lightboxBlobUrl);
+        _lightboxAsset = null;
+        _lightboxBlobUrl = null;
+    }
+
+    // ── Upload: opción B (checksum) antes de subir cada fichero ─────────────
     private async Task UploadAllAsync()
     {
-        if (_assets.Count == 0) return;
+        var pending = _assets.Where(a => a.SyncStatus == AssetSyncStatus.Pending).ToList();
+        if (pending.Count == 0) return;
 
         _uploadingAll = true;
-        _uploadTotal = _assets.Count;
+        _uploadTotal = pending.Count;
         _uploadCurrent = 0;
         _uploadSuccessful = 0;
+        _uploadSkipped = 0;
         _uploadFailed = 0;
         _uploadProgress = 0;
-        _uploadMessage = "Iniciando subida...";
+        _uploadMessage = "Iniciando subida…";
         _cts = new CancellationTokenSource();
         StateHasChanged();
 
         try
         {
-            var toUpload = _assets.ToList();
-
-            foreach (var asset in toUpload)
+            foreach (var asset in pending)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-
-                _uploadMessage = $"Subiendo {asset.FileName}…";
+                _uploadMessage = $"Procesando {asset.FileName}…";
                 StateHasChanged();
 
                 try
                 {
+                    // Opción B: calcular SHA-256 y comprobar antes de subir
+                    var checksum = await LocalFolderService.ComputeChecksumAsync(asset.FullPath);
+                    if (checksum != null)
+                    {
+                        var existingId = await AssetService.ExistsByChecksumAsync(checksum, _cts.Token);
+                        if (existingId.HasValue)
+                        {
+                            // Ya existe en el servidor — marcar y saltar
+                            asset.SyncStatus = AssetSyncStatus.Synced;
+                            _uploadSkipped++;
+                            _uploadCurrent++;
+                            _uploadProgress = (double)_uploadCurrent / _uploadTotal * 100;
+                            StateHasChanged();
+                            continue;
+                        }
+                    }
+
+                    // No existe: leer y subir
+                    _uploadMessage = $"Subiendo {asset.FileName}…";
+                    StateHasChanged();
+
                     var bytes = await LocalFolderService.ReadFileBytesAsync(asset.FullPath);
                     if (bytes == null || bytes.Length == 0)
                     {
@@ -282,8 +467,8 @@
                         var result = await AssetService.UploadAssetAsync(asset.FileName, stream, _cts.Token);
                         if (result != null)
                         {
+                            asset.SyncStatus = AssetSyncStatus.Synced;
                             _uploadSuccessful++;
-                            _assets.Remove(asset);
                         }
                         else
                         {
@@ -307,9 +492,10 @@
 
             GroupAssets();
 
-            Snackbar.Add(
-                $"Subida completada: {_uploadSuccessful} exitosas{(_uploadFailed > 0 ? $", {_uploadFailed} fallidas" : "")}",
-                _uploadFailed > 0 ? Severity.Warning : Severity.Success);
+            var summary = $"{_uploadSuccessful} subidas";
+            if (_uploadSkipped > 0) summary += $", {_uploadSkipped} ya existían";
+            if (_uploadFailed > 0) summary += $", {_uploadFailed} fallidas";
+            Snackbar.Add($"Completado: {summary}", _uploadFailed > 0 ? Severity.Warning : Severity.Success);
         }
         catch (OperationCanceledException)
         {
@@ -334,5 +520,7 @@
     {
         _cts?.Cancel();
         _cts?.Dispose();
+        if (_lightboxBlobUrl != null)
+            _ = LocalFolderService.RevokeBlobUrlAsync(_lightboxBlobUrl);
     }
 }
