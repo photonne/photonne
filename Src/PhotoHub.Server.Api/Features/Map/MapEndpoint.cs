@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PhotoHub.Server.Api.Shared.Data;
 using PhotoHub.Server.Api.Shared.Interfaces;
 using Scalar.AspNetCore;
@@ -28,6 +29,7 @@ public class MapAssetsEndpoint : IEndpoint
 
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         ClaimsPrincipal user,
         [FromQuery] int? zoom,
         [FromQuery] double? minLat,
@@ -46,49 +48,49 @@ public class MapAssetsEndpoint : IEndpoint
             var isAdmin = user.IsInRole("Admin");
             var userRootPath = GetUserRootPath(userId);
 
-            // Obtener assets con coordenadas GPS
-            var query = dbContext.Assets
-                .Include(a => a.Exif)
-                .Where(a => a.DeletedAt == null &&
-                           a.Exif != null && 
-                           a.Exif.Latitude.HasValue && 
-                           a.Exif.Longitude.HasValue);
-
-            if (!isAdmin)
+            // Obtener assets GPS — cachear todos los del usuario, filtrar bounds en memoria
+            var cacheKey = $"map:assets:{userId}";
+            if (!cache.TryGetValue(cacheKey, out List<AssetLocation>? allAssets) || allAssets == null)
             {
-                var allowedFolderIds = await GetAllowedFolderIdsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
-                query = query.Where(a => a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
+                var query = dbContext.Assets
+                    .Include(a => a.Exif)
+                    .Include(a => a.Thumbnails)
+                    .Where(a => a.DeletedAt == null &&
+                               a.Exif != null &&
+                               a.Exif.Latitude.HasValue &&
+                               a.Exif.Longitude.HasValue);
+
+                if (!isAdmin)
+                {
+                    var allowedFolderIds = await GetAllowedFolderIdsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
+                    query = query.Where(a => a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
+                }
+
+                var dbAssets = await query.ToListAsync(cancellationToken);
+                allAssets = dbAssets.Select(a => new AssetLocation
+                {
+                    Id = a.Id,
+                    CreatedDate = a.CreatedDate,
+                    Latitude = a.Exif!.Latitude!.Value,
+                    Longitude = a.Exif.Longitude!.Value,
+                    HasThumbnails = a.Thumbnails.Any()
+                }).ToList();
+
+                cache.Set(cacheKey, allAssets, TimeSpan.FromMinutes(5));
             }
 
-            // Filtrar por bounds si se proporcionan y no es una vista global
+            // Filtrar por bounds en memoria (evita múltiples consultas a BD para distintos viewports)
+            var assets = allAssets;
             if (minLat.HasValue && minLng.HasValue && maxLat.HasValue && maxLng.HasValue)
             {
-                // Si la vista es global o casi global, evitamos filtrar por coordenadas
-                // para prevenir problemas con la línea de cambio de fecha y asegurar que todo sea visible.
                 bool isGlobalView = Math.Abs(maxLng.Value - minLng.Value) > 350;
-                
                 if (!isGlobalView)
                 {
-                    query = query.Where(a => 
-                        a.Exif!.Latitude >= minLat.Value &&
-                        a.Exif.Latitude <= maxLat.Value &&
-                        a.Exif.Longitude >= minLng.Value &&
-                        a.Exif.Longitude <= maxLng.Value);
+                    assets = allAssets.Where(a =>
+                        a.Latitude >= minLat.Value && a.Latitude <= maxLat.Value &&
+                        a.Longitude >= minLng.Value && a.Longitude <= maxLng.Value).ToList();
                 }
             }
-
-            var assetsWithThumbnails = await query
-                .Include(a => a.Thumbnails)
-                .ToListAsync(cancellationToken);
-
-            var assets = assetsWithThumbnails.Select(a => new AssetLocation
-            {
-                Id = a.Id,
-                CreatedDate = a.CreatedDate,
-                Latitude = a.Exif!.Latitude!.Value,
-                Longitude = a.Exif.Longitude!.Value,
-                HasThumbnails = a.Thumbnails.Any()
-            }).ToList();
 
             // Agrupar assets en clusters basados en zoom level
             var currentZoom = zoom ?? 10;
@@ -131,19 +133,14 @@ public class MapAssetsEndpoint : IEndpoint
                 }
             }
 
-            // Obtener información de thumbnails para los primeros assets
-            var firstAssetIds = clusters.Select(c => c.AssetIds.FirstOrDefault()).Where(id => id != Guid.Empty).ToList();
-            var assetsWithThumbInfo = await dbContext.Assets
-                .Where(a => firstAssetIds.Contains(a.Id) && a.DeletedAt == null)
-                .Select(a => new { a.Id, HasThumbnails = a.Thumbnails.Any() })
-                .ToDictionaryAsync(a => a.Id, a => a.HasThumbnails, cancellationToken);
+            // Usar los HasThumbnails ya cargados en memoria (evita segunda consulta a BD)
+            var assetThumbLookup = allAssets.ToDictionary(a => a.Id, a => a.HasThumbnails);
 
             var response = clusters.Select(c =>
             {
                 var firstAssetId = c.AssetIds.FirstOrDefault();
-                // Generar un ID basado en las propiedades del cluster para que sea estable si los datos no cambian
                 var clusterId = $"{c.Latitude:F6}_{c.Longitude:F6}_{c.Count}_{c.EarliestDate:yyyyMMddHHmmss}";
-                
+
                 return new MapClusterResponse
                 {
                     Id = clusterId,
@@ -154,7 +151,8 @@ public class MapAssetsEndpoint : IEndpoint
                     EarliestDate = c.EarliestDate,
                     LatestDate = c.LatestDate,
                     FirstAssetId = firstAssetId,
-                    HasThumbnail = firstAssetId != Guid.Empty && assetsWithThumbInfo.ContainsKey(firstAssetId) && assetsWithThumbInfo[firstAssetId]
+                    HasThumbnail = firstAssetId != Guid.Empty &&
+                                   assetThumbLookup.TryGetValue(firstAssetId, out var hasThumbs) && hasThumbs
                 };
             }).ToList();
 

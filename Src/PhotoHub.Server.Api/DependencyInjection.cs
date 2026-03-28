@@ -11,6 +11,7 @@ public static class DependencyInjection
 {
     public static void AddApplicationServices(this WebApplicationBuilder builder)
     {
+        builder.Services.AddMemoryCache();
         builder.Services.AddScoped<DirectoryScanner>();
         builder.Services.AddScoped<FileHashService>();
         builder.Services.AddScoped<ExifExtractorService>();

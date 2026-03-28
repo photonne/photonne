@@ -267,6 +267,73 @@ window.folderPicker = {
         }
     },
 
+    // ── Server existing keys cache ───────────────────────────────────────────
+
+    async loadExistingKeysCache(folderName) {
+        try {
+            const db = await this._openDb();
+            return new Promise(resolve => {
+                const tx = db.transaction('metadata', 'readonly');
+                const req = tx.objectStore('metadata').get(folderName);
+                req.onsuccess = () => {
+                    const entry = req.result;
+                    if (!entry || !entry.existingKeys) { resolve(null); return; }
+                    const ageHours = (Date.now() - entry.cachedAt) / 3_600_000;
+                    resolve(ageHours < 24 ? entry.existingKeys : null);
+                };
+                req.onerror = () => resolve(null);
+            });
+        } catch {
+            return null;
+        }
+    },
+
+    async saveExistingKeysCache(folderName, keys) {
+        try {
+            const db = await this._openDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('metadata', 'readwrite');
+                const store = tx.objectStore('metadata');
+                const req = store.get(folderName);
+                req.onsuccess = () => {
+                    const entry = req.result || { files: [], cachedAt: Date.now() };
+                    entry.existingKeys = keys;
+                    store.put(entry, folderName);
+                };
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        } catch { }
+    },
+
+    async getDeviceCacheInfo(folderName) {
+        try {
+            const db = await this._openDb();
+            return new Promise(resolve => {
+                const tx = db.transaction('metadata', 'readonly');
+                const req = tx.objectStore('metadata').get(folderName);
+                req.onsuccess = () => {
+                    const entry = req.result;
+                    if (!entry) { resolve(null); return; }
+                    const ageHours = (Date.now() - entry.cachedAt) / 3_600_000;
+                    if (ageHours >= 24) { resolve(null); return; }
+                    resolve({
+                        fileCount: entry.files?.length ?? 0,
+                        existingKeyCount: entry.existingKeys?.length ?? 0,
+                        cachedAt: entry.cachedAt
+                    });
+                };
+                req.onerror = () => resolve(null);
+            });
+        } catch {
+            return null;
+        }
+    },
+
+    async clearDeviceCache(folderName) {
+        await this._deleteMetadataCache(folderName);
+    },
+
     // ── Clear ────────────────────────────────────────────────────────────────
 
     async clear() {

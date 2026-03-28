@@ -38,6 +38,21 @@ public class LocalFolderService : ILocalFolderService
     public async Task SaveMetadataCacheAsync(string folderName, IEnumerable<LocalFileInfo> files)
         => await _js.InvokeVoidAsync("folderPicker.saveMetadataCache", folderName, files);
 
+    public async Task<HashSet<string>?> LoadExistingKeysCacheAsync(string folderName)
+    {
+        var result = await _js.InvokeAsync<List<string>?>("folderPicker.loadExistingKeysCache", folderName);
+        return result == null ? null : [.. result];
+    }
+
+    public async Task SaveExistingKeysCacheAsync(string folderName, IEnumerable<string> keys)
+        => await _js.InvokeVoidAsync("folderPicker.saveExistingKeysCache", folderName, keys);
+
+    public async Task<DeviceCacheInfo?> GetDeviceCacheInfoAsync(string folderName)
+        => await _js.InvokeAsync<DeviceCacheInfo?>("folderPicker.getDeviceCacheInfo", folderName);
+
+    public async Task ClearDeviceCacheAsync(string folderName)
+        => await _js.InvokeVoidAsync("folderPicker.clearDeviceCache", folderName);
+
     public async Task<Dictionary<string, string>> GetBlobUrlsBatchAsync(IEnumerable<string> relativePaths)
     {
         var result = await _js.InvokeAsync<Dictionary<string, string>?>(

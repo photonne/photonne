@@ -1,5 +1,6 @@
 @page "/settings/device"
 @inject ILocalFolderService LocalFolderService
+@inject DeviceAssetsCache DeviceCache
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -129,6 +130,54 @@
                     </MudCardActions>
                 </MudCard>
             </MudItem>
+
+            @if (!string.IsNullOrEmpty(_folderName))
+            {
+                <MudItem xs="12" md="8">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Caché de dispositivo</MudText>
+                                <MudText Typo="Typo.body2">Lista de archivos y estado de sincronización almacenados localmente.</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (_deviceCacheInfo != null)
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-1">
+                                    @_deviceCacheInfo.FileCount archivo@(_deviceCacheInfo.FileCount == 1 ? "" : "s") en caché.
+                                </MudText>
+                                @if (_deviceCacheInfo.ExistingKeyCount > 0)
+                                {
+                                    <MudText Typo="Typo.body2" Class="mb-1">
+                                        @_deviceCacheInfo.ExistingKeyCount @(_deviceCacheInfo.ExistingKeyCount == 1 ? "ya estaba" : "ya estaban") en el servidor (cacheado).
+                                    </MudText>
+                                }
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    Actualizado @GetCacheAge(_deviceCacheInfo.CachedAt).
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin caché de dispositivo.</MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions Class="px-4 pb-4">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Warning"
+                                       StartIcon="@Icons.Material.Filled.ClearAll"
+                                       OnClick="ClearDeviceCacheAsync"
+                                       Disabled="@(_deviceCacheInfo == null || _clearingDeviceCache)">
+                                @if (_clearingDeviceCache)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Borrar caché
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
         </MudGrid>
     }
 </div>
@@ -140,6 +189,8 @@
     private string _folderName = "";
     private int _thumbnailCount;
     private bool _clearingCache;
+    private DeviceCacheInfo? _deviceCacheInfo;
+    private bool _clearingDeviceCache;
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,7 +201,14 @@
             {
                 _folderName = await LocalFolderService.GetStoredFolderNameAsync() ?? "";
             }
-            _thumbnailCount = await JS.InvokeAsync<int>("thumbnailCache.getCount");
+            var thumbnailTask = JS.InvokeAsync<int>("thumbnailCache.getCount").AsTask();
+            var deviceCacheTask = string.IsNullOrEmpty(_folderName)
+                ? Task.FromResult<DeviceCacheInfo?>(null)
+                : LocalFolderService.GetDeviceCacheInfoAsync(_folderName);
+
+            await Task.WhenAll(thumbnailTask, deviceCacheTask);
+            _thumbnailCount = thumbnailTask.Result;
+            _deviceCacheInfo = deviceCacheTask.Result;
         }
         finally
         {
@@ -182,8 +240,10 @@
 
     private async Task ClearFolderAsync()
     {
+        DeviceCache.Invalidate();
         await LocalFolderService.ClearAsync();
         _folderName = "";
+        _deviceCacheInfo = null;
         Snackbar.Add("Carpeta eliminada", Severity.Info);
     }
 
@@ -204,5 +264,43 @@
         {
             _clearingCache = false;
         }
+    }
+
+    private async Task ClearDeviceCacheAsync()
+    {
+        _clearingDeviceCache = true;
+        try
+        {
+            DeviceCache.Invalidate();
+            await LocalFolderService.ClearDeviceCacheAsync(_folderName);
+            _deviceCacheInfo = null;
+            Snackbar.Add("Caché de dispositivo borrada.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Error al borrar la caché.", Severity.Error);
+        }
+        finally
+        {
+            _clearingDeviceCache = false;
+        }
+    }
+
+    private static string GetCacheAge(long cachedAt)
+    {
+        var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(cachedAt);
+        if (age.TotalMinutes < 1) return "hace menos de 1 minuto";
+        if (age.TotalHours < 1)
+        {
+            var m = (int)age.TotalMinutes;
+            return $"hace {m} minuto{(m == 1 ? "" : "s")}";
+        }
+        if (age.TotalDays < 1)
+        {
+            var h = (int)age.TotalHours;
+            return $"hace {h} hora{(h == 1 ? "" : "s")}";
+        }
+        var d = (int)age.TotalDays;
+        return $"hace {d} día{(d == 1 ? "" : "s")}";
     }
 }

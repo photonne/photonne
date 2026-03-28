@@ -55,6 +55,8 @@ builder.Services.AddScoped<IFolderService>(sp =>
     return new FolderService(httpClient, async () => await authService.GetTokenAsync());
 });
 builder.Services.AddSingleton<DeviceAssetsCache>();
+builder.Services.AddSingleton<AlbumsCache>();
+builder.Services.AddSingleton<FoldersCache>();
 builder.Services.AddScoped<ILocalFolderService, LocalFolderService>();
 builder.Services.AddScoped<IPendingAssetsProvider, WebPendingAssetsProvider>();
 builder.Services.AddScoped<IMapService, MapService>();

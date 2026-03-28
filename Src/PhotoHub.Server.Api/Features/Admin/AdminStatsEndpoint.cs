@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PhotoHub.Server.Api.Shared.Data;
 using PhotoHub.Server.Api.Shared.Interfaces;
 using PhotoHub.Server.Api.Shared.Models;
@@ -22,8 +23,13 @@ public class AdminStatsEndpoint : IEndpoint
 
     private static async Task<IResult> GetStats(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         CancellationToken ct)
     {
+        const string cacheKey = "admin:stats";
+        if (cache.TryGetValue(cacheKey, out AdminStatsResponse? cached))
+            return Results.Ok(cached);
+
         var assetStats = await dbContext.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null)
@@ -97,6 +103,7 @@ public class AdminStatsEndpoint : IEndpoint
             Users = userUsage
         };
 
+        cache.Set(cacheKey, response, TimeSpan.FromMinutes(15));
         return Results.Ok(response);
     }
 

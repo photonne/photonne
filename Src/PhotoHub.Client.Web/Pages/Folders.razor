@@ -2,6 +2,7 @@
 @page "/folders/{Space}"
 @page "/folders/{FolderId:guid}"
 @inject IFolderService FolderService
+@inject FoldersCache FoldersCache
 @inject IAssetService AssetService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -1085,13 +1086,24 @@ else
         return null;
     }
     
-    private async Task LoadFolders()
+    private async Task LoadFolders(bool forceRefresh = false)
     {
         try
         {
             _loadingFolders = true;
+            if (!forceRefresh && FoldersCache.IsValid)
+            {
+                _folderTree = FoldersCache.Tree!;
+                _allFolders = FoldersCache.Folders!;
+                UpdateUserRootPhysicalPrefix();
+                FilterFoldersToUserRoot();
+                _treeData = MapToTreeItemData(_folderTree);
+                await LoadRootSpaces();
+                return;
+            }
             _folderTree = await FolderService.GetFolderTreeAsync();
             _allFolders = await FolderService.GetFoldersAsync(); // Cargar todas las carpetas para búsqueda rápida
+            FoldersCache.Set(_folderTree, _allFolders);
             UpdateUserRootPhysicalPrefix();
             FilterFoldersToUserRoot();
             _treeData = MapToTreeItemData(_folderTree);
@@ -1117,7 +1129,10 @@ else
         // Asegurar que tenemos todas las carpetas cargadas
         if (!_allFolders.Any())
         {
-            _allFolders = await FolderService.GetFoldersAsync();
+            if (FoldersCache.IsValid)
+                _allFolders = FoldersCache.Folders!;
+            else
+                _allFolders = await FolderService.GetFoldersAsync();
         }
 
         // 1. Identificar carpetas raíz técnicas (ParentFolderId == null) que pertenecen al usuario o son compartidas
@@ -1176,7 +1191,7 @@ else
 
     private async Task RefreshFoldersViewAsync(Guid? targetFolderId = null)
     {
-        await LoadFolders();
+        await LoadFolders(forceRefresh: true);
 
         var folderId = targetFolderId ?? _selectedFolder?.Id;
         if (folderId.HasValue)

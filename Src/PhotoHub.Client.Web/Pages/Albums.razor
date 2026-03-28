@@ -2,6 +2,7 @@
 @page "/albums/{Filter}"
 @page "/albums/{AlbumId:guid}"
 @inject IAlbumService AlbumService
+@inject AlbumsCache AlbumsCache
 @inject IAssetService AssetService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -1098,12 +1099,18 @@ else
         UpdateSelectionNavbar();
     }
 
-    private async Task LoadAlbums()
+    private async Task LoadAlbums(bool forceRefresh = false)
     {
         try
         {
             _loading = true;
+            if (!forceRefresh && AlbumsCache.IsValid)
+            {
+                _albums = AlbumsCache.Albums!;
+                return;
+            }
             _albums = await AlbumService.GetAlbumsAsync();
+            AlbumsCache.Set(_albums);
         }
         catch (Exception ex)
         {
@@ -1256,7 +1263,7 @@ else
             if (_albumFilter == AlbumFilter.Shared)
                 Navigation.NavigateTo($"/albums/{album.Id}/permissions");
             else
-                await LoadAlbums();
+                await LoadAlbums(forceRefresh: true);
         }
         else
         {
@@ -1288,7 +1295,7 @@ else
         var result = await dialog.Result;
         // Reload albums to refresh HasActiveShareLink badge
         if (result != null)
-            await LoadAlbums();
+            await LoadAlbums(forceRefresh: true);
     }
 
     private void OpenEditDialog()
@@ -1331,7 +1338,7 @@ else
                 {
                     await LoadAlbum(_editTargetAlbumId.Value);
                 }
-                await LoadAlbums();
+                await LoadAlbums(forceRefresh: true);
             }
             else
             {
@@ -1382,7 +1389,7 @@ else
                 }
                 else
                 {
-                    await LoadAlbums();
+                    await LoadAlbums(forceRefresh: true);
                 }
             }
             else
@@ -1425,7 +1432,7 @@ else
                 {
                     Navigation.NavigateTo("/albums");
                 }
-                await LoadAlbums();
+                await LoadAlbums(forceRefresh: true);
             }
             else
             {
@@ -1598,7 +1605,7 @@ else
 
         _deleteSelectedDialogVisible = false;
         ExitAlbumSelectionMode();
-        await LoadAlbums();
+        await LoadAlbums(forceRefresh: true);
 
         if (failed == 0)
         {
@@ -1698,7 +1705,7 @@ else
         }
 
         await LoadAlbum(_selectedAlbum.Id);
-        await LoadAlbums();
+        await LoadAlbums(forceRefresh: true);
         ExitAssetSelectionMode();
 
         if (failed == 0)
@@ -1726,7 +1733,7 @@ else
             {
                 Snackbar.Add("Portada actualizada", Severity.Success);
                 await LoadAlbum(_selectedAlbum.Id);
-                await LoadAlbums();
+                await LoadAlbums(forceRefresh: true);
                 ExitAssetSelectionMode();
             }
             else

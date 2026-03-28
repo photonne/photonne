@@ -290,13 +290,23 @@
             _assets = BuildTimelineItems(cached);
             Cache.SetAssets(_folderName, _assets);
             ApplyCachedBlobUrls();
+
+            // Cargar claves del servidor desde caché para mostrar estado sin consultar BD
+            var cachedKeys = await LocalFolderService.LoadExistingKeysCacheAsync(_folderName);
+            if (cachedKeys != null)
+            {
+                Cache.SetServerExistingKeys(cachedKeys);
+                ApplyCachedServerStatus();
+            }
+
             GroupAssets();
             _loading = false;
             StateHasChanged();
 
             // Re-enumerar en background para refrescar la cache
             _ = BackgroundEnumerateAsync();
-            _ = CheckExistingOnServerAsync();
+            // Refrescar claves del servidor en silencio si ya teníamos caché, o con indicador si no
+            _ = CheckExistingOnServerAsync(silent: cachedKeys != null);
             _ = GenerateThumbnailsAsync();
             return;
         }
@@ -392,15 +402,19 @@
     }
 
     // ── Opción A: check por nombre+tamaño ────────────────────────────────────
-    private async Task CheckExistingOnServerAsync()
+    private async Task CheckExistingOnServerAsync(bool silent = false)
     {
         if (_assets.Count == 0) return;
-        _checkingExisting = true;
-        StateHasChanged();
+        if (!silent)
+        {
+            _checkingExisting = true;
+            StateHasChanged();
+        }
         try
         {
             var keys = await AssetService.CheckExistingAsync(_assets.Select(a => (a.FileName, a.FileSize)));
             Cache.SetServerExistingKeys(keys);
+            _ = LocalFolderService.SaveExistingKeysCacheAsync(_folderName, keys);
             ApplyCachedServerStatus();
             GroupAssets();
         }
@@ -603,11 +617,12 @@
                 StateHasChanged();
             }
 
-            // Actualizar cache server check
-            Cache.SetServerExistingKeys(
-                _assets.Where(a => a.SyncStatus == AssetSyncStatus.Synced)
-                       .Select(a => $"{a.FileName}|{a.FileSize}")
-                       .ToHashSet());
+            // Actualizar cache server check (memoria + IndexedDB)
+            var updatedKeys = _assets.Where(a => a.SyncStatus == AssetSyncStatus.Synced)
+                                     .Select(a => $"{a.FileName}|{a.FileSize}")
+                                     .ToHashSet();
+            Cache.SetServerExistingKeys(updatedKeys);
+            _ = LocalFolderService.SaveExistingKeysCacheAsync(_folderName, updatedKeys);
 
             GroupAssets();
             var summary = $"{_uploadSuccessful} subidas";

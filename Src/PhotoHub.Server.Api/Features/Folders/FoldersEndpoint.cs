@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PhotoHub.Server.Api.Shared.Data;
 using PhotoHub.Server.Api.Shared.Interfaces;
 using PhotoHub.Server.Api.Features.Timeline;
@@ -93,6 +94,7 @@ public class FoldersEndpoint : IEndpoint
 
     private async Task<IResult> GetAllFolders(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -102,6 +104,10 @@ public class FoldersEndpoint : IEndpoint
             {
                 return Results.Unauthorized();
             }
+
+            var cacheKey = $"folders:list:{userId}";
+            if (cache.TryGetValue(cacheKey, out List<FolderResponse>? cachedFolders) && cachedFolders != null)
+                return Results.Ok(cachedFolders);
 
             var isAdmin = user.IsInRole("Admin");
             var folders = await GetFoldersForUserAsync(dbContext, userId, isAdmin, includeAssets: true, cancellationToken);
@@ -158,6 +164,7 @@ public class FoldersEndpoint : IEndpoint
 
             ApplyRecursiveCounts(response);
 
+            cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
             return Results.Ok(response);
         }
         catch (Exception ex)
@@ -346,6 +353,7 @@ public class FoldersEndpoint : IEndpoint
 
     private async Task<IResult> GetFolderTree(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -355,6 +363,10 @@ public class FoldersEndpoint : IEndpoint
             {
                 return Results.Unauthorized();
             }
+
+            var treeCacheKey = $"folders:tree:{userId}";
+            if (cache.TryGetValue(treeCacheKey, out List<FolderResponse>? cachedTree) && cachedTree != null)
+                return Results.Ok(cachedTree);
 
             var isAdmin = user.IsInRole("Admin");
             var allFolders = await GetFoldersForUserAsync(dbContext, userId, isAdmin, includeAssets: true, cancellationToken);
@@ -430,6 +442,7 @@ public class FoldersEndpoint : IEndpoint
                 UpdateTotalAssetCount(root);
             }
 
+            cache.Set(treeCacheKey, rootFolders, TimeSpan.FromMinutes(5));
             return Results.Ok(rootFolders);
         }
         catch (Exception ex)
@@ -444,6 +457,7 @@ public class FoldersEndpoint : IEndpoint
     private async Task<IResult> CreateFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] IMemoryCache cache,
         [FromBody] CreateFolderRequest request,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -508,6 +522,8 @@ public class FoldersEndpoint : IEndpoint
 
         dbContext.Folders.Add(folder);
         await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"folders:list:{userId}");
+        cache.Remove($"folders:tree:{userId}");
 
         if (normalizedPath.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase))
         {
@@ -532,6 +548,7 @@ public class FoldersEndpoint : IEndpoint
     private async Task<IResult> UpdateFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid folderId,
         [FromBody] UpdateFolderRequest request,
         ClaimsPrincipal user,
@@ -623,6 +640,8 @@ public class FoldersEndpoint : IEndpoint
         await UpdateSubfolderPathsAsync(dbContext, folderId, oldPath, folder.Path, cancellationToken);
         await UpdateAssetPathsAsync(dbContext, oldPath, folder.Path, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"folders:list:{userId}");
+        cache.Remove($"folders:tree:{userId}");
 
         var response = new FolderResponse
         {
@@ -640,6 +659,7 @@ public class FoldersEndpoint : IEndpoint
     private async Task<IResult> DeleteFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid folderId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -679,6 +699,8 @@ public class FoldersEndpoint : IEndpoint
         var permissions = dbContext.FolderPermissions.Where(p => folderIdsToDelete.Contains(p.FolderId));
         dbContext.FolderPermissions.RemoveRange(permissions);
         await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"folders:list:{userId}");
+        cache.Remove($"folders:tree:{userId}");
 
         try
         {
@@ -700,6 +722,7 @@ public class FoldersEndpoint : IEndpoint
     private async Task<IResult> MoveFolderAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] IMemoryCache cache,
         [FromBody] MoveFolderAssetsRequest request,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -778,12 +801,15 @@ public class FoldersEndpoint : IEndpoint
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"folders:list:{userId}");
+        cache.Remove($"folders:tree:{userId}");
 
         return Results.NoContent();
     }
 
     private async Task<IResult> RemoveFolderAssets(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromBody] RemoveFolderAssetsRequest request,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -813,6 +839,8 @@ public class FoldersEndpoint : IEndpoint
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"folders:list:{userId}");
+        cache.Remove($"folders:tree:{userId}");
 
         return Results.NoContent();
     }

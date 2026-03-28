@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PhotoHub.Server.Api.Shared.Data;
 using PhotoHub.Server.Api.Shared.Interfaces;
 using PhotoHub.Server.Api.Shared.Models;
@@ -94,6 +95,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> GetAllAlbums(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -104,6 +106,10 @@ public class AlbumsEndpoint : IEndpoint
             {
                 return Results.Unauthorized();
             }
+
+            var cacheKey = $"albums:{userId}";
+            if (cache.TryGetValue(cacheKey, out List<AlbumResponse>? cachedAlbums) && cachedAlbums != null)
+                return Results.Ok(cachedAlbums);
 
             // Obtener álbumes donde el usuario es propietario o tiene permisos
             var albums = await dbContext.Albums
@@ -172,6 +178,7 @@ public class AlbumsEndpoint : IEndpoint
                     .ToList()
             }).ToList();
 
+            cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
             return Results.Ok(response);
         }
         catch (Exception ex)
@@ -336,6 +343,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> CreateAlbum(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromBody] CreateAlbumRequest? request,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -364,6 +372,7 @@ public class AlbumsEndpoint : IEndpoint
 
             dbContext.Albums.Add(album);
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             var response = new AlbumResponse
             {
@@ -396,6 +405,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> UpdateAlbum(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         [FromBody] UpdateAlbumRequest? request,
         ClaimsPrincipal user,
@@ -435,6 +445,7 @@ public class AlbumsEndpoint : IEndpoint
             album.UpdatedAt = DateTime.UtcNow;
 
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             var response = new AlbumResponse
             {
@@ -467,6 +478,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> DeleteAlbum(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -496,6 +508,7 @@ public class AlbumsEndpoint : IEndpoint
 
             dbContext.Albums.Remove(album);
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             return Results.NoContent();
         }
@@ -513,6 +526,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> LeaveAlbum(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -548,6 +562,7 @@ public class AlbumsEndpoint : IEndpoint
 
             dbContext.AlbumPermissions.Remove(permission);
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             return Results.NoContent();
         }
@@ -565,6 +580,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> AddAssetToAlbum(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         [FromBody] AddAssetRequest? request,
         ClaimsPrincipal user,
@@ -642,6 +658,7 @@ public class AlbumsEndpoint : IEndpoint
 
             album.UpdatedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             return Results.Ok(new { message = "Asset added to album successfully" });
         }
@@ -659,6 +676,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> AddAssetsToAlbumBatch(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         [FromBody] AddAssetsBatchRequest request,
         ClaimsPrincipal user,
@@ -706,12 +724,14 @@ public class AlbumsEndpoint : IEndpoint
 
         album.UpdatedAt = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"albums:{userId}");
 
         return Results.Ok(new { added = validIds.Count, skipped = request.AssetIds.Count - validIds.Count });
     }
 
     private async Task<IResult> RemoveAssetFromAlbum(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         [FromRoute] Guid assetId,
         ClaimsPrincipal user,
@@ -755,6 +775,7 @@ public class AlbumsEndpoint : IEndpoint
 
             dbContext.AlbumAssets.Remove(albumAsset);
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             return Results.NoContent();
         }
@@ -772,6 +793,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> SetAlbumCover(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
         [FromRoute] Guid albumId,
         [FromBody] SetCoverRequest? request,
         ClaimsPrincipal user,
@@ -817,6 +839,7 @@ public class AlbumsEndpoint : IEndpoint
             album.CoverAssetId = request.AssetId;
             album.UpdatedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
+            cache.Remove($"albums:{userId}");
 
             return Results.Ok(new { message = "Cover image updated successfully" });
         }
