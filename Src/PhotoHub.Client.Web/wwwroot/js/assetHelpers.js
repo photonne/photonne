@@ -72,7 +72,7 @@ window.assetGridHelpers = {
     _getRowAssetIds(el) {
         const container = el?.closest('[data-asset-id]');
         if (!container) return [];
-        const grid = container.closest('.masonry-grid, .mud-grid');
+        const grid = container.closest('.timeline-flat-grid, .mud-grid');
         if (!grid) return [];
         const rect = container.getBoundingClientRect();
         const ids = [];

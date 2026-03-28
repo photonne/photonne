@@ -381,115 +381,104 @@ window.videoHelpers = {
 
 window.masonryHelpers = {
     initializeMasonry: function () {
-        // Procesar cada grupo de día por separado
-        const dayGroups = document.querySelectorAll('.day-group');
-        dayGroups.forEach(dayGroup => {
-            this.justifyDayGroup(dayGroup);
-        });
-        
-        // Configurar listener para recalcular al cambiar tamaño de ventana (con debounce)
+        this.justifyAllGroups();
+
         if (!window._masonryResizeHandler) {
             let resizeTimer = null;
             window._masonryResizeHandler = () => {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(() => {
-                    const dayGroups = document.querySelectorAll('.day-group');
-                    dayGroups.forEach(dayGroup => {
-                        window.masonryHelpers.justifyDayGroup(dayGroup);
-                    });
+                    window.masonryHelpers.justifyAllGroups();
                 }, 100);
             };
             window.addEventListener('resize', window._masonryResizeHandler, { passive: true });
         }
     },
-    justifyDayGroup: function (dayGroup) {
-        const grid = dayGroup.querySelector('.masonry-grid');
+
+    justifyAllGroups: function () {
+        const grid = document.querySelector('.timeline-flat-grid');
         if (!grid) return;
-        
-        const items = Array.from(grid.querySelectorAll('.masonry-item'));
-        if (items.length === 0) return;
-        
-        const gap = 2; // gap en píxeles
         const containerWidth = grid.offsetWidth;
-        const itemHeight = items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180;
-        
-        // Calcular aspect ratios de todos los items
-        const aspectRatios = items.map(item => {
-            let aspectRatio = parseFloat(item.getAttribute('data-aspect-ratio')) || 1.0;
-            const width = parseInt(item.getAttribute('data-width')) || 0;
-            const height = parseInt(item.getAttribute('data-height')) || 0;
-            if (width > 0 && height > 0) {
-                aspectRatio = width / height;
-            }
-            return aspectRatio;
+
+        // Agrupar items por data-day preservando el orden del DOM
+        const dayMap = new Map();
+        grid.querySelectorAll('.masonry-item').forEach(item => {
+            const day = item.getAttribute('data-day');
+            if (!dayMap.has(day)) dayMap.set(day, []);
+            dayMap.get(day).push(item);
         });
-        
-        // Distribuir items en líneas que llenen el ancho disponible
+
+        for (const items of dayMap.values()) {
+            this.justifyDayItems(items, containerWidth);
+        }
+    },
+
+    justifyDayItems: function (items, containerWidth) {
+        if (items.length === 0) return;
+
+        const gap = 2;
+        const itemHeight = items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180;
+
+        const aspectRatios = items.map(item => {
+            let ar = parseFloat(item.getAttribute('data-aspect-ratio')) || 1.0;
+            const w = parseInt(item.getAttribute('data-width')) || 0;
+            const h = parseInt(item.getAttribute('data-height')) || 0;
+            if (w > 0 && h > 0) ar = w / h;
+            return ar;
+        });
+
         let i = 0;
         while (i < items.length) {
             const line = [];
             const lineRatios = [];
             let lineWidth = 0;
-            
-            // Agregar items a la línea hasta que no quepan más
+
             while (i < items.length) {
-                const nextItem = items[i];
                 const nextRatio = aspectRatios[i];
                 const nextItemWidth = itemHeight * nextRatio;
-                
-                // Calcular ancho de la línea si agregamos este item
                 const newLineWidth = lineWidth + nextItemWidth + (line.length > 0 ? gap : 0);
-                
-                // Si agregar este item haría que la línea sea demasiado ancha, parar
-                if (newLineWidth > containerWidth && line.length > 0) {
-                    break;
-                }
-                
-                // Agregar el item a la línea
-                line.push(nextItem);
+
+                if (newLineWidth > containerWidth && line.length > 0) break;
+
+                line.push(items[i]);
                 lineRatios.push(nextRatio);
                 lineWidth = newLineWidth;
                 i++;
             }
-            
-            // Justificar la línea para llenar el ancho disponible
+
             if (line.length > 0) {
                 this.justifyLine(line, lineRatios, containerWidth, itemHeight, gap);
             }
         }
     },
+
     justifyLine: function (items, aspectRatios, containerWidth, itemHeight, gap) {
         if (items.length === 0) return;
-        
-        // Calcular ancho disponible (descontando los gaps)
+
         const availableWidth = containerWidth - (items.length - 1) * gap;
-        
-        // Si solo hay un item, usar ancho natural pero ajustar si es necesario
+
+        // Un único item siempre ocupa todo el ancho disponible
         if (items.length === 1) {
-            const width = Math.min(itemHeight * aspectRatios[0], availableWidth);
-            items[0].style.width = width + 'px';
+            items[0].style.width = availableWidth + 'px';
             return;
         }
-        
-        // Calcular factor de escala para llenar exactamente el ancho disponible
-        // Queremos que: sum(widths) = availableWidth
-        // widths[i] = itemHeight * aspectRatios[i] * scaleFactor
-        // sum(itemHeight * aspectRatios[i] * scaleFactor) = availableWidth
-        // scaleFactor * itemHeight * sum(aspectRatios) = availableWidth
-        // scaleFactor = availableWidth / (itemHeight * sum(aspectRatios))
+
         const totalAspectRatio = aspectRatios.reduce((sum, ar) => sum + ar, 0);
         const scaleFactor = availableWidth / (totalAspectRatio * itemHeight);
-        
-        // Aplicar anchos escalados para llenar exactamente el ancho disponible
+
         items.forEach((item, index) => {
-            const width = itemHeight * aspectRatios[index] * scaleFactor;
-            item.style.width = width + 'px';
+            item.style.width = (itemHeight * aspectRatios[index] * scaleFactor) + 'px';
         });
     },
+
     updateMasonryForGroup: function (groupSelector) {
-        const group = document.querySelector(groupSelector);
-        if (!group) return;
-        this.justifyDayGroup(group);
+        // groupSelector es "#group-2026-03-28" → extraer la clave "2026-03-28"
+        const dayKey = groupSelector.replace(/^#?group-/, '');
+        const grid = document.querySelector('.timeline-flat-grid');
+        if (!grid) return;
+        const containerWidth = grid.offsetWidth;
+        const items = Array.from(grid.querySelectorAll(`.masonry-item[data-day="${dayKey}"]`));
+        if (items.length > 0) this.justifyDayItems(items, containerWidth);
     }
 };
 

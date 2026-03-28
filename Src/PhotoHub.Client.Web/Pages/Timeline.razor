@@ -63,35 +63,36 @@
 
                     @if (_groupedAssets.Any())
                     {
+                        <div class="timeline-flat-grid">
                         @foreach (var group in _groupedAssets)
                         {
                             var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
-                            <div class="day-group" id="@GetGroupId(group.Key)">
+                            <div class="day-header-row" id="@GetGroupId(group.Key)">
                                 <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
-                                <div class="masonry-grid" data-day-group="@GetGroupId(group.Key)">
-                                    @foreach (var asset in group.Value)
-                                    {
-                                        <div class="masonry-item" 
-                                             data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
-                                             data-width="@(asset.Width?.ToString() ?? "0")"
-                                             data-height="@(asset.Height?.ToString() ?? "0")">
-                                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
-                                                 data-asset-id="@asset.Id"
-                                                 @ontouchstart="@(e => OnCardTouchStart(e, asset))"
-                                                 @ontouchmove="OnCardTouchMove"
-                                                 @ontouchend="OnCardTouchEnd">
-                                                <AssetCard Asset="@asset" OnAssetClick="OnTimelineAssetClick" />
-                                                <div class="asset-select-checkbox" @onclick:stopPropagation="true">
-                                                    <MudCheckBox T="bool"
-                                                                 Value="@IsAssetSelected(asset.Id)"
-                                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
                             </div>
+                            @foreach (var asset in group.Value)
+                            {
+                                <div class="masonry-item"
+                                     data-day="@group.Key"
+                                     data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                                     data-width="@(asset.Width?.ToString() ?? "0")"
+                                     data-height="@(asset.Height?.ToString() ?? "0")">
+                                    <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                                         data-asset-id="@asset.Id"
+                                         @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                                         @ontouchmove="OnCardTouchMove"
+                                         @ontouchend="OnCardTouchEnd">
+                                        <AssetCard Asset="@asset" OnAssetClick="OnTimelineAssetClick" />
+                                        <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                            <MudCheckBox T="bool"
+                                                         Value="@IsAssetSelected(asset.Id)"
+                                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         }
+                        </div>
                     }
                     else if (!_loading)
                     {
@@ -220,12 +221,12 @@
     .timeline-wrapper {
         position: relative;
         width: 100%;
-        height: calc(100vh - 64px - 56px);
+        height: calc(100vh - var(--mud-appbar-height, 64px));
     }
 
     @@media (max-width: 959.98px) {
         .timeline-wrapper {
-            height: calc(100vh - 64px - 56px - 64px - env(safe-area-inset-bottom));
+            height: calc(100vh - var(--mud-appbar-height, 64px) - 56px - env(safe-area-inset-bottom));
         }
     }
 
@@ -404,9 +405,24 @@
     }
 
 
-    /* Estilos para agrupación por día */
-    .day-group {
-        margin-bottom: 48px;
+    /* Grid continuo — todas las fotos en un único contenedor flex */
+    .timeline-flat-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        align-items: flex-start;
+        align-content: flex-start;
+    }
+
+    /* Cabecera de día: ocupa todo el ancho y fuerza nueva fila */
+    .day-header-row {
+        flex: 0 0 100%;
+        width: 100%;
+        padding-top: 20px;
+    }
+
+    .day-header-row:first-child {
+        padding-top: 4px;
     }
 
     .day-header {
@@ -415,17 +431,6 @@
         text-transform: capitalize;
         padding: 0 4px 6px 4px;
         display: block;
-    }
-
-    /* Layout tipo masonry justificado - llena todo el ancho */
-    .masonry-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2px;
-        width: 100%;
-        align-items: flex-start;
-        justify-content: flex-start;
-        align-content: flex-start;
     }
 
     .masonry-item {
@@ -601,8 +606,12 @@
             display: none;
         }
 
-        .day-group {
-            margin-bottom: 12px;
+        .day-header-row {
+            padding-top: 12px;
+        }
+
+        .day-header-row:first-child {
+            padding-top: 2px;
         }
 
         .day-header {
