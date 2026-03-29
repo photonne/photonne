@@ -23,7 +23,7 @@ public class MemoriesEndpoint : IEndpoint
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
-        [FromQuery] bool test,
+        [FromQuery] bool? test,
         CancellationToken ct)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -33,7 +33,7 @@ public class MemoriesEndpoint : IEndpoint
         var isAdmin = user.IsInRole("Admin");
         var today = DateTime.UtcNow;
 
-        if (test)
+        if (test == true)
         {
             var testQuery = dbContext.Assets
                 .Include(a => a.Exif)
