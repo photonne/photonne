@@ -737,6 +737,8 @@ else
                 }
             }
             
+            if (_navigatingAway) return;
+
             UpdateNavigation();
             UpdateNavbar(); // refresh after _allAssets is populated (slideshow button visibility)
             _lastLoadedAssetId = AssetId;
