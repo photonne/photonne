@@ -14,15 +14,13 @@
             {
                 var yearsAgo = DateTime.Today.Year - group.Key;
                 var heroAsset = group.Value.First();
-                var stripAssets = group.Value.Skip(1).Take(10).ToList();
+                var stripAssets = group.Value.Skip(1).Take(4).ToList();
 
                 <div class="memories-card">
-                    <div class="memories-card-hero" @onclick="() => OnThumbClick.InvokeAsync(heroAsset)">
+                    <!-- Hero -->
+                    <div class="memories-card-hero"
+                         @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = heroAsset, GroupAssets = group.Value })">
                         <img src="@heroAsset.ThumbnailUrl" alt="memory" loading="lazy" />
-
-                        <div class="memories-card-count-pill">
-                            @group.Value.Count @(group.Value.Count == 1 ? "foto" : "fotos")
-                        </div>
 
                         @if (heroAsset.Type == "VIDEO")
                         {
@@ -32,21 +30,27 @@
                         }
 
                         <div class="memories-card-overlay">
-                            <span class="memories-card-years-ago">Hace @yearsAgo @(yearsAgo == 1 ? "año" : "años")</span>
+                            <span class="memories-card-time">Hace @yearsAgo @(yearsAgo == 1 ? "año" : "años")</span>
                             <span class="memories-card-year">@group.Key</span>
+                        </div>
+
+                        <div class="memories-card-pill">
+                            @group.Value.Count @(group.Value.Count == 1 ? "foto" : "fotos")
                         </div>
                     </div>
 
+                    <!-- Strip: máximo 4 fotos, sin scroll -->
                     @if (stripAssets.Any())
                     {
-                        <div class="memories-card-strip">
+                        <div class="memories-strip">
                             @foreach (var asset in stripAssets)
                             {
-                                <div class="memories-card-thumb" @onclick="() => OnThumbClick.InvokeAsync(asset)">
+                                <div class="memories-strip-thumb"
+                                     @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = asset, GroupAssets = group.Value })">
                                     <img src="@asset.ThumbnailUrl" alt="memory" loading="lazy" />
                                     @if (asset.Type == "VIDEO")
                                     {
-                                        <div class="memories-video-badge memories-video-sm">
+                                        <div class="memories-video-sm">
                                             <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
                                         </div>
                                     }
@@ -61,9 +65,11 @@
 }
 
 <style>
-    /* ── Widget container ── */
+    /* ── Widget ── */
     .memories-widget {
-        margin-bottom: 28px;
+        box-sizing: border-box;
+        width: 100%;
+        margin-bottom: 24px;
         padding-bottom: 20px;
         border-bottom: 1px solid rgba(255,255,255,0.08);
     }
@@ -73,14 +79,11 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
         padding: 0 2px;
     }
 
-    .memories-icon {
-        color: var(--mud-palette-primary);
-        flex-shrink: 0;
-    }
+    .memories-icon { color: var(--mud-palette-primary); flex-shrink: 0; }
 
     .memories-header-text {
         display: flex;
@@ -106,25 +109,34 @@
         display: flex;
         flex-direction: column;
         gap: 12px;
+        /* Contiene el ancho — nunca desborda el padre */
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
 
-    /* ── Individual card ── */
+    /* ── Card (full-width con márgenes laterales) ── */
     .memories-card {
-        border-radius: 16px;
+        box-sizing: border-box;
+        width: 100%;
         overflow: hidden;
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.07);
-        box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 14px rgba(0,0,0,0.35);
+        /* Evita que el contenido interno empuje el ancho */
+        min-width: 0;
     }
 
-    /* ── Hero section ── */
+    /* ── Hero ── */
     .memories-card-hero {
         position: relative;
         width: 100%;
-        height: 200px;
+        /* Ratio 16:9 para paisaje — más natural en fotos */
+        aspect-ratio: 16 / 9;
         cursor: pointer;
         overflow: hidden;
         background: #1a1a1a;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .memories-card-hero img {
@@ -143,36 +155,32 @@
     /* Gradient overlay */
     .memories-card-overlay {
         position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        padding: 32px 14px 12px;
-        background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.35) 60%, transparent 100%);
+        bottom: 0; left: 0; right: 0;
+        padding: 40px 14px 12px;
+        background: linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
     }
 
-    .memories-card-years-ago {
-        font-size: 0.85rem;
+    .memories-card-time {
+        font-size: 0.88rem;
         font-weight: 700;
-        color: #ffffff;
-        letter-spacing: 0.01em;
+        color: #fff;
         text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
 
     .memories-card-year {
         font-size: 0.78rem;
         font-weight: 400;
-        color: rgba(255,255,255,0.7);
+        color: rgba(255,255,255,0.72);
         text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
 
-    /* Photo count pill */
-    .memories-card-count-pill {
+    /* Pill top-right */
+    .memories-card-pill {
         position: absolute;
-        top: 10px;
-        right: 10px;
+        top: 10px; right: 10px;
         background: rgba(0,0,0,0.55);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
@@ -182,50 +190,38 @@
         padding: 3px 9px;
         border-radius: 20px;
         border: 1px solid rgba(255,255,255,0.12);
-        letter-spacing: 0.02em;
         z-index: 1;
     }
 
-    /* Video badge */
+    /* Video badge hero */
     .memories-video-badge {
         position: absolute;
-        bottom: 44px;
-        right: 10px;
-        color: white;
+        bottom: 48px; right: 12px;
+        color: #fff;
         filter: drop-shadow(0 0 3px rgba(0,0,0,0.7));
         z-index: 1;
     }
 
-    .memories-video-sm {
-        bottom: 4px;
-        right: 4px;
-    }
-
-    /* ── Mini strip ── */
-    .memories-card-strip {
-        display: flex;
+    /* ── Strip: grid de 4 columnas, sin scroll ── */
+    .memories-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
         gap: 2px;
-        overflow-x: auto;
-        scrollbar-width: none;
-        padding: 2px 0 0;
-        background: rgba(0,0,0,0.2);
+        background: rgba(0,0,0,0.25);
+        width: 100%;
+        box-sizing: border-box;
     }
 
-    .memories-card-strip::-webkit-scrollbar {
-        display: none;
-    }
-
-    .memories-card-thumb {
-        flex-shrink: 0;
-        width: 64px;
-        height: 64px;
+    .memories-strip-thumb {
+        position: relative;
+        aspect-ratio: 1;
         overflow: hidden;
         cursor: pointer;
-        position: relative;
         background: #2a2a2a;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .memories-card-thumb img {
+    .memories-strip-thumb img {
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -233,14 +229,24 @@
         transition: opacity 0.15s;
     }
 
-    .memories-card-thumb:hover img,
-    .memories-card-thumb:active img {
-        opacity: 0.8;
+    .memories-strip-thumb:hover img,
+    .memories-strip-thumb:active img {
+        opacity: 0.75;
+    }
+
+    /* Video badge strip */
+    .memories-video-sm {
+        position: absolute;
+        bottom: 4px; right: 4px;
+        color: #fff;
+        filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+        z-index: 1;
     }
 </style>
 
 @code {
-    [Parameter] public EventCallback<TimelineItem> OnThumbClick { get; set; }
+    [Parameter] public EventCallback<MemoryClickArgs> OnThumbClick { get; set; }
+    [Parameter] public bool Test { get; set; }
     [Inject] private IAssetService AssetService { get; set; } = null!;
 
     private Dictionary<int, List<TimelineItem>> _yearGroups = new();
@@ -251,7 +257,7 @@
         var today = DateTime.Today;
         _dateLabel = today.ToString("d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
 
-        var items = await AssetService.GetMemoriesAsync();
+        var items = await AssetService.GetMemoriesAsync(Test);
         _yearGroups = items
             .GroupBy(a => a.CreatedDate.Year)
             .OrderByDescending(g => g.Key)

@@ -59,7 +59,7 @@
 
             <div class="timeline-container" id="timeline-scroll-container">
                 <div class="timeline-content @(_density == "S" ? "density-s" : _density == "L" ? "density-l" : "")"  >
-                    <MemoriesWidget OnThumbClick="OpenAsset" />
+                    <MemoriesWidget OnThumbClick="OpenMemoryAsset" Test="true" />
 
                     @if (_groupedAssets.Any())
                     {
@@ -556,7 +556,7 @@
         }
 
         .timeline-content {
-            padding: 0 0 24px 0;
+            padding: 12px 0;
         }
 
         /* Quitar la reserva de gutter en móvil para que el scrubber quede pegado al borde */
@@ -1282,6 +1282,20 @@
         else
         {
             var encodedPath = System.Net.WebUtility.UrlEncode(asset.FullPath);
+            Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}");
+        }
+    }
+
+    private void OpenMemoryAsset(MemoryClickArgs args)
+    {
+        AssetListNavigationState.SetList(args.GroupAssets, albumId: null);
+        if (args.Asset.SyncStatus == AssetSyncStatus.Synced)
+        {
+            Navigation.NavigateTo($"/asset/{args.Asset.Id}");
+        }
+        else
+        {
+            var encodedPath = System.Net.WebUtility.UrlEncode(args.Asset.FullPath);
             Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}");
         }
     }

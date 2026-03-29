@@ -315,12 +315,13 @@ public class AssetService : IAssetService
         return (response?.Items ?? new(), response?.HasMore ?? false);
     }
 
-    public async Task<List<TimelineItem>> GetMemoriesAsync()
+    public async Task<List<TimelineItem>> GetMemoriesAsync(bool test = false)
     {
         try
         {
             await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>("/api/assets/memories");
+            var url = test ? "/api/assets/memories?test=true" : "/api/assets/memories";
+            var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>(url);
             return response ?? new();
         }
         catch
