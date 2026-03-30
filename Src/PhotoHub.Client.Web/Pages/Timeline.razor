@@ -1165,23 +1165,14 @@
 
     private async Task LoadVisibleSectionsAsync(double scrollTop)
     {
-        const double viewportHeight = 900;
-        const double bufferBelow = 800;
-        const double bufferAbove = 400;
+        var unloadedIds = _sections
+            .Where(s => !s.IsLoaded && !s.IsLoading)
+            .Select(s => s.SectionId)
+            .ToList();
+        if (!unloadedIds.Any()) return;
 
-        double cumulative = 0;
-        var toLoad = new List<TimelineSection>();
-        foreach (var section in _sections)
-        {
-            var top = cumulative;
-            var bottom = cumulative + section.EstimatedHeight;
-            if (!section.IsLoaded && !section.IsLoading)
-            {
-                if (bottom >= scrollTop - bufferAbove && top <= scrollTop + viewportHeight + bufferBelow)
-                    toLoad.Add(section);
-            }
-            cumulative += section.EstimatedHeight;
-        }
+        var visibleIds = await JS.InvokeAsync<List<string>>("timelineHelpers.getVisibleSectionIds", unloadedIds);
+        var toLoad = _sections.Where(s => visibleIds.Contains(s.SectionId)).ToList();
         if (toLoad.Any())
             await Task.WhenAll(toLoad.Select(LoadSection));
     }

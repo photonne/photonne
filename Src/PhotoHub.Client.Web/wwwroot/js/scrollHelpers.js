@@ -514,6 +514,27 @@ window.focusElement = function (element) {
     if (element) element.focus();
 };
 
+window.timelineHelpers = {
+    getVisibleSectionIds: function (sectionIds) {
+        var sc = document.getElementById('timeline-scroll-container');
+        if (!sc) return [];
+        var buffer = 1200;
+        var viewTop = sc.scrollTop - buffer;
+        var viewBottom = sc.scrollTop + sc.clientHeight + buffer;
+        var visible = [];
+        for (var i = 0; i < sectionIds.length; i++) {
+            var el = document.getElementById(sectionIds[i]);
+            if (!el) continue;
+            var elTop = el.offsetTop;
+            var elBottom = elTop + el.offsetHeight;
+            if (elBottom >= viewTop && elTop <= viewBottom) {
+                visible.push(sectionIds[i]);
+            }
+        }
+        return visible;
+    }
+};
+
 window.timelineVirtualScroll = {
     _dotNetRef: null,
     _lastScrollTop: 0,
