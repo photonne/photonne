@@ -91,10 +91,11 @@ window.scrollHelpers = {
 
         let scrollDebounceTimer = null;
 
+        window._timelineGroupIds = groupIds;
         const handleScroll = () => {
             let activeId = "";
 
-            for (const id of groupIds) {
+            for (const id of window._timelineGroupIds) {
                 const element = document.getElementById(id);
                 if (element) {
                     const rect = element.getBoundingClientRect();
@@ -135,6 +136,11 @@ window.scrollHelpers = {
     setupTimelineHover: function () {},
     setupDraggableMarker: function () {},
     getTimelineHoverPosition: function () {},
+    updateGroupIds: function (groupIds) {
+        if (window._timelineGroupIds) {
+            window._timelineGroupIds = groupIds;
+        }
+    }
 };
 
 window.setupLoadMoreObserver = function (sentinelId, dotnetHelper, methodName) {
@@ -479,11 +485,81 @@ window.masonryHelpers = {
         const containerWidth = grid.offsetWidth;
         const items = Array.from(grid.querySelectorAll(`.masonry-item[data-day="${dayKey}"]`));
         if (items.length > 0) this.justifyDayItems(items, containerWidth);
+    },
+
+    updateMasonryForGroups: function (groupSelectors) {
+        const grid = document.querySelector('.timeline-flat-grid');
+        const sc = document.getElementById('timeline-scroll-container');
+        if (!grid) return;
+
+        // Preserve scroll position — masonry width changes can cause layout reflow
+        // that shifts the visible area, especially for boundary day groups.
+        const scrollTopBefore = sc ? sc.scrollTop : 0;
+
+        const containerWidth = grid.offsetWidth;
+        for (const groupSelector of groupSelectors) {
+            const dayKey = groupSelector.replace(/^#?group-/, '');
+            const items = Array.from(grid.querySelectorAll(`.masonry-item[data-day="${dayKey}"]`));
+            if (items.length > 0) this.justifyDayItems(items, containerWidth);
+        }
+
+        // Restore scroll position after all groups are processed
+        if (sc && sc.scrollTop !== scrollTopBefore) {
+            sc.scrollTop = scrollTopBefore;
+        }
     }
 };
 
 window.focusElement = function (element) {
     if (element) element.focus();
+};
+
+window.timelineVirtualScroll = {
+    _dotNetRef: null,
+    _lastScrollTop: 0,
+    _lastScrollTime: 0,
+    _idleTimer: null,
+    VELOCITY_THRESHOLD: 600, // px/s — above this = fast scroll, show skeleton
+
+    init: function (dotNetRef) {
+        this._dotNetRef = dotNetRef;
+        var sc = document.getElementById('timeline-scroll-container');
+        if (!sc) return;
+        this._lastScrollTop = sc.scrollTop;
+        this._lastScrollTime = performance.now();
+        var self = this;
+        sc.addEventListener('scroll', function () { self._onScroll(); }, { passive: true });
+    },
+
+    _onScroll: function () {
+        var sc = document.getElementById('timeline-scroll-container');
+        if (!sc || !this._dotNetRef) return;
+        var now = performance.now();
+        var dt = now - this._lastScrollTime;
+        var dy = Math.abs(sc.scrollTop - this._lastScrollTop);
+        var velocity = dt > 0 ? (dy / dt) * 1000 : 0;
+        this._lastScrollTop = sc.scrollTop;
+        this._lastScrollTime = now;
+        clearTimeout(this._idleTimer);
+        var self = this;
+        if (velocity < this.VELOCITY_THRESHOLD) {
+            this._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc.scrollTop)
+                .catch(function () {});
+        } else {
+            this._idleTimer = setTimeout(function () {
+                var sc2 = document.getElementById('timeline-scroll-container');
+                if (sc2 && self._dotNetRef) {
+                    self._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc2.scrollTop)
+                        .catch(function () {});
+                }
+            }, 300);
+        }
+    },
+
+    cleanup: function () {
+        clearTimeout(this._idleTimer);
+        this._dotNetRef = null;
+    }
 };
 
 window.lazyImageHelpers = {

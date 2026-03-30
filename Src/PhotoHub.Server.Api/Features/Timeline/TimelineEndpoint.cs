@@ -35,6 +35,7 @@ public class TimelineEndpoint : IEndpoint
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
+        [FromQuery] DateTime? from,
         [FromQuery] int pageSize,
         CancellationToken cancellationToken)
     {
@@ -65,6 +66,12 @@ public class TimelineEndpoint : IEndpoint
             {
                 var cursorUtc = cursor.Value.ToUniversalTime();
                 query = query.Where(a => a.CreatedDate < cursorUtc);
+            }
+
+            if (from.HasValue)
+            {
+                var fromUtc = from.Value.ToUniversalTime();
+                query = query.Where(a => a.CreatedDate >= fromUtc);
             }
 
             // Fetch one extra item to determine hasMore

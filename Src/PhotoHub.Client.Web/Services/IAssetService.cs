@@ -5,6 +5,8 @@ namespace PhotoHub.Client.Web.Services;
 public interface IAssetService
 {
     Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150);
+    Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500);
+    Task<List<TimelineIndexItem>> GetTimelineIndexAsync();
     Task<List<TimelineItem>> GetDeviceAssetsAsync();
     Task<TimelineItem?> GetAssetByIdAsync(Guid id);
     Task<AssetDetail?> GetAssetDetailAsync(Guid id);

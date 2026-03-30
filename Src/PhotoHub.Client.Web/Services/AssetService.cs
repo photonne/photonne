@@ -43,6 +43,24 @@ public class AssetService : IAssetService
         return response ?? new TimelinePageResult();
     }
 
+    public async Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500)
+    {
+        await SetAuthHeaderAsync();
+        var url = $"/api/assets/timeline" +
+                  $"?from={Uri.EscapeDataString(from.ToUniversalTime().ToString("o"))}" +
+                  $"&cursor={Uri.EscapeDataString(to.ToUniversalTime().ToString("o"))}" +
+                  $"&pageSize={pageSize}";
+        var response = await _httpClient.GetFromJsonAsync<TimelinePageResult>(url);
+        return response ?? new TimelinePageResult();
+    }
+
+    public async Task<List<TimelineIndexItem>> GetTimelineIndexAsync()
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.GetFromJsonAsync<List<TimelineIndexItem>>("/api/assets/timeline/index");
+        return response ?? new List<TimelineIndexItem>();
+    }
+
     public async Task<List<TimelineItem>> GetDeviceAssetsAsync()
     {
         await SetAuthHeaderAsync();
