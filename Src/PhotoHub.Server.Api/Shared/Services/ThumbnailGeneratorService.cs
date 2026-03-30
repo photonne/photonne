@@ -2,6 +2,7 @@ using PhotoHub.Server.Api.Shared.Models;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Webp;
 using Xabe.FFmpeg;
 using ImageMagick;
 
@@ -10,9 +11,27 @@ namespace PhotoHub.Server.Api.Shared.Services;
 public class ThumbnailGeneratorService
 {
     private readonly string _thumbnailsBasePath;
-    
-    public ThumbnailGeneratorService()
+    private readonly SettingsService _settingsService;
+
+    public const string KeyThumbnailFormat = "TaskSettings.ThumbnailFormat";
+    public const string KeyQualitySmall = "TaskSettings.ThumbnailQuality.Small";
+    public const string KeyQualityMedium = "TaskSettings.ThumbnailQuality.Medium";
+    public const string KeyQualityLarge = "TaskSettings.ThumbnailQuality.Large";
+
+    private record ThumbnailOptions(bool UseWebP, int QualitySmall, int QualityMedium, int QualityLarge)
     {
+        public int GetQuality(ThumbnailSize size) => size switch
+        {
+            ThumbnailSize.Small => QualitySmall,
+            ThumbnailSize.Medium => QualityMedium,
+            ThumbnailSize.Large => QualityLarge,
+            _ => QualityMedium
+        };
+    }
+
+    public ThumbnailGeneratorService(SettingsService settingsService)
+    {
+        _settingsService = settingsService;
         _thumbnailsBasePath = Environment.GetEnvironmentVariable("THUMBNAILS_PATH")
             ?? Path.Combine(Directory.GetCurrentDirectory(), "thumbnails");
 
@@ -21,44 +40,59 @@ public class ThumbnailGeneratorService
             Directory.CreateDirectory(_thumbnailsBasePath);
         }
     }
+
+    private static int ParseQuality(string value, int defaultValue)
+    {
+        if (!int.TryParse(value, out var n)) return defaultValue;
+        return Math.Clamp(n, 1, 100);
+    }
     
     /// <summary>
     /// Generates thumbnails for an asset (Small, Medium, Large)
     /// </summary>
     public async Task<List<AssetThumbnail>> GenerateThumbnailsAsync(
-        string sourceFilePath, 
+        string sourceFilePath,
         Guid assetId,
         CancellationToken cancellationToken = default)
     {
         var thumbnails = new List<AssetThumbnail>();
-        
+
+        // Read thumbnail settings once for this generation job
+        var format = await _settingsService.GetSettingAsync(KeyThumbnailFormat, Guid.Empty, "JPEG");
+        var options = new ThumbnailOptions(
+            UseWebP: format.Equals("WebP", StringComparison.OrdinalIgnoreCase),
+            QualitySmall: ParseQuality(await _settingsService.GetSettingAsync(KeyQualitySmall, Guid.Empty, "75"), 75),
+            QualityMedium: ParseQuality(await _settingsService.GetSettingAsync(KeyQualityMedium, Guid.Empty, "80"), 80),
+            QualityLarge: ParseQuality(await _settingsService.GetSettingAsync(KeyQualityLarge, Guid.Empty, "85"), 85));
+
         try
         {
             var extension = Path.GetExtension(sourceFilePath).ToLowerInvariant();
-            
+
             if (IsImageFile(extension))
             {
                 if (extension == ".heic" || extension == ".heif")
                 {
-                    await GenerateHeicThumbnailsAsync(sourceFilePath, assetId, thumbnails, cancellationToken);
+                    await GenerateHeicThumbnailsAsync(sourceFilePath, assetId, thumbnails, options, cancellationToken);
                 }
                 else
                 {
                     using var sourceImage = await Image.LoadAsync(sourceFilePath, cancellationToken);
-                    
+
                     // Get EXIF orientation if available
                     var orientation = GetImageOrientation(sourceImage);
-                    
+
                     // Generate thumbnails for each size
                     var sizes = new[] { ThumbnailSize.Small, ThumbnailSize.Medium, ThumbnailSize.Large };
-                    
+
                     foreach (var size in sizes)
                     {
                         var thumbnail = await GenerateThumbnailAsync(
-                            sourceImage, 
-                            assetId, 
-                            size, 
+                            sourceImage,
+                            assetId,
+                            size,
                             orientation,
+                            options,
                             cancellationToken);
                         
                         if (thumbnail != null)
@@ -144,10 +178,11 @@ public class ThumbnailGeneratorService
                         foreach (var size in sizes)
                         {
                             var thumbnail = await GenerateThumbnailAsync(
-                                sourceImage, 
-                                assetId, 
-                                size, 
+                                sourceImage,
+                                assetId,
+                                size,
                                 1, // FFmpeg snapshot usually doesn't need orientation fix as it processes the stream
+                                options,
                                 cancellationToken);
                             
                             if (thumbnail != null)
@@ -233,21 +268,19 @@ public class ThumbnailGeneratorService
         }
     }
 
-    private async Task GenerateHeicThumbnailsAsync(string sourceFilePath, Guid assetId, List<AssetThumbnail> thumbnails, CancellationToken cancellationToken)
+    private async Task GenerateHeicThumbnailsAsync(string sourceFilePath, Guid assetId, List<AssetThumbnail> thumbnails, ThumbnailOptions options, CancellationToken cancellationToken)
     {
         try
         {
             using var image = new MagickImage(sourceFilePath);
-            // Convert to JPEG byte array to use with ImageSharp or process directly with Magick.NET
-            // Direct processing with Magick.NET is easier here
-            
+
             var sizes = new[] { ThumbnailSize.Small, ThumbnailSize.Medium, ThumbnailSize.Large };
             foreach (var size in sizes)
             {
                 var targetSize = (int)size;
-                var thumbnailPath = GetThumbnailPath(assetId, size);
+                var thumbnailPath = GetThumbnailPath(assetId, size, options.UseWebP);
                 var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
-                
+
                 if (!string.IsNullOrEmpty(thumbnailDir) && !Directory.Exists(thumbnailDir))
                 {
                     Directory.CreateDirectory(thumbnailDir);
@@ -256,11 +289,11 @@ public class ThumbnailGeneratorService
                 using var thumb = image.Clone();
                 thumb.AutoOrient();
                 thumb.Thumbnail((uint)targetSize, (uint)targetSize);
-                thumb.Format = MagickFormat.Jpeg;
-                thumb.Quality = 85;
-                
+                thumb.Format = options.UseWebP ? MagickFormat.WebP : MagickFormat.Jpeg;
+                thumb.Quality = (uint)options.GetQuality(size);
+
                 await thumb.WriteAsync(thumbnailPath, cancellationToken);
-                
+
                 var fileInfo = new FileInfo(thumbnailPath);
                 thumbnails.Add(new AssetThumbnail
                 {
@@ -270,7 +303,7 @@ public class ThumbnailGeneratorService
                     Width = (int)thumb.Width,
                     Height = (int)thumb.Height,
                     FileSize = fileInfo.Length,
-                    Format = "JPEG"
+                    Format = options.UseWebP ? "WebP" : "JPEG"
                 });
             }
         }
@@ -285,19 +318,20 @@ public class ThumbnailGeneratorService
         Guid assetId,
         ThumbnailSize size,
         int orientation,
+        ThumbnailOptions options,
         CancellationToken cancellationToken)
     {
         try
         {
             var targetSize = (int)size;
-            
+
             // Calculate dimensions maintaining aspect ratio
             var (width, height) = CalculateThumbnailDimensions(
-                sourceImage.Width, 
-                sourceImage.Height, 
+                sourceImage.Width,
+                sourceImage.Height,
                 targetSize,
                 orientation);
-            
+
             // Create thumbnail
             using var thumbnail = sourceImage.Clone(ctx =>
             {
@@ -306,7 +340,7 @@ public class ThumbnailGeneratorService
                 {
                     ApplyOrientation(ctx, orientation);
                 }
-                
+
                 // Resize maintaining aspect ratio
                 ctx.Resize(new ResizeOptions
                 {
@@ -315,20 +349,23 @@ public class ThumbnailGeneratorService
                     Sampler = KnownResamplers.Lanczos3
                 });
             });
-            
+
             // Save thumbnail
-            var thumbnailPath = GetThumbnailPath(assetId, size);
+            var thumbnailPath = GetThumbnailPath(assetId, size, options.UseWebP);
             var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
             if (!string.IsNullOrEmpty(thumbnailDir) && !Directory.Exists(thumbnailDir))
             {
                 Directory.CreateDirectory(thumbnailDir);
             }
-            
-            var encoder = new JpegEncoder { Quality = 85 };
-            await thumbnail.SaveAsync(thumbnailPath, encoder, cancellationToken);
-            
+
+            var quality = options.GetQuality(size);
+            if (options.UseWebP)
+                await thumbnail.SaveAsync(thumbnailPath, new WebpEncoder { Quality = quality }, cancellationToken);
+            else
+                await thumbnail.SaveAsync(thumbnailPath, new JpegEncoder { Quality = quality }, cancellationToken);
+
             var fileInfo = new FileInfo(thumbnailPath);
-            
+
             return new AssetThumbnail
             {
                 AssetId = assetId,
@@ -337,7 +374,7 @@ public class ThumbnailGeneratorService
                 Width = width,
                 Height = height,
                 FileSize = fileInfo.Length,
-                Format = "JPEG"
+                Format = options.UseWebP ? "WebP" : "JPEG"
             };
         }
         catch
@@ -434,20 +471,20 @@ public class ThumbnailGeneratorService
         }
     }
     
-    private string GetThumbnailPath(Guid assetId, ThumbnailSize size)
+    private string GetThumbnailPath(Guid assetId, ThumbnailSize size, bool useWebP = false)
     {
-        // Organize thumbnails by asset ID: thumbnails/{assetId}/{size}.jpg
         var sizeName = size.ToString().ToLowerInvariant();
-        return Path.Combine(_thumbnailsBasePath, assetId.ToString(), $"{sizeName}.jpg");
+        var ext = useWebP ? "webp" : "jpg";
+        return Path.Combine(_thumbnailsBasePath, assetId.ToString(), $"{sizeName}.{ext}");
     }
-    
+
     /// <summary>
-    /// Checks if a thumbnail file exists physically on disk
+    /// Checks if a thumbnail file exists physically on disk (either JPEG or WebP)
     /// </summary>
     public bool ThumbnailExists(Guid assetId, ThumbnailSize size)
     {
-        var thumbnailPath = GetThumbnailPath(assetId, size);
-        return File.Exists(thumbnailPath);
+        return File.Exists(GetThumbnailPath(assetId, size, false))
+            || File.Exists(GetThumbnailPath(assetId, size, true));
     }
     
     /// <summary>
