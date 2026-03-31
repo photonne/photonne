@@ -12,6 +12,11 @@ namespace PhotoHub.Server.Api.Features.Timeline;
 
 public class TimelineEndpoint : IEndpoint
 {
+    private static List<ScannedFile> _cachedInternalScan = new();
+    private static DateTime _internalScanCachedAt = DateTime.MinValue;
+    private static readonly SemaphoreSlim _internalScanLock = new(1, 1);
+    private static readonly TimeSpan _internalScanTtl = TimeSpan.FromSeconds(60);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/timeline", Handle)
@@ -138,9 +143,23 @@ public class TimelineEndpoint : IEndpoint
             
             if (!cursor.HasValue && Directory.Exists(internalAssetsPath))
             {
-                Console.WriteLine($"[DEBUG] Scanning internal directory for copied but not indexed assets: {internalAssetsPath}");
-                internalScannedFiles = (await directoryScanner.ScanDirectoryAsync(internalAssetsPath, cancellationToken)).ToList();
-                Console.WriteLine($"[DEBUG] Found {internalScannedFiles.Count} files in internal directory");
+                if (DateTime.UtcNow - _internalScanCachedAt > _internalScanTtl)
+                {
+                    await _internalScanLock.WaitAsync(cancellationToken);
+                    try
+                    {
+                        if (DateTime.UtcNow - _internalScanCachedAt > _internalScanTtl)
+                        {
+                            _cachedInternalScan = (await directoryScanner.ScanDirectoryAsync(internalAssetsPath, cancellationToken)).ToList();
+                            _internalScanCachedAt = DateTime.UtcNow;
+                        }
+                    }
+                    finally
+                    {
+                        _internalScanLock.Release();
+                    }
+                }
+                internalScannedFiles = _cachedInternalScan;
                 
                 // Resolver rutas físicas de assets en BD para comparar
                 var existingPhysicalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

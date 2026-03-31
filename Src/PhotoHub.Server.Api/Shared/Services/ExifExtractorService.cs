@@ -20,65 +20,62 @@ public class ExifExtractorService
             if (!IsImageFile(extension) && !IsVideoFile(extension))
                 return null;
             
-            return await Task.Run(() =>
+            IEnumerable<MetadataExtractor.Directory> directories;
+            try
             {
-                IEnumerable<MetadataExtractor.Directory> directories;
+                directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(filePath), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // MetadataExtractor might fail for some video formats
+                Console.WriteLine($"[DEBUG] Metadata extraction failed for {filePath}: {ex.Message}");
+                return new AssetExif();
+            }
+
+            var exif = new AssetExif();
+
+            foreach (var directory in directories)
+            {
+                ExtractDirectoryMetadata(directory, exif);
+            }
+
+            // Get image/video dimensions
+            if (IsImageFile(extension))
+            {
                 try
                 {
-                    directories = ImageMetadataReader.ReadMetadata(filePath);
+                    var imageInfo = await Task.Run(() => SixLabors.ImageSharp.Image.Identify(filePath), cancellationToken);
+                    if (imageInfo != null)
+                    {
+                        exif.Width = imageInfo.Width;
+                        exif.Height = imageInfo.Height;
+                    }
+                }
+                catch
+                {
+                    // Ignore dimension extraction errors
+                }
+            }
+            else if (IsVideoFile(extension))
+            {
+                try
+                {
+                    // Use FFprobe to get video dimensions
+                    var mediaInfo = await FFmpeg.GetMediaInfo(filePath, cancellationToken);
+                    var videoStream = mediaInfo.VideoStreams.FirstOrDefault();
+                    if (videoStream != null)
+                    {
+                        exif.Width = videoStream.Width;
+                        exif.Height = videoStream.Height;
+                    }
                 }
                 catch (Exception ex)
                 {
-                    // MetadataExtractor might fail for some video formats
-                    Console.WriteLine($"[DEBUG] Metadata extraction failed for {filePath}: {ex.Message}");
-                    return new AssetExif();
+                    Console.WriteLine($"[DEBUG] Video dimension extraction with FFprobe failed for {filePath}: {ex.Message}");
                 }
-                
-                var exif = new AssetExif();
-                
-                foreach (var directory in directories)
-                {
-                    ExtractDirectoryMetadata(directory, exif);
-                }
-                
-                // Get image/video dimensions
-                if (IsImageFile(extension))
-                {
-                    try
-                    {
-                        var imageInfo = SixLabors.ImageSharp.Image.Identify(filePath);
-                        if (imageInfo != null)
-                        {
-                            exif.Width = imageInfo.Width;
-                            exif.Height = imageInfo.Height;
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore dimension extraction errors
-                    }
-                }
-                else if (IsVideoFile(extension))
-                {
-                    try
-                    {
-                        // Use FFprobe to get video dimensions
-                        var mediaInfo = FFmpeg.GetMediaInfo(filePath, cancellationToken).Result;
-                        var videoStream = mediaInfo.VideoStreams.FirstOrDefault();
-                        if (videoStream != null)
-                        {
-                            exif.Width = videoStream.Width;
-                            exif.Height = videoStream.Height;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[DEBUG] Video dimension extraction with FFprobe failed for {filePath}: {ex.Message}");
-                    }
-                }
-                
-                return exif;
-            }, cancellationToken);
+            }
+
+            return exif;
         }
         catch
         {

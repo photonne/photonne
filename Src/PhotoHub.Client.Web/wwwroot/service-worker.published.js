@@ -2,6 +2,15 @@
 
 const CACHE_NAME = 'photohub-cache-v1';
 const THUMBNAIL_CACHE = 'photohub-thumbnails-v1';
+const THUMBNAIL_CACHE_MAX_ENTRIES = 1000;
+
+async function trimThumbnailCache(cache) {
+    const keys = await cache.keys();
+    if (keys.length > THUMBNAIL_CACHE_MAX_ENTRIES) {
+        const toDelete = keys.slice(0, keys.length - THUMBNAIL_CACHE_MAX_ENTRIES);
+        await Promise.all(toDelete.map(k => cache.delete(k)));
+    }
+}
 
 self.addEventListener('install', event => {
     event.waitUntil(
@@ -50,7 +59,10 @@ self.addEventListener('fetch', event => {
                 cache.match(event.request).then(cached => {
                     if (cached) return cached;
                     return fetch(event.request).then(response => {
-                        if (response.ok) cache.put(event.request, response.clone());
+                        if (response.ok) {
+                            cache.put(event.request, response.clone())
+                                .then(() => trimThumbnailCache(cache));
+                        }
                         return response;
                     });
                 })

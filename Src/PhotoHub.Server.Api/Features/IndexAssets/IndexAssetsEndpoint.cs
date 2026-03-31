@@ -109,21 +109,26 @@ public class IndexAssetsEndpoint : IEndpoint
                 
                 await channel.Writer.WriteAsync(new IndexProgressUpdate { Message = $"Descubiertos {stats.TotalFilesFound} archivos. Procesando...", Percentage = 10, Statistics = MapToBlazorStats(stats) }, cancellationToken);
 
-                // Load existing assets for differential comparison
+                // Load existing assets for differential comparison (without Exif to reduce memory usage)
                 // Manejar duplicados: si hay múltiples assets con el mismo checksum, tomar el más reciente
                 var allAssets = await dbContext.Assets
-                    .Include(a => a.Exif)
                     .Where(a => a.DeletedAt == null)
                     .ToListAsync(cancellationToken);
                 var existingAssetsByChecksum = allAssets
                     .Where(a => !string.IsNullOrEmpty(a.Checksum))
                     .GroupBy(a => a.Checksum)
                     .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ScannedAt).First());
-                
+
                 var existingAssetsByPath = allAssets
                     .Where(a => !string.IsNullOrEmpty(a.FullPath))
                     .GroupBy(a => a.FullPath)
                     .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ScannedAt).First());
+
+                // Lightweight set of asset IDs that already have DateTimeOriginal extracted
+                var assetsWithDateTimeOriginal = await dbContext.AssetExifs
+                    .Where(e => e.DateTimeOriginal != null)
+                    .Select(e => e.AssetId)
+                    .ToHashSetAsync(cancellationToken);
                 
                 // STEP 2 & 3: Process files
                 var indexContext = new IndexContext
@@ -160,7 +165,7 @@ public class IndexAssetsEndpoint : IEndpoint
                     {
                         var asset = changeResult.Asset!;
                         var isNew = changeResult.IsNew;
-                        if (ShouldExtractExif(asset, isNew)) 
+                        if (ShouldExtractExif(asset, isNew, assetsWithDateTimeOriginal))
                             await ExtractExifMetadataAsync(asset, file.FullPath, exifService, stats, cancellationToken);
                         
                         if (asset.Exif != null)
@@ -454,22 +459,27 @@ public class IndexAssetsEndpoint : IEndpoint
             // STEP 1: Recursive file discovery
             var scannedFiles = await DiscoverFilesAsync(directoryScanner, directoryPath, stats, cancellationToken);
             
-            // Load existing assets for differential comparison
+            // Load existing assets for differential comparison (without Exif to reduce memory usage)
             // Manejar duplicados: si hay múltiples assets con el mismo checksum, tomar el más reciente
             var allAssets = await dbContext.Assets
-                .Include(a => a.Exif)
                 .Where(a => a.DeletedAt == null)
                 .ToListAsync(cancellationToken);
             var existingAssetsByChecksum = allAssets
                 .Where(a => !string.IsNullOrEmpty(a.Checksum))
                 .GroupBy(a => a.Checksum)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ScannedAt).First());
-            
+
             var existingAssetsByPath = allAssets
                 .Where(a => !string.IsNullOrEmpty(a.FullPath))
                 .GroupBy(a => a.FullPath)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ScannedAt).First());
-            
+
+            // Lightweight set of asset IDs that already have DateTimeOriginal extracted
+            var assetsWithDateTimeOriginal = await dbContext.AssetExifs
+                .Where(e => e.DateTimeOriginal != null)
+                .Select(e => e.AssetId)
+                .ToHashSetAsync(cancellationToken);
+
             // STEP 2 & 3: Process files (change detection, EXIF extraction, recognition)
             var indexContext = await ProcessFilesAsync(
                 scannedFiles,
@@ -482,6 +492,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 settingsService,
                 indexStartTime,
                 stats,
+                assetsWithDateTimeOriginal,
                 cancellationToken);
             
             // STEP 4: Database operations and thumbnail generation (atomic transaction)
@@ -549,6 +560,7 @@ public class IndexAssetsEndpoint : IEndpoint
         SettingsService settingsService,
         DateTime indexStartTime,
         IndexStatistics stats,
+        HashSet<Guid> assetsWithDateTimeOriginal,
         CancellationToken cancellationToken)
     {
         var context = new IndexContext
@@ -594,7 +606,7 @@ public class IndexAssetsEndpoint : IEndpoint
             var isNew = changeResult.IsNew;
             
             // STEP 3: Extract EXIF metadata (only for new images)
-            if (ShouldExtractExif(asset, isNew))
+            if (ShouldExtractExif(asset, isNew, assetsWithDateTimeOriginal))
             {
                 await ExtractExifMetadataAsync(
                     asset,
@@ -747,15 +759,15 @@ public class IndexAssetsEndpoint : IEndpoint
     }
 
     // Método separado para decidir si debe extraerse EXIF
-    private static bool ShouldExtractExif(Asset asset, bool isNew)
+    private static bool ShouldExtractExif(Asset asset, bool isNew, HashSet<Guid> assetsWithDateTimeOriginal)
     {
         if (asset.Type != AssetType.IMAGE && asset.Type != AssetType.VIDEO)
             return false;
-        
+
         if (isNew)
             return true;
-        
-        return asset.Exif == null || asset.Exif.DateTimeOriginal == null;
+
+        return !assetsWithDateTimeOriginal.Contains(asset.Id);
     }
 
     // Método que SOLO extrae EXIF (sin lógica de decisión)
