@@ -29,7 +29,13 @@ public class MapService : IMapService
 
         var queryString = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
         var response = await _httpClient.GetFromJsonAsync<List<MapCluster>>($"/api/assets/map{queryString}");
-        
+
         return response ?? new List<MapCluster>();
+    }
+
+    public async Task<List<MapPoint>> GetMapPointsAsync()
+    {
+        var response = await _httpClient.GetFromJsonAsync<List<MapPoint>>("/api/assets/map/points");
+        return response ?? new List<MapPoint>();
     }
 }

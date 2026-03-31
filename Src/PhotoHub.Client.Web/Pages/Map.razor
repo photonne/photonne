@@ -16,7 +16,7 @@
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
         </div>
     }
-    
+
     <div id="map-container" style="width: 100%; height: 100%; position: relative;">
         <div id="map" style="width: 100%; height: 100%;"></div>
     </div>
@@ -26,18 +26,17 @@
     #map {
         z-index: 0;
     }
-    
+
     .map-cluster-icon {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
     }
-    
+
     .map-cluster-icon img {
         border-radius: 50%;
     }
-    
-    
+
     /* Estilos simplificados para los controles de Leaflet */
     .leaflet-control {
         background: var(--mud-palette-surface) !important;
@@ -46,7 +45,7 @@
         box-shadow: 0 1px 5px rgba(0,0,0,0.4);
         border: 1px solid var(--mud-palette-divider) !important;
     }
-    
+
     .leaflet-control-zoom a, .leaflet-control-locate a, .leaflet-control-fullscreen {
         background-color: var(--mud-palette-surface) !important;
         color: var(--mud-palette-text-primary) !important;
@@ -60,22 +59,22 @@
         font-size: 18px;
         font-weight: bold;
     }
-    
+
     .leaflet-control-zoom a:hover, .leaflet-control-locate a:hover, .leaflet-control-fullscreen:hover {
         background-color: var(--mud-palette-background-grey) !important;
     }
-    
+
     .leaflet-control-zoom-in {
         border-top-left-radius: 4px;
         border-top-right-radius: 4px;
     }
-    
+
     .leaflet-control-zoom-out {
         border-bottom-left-radius: 4px;
         border-bottom-right-radius: 4px;
         border-bottom: none !important;
     }
-    
+
     .leaflet-control-scale {
         background: var(--mud-palette-surface) !important;
         color: var(--mud-palette-text-primary) !important;
@@ -91,15 +90,8 @@
 </style>
 
 @code {
-    private List<MapCluster> _clusters = new();
     private bool _loading = true;
     private DotNetObjectReference<Map>? _objRef;
-    private List<object> _markers = new();
-    private double _currentMinLat = -90;
-    private double _currentMinLng = -180;
-    private double _currentMaxLat = 90;
-    private double _currentMaxLng = 180;
-    private int _currentZoom = 2;
     private string _mapStyle => LayoutService.IsDarkMode ? "dark" : "light";
 
     protected override async Task OnInitializedAsync()
@@ -120,272 +112,66 @@
         {
             try
             {
-                // Esperar un poco para asegurar que el DOM esté completamente renderizado
                 await Task.Delay(100);
-                
-                // Inicializar el mapa (centro en España por defecto, pero se ajustará automáticamente)
                 await JS.InvokeVoidAsync("mapHelpers.initMap", "map", 40.4168, -3.7038, 6, _mapStyle);
+                await Task.Delay(300);
 
-                // Esperar a que el mapa se inicialice completamente
-                await Task.Delay(500);
+                _loading = true;
+                StateHasChanged();
 
-                // Configurar listener para cambios en el mapa
-                await JS.InvokeVoidAsync("mapHelpers.onMapMoveEnd", _objRef);
+                var points = await MapService.GetMapPointsAsync();
 
-                // Obtener bounds iniciales
-                var bounds = await JS.InvokeAsync<MapBounds>("mapHelpers.getMapBounds");
-                if (bounds != null)
+                Console.WriteLine($"[MAP] Loaded {points.Count} GPS points");
+
+                if (points.Any())
                 {
-                    _currentMinLat = bounds.MinLat;
-                    _currentMinLng = bounds.MinLng;
-                    _currentMaxLat = bounds.MaxLat;
-                    _currentMaxLng = bounds.MaxLng;
-                }
-                _currentZoom = await JS.InvokeAsync<int>("mapHelpers.getZoom");
+                    var jsPoints = points.Select(p => new
+                    {
+                        id = p.Id.ToString(),
+                        latitude = p.Latitude,
+                        longitude = p.Longitude,
+                        thumbnailUrl = p.ThumbnailUrl
+                    }).ToList();
 
-                // Cargar clusters iniciales - sin filtrar por bounds inicialmente para ver todos los assets
-                await LoadClusters(true, true);
+                    await JS.InvokeVoidAsync("mapHelpers.loadAllPoints", jsPoints, _objRef);
+
+                    var minLat = points.Min(p => p.Latitude);
+                    var minLng = points.Min(p => p.Longitude);
+                    var maxLat = points.Max(p => p.Latitude);
+                    var maxLng = points.Max(p => p.Longitude);
+                    var latPad = Math.Max((maxLat - minLat) * 0.1, 0.1);
+                    var lngPad = Math.Max((maxLng - minLng) * 0.1, 0.1);
+
+                    await JS.InvokeVoidAsync("mapHelpers.fitBounds",
+                        minLat - latPad, minLng - lngPad,
+                        maxLat + latPad, maxLng + lngPad);
+                }
             }
             catch (Exception ex)
             {
                 Snackbar.Add($"Error al inicializar el mapa: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
                 _loading = false;
                 StateHasChanged();
             }
         }
     }
 
-    private async Task LoadClusters(bool loadAll = false, bool fitBounds = false)
-    {
-        try
-        {
-            _loading = true;
-            // No hacemos StateHasChanged aquí si ya estamos en un proceso de renderizado 
-            // pero lo necesitamos para mostrar el spinner.
-            StateHasChanged();
-
-            Console.WriteLine($"[MAP] Loading clusters - loadAll: {loadAll}, zoom: {_currentZoom}");
-            
-            List<MapCluster> newClusters;
-            if (loadAll)
-            {
-                // Cargar todos los clusters sin filtrar por bounds
-                newClusters = await MapService.GetMapClustersAsync(_currentZoom);
-            }
-            else
-            {
-                Console.WriteLine($"[MAP] Loading with bounds: minLat={_currentMinLat}, minLng={_currentMinLng}, maxLat={_currentMaxLat}, maxLng={_currentMaxLng}");
-                newClusters = await MapService.GetMapClustersAsync(
-                    _currentZoom,
-                    _currentMinLat,
-                    _currentMinLng,
-                    _currentMaxLat,
-                    _currentMaxLng
-                );
-            }
-
-            Console.WriteLine($"[MAP] Loaded {newClusters.Count} clusters");
-            
-            // Si no hay clusters, limpiar los marcadores y salir
-            if (!newClusters.Any())
-            {
-                Console.WriteLine("[MAP] No clusters found");
-                _clusters = newClusters;
-                await UpdateMapMarkers(false);
-                return;
-            }
-
-            // IMPORTANTE: Primero actualizamos la lista interna de clusters
-            _clusters = newClusters;
-
-            // Luego actualizamos los marcadores en el mapa
-            await UpdateMapMarkers(fitBounds);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[MAP] Error loading clusters: {ex}");
-            Snackbar.Add($"Error al cargar clusters: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task UpdateMapMarkers(bool fitBounds = false)
-    {
-        try
-        {
-            Console.WriteLine($"[MAP] Updating map markers - {_clusters.Count} clusters");
-            
-            // Eliminar TODOS los marcadores anteriores antes de agregar nuevos
-            // Esto es crítico para evitar duplicados cuando se hace zoom o se mueve el mapa
-            Console.WriteLine("[MAP] Calling removeAllMarkers JS");
-            try
-            {
-                await JS.InvokeVoidAsync("mapHelpers.removeAllMarkers");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MAP] Error removing markers: {ex.Message}");
-            }
-            finally
-            {
-                _markers.Clear();
-            }
-            
-            if (!_clusters.Any())
-            {
-                Console.WriteLine("[MAP] No clusters to display");
-                // Forzar actualización de la UI incluso cuando no hay clusters
-                StateHasChanged();
-                return;
-            }
-
-            // Agregar nuevos marcadores
-            int successCount = 0;
-            // Guardamos una copia local de los clusters para esta actualización de marcadores
-            var clustersToRender = _clusters.ToList();
-            
-            for (int i = 0; i < clustersToRender.Count; i++)
-            {
-                var cluster = clustersToRender[i];
-                try
-                {
-                    var marker = await JS.InvokeAsync<object>("mapHelpers.addClusterMarker",
-                        cluster.Latitude,
-                        cluster.Longitude,
-                        cluster.Count,
-                        cluster.ThumbnailUrl ?? string.Empty,
-                        _objRef,
-                        cluster.Id
-                    );
-                    if (marker != null)
-                    {
-                        _markers.Add(marker);
-                        successCount++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[MAP] Error al agregar marcador {i}: {ex.Message}");
-                }
-            }
-
-            Console.WriteLine($"[MAP] Successfully added {successCount} markers out of {clustersToRender.Count}");
-
-            // Forzar actualización de la UI
-            StateHasChanged();
-
-            // Si hay clusters y se solicita, ajustar el mapa para mostrarlos todos
-            if (fitBounds && clustersToRender.Any() && successCount > 0)
-            {
-                var minLat = clustersToRender.Min(c => c.Latitude);
-                var minLng = clustersToRender.Min(c => c.Longitude);
-                var maxLat = clustersToRender.Max(c => c.Latitude);
-                var maxLng = clustersToRender.Max(c => c.Longitude);
-                
-                // Agregar un poco de padding
-                var latPadding = Math.Max((maxLat - minLat) * 0.1, 0.01);
-                var lngPadding = Math.Max((maxLng - minLng) * 0.1, 0.01);
-                
-                await JS.InvokeVoidAsync("mapHelpers.fitBounds", 
-                    minLat - latPadding, 
-                    minLng - lngPadding, 
-                    maxLat + latPadding, 
-                    maxLng + lngPadding);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[MAP] Error updating markers: {ex}");
-            Snackbar.Add($"Error al actualizar marcadores: {ex.Message}", Severity.Error);
-        }
-    }
-
     [JSInvokable]
-    public async Task OnMapMoveEnd(double minLat, double minLng, double maxLat, double maxLng, int zoom)
+    public void OnAssetClick(string assetId)
     {
-        Console.WriteLine($"[MAP] OnMapMoveEnd called: zoom={zoom}");
-        
-        _currentMinLat = minLat;
-        _currentMinLng = minLng;
-        _currentMaxLat = maxLat;
-        _currentMaxLng = maxLng;
-        _currentZoom = zoom;
-
-        // Si los límites son muy amplios (ej. el mapa completo o casi completo),
-        // pedimos todos los clusters sin filtrar por coordenadas para evitar problemas de precisión
-        // o recortes inesperados en los extremos del mapa.
-        bool isWideView = Math.Abs(maxLng - minLng) > 340 || Math.Abs(maxLat - minLat) > 160;
-
-        await LoadClusters(isWideView);
-    }
-
-    [JSInvokable]
-    public async Task OnClusterClick(string clusterId)
-    {
-        Console.WriteLine($"[MAP] OnClusterClick received in C#: {clusterId}");
-        
-        // No bloqueamos el click si estamos cargando, pero informamos
-        if (_loading)
+        Console.WriteLine($"[MAP] OnAssetClick: {assetId}");
+        if (Guid.TryParse(assetId, out var id))
         {
-            Console.WriteLine($"[MAP] INFO: OnClusterClick received while _loading=true. ClusterId: {clusterId}");
-        }
-
-        var cluster = _clusters.FirstOrDefault(c => c.Id == clusterId);
-        if (cluster == null)
-        {
-            Console.WriteLine($"[MAP] ERROR: Cluster with ID {clusterId} not found in current view.");
-            Console.WriteLine($"[MAP] Total clusters in state: {_clusters.Count}");
-            
-            // Reintentar una vez si _loading era true, por si se acaba de terminar de cargar
-            if (_loading)
-            {
-                Console.WriteLine("[MAP] Retrying cluster lookup in 100ms...");
-                await Task.Delay(100);
-                cluster = _clusters.FirstOrDefault(c => c.Id == clusterId);
-            }
-
-            if (cluster == null) return;
-        }
-
-        Console.WriteLine($"[MAP] Cluster data: {cluster}");
-        
-        // Siempre navegar al primer asset del cluster para ver esa foto en concreto
-        // Si el cluster tiene múltiples assets, mostramos el primero
-        if (cluster.FirstAssetId.HasValue)
-        {
-            Console.WriteLine($"Opening asset {cluster.FirstAssetId.Value} from cluster with {cluster.Count} assets.");
-            Navigation.NavigateTo($"/asset/{cluster.FirstAssetId.Value}?returnTo=map");
-        }
-        else
-        {
-            // Fallback: si no hay FirstAssetId, navegar al timeline con la fecha
-            var date = cluster.EarliestDate;
-            var dateString = date.ToString("yyyy-MM-dd");
-            Console.WriteLine($"No FirstAssetId found. Navigating to timeline at date: {dateString}");
-            Navigation.NavigateTo($"/?date={dateString}");
+            Navigation.NavigateTo($"/asset/{id}?returnTo=map");
         }
     }
-
 
     public void Dispose()
     {
         LayoutService.OnMajorUpdate -= OnLayoutUpdate;
         _objRef?.Dispose();
-        if (_markers.Any())
-        {
-            JS.InvokeVoidAsync("mapHelpers.removeAllMarkers", _markers);
-        }
-    }
-
-    private class MapBounds
-    {
-        public double MinLat { get; set; }
-        public double MinLng { get; set; }
-        public double MaxLat { get; set; }
-        public double MaxLng { get; set; }
     }
 }
