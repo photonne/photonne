@@ -404,7 +404,6 @@ window.masonryHelpers = {
     justifyAllGroups: function () {
         const grid = document.querySelector('.timeline-flat-grid');
         if (!grid) return;
-        const containerWidth = grid.offsetWidth;
 
         // Agrupar items por data-day preservando el orden del DOM
         const dayMap = new Map();
@@ -414,16 +413,25 @@ window.masonryHelpers = {
             dayMap.get(day).push(item);
         });
 
-        for (const items of dayMap.values()) {
-            this.justifyDayItems(items, containerWidth);
+        // Leer todo lo que necesitamos en un solo batch (1 reflow),
+        // luego escribir en otro batch (1 reflow) para evitar layout thrash.
+        const containerWidth = grid.offsetWidth; // único read de layout antes de escribir
+        const dayHeights = new Map();
+        for (const [day, items] of dayMap) {
+            dayHeights.set(day, items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180);
+        }
+        // A partir de aquí solo hay writes (style.width)
+        for (const [day, items] of dayMap) {
+            this.justifyDayItems(items, containerWidth, dayHeights.get(day));
         }
     },
 
-    justifyDayItems: function (items, containerWidth) {
+    justifyDayItems: function (items, containerWidth, itemHeight) {
         if (items.length === 0) return;
 
         const gap = 2;
-        const itemHeight = items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180;
+        // itemHeight viene pre-leído por justifyAllGroups para evitar reflows intercalados
+        if (itemHeight === undefined) itemHeight = items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180;
 
         const aspectRatios = items.map(item => {
             let ar = parseFloat(item.getAttribute('data-aspect-ratio')) || 1.0;
@@ -484,7 +492,10 @@ window.masonryHelpers = {
         if (!grid) return;
         const containerWidth = grid.offsetWidth;
         const items = Array.from(grid.querySelectorAll(`.masonry-item[data-day="${dayKey}"]`));
-        if (items.length > 0) this.justifyDayItems(items, containerWidth);
+        if (items.length > 0) {
+            const itemHeight = items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180;
+            this.justifyDayItems(items, containerWidth, itemHeight);
+        }
     },
 
     updateMasonryForGroups: function (groupSelectors) {
@@ -496,11 +507,18 @@ window.masonryHelpers = {
         // that shifts the visible area, especially for boundary day groups.
         const scrollTopBefore = sc ? sc.scrollTop : 0;
 
+        // Batch reads before writes
         const containerWidth = grid.offsetWidth;
-        for (const groupSelector of groupSelectors) {
-            const dayKey = groupSelector.replace(/^#?group-/, '');
+        const groups = groupSelectors.map(sel => {
+            const dayKey = sel.replace(/^#?group-/, '');
             const items = Array.from(grid.querySelectorAll(`.masonry-item[data-day="${dayKey}"]`));
-            if (items.length > 0) this.justifyDayItems(items, containerWidth);
+            const itemHeight = items.length > 0
+                ? (items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180)
+                : 180;
+            return { items, itemHeight };
+        });
+        for (const { items, itemHeight } of groups) {
+            if (items.length > 0) this.justifyDayItems(items, containerWidth, itemHeight);
         }
 
         // Restore scroll position after all groups are processed

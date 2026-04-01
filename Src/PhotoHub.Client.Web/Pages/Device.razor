@@ -170,23 +170,30 @@
                 </MudPaper>
             }
 
-            @* ── Grid ──────────────────────────────────────────────────────── *@
-            @if (_groupedAssets.Count > 0)
+            @* ── Grid (virtualizado para no congelar con miles de assets) ─── *@
+            @if (_displayRows.Count > 0)
             {
-                @foreach (var group in _groupedAssets)
-                {
-                    <div class="mb-6">
-                        <MudText Typo="Typo.body2" Class="device-date-header">@group.Key</MudText>
-                        <MudGrid Spacing="1">
-                            @foreach (var asset in group.Value)
+                <Virtualize Items="@_displayRows" ItemSize="128" OverscanCount="5" Context="row">
+                    @if (row.GroupHeader is not null)
+                    {
+                        <MudText Typo="Typo.body2" Class="device-date-header pt-3 pb-1">@row.GroupHeader</MudText>
+                    }
+                    else if (row.RowItems is not null)
+                    {
+                        <div class="device-asset-row">
+                            @foreach (var asset in row.RowItems)
                             {
-                                <MudItem xs="4" sm="3" md="2" lg="2" xl="1">
+                                <div class="device-asset-cell">
                                     <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
-                                </MudItem>
+                                </div>
                             }
-                        </MudGrid>
-                    </div>
-                }
+                            @for (int i = row.RowItems.Count; i < _itemsPerRow; i++)
+                            {
+                                <div class="device-asset-cell"></div>
+                            }
+                        </div>
+                    }
+                </Virtualize>
             }
             else if (!_loading && !_permissionDenied && !_checkingExisting && !_enumerating)
             {
@@ -207,6 +214,16 @@
     }
     @@media (max-width: 599.98px) {
         .device-date-header { font-size: 0.78rem !important; }
+    }
+    .device-asset-row {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+    .device-asset-cell {
+        flex: 1;
+        min-width: 0;
+        aspect-ratio: 1 / 1;
     }
     .local-lightbox {
         position: fixed; inset: 0;
@@ -258,6 +275,11 @@
     // Progressive enumeration
     private DotNetObjectReference<Device>? _progressRef;
     private List<LocalFileInfo> _enumeratedFiles = [];
+
+    // Virtualización del grid
+    private const int _itemsPerRow = 3;
+    private List<DeviceDisplayRow> _displayRows = [];
+    private record DeviceDisplayRow(string? GroupHeader, List<TimelineItem>? RowItems);
 
     protected override async Task OnInitializedAsync()
     {
@@ -439,11 +461,17 @@
         _thumbCts?.Cancel();
         _thumbCts = new CancellationTokenSource();
         var token = _thumbCts.Token;
-        const int thumbBatchSize = 10;
+        const int thumbBatchSize = 20;
 
         try
         {
-            var images = _assets.Where(a => a.Type == "IMAGE" && string.IsNullOrEmpty(a.LocalThumbnailUrl)).ToList();
+            // Limitar a los primeros assets visibles: con Virtualize solo se renderizan ~30 a la vez,
+            // generar blob URLs para los 18k agotaría la memoria del móvil.
+            const int maxThumbs = 300;
+            var images = _assets
+                .Where(a => a.Type == "IMAGE" && string.IsNullOrEmpty(a.LocalThumbnailUrl))
+                .Take(maxThumbs)
+                .ToList();
             for (int i = 0; i < images.Count; i += thumbBatchSize)
             {
                 if (token.IsCancellationRequested) return;
@@ -470,7 +498,7 @@
                 }
 
                 StateHasChanged();
-                await Task.Delay(16, token); // ceder al render
+                await Task.Delay(50, token); // ceder al render (más margen en móvil)
             }
         }
         catch (OperationCanceledException) { }
@@ -514,6 +542,15 @@
             .ToDictionary(
                 g => char.ToUpper(g.Key[0]) + g.Key[1..],
                 g => g.ToList());
+
+        // Construir lista plana de filas para Virtualize (evita crear 18k nodos DOM)
+        _displayRows = [];
+        foreach (var (key, items) in _groupedAssets)
+        {
+            _displayRows.Add(new DeviceDisplayRow(key, null));
+            for (int i = 0; i < items.Count; i += _itemsPerRow)
+                _displayRows.Add(new DeviceDisplayRow(null, items.Skip(i).Take(_itemsPerRow).ToList()));
+        }
     }
 
     private async Task RefreshAsync()

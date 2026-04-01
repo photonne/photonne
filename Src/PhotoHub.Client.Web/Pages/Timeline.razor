@@ -503,45 +503,51 @@
         flex-shrink: 0;
         break-inside: avoid;
         page-break-inside: avoid;
+        content-visibility: auto;
+        contain-intrinsic-block-size: 180px;
     }
 
     @@media (min-width: 600px) {
         .masonry-item {
             height: 200px;
+            contain-intrinsic-block-size: 200px;
         }
     }
 
     @@media (min-width: 960px) {
         .masonry-item {
             height: 220px;
+            contain-intrinsic-block-size: 220px;
         }
     }
 
     @@media (min-width: 1280px) {
         .masonry-item {
             height: 240px;
+            contain-intrinsic-block-size: 240px;
         }
     }
 
     @@media (min-width: 1920px) {
         .masonry-item {
             height: 260px;
+            contain-intrinsic-block-size: 260px;
         }
     }
 
     /* ── Density: Small ── */
-    .density-s .masonry-item { height: 100px !important; }
-    @@media (min-width: 600px)  { .density-s .masonry-item { height: 110px !important; } }
-    @@media (min-width: 960px)  { .density-s .masonry-item { height: 120px !important; } }
-    @@media (min-width: 1280px) { .density-s .masonry-item { height: 130px !important; } }
-    @@media (min-width: 1920px) { .density-s .masonry-item { height: 140px !important; } }
+    .density-s .masonry-item { height: 100px !important; contain-intrinsic-block-size: 100px !important; }
+    @@media (min-width: 600px)  { .density-s .masonry-item { height: 110px !important; contain-intrinsic-block-size: 110px !important; } }
+    @@media (min-width: 960px)  { .density-s .masonry-item { height: 120px !important; contain-intrinsic-block-size: 120px !important; } }
+    @@media (min-width: 1280px) { .density-s .masonry-item { height: 130px !important; contain-intrinsic-block-size: 130px !important; } }
+    @@media (min-width: 1920px) { .density-s .masonry-item { height: 140px !important; contain-intrinsic-block-size: 140px !important; } }
 
     /* ── Density: Large ── */
-    .density-l .masonry-item { height: 260px !important; }
-    @@media (min-width: 600px)  { .density-l .masonry-item { height: 300px !important; } }
-    @@media (min-width: 960px)  { .density-l .masonry-item { height: 340px !important; } }
-    @@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; } }
-    @@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; } }
+    .density-l .masonry-item { height: 260px !important; contain-intrinsic-block-size: 260px !important; }
+    @@media (min-width: 600px)  { .density-l .masonry-item { height: 300px !important; contain-intrinsic-block-size: 300px !important; } }
+    @@media (min-width: 960px)  { .density-l .masonry-item { height: 340px !important; contain-intrinsic-block-size: 340px !important; } }
+    @@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; contain-intrinsic-block-size: 380px !important; } }
+    @@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; contain-intrinsic-block-size: 420px !important; } }
 
     .masonry-item .asset-card-container {
         width: 100%;
@@ -1245,7 +1251,7 @@
         var sectionsNeedingMasonry = _sections.Where(s => s.IsLoaded && !s.IsMasonryDone).ToList();
         if (sectionsNeedingMasonry.Any())
         {
-            await Task.Delay(100);
+            await Task.Delay(300);
             if (_isDisposed) return;
 
             var groupIds = sectionsNeedingMasonry
