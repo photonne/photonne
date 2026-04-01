@@ -1906,37 +1906,83 @@ else
                 <MudSpacer />
                 @if (_selectionMode)
                 {
-                    if (!IsTrashFolderSelected)
-                    {
-                        <MudButton Variant="Variant.Text" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog">
-                            Mover
-                        </MudButton>
-                        <MudButton Variant="Variant.Text" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
-                            Eliminar
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Variant="Variant.Text" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenRestoreAssetsDialog">
-                            Restaurar
-                        </MudButton>
-                    }
+                    @* Botones individuales — solo desktop *@
+                    <span class="d-none d-md-flex">
+                        @if (!IsTrashFolderSelected)
+                        {
+                            <MudTooltip Text="Mover">
+                                <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog" />
+                            </MudTooltip>
+                            <MudTooltip Text="Eliminar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudTooltip Text="Restaurar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Restore" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenRestoreAssetsDialog" />
+                            </MudTooltip>
+                        }
+                    </span>
+
+                    @* Menú de desbordamiento — solo móvil *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        @if (!IsTrashFolderSelected)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.DriveFileMove" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog">
+                                Mover
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
+                                <MudText Color="Color.Error">Eliminar</MudText>
+                            </MudMenuItem>
+                        }
+                        else
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Restore" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenRestoreAssetsDialog">
+                                Restaurar
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
                 }
                 else if (_folderSelectionMode)
                 {
                     var selectedFolder = GetSelectedFolderForEdit();
-                    if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
-                    {
-                        <MudButton Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))">
-                            Colaboradores
-                        </MudButton>
-                    }
-                    <MudButton Variant="Variant.Text" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection">
-                        Renombrar
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!_selectedFolderIds.Any())" OnClick="OpenDeleteFolderDialogFromSelection">
-                        Eliminar
-                    </MudButton>
+
+                    @* Botones individuales — solo desktop *@
+                    <span class="d-none d-md-flex">
+                        @if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
+                        {
+                            <MudTooltip Text="Colaboradores">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Group" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))" />
+                            </MudTooltip>
+                        }
+                        <MudTooltip Text="Renombrar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.DriveFileRenameOutline" Color="Color.Inherit" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection" />
+                        </MudTooltip>
+                        <MudTooltip Text="Eliminar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedFolderIds.Any())" OnClick="OpenDeleteFolderDialogFromSelection" />
+                        </MudTooltip>
+                    </span>
+
+                    @* Menú de desbordamiento — solo móvil *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        @if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Group" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))">
+                                Colaboradores
+                            </MudMenuItem>
+                        }
+                        <MudMenuItem Icon="@Icons.Material.Outlined.DriveFileRenameOutline" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection">
+                            Renombrar
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedFolderIds.Any())" OnClick="OpenDeleteFolderDialogFromSelection">
+                            <MudText Color="Color.Error">Eliminar</MudText>
+                        </MudMenuItem>
+                    </MudMenu>
                 }
             </text>
         , keepDrawerVisible: true);

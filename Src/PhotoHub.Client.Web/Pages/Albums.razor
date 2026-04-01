@@ -4,6 +4,7 @@
 @inject IAlbumService AlbumService
 @inject AlbumsCache AlbumsCache
 @inject IAssetService AssetService
+@inject IShareService ShareService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
@@ -398,6 +399,27 @@
     }
 
     /* Section tabs moved to `wwwroot/css/app.css` */
+
+    .share-link-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .share-link-row:last-child { border-bottom: none; }
+    .share-link-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .share-link-url {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-family: monospace;
+        font-size: 0.78rem;
+        opacity: 0.75;
+    }
 </style>
 
 @if (_selectedAlbum == null)
@@ -825,6 +847,105 @@ else
 </MudDrawer>
 }
 
+@* ── Compartir álbum — bottom sheet ── *@
+@if (_shareSheetEverOpened)
+{
+<MudDrawer @bind-Open="_shareSheetOpen"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Compartir @(_shareSheetAlbumName ?? "")</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="@(() => _shareSheetOpen = false)" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        @if (_shareLoadingLinks)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            </div>
+        }
+        else if (_sharePublicLinks.Any())
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2 mud-text-secondary">Links activos</MudText>
+            @foreach (var link in _sharePublicLinks)
+            {
+                <div class="share-link-row">
+                    <div class="share-link-info">
+                        <MudText Typo="Typo.body2" Class="share-link-url">
+                            @BuildShareUrl(link.Token)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            @if (link.HasPassword) { <span>🔒 Con contraseña · </span> }
+                            @if (!link.AllowDownload) { <span>⬇️ Sin descarga · </span> }
+                            @if (link.MaxViews.HasValue) { <span>👁 @link.ViewCount/@link.MaxViews vistas · </span> }
+                            @if (link.ExpiresAt.HasValue)
+                            { <span>Expira @link.ExpiresAt.Value.ToString("dd/MM/yyyy")</span> }
+                            else
+                            { <span>Sin expiración</span> }
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small"
+                                   Title="Copiar enlace" OnClick="() => ShareCopyLink(link.Token)" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.LinkOff" Size="Size.Small"
+                                   Color="Color.Error" Title="Revocar"
+                                   OnClick="() => ShareRevokeLink(link.Token)" />
+                </div>
+            }
+            <MudDivider Class="my-4" />
+        }
+
+        <MudText Typo="Typo.subtitle2" Class="mb-3 mud-text-secondary">Crear nuevo enlace</MudText>
+        <div class="d-flex flex-column gap-3">
+            <MudSwitch @bind-Value="_shareNewPasswordEnabled" Label="Proteger con contraseña" Color="Color.Primary" />
+            @if (_shareNewPasswordEnabled)
+            {
+                <MudTextField @bind-Value="_shareNewPassword"
+                              Label="Contraseña"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.Lock" />
+            }
+            <MudSwitch @bind-Value="_shareNewExpiryEnabled" Label="Fecha de expiración" Color="Color.Primary" />
+            @if (_shareNewExpiryEnabled)
+            {
+                <MudDatePicker @bind-Date="_shareNewExpiry"
+                               Label="Expira el"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               MinDate="DateTime.Today.AddDays(1)"
+                               DateFormat="dd/MM/yyyy" />
+            }
+            <MudSwitch @bind-Value="_shareNewMaxViewsEnabled" Label="Límite de vistas" Color="Color.Primary" />
+            @if (_shareNewMaxViewsEnabled)
+            {
+                <MudNumericField @bind-Value="_shareNewMaxViews"
+                                 Label="Máximo de vistas"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="1" Max="10000" />
+            }
+            <MudSwitch @bind-Value="_shareNewAllowDownload" Label="Permitir descarga" Color="Color.Primary" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.AddLink"
+                       Disabled="_shareCreatingLink"
+                       Class="mb-2"
+                       OnClick="ShareCreateLink">
+                @if (_shareCreatingLink)
+                { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                Crear enlace
+            </MudButton>
+        </div>
+    </div>
+</MudDrawer>
+}
+
 <MudDialog @bind-Visible="_editDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
     <TitleContent>
         <MudText Typo="Typo.h6">Editar Álbum</MudText>
@@ -938,6 +1059,22 @@ else
     private bool _editDialogVisible = false;
     private bool _deleteDialogVisible = false;
     private bool _deleteSelectedDialogVisible = false;
+
+    // Share bottom sheet
+    private bool _shareSheetOpen = false;
+    private bool _shareSheetEverOpened = false;
+    private Guid? _shareSheetAlbumId;
+    private string? _shareSheetAlbumName;
+    private bool _shareLoadingLinks = false;
+    private List<CreateShareLinkResponse> _sharePublicLinks = new();
+    private bool _shareNewPasswordEnabled = false;
+    private string _shareNewPassword = string.Empty;
+    private bool _shareNewExpiryEnabled = false;
+    private DateTime? _shareNewExpiry = null;
+    private bool _shareNewMaxViewsEnabled = false;
+    private int _shareNewMaxViews = 10;
+    private bool _shareNewAllowDownload = true;
+    private bool _shareCreatingLink = false;
     private string _newAlbumName = "";
     private string? _newAlbumDescription = "";
     private string _editAlbumName = "";
@@ -1279,23 +1416,88 @@ else
 
     private async Task OpenShareDialogForAlbum(Guid albumId, string albumName)
     {
-        var parameters = new DialogParameters<ShareDialog>
+        _shareSheetAlbumId = albumId;
+        _shareSheetAlbumName = albumName;
+        _sharePublicLinks = new();
+        ResetShareForm();
+        _shareSheetEverOpened = true;
+        _shareSheetOpen = true;
+        _shareLoadingLinks = true;
+        StateHasChanged();
+        try { _sharePublicLinks = await ShareService.GetShareLinksAsync(null, albumId); }
+        catch { /* non-critical */ }
+        finally { _shareLoadingLinks = false; StateHasChanged(); }
+    }
+
+    private string BuildShareUrl(string token)
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        return $"{baseUri.Scheme}://{baseUri.Authority}/share/{token}";
+    }
+
+    private async Task ShareCopyLink(string token)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", BuildShareUrl(token));
+        Snackbar.Add("Enlace copiado al portapapeles", Severity.Success);
+    }
+
+    private async Task ShareRevokeLink(string token)
+    {
+        try
         {
-            { x => x.AlbumId, albumId },
-            { x => x.AlbumName, albumName }
-        };
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseButton = true,
-            CloseOnEscapeKey = true
-        };
-        var dialog = await DialogService.ShowAsync<ShareDialog>("Compartir álbum", parameters, options);
-        var result = await dialog.Result;
-        // Reload albums to refresh HasActiveShareLink badge
-        if (result != null)
+            await ShareService.RevokeShareAsync(token);
+            _sharePublicLinks.RemoveAll(l => l.Token == token);
             await LoadAlbums(forceRefresh: true);
+            Snackbar.Add("Enlace revocado", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("Error al revocar el enlace", Severity.Error);
+        }
+    }
+
+    private async Task ShareCreateLink()
+    {
+        if (_shareCreatingLink || _shareSheetAlbumId == null) return;
+        try
+        {
+            _shareCreatingLink = true;
+            var request = new CreateShareLinkRequest
+            {
+                AlbumId = _shareSheetAlbumId,
+                Password = _shareNewPasswordEnabled ? _shareNewPassword : null,
+                AllowDownload = _shareNewAllowDownload,
+                MaxViews = _shareNewMaxViewsEnabled ? _shareNewMaxViews : null,
+                ExpiresAt = _shareNewExpiryEnabled ? _shareNewExpiry?.ToUniversalTime() : null
+            };
+            var link = await ShareService.CreatePublicShareAsync(request);
+            if (link != null)
+            {
+                _sharePublicLinks.Insert(0, link);
+                await ShareCopyLink(link.Token);
+                ResetShareForm();
+                await LoadAlbums(forceRefresh: true);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Error al crear el enlace", Severity.Error);
+        }
+        finally
+        {
+            _shareCreatingLink = false;
+        }
+    }
+
+    private void ResetShareForm()
+    {
+        _shareNewPasswordEnabled = false;
+        _shareNewPassword = string.Empty;
+        _shareNewExpiryEnabled = false;
+        _shareNewExpiry = null;
+        _shareNewMaxViewsEnabled = false;
+        _shareNewMaxViews = 10;
+        _shareNewAllowDownload = true;
     }
 
     private void OpenEditDialog()
@@ -1778,18 +1980,40 @@ else
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
                     <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                     <MudSpacer />
-                    <MudButton Variant="Variant.Text" Disabled="@(!CanManagePermissionsSelectedAlbum())" OnClick="OpenPermissionsForSelectedAlbum">
-                        Colaboradores
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!CanEditSelectedAlbum())" OnClick="OpenEditSelectedAlbum">
-                        Editar
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!CanDeleteSelectedAlbums())" OnClick="OpenDeleteSelectedDialog">
-                        Eliminar
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!CanLeaveSelectedAlbum())" OnClick="LeaveSelectedAlbumAsync">
-                        Salir
-                    </MudButton>
+
+                    @* Botones individuales — solo desktop *@
+                    <span class="d-none d-md-flex">
+                        <MudTooltip Text="Colaboradores">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Group" Color="Color.Inherit" Disabled="@(!CanManagePermissionsSelectedAlbum())" OnClick="OpenPermissionsForSelectedAlbum" />
+                        </MudTooltip>
+                        <MudTooltip Text="Editar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Inherit" Disabled="@(!CanEditSelectedAlbum())" OnClick="OpenEditSelectedAlbum" />
+                        </MudTooltip>
+                        <MudTooltip Text="Eliminar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!CanDeleteSelectedAlbums())" OnClick="OpenDeleteSelectedDialog" />
+                        </MudTooltip>
+                        <MudTooltip Text="Salir del álbum">
+                            <MudIconButton Icon="@Icons.Material.Outlined.ExitToApp" Color="Color.Inherit" Disabled="@(!CanLeaveSelectedAlbum())" OnClick="LeaveSelectedAlbumAsync" />
+                        </MudTooltip>
+                    </span>
+
+                    @* Menú de desbordamiento — solo móvil *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Group" Disabled="@(!CanManagePermissionsSelectedAlbum())" OnClick="OpenPermissionsForSelectedAlbum">
+                            Colaboradores
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Edit" Disabled="@(!CanEditSelectedAlbum())" OnClick="OpenEditSelectedAlbum">
+                            Editar
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!CanDeleteSelectedAlbums())" OnClick="OpenDeleteSelectedDialog">
+                            <MudText Color="Color.Error">Eliminar</MudText>
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.ExitToApp" Disabled="@(!CanLeaveSelectedAlbum())" OnClick="LeaveSelectedAlbumAsync">
+                            Salir
+                        </MudMenuItem>
+                    </MudMenu>
                 </text>
             , keepDrawerVisible: true);
             return;
@@ -1805,15 +2029,34 @@ else
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
                     <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                     <MudSpacer />
-                    <MudButton Variant="Variant.Text" Disabled="@(!canEdit || !_selectedAlbumAssetIds.Any())" OnClick="RemoveSelectedAssetsAsync">
-                        Quitar
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!canEdit || _selectedAlbumAssetIds.Count != 1)" OnClick="SetCoverFromSelectionAsync">
-                        Portada
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" Disabled="@(!_selectedAlbumAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAssetsAsync">
-                        Descargar
-                    </MudButton>
+
+                    @* Botones individuales — solo desktop *@
+                    <span class="d-none d-md-flex">
+                        <MudTooltip Text="Quitar del álbum">
+                            <MudIconButton Icon="@Icons.Material.Outlined.RemoveCircleOutline" Color="Color.Inherit" Disabled="@(!canEdit || !_selectedAlbumAssetIds.Any())" OnClick="RemoveSelectedAssetsAsync" />
+                        </MudTooltip>
+                        <MudTooltip Text="Establecer portada">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Wallpaper" Color="Color.Inherit" Disabled="@(!canEdit || _selectedAlbumAssetIds.Count != 1)" OnClick="SetCoverFromSelectionAsync" />
+                        </MudTooltip>
+                        <MudTooltip Text="Descargar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAlbumAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAssetsAsync" />
+                        </MudTooltip>
+                    </span>
+
+                    @* Menú de desbordamiento — solo móvil *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        <MudMenuItem Icon="@Icons.Material.Outlined.RemoveCircleOutline" Disabled="@(!canEdit || !_selectedAlbumAssetIds.Any())" OnClick="RemoveSelectedAssetsAsync">
+                            Quitar del álbum
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Wallpaper" Disabled="@(!canEdit || _selectedAlbumAssetIds.Count != 1)" OnClick="SetCoverFromSelectionAsync">
+                            Establecer portada
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Download" Disabled="@(!_selectedAlbumAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAssetsAsync">
+                            Descargar
+                        </MudMenuItem>
+                    </MudMenu>
                 </text>
             , keepDrawerVisible: true);
         }
