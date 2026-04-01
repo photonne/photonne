@@ -723,7 +723,8 @@ else
                 {
                     _allAssets = await AlbumService.GetAlbumAssetsAsync(AlbumId.Value);
                 }
-                else
+                else if (ReturnTo is not ("archive" or "trash" or "my-shares"
+                    or "utilities/duplicates" or "utilities/large-files"))
                 {
                     var assets = new List<TimelineItem>();
                     DateTime? cursor = null;

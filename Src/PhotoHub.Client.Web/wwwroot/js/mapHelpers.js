@@ -2,6 +2,7 @@ window.mapHelpers = {
     _mapInstance: null,
     _currentStyle: 'dark',
     _clusterGroup: null,
+    _stateRestored: false,
 
     initMap: function (elementId, centerLat, centerLng, zoom, style) {
         if (typeof L === 'undefined') {
@@ -116,6 +117,19 @@ window.mapHelpers = {
 
             window.mapHelpers._mapInstance = map;
             window.mapHelpers._currentStyle = style || 'dark';
+            window.mapHelpers._stateRestored = false;
+
+            // Restore previous map position if available
+            try {
+                const saved = sessionStorage.getItem('ph_mapState');
+                if (saved) {
+                    const state = JSON.parse(saved);
+                    map.setView([state.lat, state.lng], state.zoom);
+                    sessionStorage.removeItem('ph_mapState');
+                    window.mapHelpers._stateRestored = true;
+                }
+            } catch (e) { }
+
             console.log('Map initialized successfully with style:', style);
             return map;
         } catch (error) {
@@ -180,7 +194,7 @@ window.mapHelpers = {
         const clusterGroup = L.markerClusterGroup({
             maxClusterRadius: 80,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
+            zoomToBoundsOnClick: false,
             animate: true,
             animateAddingMarkers: false,
             disableClusteringAtZoom: 18,
@@ -190,49 +204,79 @@ window.mapHelpers = {
                 const firstMarker = cluster.getAllChildMarkers()[0];
                 const thumbnailUrl = firstMarker ? firstMarker.options.thumbnailUrl : '';
                 const size = Math.max(40, Math.min(80, 35 + count * 2));
+                // Badge sits outside the circle, so wrapper must be larger
+                const badgeOffset = 12;
+                const totalSize = size + badgeOffset;
 
                 let innerHtml = '';
                 if (thumbnailUrl) {
-                    innerHtml = `<img src="${thumbnailUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'"/>`;
+                    innerHtml = `<img src="${thumbnailUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"/>`;
                 }
 
                 const html = `
                     <div style="
-                        width:${size}px;
-                        height:${size}px;
-                        border-radius:50%;
-                        overflow:hidden;
-                        border:2px solid ${borderColor};
-                        background:${borderColor};
+                        width:${totalSize}px;
+                        height:${totalSize}px;
                         position:relative;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
                     ">
-                        ${innerHtml}
+                        <div style="
+                            width:${size}px;
+                            height:${size}px;
+                            border-radius:50%;
+                            overflow:hidden;
+                            border:2px solid ${borderColor};
+                            background:${borderColor};
+                            flex-shrink:0;
+                        ">
+                            ${innerHtml}
+                        </div>
                         <div style="
                             position:absolute;
-                            top:-8px;
-                            right:-8px;
-                            background:#ff5722;
+                            top:0;
+                            right:0;
+                            background:#f44336;
                             color:white;
-                            font-weight:bold;
-                            font-size:12px;
-                            padding:3px 7px;
-                            border-radius:12px;
-                            min-width:22px;
+                            font-weight:700;
+                            font-size:11px;
+                            padding:2px 5px;
+                            border-radius:10px;
+                            min-width:20px;
                             text-align:center;
-                            border:2px solid white;
-                            line-height:1.2;
-                            z-index:1000;
-                            box-shadow:0 1px 3px rgba(0,0,0,0.2);
+                            border:1.5px solid white;
+                            line-height:1.4;
+                            box-shadow:0 1px 4px rgba(0,0,0,0.35);
+                            pointer-events:none;
                         ">${count}</div>
                     </div>`;
 
                 return L.divIcon({
                     className: 'map-cluster-icon',
                     html: html,
-                    iconSize: [size, size],
-                    iconAnchor: [size / 2, size / 2]
+                    iconSize: [totalSize, totalSize],
+                    iconAnchor: [totalSize / 2, totalSize / 2]
                 });
             }
+        });
+
+        clusterGroup.on('clusterclick', function(e) {
+            const childMarkers = e.layer.getAllChildMarkers();
+            if (childMarkers.length === 1) {
+                const assetId = childMarkers[0].options.assetId;
+                if (dotNetRef) {
+                    dotNetRef.invokeMethodAsync('OnAssetClick', assetId)
+                        .catch(err => console.error('[JS-MAP] Error calling OnAssetClick:', err));
+                }
+            } else {
+                const ids = childMarkers.map(m => m.options.assetId);
+                if (dotNetRef) {
+                    dotNetRef.invokeMethodAsync('OnClusterClick', ids)
+                        .catch(err => console.error('[JS-MAP] Error calling OnClusterClick:', err));
+                }
+            }
+            L.DomEvent.stopPropagation(e);
         });
 
         const markerSize = 44;
@@ -334,6 +378,28 @@ window.mapHelpers = {
                 console.error('[JS-MAP] Error removing cluster group:', e);
             }
             window.mapHelpers._clusterGroup = null;
+        }
+    },
+
+    wasStateRestored: function () {
+        return window.mapHelpers._stateRestored;
+    },
+
+    destroyMap: function () {
+        window.mapHelpers._clusterGroup = null;
+        if (window.mapHelpers._mapInstance) {
+            try {
+                const center = window.mapHelpers._mapInstance.getCenter();
+                const zoom = window.mapHelpers._mapInstance.getZoom();
+                sessionStorage.setItem('ph_mapState', JSON.stringify({ lat: center.lat, lng: center.lng, zoom: zoom }));
+            } catch (e) { }
+            try {
+                window.mapHelpers._mapInstance.remove();
+                console.log('[JS-MAP] Map destroyed');
+            } catch (e) {
+                console.error('[JS-MAP] Error destroying map:', e);
+            }
+            window.mapHelpers._mapInstance = null;
         }
     }
 };
