@@ -3,12 +3,30 @@ window.pwaUpdate = {
     _registration: null,
     _updateAvailable: false,
 
-    _setAvailability: function (isAvailable) {
+    _querySwVersion: function (sw) {
+        return new Promise((resolve) => {
+            if (!sw) { resolve(''); return; }
+            const channel = new MessageChannel();
+            const timeout = setTimeout(() => resolve(''), 1500);
+            channel.port1.onmessage = (event) => {
+                clearTimeout(timeout);
+                resolve(event.data?.version ?? '');
+            };
+            sw.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+        });
+    },
+
+    _setAvailability: async function (isAvailable) {
         if (this._updateAvailable === isAvailable) return;
         this._updateAvailable = isAvailable;
-        if (this._dotNetHelper) {
-            this._dotNetHelper.invokeMethodAsync('SetUpdateAvailability', isAvailable);
+        if (!this._dotNetHelper) return;
+
+        const currentVersion = window.APP_VERSION ?? '';
+        let newVersion = '';
+        if (isAvailable && this._registration?.waiting) {
+            newVersion = await this._querySwVersion(this._registration.waiting);
         }
+        this._dotNetHelper.invokeMethodAsync('SetUpdateAvailability', isAvailable, currentVersion, newVersion);
     },
 
     _syncAvailabilityFromRegistration: function (registration) {

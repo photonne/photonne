@@ -9,6 +9,8 @@ public sealed class PwaUpdateService : IAsyncDisposable
     private bool _initialized;
 
     public bool UpdateAvailable { get; private set; }
+    public string CurrentVersion { get; private set; } = string.Empty;
+    public string NewVersion { get; private set; } = string.Empty;
     public event Action? OnUpdateAvailable;
 
     public async Task InitAsync(IJSRuntime js)
@@ -21,14 +23,14 @@ public sealed class PwaUpdateService : IAsyncDisposable
     }
 
     [JSInvokable]
-    public void SetUpdateAvailability(bool isAvailable)
+    public void SetUpdateAvailability(bool isAvailable, string currentVersion, string newVersion)
     {
         if (UpdateAvailable == isAvailable)
-        {
             return;
-        }
 
         UpdateAvailable = isAvailable;
+        CurrentVersion = currentVersion;
+        NewVersion = newVersion;
         OnUpdateAvailable?.Invoke();
     }
 

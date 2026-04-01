@@ -218,7 +218,21 @@
         {
             <div class="pwa-update-banner">
                 <MudIcon Icon="@Icons.Material.Filled.SystemUpdate" Size="Size.Small" Color="Color.Primary" Class="flex-shrink-0" />
-                <MudText Typo="Typo.body2" Class="flex-grow-1">Nueva versión disponible</MudText>
+                <MudText Typo="Typo.body2" Class="flex-grow-1">
+                    Nueva versión disponible
+                    @if (!string.IsNullOrEmpty(PwaUpdateService.CurrentVersion) && !string.IsNullOrEmpty(PwaUpdateService.NewVersion))
+                    {
+                        <MudText Typo="Typo.caption" Inline="true" Class="ml-1" Style="opacity: 0.7;">
+                            (v@(PwaUpdateService.CurrentVersion) → v@(PwaUpdateService.NewVersion))
+                        </MudText>
+                    }
+                    else if (!string.IsNullOrEmpty(PwaUpdateService.NewVersion))
+                    {
+                        <MudText Typo="Typo.caption" Inline="true" Class="ml-1" Style="opacity: 0.7;">
+                            (v@(PwaUpdateService.NewVersion))
+                        </MudText>
+                    }
+                </MudText>
                 <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small"
                                Variant="Variant.Filled" Color="Color.Primary"
                                Title="Actualizar ahora"
