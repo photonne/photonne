@@ -270,6 +270,57 @@ else if (_asset != null)
             .slideshow-progress-fill.paused {
                 animation-play-state: paused;
             }
+            /* ── Add to Album bottom sheet ── */
+            .add-to-album-drawer {
+                width: 100%;
+                max-width: 520px;
+                max-height: 80vh;
+                overflow-y: auto;
+                background-color: #1a1a1a;
+                border-radius: 16px 16px 0 0;
+                border-top: 1px solid #333;
+                position: fixed;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 1402;
+                transition: transform 0.3s ease;
+                color: #e1e1e1;
+                padding-bottom: env(safe-area-inset-bottom, 12px);
+            }
+            .add-to-album-drawer.closed {
+                transform: translateX(-50%) translateY(100%);
+            }
+            .add-to-album-drawer-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 1401;
+                opacity: 1;
+                transition: opacity 0.3s ease;
+            }
+            .add-to-album-drawer-backdrop.hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+            .add-to-album-drawer .mud-input-root input,
+            .add-to-album-drawer .mud-input,
+            .add-to-album-drawer .mud-input-slot {
+                color: #e1e1e1 !important;
+            }
+            .add-to-album-drawer .mud-input-outlined fieldset {
+                border-color: #555 !important;
+            }
+            .add-to-album-drawer .mud-input-outlined:hover fieldset {
+                border-color: #888 !important;
+            }
+            .add-to-album-drawer .mud-input-outlined.mud-focused fieldset {
+                border-color: var(--mud-palette-primary) !important;
+            }
+            .add-to-album-drawer .mud-input-control-input-slot {
+                background-color: #2a2a2a !important;
+                border-radius: 4px;
+            }
         </style>
 
         <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "") @(_infoOpen ? "info-open" : "")" @onclick="ToggleToolbar" @ontouchstart="HandleTouchStart" @ontouchend="HandleTouchEnd">
@@ -341,6 +392,111 @@ else if (_asset != null)
         }
 
         <div class="asset-info-drawer-backdrop @(_infoOpen ? "" : "hidden")" @onclick="ToggleInfo"></div>
+
+        <div class="add-to-album-drawer-backdrop @(_addToAlbumDialogVisible ? "" : "hidden")"
+             @onclick="CloseAddToAlbumDrawer"></div>
+        <div class="add-to-album-drawer @(_addToAlbumDialogVisible ? "" : "closed")">
+            <div class="asset-info-drawer-handle">
+                <div class="asset-info-drawer-handle-pill"></div>
+            </div>
+            <div class="pa-4">
+                <div class="d-flex align-center mb-3">
+                    <MudText Typo="Typo.h6">Añadir a Álbum</MudText>
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Inherit"
+                                   OnClick="CloseAddToAlbumDrawer" />
+                </div>
+                @if (!_showCreateAlbum)
+                {
+                    @if (_loadingAlbums)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+                    }
+                    else if (_availableAlbums.Any())
+                    {
+                        <MudRadioGroup T="Guid?" @bind-Value="_selectedAlbumId">
+                            @foreach (var album in _availableAlbums)
+                            {
+                                <MudRadio T="Guid?" Value="@album.Id">
+                                    <div class="d-flex align-center gap-2">
+                                        @if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
+                                        {
+                                            <img src="@album.CoverThumbnailUrl"
+                                                 style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px;"
+                                                 alt="@album.Name" />
+                                        }
+                                        else
+                                        {
+                                            <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #333; border-radius: 4px;">
+                                                <MudIcon Icon="@Icons.Material.Filled.Collections" Size="Size.Small" />
+                                            </div>
+                                        }
+                                        <div>
+                                            <MudText Typo="Typo.body1">@album.Name</MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                                @album.AssetCount @(album.AssetCount == 1 ? "foto" : "fotos")
+                                            </MudText>
+                                        </div>
+                                    </div>
+                                </MudRadio>
+                            }
+                        </MudRadioGroup>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-3">
+                            No tienes ningún álbum. Crea uno nuevo para añadir esta foto.
+                        </MudAlert>
+                    }
+
+                    <MudDivider Class="my-3" Style="background-color: #444;" />
+                    <MudButton Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => _showCreateAlbum = true)"
+                               FullWidth="true">
+                        Crear nuevo álbum
+                    </MudButton>
+                }
+                else
+                {
+                    <MudTextField @bind-Value="_newAlbumName"
+                                  Label="Nombre del álbum"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Class="mb-3" />
+                    <MudTextField @bind-Value="_newAlbumDescription"
+                                  Label="Descripción (opcional)"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Lines="3" />
+                    <MudButton Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => _showCreateAlbum = false)"
+                               Class="mt-2">
+                        Volver a seleccionar álbum
+                    </MudButton>
+                }
+
+                <div class="d-flex justify-end gap-2 mt-4">
+                    <MudButton OnClick="CloseAddToAlbumDrawer">Cancelar</MudButton>
+                    @if (_showCreateAlbum)
+                    {
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAlbumAndAdd">
+                            Crear y Añadir
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="AddToAlbum"
+                                   Disabled="@(!_selectedAlbumId.HasValue)">
+                            Añadir
+                        </MudButton>
+                    }
+                </div>
+            </div>
+        </div>
         <div class="asset-info-drawer @(_infoOpen ? "" : "closed")">
             <div class="asset-info-drawer-handle">
                 <div class="asset-info-drawer-handle-pill"></div>
@@ -1392,6 +1548,13 @@ else
 
     // Add to Album functionality
     private bool _addToAlbumDialogVisible = false;
+
+    private void CloseAddToAlbumDrawer()
+    {
+        _addToAlbumDialogVisible = false;
+        _showCreateAlbum = false;
+        _selectedAlbumId = null;
+    }
     private List<AlbumItem> _availableAlbums = new();
     private bool _loadingAlbums = false;
     private Guid? _selectedAlbumId = null;
@@ -1437,8 +1600,7 @@ else
             if (success)
             {
                 Snackbar.Add("Foto añadida al álbum correctamente", Severity.Success);
-                _addToAlbumDialogVisible = false;
-                _selectedAlbumId = null;
+                CloseAddToAlbumDrawer();
             }
             else
             {
@@ -1472,11 +1634,9 @@ else
                 if (success)
                 {
                     Snackbar.Add("Álbum creado y foto añadida correctamente", Severity.Success);
-                    _addToAlbumDialogVisible = false;
-                    _showCreateAlbum = false;
                     _newAlbumName = "";
                     _newAlbumDescription = "";
-                    _selectedAlbumId = null;
+                    CloseAddToAlbumDrawer();
                 }
                 else
                 {
@@ -1514,100 +1674,3 @@ else
     </DialogActions>
 </MudDialog>
 
-<MudDialog @bind-Visible="_addToAlbumDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Añadir a Álbum</MudText>
-    </TitleContent>
-    <DialogContent>
-        @if (!_showCreateAlbum)
-        {
-            @if (_loadingAlbums)
-            {
-                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
-            }
-            else if (_availableAlbums.Any())
-            {
-                <MudRadioGroup T="Guid?" @bind-Value="_selectedAlbumId">
-                    @foreach (var album in _availableAlbums)
-                    {
-                        <MudRadio T="Guid?" Value="@album.Id">
-                            <div class="d-flex align-center gap-2">
-                                @if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
-                                {
-                                    <img src="@album.CoverThumbnailUrl" 
-                                         style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px;" 
-                                         alt="@album.Name" />
-                                }
-                                else
-                                {
-                                    <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #333; border-radius: 4px;">
-                                        <MudIcon Icon="@Icons.Material.Filled.Collections" Size="Size.Small" />
-                                    </div>
-                                }
-                                <div>
-                                    <MudText Typo="Typo.body1">@album.Name</MudText>
-                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                        @album.AssetCount @(album.AssetCount == 1 ? "foto" : "fotos")
-                                    </MudText>
-                                </div>
-                            </div>
-                        </MudRadio>
-                    }
-                </MudRadioGroup>
-            }
-            else
-            {
-                <MudAlert Severity="Severity.Info" Class="mb-3">
-                    No tienes ningún álbum. Crea uno nuevo para añadir esta foto.
-                </MudAlert>
-            }
-            
-            <MudDivider Class="my-3" />
-            <MudButton Variant="Variant.Text" 
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="@(() => _showCreateAlbum = true)"
-                       FullWidth="true">
-                Crear nuevo álbum
-            </MudButton>
-        }
-        else
-        {
-            <MudTextField @bind-Value="_newAlbumName" 
-                          Label="Nombre del álbum" 
-                          Variant="Variant.Outlined" 
-                          FullWidth="true"
-                          Class="mb-3" />
-            <MudTextField @bind-Value="_newAlbumDescription" 
-                          Label="Descripción (opcional)" 
-                          Variant="Variant.Outlined" 
-                          FullWidth="true"
-                          Lines="3" />
-            <MudButton Variant="Variant.Text" 
-                       StartIcon="@Icons.Material.Filled.ArrowBack"
-                       OnClick="@(() => _showCreateAlbum = false)"
-                       Class="mt-2">
-                Volver a seleccionar álbum
-            </MudButton>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="@(() => { _addToAlbumDialogVisible = false; _showCreateAlbum = false; _selectedAlbumId = null; })">
-            Cancelar
-        </MudButton>
-        @if (_showCreateAlbum)
-        {
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAlbumAndAdd">
-                Crear y Añadir
-            </MudButton>
-        }
-        else
-        {
-            <MudButton Color="Color.Primary" 
-                       Variant="Variant.Filled" 
-                       OnClick="AddToAlbum"
-                       Disabled="@(!_selectedAlbumId.HasValue)">
-                Añadir
-            </MudButton>
-        }
-    </DialogActions>
-</MudDialog>
