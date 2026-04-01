@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PhotoHub.Server.Api.Features.DatabaseBackup;
 using PhotoHub.Server.Api.Shared.Data;
 using PhotoHub.Server.Api.Shared.Interfaces;
 using PhotoHub.Server.Api.Shared.Services;
@@ -12,6 +13,7 @@ public static class DependencyInjection
     public static void AddApplicationServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddMemoryCache();
+        builder.Services.AddScoped<DatabaseBackupService>();
         builder.Services.AddScoped<DirectoryScanner>();
         builder.Services.AddScoped<FileHashService>();
         builder.Services.AddScoped<ExifExtractorService>();

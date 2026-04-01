@@ -108,6 +108,12 @@ builder.Services.AddScoped<INotificationService>(sp =>
     var authService = sp.GetRequiredService<AuthService>();
     return new NotificationService(httpClient, async () => await authService.GetTokenAsync());
 });
+builder.Services.AddScoped<IDatabaseBackupService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var authService = sp.GetRequiredService<AuthService>();
+    return new DatabaseBackupService(httpClient, async () => await authService.GetTokenAsync());
+});
 builder.Services.AddScoped<IExternalLibraryService>(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
