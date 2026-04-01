@@ -344,8 +344,8 @@
                 </button>
                 <button class="ph-more-tile @(IsNavActive("/device") ? "ph-more-tile--active" : "")"
                         @onclick="@(() => NavigateFromSheet("/device"))">
-                    <MudIcon Icon="@(IsNavActive("/device") ? Icons.Material.Filled.PhoneAndroid : Icons.Material.Outlined.PhoneAndroid)" Class="ph-more-tile__icon" />
-                    <span class="ph-more-tile__label">Dispositivo</span>
+                    <MudIcon Icon="@(IsNavActive("/device") ? Icons.Material.Filled.SyncAlt : Icons.Material.Outlined.SyncAlt)" Class="ph-more-tile__icon" />
+                    <span class="ph-more-tile__label">Sincronizar Dispositivo</span>
                 </button>
                 <button class="ph-more-tile @(IsNavActive("/archive") ? "ph-more-tile--active" : "")"
                         @onclick="@(() => NavigateFromSheet("/archive"))">
