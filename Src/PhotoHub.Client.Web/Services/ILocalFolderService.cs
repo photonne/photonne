@@ -11,7 +11,7 @@ public record LocalFileInfo(
     string? ThumbnailUrl // blob: URL para imágenes, null para vídeos o HEIC
 );
 
-public record DeviceCacheInfo(int FileCount, int ExistingKeyCount, long CachedAt);
+public record DeviceCacheInfo(int FileCount, int ExistingKeyCount, long CachedAt, long TotalSize = 0);
 
 public interface ILocalFolderService
 {

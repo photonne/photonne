@@ -320,7 +320,8 @@ window.folderPicker = {
                     resolve({
                         fileCount: entry.files?.length ?? 0,
                         existingKeyCount: entry.existingKeys?.length ?? 0,
-                        cachedAt: entry.cachedAt
+                        cachedAt: entry.cachedAt,
+                        totalSize: entry.files?.reduce((sum, f) => sum + (f.size ?? 0), 0) ?? 0
                     });
                 };
                 req.onerror = () => resolve(null);

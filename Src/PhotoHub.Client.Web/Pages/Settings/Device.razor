@@ -108,7 +108,7 @@
                     <MudCardContent>
                         @if (_thumbnailCount > 0)
                         {
-                            <MudText Typo="Typo.body2">@_thumbnailCount miniatura@(_thumbnailCount == 1 ? "" : "s") en caché.</MudText>
+                            <MudText Typo="Typo.body2">@_thumbnailCount miniatura@(_thumbnailCount == 1 ? "" : "s") en caché · @FormatSize(_thumbnailSize)</MudText>
                         }
                         else
                         {
@@ -145,7 +145,7 @@
                             @if (_deviceCacheInfo != null)
                             {
                                 <MudText Typo="Typo.body2" Class="mb-1">
-                                    @_deviceCacheInfo.FileCount archivo@(_deviceCacheInfo.FileCount == 1 ? "" : "s") en caché.
+                                    @_deviceCacheInfo.FileCount archivo@(_deviceCacheInfo.FileCount == 1 ? "" : "s") en caché · @FormatSize(_deviceCacheInfo.TotalSize)
                                 </MudText>
                                 @if (_deviceCacheInfo.ExistingKeyCount > 0)
                                 {
@@ -183,11 +183,14 @@
 </div>
 
 @code {
+    private record ThumbnailCacheInfo(int Count, long Size);
+
     private bool _loading = true;
     private bool _picking;
     private bool _isSupported;
     private string _folderName = "";
     private int _thumbnailCount;
+    private long _thumbnailSize;
     private bool _clearingCache;
     private DeviceCacheInfo? _deviceCacheInfo;
     private bool _clearingDeviceCache;
@@ -201,13 +204,14 @@
             {
                 _folderName = await LocalFolderService.GetStoredFolderNameAsync() ?? "";
             }
-            var thumbnailTask = JS.InvokeAsync<int>("thumbnailCache.getCount").AsTask();
+            var thumbnailTask = JS.InvokeAsync<ThumbnailCacheInfo>("thumbnailCache.getInfo").AsTask();
             var deviceCacheTask = string.IsNullOrEmpty(_folderName)
                 ? Task.FromResult<DeviceCacheInfo?>(null)
                 : LocalFolderService.GetDeviceCacheInfoAsync(_folderName);
 
             await Task.WhenAll(thumbnailTask, deviceCacheTask);
-            _thumbnailCount = thumbnailTask.Result;
+            _thumbnailCount = thumbnailTask.Result.Count;
+            _thumbnailSize = thumbnailTask.Result.Size;
             _deviceCacheInfo = deviceCacheTask.Result;
         }
         finally
@@ -254,6 +258,7 @@
         {
             await JS.InvokeVoidAsync("thumbnailCache.clear");
             _thumbnailCount = 0;
+            _thumbnailSize = 0;
             Snackbar.Add("Caché de miniaturas borrada.", Severity.Success);
         }
         catch
@@ -284,6 +289,14 @@
         {
             _clearingDeviceCache = false;
         }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
     }
 
     private static string GetCacheAge(long cachedAt)
