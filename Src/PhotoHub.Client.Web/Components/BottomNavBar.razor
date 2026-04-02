@@ -31,24 +31,24 @@
         @* ── ADMIN NAV ── *@
         <nav class="ph-bottom-nav" role="navigation" aria-label="Administración">
             <a href="/admin/users"     class="ph-bottom-nav__tab @(IsActive("/admin/users")     ? "ph-bottom-nav__tab--active" : "")">
-                <MudIcon Icon="@(IsActive("/admin/users")     ? Icons.Material.Filled.People       : Icons.Material.Outlined.People)"       Class="ph-bottom-nav__icon" />
+                <MudIcon Icon="@(IsActive("/admin/users")     ? Icons.Material.Filled.People         : Icons.Material.Outlined.People)"         Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Usuarios</span>
             </a>
             <a href="/admin/libraries" class="ph-bottom-nav__tab @(IsActive("/admin/libraries") ? "ph-bottom-nav__tab--active" : "")">
-                <MudIcon Icon="@(IsActive("/admin/libraries") ? Icons.Material.Filled.FolderSpecial : Icons.Material.Outlined.FolderSpecial)" Class="ph-bottom-nav__icon" />
+                <MudIcon Icon="@(IsActive("/admin/libraries") ? Icons.Material.Filled.FolderSpecial   : Icons.Material.Outlined.FolderSpecial)"   Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Bibliotecas</span>
             </a>
             <a href="/admin/stats"     class="ph-bottom-nav__tab @(IsActive("/admin/stats")     ? "ph-bottom-nav__tab--active" : "")">
-                <MudIcon Icon="@(IsActive("/admin/stats")     ? Icons.Material.Filled.QueryStats   : Icons.Material.Outlined.QueryStats)"   Class="ph-bottom-nav__icon" />
+                <MudIcon Icon="@(IsActive("/admin/stats")     ? Icons.Material.Filled.QueryStats     : Icons.Material.Outlined.QueryStats)"     Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Estadísticas</span>
             </a>
-            <a href="/admin/queues"    class="ph-bottom-nav__tab @(IsActive("/admin/queues")    ? "ph-bottom-nav__tab--active" : "")">
-                <MudIcon Icon="@(IsActive("/admin/queues")    ? Icons.Material.Filled.Work         : Icons.Material.Outlined.Work)"         Class="ph-bottom-nav__icon" />
-                <span class="ph-bottom-nav__label">Colas</span>
-            </a>
             <a href="/admin/settings"  class="ph-bottom-nav__tab @(IsActive("/admin/settings")  ? "ph-bottom-nav__tab--active" : "")">
-                <MudIcon Icon="@(IsActive("/admin/settings")  ? Icons.Material.Filled.Settings     : Icons.Material.Outlined.Settings)"     Class="ph-bottom-nav__icon" />
+                <MudIcon Icon="@(IsActive("/admin/settings")  ? Icons.Material.Filled.Settings       : Icons.Material.Outlined.Settings)"       Class="ph-bottom-nav__icon" />
                 <span class="ph-bottom-nav__label">Ajustes</span>
+            </a>
+            <a href="/admin/system"    class="ph-bottom-nav__tab @(IsAdminSystemTab             ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsAdminSystemTab             ? Icons.Material.Filled.Storage        : Icons.Material.Outlined.Storage)"        Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Sistema</span>
             </a>
         </nav>
     }
@@ -195,8 +195,9 @@
     private bool IsTabActive(string path, bool exact = false)
         => !IsMoreSheetOpen && IsActive(path, exact);
 
-    private bool IsSettingsSection => IsActive("/settings");
-    private bool IsAdminSection    => IsActive("/admin");
+    private bool IsSettingsSection  => IsActive("/settings");
+    private bool IsAdminSection     => IsActive("/admin");
+    private bool IsAdminSystemTab   => IsActive("/admin/system") || IsActive("/admin/queues") || IsActive("/admin/backup");
 
     private bool IsMoreSection =>
         IsActive("/favorites") || IsActive("/map")     ||

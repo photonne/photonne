@@ -1,0 +1,165 @@
+@page "/admin/system"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Administración - Sistema - PhotoHub</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body2">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <div class="mt-4 mb-4">
+            <MudText Typo="Typo.h5" Class="mb-2">Sistema</MudText>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.Settings"
+                       Href="/admin/settings/tasks">
+                Ajustes de colas (procesos simultáneos)
+            </MudButton>
+        </div>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Indexar</MudText>
+                            <MudText Typo="Typo.body2">Escanea y actualiza el índice de archivos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/indexar"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Generar miniaturas</MudText>
+                            <MudText Typo="Typo.body2">Crea las miniaturas faltantes o regenera todas.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/miniaturas"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Extracción de metadatos</MudText>
+                            <MudText Typo="Typo.body2">Lee EXIF, GPS y otros metadatos de imágenes y vídeos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/metadatos"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Detección de duplicados</MudText>
+                            <MudText Typo="Typo.body2">Identifica y elimina archivos repetidos por hash SHA-256.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/duplicados"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Detección de caras</MudText>
+                            <MudText Typo="Typo.body2">Detecta rostros en las fotos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="true">
+                            Próximamente
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Reconocimiento facial</MudText>
+                            <MudText Typo="Typo.body2">Identifica personas conocidas.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="true">
+                            Próximamente
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.Backup" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Copia de seguridad</MudText>
+                            <MudText Typo="Typo.body2">Exporta o importa los datos de la base de datos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/backup"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+}
