@@ -79,6 +79,10 @@ window.pwaUpdate = {
             .catch(() => { });
     },
 
+    getAppVersion: function () {
+        return window.APP_VERSION ?? '';
+    },
+
     applyUpdate: function () {
         const reg = this._registration;
         if (!reg || !reg.waiting) {

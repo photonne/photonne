@@ -328,6 +328,7 @@
                 <MudText Typo="Typo.h6" Class="font-weight-medium mt-3">@UserFullName</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary">@UserEmail</MudText>
             </div>
+            <StorageWidget />
             <MudDivider />
 
             @* Navigation grid *@
@@ -399,6 +400,10 @@
                     </div>
                 </MudListItem>
             </MudList>
+            @if (!string.IsNullOrEmpty(_appVersion))
+            {
+                <div class="ph-more-version">PhotoHub v@_appVersion</div>
+            }
             <div style="height: env(safe-area-inset-bottom);"></div>
         </div>
     }
@@ -482,6 +487,12 @@
             line-height: 1;
             text-align: center;
         }
+        .ph-more-version {
+            text-align: center;
+            font-size: 11px;
+            color: var(--mud-palette-text-disabled);
+            padding: 10px 0 6px;
+        }
     </style>
 </MudLayout>
 
@@ -496,6 +507,7 @@
     private bool _notifSheetOpen;
     private bool _notifSheetEverOpened;
     private bool _moreSheetOpen;
+    private string _appVersion = string.Empty;
 
     private string GetAppBarClass()
     {
@@ -651,6 +663,7 @@
         if (firstRender)
         {
             await PwaUpdateService.InitAsync(JS);
+            _appVersion = await JS.InvokeAsync<string>("pwaUpdate.getAppVersion");
         }
 
         if (_isNavigating)
