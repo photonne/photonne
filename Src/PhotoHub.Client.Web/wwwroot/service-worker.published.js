@@ -1,6 +1,6 @@
 // Blazor PWA service worker — cache app shell, cache-first for thumbnails
 
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.1.0';
 const CACHE_NAME = 'photohub-cache-v1';
 const THUMBNAIL_CACHE = 'photohub-thumbnails-v1';
 const THUMBNAIL_CACHE_MAX_ENTRIES = 1000;
