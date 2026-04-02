@@ -21,19 +21,31 @@
                                   Label="Contraseña actual"
                                   Variant="Variant.Outlined"
                                   FullWidth="true"
-                                  InputType="InputType.Password"
+                                  InputType="@(_showCurrent ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showCurrent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showCurrent = !_showCurrent"
+                                  AdornmentAriaLabel="Mostrar contraseña"
                                   Class="mb-4" />
                     <MudTextField @bind-Value="_password.New"
                                   Label="Nueva contraseña"
                                   Variant="Variant.Outlined"
                                   FullWidth="true"
-                                  InputType="InputType.Password"
+                                  InputType="@(_showNew ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showNew ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showNew = !_showNew"
+                                  AdornmentAriaLabel="Mostrar contraseña"
                                   Class="mb-4" />
                     <MudTextField @bind-Value="_password.Confirm"
                                   Label="Confirmar nueva contraseña"
                                   Variant="Variant.Outlined"
                                   FullWidth="true"
-                                  InputType="InputType.Password"
+                                  InputType="@(_showConfirm ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showConfirm ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showConfirm = !_showConfirm"
+                                  AdornmentAriaLabel="Mostrar contraseña"
                                   Error="@_passwordMismatch"
                                   ErrorText="Las contraseñas no coinciden" />
                 </MudCardContent>
@@ -55,6 +67,9 @@
 @code {
     private bool _saving;
     private bool _passwordMismatch;
+    private bool _showCurrent;
+    private bool _showNew;
+    private bool _showConfirm;
     private PasswordForm _password = new();
 
     private async Task ChangePassword()

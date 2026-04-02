@@ -35,8 +35,9 @@ public class LoginEndpoint : IEndpoint
         }
         var deviceId = request.DeviceId.Trim();
 
+        var usernameNormalized = request.Username.Trim().ToLowerInvariant();
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Username, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == usernameNormalized || u.Email.ToLower() == usernameNormalized, cancellationToken);
 
         if (user == null || !user.IsActive)
         {
