@@ -1,4 +1,4 @@
-@page "/admin/queues/indexar"
+@page "/admin/tasks/index"
 @inject IIndexService IndexService
 @inject IAssetService AssetService
 @inject ISnackbar Snackbar
@@ -21,7 +21,7 @@
     }
     else
     {
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/queues"))" Class="mb-2">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/system"))" Class="mb-2">
         Volver
     </MudButton>
     <MudText Typo="Typo.h5" Class="mb-4">Indexar Assets</MudText>
@@ -71,44 +71,44 @@
             <MudCardHeader>
                 <CardHeaderContent>
                     <MudText Typo="Typo.h6">Estado de la Indexación</MudText>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        @if (_scanning && _indexingStartTime.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
+                                @FormatDuration(DateTime.UtcNow - _indexingStartTime.Value)
+                            </MudChip>
+                            @if (_speed > 0)
+                            {
+                                <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                    @($"{_speed:F1} archivos/s")
+                                </MudChip>
+                            }
+                            @if (_etaSeconds > 0)
+                            {
+                                <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
+                                    ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
+                                </MudChip>
+                            }
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
+                        }
+                        else if (_indexingDuration.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
+                                @FormatDuration(_indexingDuration.Value)
+                            </MudChip>
+                            @if (_statistics?.TotalFilesFound > 0)
+                            {
+                                <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                    @FormatFilesPerSecond(_statistics.TotalFilesFound, _indexingDuration.Value)
+                                </MudChip>
+                            }
+                            @if (_lastUpdate?.IsCompleted == true)
+                            {
+                                <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
+                            }
+                        }
+                    </div>
                 </CardHeaderContent>
-                <CardHeaderActions>
-                    @if (_scanning && _indexingStartTime.HasValue)
-                    {
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
-                            @FormatDuration(DateTime.UtcNow - _indexingStartTime.Value)
-                        </MudChip>
-                        @if (_speed > 0)
-                        {
-                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
-                                @($"{_speed:F1} archivos/s")
-                            </MudChip>
-                        }
-                        @if (_etaSeconds > 0)
-                        {
-                            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
-                                ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
-                            </MudChip>
-                        }
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
-                    }
-                    else if (_indexingDuration.HasValue)
-                    {
-                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
-                            @FormatDuration(_indexingDuration.Value)
-                        </MudChip>
-                        @if (_statistics?.TotalFilesFound > 0)
-                        {
-                            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
-                                @FormatFilesPerSecond(_statistics.TotalFilesFound, _indexingDuration.Value)
-                            </MudChip>
-                        }
-                        @if (_lastUpdate?.IsCompleted == true)
-                        {
-                            <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
-                        }
-                    }
-                </CardHeaderActions>
             </MudCardHeader>
             <MudCardContent>
                 <MudText Typo="Typo.body1" Class="mb-2">@_currentStatus</MudText>

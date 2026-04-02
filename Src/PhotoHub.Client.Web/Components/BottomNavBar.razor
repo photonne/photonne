@@ -197,7 +197,7 @@
 
     private bool IsSettingsSection  => IsActive("/settings");
     private bool IsAdminSection     => IsActive("/admin");
-    private bool IsAdminSystemTab   => IsActive("/admin/system") || IsActive("/admin/queues") || IsActive("/admin/backup");
+    private bool IsAdminSystemTab   => IsActive("/admin/system") || IsActive("/admin/tasks") || IsActive("/admin/backup");
 
     private bool IsMoreSection =>
         IsActive("/favorites") || IsActive("/map")     ||

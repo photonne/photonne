@@ -1,4 +1,4 @@
-@page "/admin/queues/duplicados"
+@page "/admin/tasks/duplicates"
 @inject IDuplicatesQueueService DuplicatesQueueService
 @inject IAuthService AuthService
 @inject ISnackbar Snackbar
@@ -17,7 +17,7 @@
 }
 else
 {
-    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/queues"))" Class="mb-2">
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/system"))" Class="mb-2">
         Volver
     </MudButton>
     <MudText Typo="Typo.h5" Class="mb-4">Detección de duplicados</MudText>

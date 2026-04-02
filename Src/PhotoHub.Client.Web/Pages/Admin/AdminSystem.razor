@@ -22,7 +22,7 @@
             <MudButton Variant="Variant.Text"
                        StartIcon="@Icons.Material.Filled.Settings"
                        Href="/admin/settings/tasks">
-                Ajustes de colas (procesos simultáneos)
+                Ajustes de tareas (procesos simultáneos)
             </MudButton>
         </div>
 
@@ -36,7 +36,7 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/indexar"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/index"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
@@ -52,7 +52,7 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/miniaturas"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/thumbnails"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
@@ -68,7 +68,7 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/metadatos"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/metadata"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
@@ -84,7 +84,7 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/queues/duplicados"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/duplicates"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
