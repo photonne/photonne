@@ -29,6 +29,30 @@ public class ThumbnailGeneratorService
         };
     }
 
+    private ThumbnailOptions? _cachedOptions;
+    private readonly SemaphoreSlim _optionsLock = new SemaphoreSlim(1, 1);
+
+    private async Task<ThumbnailOptions> GetOptionsAsync()
+    {
+        if (_cachedOptions is not null) return _cachedOptions;
+        await _optionsLock.WaitAsync();
+        try
+        {
+            if (_cachedOptions is not null) return _cachedOptions;
+            var format = await _settingsService.GetSettingAsync(KeyThumbnailFormat, Guid.Empty, "JPEG");
+            _cachedOptions = new ThumbnailOptions(
+                UseWebP: format.Equals("WebP", StringComparison.OrdinalIgnoreCase),
+                QualitySmall: ParseQuality(await _settingsService.GetSettingAsync(KeyQualitySmall, Guid.Empty, "75"), 75),
+                QualityMedium: ParseQuality(await _settingsService.GetSettingAsync(KeyQualityMedium, Guid.Empty, "80"), 80),
+                QualityLarge: ParseQuality(await _settingsService.GetSettingAsync(KeyQualityLarge, Guid.Empty, "85"), 85));
+            return _cachedOptions;
+        }
+        finally
+        {
+            _optionsLock.Release();
+        }
+    }
+
     public ThumbnailGeneratorService(SettingsService settingsService)
     {
         _settingsService = settingsService;
@@ -57,13 +81,7 @@ public class ThumbnailGeneratorService
     {
         var thumbnails = new List<AssetThumbnail>();
 
-        // Read thumbnail settings once for this generation job
-        var format = await _settingsService.GetSettingAsync(KeyThumbnailFormat, Guid.Empty, "JPEG");
-        var options = new ThumbnailOptions(
-            UseWebP: format.Equals("WebP", StringComparison.OrdinalIgnoreCase),
-            QualitySmall: ParseQuality(await _settingsService.GetSettingAsync(KeyQualitySmall, Guid.Empty, "75"), 75),
-            QualityMedium: ParseQuality(await _settingsService.GetSettingAsync(KeyQualityMedium, Guid.Empty, "80"), 80),
-            QualityLarge: ParseQuality(await _settingsService.GetSettingAsync(KeyQualityLarge, Guid.Empty, "85"), 85));
+        var options = await GetOptionsAsync();
 
         try
         {
