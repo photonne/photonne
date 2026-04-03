@@ -1,0 +1,412 @@
+@page "/upload"
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@using System.IO
+
+<PageTitle>Subir - Photonne</PageTitle>
+
+<div class="upload-page">
+
+    @* Progress bar in normal flow at the top *@
+    @if (_state == UploadState.Uploading)
+    {
+        <MudProgressLinear Color="Color.Primary" Value="@OverallProgress"
+                           Class="upload-top-bar" />
+    }
+
+    @* MudFileUpload always in DOM so IBrowserFile refs stay valid after state change *@
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>" @ref="_fileUpload"
+                   OnFilesChanged="OnFilesSelected"
+                   MaximumFileCount="200">
+        <CustomContent></CustomContent>
+        <SelectedTemplate Context="_"></SelectedTemplate>
+    </MudFileUpload>
+
+    @* ── IDLE: full-screen tap zone ── *@
+    @if (_state == UploadState.Idle)
+    {
+        <div class="upload-idle" @onclick="OpenPicker">
+            <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate"
+                     Style="font-size: 5.5rem; opacity: .45;" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="mt-4">Añadir fotos y vídeos</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1 text-center"
+                     Style="max-width: 240px;">
+                Toca para seleccionar archivos desde tu dispositivo
+            </MudText>
+        </div>
+    }
+
+    @* ── QUEUE / UPLOADING: file list ── *@
+    @if (_state == UploadState.Queue || _state == UploadState.Uploading)
+    {
+        <div class="upload-list">
+            @foreach (var item in _items)
+            {
+                <div class="upload-item">
+
+                    @* Thumbnail *@
+                    <div class="item-thumb">
+                        @if (item.Thumb != null)
+                        {
+                            <img src="@item.Thumb" alt="" />
+                        }
+                        else
+                        {
+                            <div class="item-thumb-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Videocam"
+                                         Size="Size.Medium" Color="Color.Default" />
+                            </div>
+                        }
+                        @if (item.Status == FileStatus.Done)
+                        {
+                            <div class="item-overlay">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                         Color="Color.Success" Size="Size.Small" />
+                            </div>
+                        }
+                        else if (item.Status == FileStatus.Error)
+                        {
+                            <div class="item-overlay">
+                                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline"
+                                         Color="Color.Error" Size="Size.Small" />
+                            </div>
+                        }
+                    </div>
+
+                    @* Name + size + progress *@
+                    <div class="item-info">
+                        <span class="item-name">@item.Name</span>
+                        <span class="item-meta">@FormatSize(item.SizeBytes)</span>
+                        @if (item.Status == FileStatus.Uploading)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary"
+                                               Class="mt-1" Style="border-radius: 2px;" />
+                        }
+                    </div>
+
+                    @* Right-side action / status *@
+                    <div class="item-action">
+                        @if (item.Status == FileStatus.Uploading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true"
+                                                 Color="Color.Primary" />
+                        }
+                        else if (item.Status == FileStatus.Done)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                     Color="Color.Success" Size="Size.Small" />
+                        }
+                        else if (item.Status == FileStatus.Error)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline"
+                                     Color="Color.Error" Size="Size.Small" />
+                        }
+                        else if (_state == UploadState.Queue)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RemoveItem(item))" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Sticky bottom bar *@
+        <div class="upload-bottom-bar">
+            @if (_state == UploadState.Queue)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Default"
+                           OnClick="Reset" Size="Size.Medium">
+                    Cancelar
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                           OnClick="StartUpload" Size="Size.Large"
+                           Class="flex-grow-1">
+                    Subir @_items.Count @(_items.Count == 1 ? "archivo" : "archivos")
+                </MudButton>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="flex-grow-1 text-center mud-text-secondary">
+                    @DoneCount de @_items.Count subidos...
+                </MudText>
+            }
+        </div>
+    }
+
+    @* ── DONE ── *@
+    @if (_state == UploadState.Done)
+    {
+        <div class="upload-done">
+            <MudIcon Icon="@Icons.Material.Filled.CloudDone"
+                     Style="font-size: 5.5rem;" Color="Color.Success" />
+            <MudText Typo="Typo.h6" Class="mt-4">
+                @DoneCount @(DoneCount == 1 ? "archivo subido" : "archivos subidos")
+            </MudText>
+            @if (ErrorCount > 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Error" Class="mt-1">
+                    @ErrorCount con error
+                </MudText>
+            }
+            <div class="done-actions">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Reset">
+                    Subir más
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick='@(() => Navigation.NavigateTo("/"))'>
+                    Ver galería
+                </MudButton>
+            </div>
+        </div>
+    }
+
+</div>
+
+<style>
+    .upload-page {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - var(--mud-appbar-height, 64px));
+        overflow: hidden;
+        position: relative;
+    }
+
+    @@media (max-width: 959.98px) {
+        .upload-page {
+            height: calc(100vh - var(--mud-appbar-height, 64px) - 64px - env(safe-area-inset-bottom));
+        }
+    }
+
+    .upload-top-bar {
+        flex-shrink: 0;
+        border-radius: 0;
+        height: 3px;
+    }
+
+    /* ── Idle ── */
+    .upload-idle {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 2rem;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: opacity .1s;
+    }
+    .upload-idle:active { opacity: .6; }
+
+    /* ── File list ── */
+    .upload-list {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 76px; /* room for bottom bar */
+    }
+
+    .upload-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(128,128,128,.1);
+    }
+
+    .item-thumb {
+        position: relative;
+        width: 56px;
+        height: 56px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(128,128,128,.1);
+        flex-shrink: 0;
+    }
+    .item-thumb img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+    }
+    .item-thumb-icon {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .item-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,.35);
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 8px;
+    }
+
+    .item-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .item-name {
+        font-size: .875rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .item-meta {
+        font-size: .75rem;
+        opacity: .55;
+    }
+
+    .item-action { flex-shrink: 0; }
+
+    /* ── Bottom bar ── */
+    .upload-bottom-bar {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+        background: var(--mud-palette-surface);
+        border-top: 1px solid rgba(128,128,128,.15);
+        box-shadow: 0 -2px 12px rgba(0,0,0,.07);
+    }
+
+    /* ── Done ── */
+    .upload-done {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+    }
+    .done-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+</style>
+
+@code {
+    private MudFileUpload<IReadOnlyList<IBrowserFile>>? _fileUpload;
+    private List<UploadItem> _items = new();
+    private UploadState _state = UploadState.Idle;
+
+    private enum UploadState { Idle, Queue, Uploading, Done }
+    private enum FileStatus  { Pending, Uploading, Done, Error }
+
+    private class UploadItem
+    {
+        public required string Name { get; init; }
+        public required long SizeBytes { get; init; }
+        public required IBrowserFile File { get; init; }
+        public FileStatus Status { get; set; } = FileStatus.Pending;
+        public string? Thumb { get; set; }
+    }
+
+    private int DoneCount    => _items.Count(i => i.Status == FileStatus.Done);
+    private int ErrorCount   => _items.Count(i => i.Status == FileStatus.Error);
+    private double OverallProgress =>
+        _items.Count == 0 ? 0 : DoneCount * 100.0 / _items.Count;
+
+    private async Task OpenPicker()
+    {
+        if (_fileUpload != null)
+            await _fileUpload.OpenFilePickerAsync();
+    }
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles(200);
+        foreach (var file in files)
+            _items.Add(new UploadItem { Name = file.Name, SizeBytes = file.Size, File = file });
+
+        _state = UploadState.Queue;
+        StateHasChanged();
+
+        _ = LoadThumbnailsAsync();
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadThumbnailsAsync()
+    {
+        var imgExts = new HashSet<string>
+            { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".avif" };
+
+        foreach (var item in _items.ToList())
+        {
+            if (!imgExts.Contains(Path.GetExtension(item.Name).ToLowerInvariant()))
+                continue;
+            try
+            {
+                var resized = await item.File.RequestImageFileAsync("image/jpeg", 80, 80);
+                using var ms = new MemoryStream();
+                await resized.OpenReadStream(1024 * 200).CopyToAsync(ms);
+                item.Thumb = "data:image/jpeg;base64," + Convert.ToBase64String(ms.ToArray());
+                await InvokeAsync(StateHasChanged);
+            }
+            catch { /* skip thumbnail on error */ }
+        }
+    }
+
+    private void RemoveItem(UploadItem item)
+    {
+        _items.Remove(item);
+        if (_items.Count == 0)
+            _state = UploadState.Idle;
+        StateHasChanged();
+    }
+
+    private async Task StartUpload()
+    {
+        _state = UploadState.Uploading;
+        StateHasChanged();
+
+        foreach (var item in _items.Where(i => i.Status == FileStatus.Pending).ToList())
+        {
+            item.Status = FileStatus.Uploading;
+            StateHasChanged();
+
+            try
+            {
+                using var stream = item.File.OpenReadStream(maxAllowedSize: 1024L * 1024 * 100);
+                var response = await AssetService.UploadAssetAsync(item.Name, stream);
+                item.Status = response != null ? FileStatus.Done : FileStatus.Error;
+                if (response == null)
+                    Snackbar.Add($"Error al subir {item.Name}", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                item.Status = FileStatus.Error;
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+
+            StateHasChanged();
+        }
+
+        _state = UploadState.Done;
+        StateHasChanged();
+    }
+
+    private void Reset()
+    {
+        _items.Clear();
+        _state = UploadState.Idle;
+        StateHasChanged();
+    }
+
+    private string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{(bytes / 1024.0).ToString("F1")} KB";
+        return $"{(bytes / 1024.0 / 1024.0).ToString("F1")} MB";
+    }
+}

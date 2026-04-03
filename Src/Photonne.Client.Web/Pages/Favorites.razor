@@ -1,0 +1,193 @@
+@page "/favorites"
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IAssetListNavigationState AssetListNavigationState
+@implements IDisposable
+
+<PageTitle>Favoritos - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+<div class="favorites-container">
+    @if (_assets.Any())
+    {
+        @foreach (var group in _groupedAssets)
+        {
+            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+            <div class="day-group">
+                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                <div class="masonry-grid">
+                    @foreach (var asset in group.Value)
+                    {
+                        <div class="masonry-item"
+                             data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                             data-width="@(asset.Width?.ToString() ?? "0")"
+                             data-height="@(asset.Height?.ToString() ?? "0")">
+                            <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (_hasMore)
+        {
+            <div id="favorites-load-more-sentinel" style="height: 4px; margin-bottom: 8px;"></div>
+        }
+        @if (_loadingMore)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
+    }
+    else if (!_loading)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.FavoriteBorder"
+                    Title="Sin favoritos aún"
+                    Description="Marca fotos con el corazón para verlas aquí." />
+    }
+</div>
+
+<style>
+    .favorites-container {
+        padding: 4px;
+    }
+    .day-header {
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: capitalize;
+        padding: 0 4px 6px 4px;
+        display: block;
+    }
+
+    @@media (max-width: 599.98px) {
+        .day-header {
+            font-size: 0.78rem !important;
+        }
+    }
+    .masonry-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .masonry-item {
+        flex: 1 1 180px;
+        max-width: 300px;
+        min-width: 120px;
+        height: 180px;
+    }
+</style>
+
+@code {
+    private List<TimelineItem> _assets = new();
+    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    private bool _loading = true;
+    private bool _loadingMore = false;
+    private bool _hasMore = false;
+    private DateTime? _nextCursor = null;
+    private DotNetObjectReference<Favorites>? _objRef;
+    private bool _isDisposed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _objRef = DotNetObjectReference.Create(this);
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isDisposed) return;
+        if (_hasMore && _objRef != null)
+            await JS.InvokeVoidAsync("setupLoadMoreObserver", "favorites-load-more-sentinel", _objRef, nameof(LoadMoreFromJs));
+        else
+            await JS.InvokeVoidAsync("disconnectLoadMoreObserver");
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromJs()
+    {
+        if (_loadingMore || !_hasMore) return;
+        await LoadMoreAsync();
+    }
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        _objRef?.Dispose();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var page = await AssetService.GetFavoritesPageAsync(pageSize: 150);
+            _assets = page.Items;
+            _hasMore = page.HasMore;
+            _nextCursor = page.NextCursor;
+            RebuildGroups();
+            AssetListNavigationState.SetList(_assets, null);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar favoritos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_loadingMore || !_hasMore) return;
+        _loadingMore = true;
+        StateHasChanged();
+        try
+        {
+            var page = await AssetService.GetFavoritesPageAsync(_nextCursor, pageSize: 150);
+            _assets.AddRange(page.Items);
+            _hasMore = page.HasMore;
+            _nextCursor = page.NextCursor;
+            RebuildGroups();
+            AssetListNavigationState.SetList(_assets, null);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar más favoritos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RebuildGroups()
+    {
+        _groupedAssets = _assets
+            .GroupBy(a => a.CreatedDate.ToString("yyyy-MM-dd"))
+            .OrderByDescending(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        AssetListNavigationState.SetList(_assets, null);
+        Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=favorites");
+    }
+
+    private static string FormatDayHeader(DateTime date)
+    {
+        var today = DateTime.Today;
+        if (date.Date == today) return "Hoy";
+        if (date.Date == today.AddDays(-1)) return "Ayer";
+        return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+}

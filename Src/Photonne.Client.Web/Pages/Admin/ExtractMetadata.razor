@@ -1,0 +1,273 @@
+@page "/admin/tasks/metadata"
+@inject IMetadataQueueService MetadataQueueService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Extracción de metadatos - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Volver al inicio
+        </MudButton>
+    </div>
+}
+else
+{
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/system"))" Class="mb-2">
+        Volver
+    </MudButton>
+    <MudText Typo="Typo.h5" Class="mb-4">Extracción de metadatos</MudText>
+
+    <MudGrid>
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Opciones</MudText>
+                        <MudText Typo="Typo.body2">Lee EXIF, GPS y otros metadatos de imágenes y vídeos.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudRadioGroup T="bool" @bind-Value="_overwriteAll">
+                        <MudRadio T="bool" Value="false" Color="Color.Primary">
+                            <MudText Typo="Typo.body1"><strong>Solo faltantes</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                Extrae metadatos únicamente de los assets que no los tienen. Más rápido.
+                            </MudText>
+                        </MudRadio>
+                        <MudRadio T="bool" Value="true" Color="Color.Warning" Class="mt-2">
+                            <MudText Typo="Typo.body1"><strong>Sobreescribir todo</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                Re-extrae los metadatos de todos los assets aunque ya los tengan.
+                            </MudText>
+                        </MudRadio>
+                    </MudRadioGroup>
+
+                    <div class="mt-4 d-flex gap-3 align-center">
+                        @if (!_running)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="@(_overwriteAll ? Color.Warning : Color.Primary)"
+                                       OnClick="Start"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow">
+                                Iniciar
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       OnClick="Cancel"
+                                       StartIcon="@Icons.Material.Filled.Stop">
+                                Detener
+                            </MudButton>
+                        }
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    @if (_running || _lastUpdate != null)
+    {
+        <MudCard Class="mt-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Progreso</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    @if (_running && _startTime.HasValue)
+                    {
+                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
+                            @FormatDuration(DateTime.UtcNow - _startTime.Value)
+                        </MudChip>
+                        @if (_speed > 0)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                @($"{_speed:F1} assets/s")
+                            </MudChip>
+                        }
+                        @if (_etaSeconds > 0)
+                        {
+                            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
+                                ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
+                            </MudChip>
+                        }
+                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
+                    }
+                    else if (_duration.HasValue)
+                    {
+                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
+                            @FormatDuration(_duration.Value)
+                        </MudChip>
+                        @if (_lastUpdate?.IsCompleted == true)
+                        {
+                            <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
+                        }
+                    }
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body1" Class="mb-2">@_currentStatus</MudText>
+                <MudProgressLinear Color="@(_stats?.Failed > 0 ? Color.Warning : Color.Primary)"
+                                   Value="@_progress"
+                                   Class="my-4"
+                                   Rounded="true"
+                                   Size="Size.Medium" />
+
+                @if (_stats != null)
+                {
+                    <MudGrid Class="mt-2">
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Elevation="1" Class="text-center pa-4">
+                                <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.Processed</MudText>
+                                <MudText Typo="Typo.caption">Procesados</MudText>
+                                @if (_stats.TotalAssets > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">de @_stats.TotalAssets</MudText>
+                                }
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Elevation="1" Class="text-center pa-4">
+                                <MudText Typo="Typo.h4" Color="Color.Success">@_stats.Extracted</MudText>
+                                <MudText Typo="Typo.caption">Extraídos</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Elevation="1" Class="text-center pa-4">
+                                <MudText Typo="Typo.h4" Color="Color.Info">@_stats.Skipped</MudText>
+                                <MudText Typo="Typo.caption">Omitidos</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Elevation="1" Class="text-center pa-4">
+                                <MudText Typo="Typo.h4" Color="@(_stats.Failed > 0 ? Color.Error : Color.Default)">@_stats.Failed</MudText>
+                                <MudText Typo="Typo.caption">Fallidos</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+}
+</div>
+
+@code {
+    private bool _isAuthorized;
+    private bool _overwriteAll;
+    private bool _running;
+    private double _progress;
+    private string _currentStatus = "Esperando inicio...";
+    private MetadataJobStatistics? _stats;
+    private MetadataProgressUpdate? _lastUpdate;
+    private DateTime? _startTime;
+    private TimeSpan? _duration;
+    private double _speed;
+    private double _etaSeconds;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+
+    private async Task Start()
+    {
+        _cts = new CancellationTokenSource();
+        _running = true;
+        _startTime = DateTime.UtcNow;
+        _duration = null;
+        _progress = 0;
+        _stats = null;
+        _lastUpdate = null;
+        _speed = 0;
+        _etaSeconds = 0;
+        _currentStatus = "Iniciando...";
+
+        try
+        {
+            await foreach (var update in MetadataQueueService.ExtractMetadataAsync(_overwriteAll, _cts.Token))
+            {
+                _lastUpdate = update;
+                _currentStatus = update.Message;
+                _progress = update.Percentage;
+
+                if (update.Statistics != null)
+                {
+                    _stats = update.Statistics;
+                    UpdateSpeedAndEta();
+                }
+
+                StateHasChanged();
+            }
+
+            if (_startTime.HasValue)
+                _duration = DateTime.UtcNow - _startTime.Value;
+
+            if (_lastUpdate?.IsCompleted == true)
+                Snackbar.Add("Extracción de metadatos completada.", Severity.Success);
+        }
+        catch (OperationCanceledException)
+        {
+            _currentStatus = "Proceso detenido.";
+            if (_startTime.HasValue)
+                _duration = DateTime.UtcNow - _startTime.Value;
+        }
+        catch (Exception ex)
+        {
+            _currentStatus = $"Error: {ex.Message}";
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            if (_startTime.HasValue)
+                _duration = DateTime.UtcNow - _startTime.Value;
+        }
+        finally
+        {
+            _running = false;
+            _speed = 0;
+            _etaSeconds = 0;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        _cts?.Cancel();
+    }
+
+    private void UpdateSpeedAndEta()
+    {
+        if (_stats == null || !_startTime.HasValue || _stats.Processed == 0) return;
+
+        var elapsed = (DateTime.UtcNow - _startTime.Value).TotalSeconds;
+        if (elapsed <= 0) return;
+
+        _speed = _stats.Processed / elapsed;
+
+        var remaining = _stats.TotalAssets - _stats.Processed;
+        _etaSeconds = _speed > 0 ? remaining / _speed : 0;
+    }
+
+    private static string FormatDuration(TimeSpan d)
+    {
+        if (d.TotalHours >= 1)
+            return $"{(int)d.TotalHours}h {d.Minutes}m {d.Seconds}s";
+        if (d.TotalMinutes >= 1)
+            return $"{d.Minutes}m {d.Seconds}s";
+        return $"{d.Seconds}s";
+    }
+}

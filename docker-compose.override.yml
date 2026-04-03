@@ -1,0 +1,16 @@
+# Aplicado automáticamente en desarrollo (docker compose up).
+# En producción (NAS) solo se usa docker-compose.yml.
+services:
+  photonne-api:
+    build:
+      context: .
+      dockerfile: Src/Photonne.Server.Api/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Jwt__Key=${JWT_KEY:-dev-secret-key-change-in-production-min-32-chars}
+      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+
+volumes:
+  pgadmin_data:

@@ -1,0 +1,113 @@
+@using Photonne.Client.Web.Models
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderAvatar>
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Outlined.FolderSpecial" />
+            </MudAvatar>
+        </CardHeaderAvatar>
+        <CardHeaderContent>
+            <MudText Typo="Typo.subtitle1" Class="text-truncate">@Library.Name</MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate" Style="max-width:220px">
+                @Library.Path
+            </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                           Size="Size.Small"
+                           Disabled="IsBeingScanned"
+                           OnClick="@(() => OnEdit.InvokeAsync())" />
+            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                           Size="Size.Small" Color="Color.Error"
+                           Disabled="IsBeingScanned"
+                           OnClick="@(() => OnDelete.InvokeAsync())" />
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent Class="pt-0">
+
+        @* Chips *@
+        <div class="d-flex flex-wrap gap-1 mb-3">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Outlined.Photo">
+                @Library.AssetCount assets
+            </MudChip>
+            @if (Library.ImportSubfolders)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Icon="@Icons.Material.Outlined.AccountTree">
+                    Subcarpetas
+                </MudChip>
+            }
+            @if (!string.IsNullOrWhiteSpace(Library.CronSchedule))
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Color="Color.Info" Icon="@Icons.Material.Outlined.Schedule">
+                    @Library.CronSchedule
+                </MudChip>
+            }
+        </div>
+
+        @* Last scan *@
+        @if (Library.LastScannedAt.HasValue)
+        {
+            <div class="d-flex align-center gap-1 mb-1">
+                <MudIcon Icon="@StatusIcon" Size="Size.Small" Color="@StatusColor" />
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @Library.LastScannedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </MudText>
+            </div>
+            @if (Library.LastScanAssetsFound.HasValue)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @Library.LastScanAssetsFound encontrados ·
+                    +@(Library.LastScanAssetsAdded ?? 0) nuevos ·
+                    @(Library.LastScanAssetsRemoved ?? 0) offline
+                </MudText>
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                Nunca escaneada
+            </MudText>
+        }
+
+    </MudCardContent>
+
+    <MudCardActions>
+        <MudButton StartIcon="@(IsBeingScanned ? Icons.Material.Outlined.Sync : Icons.Material.Outlined.Search)"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Size="Size.Small"
+                   Disabled="IsBeingScanned"
+                   OnClick="@(() => OnScan.InvokeAsync())">
+            @(IsBeingScanned ? "Escaneando..." : "Escanear")
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired] public ExternalLibraryDto Library { get; set; } = null!;
+    [Parameter] public bool IsBeingScanned { get; set; }
+    [Parameter] public EventCallback OnScan { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private string StatusIcon => Library.LastScanStatus switch
+    {
+        "Completed" => Icons.Material.Outlined.CheckCircle,
+        "Failed"    => Icons.Material.Outlined.Error,
+        "Running"   => Icons.Material.Outlined.Sync,
+        _           => Icons.Material.Outlined.RadioButtonUnchecked
+    };
+
+    private Color StatusColor => Library.LastScanStatus switch
+    {
+        "Completed" => Color.Success,
+        "Failed"    => Color.Error,
+        "Running"   => Color.Info,
+        _           => Color.Default
+    };
+}

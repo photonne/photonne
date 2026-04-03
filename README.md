@@ -1,4 +1,4 @@
-# PhotoHub
+# Photonne
 
 Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visualiza tu biblioteca multimedia desde cualquier dispositivo.
 
@@ -32,10 +32,10 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 ## Estructura del proyecto
 
 ```
-PhotoHub.sln
+Photonne.sln
 └── Src/
-    ├── PhotoHub.Server.Api/    # API REST ASP.NET Core 10
-    └── PhotoHub.Client.Web/    # Blazor WASM PWA
+    ├── Photonne.Server.Api/    # API REST ASP.NET Core 10
+    └── Photonne.Client.Web/    # Blazor WASM PWA
 ```
 
 ### Responsabilidades por proyecto
@@ -64,8 +64,8 @@ PhotoHub.sln
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/photohub.git
-cd photohub
+git clone https://github.com/tu-usuario/photonne.git
+cd photonne
 ```
 
 ### 2. Levantar la infraestructura
@@ -77,12 +77,12 @@ docker compose up -d
 Esto levanta:
 - **PostgreSQL 16** en `localhost:5432`
 - **PgAdmin 4** en `http://localhost:5050`
-- **PhotoHub API** en `http://localhost:5000`
+- **Photonne API** en `http://localhost:5000`
 
 ### 3. Ejecutar en desarrollo (sin Docker)
 
 ```bash
-cd Src/PhotoHub.Server.Api
+cd Src/Photonne.Server.Api
 dotnet run
 ```
 
@@ -92,7 +92,7 @@ Documentación interactiva: `https://localhost:5001/scalar`
 ### 4. Cliente web
 
 ```bash
-cd Src/PhotoHub.Client.Web
+cd Src/Photonne.Client.Web
 dotnet run
 ```
 
@@ -102,10 +102,10 @@ dotnet run
 
 | Clave | Descripción | Default |
 |---|---|---|
-| `ConnectionStrings:Postgres` | Cadena de conexión PostgreSQL | `Host=localhost;Port=5432;Database=photohub;...` |
+| `ConnectionStrings:Postgres` | Cadena de conexión PostgreSQL | `Host=localhost;Port=5432;Database=photonne;...` |
 | `Jwt:Key` | Clave secreta para JWT (mín. 32 caracteres) | — |
-| `Jwt:Issuer` | Emisor del token | `PhotoHub` |
-| `Jwt:Audience` | Audiencia del token | `PhotoHub` |
+| `Jwt:Issuer` | Emisor del token | `Photonne` |
+| `Jwt:Audience` | Audiencia del token | `Photonne` |
 | `ASSETS_PATH` | Ruta al directorio de assets | `C:\PhotoHubAssets\NAS\Assets` |
 | `THUMBNAILS_PATH` | Ruta donde se guardan las miniaturas | `{WorkDir}/thumbnails` |
 | `FFMPEG_PATH` | Ruta al directorio con los binarios de FFmpeg | Descargado automáticamente si no se especifica |
@@ -118,7 +118,7 @@ Configurado en `appsettings.Development.json`:
 {
   "AdminUser": {
     "Username": "admin",
-    "Email": "admin@photohub.local",
+    "Email": "admin@photonne.local",
     "Password": "admin123",
     "FirstName": "Administrador",
     "LastName": "Sistema"
@@ -132,9 +132,9 @@ El primer usuario admin creado al arrancar se marca automáticamente como **admi
 
 ```yaml
 # compose.yaml
-POSTGRES_DB: photohub
-POSTGRES_USER: photohub_user
-POSTGRES_PASSWORD: photohub_password
+POSTGRES_DB: photonne
+POSTGRES_USER: photonne_user
+POSTGRES_PASSWORD: photonne_password
 ASSETS_PATH: /ruta/a/tus/fotos
 ```
 
@@ -175,7 +175,7 @@ Accesible desde: `Admin > Colas > Indexar`
 
 ```bash
 # Construir la imagen
-docker build -t photohub-api ./Src/PhotoHub.Server.Api
+docker build -t photonne-api ./Src/Photonne.Server.Api
 
 # O usar Docker Compose completo
 docker compose up --build

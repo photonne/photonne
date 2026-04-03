@@ -1,0 +1,1986 @@
+@page "/"
+@inject IAssetService AssetService
+@inject IAlbumService AlbumService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject LayoutService LayoutService
+@inject IAssetListNavigationState AssetListNavigationState
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>Timeline - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+<div class="timeline-wrapper">
+    <div class="timeline-main-container">
+        <div class="timeline-content-wrapper">
+
+            <div class="filter-chips-bar">
+                <!-- Desktop: chips de filtro -->
+                <div class="filter-chips-scroll filter-chips-desktop">
+                    <MudChip T="string" Color="@(_activeFilter == "All" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("All"))">Todas</MudChip>
+                    <MudChip T="string" Color="@(_activeFilter == "Photos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Photos"))">Fotos</MudChip>
+                    <MudChip T="string" Color="@(_activeFilter == "Videos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Videos"))">Vídeos</MudChip>
+                    <MudChip T="string" Color="@(_activeFilter == "Favorites" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Favorites"))">Favoritos</MudChip>
+                </div>
+                <!-- Móvil: botón que abre el bottom sheet de filtros -->
+                <button class="filter-mobile-btn filter-chips-mobile" @onclick="OpenFilterSheet">
+                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Size="Size.Small" />
+                    <span>@GetFilterLabel()</span>
+                    <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="filter-mobile-btn-chevron" />
+                </button>
+                <div class="filter-density-controls">
+                    <!-- Desktop: 3 botones individuales -->
+                    <MudTooltip Text="Compacto" Class="density-btn-desktop">
+                        <MudIconButton Icon="@Icons.Material.Outlined.GridOn"
+                                       Size="Size.Small"
+                                       Color="@(_density == "S" ? Color.Primary : Color.Inherit)"
+                                       OnClick="@(async () => await SetDensity("S"))" />
+                    </MudTooltip>
+                    <MudTooltip Text="Mediano" Class="density-btn-desktop">
+                        <MudIconButton Icon="@Icons.Material.Outlined.GridView"
+                                       Size="Size.Small"
+                                       Color="@(_density == "M" ? Color.Primary : Color.Inherit)"
+                                       OnClick="@(async () => await SetDensity("M"))" />
+                    </MudTooltip>
+                    <MudTooltip Text="Grande" Class="density-btn-desktop">
+                        <MudIconButton Icon="@Icons.Material.Outlined.PhotoSizeSelectLarge"
+                                       Size="Size.Small"
+                                       Color="@(_density == "L" ? Color.Primary : Color.Inherit)"
+                                       OnClick="@(async () => await SetDensity("L"))" />
+                    </MudTooltip>
+                </div>
+            </div>
+
+            <div class="timeline-container" id="timeline-scroll-container">
+                <div class="timeline-content @(_density == "S" ? "density-s" : _density == "L" ? "density-l" : "")"  >
+                    <MemoriesWidget OnThumbClick="OpenMemoryAsset" Test="false" />
+
+                    @if (_sections.Any())
+                    {
+                        <div class="timeline-flat-grid">
+                        @foreach (var section in _sections)
+                        {
+                            @if (section.IsLoaded)
+                            {
+                                @foreach (var group in GetFilteredGroupsForSection(section))
+                                {
+                                    var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+                                    <div class="day-header-row" id="@GetGroupId(group.Key)">
+                                        <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                                    </div>
+                                    @foreach (var asset in group.Value)
+                                    {
+                                        <div class="masonry-item"
+                                             data-day="@group.Key"
+                                             data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                                             data-width="@(asset.Width?.ToString() ?? "0")"
+                                             data-height="@(asset.Height?.ToString() ?? "0")">
+                                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                                                 data-asset-id="@asset.Id"
+                                                 @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                                                 @ontouchmove="OnCardTouchMove"
+                                                 @ontouchend="OnCardTouchEnd">
+                                                <AssetCard Asset="@asset" OnAssetClick="OnTimelineAssetClick" />
+                                                <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                                    <MudCheckBox T="bool"
+                                                                 Value="@IsAssetSelected(asset.Id)"
+                                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <div class="section-skeleton-row" id="@(section.SectionId)"
+                                     style="height: @(section.EstimatedHeight)px; flex: 0 0 100%; width: 100%;">
+                                    <div class="section-skeleton-inner @(section.IsLoading ? "skeleton-loading" : "")">
+                                        @for (int si = 0; si < Math.Min(section.EstimatedCount, 24); si++)
+                                        {
+                                            <div class="skeleton-item"></div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        </div>
+                    }
+                    else if (!_loading)
+                    {
+                        @if (_activeFilter != "All")
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.FilterAlt"
+                                        Title="Sin resultados"
+                                        Description="No hay elementos que coincidan con el filtro seleccionado." />
+                        }
+                        else
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
+                                        Title="No hay fotografías disponibles"
+                                        Description="Indexa un directorio para comenzar." />
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+        
+        @if (_sections.Any())
+        {
+            <div class="scrubber-overlay">
+                <div class="scrubber-track" id="scrubber-track">
+                    <div class="scrubber-thumb" id="scrubber-thumb">
+                        <span class="scrubber-thumb-label" id="scrubber-thumb-label"></span>
+                        <svg class="scrubber-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <div class="scrubber-thumb-bar"></div>
+                        <svg class="scrubber-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </div>
+                    @if (_timelineIndex.Any())
+                    {
+                        var indexTotal = _timelineIndex.Sum(i => i.Count);
+                        var indexCumulative = 0;
+                        foreach (var yearGroup in _timelineIndex.GroupBy(i => i.Date.Year).OrderByDescending(g => g.Key))
+                        {
+                            var scrubYear = yearGroup.Key.ToString();
+                            var yearPos = indexTotal > 0 ? (double)indexCumulative / indexTotal * 100 : 0;
+                            var yearPosStr = yearPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                            var loadedGroupId = _groupedAssets.Keys.FirstOrDefault(k => k.StartsWith(scrubYear + "-")) ?? "";
+                            <div class="scrubber-year-marker @(IsActiveYear(scrubYear) ? "active" : "")"
+                                 data-group-id="@(string.IsNullOrEmpty(loadedGroupId) ? "" : GetGroupId(loadedGroupId))"
+                                 style="top: @($"{yearPosStr}%")">
+                                <span class="scrubber-year-label">@scrubYear</span>
+                                <div class="scrubber-year-dot"></div>
+                            </div>
+                            indexCumulative += yearGroup.Sum(i => i.Count);
+                        }
+                    }
+                    else
+                    {
+                        var renderedScrubYears = new HashSet<string>();
+                        @foreach (var group in _groupedAssets)
+                        {
+                            var scrubYear = GetYearFromGroup(group.Key);
+                            @if (!renderedScrubYears.Contains(scrubYear))
+                            {
+                                renderedScrubYears.Add(scrubYear);
+                                var scrubPos = GetGroupPosition(group.Key);
+                                var scrubPosStr = scrubPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                                <div class="scrubber-year-marker @(IsActiveYear(scrubYear) ? "active" : "")"
+                                     data-group-id="@GetGroupId(group.Key)"
+                                     style="top: @($"{scrubPosStr}%")">
+                                    <span class="scrubber-year-label">@scrubYear</span>
+                                    <div class="scrubber-year-dot"></div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+@if (_filterSheetOpen)
+{
+    <div class="filter-sheet-backdrop" @onclick="CloseFilterSheet"></div>
+    <div class="filter-sheet">
+        <div class="filter-sheet-handle"></div>
+        <MudText Typo="Typo.subtitle2" Class="filter-sheet-title">Filtrar por</MudText>
+        <div class="filter-sheet-options">
+            <button class="filter-sheet-option @(_activeFilter == "All" ? "active" : "")"
+                    @onclick="@(async () => { await SetFilter("All"); CloseFilterSheet(); })">
+                <MudIcon Icon="@Icons.Material.Outlined.PhotoLibrary" />
+                <span>Todas</span>
+                @if (_activeFilter == "All") { <MudIcon Icon="@Icons.Material.Filled.Check" Class="filter-sheet-check" /> }
+            </button>
+            <button class="filter-sheet-option @(_activeFilter == "Photos" ? "active" : "")"
+                    @onclick="@(async () => { await SetFilter("Photos"); CloseFilterSheet(); })">
+                <MudIcon Icon="@Icons.Material.Outlined.Image" />
+                <span>Fotos</span>
+                @if (_activeFilter == "Photos") { <MudIcon Icon="@Icons.Material.Filled.Check" Class="filter-sheet-check" /> }
+            </button>
+            <button class="filter-sheet-option @(_activeFilter == "Videos" ? "active" : "")"
+                    @onclick="@(async () => { await SetFilter("Videos"); CloseFilterSheet(); })">
+                <MudIcon Icon="@Icons.Material.Outlined.Videocam" />
+                <span>Vídeos</span>
+                @if (_activeFilter == "Videos") { <MudIcon Icon="@Icons.Material.Filled.Check" Class="filter-sheet-check" /> }
+            </button>
+            <button class="filter-sheet-option @(_activeFilter == "Favorites" ? "active" : "")"
+                    @onclick="@(async () => { await SetFilter("Favorites"); CloseFilterSheet(); })">
+                <MudIcon Icon="@Icons.Material.Outlined.FavoriteBorder" />
+                <span>Favoritos</span>
+                @if (_activeFilter == "Favorites") { <MudIcon Icon="@Icons.Material.Filled.Check" Class="filter-sheet-check" /> }
+            </button>
+        </div>
+    </div>
+}
+</div>
+
+<style>
+    /* Desactivar scroll en body/html y contenedores de MudBlazor */
+    :global(body.timeline-page) {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+
+    :global(body.timeline-page html) {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+
+    :global(body.timeline-page .mud-layout) {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+
+    :global(body.timeline-page .mud-main-content) {
+        overflow: hidden !important;
+        height: 100vh !important;
+        position: relative !important;
+    }
+
+    /* Contenedor principal del timeline */
+    .timeline-wrapper {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - var(--mud-appbar-height, 64px));
+    }
+
+    @@media (max-width: 959.98px) {
+        .timeline-wrapper {
+            height: calc(100vh - var(--mud-appbar-height, 64px) - 56px - env(safe-area-inset-bottom));
+        }
+    }
+
+    /* Contenedor principal con flex para layout horizontal */
+    .timeline-main-container {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        position: relative;
+    }
+
+    /* Contenedor del contenido principal */
+    .timeline-content-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* Barra de filtros */
+    .filter-chips-bar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 48px 4px 0;
+        flex-shrink: 0;
+        margin-bottom: 4px;
+    }
+
+    .filter-chips-scroll {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    .filter-density-controls {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        flex-shrink: 0;
+    }
+
+    /* Botón de filtro móvil (oculto en desktop) */
+    .filter-chips-mobile {
+        display: none;
+    }
+
+    /* Bottom sheet de filtros */
+    .filter-sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1200;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .filter-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--mud-palette-surface);
+        border-radius: 16px 16px 0 0;
+        padding: 8px 0 32px;
+        z-index: 1201;
+        animation: slideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .filter-sheet-handle {
+        width: 36px;
+        height: 4px;
+        background: var(--mud-palette-divider);
+        border-radius: 2px;
+        margin: 0 auto 12px;
+    }
+
+    .filter-sheet-title {
+        padding: 0 20px 8px;
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .filter-sheet-options {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-sheet-option {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--mud-palette-text-primary);
+        font-size: 1rem;
+        text-align: left;
+        transition: background 0.15s;
+    }
+
+    .filter-sheet-option:active {
+        background: var(--mud-palette-action-default-hover);
+    }
+
+    .filter-sheet-option.active {
+        color: var(--mud-palette-primary);
+    }
+
+    .filter-sheet-option span {
+        flex: 1;
+    }
+
+    .filter-sheet-check {
+        color: var(--mud-palette-primary);
+    }
+
+    /* Botón de filtro móvil */
+    .filter-mobile-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px 4px 8px;
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 20px;
+        background: none;
+        cursor: pointer;
+        color: var(--mud-palette-text-primary);
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    .filter-mobile-btn-chevron {
+        opacity: 0.6;
+    }
+
+    @@keyframes slideUp {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    /* Contenedor del timeline es el único con scroll */
+    .timeline-container {
+        display: flex;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-gutter: stable;
+        overflow-anchor: auto;
+    }
+
+    /* Hide native scrollbar — custom scrubber replaces it */
+    .timeline-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .timeline-container {
+        scrollbar-width: none;
+    }
+
+    .timeline-content {
+        flex: 1;
+        padding-right: 40px;
+        padding-bottom: 80px;
+    }
+
+
+    /* Grid continuo — todas las fotos en un único contenedor flex */
+    .timeline-flat-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        align-items: flex-start;
+        align-content: flex-start;
+    }
+
+    /* Skeleton placeholder for unloaded sections */
+    .section-skeleton-row {
+        flex: 0 0 100%;
+        width: 100%;
+        display: flex;
+        align-items: flex-start;
+        padding: 36px 0 8px;
+        box-sizing: border-box;
+    }
+
+    .section-skeleton-inner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        width: 100%;
+        align-content: flex-start;
+    }
+
+    .skeleton-item {
+        flex: 1 1 calc(25% - 2px);
+        min-width: 80px;
+        max-width: 33%;
+        background: var(--mud-palette-action-default);
+        border-radius: 4px;
+        opacity: 0.15;
+        aspect-ratio: 1.4 / 1;
+    }
+
+    @@keyframes skeletonPulse {
+        0%, 100% { opacity: 0.10; }
+        50%       { opacity: 0.22; }
+    }
+
+    .skeleton-loading .skeleton-item {
+        animation: skeletonPulse 1.4s ease-in-out infinite;
+    }
+
+    /* Cabecera de día: ocupa todo el ancho y fuerza nueva fila */
+    .day-header-row {
+        flex: 0 0 100%;
+        width: 100%;
+        padding-top: 20px;
+    }
+
+    .day-header-row:first-child {
+        padding-top: 4px;
+    }
+
+    .day-header {
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: capitalize;
+        padding: 0 4px 6px 4px;
+        display: block;
+    }
+
+    .masonry-item {
+        height: 180px;
+        flex-shrink: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        content-visibility: auto;
+        contain-intrinsic-block-size: 180px;
+    }
+
+    @@media (min-width: 600px) {
+        .masonry-item {
+            height: 200px;
+            contain-intrinsic-block-size: 200px;
+        }
+    }
+
+    @@media (min-width: 960px) {
+        .masonry-item {
+            height: 220px;
+            contain-intrinsic-block-size: 220px;
+        }
+    }
+
+    @@media (min-width: 1280px) {
+        .masonry-item {
+            height: 240px;
+            contain-intrinsic-block-size: 240px;
+        }
+    }
+
+    @@media (min-width: 1920px) {
+        .masonry-item {
+            height: 260px;
+            contain-intrinsic-block-size: 260px;
+        }
+    }
+
+    /* ── Density: Small ── */
+    .density-s .masonry-item { height: 100px !important; contain-intrinsic-block-size: 100px !important; }
+    @@media (min-width: 600px)  { .density-s .masonry-item { height: 110px !important; contain-intrinsic-block-size: 110px !important; } }
+    @@media (min-width: 960px)  { .density-s .masonry-item { height: 120px !important; contain-intrinsic-block-size: 120px !important; } }
+    @@media (min-width: 1280px) { .density-s .masonry-item { height: 130px !important; contain-intrinsic-block-size: 130px !important; } }
+    @@media (min-width: 1920px) { .density-s .masonry-item { height: 140px !important; contain-intrinsic-block-size: 140px !important; } }
+
+    /* ── Density: Large ── */
+    .density-l .masonry-item { height: 260px !important; contain-intrinsic-block-size: 260px !important; }
+    @@media (min-width: 600px)  { .density-l .masonry-item { height: 300px !important; contain-intrinsic-block-size: 300px !important; } }
+    @@media (min-width: 960px)  { .density-l .masonry-item { height: 340px !important; contain-intrinsic-block-size: 340px !important; } }
+    @@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; contain-intrinsic-block-size: 380px !important; } }
+    @@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; contain-intrinsic-block-size: 420px !important; } }
+
+    .masonry-item .asset-card-container {
+        width: 100%;
+        height: 100%;
+        border-radius: 0 !important;
+    }
+
+    .masonry-item img,
+    .masonry-item video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .asset-select-container {
+        position: relative;
+        height: 100%;
+    }
+
+    .asset-select-checkbox {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 5;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        background: rgba(0,0,0,0.4);
+        border-radius: 999px;
+        padding: 2px;
+        color: white;
+    }
+
+    .asset-select-checkbox .mud-icon-root {
+        color: white !important;
+    }
+
+    .asset-select-container:hover .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .asset-select-container.selection-mode .asset-select-checkbox,
+    .asset-select-container.selected .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* En dispositivos móviles (max 959px) */
+    @@media (max-width: 959.98px) {
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Móvil: contenido a full width, scrubber flota encima */
+        .filter-chips-bar {
+            padding-right: 4px;
+        }
+
+        .filter-chips-desktop {
+            display: none;
+        }
+
+        .filter-chips-mobile {
+            display: flex;
+        }
+
+        .filter-density-controls {
+            display: none;
+        }
+
+        /* Forzar compact en móvil independientemente de la densidad seleccionada */
+        .timeline-content .masonry-item {
+            height: 120px !important;
+        }
+
+        .timeline-content {
+            padding: 12px 0;
+        }
+
+        /* Quitar la reserva de gutter en móvil para que el scrubber quede pegado al borde */
+        .timeline-container {
+            scrollbar-gutter: auto;
+        }
+
+        /* En móvil el scrubber es columna flex, no flotante */
+        .scrubber-overlay {
+            position: relative;
+            top: auto;
+            bottom: auto;
+            right: auto;
+            width: 40px;
+            flex-shrink: 0;
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .scrubber-overlay.scrubber-visible {
+            opacity: 1;
+        }
+
+        .scrubber-track {
+            position: relative;
+            top: 0;
+            right: 0; /* reset del right: 4px de desktop */
+            bottom: 0;
+            height: 100%;
+            width: 100%; /* ocupa los 40px del overlay para que el thumb quede flush al borde */
+        }
+
+        /* Ocultar línea del track y markers de año */
+        .scrubber-track::before {
+            display: none !important;
+        }
+
+        .scrubber-year-marker,
+        .scrubber-year-dot,
+        .scrubber-year-label {
+            display: none !important;
+        }
+
+        /* Ocultar barra de filtros en móvil */
+        .filter-chips-bar {
+            display: none;
+        }
+
+        .day-header-row {
+            padding-top: 12px;
+        }
+
+        .day-header-row:first-child {
+            padding-top: 2px;
+        }
+
+        .day-header {
+            font-size: 0.78rem !important;
+        }
+
+        /* Handle: pill draggable con flechas arriba/abajo — estilo Google Photos */
+        .scrubber-thumb {
+            width: 26px;
+            height: 52px;
+            left: auto;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            background: rgba(28, 28, 28, 0.85);
+            border-radius: 10px 0 0 10px;
+            cursor: grab;
+            touch-action: none;
+            box-shadow: -1px 0 6px rgba(0,0,0,0.2);
+        }
+
+        .mud-dark .scrubber-thumb {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        .scrubber-thumb.dragging {
+            cursor: grabbing;
+        }
+
+        /* Ocultar la barra horizontal del thumb desktop */
+        .scrubber-thumb-bar {
+            display: none;
+        }
+
+        /* Flechas arriba/abajo */
+        .scrubber-arrow {
+            display: block;
+            height: 20px;
+            color: rgba(255, 255, 255, 1);
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+
+        .mud-dark .scrubber-arrow {
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        /* Etiqueta de fecha: siempre visible a la izquierda del handle */
+        .scrubber-thumb-label {
+            opacity: 1 !important;
+            position: absolute;
+            right: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            white-space: nowrap;
+            background: rgba(30, 30, 30, 0.75);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-radius: 8px;
+            color: white;
+            pointer-events: none;
+        }
+    }
+
+    /* ===== Custom Scrubber ===== */
+    .scrubber-overlay {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 25px;
+        z-index: 100;
+        pointer-events: none;
+    }
+
+    /* Arrows — only visible on touch devices */
+    @@media (hover: hover) {
+        .scrubber-arrow {
+            display: none;
+        }
+    }
+
+    /* Large invisible hit area + visual bar via ::before */
+    .scrubber-track {
+        position: absolute;
+        right: 0px;
+        top: 0px;
+        bottom: 8px;
+        width: 25px;
+        pointer-events: auto;
+        cursor: pointer;
+    }
+
+    .scrubber-track::before {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: rgba(128, 128, 128, 0.2);
+        border-radius: 2px;
+        pointer-events: none;
+        transition: background 0.2s;
+    }
+
+    .scrubber-track:hover::before {
+        background: rgba(128, 128, 128, 0.35);
+    }
+
+    /* Thumb: horizontal bar spanning the full track width */
+    .scrubber-thumb {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        cursor: grab;
+        user-select: none;
+        will-change: transform;
+        pointer-events: auto;
+    }
+
+    .scrubber-thumb.dragging {
+        cursor: grabbing;
+    }
+
+    .scrubber-thumb-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--mud-palette-primary);
+        border-radius: 2px;
+        flex-shrink: 0;
+        transition: height 0.15s ease;
+    }
+
+    .scrubber-track:hover .scrubber-thumb-bar,
+    .scrubber-thumb.dragging .scrubber-thumb-bar {
+        height: 6px;
+    }
+
+    .scrubber-thumb-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 3px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        pointer-events: none;
+        position: absolute;
+        right: calc(100% + 8px);
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .scrubber-track:hover .scrubber-thumb-label,
+    .scrubber-thumb.dragging .scrubber-thumb-label {
+        opacity: 1;
+    }
+
+    /* Year markers */
+    .scrubber-year-marker {
+        position: absolute;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        pointer-events: auto;
+        cursor: pointer;
+        transform: translateY(-50%);
+    }
+
+    .scrubber-year-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(128, 128, 128, 0.5);
+        flex-shrink: 0;
+        margin-right: -2px;
+        transition: background 0.2s, transform 0.2s;
+    }
+
+    .scrubber-year-marker:hover .scrubber-year-dot,
+    .scrubber-year-marker.active .scrubber-year-dot {
+        background: var(--mud-palette-primary);
+        transform: scale(1.4);
+    }
+
+    .scrubber-year-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        order: -1;
+    }
+
+    .scrubber-track:hover .scrubber-year-label,
+    .scrubber-year-marker.active .scrubber-year-label {
+        opacity: 1;
+    }
+</style>
+
+<MudDialog @bind-Visible="_addToAlbumDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Añadir a álbum</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@($"{_selectedAssetIds.Count} elementos seleccionados")</MudText>
+        @if (!_showCreateAlbum)
+        {
+            @if (_loadingAlbums)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (_availableAlbums.Any())
+            {
+                <MudRadioGroup T="Guid?" @bind-Value="_selectedAlbumId">
+                    @foreach (var album in _availableAlbums)
+                    {
+                        <MudRadio T="Guid?" Value="@album.Id">
+                            <div class="d-flex flex-column">
+                                <MudText Typo="Typo.subtitle2">@album.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@album.AssetCount fotos</MudText>
+                            </div>
+                        </MudRadio>
+                    }
+                </MudRadioGroup>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">No hay álbumes disponibles.</MudAlert>
+            }
+            
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       Class="mt-3"
+                       OnClick="@(() => _showCreateAlbum = true)">
+                Crear nuevo álbum
+            </MudButton>
+        }
+        else
+        {
+            <MudTextField @bind-Value="_newAlbumName"
+                          Label="Nombre del álbum"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="_newAlbumDescription"
+                          Label="Descripción (opcional)"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Lines="3" />
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       Class="mt-3"
+                       OnClick="@(() => _showCreateAlbum = false)">
+                Volver a selección
+            </MudButton>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@CloseAddToAlbumDialog">Cancelar</MudButton>
+        @if (_showCreateAlbum)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAlbumAndAddAsync">
+                Crear y añadir
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="AddSelectionToAlbumAsync"
+                       Disabled="@(!_selectedAlbumId.HasValue)">
+                Añadir
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_deleteAssetsDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Eliminar archivos</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres mover @_selectedAssetIds.Count archivos a la papelera?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDeleteAssetsDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteSelectedAsync">Eliminar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<TimelineSection> _sections = new();
+    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    private bool _loading = true;
+    private double _lastScrollTop = 0;
+    private string _activeGroup = "";
+    private DotNetObjectReference<Timeline>? _objRef;
+    private bool _selectionMode = false;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _addToAlbumDialogVisible = false;
+    private bool _deleteAssetsDialogVisible = false;
+    private bool _downloadingZip = false;
+    private List<AlbumItem> _availableAlbums = new();
+    private bool _loadingAlbums = false;
+    private Guid? _selectedAlbumId = null;
+    private bool _showCreateAlbum = false;
+    private string _newAlbumName = "";
+    private string? _newAlbumDescription = "";
+    private bool _deleteDialogVisible = false;
+    private string _activeFilter = "All"; // All, Photos, Videos, Favorites
+    private string _density = "M"; // S, M, L
+    private bool _filterSheetOpen = false;
+
+    private IEnumerable<TimelineItem> AllLoadedItems =>
+        _sections.Where(s => s.IsLoaded).SelectMany(s => s.Items);
+
+    private IEnumerable<TimelineItem> FilteredAssets => _activeFilter switch
+    {
+        "Photos"    => AllLoadedItems.Where(a => a.Type.Equals("IMAGE", StringComparison.OrdinalIgnoreCase)),
+        "Videos"    => AllLoadedItems.Where(a => a.Type.Equals("VIDEO", StringComparison.OrdinalIgnoreCase)),
+        "Favorites" => AllLoadedItems.Where(a => a.IsFavorite),
+        _           => AllLoadedItems
+    };
+
+    private Dictionary<string, List<TimelineItem>> GetFilteredGroupsForSection(TimelineSection section)
+    {
+        var filtered = _activeFilter switch
+        {
+            "Photos"    => section.Items.Where(a => a.Type.Equals("IMAGE", StringComparison.OrdinalIgnoreCase)),
+            "Videos"    => section.Items.Where(a => a.Type.Equals("VIDEO", StringComparison.OrdinalIgnoreCase)),
+            "Favorites" => section.Items.Where(a => a.IsFavorite),
+            _           => section.Items.AsEnumerable()
+        };
+        return filtered
+            .OrderByDescending(a => a.CreatedDate)
+            .GroupBy(a => a.CreatedDate.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
+    }
+
+    private string GetFilterLabel() => _activeFilter switch
+    {
+        "Photos"    => "Fotos",
+        "Videos"    => "Vídeos",
+        "Favorites" => "Favoritos",
+        _           => "Todas"
+    };
+
+    private void OpenFilterSheet() => _filterSheetOpen = true;
+    private void CloseFilterSheet() => _filterSheetOpen = false;
+
+    private async Task SetDensity(string density)
+    {
+        if (_density == density) return;
+        _density = density;
+        StateHasChanged();
+        await JS.InvokeVoidAsync("localStorage.setItem", "timelineDensity", density);
+        await Task.Delay(50); // wait for CSS to apply
+        await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+        _masonryInitialized = true;
+        foreach (var s in _sections) s.IsMasonryDone = false; // re-trigger masonry for all sections
+    }
+
+    private async Task SetFilter(string filter)
+    {
+        if (_activeFilter == filter) return;
+        _activeFilter = filter;
+        _masonryInitialized = false;
+        foreach (var s in _sections) s.IsMasonryDone = false;
+        RebuildGroupedAssets();
+        StateHasChanged();
+        await Task.Delay(50);
+        if (_groupedAssets.Any() && _scrollSetupDone)
+            await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(_groupedAssets.Keys.First()));
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedDensity = await JS.InvokeAsync<string?>("localStorage.getItem", "timelineDensity");
+        if (savedDensity is "S" or "M" or "L") _density = savedDensity;
+        await InitializeTimelineAsync();
+    }
+
+    private async Task InitializeTimelineAsync()
+    {
+        try
+        {
+            _loading = true;
+            _timelineIndex = await AssetService.GetTimelineIndexAsync();
+            BuildSections();
+            if (_sections.Any())
+                await LoadSection(_sections[0]);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar timeline: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void BuildSections()
+    {
+        _sections = _timelineIndex
+            .GroupBy(i => new { i.Date.Year, i.Date.Month })
+            .OrderByDescending(g => g.Key.Year * 100 + g.Key.Month)
+            .Select(g =>
+            {
+                var start = new DateTime(g.Key.Year, g.Key.Month, 1);
+                var count = g.Sum(i => i.Count);
+                return new TimelineSection
+                {
+                    YearMonth = $"{g.Key.Year:D4}-{g.Key.Month:D2}",
+                    StartDate = start,
+                    EndDate = start.AddMonths(1),
+                    EstimatedCount = count,
+                    EstimatedHeight = EstimateSectionHeight(count)
+                };
+            })
+            .ToList();
+        _scrollSetupDone = false;
+        _masonryInitialized = false;
+        _groupedAssets = new();
+    }
+
+    private int EstimateSectionHeight(int count)
+    {
+        var rowHeight = _density switch { "S" => 110, "L" => 310, _ => 185 };
+        var itemsPerRow = _density switch { "S" => 5, "L" => 2, _ => 3 };
+        var rows = (int)Math.Ceiling((double)count / itemsPerRow);
+        var headerEstimate = (int)Math.Ceiling(count / 6.0) * 36;
+        return Math.Max(160, rows * (rowHeight + 4) + headerEstimate + 8);
+    }
+
+    private async Task LoadSection(TimelineSection section)
+    {
+        if (section.IsLoaded || section.IsLoading) return;
+        section.IsLoading = true;
+        StateHasChanged();
+        try
+        {
+            var result = await AssetService.GetTimelineSectionAsync(section.StartDate, section.EndDate, pageSize: 500);
+            section.Items = result.Items;
+            section.IsLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error cargando sección: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            section.IsLoading = false;
+            RebuildGroupedAssets();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVirtualScrollIdle(double scrollTop)
+    {
+        _lastScrollTop = scrollTop;
+        await LoadVisibleSectionsAsync(scrollTop);
+    }
+
+    private async Task LoadVisibleSectionsAsync(double scrollTop)
+    {
+        var unloadedIds = _sections
+            .Where(s => !s.IsLoaded && !s.IsLoading)
+            .Select(s => s.SectionId)
+            .ToList();
+        if (!unloadedIds.Any()) return;
+
+        var visibleIds = await JS.InvokeAsync<List<string>>("timelineHelpers.getVisibleSectionIds", unloadedIds);
+        var toLoad = _sections.Where(s => visibleIds.Contains(s.SectionId)).ToList();
+        if (toLoad.Any())
+            await Task.WhenAll(toLoad.Select(LoadSection));
+    }
+
+    private string? GetDateFromQuery()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (string.IsNullOrEmpty(uri.Query))
+            return null;
+            
+        var query = uri.Query.TrimStart('?');
+        var pairs = query.Split('&');
+        
+        foreach (var pair in pairs)
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && parts[0] == "date")
+            {
+                return Uri.UnescapeDataString(parts[1]);
+            }
+        }
+        
+        return null;
+    }
+
+    private bool _scrollSetupDone = false;
+    private bool _groupMapNeedsUpdate = false;
+    private bool _isDisposed = false;
+    private bool _masonryInitialized = false;
+    private List<TimelineIndexItem> _timelineIndex = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isDisposed) return;
+
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("scrollHelpers.enableTimelineScroll");
+            if (_objRef == null) _objRef = DotNetObjectReference.Create(this);
+        }
+
+        if (!_groupedAssets.Any()) return;
+
+        if (!_scrollSetupDone)
+        {
+            _scrollSetupDone = true;
+            _groupMapNeedsUpdate = false;
+            await SetupScrollListener();
+            await InitScrubber();
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("timelineVirtualScroll.init", _objRef);
+
+            if (_isDisposed) return;
+            var dateParam = GetDateFromQuery();
+            if (!string.IsNullOrEmpty(dateParam))
+                await ScrollToDate(dateParam);
+        }
+        else if (_groupMapNeedsUpdate)
+        {
+            _groupMapNeedsUpdate = false;
+            await JS.InvokeVoidAsync("scrubberHelpers.updateGroupMap", BuildGroupData());
+            // Update scroll listener group list with newly loaded groups
+            var groupIds = _groupedAssets.Keys.Select(GetGroupId).ToList();
+            await JS.InvokeVoidAsync("scrollHelpers.updateGroupIds", groupIds);
+        }
+
+        if (_isDisposed) return;
+
+        // Run masonry for sections that just loaded
+        var sectionsNeedingMasonry = _sections.Where(s => s.IsLoaded && !s.IsMasonryDone).ToList();
+        if (sectionsNeedingMasonry.Any())
+        {
+            await Task.Delay(300);
+            if (_isDisposed) return;
+
+            var groupIds = sectionsNeedingMasonry
+                .SelectMany(s => GetFilteredGroupsForSection(s).Keys)
+                .Select(GetGroupId)
+                .ToList();
+
+            foreach (var s in sectionsNeedingMasonry)
+                s.IsMasonryDone = true;
+
+            if (!_masonryInitialized)
+            {
+                _masonryInitialized = true;
+                await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+            }
+            else if (groupIds.Any())
+            {
+                await JS.InvokeVoidAsync("masonryHelpers.updateMasonryForGroups", groupIds);
+            }
+        }
+    }
+
+    private async Task InitScrubber()
+    {
+        await JS.InvokeVoidAsync("scrubberHelpers.init", BuildGroupData());
+    }
+
+    private List<object> BuildGroupData()
+    {
+        if (_timelineIndex.Any())
+        {
+            var total = _timelineIndex.Sum(i => i.Count);
+            var cumulative = 0;
+            var result = new List<object>();
+            foreach (var item in _timelineIndex.OrderByDescending(i => i.Date))
+            {
+                var groupKey = item.Date.ToString("yyyy-MM-dd");
+                result.Add(new
+                {
+                    id = GetGroupId(groupKey),
+                    label = GetGroupLabel(groupKey),
+                    position = total > 0 ? (double)cumulative / total : 0.0
+                });
+                cumulative += item.Count;
+            }
+            return result;
+        }
+
+        // Fallback: use loaded groups
+        var totalAssets = _groupedAssets.Values.Sum(g => g.Count);
+        var fallbackCumulative = 0;
+        var fallbackResult = new List<object>();
+        foreach (var kvp in _groupedAssets)
+        {
+            fallbackResult.Add(new
+            {
+                id = GetGroupId(kvp.Key),
+                label = GetGroupLabel(kvp.Key),
+                position = totalAssets > 0 ? (double)fallbackCumulative / totalAssets : 0.0
+            });
+            fallbackCumulative += kvp.Value.Count;
+        }
+        return fallbackResult;
+    }
+
+    private string GetGroupLabel(string groupKey)
+    {
+        var date = GetDayDateFromGroup(groupKey);
+        if (date == DateTime.MinValue) return "";
+        return date.ToString("MMM yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    private string GetThumbLabel()
+    {
+        return GetGroupLabel(_activeGroup);
+    }
+    
+    private async Task ScrollToDate(string dateString)
+    {
+        Console.WriteLine($"[TIMELINE] ScrollToDate requested for: {dateString}");
+        if (DateTime.TryParse(dateString, out var targetDate))
+        {
+            // Si el timeline aún no está cargado, esperar un poco
+            int attempts = 0;
+            while (!_groupedAssets.Any() && attempts < 20) // Aumentar intentos
+            {
+                Console.WriteLine($"[TIMELINE] Waiting for assets to load... attempt {attempts}");
+                await Task.Delay(500);
+                attempts++;
+            }
+
+            if (!_groupedAssets.Any())
+            {
+                Console.WriteLine("[TIMELINE] No assets found after waiting.");
+                return;
+            }
+
+            // Buscar el grupo que contiene esta fecha (por día)
+            var targetGroup = _groupedAssets.Keys.FirstOrDefault(g => 
+            {
+                var groupDate = GetDayDateFromGroup(g);
+                return groupDate.Date == targetDate.Date;
+            });
+            
+            if (!string.IsNullOrEmpty(targetGroup))
+            {
+                Console.WriteLine($"[TIMELINE] Target group found: {targetGroup}. Scrolling...");
+                // Esperar un poco más para asegurar que el DOM esté listo y el masonry inicializado
+                await Task.Delay(1500); // Un poco más de tiempo para estar seguros
+                await ScrollToGroup(targetGroup);
+            }
+            else
+            {
+                Console.WriteLine($"[TIMELINE] Target group NOT found for date: {targetDate.Date}");
+            }
+        }
+    }
+
+    private async Task SetupScrollListener()
+    {
+        if (_objRef == null)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+        }
+        var groupIds = _groupedAssets.Keys.Select(GetGroupId).ToList();
+        await JS.InvokeVoidAsync("scrollHelpers.onWindowScroll", _objRef, groupIds);
+    }
+
+    [JSInvokable]
+    public void OnScrollUpdated(string activeGroupId)
+    {
+        var groupName = _groupedAssets.Keys.FirstOrDefault(k => GetGroupId(k) == activeGroupId);
+        if (!string.IsNullOrEmpty(groupName))
+            _activeGroup = groupName;
+    }
+
+    private double GetGroupPosition(string groupName)
+    {
+        if (!_groupedAssets.Any()) return 0;
+        var totalAssets = _groupedAssets.Values.Sum(g => g.Count);
+        if (totalAssets == 0) return 0;
+
+        var cumulative = 0;
+        foreach (var kvp in _groupedAssets)
+        {
+            if (kvp.Key == groupName)
+                return (double)cumulative / totalAssets * 100;
+            cumulative += kvp.Value.Count;
+        }
+        return 0;
+    }
+
+    private string GetGroupStyle(string groupName)
+    {
+        return $"top: {GetGroupPosition(groupName).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}%;";
+    }
+
+    private async Task LoadTimeline()
+    {
+        // Full reload (called after mutations like delete/archive)
+        foreach (var s in _sections) { s.IsLoaded = false; s.IsLoading = false; s.Items = new(); s.IsMasonryDone = false; }
+        _groupedAssets = new();
+        _activeGroup = "";
+        _scrollSetupDone = false;
+        _masonryInitialized = false;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _timelineIndex = await AssetService.GetTimelineIndexAsync();
+            BuildSections();
+            if (_sections.Any())
+                await LoadSection(_sections[0]);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar timeline: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void RebuildGroupedAssets()
+    {
+        _groupedAssets = FilteredAssets
+            .OrderByDescending(a => a.CreatedDate)
+            .GroupBy(a => a.CreatedDate.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
+        if (_groupedAssets.Any())
+            _activeGroup = _groupedAssets.Keys.First();
+        _groupMapNeedsUpdate = true;
+    }
+    
+    private string FormatDayHeader(DateTime date)
+    {
+        var today = DateTime.Today;
+        var yesterday = today.AddDays(-1);
+        
+        if (date.Date == today)
+            return "Hoy";
+        else if (date.Date == yesterday)
+            return "Ayer";
+        else if (date.Year == today.Year)
+            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
+        else
+            return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        AssetListNavigationState.SetList(AllLoadedItems.ToList(), albumId: null);
+        if (asset.SyncStatus == AssetSyncStatus.Synced)
+        {
+            Navigation.NavigateTo($"/asset/{asset.Id}");
+        }
+        else
+        {
+            var encodedPath = System.Net.WebUtility.UrlEncode(asset.FullPath);
+            Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}");
+        }
+    }
+
+    private void OpenMemoryAsset(MemoryClickArgs args)
+    {
+        AssetListNavigationState.SetList(args.GroupAssets, albumId: null);
+        if (args.Asset.SyncStatus == AssetSyncStatus.Synced)
+        {
+            Navigation.NavigateTo($"/asset/{args.Asset.Id}");
+        }
+        else
+        {
+            var encodedPath = System.Net.WebUtility.UrlEncode(args.Asset.FullPath);
+            Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}");
+        }
+    }
+
+    // ── Touch / long-press / drag-select ───────────────────────────────────
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        // Si ya estamos en modo selección, el dedo inicia el arrastre directamente
+        if (_selectionMode)
+        {
+            var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true; // suprime el click sintético post-touch
+            ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        // Long press → entrar en modo selección y arrancar arrastre
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        // Solo necesario para cancelar el long press si el dedo se mueve antes de 500ms
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+        // El arrastre JS se limpia solo (escucha touchend en el documento)
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAssetSelected(assetId)) return; // ya está en el estado deseado
+        ToggleAssetSelection(assetId, select);
+        StateHasChanged();
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
+    private void OnTimelineAssetClick(TimelineItem asset)
+    {
+        // Suprimir el click sintético que el navegador emite tras un long press
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            return;
+        }
+
+        OpenAsset(asset);
+    }
+
+    private void ToggleAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_selectionMode)
+        {
+            _selectionMode = true;
+        }
+
+        if (selected)
+        {
+            _selectedAssetIds.Add(assetId);
+        }
+        else
+        {
+            _selectedAssetIds.Remove(assetId);
+            if (_selectedAssetIds.Count == 0)
+            {
+                ExitSelectionMode();
+                return;
+            }
+        }
+
+        UpdateSelectionNavbar();
+    }
+
+    private bool IsAssetSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        UpdateSelectionNavbar();
+    }
+
+    private void ToggleSelectAll()
+    {
+        var allItems = AllLoadedItems.ToList();
+        if (_selectedAssetIds.Count == allItems.Count && allItems.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+
+        _selectedAssetIds = allItems.Select(asset => asset.Id).ToHashSet();
+        if (_selectedAssetIds.Any())
+        {
+            _selectionMode = true;
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private async Task OpenShareSelectionDialog()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        var parameters = new DialogParameters<ShareSelectionDialog>
+        {
+            { x => x.AssetIds, new HashSet<Guid>(_selectedAssetIds) }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+        var dialogRef = await DialogService.ShowAsync<ShareSelectionDialog>("Compartir selección", parameters, options);
+        var result = await dialogRef.Result;
+
+        if (result is { Canceled: false, Data: AlbumItem album })
+        {
+            ExitSelectionMode();
+            var shareParams = new DialogParameters<ShareDialog>
+            {
+                { x => x.AlbumId, album.Id },
+                { x => x.AlbumName, album.Name }
+            };
+            var shareOptions = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+            await DialogService.ShowAsync<ShareDialog>($"Compartir álbum", shareParams, shareOptions);
+        }
+    }
+
+    private void OpenAddToAlbumDialog()
+    {
+        if (!_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        _addToAlbumDialogVisible = true;
+        _loadingAlbums = true;
+        _ = LoadAlbumsForSelectionAsync();
+    }
+
+    private async Task LoadAlbumsForSelectionAsync()
+    {
+        try
+        {
+            _availableAlbums = await AlbumService.GetAlbumsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar álbumes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingAlbums = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseAddToAlbumDialog()
+    {
+        _addToAlbumDialogVisible = false;
+        _showCreateAlbum = false;
+        _selectedAlbumId = null;
+    }
+
+    private async Task AddSelectionToAlbumAsync()
+    {
+        if (!_selectedAlbumId.HasValue || !_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        var failed = 0;
+        var alreadyInAlbum = 0;
+        var permissionDenied = false;
+        foreach (var assetId in _selectedAssetIds.ToList())
+        {
+            try
+            {
+                var success = await AlbumService.AddAssetToAlbumAsync(_selectedAlbumId.Value, assetId);
+                if (!success)
+                {
+                    failed++;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                alreadyInAlbum++;
+                failed++;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                permissionDenied = true;
+                failed++;
+                break;
+            }
+            catch
+            {
+                failed++;
+            }
+        }
+
+        CloseAddToAlbumDialog();
+        ExitSelectionMode();
+
+        if (permissionDenied)
+        {
+            Snackbar.Add("No tienes permisos suficientes para añadir elementos a este álbum.", Severity.Error);
+            return;
+        }
+
+        if (failed == 0)
+        {
+            Snackbar.Add("Elementos añadidos al álbum", Severity.Success);
+        }
+        else
+        {
+            if (alreadyInAlbum > 0)
+            {
+                var message = alreadyInAlbum == 1
+                    ? "El elemento ya está en el álbum."
+                    : $"{alreadyInAlbum} elementos ya estaban en el álbum.";
+                Snackbar.Add(message, Severity.Warning);
+            }
+
+            if (failed > alreadyInAlbum)
+            {
+                Snackbar.Add("Algunos elementos no se pudieron añadir", Severity.Warning);
+            }
+        }
+    }
+
+    private async Task CreateAlbumAndAddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newAlbumName))
+        {
+            Snackbar.Add("El nombre del álbum es obligatorio", Severity.Warning);
+            return;
+        }
+
+        var album = await AlbumService.CreateAlbumAsync(_newAlbumName, _newAlbumDescription);
+        if (album == null)
+        {
+            Snackbar.Add("Error al crear el álbum", Severity.Error);
+            return;
+        }
+
+        _selectedAlbumId = album.Id;
+        await AddSelectionToAlbumAsync();
+    }
+
+    private void ExitSelectionFromNavbar()
+    {
+        ExitSelectionMode();
+    }
+
+    private void OpenDeleteAssetsDialog()
+    {
+        _deleteAssetsDialogVisible = true;
+    }
+
+    private void CloseDeleteAssetsDialog()
+    {
+        _deleteAssetsDialogVisible = false;
+    }
+
+    private async Task DownloadSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        _downloadingZip = true;
+        UpdateSelectionNavbar();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedAssetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photonne_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            UpdateSelectionNavbar();
+        }
+    }
+
+    private async Task ArchiveSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+        try
+        {
+            await AssetService.ArchiveAssetsAsync(new ArchiveAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            });
+            ExitSelectionMode();
+            await LoadTimeline();
+            Snackbar.Add("Assets archivados correctamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al archivar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new DeleteAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            };
+
+            await AssetService.DeleteAssetsAsync(request);
+            _deleteAssetsDialogVisible = false;
+            Snackbar.Add($"{_selectedAssetIds.Count} elementos movidos a la papelera", Severity.Success);
+            await LoadTimeline();
+            ExitSelectionMode();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectedAssetIds.Count;
+        var allSelected = AllLoadedItems.Any() && selectedCount == AllLoadedItems.Count();
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!AllLoadedItems.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+
+                @* Botones individuales — solo desktop *@
+                <span class="d-none d-md-flex">
+                    <MudTooltip Text="Compartir selección">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Share" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog" />
+                    </MudTooltip>
+                    <MudTooltip Text="Añadir a álbum">
+                        <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
+                    </MudTooltip>
+                    <MudTooltip Text="Descargar">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
+                    </MudTooltip>
+                    <MudTooltip Text="Archivar">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Archive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync" />
+                    </MudTooltip>
+                    <MudTooltip Text="Eliminar">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
+                    </MudTooltip>
+                </span>
+
+                @* Menú de desbordamiento — solo móvil *@
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                         Class="d-flex d-md-none">
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Share" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog">
+                        Compartir
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.AddToPhotos" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog">
+                        Añadir a álbum
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Download" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync">
+                        Descargar
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Archive" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync">
+                        Archivar
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
+                        <MudText Color="Color.Error">Eliminar</MudText>
+                    </MudMenuItem>
+                </MudMenu>
+            </text>
+        , keepDrawerVisible: true);
+    }
+
+    private string GetGroupId(string groupName)
+    {
+        return "group-" + groupName.Replace(" ", "-").ToLower();
+    }
+    
+    private DateTime GetDayDateFromGroup(string groupKey)
+    {
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
+        {
+            return date;
+        }
+        return DateTime.MinValue;
+    }
+
+    private async Task ScrollToGroup(string groupName)
+    {
+        // Al hacer scroll manual, actualizamos el estado
+        _activeGroup = groupName;
+        await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(groupName));
+    }
+
+    private bool IsActiveYear(string year) 
+    {
+        if (string.IsNullOrEmpty(_activeGroup)) return false;
+        return GetYearFromGroup(_activeGroup) == year;
+    }
+
+    private bool IsActive(string groupName) => _activeGroup == groupName;
+
+    private string GetYearFromGroup(string groupKey)
+    {
+        // "2024-01-15" -> "2024"
+        var date = GetDayDateFromGroup(groupKey);
+        return date != DateTime.MinValue ? date.Year.ToString() : "";
+    }
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        _objRef?.Dispose();
+        _longPressTimer?.Dispose();
+        JS.InvokeVoidAsync("scrollHelpers.disableTimelineScroll");
+        JS.InvokeVoidAsync("scrubberHelpers.cleanup");
+        JS.InvokeVoidAsync("timelineVirtualScroll.cleanup");
+        LayoutService.ResetNavbar();
+    }
+}

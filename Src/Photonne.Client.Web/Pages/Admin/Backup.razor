@@ -1,0 +1,380 @@
+@page "/admin/backup"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IDatabaseBackupService BackupService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@using System.Text.Json
+
+<PageTitle>Administración - Copia de seguridad - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body2">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/admin/system"))" Class="mb-2">
+            Volver
+        </MudButton>
+        <div class="mt-0 mb-4">
+            <MudText Typo="Typo.h5" Class="mb-1">Copia de seguridad</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Exporta o importa todos los registros de la base de datos.
+                Las copias de seguridad no incluyen los archivos multimedia; solo los metadatos y la estructura de datos.
+            </MudText>
+        </div>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Exportar copia de seguridad</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                Descarga un archivo <strong>.json</strong> con todos los datos de la base de datos.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-0">
+                            Los archivos multimedia (fotos y vídeos) no se incluyen en la copia de seguridad.
+                            Debes gestionarlos por separado.
+                        </MudAlert>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton
+                            Variant="Variant.Filled"
+                            Color="Color.Primary"
+                            StartIcon="@Icons.Material.Filled.Download"
+                            OnClick="HandleExportAsync"
+                            Disabled="_exportLoading">
+                            @if (_exportLoading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Generando...</span>
+                            }
+                            else
+                            {
+                                <span>Descargar copia</span>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Restaurar copia de seguridad</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                Importa un archivo <strong>.json</strong> generado por esta aplicación.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
+                            <strong>Atención:</strong> esta operación eliminará permanentemente todos los datos actuales
+                            de la base de datos y los reemplazará con los del archivo seleccionado.
+                        </MudAlert>
+
+                        <div style="@(_selectedFile != null ? "display:none" : "")">
+                            <MudFileUpload T="IBrowserFile"
+                                           @ref="_fileUpload"
+                                           FilesChanged="OnFileSelected"
+                                           Accept=".json"
+                                           MaximumFileCount="1">
+                                <CustomContent>
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.AttachFile"
+                                               OnClick="@context.OpenFilePickerAsync">
+                                        Seleccionar archivo
+                                    </MudButton>
+                                </CustomContent>
+                                <SelectedTemplate Context="_">
+                                </SelectedTemplate>
+                            </MudFileUpload>
+                        </div>
+
+                        @if (_selectedFile != null)
+                        {
+                            @if (_previewLoading)
+                            {
+                                <div class="d-flex align-center mt-2 gap-2">
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Leyendo archivo...</MudText>
+                                </div>
+                            }
+                            else if (_filePreview != null)
+                            {
+                                <MudPaper Elevation="1" Class="pa-3">
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                        @_filePreview.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        &nbsp;·&nbsp; v@_filePreview.Version
+                                    </MudText>
+                                    <ul class="mt-1 mb-0" style="padding-left:1.2rem; font-size: 0.8rem">
+                                        <li>Usuarios: <strong>@_filePreview.Users</strong></li>
+                                        <li>Assets: <strong>@_filePreview.Assets</strong></li>
+                                        <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
+                                        <li>Carpetas: <strong>@_filePreview.Folders</strong></li>
+                                        <li>Bibliotecas externas: <strong>@_filePreview.ExternalLibraries</strong></li>
+                                    </ul>
+                                </MudPaper>
+                            }
+                            else if (_previewError)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-2">
+                                    No se pudo leer el resumen del archivo.
+                                </MudText>
+                            }
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Default"
+                                       StartIcon="@Icons.Material.Filled.Cancel"
+                                       OnClick="ClearSelectedFile"
+                                       Size="Size.Small"
+                                       Class="mt-2">
+                                Cancelar
+                            </MudButton>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton
+                            Variant="Variant.Filled"
+                            Color="Color.Warning"
+                            StartIcon="@Icons.Material.Filled.RestorePage"
+                            OnClick="OpenRestoreConfirmDialog"
+                            Disabled="_restoreLoading || _selectedFile == null || _previewLoading">
+                            @if (_restoreLoading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Restaurando...</span>
+                            }
+                            else
+                            {
+                                <span>Restaurar copia</span>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @if (_restoreResult != null)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="@(_restoreResult.Success ? Severity.Success : Severity.Error)"
+                              ShowCloseIcon="true"
+                              CloseIconClicked="() => _restoreResult = null">
+                        @_restoreResult.Message
+                        @if (_restoreResult.Success && _restoreResult.Stats != null)
+                        {
+                            <ul class="mt-2 mb-0" style="padding-left:1.2rem">
+                                <li>Usuarios: <strong>@_restoreResult.Stats.Users</strong></li>
+                                <li>Assets: <strong>@_restoreResult.Stats.Assets</strong></li>
+                                <li>Álbumes: <strong>@_restoreResult.Stats.Albums</strong></li>
+                                <li>Carpetas: <strong>@_restoreResult.Stats.Folders</strong></li>
+                                <li>Bibliotecas externas: <strong>@_restoreResult.Stats.ExternalLibraries</strong></li>
+                            </ul>
+                        }
+                    </MudAlert>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</div>
+
+<MudDialog @bind-Visible="_confirmDialogOpen"
+           Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = false })">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" />
+            <MudText Typo="Typo.h6">Confirmar restauración</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText>
+            Estás a punto de reemplazar <strong>todos los datos</strong> de la base de datos con los del archivo:
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-2"><strong>@_selectedFile?.Name</strong></MudText>
+        @if (_filePreview != null)
+        {
+            <ul class="mt-2 mb-0" style="padding-left:1.2rem; font-size: 0.875rem">
+                <li>Usuarios: <strong>@_filePreview.Users</strong></li>
+                <li>Assets: <strong>@_filePreview.Assets</strong></li>
+                <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
+                <li>Carpetas: <strong>@_filePreview.Folders</strong></li>
+                <li>Bibliotecas externas: <strong>@_filePreview.ExternalLibraries</strong></li>
+            </ul>
+        }
+        <MudText Class="mt-3" Color="Color.Error">
+            Esta acción no se puede deshacer. ¿Estás seguro de que deseas continuar?
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _confirmDialogOpen = false" Disabled="_restoreLoading">Cancelar</MudButton>
+        <MudButton Color="Color.Warning"
+                   Variant="Variant.Filled"
+                   OnClick="HandleRestoreAsync"
+                   Disabled="_restoreLoading">
+            Sí, restaurar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private record BackupFilePreview(string Version, DateTime CreatedAt, int Users, int Assets, int Albums, int Folders, int ExternalLibraries);
+
+    private MudFileUpload<IBrowserFile>? _fileUpload;
+
+    private bool _isAuthorized = false;
+
+    private bool _exportLoading  = false;
+    private bool _restoreLoading = false;
+    private bool _previewLoading = false;
+    private bool _previewError   = false;
+    private bool _confirmDialogOpen = false;
+    private IBrowserFile?      _selectedFile;
+    private BackupFilePreview? _filePreview;
+    private DatabaseRestoreResult? _restoreResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+
+    private async Task OnFileSelected(IBrowserFile? file)
+    {
+        _selectedFile  = file;
+        _restoreResult = null;
+        _filePreview   = null;
+        _previewError  = false;
+
+        if (file == null) return;
+
+        _previewLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var root = doc.RootElement;
+
+            _filePreview = new BackupFilePreview(
+                Version:           root.TryGetProperty("version",           out var v)  ? v.GetString() ?? "?" : "?",
+                CreatedAt:         root.TryGetProperty("createdAt",         out var ca) ? ca.GetDateTime()      : DateTime.MinValue,
+                Users:             root.TryGetProperty("users",             out var u)  ? u.GetArrayLength()    : 0,
+                Assets:            root.TryGetProperty("assets",            out var a)  ? a.GetArrayLength()    : 0,
+                Albums:            root.TryGetProperty("albums",            out var al) ? al.GetArrayLength()   : 0,
+                Folders:           root.TryGetProperty("folders",           out var f)  ? f.GetArrayLength()    : 0,
+                ExternalLibraries: root.TryGetProperty("externalLibraries", out var el) ? el.GetArrayLength()   : 0
+            );
+        }
+        catch
+        {
+            _previewError = true;
+        }
+        finally
+        {
+            _previewLoading = false;
+        }
+    }
+
+    private async Task ClearSelectedFile()
+    {
+        _selectedFile  = null;
+        _filePreview   = null;
+        _previewError  = false;
+        _restoreResult = null;
+        if (_fileUpload != null)
+            await _fileUpload.ResetAsync();
+    }
+
+    private void OpenRestoreConfirmDialog()
+    {
+        if (_selectedFile == null) return;
+        _confirmDialogOpen = true;
+    }
+
+    private async Task HandleExportAsync()
+    {
+        _exportLoading = true;
+        try
+        {
+            var backup = await BackupService.ExportAsync();
+            await JS.InvokeVoidAsync("downloadFileFromBytes", backup.FileName, "application/json", backup.Bytes);
+            Snackbar.Add("Copia de seguridad descargada correctamente.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al generar la copia de seguridad: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _exportLoading = false;
+        }
+    }
+
+    private async Task HandleRestoreAsync()
+    {
+        if (_selectedFile == null) return;
+
+        _confirmDialogOpen = false;
+        _restoreLoading    = true;
+        _restoreResult     = null;
+
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+            _restoreResult = await BackupService.RestoreAsync(stream, _selectedFile.Name);
+
+            if (_restoreResult.Success)
+            {
+                Snackbar.Add("Base de datos restaurada correctamente.", Severity.Success);
+                _selectedFile = null;
+                _filePreview  = null;
+                if (_fileUpload != null)
+                    await _fileUpload.ResetAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Error en la restauración: {_restoreResult.Message}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error inesperado: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _restoreLoading = false;
+        }
+    }
+
+}

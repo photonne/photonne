@@ -1,0 +1,384 @@
+@page "/admin/libraries"
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IExternalLibraryService LibraryService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Bibliotecas externas - Photonne</PageTitle>
+
+<div class="page-pad">
+
+@if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Volver al inicio
+        </MudButton>
+    </div>
+}
+else
+{
+
+    @* ── Header ──────────────────────────────────────────────────────────────── *@
+    <div class="mt-4">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+            <div>
+                <MudText Typo="Typo.h5">Bibliotecas externas</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
+                    Indexa carpetas del servidor sin mover los archivos.
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog">
+                Nueva biblioteca
+            </MudButton>
+        </div>
+    </div>
+
+    <MudDivider Class="my-4" />
+
+    @* ── Scan progress (inline, no fixed positioning) ────────────────────────── *@
+    @if (_scanning)
+    {
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <div class="d-flex align-center justify-space-between mb-1">
+                <div class="d-flex align-center gap-2">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle2">@_scanningLibrary?.Name</MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Size="Size.Small"
+                               OnClick="CancelScan" />
+            </div>
+
+            <MudProgressLinear Value="@_scanProgress" Color="Color.Primary"
+                               Rounded="true" Size="Size.Medium" Class="my-2" />
+
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">@_scanMessage</MudText>
+
+            <div class="d-flex flex-wrap gap-2">
+                <MudChip T="string" Icon="@Icons.Material.Outlined.FindInPage"
+                         Size="Size.Small" Variant="Variant.Outlined">
+                    @_scanFound encontrados
+                </MudChip>
+                <MudChip T="string" Icon="@Icons.Material.Outlined.AddCircleOutline"
+                         Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success">
+                    @_scanIndexed indexados
+                </MudChip>
+                @if (_scanOffline > 0)
+                {
+                    <MudChip T="string" Icon="@Icons.Material.Outlined.CloudOff"
+                             Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">
+                        @_scanOffline offline
+                    </MudChip>
+                }
+            </div>
+        </MudPaper>
+    }
+
+    @* ── Loading ──────────────────────────────────────────────────────────────── *@
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+    }
+
+    @* ── Empty state ──────────────────────────────────────────────────────────── *@
+    else if (_libraries.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.FolderSpecial"
+                    Title="Sin bibliotecas externas"
+                    Description="Añade una carpeta del servidor para indexar sus archivos sin moverlos.">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="OpenCreateDialog">
+                    Crear biblioteca
+                </MudButton>
+            </Actions>
+        </EmptyState>
+    }
+
+    @* ── Library list ─────────────────────────────────────────────────────────── *@
+    else
+    {
+        <MudGrid Spacing="3">
+            @foreach (var lib in _libraries)
+            {
+                <MudItem xs="12" sm="6" lg="4">
+                    <LibraryCard Library="lib"
+                                 IsBeingScanned="@(_scanning && _scanningLibrary?.Id == lib.Id)"
+                                 OnScan="() => StartScan(lib)"
+                                 OnEdit="() => OpenEditDialog(lib)"
+                                 OnDelete="() => ConfirmDelete(lib)" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+}
+
+</div>
+
+@* ── Create / Edit dialog ────────────────────────────────────────────────────── *@
+<MudDialog @bind-Visible="_showDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(_editingLibrary == null ? "Nueva biblioteca" : "Editar biblioteca")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_form.Name"
+                      Label="Nombre" Required="true" Variant="Variant.Outlined"
+                      Class="mb-3" />
+        <MudTextField @bind-Value="_form.Path"
+                      Label="Ruta del servidor"
+                      HelperText="Ruta absoluta en el sistema de ficheros del servidor"
+                      Required="true" Variant="Variant.Outlined" Class="mb-3" />
+        <MudSwitch @bind-Value="_form.ImportSubfolders"
+                   Label="Incluir subcarpetas" Color="Color.Primary" Class="mb-3" />
+        <MudTextField @bind-Value="_form.CronSchedule"
+                      Label="Escaneo automático (opcional)"
+                      HelperText="@("@hourly / @daily / @weekly / @monthly")"
+                      Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showDialog = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="_saving"
+                   OnClick="SaveLibrary">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Guardar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    // ── State ────────────────────────────────────────────────────────────────
+
+    private bool _isAuthorized;
+    private bool _loading = true;
+    private List<ExternalLibraryDto> _libraries = new();
+
+    // Dialog
+    private bool _showDialog;
+    private bool _saving;
+    private ExternalLibraryDto? _editingLibrary;
+    private LibraryFormModel _form = new();
+
+    // Scan
+    private bool _scanning;
+    private ExternalLibraryDto? _scanningLibrary;
+    private string _scanMessage = string.Empty;
+    private int _scanProgress;
+    private int _scanFound;
+    private int _scanIndexed;
+    private int _scanOffline;
+    private CancellationTokenSource? _scanCts;
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = user?.Role == "Admin";
+        if (!_isAuthorized) return;
+
+        await LoadLibrariesAsync();
+    }
+
+    private async Task LoadLibrariesAsync()
+    {
+        _loading = true;
+        _libraries = await LibraryService.GetAllAsync();
+        _loading = false;
+    }
+
+    // ── Dialog ───────────────────────────────────────────────────────────────
+
+    private void OpenCreateDialog()
+    {
+        _editingLibrary = null;
+        _form = new LibraryFormModel();
+        _showDialog = true;
+    }
+
+    private void OpenEditDialog(ExternalLibraryDto lib)
+    {
+        _editingLibrary = lib;
+        _form = new LibraryFormModel
+        {
+            Name = lib.Name,
+            Path = lib.Path,
+            ImportSubfolders = lib.ImportSubfolders,
+            CronSchedule = lib.CronSchedule ?? string.Empty
+        };
+        _showDialog = true;
+    }
+
+    private async Task SaveLibrary()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name) || string.IsNullOrWhiteSpace(_form.Path))
+        {
+            Snackbar.Add("Nombre y ruta son obligatorios.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var cronSchedule = string.IsNullOrWhiteSpace(_form.CronSchedule) ? null : _form.CronSchedule.Trim();
+
+            if (_editingLibrary == null)
+            {
+                var created = await LibraryService.CreateAsync(new CreateExternalLibraryRequest
+                {
+                    Name = _form.Name.Trim(),
+                    Path = _form.Path.Trim(),
+                    ImportSubfolders = _form.ImportSubfolders,
+                    CronSchedule = cronSchedule
+                });
+
+                if (created != null)
+                {
+                    _libraries.Insert(0, created);
+                    Snackbar.Add("Biblioteca creada.", Severity.Success);
+                    _showDialog = false;
+                }
+                else
+                {
+                    Snackbar.Add("Error al crear. Verifica que la ruta exista en el servidor.", Severity.Error);
+                }
+            }
+            else
+            {
+                var ok = await LibraryService.UpdateAsync(_editingLibrary.Id, new UpdateExternalLibraryRequest
+                {
+                    Name = _form.Name.Trim(),
+                    Path = _form.Path.Trim(),
+                    ImportSubfolders = _form.ImportSubfolders,
+                    CronSchedule = cronSchedule
+                });
+
+                if (ok)
+                {
+                    await LoadLibrariesAsync();
+                    Snackbar.Add("Biblioteca actualizada.", Severity.Success);
+                    _showDialog = false;
+                }
+                else
+                {
+                    Snackbar.Add("Error al actualizar. Verifica que la ruta exista.", Severity.Error);
+                }
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────────
+
+    private async Task ConfirmDelete(ExternalLibraryDto lib)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar biblioteca",
+            $"¿Eliminar \"{lib.Name}\"? Los assets quedarán desvinculados pero los archivos no se borrarán.",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (confirmed != true) return;
+
+        var ok = await LibraryService.DeleteAsync(lib.Id);
+        if (ok)
+        {
+            _libraries.Remove(lib);
+            Snackbar.Add("Biblioteca eliminada.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Error al eliminar.", Severity.Error);
+        }
+    }
+
+    // ── Scan ─────────────────────────────────────────────────────────────────
+
+    private async Task StartScan(ExternalLibraryDto lib)
+    {
+        if (_scanning)
+        {
+            Snackbar.Add("Ya hay un escaneo en curso.", Severity.Warning);
+            return;
+        }
+
+        _scanning = true;
+        _scanningLibrary = lib;
+        _scanMessage = "Iniciando...";
+        _scanProgress = 0;
+        _scanFound = 0;
+        _scanIndexed = 0;
+        _scanOffline = 0;
+        _scanCts = new CancellationTokenSource();
+
+        try
+        {
+            await foreach (var update in LibraryService.ScanAsync(lib.Id, _scanCts.Token))
+            {
+                _scanMessage = update.Message;
+                _scanProgress = update.Percentage;
+                _scanFound = update.AssetsFound;
+                _scanIndexed = update.AssetsIndexed;
+                _scanOffline = update.AssetsMarkedOffline;
+                StateHasChanged();
+
+                if (update.IsCompleted)
+                {
+                    if (update.Error != null)
+                        Snackbar.Add($"Error: {update.Error}", Severity.Error);
+                    else
+                        Snackbar.Add($"Escaneo completado: {update.AssetsIndexed} indexados.", Severity.Success);
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _scanMessage = "Escaneo cancelado.";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error inesperado: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _scanning = false;
+            _scanCts?.Dispose();
+            _scanCts = null;
+            await LoadLibrariesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void CancelScan()
+    {
+        _scanCts?.Cancel();
+    }
+
+    // ── Inner types ──────────────────────────────────────────────────────────
+
+    private class LibraryFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Path { get; set; } = string.Empty;
+        public bool ImportSubfolders { get; set; } = true;
+        public string CronSchedule { get; set; } = string.Empty;
+    }
+}
