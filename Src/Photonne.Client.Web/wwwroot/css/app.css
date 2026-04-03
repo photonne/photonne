@@ -142,7 +142,7 @@ html, body {
 }
 
 .loading-progress circle:last-child {
-    stroke: #6366f1;
+    stroke: #FFD166;
     stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
     transition: stroke-dasharray 0.05s ease-in-out;
 }
@@ -227,4 +227,12 @@ html, body {
     color: var(--mud-palette-primary-text);
     background: var(--mud-palette-primary);
     font-weight: 600;
+}
+
+/* ── Photonne brand name – logo gold gradient ────────────── */
+.ph-brand-name {
+    background: linear-gradient(90deg, #ffffff 0%, #FFD166 55%, #E8A820 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }

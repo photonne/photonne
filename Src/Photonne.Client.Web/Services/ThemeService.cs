@@ -8,7 +8,7 @@ public class ThemeService
     {
         PaletteLight = new PaletteLight()
         {
-            Primary = "#6366f1",
+            Primary = "#C8960A",
             AppbarBackground = "#ffffff",
             AppbarText = "#1e1e2e",
             Background = "#f8f9fa",
@@ -20,7 +20,8 @@ public class ThemeService
         },
         PaletteDark = new PaletteDark()
         {
-            Primary = "#818cf8",
+            Primary = "#FFD166",
+            PrimaryContrastText = "#1a1a2e",
             Surface = "#1a1b26",
             Background = "#0f1117",
             BackgroundGray = "#1e1f2e",
