@@ -189,7 +189,7 @@ window.mapHelpers = {
         }
 
         const isDark = window.mapHelpers._currentStyle !== 'light';
-        const borderColor = isDark ? '#818cf8' : '#1976d2';
+        const borderColor = isDark ? '#FFD166' : '#C8960A';
 
         const clusterGroup = L.markerClusterGroup({
             maxClusterRadius: 80,
@@ -437,7 +437,7 @@ window.miniMapHelpers = {
 
         const markerHtml = `<div style="
             width: 14px; height: 14px;
-            background: #818cf8;
+            background: #FFD166;
             border: 3px solid white;
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);

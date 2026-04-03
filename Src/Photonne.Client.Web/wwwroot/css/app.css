@@ -236,3 +236,12 @@ html, body {
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
+
+/* ── Login layout background ─────────────────────────────── */
+.login-layout {
+    min-height: 100vh;
+    background-image: url('/bg-portrait.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
