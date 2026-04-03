@@ -31,10 +31,6 @@
 
     <ItemGroup>
       <Folder Include="Migrations\" />
-      <Folder Include="thumbnails\274\" />
-      <Folder Include="thumbnails\28\" />
-      <Folder Include="thumbnails\981\" />
-      <Folder Include="thumbnails\992\" />
     </ItemGroup>
 
     <ItemGroup>

@@ -12,5 +12,9 @@ services:
       - Jwt__Key=${JWT_KEY:-dev-secret-key-change-in-production-min-32-chars}
       - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
 
+  postgresql:
+    ports:
+      - "5432:5432"
+
 volumes:
   pgadmin_data:
