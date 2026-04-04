@@ -4,15 +4,34 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 
 ## Características
 
-- **Indexación automática** — Escanea directorios, extrae metadatos EXIF y genera miniaturas
+**Biblioteca**
 - **Línea de tiempo** — Vista cronológica de toda la biblioteca
-- **Álbumes y carpetas** — Organización manual y por estructura de directorios
+- **Álbumes** — Álbumes propios, compartidos con otros usuarios y compartibles mediante enlaces públicos
+- **Carpetas** — Navegación por espacio propio y espacio compartido
+- **Buscador** — Búsqueda por nombre, fecha, etiquetas y metadatos
 - **Mapa** — Visualización geográfica por metadatos de ubicación
-- **Miniaturas** — Generación paralela en tres tamaños (small, medium, large)
+- **Favoritos** — Marca assets como favoritos para acceso rápido
 - **Etiquetas** — Tags automáticos por ML y tags manuales de usuario
-- **Archivado** — Archiva assets para ocultarlos de la vista principal sin eliminarlos
-- **Multi-usuario** — Roles, permisos por carpeta y álbum, admin principal protegido
+
+**Gestión de archivos**
 - **Sincronización desde dispositivo** — Subida de assets desde el navegador
+- **Archivado** — Archiva assets para ocultarlos de la vista principal sin eliminarlos
+- **Papelera** — Eliminación suave con posibilidad de restauración
+- **Detección de duplicados** — Identifica assets duplicados en la biblioteca
+- **Comprobación de archivos pesados** — Detecta y lista los archivos de mayor tamaño
+
+**Notificaciones**
+- **Notificaciones** — Sistema de notificaciones para eventos del sistema e indexación
+
+**Administración**
+- **Gestión de usuarios** — Administración de usuarios, roles y permisos desde el panel de admin. Admin principal protegido
+- **Bibliotecas externas** — Integración de directorios externos a la biblioteca principal
+- **Copia de seguridad** — Exportación y restauración de la base de datos y configuración
+
+**Técnico**
+- **Indexación automática** — Escanea directorios para indexar todos los assets (foto y vídeo)
+- **Miniaturas** — Generación paralela en tres tamaños (small, medium, large)
+- **Extracción de metadatos** — Lectura de datos EXIF de imágenes y vídeos (fecha, GPS, cámara, etc.)
 - **JWT + Refresh Token** — Autenticación con soporte multi-dispositivo
 - **PWA** — Instalable como app en escritorio y móvil, carga offline del app shell
 
@@ -64,20 +83,20 @@ Photonne.sln
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/photonne.git
+git clone https://github.com/marccafo/photonne.git
 cd photonne
 ```
 
-### 2. Levantar la infraestructura
+### 2. Levantar la infraestructura (producción)
 
 ```bash
 docker compose up -d
 ```
 
-Esto levanta:
-- **PostgreSQL 16** en `localhost:5432`
+Usa la imagen pre-construida de GitHub Container Registry (`ghcr.io/marccafo/photonne:latest`). Levanta:
+- **PostgreSQL 17** (interno, sin puerto expuesto)
 - **PgAdmin 4** en `http://localhost:5050`
-- **Photonne API** en `http://localhost:5000`
+- **Photonne API** en `http://localhost:1107`
 
 ### 3. Ejecutar en desarrollo (sin Docker)
 
@@ -89,7 +108,15 @@ dotnet run
 La API estará disponible en `https://localhost:5001`.
 Documentación interactiva: `https://localhost:5001/scalar`
 
-### 4. Cliente web
+### 4. Ejecutar en desarrollo con Docker
+
+```bash
+docker compose up -d
+```
+
+El archivo `docker-compose.override.yml` se aplica automáticamente en desarrollo: compila la imagen localmente y expone la API en `http://localhost:5000` y PostgreSQL en `localhost:5432`.
+
+### 5. Cliente web
 
 ```bash
 cd Src/Photonne.Client.Web
@@ -98,21 +125,33 @@ dotnet run
 
 ## Configuración
 
-### Variables de entorno / appsettings
+### Variables de entorno
 
 | Clave | Descripción | Default |
 |---|---|---|
-| `ConnectionStrings:Postgres` | Cadena de conexión PostgreSQL | `Host=localhost;Port=5432;Database=photonne;...` |
-| `Jwt:Key` | Clave secreta para JWT (mín. 32 caracteres) | — |
-| `Jwt:Issuer` | Emisor del token | `Photonne` |
-| `Jwt:Audience` | Audiencia del token | `Photonne` |
-| `ASSETS_PATH` | Ruta al directorio de assets | `C:\PhotoHubAssets\NAS\Assets` |
-| `THUMBNAILS_PATH` | Ruta donde se guardan las miniaturas | `{WorkDir}/thumbnails` |
+| `ConnectionStrings__Postgres` | Cadena de conexión PostgreSQL | `Host=photonne-db;...` |
+| `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) | `TOKEN_SUPER_SECRET` |
+| `Jwt__Issuer` | Emisor del token | `Photonne` |
+| `Jwt__Audience` | Audiencia del token | `Photonne` |
+| `ASSETS_PATH` | Ruta al directorio de assets dentro del contenedor | `/data/assets` |
+| `THUMBNAILS_PATH` | Ruta donde se guardan las miniaturas dentro del contenedor | `/data/thumbnails` |
 | `FFMPEG_PATH` | Ruta al directorio con los binarios de FFmpeg | Descargado automáticamente si no se especifica |
+| `HTTPS_REDIRECT` | Forzar redirección HTTPS | `false` |
+| `API_PORT` | Puerto expuesto de la API | `1107` |
+| `PGADMIN_PORT` | Puerto expuesto de PgAdmin | `5050` |
+| `PGADMIN_EMAIL` | Email de acceso a PgAdmin | `admin@example.com` |
+| `PGADMIN_PASSWORD` | Contraseña de PgAdmin | `admin` |
+| `ASSETS_HOST_PATH` | Ruta del host montada como volumen de assets | `./data/photos` |
+| `THUMBNAILS_HOST_PATH` | Ruta del host montada como volumen de miniaturas | `./data/thumbnails` |
+| `ADMIN_USERNAME` | Nombre de usuario del admin inicial | `admin` |
+| `ADMIN_EMAIL` | Email del admin inicial | `admin@photonne.local` |
+| `ADMIN_PASSWORD` | Contraseña del admin inicial | `admin123` |
+| `ADMIN_FIRSTNAME` | Nombre del admin inicial | `Administrador` |
+| `ADMIN_LASTNAME` | Apellido del admin inicial | `Sistema` |
 
-### Usuario administrador (desarrollo)
+### Usuario administrador
 
-Configurado en `appsettings.Development.json`:
+El admin inicial se configura mediante variables de entorno (ver tabla anterior) o en `appsettings.Development.json` para desarrollo local:
 
 ```json
 {
@@ -130,12 +169,27 @@ El primer usuario admin creado al arrancar se marca automáticamente como **admi
 
 ### Docker Compose — variables personalizables
 
-```yaml
-# compose.yaml
-POSTGRES_DB: photonne
-POSTGRES_USER: photonne_user
-POSTGRES_PASSWORD: photonne_password
-ASSETS_PATH: /ruta/a/tus/fotos
+Se recomienda crear un archivo `.env` en la raíz del proyecto:
+
+```env
+# Puertos
+API_PORT=1107
+PGADMIN_PORT=5050
+
+# Base de datos
+POSTGRES_DB=photonne
+POSTGRES_USER=photonne_user
+POSTGRES_PASSWORD=photonne_password
+
+# JWT (cambiar en producción)
+JWT_KEY=clave-secreta-muy-larga-de-al-menos-32-caracteres
+
+# Rutas de datos en el host
+ASSETS_HOST_PATH=/ruta/a/tus/fotos
+THUMBNAILS_HOST_PATH=/ruta/a/tus/miniaturas
+
+# Admin inicial
+ADMIN_PASSWORD=contraseña-segura
 ```
 
 ## API
@@ -173,15 +227,31 @@ Accesible desde: `Admin > Colas > Indexar`
 
 ## Despliegue con Docker
 
-```bash
-# Construir la imagen
-docker build -t photonne-api ./Src/Photonne.Server.Api
+### Usando la imagen pre-construida (recomendado)
 
-# O usar Docker Compose completo
+La imagen se publica automáticamente en GitHub Container Registry con cada push a `main`:
+
+```bash
+docker compose up -d
+```
+
+La imagen `ghcr.io/marccafo/photonne:latest` se descarga automáticamente.
+
+### Compilando localmente
+
+```bash
 docker compose up --build
 ```
 
-La imagen base es `mcr.microsoft.com/dotnet/aspnet:10.0` con `ffmpeg` y `libgdiplus` instalados.
+El `docker-compose.override.yml` se aplica automáticamente y compila desde el `Dockerfile` en `Src/Photonne.Server.Api/Dockerfile`.
+
+## CI/CD
+
+GitHub Actions publica automáticamente la imagen Docker en cada push a `main`:
+
+- **Registro**: `ghcr.io/marccafo/photonne`
+- **Tags**: `latest` (rama main) y `sha-<commit>` por cada build
+- **Workflow**: `.github/workflows/docker-image.yml`
 
 ## Licencia
 
