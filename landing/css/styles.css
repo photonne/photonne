@@ -823,6 +823,35 @@ code {
 .roadmap-item__text { font-size: 0.875rem; color: var(--text); }
 .roadmap-item--planned .roadmap-item__text { color: var(--text-muted); }
 
+.roadmap-extra {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.35s ease;
+}
+.roadmap-extra.open { max-height: 600px; }
+
+.roadmap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 1.5rem 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+.roadmap-toggle:hover { color: var(--primary-light); }
+.roadmap-toggle__icon {
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+.roadmap-toggle[aria-expanded="true"] .roadmap-toggle__icon {
+  transform: rotate(180deg);
+}
+
 .roadmap-note {
   text-align: center;
   margin-top: 2.5rem;

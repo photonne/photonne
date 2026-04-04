@@ -58,6 +58,19 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
   });
 });
 
+// ─── Roadmap: expandir items adicionales ──────────────────────
+const roadmapToggle = document.getElementById('roadmapToggle');
+const roadmapExtra  = document.getElementById('roadmapExtra');
+if (roadmapToggle && roadmapExtra) {
+  roadmapToggle.addEventListener('click', () => {
+    const expanded = roadmapToggle.getAttribute('aria-expanded') === 'true';
+    roadmapToggle.setAttribute('aria-expanded', String(!expanded));
+    roadmapExtra.setAttribute('aria-hidden', String(expanded));
+    roadmapExtra.classList.toggle('open', !expanded);
+    roadmapToggle.querySelector('.roadmap-toggle__label').textContent = expanded ? 'Ver 11 más' : 'Ver menos';
+  });
+}
+
 // ─── Botones "Copiar" en bloques de código ────────────────────
 document.querySelectorAll('[data-clipboard]').forEach((btn) => {
   btn.addEventListener('click', () => {
