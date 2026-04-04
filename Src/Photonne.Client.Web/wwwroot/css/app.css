@@ -240,8 +240,22 @@ html, body {
 /* ── Login layout background ─────────────────────────────── */
 .login-layout {
     min-height: 100vh;
-    background-image: url('/bg-portrait.png');
+    background-image: url('/dark/bg-portrait.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+}
+
+.login-layout--light {
+    background-image: url('/light/bg-portrait.png');
+}
+
+@media (orientation: landscape) {
+    .login-layout {
+        background-image: url('/dark/bg-landscape.png');
+    }
+
+    .login-layout--light {
+        background-image: url('/light/bg-landscape.png');
+    }
 }

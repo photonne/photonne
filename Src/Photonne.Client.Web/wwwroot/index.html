@@ -8,7 +8,7 @@
     <title>Photonne - Gestión de Fotografías</title>
     <base href="/" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="dark/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="" />
     <link rel="stylesheet" href="css/app.css" />
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <link id="favicon" rel="icon" type="image/png" href="dark/favicon.png" />
     <link href="Photonne.Client.Web.styles.css" rel="stylesheet" />
 </head>
 
@@ -47,6 +47,16 @@
     <script src="_content/MudBlazor/MudBlazor.min.js?v=1"></script>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>navigator.serviceWorker.register('service-worker.js');</script>
+    <script>
+        (function () {
+            var stored = localStorage.getItem('isDarkMode');
+            var isDark = stored === null ? true : stored !== 'false';
+            var theme = isDark ? 'dark' : 'light';
+            document.getElementById('favicon').href = theme + '/favicon.png';
+            var apple = document.querySelector('link[rel="apple-touch-icon"]');
+            if (apple) apple.href = theme + '/icon-192.png';
+        })();
+    </script>
 </body>
 
 </html>

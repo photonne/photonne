@@ -4,6 +4,7 @@
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject LayoutService LayoutService
 
 <PageTitle>Iniciar Sesión - Photonne</PageTitle>
 
@@ -11,7 +12,7 @@
     <MudContainer MaxWidth="MaxWidth.Small">
         <MudPaper Elevation="3" Class="pa-8">
             <div class="d-flex justify-center mb-6">
-                <img src="logo.png" alt="Photonne" style="height: 48px; width: auto;" />
+                <img src="@(LayoutService.IsDarkMode ? "dark/logo.png" : "light/logo.png")" alt="Photonne" style="height: 48px; width: auto;" />
             </div>
             <MudForm @ref="_form" @bind-IsValid="@_isValid" @bind-Errors="@_errors">
                 <MudTextField @bind-Value="_username"
