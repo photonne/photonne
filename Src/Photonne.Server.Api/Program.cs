@@ -132,8 +132,7 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 // Configure static files for thumbnails
-var thumbnailsPath = app.Configuration["THUMBNAILS_PATH"] 
-    ?? Path.Combine(Directory.GetCurrentDirectory(), "thumbnails");
+var thumbnailsPath = app.Configuration["THUMBNAILS_PATH"] ?? "/data/thumbnails";
 
 if (!Directory.Exists(thumbnailsPath))
 {

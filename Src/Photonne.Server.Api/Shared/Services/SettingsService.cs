@@ -7,14 +7,13 @@ namespace Photonne.Server.Api.Shared.Services;
 public class SettingsService
 {
     private readonly ApplicationDbContext _dbContext;
-    private readonly IConfiguration _configuration;
     public const string AssetsPathKey = "AssetsPath";
+    public const string InternalAssetsPath = "/data/assets";
     private static readonly Guid GlobalUserId = Guid.Empty;
 
-    public SettingsService(ApplicationDbContext dbContext, IConfiguration configuration)
+    public SettingsService(ApplicationDbContext dbContext)
     {
         _dbContext = dbContext;
-        _configuration = configuration;
     }
 
     public async Task<string> GetSettingAsync(string key, Guid userId, string defaultValue = "")
@@ -58,52 +57,16 @@ public class SettingsService
     public async Task<string> GetAssetsPathAsync(Guid userId)
     {
         var path = await GetSettingAsync(AssetsPathKey, userId);
-        
+
         if (string.IsNullOrEmpty(path))
         {
-            path = Environment.GetEnvironmentVariable("ASSETS_PATH") 
-                   ?? Path.Combine(Directory.GetCurrentDirectory(), "assets");
-
-            // Use the container path if running in Docker
-            if (Directory.Exists("/assets"))
-            {
-                path = "/assets";
-            }
+            path = GetInternalAssetsPath();
         }
-        
+
         return path;
     }
 
-    /// <summary>
-    /// Obtiene la ruta interna del NAS donde se almacenan los assets sincronizados.
-    /// Esta ruta siempre viene de la variable de entorno ASSETS_PATH, appsettings.json o un valor por defecto,
-    /// independientemente de la configuración del usuario en Settings.
-    /// </summary>
-    public string GetInternalAssetsPath()
-    {
-        // 1. Intentar leer de variable de entorno (tiene prioridad)
-        var path = Environment.GetEnvironmentVariable("ASSETS_PATH");
-        
-        // 2. Si no existe, leer de appsettings.json
-        if (string.IsNullOrEmpty(path))
-        {
-            path = _configuration["ASSETS_PATH"];
-        }
-        
-        // 3. Si aún no existe, usar valor por defecto
-        if (string.IsNullOrEmpty(path))
-        {
-            path = Path.Combine(Directory.GetCurrentDirectory(), "assets");
-        }
-
-        // Use the container path if running in Docker
-        if (Directory.Exists("/assets"))
-        {
-            path = "/assets";
-        }
-        
-        return path;
-    }
+    public string GetInternalAssetsPath() => InternalAssetsPath;
 
     public async Task<string> ResolvePhysicalPathAsync(string dbPath)
     {

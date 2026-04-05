@@ -133,9 +133,6 @@ dotnet run
 | `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) | `TOKEN_SUPER_SECRET` |
 | `Jwt__Issuer` | Emisor del token | `Photonne` |
 | `Jwt__Audience` | Audiencia del token | `Photonne` |
-| `ASSETS_PATH` | Ruta al directorio de assets dentro del contenedor | `/data/assets` |
-| `THUMBNAILS_PATH` | Ruta donde se guardan las miniaturas dentro del contenedor | `/data/thumbnails` |
-| `FFMPEG_PATH` | Ruta al directorio con los binarios de FFmpeg | Descargado automáticamente si no se especifica |
 | `HTTPS_REDIRECT` | Forzar redirección HTTPS | `false` |
 | `API_PORT` | Puerto expuesto de la API | `1107` |
 | `PGADMIN_PORT` | Puerto expuesto de PgAdmin | `5050` |
@@ -216,7 +213,7 @@ Documentación interactiva disponible en `/scalar` (modo desarrollo).
 
 El proceso de indexación es incremental y transmite progreso en tiempo real vía streaming:
 
-1. **Descubrimiento** — Escaneo recursivo del directorio `ASSETS_PATH`
+1. **Descubrimiento** — Escaneo recursivo del directorio `/data/assets`
 2. **Comparación** — Detección de archivos nuevos, modificados y huérfanos
 3. **Extracción EXIF** — Metadatos de imagen/video (fecha, GPS, cámara, etc.)
 4. **Detección de tags** — Clasificación automática por ML

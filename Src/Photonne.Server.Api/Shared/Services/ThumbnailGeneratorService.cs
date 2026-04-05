@@ -56,8 +56,7 @@ public class ThumbnailGeneratorService
     public ThumbnailGeneratorService(SettingsService settingsService)
     {
         _settingsService = settingsService;
-        _thumbnailsBasePath = Environment.GetEnvironmentVariable("THUMBNAILS_PATH")
-            ?? Path.Combine(Directory.GetCurrentDirectory(), "thumbnails");
+        _thumbnailsBasePath = "/data/thumbnails";
 
         if (!Directory.Exists(_thumbnailsBasePath))
         {

@@ -5,14 +5,10 @@ services:
     ports:
       - "${API_PORT:-1107}:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
       - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
       - Jwt__Issuer=Photonne
       - Jwt__Audience=Photonne
-      - ASSETS_PATH=/data/assets
-      - THUMBNAILS_PATH=/data/thumbnails
       - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
       - AdminUser__Username=${ADMIN_USERNAME:-admin}
       - AdminUser__Email=${ADMIN_EMAIL:-admin@photonne.local}
@@ -58,6 +54,7 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgresql_data:
