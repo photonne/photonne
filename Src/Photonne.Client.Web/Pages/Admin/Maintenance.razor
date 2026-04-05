@@ -1,0 +1,361 @@
+@page "/admin/settings/maintenance"
+@inject IMaintenanceService MaintenanceService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Mantenimiento - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/admin/settings"))" Class="mb-2">
+            Volver
+        </MudButton>
+        <MudText Typo="Typo.h5" Class="mb-1">Mantenimiento</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Tareas de limpieza y salud del sistema. Cada acción es independiente y puede ejecutarse por separado.
+        </MudText>
+
+        <MudGrid>
+
+            @* ── Miniaturas huérfanas ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.BrokenImage" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Miniaturas huérfanas</MudText>
+                            <MudText Typo="Typo.body2">
+                                Elimina archivos de miniatura en disco que no tienen ningún activo asociado en la base de datos.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_orphanResult != null)
+                        {
+                            <MudAlert Severity="@(_orphanResult.Success ? Severity.Success : Severity.Error)"
+                                      Dense="true" Class="mb-0">
+                                @_orphanResult.Message
+                                @if (_orphanResult.Affected > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Class="d-block mt-1">
+                                        @_orphanResult.Processed revisados · @_orphanResult.Affected eliminados
+                                    </MudText>
+                                }
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.CleaningServices"
+                                   OnClick="RunOrphanThumbnails"
+                                   Disabled="_orphanRunning">
+                            @if (_orphanRunning)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Limpiando...</span>
+                            }
+                            else
+                            {
+                                <span>Ejecutar</span>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Activos sin archivo ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.FindInPage" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Activos sin archivo</MudText>
+                            <MudText Typo="Typo.body2">
+                                Detecta activos en la base de datos cuyo archivo físico ya no existe y los marca como fuera de línea.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_missingResult != null)
+                        {
+                            <MudAlert Severity="@(_missingResult.Success ? Severity.Success : Severity.Error)"
+                                      Dense="true" Class="mb-0">
+                                @_missingResult.Message
+                                @if (_missingResult.Affected > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Class="d-block mt-1">
+                                        @_missingResult.Processed revisados · @_missingResult.Affected marcados fuera de línea
+                                    </MudText>
+                                }
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.SearchOff"
+                                   OnClick="RunMissingFiles"
+                                   Disabled="_missingRunning">
+                            @if (_missingRunning)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Analizando...</span>
+                            }
+                            else
+                            {
+                                <span>Ejecutar</span>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Recalcular tamaños ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Info" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.Storage" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Recalcular tamaños</MudText>
+                            <MudText Typo="Typo.body2">
+                                Lee el tamaño real de cada archivo en disco y actualiza el valor almacenado en la base de datos.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_sizesResult != null)
+                        {
+                            <MudAlert Severity="@(_sizesResult.Success ? Severity.Success : Severity.Error)"
+                                      Dense="true" Class="mb-0">
+                                @_sizesResult.Message
+                                @if (_sizesResult.Affected > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Class="d-block mt-1">
+                                        @_sizesResult.Processed revisados · @_sizesResult.Affected actualizados
+                                    </MudText>
+                                }
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Info"
+                                   StartIcon="@Icons.Material.Filled.Sync"
+                                   OnClick="RunRecalculateSizes"
+                                   Disabled="_sizesRunning">
+                            @if (_sizesRunning)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Recalculando...</span>
+                            }
+                            else
+                            {
+                                <span>Ejecutar</span>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Vaciar papelera global ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.DeleteForever" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Vaciar papelera global</MudText>
+                            <MudText Typo="Typo.body2">
+                                Elimina permanentemente todos los archivos en la papelera de todos los usuarios. Esta acción no se puede deshacer.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_trashResult != null)
+                        {
+                            <MudAlert Severity="@(_trashResult.Success ? Severity.Success : Severity.Error)"
+                                      Dense="true" Class="mb-0">
+                                @_trashResult.Message
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        @if (!_confirmTrash)
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.DeleteForever"
+                                       OnClick="@(() => _confirmTrash = true)"
+                                       Disabled="_trashRunning">
+                                Vaciar papelera
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="mr-4 mud-text-secondary">¿Confirmar? Esta acción es irreversible.</MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.DeleteForever"
+                                       OnClick="RunEmptyTrash"
+                                       Disabled="_trashRunning"
+                                       Class="mr-2">
+                                @if (_trashRunning)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <span>Vaciando...</span>
+                                }
+                                else
+                                {
+                                    <span>Sí, vaciar</span>
+                                }
+                            </MudButton>
+                            <MudButton Variant="Variant.Text"
+                                       OnClick="@(() => _confirmTrash = false)"
+                                       Disabled="_trashRunning">
+                                Cancelar
+                            </MudButton>
+                        }
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+
+    private bool _orphanRunning;
+    private bool _missingRunning;
+    private bool _sizesRunning;
+    private bool _trashRunning;
+    private bool _confirmTrash;
+
+    private MaintenanceTaskResult? _orphanResult;
+    private MaintenanceTaskResult? _missingResult;
+    private MaintenanceTaskResult? _sizesResult;
+    private MaintenanceTaskResult? _trashResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+
+    private async Task RunOrphanThumbnails()
+    {
+        _orphanRunning = true;
+        _orphanResult = null;
+        try
+        {
+            _orphanResult = await MaintenanceService.CleanOrphanThumbnailsAsync();
+            Snackbar.Add(_orphanResult.Message, _orphanResult.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _orphanResult = new MaintenanceTaskResult { Success = false, Message = $"Error: {ex.Message}" };
+            Snackbar.Add(_orphanResult.Message, Severity.Error);
+        }
+        finally
+        {
+            _orphanRunning = false;
+        }
+    }
+
+    private async Task RunMissingFiles()
+    {
+        _missingRunning = true;
+        _missingResult = null;
+        try
+        {
+            _missingResult = await MaintenanceService.MarkMissingFilesAsync();
+            Snackbar.Add(_missingResult.Message, _missingResult.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _missingResult = new MaintenanceTaskResult { Success = false, Message = $"Error: {ex.Message}" };
+            Snackbar.Add(_missingResult.Message, Severity.Error);
+        }
+        finally
+        {
+            _missingRunning = false;
+        }
+    }
+
+    private async Task RunRecalculateSizes()
+    {
+        _sizesRunning = true;
+        _sizesResult = null;
+        try
+        {
+            _sizesResult = await MaintenanceService.RecalculateSizesAsync();
+            Snackbar.Add(_sizesResult.Message, _sizesResult.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _sizesResult = new MaintenanceTaskResult { Success = false, Message = $"Error: {ex.Message}" };
+            Snackbar.Add(_sizesResult.Message, Severity.Error);
+        }
+        finally
+        {
+            _sizesRunning = false;
+        }
+    }
+
+    private async Task RunEmptyTrash()
+    {
+        _trashRunning = true;
+        _trashResult = null;
+        _confirmTrash = false;
+        try
+        {
+            _trashResult = await MaintenanceService.EmptyGlobalTrashAsync();
+            Snackbar.Add(_trashResult.Message, _trashResult.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _trashResult = new MaintenanceTaskResult { Success = false, Message = $"Error: {ex.Message}" };
+            Snackbar.Add(_trashResult.Message, Severity.Error);
+        }
+        finally
+        {
+            _trashRunning = false;
+        }
+    }
+}
