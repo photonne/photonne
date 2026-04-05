@@ -7,13 +7,24 @@
 <div class="page-pad">
     <div class="d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h5">Notificaciones</MudText>
-        <MudButton Variant="Variant.Outlined"
-                   Size="Size.Small"
-                   StartIcon="@Icons.Material.Outlined.DoneAll"
-                   OnClick="MarkAllRead"
-                   Disabled="@(_pagedResult == null || _pagedResult.UnreadCount == 0 || _loading)">
-            Marcar todas como leídas
-        </MudButton>
+        <MudHidden Breakpoint="Breakpoint.SmAndUp">
+            <MudTooltip Text="Marcar todas como leídas">
+                <MudIconButton Icon="@Icons.Material.Outlined.DoneAll"
+                               Variant="Variant.Outlined"
+                               Size="Size.Small"
+                               OnClick="MarkAllRead"
+                               Disabled="@(_pagedResult == null || _pagedResult.UnreadCount == 0 || _loading)" />
+            </MudTooltip>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.Xs">
+            <MudButton Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.DoneAll"
+                       OnClick="MarkAllRead"
+                       Disabled="@(_pagedResult == null || _pagedResult.UnreadCount == 0 || _loading)">
+                Marcar todas como leídas
+            </MudButton>
+        </MudHidden>
     </div>
 
     <div class="d-flex gap-2 mb-4">
