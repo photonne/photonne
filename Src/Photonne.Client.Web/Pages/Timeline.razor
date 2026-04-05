@@ -21,13 +21,6 @@
         <div class="timeline-content-wrapper">
 
             <div class="filter-chips-bar">
-                <!-- Desktop: chips de filtro -->
-                <div class="filter-chips-scroll filter-chips-desktop">
-                    <MudChip T="string" Color="@(_activeFilter == "All" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("All"))">Todas</MudChip>
-                    <MudChip T="string" Color="@(_activeFilter == "Photos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Photos"))">Fotos</MudChip>
-                    <MudChip T="string" Color="@(_activeFilter == "Videos" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Videos"))">Vídeos</MudChip>
-                    <MudChip T="string" Color="@(_activeFilter == "Favorites" ? Color.Primary : Color.Inherit)" Variant="Variant.Filled" OnClick="@(async () => await SetFilter("Favorites"))">Favoritos</MudChip>
-                </div>
                 <!-- Móvil: botón que abre el bottom sheet de filtros -->
                 <button class="filter-mobile-btn filter-chips-mobile" @onclick="OpenFilterSheet">
                     <MudIcon Icon="@Icons.Material.Filled.FilterList" Size="Size.Small" />

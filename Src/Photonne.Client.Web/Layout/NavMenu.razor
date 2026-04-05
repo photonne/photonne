@@ -3,40 +3,58 @@
 
 <div class="nav-wrapper">
 <MudNavMenu Class="mt-4">
-    <AuthorizeView Roles="Admin">
-        <Authorized>
-            @if (IsAdminSection)
-            {
-                <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
-                    Usuarios
-                </MudNavLink>
-                <MudNavLink Href="/admin/libraries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FolderSpecial" IconColor="Color.Inherit">
-                    Bibliotecas externas
-                </MudNavLink>
-                <MudNavLink Href="/admin/stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.QueryStats" IconColor="Color.Inherit">
-                    Estadísticas del servidor
-                </MudNavLink>
-                <MudNavLink Href="/admin/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Settings" IconColor="Color.Inherit">
-                    Ajustes
-                </MudNavLink>
-                <MudNavLink Href="/admin/system" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Storage" IconColor="Color.Inherit">
-                    Sistema
-                </MudNavLink>
-            }
-            else
-            {
+    @if (IsSettingsSection)
+    {
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ArrowBack" IconColor="Color.Inherit">
+            Volver
+        </MudNavLink>
+        <MudDivider Class="my-2" />
+        <MudNavLink Href="/settings/profile"    Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person"       IconColor="Color.Inherit">Perfil</MudNavLink>
+        <MudNavLink Href="/settings/security"   Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Lock"         IconColor="Color.Inherit">Seguridad</MudNavLink>
+        <MudNavLink Href="/settings/appearance" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Palette"      IconColor="Color.Inherit">Apariencia</MudNavLink>
+        <MudNavLink Href="/settings/device"     Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">Dispositivo</MudNavLink>
+    }
+    else
+    {
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                @if (IsAdminSection)
+                {
+                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ArrowBack" IconColor="Color.Inherit">
+                        Volver
+                    </MudNavLink>
+                    <MudDivider Class="my-2" />
+                    <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
+                        Usuarios
+                    </MudNavLink>
+                    <MudNavLink Href="/admin/libraries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FolderSpecial" IconColor="Color.Inherit">
+                        Bibliotecas externas
+                    </MudNavLink>
+                    <MudNavLink Href="/admin/stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.QueryStats" IconColor="Color.Inherit">
+                        Estadísticas del servidor
+                    </MudNavLink>
+                    <MudNavLink Href="/admin/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Settings" IconColor="Color.Inherit">
+                        Ajustes
+                    </MudNavLink>
+                    <MudNavLink Href="/admin/system" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Storage" IconColor="Color.Inherit">
+                        Sistema
+                    </MudNavLink>
+                }
+                else
+                {
+                    @UserNavLinks
+                }
+            </Authorized>
+            <NotAuthorized>
                 @UserNavLinks
-            }
-        </Authorized>
-        <NotAuthorized>
-            @UserNavLinks
-        </NotAuthorized>
-    </AuthorizeView>
+            </NotAuthorized>
+        </AuthorizeView>
+    }
 </MudNavMenu>
 
 <AuthorizeView>
     <Authorized>
-        @if (!IsAdminSection)
+        @if (!IsAdminSection && !IsSettingsSection)
         {
             <div class="nav-spacer"></div>
             <MudDivider />
@@ -79,18 +97,14 @@
             <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
         </MudNavGroup>
 
-        <MudNavLink Href="/search" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Search" IconColor="Color.Inherit">
-            Búsqueda
-        </MudNavLink>
-
         <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
             Mapa
         </MudNavLink>
 
         <MudDivider Class="my-2" />
 
-        <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">
-            Mi Dispositivo
+        <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.SyncAlt" IconColor="Color.Inherit">
+            Sincronizar Dispositivo
         </MudNavLink>
         <MudNavLink Href="/archive" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Archive" IconColor="Color.Inherit">
             Archivo
@@ -105,18 +119,13 @@
             Notificaciones
         </MudNavLink>
 
-        <MudDivider Class="my-2" />
-
-        <MudNavGroup Title="Configuración" Icon="@Icons.Material.Outlined.Settings" Expanded="false">
-            <MudNavLink Href="/settings/profile"    Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Perfil</MudNavLink>
-            <MudNavLink Href="/settings/security"   Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Lock">Seguridad</MudNavLink>
-            <MudNavLink Href="/settings/appearance" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Palette">Apariencia</MudNavLink>
-            <MudNavLink Href="/settings/device"     Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhoneAndroid">Dispositivo</MudNavLink>
-        </MudNavGroup>
     </text>;
 
     private bool IsAdminSection
         => new Uri(Navigation.Uri).AbsolutePath.Trim('/').StartsWith("admin", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsSettingsSection
+        => new Uri(Navigation.Uri).AbsolutePath.Trim('/').StartsWith("settings", StringComparison.OrdinalIgnoreCase);
 
     protected override void OnInitialized()
     {
