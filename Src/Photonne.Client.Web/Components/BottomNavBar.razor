@@ -2,6 +2,20 @@
 @inject LayoutService LayoutService
 @implements IDisposable
 
+@* ── SECTION CONTEXT BAR (mobile only, settings & admin) ── *@
+@if ((IsSettingsSection || IsAdminSection) && !LayoutService.HideBottomNav)
+{
+    <div class="ph-section-header">
+        <a href="/" class="ph-section-header__back">
+            <MudIcon Icon="@Icons.Material.Outlined.ArrowBack" Class="ph-section-header__back-icon" />
+            <span>Volver</span>
+        </a>
+        <span class="ph-section-header__title">
+            @(IsSettingsSection ? "Configuración" : "Administración")
+        </span>
+    </div>
+}
+
 @if (!LayoutService.HideBottomNav)
 {
     @if (IsSettingsSection)
@@ -84,6 +98,78 @@
 }
 
 <style>
+    /* Section context bar — mobile only (settings & admin) */
+    .ph-section-header {
+        display: none;
+        position: fixed;
+        top: 64px; /* MudAppBar height for 600px–959px range */
+        left: 0;
+        right: 0;
+        height: 48px;
+        align-items: center;
+        padding: 0 16px;
+        background-color: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
+        z-index: 1099;
+        box-sizing: border-box;
+    }
+
+    @@media (max-width: 959.98px) {
+        .ph-section-header {
+            display: flex;
+        }
+
+        /* Push page content down to clear the context bar (app bar offset already handled by MudBlazor) */
+        body:has(.ph-section-header) .page-content {
+            padding-top: 48px !important;
+        }
+    }
+
+    /* MudAppBar shrinks to 56px below 600px (MudBlazor xs breakpoint) */
+    @@media (max-width: 599.98px) {
+        .ph-section-header {
+            top: 56px;
+        }
+    }
+
+    .ph-section-header__back {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px 4px 0;
+        color: var(--mud-palette-text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        transition: color 0.15s ease;
+        z-index: 1;
+    }
+
+    .ph-section-header__back:active {
+        opacity: 0.65;
+    }
+
+    .ph-section-header__back-icon {
+        font-size: 20px !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    .ph-section-header__title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
     /* Bottom nav — mobile only */
     .ph-bottom-nav {
         position: fixed;
