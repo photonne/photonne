@@ -29,7 +29,9 @@ public class DatabaseBackupEndpoint : IEndpoint
         group.MapPost("restore", RestoreBackup)
             .WithName("RestoreDatabaseBackup")
             .WithDescription("Restores the database from a JSON backup file, replacing all existing data")
-            .DisableAntiforgery();
+            .DisableAntiforgery()
+            .WithMetadata(new DisableRequestSizeLimitAttribute())
+            .WithMetadata(new RequestFormLimitsAttribute { MultipartBodyLengthLimit = long.MaxValue });
     }
 
     private static async Task<IResult> ExportBackup(
