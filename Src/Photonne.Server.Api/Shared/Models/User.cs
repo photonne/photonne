@@ -47,5 +47,6 @@ public class User
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<UserTag> Tags { get; set; } = new List<UserTag>();
     public ICollection<ExternalLibrary> ExternalLibraries { get; set; } = new List<ExternalLibrary>();
+    public ICollection<ExternalLibraryPermission> ExternalLibraryPermissions { get; set; } = new List<ExternalLibraryPermission>();
 }
 

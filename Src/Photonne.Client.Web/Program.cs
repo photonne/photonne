@@ -120,6 +120,12 @@ builder.Services.AddScoped<IExternalLibraryService>(sp =>
     var authService = sp.GetRequiredService<AuthService>();
     return new ExternalLibraryService(httpClient, async () => await authService.GetTokenAsync());
 });
+builder.Services.AddScoped<IExternalLibraryPermissionService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var authService = sp.GetRequiredService<AuthService>();
+    return new ExternalLibraryPermissionService(httpClient, async () => await authService.GetTokenAsync());
+});
 builder.Services.AddSingleton<PwaUpdateService>();
 
 await builder.Build().RunAsync();

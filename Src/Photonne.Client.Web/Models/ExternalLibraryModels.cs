@@ -42,3 +42,20 @@ public class UpdateExternalLibraryRequest
     public bool ImportSubfolders { get; set; } = true;
     public string? CronSchedule { get; set; }
 }
+
+public class ExternalLibraryPermissionDto
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool CanView { get; set; }
+    public DateTime GrantedAt { get; set; }
+    public Guid? GrantedByUserId { get; set; }
+}
+
+public class SetExternalLibraryPermissionRequest
+{
+    public Guid UserId { get; set; }
+    public bool CanView { get; set; }
+}

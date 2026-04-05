@@ -41,27 +41,31 @@ public class ExternalLibrariesEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/libraries")
+        var readGroup = app.MapGroup("/api/libraries")
+            .WithTags("External Libraries")
+            .RequireAuthorization();
+
+        readGroup.MapGet("", GetAll)
+            .WithName("GetExternalLibraries")
+            .WithDescription("Lists all external libraries visible to the current user");
+
+        readGroup.MapGet("{id:guid}", GetById)
+            .WithName("GetExternalLibrary")
+            .WithDescription("Gets a single external library by ID if the user has access");
+
+        var adminGroup = app.MapGroup("/api/libraries")
             .WithTags("External Libraries")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
-        group.MapGet("", GetAll)
-            .WithName("GetExternalLibraries")
-            .WithDescription("Lists all external libraries");
-
-        group.MapGet("{id:guid}", GetById)
-            .WithName("GetExternalLibrary")
-            .WithDescription("Gets a single external library by ID");
-
-        group.MapPost("", Create)
+        adminGroup.MapPost("", Create)
             .WithName("CreateExternalLibrary")
             .WithDescription("Creates a new external library pointing to a server-side directory");
 
-        group.MapPut("{id:guid}", Update)
+        adminGroup.MapPut("{id:guid}", Update)
             .WithName("UpdateExternalLibrary")
             .WithDescription("Updates an existing external library");
 
-        group.MapDelete("{id:guid}", Delete)
+        adminGroup.MapDelete("{id:guid}", Delete)
             .WithName("DeleteExternalLibrary")
             .WithDescription("Deletes an external library. Assets are de-linked but NOT deleted from disk.");
     }
@@ -75,8 +79,12 @@ public class ExternalLibrariesEndpoint : IEndpoint
         var userId = GetUserId(ctx);
         if (userId == null) return Results.Unauthorized();
 
+        var isAdmin = ctx.User.IsInRole("Admin");
+
         var libraries = await db.ExternalLibraries
-            .Where(l => l.OwnerId == userId.Value)
+            .Where(l => isAdmin
+                ? l.OwnerId == userId.Value
+                : l.Permissions.Any(p => p.UserId == userId.Value && p.CanView))
             .Select(l => new ExternalLibraryDto(
                 l.Id,
                 l.Name,
@@ -105,8 +113,12 @@ public class ExternalLibrariesEndpoint : IEndpoint
         var userId = GetUserId(ctx);
         if (userId == null) return Results.Unauthorized();
 
+        var isAdmin = ctx.User.IsInRole("Admin");
+
         var library = await db.ExternalLibraries
-            .Where(l => l.Id == id && l.OwnerId == userId.Value)
+            .Where(l => l.Id == id && (isAdmin
+                ? l.OwnerId == userId.Value
+                : l.Permissions.Any(p => p.UserId == userId.Value && p.CanView)))
             .Select(l => new ExternalLibraryDto(
                 l.Id,
                 l.Name,

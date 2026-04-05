@@ -12,7 +12,7 @@ using Photonne.Server.Api.Shared.Data;
 namespace Photonne.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260327195202_InitialCreate")]
+    [Migration("20260404212844_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -478,6 +478,39 @@ namespace Photonne.Server.Api.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("ExternalLibraries");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibraryPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CanView")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ExternalLibraryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("GrantedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrantedByUserId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ExternalLibraryId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ExternalLibraryPermissions");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Folder", b =>
@@ -976,6 +1009,32 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibraryPermission", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.ExternalLibrary", "ExternalLibrary")
+                        .WithMany("Permissions")
+                        .HasForeignKey("ExternalLibraryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.User", "GrantedByUser")
+                        .WithMany()
+                        .HasForeignKey("GrantedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.User", "User")
+                        .WithMany("ExternalLibraryPermissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExternalLibrary");
+
+                    b.Navigation("GrantedByUser");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Folder", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Folder", "ParentFolder")
@@ -1093,6 +1152,8 @@ namespace Photonne.Server.Api.Migrations
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibrary", b =>
                 {
                     b.Navigation("Assets");
+
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Folder", b =>
@@ -1111,6 +1172,8 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Assets");
 
                     b.Navigation("ExternalLibraries");
+
+                    b.Navigation("ExternalLibraryPermissions");
 
                     b.Navigation("FolderPermissions");
 

@@ -184,6 +184,12 @@ html, body {
     opacity: 1;
 }
 
+/* ── Library card header: evita que la ruta larga empuje el menú fuera ── */
+.library-card .mud-card-header-content {
+    min-width: 0;
+    overflow: hidden;
+}
+
 /* ── Page padding ─────────────────────────────────────── */
 .page-pad {
     padding: 16px;
@@ -257,5 +263,28 @@ html, body {
 
     .login-layout--light {
         background-image: url('/light/bg-landscape.png');
+    }
+}
+
+/* ── Mobile: márgenes en dialogs y bottom sheet ──────────── */
+@media (max-width: 599px) {
+    /* Margen lateral para todos los dialogs (evita que lleguen al borde) */
+    .mud-dialog-container {
+        padding: 0 16px;
+        box-sizing: border-box;
+    }
+
+    /* Bottom sheet: sin márgenes, pegado al fondo */
+    .mud-dialog-container:has(.bottom-sheet-mobile) {
+        padding: 0;
+        align-items: flex-end;
+    }
+    .bottom-sheet-mobile {
+        border-radius: 16px 16px 0 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
     }
 }

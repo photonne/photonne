@@ -45,4 +45,5 @@ public class ExternalLibrary
 
     // Navigation properties
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();
+    public ICollection<ExternalLibraryPermission> Permissions { get; set; } = new List<ExternalLibraryPermission>();
 }

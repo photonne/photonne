@@ -1,7 +1,10 @@
 @page "/admin/libraries"
 @using Photonne.Client.Web.Models
 @using Photonne.Client.Web.Services
+@using System.Linq
 @inject IExternalLibraryService LibraryService
+@inject IExternalLibraryPermissionService PermissionService
+@inject IUserService UserService
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -114,7 +117,8 @@ else
                                  IsBeingScanned="@(_scanning && _scanningLibrary?.Id == lib.Id)"
                                  OnScan="() => StartScan(lib)"
                                  OnEdit="() => OpenEditDialog(lib)"
-                                 OnDelete="() => ConfirmDelete(lib)" />
+                                 OnDelete="() => ConfirmDelete(lib)"
+                                 OnManagePermissions="() => OpenPermissionsDialog(lib)" />
                 </MudItem>
             }
         </MudGrid>
@@ -124,8 +128,79 @@ else
 
 </div>
 
+@* ── Permissions dialog ───────────────────────────────────────────────────────── *@
+<MudDialog @bind-Visible="_showPermissionsDialog" Class="bottom-sheet-mobile" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Permisos — @_permissionsLibrary?.Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_permissionsLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            @* Current permissions *@
+            @if (_currentPermissions.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Usuarios con acceso</MudText>
+                <MudList T="ExternalLibraryPermissionDto" Dense="true" Class="mb-4">
+                    @foreach (var p in _currentPermissions)
+                    {
+                        <MudListItem T="ExternalLibraryPermissionDto">
+                            <div class="d-flex align-center justify-space-between">
+                                <div>
+                                    <MudText Typo="Typo.body2">@p.Username</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@p.Email</MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Outlined.PersonRemove"
+                                               Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => RevokePermission(p))" />
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+                    Ningún usuario tiene acceso a esta biblioteca.
+                </MudText>
+            }
+
+            <MudDivider Class="mb-3" />
+
+            @* Add user *@
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Dar acceso a un usuario</MudText>
+            <div class="d-flex flex-column gap-2">
+                <MudSelect T="ShareableUserDto?" @bind-Value="_selectedUser"
+                           Label="Usuario" Variant="Variant.Outlined"
+                           Dense="true"
+                           ToStringFunc="@(u => u == null ? string.Empty : $"{u.Username} ({u.Email})")">
+                    @foreach (var u in _shareableUsers.Where(u => !_currentPermissions.Any(p => p.UserId == u.Id)))
+                    {
+                        <MudSelectItem T="ShareableUserDto?" Value="u">@u.Username (@u.Email)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           Disabled="@(_selectedUser == null || _grantingPermission)"
+                           OnClick="GrantPermission">
+                    @if (_grantingPermission)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                    }
+                    Dar acceso
+                </MudButton>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showPermissionsDialog = false)">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @* ── Create / Edit dialog ────────────────────────────────────────────────────── *@
-<MudDialog @bind-Visible="_showDialog">
+<MudDialog @bind-Visible="_showDialog" Class="bottom-sheet-mobile">
     <TitleContent>
         <MudText Typo="Typo.h6">
             @(_editingLibrary == null ? "Nueva biblioteca" : "Editar biblioteca")
@@ -370,6 +445,85 @@ else
     private void CancelScan()
     {
         _scanCts?.Cancel();
+    }
+
+    // ── Permissions ──────────────────────────────────────────────────────────
+
+    private bool _showPermissionsDialog;
+    private bool _permissionsLoading;
+    private bool _grantingPermission;
+    private ExternalLibraryDto? _permissionsLibrary;
+    private List<ExternalLibraryPermissionDto> _currentPermissions = new();
+    private List<ShareableUserDto> _shareableUsers = new();
+    private ShareableUserDto? _selectedUser;
+
+    private async Task OpenPermissionsDialog(ExternalLibraryDto lib)
+    {
+        _permissionsLibrary = lib;
+        _selectedUser = null;
+        _showPermissionsDialog = true;
+        _permissionsLoading = true;
+
+        try
+        {
+            var permsTask = PermissionService.GetPermissionsAsync(lib.Id);
+            var usersTask = UserService.GetShareableUsersAsync();
+            await Task.WhenAll(permsTask, usersTask);
+            _currentPermissions = permsTask.Result;
+            _shareableUsers = usersTask.Result;
+        }
+        catch
+        {
+            Snackbar.Add("Error al cargar los permisos.", Severity.Error);
+            _showPermissionsDialog = false;
+        }
+        finally
+        {
+            _permissionsLoading = false;
+        }
+    }
+
+    private async Task GrantPermission()
+    {
+        if (_selectedUser == null || _permissionsLibrary == null) return;
+
+        _grantingPermission = true;
+        try
+        {
+            var result = await PermissionService.SetPermissionAsync(_permissionsLibrary.Id,
+                new SetExternalLibraryPermissionRequest { UserId = _selectedUser.Id, CanView = true });
+
+            if (result != null)
+            {
+                _currentPermissions.Add(result);
+                _selectedUser = null;
+                Snackbar.Add("Acceso concedido.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Error al conceder acceso.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _grantingPermission = false;
+        }
+    }
+
+    private async Task RevokePermission(ExternalLibraryPermissionDto permission)
+    {
+        if (_permissionsLibrary == null) return;
+
+        var ok = await PermissionService.RemovePermissionAsync(_permissionsLibrary.Id, permission.UserId);
+        if (ok)
+        {
+            _currentPermissions.Remove(permission);
+            Snackbar.Add("Acceso revocado.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Error al revocar acceso.", Severity.Error);
+        }
     }
 
     // ── Inner types ──────────────────────────────────────────────────────────

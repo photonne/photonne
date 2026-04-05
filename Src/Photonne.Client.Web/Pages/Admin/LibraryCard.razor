@@ -1,6 +1,6 @@
 @using Photonne.Client.Web.Models
 
-<MudCard>
+<MudCard Class="library-card">
     <MudCardHeader>
         <CardHeaderAvatar>
             <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
@@ -8,20 +8,30 @@
             </MudAvatar>
         </CardHeaderAvatar>
         <CardHeaderContent>
-            <MudText Typo="Typo.subtitle1" Class="text-truncate">@Library.Name</MudText>
-            <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate" Style="max-width:220px">
-                @Library.Path
-            </MudText>
+            <div style="min-width:0; overflow:hidden;">
+                <MudText Typo="Typo.subtitle1" Class="text-truncate">@Library.Name</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary text-truncate">
+                    @Library.Path
+                </MudText>
+            </div>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
-                           Size="Size.Small"
-                           Disabled="IsBeingScanned"
-                           OnClick="@(() => OnEdit.InvokeAsync())" />
-            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
-                           Size="Size.Small" Color="Color.Error"
-                           Disabled="IsBeingScanned"
-                           OnClick="@(() => OnDelete.InvokeAsync())" />
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small"
+                     Dense="true" Disabled="IsBeingScanned">
+                <MudMenuItem Icon="@Icons.Material.Outlined.Group"
+                             OnClick="@(() => OnManagePermissions.InvokeAsync())">
+                    Gestionar permisos
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                             OnClick="@(() => OnEdit.InvokeAsync())">
+                    Editar
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                             IconColor="Color.Error"
+                             OnClick="@(() => OnDelete.InvokeAsync())">
+                    Eliminar
+                </MudMenuItem>
+            </MudMenu>
         </CardHeaderActions>
     </MudCardHeader>
 
@@ -76,7 +86,7 @@
 
     </MudCardContent>
 
-    <MudCardActions>
+    <MudCardActions Class="px-3 pb-3">
         <MudButton StartIcon="@(IsBeingScanned ? Icons.Material.Outlined.Sync : Icons.Material.Outlined.Search)"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
@@ -94,6 +104,7 @@
     [Parameter] public EventCallback OnScan { get; set; }
     [Parameter] public EventCallback OnEdit { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnManagePermissions { get; set; }
 
     private string StatusIcon => Library.LastScanStatus switch
     {

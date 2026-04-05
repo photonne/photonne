@@ -252,6 +252,40 @@ namespace Photonne.Server.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ExternalLibraryPermissions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExternalLibraryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CanView = table.Column<bool>(type: "boolean", nullable: false),
+                    GrantedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    GrantedByUserId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExternalLibraryPermissions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExternalLibraryPermissions_ExternalLibraries_ExternalLibrar~",
+                        column: x => x.ExternalLibraryId,
+                        principalTable: "ExternalLibraries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ExternalLibraryPermissions_Users_GrantedByUserId",
+                        column: x => x.GrantedByUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_ExternalLibraryPermissions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Albums",
                 columns: table => new
                 {
@@ -649,6 +683,22 @@ namespace Photonne.Server.Api.Migrations
                 column: "OwnerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ExternalLibraryPermissions_ExternalLibraryId_UserId",
+                table: "ExternalLibraryPermissions",
+                columns: new[] { "ExternalLibraryId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalLibraryPermissions_GrantedByUserId",
+                table: "ExternalLibraryPermissions",
+                column: "GrantedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalLibraryPermissions_UserId",
+                table: "ExternalLibraryPermissions",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FolderPermissions_FolderId",
                 table: "FolderPermissions",
                 column: "FolderId");
@@ -769,6 +819,9 @@ namespace Photonne.Server.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "AssetUserTags");
+
+            migrationBuilder.DropTable(
+                name: "ExternalLibraryPermissions");
 
             migrationBuilder.DropTable(
                 name: "FolderPermissions");

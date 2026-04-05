@@ -28,6 +28,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SharedLink> SharedLinks { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<ExternalLibrary> ExternalLibraries { get; set; }
+    public DbSet<ExternalLibraryPermission> ExternalLibraryPermissions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -523,6 +524,35 @@ public class ApplicationDbContext : DbContext
                     v => v.HasValue
                         ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)
                         : null);
+        });
+
+        // Configure ExternalLibraryPermission entity
+        modelBuilder.Entity<ExternalLibraryPermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.ExternalLibrary)
+                .WithMany(l => l.Permissions)
+                .HasForeignKey(e => e.ExternalLibraryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.ExternalLibraryPermissions)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.GrantedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.GrantedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => new { e.ExternalLibraryId, e.UserId }).IsUnique();
+
+            entity.Property(e => e.GrantedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(
+                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
+                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
         });
 
         // Configure RefreshToken entity
