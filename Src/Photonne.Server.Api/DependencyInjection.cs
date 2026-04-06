@@ -24,6 +24,7 @@ public static class DependencyInjection
         builder.Services.AddHostedService<MlJobProcessorService>();
         builder.Services.AddScoped<ExternalLibraryScanService>();
         builder.Services.AddHostedService<ExternalLibrarySchedulerService>();
+        builder.Services.AddHostedService<NightlySchedulerService>();
         
         // HttpClient para llamadas externas (GitHub API, etc.)
         builder.Services.AddHttpClient("github", client =>
