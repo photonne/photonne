@@ -1,0 +1,303 @@
+@page "/admin/settings/server"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Configuración del servidor - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="mt-8 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/admin/settings"))" Class="mb-2">
+            Volver
+        </MudButton>
+        <MudText Typo="Typo.h5" Class="mb-1">Configuración del servidor</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Parámetros de red, rutas y límites del backend.
+        </MudText>
+
+        <MudGrid>
+
+            @* ── Red ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Red</MudText>
+                            <MudText Typo="Typo.body2">URL de acceso público al servidor.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTextField T="string"
+                                      Label="URL pública"
+                                      @bind-Value="_publicUrl"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Placeholder="https://photos.ejemplo.com"
+                                      HelperText="Se usa en enlaces compartidos y notificaciones. Sin barra final." />
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveNetwork"
+                                   Disabled="_savingNetwork">
+                            @if (_savingNetwork)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Rutas ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Rutas de almacenamiento</MudText>
+                            <MudText Typo="Typo.body2">Directorios donde el servidor guarda los archivos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTextField T="string"
+                                      Label="Ruta de activos"
+                                      @bind-Value="_assetsPath"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Placeholder="/data/assets"
+                                      HelperText="Directorio raíz para fotos y vídeos subidos por los usuarios."
+                                      Class="mb-3" />
+                        <MudTextField T="string"
+                                      Label="Ruta de miniaturas"
+                                      @bind-Value="_thumbnailsPath"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Placeholder="/data/thumbnails"
+                                      HelperText="Directorio donde se almacenan las miniaturas generadas. El cambio tiene efecto en la próxima generación." />
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SavePaths"
+                                   Disabled="_savingPaths">
+                            @if (_savingPaths)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Límites ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Límites de subida</MudText>
+                            <MudText Typo="Typo.body2">Tamaño máximo permitido por archivo.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudNumericField T="int"
+                                         Label="Tamaño máximo de subida (MB)"
+                                         @bind-Value="_maxUploadMb"
+                                         Min="1"
+                                         Max="10240"
+                                         Variant="Variant.Outlined"
+                                         FullWidth="true"
+                                         HelperText="El servidor rechaza archivos que superen este límite. Máximo: 10 240 MB (10 GB)." />
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveLimits"
+                                   Disabled="_savingLimits">
+                            @if (_savingLimits)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Sesión ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Sesión</MudText>
+                            <MudText Typo="Typo.body2">Duración del token de acceso.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudNumericField T="int"
+                                         Label="Duración del token JWT (minutos)"
+                                         @bind-Value="_sessionTimeoutMinutes"
+                                         Min="5"
+                                         Max="10080"
+                                         Variant="Variant.Outlined"
+                                         FullWidth="true"
+                                         HelperText="Tiempo hasta que el token de acceso expira. El token de refresco extiende la sesión automáticamente." />
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                            El cambio de duración de sesión requiere reiniciar el servidor para tener efecto.
+                        </MudAlert>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveSession"
+                                   Disabled="_savingSession">
+                            @if (_savingSession)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+</div>
+
+@code {
+    // ── setting keys ──────────────────────────────────────────────────────────
+    private const string KeyPublicUrl           = "ServerSettings.PublicUrl";
+    private const string KeyAssetsPath          = "AssetsPath";
+    private const string KeyThumbnailsPath      = "ServerSettings.ThumbnailsPath";
+    private const string KeyMaxUploadMb         = "ServerSettings.MaxUploadSizeMb";
+    private const string KeySessionTimeout      = "ServerSettings.SessionTimeoutMinutes";
+
+    // ── state ─────────────────────────────────────────────────────────────────
+    private bool _isAuthorized;
+    private bool _loading = true;
+
+    private string _publicUrl       = "";
+    private string _assetsPath      = "/data/assets";
+    private string _thumbnailsPath  = "/data/thumbnails";
+    private int    _maxUploadMb     = 500;
+    private int    _sessionTimeoutMinutes = 60;
+
+    private bool _savingNetwork;
+    private bool _savingPaths;
+    private bool _savingLimits;
+    private bool _savingSession;
+
+    // ── lifecycle ─────────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+            await LoadSettings();
+
+        _loading = false;
+    }
+
+    private async Task LoadSettings()
+    {
+        _publicUrl          = await SettingsService.GetSettingAsync(KeyPublicUrl, "");
+        _assetsPath         = await SettingsService.GetSettingAsync(KeyAssetsPath, "/data/assets");
+        _thumbnailsPath     = await SettingsService.GetSettingAsync(KeyThumbnailsPath, "/data/thumbnails");
+        _maxUploadMb        = ParseInt(await SettingsService.GetSettingAsync(KeyMaxUploadMb, "500"), 1, 10240, 500);
+        _sessionTimeoutMinutes = ParseInt(await SettingsService.GetSettingAsync(KeySessionTimeout, "60"), 5, 10080, 60);
+    }
+
+    // ── save handlers ─────────────────────────────────────────────────────────
+    private async Task SaveNetwork()
+    {
+        _savingNetwork = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyPublicUrl, _publicUrl.TrimEnd('/'));
+            ShowResult(ok, "Red");
+        }
+        finally { _savingNetwork = false; }
+    }
+
+    private async Task SavePaths()
+    {
+        _savingPaths = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyAssetsPath, _assetsPath.TrimEnd('/', '\\'))
+                  && await SettingsService.SaveSettingAsync(KeyThumbnailsPath, _thumbnailsPath.TrimEnd('/', '\\'));
+            ShowResult(ok, "Rutas");
+        }
+        finally { _savingPaths = false; }
+    }
+
+    private async Task SaveLimits()
+    {
+        _savingLimits = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyMaxUploadMb, _maxUploadMb.ToString());
+            ShowResult(ok, "Límites");
+        }
+        finally { _savingLimits = false; }
+    }
+
+    private async Task SaveSession()
+    {
+        _savingSession = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeySessionTimeout, _sessionTimeoutMinutes.ToString());
+            ShowResult(ok, "Sesión");
+        }
+        finally { _savingSession = false; }
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+    private void ShowResult(bool ok, string section)
+    {
+        if (ok)
+            Snackbar.Add($"{section} guardado correctamente.", Severity.Success);
+        else
+            Snackbar.Add($"Error al guardar {section.ToLower()}.", Severity.Error);
+    }
+
+    private static int ParseInt(string value, int min, int max, int defaultValue)
+    {
+        if (!int.TryParse(value, out var n)) return defaultValue;
+        return Math.Clamp(n, min, max);
+    }
+}

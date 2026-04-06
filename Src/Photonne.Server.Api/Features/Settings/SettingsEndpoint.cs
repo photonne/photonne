@@ -36,8 +36,7 @@ public class SettingsEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        // TaskSettings are global — read from Guid.Empty, same as writes
-        var effectiveUserId = key.StartsWith("TaskSettings.") ? Guid.Empty : userId;
+        var effectiveUserId = IsGlobalKey(key) ? Guid.Empty : userId;
         var value = await settingsService.GetSettingAsync(key, effectiveUserId);
         return Results.Ok(new { key, value });
     }
@@ -55,8 +54,7 @@ public class SettingsEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        // TaskSettings are global — they apply to background processing, not per-user
-        var effectiveUserId = request.Key.StartsWith("TaskSettings.") ? Guid.Empty : userId;
+        var effectiveUserId = IsGlobalKey(request.Key) ? Guid.Empty : userId;
         await settingsService.SetSettingAsync(request.Key, request.Value ?? "", effectiveUserId);
         return Results.Ok(new { message = "Setting saved successfully" });
     }
@@ -73,6 +71,17 @@ public class SettingsEndpoint : IEndpoint
         var path = await settingsService.GetAssetsPathAsync(userId);
         return Results.Ok(new { path });
     }
+
+    /// <summary>
+    /// Returns true for keys that are server-wide globals (stored under Guid.Empty).
+    /// TaskSettings.*  — background worker counts
+    /// ServerSettings.* — server configuration (paths, limits, public URL…)
+    /// AssetsPath      — legacy global key for the managed assets directory
+    /// </summary>
+    private static bool IsGlobalKey(string key) =>
+        key.StartsWith("TaskSettings.", StringComparison.Ordinal) ||
+        key.StartsWith("ServerSettings.", StringComparison.Ordinal) ||
+        key.Equals("AssetsPath", StringComparison.Ordinal);
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {

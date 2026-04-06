@@ -10,13 +10,15 @@ namespace Photonne.Server.Api.Shared.Services;
 
 public class ThumbnailGeneratorService
 {
-    private readonly string _thumbnailsBasePath;
+    private string _thumbnailsBasePath;
     private readonly SettingsService _settingsService;
 
     public const string KeyThumbnailFormat = "TaskSettings.ThumbnailFormat";
     public const string KeyQualitySmall = "TaskSettings.ThumbnailQuality.Small";
     public const string KeyQualityMedium = "TaskSettings.ThumbnailQuality.Medium";
     public const string KeyQualityLarge = "TaskSettings.ThumbnailQuality.Large";
+    public const string KeyThumbnailsPath = "ServerSettings.ThumbnailsPath";
+    public const string DefaultThumbnailsPath = "/data/thumbnails";
 
     private record ThumbnailOptions(bool UseWebP, int QualitySmall, int QualityMedium, int QualityLarge)
     {
@@ -56,12 +58,25 @@ public class ThumbnailGeneratorService
     public ThumbnailGeneratorService(SettingsService settingsService)
     {
         _settingsService = settingsService;
-        _thumbnailsBasePath = "/data/thumbnails";
+        _thumbnailsBasePath = DefaultThumbnailsPath;
 
         if (!Directory.Exists(_thumbnailsBasePath))
         {
             Directory.CreateDirectory(_thumbnailsBasePath);
         }
+    }
+
+    /// <summary>
+    /// Reads the configured thumbnails path from the database and ensures the directory exists.
+    /// Call this at the start of any long-running operation so a freshly saved setting takes effect.
+    /// </summary>
+    public async Task RefreshThumbnailsPathAsync()
+    {
+        var configured = await _settingsService.GetSettingAsync(KeyThumbnailsPath, Guid.Empty, DefaultThumbnailsPath);
+        var path = string.IsNullOrWhiteSpace(configured) ? DefaultThumbnailsPath : configured.TrimEnd('/', '\\');
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+        _thumbnailsBasePath = path;
     }
 
     private static int ParseQuality(string value, int defaultValue)
