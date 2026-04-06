@@ -84,7 +84,8 @@ public class AssetService : IAssetService
             Type = detail.Type,
             SyncStatus = AssetSyncStatus.Synced,
             Width = detail.Exif?.Width,
-            Height = detail.Exif?.Height
+            Height = detail.Exif?.Height,
+            IsOffline = detail.IsOffline
         };
     }
 
@@ -169,6 +170,7 @@ public class AssetService : IAssetService
             SyncStatus = response.SyncStatus,
             IsFavorite = response.IsFavorite,
             IsArchived = response.IsArchived,
+            IsOffline = response.IsOffline,
             Description = response.Description
         };
     }

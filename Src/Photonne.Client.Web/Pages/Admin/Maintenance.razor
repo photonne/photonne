@@ -19,10 +19,6 @@
     }
     else
     {
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
-                   OnClick="@(() => Navigation.NavigateTo("/admin/settings"))" Class="mb-2">
-            Volver
-        </MudButton>
         <MudText Typo="Typo.h5" Class="mb-1">Mantenimiento</MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
             Tareas de limpieza y salud del sistema. Cada acción es independiente y puede ejecutarse por separado.
@@ -35,14 +31,14 @@
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
                                 <MudIcon Icon="@Icons.Material.Filled.BrokenImage" />
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6">Miniaturas huérfanas</MudText>
                             <MudText Typo="Typo.body2">
-                                Elimina archivos de miniatura en disco que no tienen ningún activo asociado en la base de datos.
+                                Elimina archivos de miniatura en disco que no tienen ningún asset asociado en la base de datos.
                             </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -63,7 +59,7 @@
                     </MudCardContent>
                     <MudCardActions Class="px-4 pb-4">
                         <MudButton Variant="Variant.Filled"
-                                   Color="Color.Warning"
+                                   Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.CleaningServices"
                                    OnClick="RunOrphanThumbnails"
                                    Disabled="_orphanRunning">
@@ -81,19 +77,19 @@
                 </MudCard>
             </MudItem>
 
-            @* ── Activos sin archivo ── *@
+            @* ── Assets sin archivo ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
                                 <MudIcon Icon="@Icons.Material.Filled.FindInPage" />
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Activos sin archivo</MudText>
+                            <MudText Typo="Typo.h6">Assets sin archivo</MudText>
                             <MudText Typo="Typo.body2">
-                                Detecta activos en la base de datos cuyo archivo físico ya no existe y los marca como fuera de línea.
+                                Detecta assets en la base de datos cuyo archivo físico ya no existe y los marca como fuera de línea.
                             </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -114,7 +110,7 @@
                     </MudCardContent>
                     <MudCardActions Class="px-4 pb-4">
                         <MudButton Variant="Variant.Filled"
-                                   Color="Color.Error"
+                                   Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.SearchOff"
                                    OnClick="RunMissingFiles"
                                    Disabled="_missingRunning">
@@ -137,7 +133,7 @@
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Info" Variant="Variant.Filled">
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
                                 <MudIcon Icon="@Icons.Material.Filled.Storage" />
                             </MudAvatar>
                         </CardHeaderAvatar>
@@ -165,7 +161,7 @@
                     </MudCardContent>
                     <MudCardActions Class="px-4 pb-4">
                         <MudButton Variant="Variant.Filled"
-                                   Color="Color.Info"
+                                   Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Sync"
                                    OnClick="RunRecalculateSizes"
                                    Disabled="_sizesRunning">
@@ -188,7 +184,7 @@
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
                                 <MudIcon Icon="@Icons.Material.Filled.DeleteForever" />
                             </MudAvatar>
                         </CardHeaderAvatar>
@@ -221,28 +217,31 @@
                         }
                         else
                         {
-                            <MudText Typo="Typo.body2" Class="mr-4 mud-text-secondary">¿Confirmar? Esta acción es irreversible.</MudText>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Error"
-                                       StartIcon="@Icons.Material.Filled.DeleteForever"
-                                       OnClick="RunEmptyTrash"
-                                       Disabled="_trashRunning"
-                                       Class="mr-2">
-                                @if (_trashRunning)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                    <span>Vaciando...</span>
-                                }
-                                else
-                                {
-                                    <span>Sí, vaciar</span>
-                                }
-                            </MudButton>
-                            <MudButton Variant="Variant.Text"
-                                       OnClick="@(() => _confirmTrash = false)"
-                                       Disabled="_trashRunning">
-                                Cancelar
-                            </MudButton>
+                            <div class="d-flex flex-column gap-2 w-100">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">¿Confirmar? Esta acción es irreversible.</MudText>
+                                <div class="d-flex gap-2">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                                               OnClick="RunEmptyTrash"
+                                               Disabled="_trashRunning">
+                                        @if (_trashRunning)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                            <span>Vaciando...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Sí, vaciar</span>
+                                        }
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               OnClick="@(() => _confirmTrash = false)"
+                                               Disabled="_trashRunning">
+                                        Cancelar
+                                    </MudButton>
+                                </div>
+                            </div>
                         }
                     </MudCardActions>
                 </MudCard>

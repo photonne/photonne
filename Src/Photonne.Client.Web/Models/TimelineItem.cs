@@ -21,6 +21,7 @@ public class TimelineItem
     public List<string> Tags { get; set; } = new();
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
+    public bool IsOffline { get; set; }
 
     public double AspectRatio => Width.HasValue && Height.HasValue && Height.Value > 0
         ? (double)Width.Value / Height.Value

@@ -339,10 +339,19 @@ else if (_asset != null)
                     Tu navegador no soporta la reproducción de videos.
                 </video>
             }
+            else if (_asset.IsOffline || _imageLoadError)
+            {
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; color: rgba(255,255,255,0.5);">
+                    <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Style="width: 96px; height: 96px;" />
+                    <MudText Typo="Typo.body2">Archivo no encontrado en disco</MudText>
+                </div>
+            }
             else if (_asset.HasThumbnails || _asset.Type == "IMAGE")
             {
                 <img src="@(_asset.Type == "IMAGE" ? _displayContentUrl : _displayThumbnailUrl)"
-                     alt="@_asset.FileName" class="asset-detail-image @(_zoomed ? "zoomed" : "")" />
+                     alt="@_asset.FileName"
+                     class="asset-detail-image @(_zoomed ? "zoomed" : "")"
+                     @onerror="() => { _imageLoadError = true; StateHasChanged(); }" />
             }
             else
             {
@@ -702,6 +711,7 @@ else
     private bool _toolbarVisible = true;
     private bool _syncing = false;
     private bool _zoomed = false;
+    private bool _imageLoadError = false;
     private bool _deleting = false;
     private bool _deleteConfirmOpen = false;
     private bool _tagBusy = false;
@@ -910,6 +920,7 @@ else
     private async Task LoadAsset()
     {
         _navigatingAway = false;
+        _imageLoadError = false;
         try
         {
             _loading = true;

@@ -93,6 +93,16 @@
         .asset-pending {
             opacity: 0.6;
         }
+        .asset-offline-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4;
+            border-radius: 8px;
+        }
     </style>
     
     <div class="@(Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied ? "asset-pending" : "") h-100 w-100">
@@ -162,7 +172,16 @@
         </div>
     }
 
-    @if (Asset.SyncStatus == AssetSyncStatus.Synced && Asset.Id != Guid.Empty)
+    @if (Asset.IsOffline)
+    {
+        <div class="asset-offline-overlay">
+            <MudTooltip Text="Archivo no encontrado en disco">
+                <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Large" Style="color: rgba(255,255,255,0.8);" />
+            </MudTooltip>
+        </div>
+    }
+
+    @if (Asset.SyncStatus == AssetSyncStatus.Synced && Asset.Id != Guid.Empty && !Asset.IsOffline)
     {
         <span @onclick:stopPropagation="true" class="favorite-btn @(Asset.IsFavorite ? "is-favorite" : "")">
             <MudIconButton Icon="@(Asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"

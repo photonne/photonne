@@ -94,6 +94,7 @@ public class AssetDetailEndpoint : IEndpoint
                 SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
                 IsFavorite = asset.IsFavorite,
                 IsArchived = asset.IsArchived,
+                IsOffline = asset.IsOffline,
                 Description = asset.Description
             };
 

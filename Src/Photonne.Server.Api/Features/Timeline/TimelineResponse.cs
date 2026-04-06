@@ -23,5 +23,6 @@ public class TimelineResponse
     public List<string> Tags { get; set; } = new();
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
+    public bool IsOffline { get; set; }
 }
 

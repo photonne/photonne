@@ -121,7 +121,8 @@ public class TimelineEndpoint : IEndpoint
                 DeletedAt = asset.DeletedAt,
                 Tags = BuildTagList(asset),
                 IsFavorite = asset.IsFavorite,
-                IsArchived = asset.IsArchived
+                IsArchived = asset.IsArchived,
+                IsOffline = asset.IsOffline
             }).ToList();
 
             // Normalizar rutas existentes en BD para comparación

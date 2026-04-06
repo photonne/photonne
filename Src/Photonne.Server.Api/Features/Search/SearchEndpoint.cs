@@ -116,7 +116,8 @@ public class SearchEndpoint : IEndpoint
             Width = a.Exif?.Width,
             Height = a.Exif?.Height,
             Tags = BuildTagList(a),
-            IsFavorite = a.IsFavorite
+            IsFavorite = a.IsFavorite,
+            IsOffline = a.IsOffline
         }).ToList();
 
         return Results.Ok(new SearchResponse { Items = items, HasMore = hasMore });

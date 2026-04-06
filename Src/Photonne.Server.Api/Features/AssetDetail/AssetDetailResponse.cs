@@ -22,6 +22,7 @@ public class AssetDetailResponse
     public Photonne.Server.Api.Shared.Dtos.AssetSyncStatus SyncStatus { get; set; } = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced;
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
+    public bool IsOffline { get; set; }
     public string? Description { get; set; }
 }
 
