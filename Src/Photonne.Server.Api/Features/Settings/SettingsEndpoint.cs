@@ -79,8 +79,9 @@ public class SettingsEndpoint : IEndpoint
     /// TrashSettings.*         — trash behaviour (enabled, retention, quota)
     /// UserSettings.*          — default values applied when creating new user accounts
     /// MetadataSettings.*      — EXIF/IPTC extraction behaviour
-    /// NightlyTaskSettings.*   — nightly scheduled tasks (schedule, enabled tasks, last run)
-    /// AssetsPath              — legacy global key for the managed assets directory
+    /// NightlyTaskSettings.*      — nightly scheduled tasks (schedule, enabled tasks, last run)
+    /// NotificationSettings.*     — notification system (enabled types, retention, per-user cap)
+    /// AssetsPath                 — legacy global key for the managed assets directory
     /// </summary>
     private static bool IsGlobalKey(string key) =>
         key.StartsWith("TaskSettings.", StringComparison.Ordinal) ||
@@ -89,6 +90,7 @@ public class SettingsEndpoint : IEndpoint
         key.StartsWith("UserSettings.", StringComparison.Ordinal) ||
         key.StartsWith("MetadataSettings.", StringComparison.Ordinal) ||
         key.StartsWith("NightlyTaskSettings.", StringComparison.Ordinal) ||
+        key.StartsWith("NotificationSettings.", StringComparison.Ordinal) ||
         key.Equals("AssetsPath", StringComparison.Ordinal);
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)

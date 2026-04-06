@@ -1,0 +1,348 @@
+@page "/admin/settings/notifications"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject ISnackbar Snackbar
+@inject HttpClient Http
+
+<PageTitle>Configuración de notificaciones - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="mt-8 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <div class="mt-4">
+            <MudText Typo="Typo.h5" Class="mb-2">Configuración de notificaciones</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Alertas del sistema y avisos al usuario.
+            </MudText>
+        </div>
+
+        <MudGrid Class="mt-4">
+
+            <!-- General -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">General</MudText>
+                            <MudText Typo="Typo.body2">Comportamiento global del sistema de notificaciones.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSwitch @bind-Value="_enabled"
+                                   Color="Color.Primary"
+                                   Label="@(_enabled ? "Sistema de notificaciones activo" : "Sistema de notificaciones desactivado")"
+                                   Class="mb-4" />
+
+                        <MudNumericField @bind-Value="_retentionDays"
+                                         Label="Retención (días)"
+                                         Variant="Variant.Outlined"
+                                         Min="0" Max="3650"
+                                         HelperText="0 = conservar indefinidamente. Las notificaciones más antiguas se eliminan al pulsar 'Limpiar'."
+                                         Disabled="!_enabled"
+                                         Class="mb-4" />
+
+                        <MudNumericField @bind-Value="_maxPerUser"
+                                         Label="Máximo por usuario"
+                                         Variant="Variant.Outlined"
+                                         Min="0" Max="10000"
+                                         HelperText="0 = sin límite. Las más antiguas se eliminarán al limpiar manualmente."
+                                         Disabled="!_enabled" />
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton OnClick="SaveGeneralAsync"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="_savingGeneral"
+                                   StartIcon="@Icons.Material.Filled.Save">
+                            @(_savingGeneral ? "Guardando…" : "Guardar")
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <!-- Tipos habilitados -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Tipos habilitados</MudText>
+                            <MudText Typo="Typo.body2">Controla qué categorías de notificación se generan.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSwitch @bind-Value="_jobCompletedEnabled"
+                                   Color="Color.Success"
+                                   Label="Tarea completada"
+                                   Disabled="!_enabled"
+                                   Class="mb-2" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mb-4 d-block" Style="padding-left:42px">
+                            Se genera al finalizar la generación de miniaturas, extracción de metadatos, etc.
+                        </MudText>
+
+                        <MudSwitch @bind-Value="_jobFailedEnabled"
+                                   Color="Color.Error"
+                                   Label="Tarea fallida"
+                                   Disabled="!_enabled"
+                                   Class="mb-2" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mb-4 d-block" Style="padding-left:42px">
+                            Se genera cuando una tarea de procesamiento termina con errores.
+                        </MudText>
+
+                        <MudSwitch @bind-Value="_shareViewedEnabled"
+                                   Color="Color.Info"
+                                   Label="Álbum compartido visitado"
+                                   Disabled="!_enabled"
+                                   Class="mb-2" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block" Style="padding-left:42px">
+                            Se genera cuando alguien accede a un enlace de compartición.
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton OnClick="SaveTypesAsync"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="_savingTypes"
+                                   StartIcon="@Icons.Material.Filled.Save">
+                            @(_savingTypes ? "Guardando…" : "Guardar")
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <!-- Estadísticas -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Estado</MudText>
+                            <MudText Typo="Typo.body2">Resumen de notificaciones almacenadas en la base de datos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_stats is null)
+                        {
+                            <MudProgressLinear Indeterminate="true" Class="mb-2" />
+                        }
+                        else
+                        {
+                            <MudList T="string" Dense="true">
+                                <MudListItem Icon="@Icons.Material.Filled.Notifications">
+                                    <MudText Typo="Typo.body2">
+                                        <strong>Total:</strong> @_stats.Total notificaciones
+                                    </MudText>
+                                </MudListItem>
+                                <MudListItem Icon="@Icons.Material.Filled.NotificationsActive">
+                                    <MudText Typo="Typo.body2">
+                                        <strong>No leídas:</strong> @_stats.Unread
+                                    </MudText>
+                                </MudListItem>
+                                <MudListItem Icon="@Icons.Material.Filled.CalendarToday">
+                                    <MudText Typo="Typo.body2">
+                                        <strong>Más antigua:</strong>
+                                        @(_stats.OldestAt.HasValue
+                                            ? _stats.OldestAt.Value.ToLocalTime().ToString("dd/MM/yyyy")
+                                            : "—")
+                                    </MudText>
+                                </MudListItem>
+                            </MudList>
+
+                            @if (_retentionDays > 0)
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-3 mud-text-secondary d-block">
+                                    Se eliminarán las notificaciones con más de @_retentionDays días de antigüedad.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-3 mud-text-secondary d-block">
+                                    Sin retención automática. La limpieza manual eliminará las notificaciones ya leídas.
+                                </MudText>
+                            }
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4 gap-2">
+                        <MudButton OnClick="RefreshStatsAsync"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   Disabled="_loadingStats">
+                            Actualizar
+                        </MudButton>
+                        <MudButton OnClick="PurgeAsync"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.DeleteSweep"
+                                   Disabled="_purging || _stats is null || _stats.Total == 0">
+                            @(_purging ? "Limpiando…" : "Limpiar")
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+    private bool _loading = true;
+
+    // General
+    private bool _enabled         = true;
+    private int  _retentionDays   = 30;
+    private int  _maxPerUser      = 100;
+    private bool _savingGeneral;
+
+    // Types
+    private bool _jobCompletedEnabled = true;
+    private bool _jobFailedEnabled    = true;
+    private bool _shareViewedEnabled  = true;
+    private bool _savingTypes;
+
+    // Stats
+    private NotificationStatsResponse? _stats;
+    private bool _loadingStats;
+    private bool _purging;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+        {
+            await Task.WhenAll(LoadSettingsAsync(), RefreshStatsAsync());
+        }
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _loading = true;
+        try
+        {
+            _enabled       = (await SettingsService.GetSettingAsync("NotificationSettings.Enabled")) != "false";
+
+            var retention  = await SettingsService.GetSettingAsync("NotificationSettings.RetentionDays");
+            _retentionDays = int.TryParse(retention, out var r) ? r : 30;
+
+            var maxPer     = await SettingsService.GetSettingAsync("NotificationSettings.MaxPerUser");
+            _maxPerUser    = int.TryParse(maxPer, out var m) ? m : 100;
+
+            _jobCompletedEnabled = (await SettingsService.GetSettingAsync("NotificationSettings.JobCompleted.Enabled")) != "false";
+            _jobFailedEnabled    = (await SettingsService.GetSettingAsync("NotificationSettings.JobFailed.Enabled"))    != "false";
+            _shareViewedEnabled  = (await SettingsService.GetSettingAsync("NotificationSettings.ShareViewed.Enabled"))  != "false";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RefreshStatsAsync()
+    {
+        _loadingStats = true;
+        try
+        {
+            _stats = await Http.GetFromJsonAsync<NotificationStatsResponse>("/api/admin/notifications/stats");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar estadísticas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingStats = false;
+        }
+    }
+
+    private async Task SaveGeneralAsync()
+    {
+        _savingGeneral = true;
+        try
+        {
+            await SettingsService.SaveSettingAsync("NotificationSettings.Enabled",       _enabled.ToString().ToLower());
+            await SettingsService.SaveSettingAsync("NotificationSettings.RetentionDays", _retentionDays.ToString());
+            await SettingsService.SaveSettingAsync("NotificationSettings.MaxPerUser",    _maxPerUser.ToString());
+            Snackbar.Add("Configuración general guardada.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _savingGeneral = false;
+        }
+    }
+
+    private async Task SaveTypesAsync()
+    {
+        _savingTypes = true;
+        try
+        {
+            await SettingsService.SaveSettingAsync("NotificationSettings.JobCompleted.Enabled", _jobCompletedEnabled.ToString().ToLower());
+            await SettingsService.SaveSettingAsync("NotificationSettings.JobFailed.Enabled",    _jobFailedEnabled.ToString().ToLower());
+            await SettingsService.SaveSettingAsync("NotificationSettings.ShareViewed.Enabled",  _shareViewedEnabled.ToString().ToLower());
+            Snackbar.Add("Tipos de notificación guardados.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _savingTypes = false;
+        }
+    }
+
+    private async Task PurgeAsync()
+    {
+        _purging = true;
+        try
+        {
+            var result = await Http.PostAsync("/api/admin/notifications/purge", null);
+            if (result.IsSuccessStatusCode)
+            {
+                var body = await result.Content.ReadFromJsonAsync<PurgeResult>();
+                Snackbar.Add($"Se eliminaron {body?.Deleted ?? 0} notificaciones.", Severity.Success);
+                await RefreshStatsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Error al limpiar notificaciones.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _purging = false;
+        }
+    }
+
+    private sealed record NotificationStatsResponse(int Total, int Unread, DateTime? OldestAt);
+    private sealed record PurgeResult(int Deleted);
+}
