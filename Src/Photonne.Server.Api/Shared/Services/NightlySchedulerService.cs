@@ -85,7 +85,7 @@ public class NightlySchedulerService : BackgroundService
         Console.WriteLine($"[NIGHTLY] Starting nightly run for {todayStr} (local time: {localNow:HH:mm}, tz: {timezoneId}).");
 
         // Persist lastRunDate *before* running to avoid double-execution on error
-        await settings.SaveSettingAsync("NightlyTaskSettings.LastRunDate", todayStr, Guid.Empty);
+        await settings.SetSettingAsync("NightlyTaskSettings.LastRunDate", todayStr, Guid.Empty);
 
         await RunTasksAsync(scope.ServiceProvider, settings, ct);
 
