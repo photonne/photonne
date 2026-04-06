@@ -3,6 +3,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ISettingsService SettingsService
 
 <PageTitle>Mis enlaces - Photonne</PageTitle>
 
@@ -324,6 +325,7 @@ else
 @code {
     private List<SentShareLinkDto> _links = new();
     private bool _loading = true;
+    private string _publicUrl = "";
 
     // ── Edit dialog state ──────────────────────────────────────────────────────
     private bool _editDialogOpen;
@@ -348,15 +350,21 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        try { _links = await ShareService.GetSentShareLinksAsync(); }
+        try
+        {
+            _publicUrl = await SettingsService.GetSettingAsync("ServerSettings.PublicUrl", "");
+            _links = await ShareService.GetSentShareLinksAsync();
+        }
         catch { Snackbar.Add("Error al cargar los enlaces", Severity.Error); }
         finally { _loading = false; }
     }
 
     private string BuildShareUrl(string token)
     {
-        var baseUri = new Uri(Navigation.BaseUri);
-        return $"{baseUri.Scheme}://{baseUri.Authority}/share/{token}";
+        var baseUrl = !string.IsNullOrWhiteSpace(_publicUrl)
+            ? _publicUrl.TrimEnd('/')
+            : $"{new Uri(Navigation.BaseUri).Scheme}://{new Uri(Navigation.BaseUri).Authority}";
+        return $"{baseUrl}/share/{token}";
     }
 
     private async Task CopyLink(string token)

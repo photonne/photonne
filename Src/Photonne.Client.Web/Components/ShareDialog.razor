@@ -2,6 +2,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject ISettingsService SettingsService
 
 <MudDialog>
     <TitleContent>
@@ -130,6 +131,7 @@
     // ── State ───────────────────────────────────────────────────────────────
     private bool _loadingLinks = false;
     private List<CreateShareLinkResponse> _publicLinks = new();
+    private string _publicUrl = "";
 
     // New public link form
     private bool _newLinkPasswordEnabled = false;
@@ -144,15 +146,21 @@
     protected override async Task OnInitializedAsync()
     {
         _loadingLinks = true;
-        try { _publicLinks = await ShareService.GetShareLinksAsync(null, AlbumId); }
+        try
+        {
+            _publicUrl = await SettingsService.GetSettingAsync("ServerSettings.PublicUrl", "");
+            _publicLinks = await ShareService.GetShareLinksAsync(null, AlbumId);
+        }
         catch { /* non-critical */ }
         finally { _loadingLinks = false; }
     }
 
     private string BuildShareUrl(string token)
     {
-        var baseUri = new Uri(Navigation.BaseUri);
-        return $"{baseUri.Scheme}://{baseUri.Authority}/share/{token}";
+        var baseUrl = !string.IsNullOrWhiteSpace(_publicUrl)
+            ? _publicUrl.TrimEnd('/')
+            : $"{new Uri(Navigation.BaseUri).Scheme}://{new Uri(Navigation.BaseUri).Authority}";
+        return $"{baseUrl}/share/{token}";
     }
 
     private async Task CopyLink(string token)

@@ -11,6 +11,7 @@
 @inject LayoutService LayoutService
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IJSRuntime JS
+@inject ISettingsService SettingsService
 @implements IDisposable
 
 <PageTitle>Álbumes - Photonne</PageTitle>
@@ -1084,6 +1085,7 @@ else
     private string? _shareSheetAlbumName;
     private bool _shareLoadingLinks = false;
     private List<CreateShareLinkResponse> _sharePublicLinks = new();
+    private string _sharePublicUrl = "";
     private bool _shareNewPasswordEnabled = false;
     private string _shareNewPassword = string.Empty;
     private bool _shareNewExpiryEnabled = false;
@@ -1195,6 +1197,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadPreferences();
+        _sharePublicUrl = await SettingsService.GetSettingAsync("ServerSettings.PublicUrl", "");
         // Solo cargar la lista de álbumes cuando estamos en la vista de listado (sin AlbumId).
         // Si entramos en /albums/{id} (p. ej. volver del detalle de un asset), no pedir /api/albums.
         if (AlbumId == Guid.Empty)
@@ -1448,8 +1451,10 @@ else
 
     private string BuildShareUrl(string token)
     {
-        var baseUri = new Uri(Navigation.BaseUri);
-        return $"{baseUri.Scheme}://{baseUri.Authority}/share/{token}";
+        var baseUrl = !string.IsNullOrWhiteSpace(_sharePublicUrl)
+            ? _sharePublicUrl.TrimEnd('/')
+            : $"{new Uri(Navigation.BaseUri).Scheme}://{new Uri(Navigation.BaseUri).Authority}";
+        return $"{baseUrl}/share/{token}";
     }
 
     private async Task ShareCopyLink(string token)
