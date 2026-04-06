@@ -25,6 +25,14 @@ public static class DependencyInjection
         builder.Services.AddScoped<ExternalLibraryScanService>();
         builder.Services.AddHostedService<ExternalLibrarySchedulerService>();
         
+        // HttpClient para llamadas externas (GitHub API, etc.)
+        builder.Services.AddHttpClient("github", client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Photonne/1.0");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();
         

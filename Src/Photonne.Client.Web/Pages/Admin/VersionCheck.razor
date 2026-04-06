@@ -1,0 +1,211 @@
+@page "/admin/settings/version"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Verificar versión - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="mt-4">
+            <MudText Typo="Typo.h5" Class="mb-2">Verificar versión</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Estado de la versión instalada y disponibilidad de actualizaciones.
+            </MudText>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="mt-6 d-flex align-center gap-4">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                <MudText Typo="Typo.body2">Consultando GitHub…</MudText>
+            </div>
+        }
+        else if (_info is not null)
+        {
+            <MudGrid Class="mt-4">
+
+                <!-- Versión instalada -->
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Versión instalada</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <div class="d-flex align-center gap-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Color="Color.Primary" Size="Size.Large" />
+                                <MudText Typo="Typo.h4" Style="font-weight:600">v@(_info.CurrentVersion)</MudText>
+                            </div>
+
+                            <MudDivider Class="my-4" />
+
+                            @if (_info.HasUpdate)
+                            {
+                                <MudAlert Severity="Severity.Warning" Class="mb-0">
+                                    Hay una nueva versión disponible: <strong>v@(_info.LatestVersion)</strong>
+                                </MudAlert>
+                            }
+                            else if (_info.LatestVersion is not null)
+                            {
+                                <MudAlert Severity="Severity.Success" Class="mb-0">
+                                    Estás usando la versión más reciente.
+                                </MudAlert>
+                            }
+                            else if (_info.CheckError is not null)
+                            {
+                                <MudAlert Severity="Severity.Warning" Class="mb-0">
+                                    No se pudo verificar la última versión.
+                                </MudAlert>
+                            }
+                        </MudCardContent>
+                        <MudCardActions Class="px-4 pb-4">
+                            <MudButton OnClick="RefreshAsync"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Refresh"
+                                       Disabled="_loading">
+                                Actualizar
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+
+                <!-- Última release -->
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Última release en GitHub</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (_info.CheckError is not null)
+                            {
+                                <MudAlert Severity="Severity.Error">@_info.CheckError</MudAlert>
+                            }
+                            else if (_info.LatestVersion is not null)
+                            {
+                                <MudList T="string" Dense="true">
+                                    <MudListItem Icon="@Icons.Material.Filled.Tag">
+                                        <MudText Typo="Typo.body2">
+                                            <strong>Versión:</strong> v@(_info.LatestVersion)
+                                        </MudText>
+                                    </MudListItem>
+                                    @if (_info.PublishedAt.HasValue)
+                                    {
+                                        <MudListItem Icon="@Icons.Material.Filled.CalendarToday">
+                                            <MudText Typo="Typo.body2">
+                                                <strong>Publicada:</strong> @_info.PublishedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            </MudText>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+
+                                @if (!string.IsNullOrWhiteSpace(_info.ReleaseNotes))
+                                {
+                                    <MudDivider Class="my-3" />
+                                    <MudText Typo="Typo.subtitle2" Class="mb-1">Notas de la versión</MudText>
+                                    <MudPaper Elevation="0" Class="pa-3" Style="background:var(--mud-palette-background-grey); border-radius:8px; max-height:200px; overflow-y:auto;">
+                                        <MudText Typo="Typo.body2" Style="white-space:pre-wrap">@_info.ReleaseNotes</MudText>
+                                    </MudPaper>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin información disponible.</MudText>
+                            }
+                        </MudCardContent>
+                        @if (_info.LatestReleaseUrl is not null)
+                        {
+                            <MudCardActions Class="px-4 pb-4">
+                                <MudButton Href="@_info.LatestReleaseUrl"
+                                           Target="_blank"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           EndIcon="@Icons.Material.Filled.OpenInNew">
+                                    Ver en GitHub
+                                </MudButton>
+                            </MudCardActions>
+                        }
+                    </MudCard>
+                </MudItem>
+
+            </MudGrid>
+
+            <MudText Typo="Typo.caption" Class="mt-4 mud-text-secondary">
+                Comprobado el @_info.CheckedAt.ToLocalTime().ToString("dd/MM/yyyy") a las @_info.CheckedAt.ToLocalTime().ToString("HH:mm") · El resultado se almacena en caché durante 1 hora.
+            </MudText>
+        }
+        else if (_errorMessage is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+        }
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+    private bool _loading = true;
+    private VersionInfoResponse? _info;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+        try
+        {
+            _info = await Http.GetFromJsonAsync<VersionInfoResponse>("/api/admin/version");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al cargar la información de versión: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        _info = null;
+        await LoadAsync();
+    }
+
+    private sealed record VersionInfoResponse(
+        string CurrentVersion,
+        string? LatestVersion,
+        string? LatestReleaseUrl,
+        string? ReleaseNotes,
+        DateTimeOffset? PublishedAt,
+        bool HasUpdate,
+        string? CheckError,
+        DateTimeOffset CheckedAt);
+}
