@@ -69,6 +69,18 @@ public class AssetsEndpoint : IEndpoint
             return Results.Forbid();
         }
 
+        // If trash is disabled, delete permanently instead of moving to _trash
+        var trashEnabled = await settingsService.GetSettingAsync("TrashSettings.Enabled", Guid.Empty, "true");
+        if (!trashEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+        {
+            var withThumbnails = await dbContext.Assets
+                .Include(a => a.Thumbnails)
+                .Where(a => request.AssetIds.Contains(a.Id))
+                .ToListAsync(ct);
+            await DeleteAssetsPermanentlyAsync(dbContext, settingsService, withThumbnails, ct);
+            return Results.NoContent();
+        }
+
         var trashVirtualRoot = $"/assets/users/{userId}/_trash";
         var dateFolder = DateTime.UtcNow.ToString("yyyy-MM-dd");
         var dateVirtualPath = $"{trashVirtualRoot}/{dateFolder}";

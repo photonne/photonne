@@ -76,11 +76,13 @@ public class SettingsEndpoint : IEndpoint
     /// Returns true for keys that are server-wide globals (stored under Guid.Empty).
     /// TaskSettings.*  — background worker counts
     /// ServerSettings.* — server configuration (paths, limits, public URL…)
+    /// TrashSettings.* — trash behaviour (enabled, retention, quota)
     /// AssetsPath      — legacy global key for the managed assets directory
     /// </summary>
     private static bool IsGlobalKey(string key) =>
         key.StartsWith("TaskSettings.", StringComparison.Ordinal) ||
         key.StartsWith("ServerSettings.", StringComparison.Ordinal) ||
+        key.StartsWith("TrashSettings.", StringComparison.Ordinal) ||
         key.Equals("AssetsPath", StringComparison.Ordinal);
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
