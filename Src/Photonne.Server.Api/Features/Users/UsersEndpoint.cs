@@ -175,10 +175,11 @@ public class UsersEndpoint : IEndpoint
         [FromBody] CreateUserRequest request,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IAuthService authService,
+        [FromServices] SettingsService settingsService,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) || 
-            string.IsNullOrWhiteSpace(request.Email) || 
+        if (string.IsNullOrWhiteSpace(request.Username) ||
+            string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Password))
         {
             return Results.BadRequest(new { error = "Username, email and password are required" });
@@ -196,6 +197,15 @@ public class UsersEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Username or email already exists" });
         }
 
+        // Read global defaults; explicit request values always take precedence
+        var defaultRole     = await settingsService.GetSettingAsync("UserSettings.DefaultRole",     Guid.Empty, "User");
+        var defaultActive   = await settingsService.GetSettingAsync("UserSettings.DefaultIsActive", Guid.Empty, "true");
+        var defaultQuotaGb  = await settingsService.GetSettingAsync("UserSettings.DefaultStorageQuotaGb", Guid.Empty, "0");
+
+        long? defaultQuotaBytes = int.TryParse(defaultQuotaGb, out var gb) && gb > 0
+            ? (long)gb * 1_073_741_824L
+            : null;
+
         var user = new User
         {
             Username = request.Username,
@@ -203,8 +213,9 @@ public class UsersEndpoint : IEndpoint
             PasswordHash = authService.HashPassword(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Role = request.Role ?? "User",
-            IsActive = request.IsActive ?? true,
+            Role = request.Role ?? defaultRole,
+            IsActive = request.IsActive ?? defaultActive.Equals("true", StringComparison.OrdinalIgnoreCase),
+            StorageQuotaBytes = request.StorageQuotaBytes ?? defaultQuotaBytes,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -438,6 +449,8 @@ public class CreateUserRequest
     public string? LastName { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
+    /// <summary>Storage quota in bytes. Null uses the global default from UserSettings.</summary>
+    public long? StorageQuotaBytes { get; set; }
 }
 
 public class UpdateUserRequest
