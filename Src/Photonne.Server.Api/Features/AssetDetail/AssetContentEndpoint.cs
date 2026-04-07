@@ -1,3 +1,4 @@
+using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -38,6 +39,23 @@ public class AssetContentEndpoint : IEndpoint
         }
 
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
+
+        // HEIC/HEIF images are not supported by most browsers, convert to JPEG on-the-fly
+        if (extension is ".heic" or ".heif")
+        {
+            using var image = new MagickImage(physicalPath);
+            image.AutoOrient();
+            image.Format = MagickFormat.Jpeg;
+            image.Quality = 90;
+            var jpegBytes = image.ToByteArray();
+            if (download == true)
+            {
+                var downloadName = Path.GetFileNameWithoutExtension(asset.FileName) + ".jpg";
+                return Results.File(jpegBytes, "image/jpeg", fileDownloadName: downloadName);
+            }
+            return Results.File(jpegBytes, "image/jpeg");
+        }
+
         var contentType = GetContentType(extension, asset.Type);
 
         if (download == true)

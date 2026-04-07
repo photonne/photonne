@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -154,6 +155,18 @@ public class AssetPendingEndpoint : IEndpoint
 
         var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
         var type = GetAssetType(extension);
+
+        // HEIC/HEIF images are not supported by most browsers, convert to JPEG on-the-fly
+        if (extension is ".heic" or ".heif")
+        {
+            using var image = new MagickImage(physicalPath);
+            image.AutoOrient();
+            image.Format = MagickFormat.Jpeg;
+            image.Quality = 90;
+            var jpegBytes = image.ToByteArray();
+            return Results.File(jpegBytes, "image/jpeg");
+        }
+
         var contentType = GetContentType(extension, type);
 
         return Results.File(physicalPath, contentType, enableRangeProcessing: true);
@@ -217,28 +230,42 @@ public class AssetPendingEndpoint : IEndpoint
                     _ => 640
                 };
 
-                using var image = await Image.LoadAsync(physicalPath, cancellationToken);
-                
-                // Aplicar orientación EXIF si existe
-                var orientation = GetImageOrientation(image);
-                if (orientation != 0)
+                var extension2 = Path.GetExtension(physicalPath).ToLowerInvariant();
+                if (extension2 is ".heic" or ".heif")
                 {
-                    image.Mutate(x => x.AutoOrient());
+                    // SixLabors.ImageSharp no soporta HEIC, usar Magick.NET
+                    using var magickImage = new MagickImage(physicalPath);
+                    magickImage.AutoOrient();
+                    magickImage.Thumbnail((uint)targetSize, (uint)targetSize);
+                    magickImage.Format = MagickFormat.Jpeg;
+                    magickImage.Quality = 85;
+                    thumbnailBytes = magickImage.ToByteArray();
                 }
-
-                // Calcular dimensiones manteniendo aspect ratio
-                var (width, height) = CalculateThumbnailSize(image.Width, image.Height, targetSize);
-                
-                image.Mutate(x => x.Resize(new ResizeOptions
+                else
                 {
-                    Size = new Size(width, height),
-                    Mode = ResizeMode.Max
-                }));
+                    using var image = await Image.LoadAsync(physicalPath, cancellationToken);
 
-                // Convertir a JPEG
-                using var ms = new MemoryStream();
-                await image.SaveAsync(ms, new JpegEncoder { Quality = 85 }, cancellationToken);
-                thumbnailBytes = ms.ToArray();
+                    // Aplicar orientación EXIF si existe
+                    var orientation = GetImageOrientation(image);
+                    if (orientation != 0)
+                    {
+                        image.Mutate(x => x.AutoOrient());
+                    }
+
+                    // Calcular dimensiones manteniendo aspect ratio
+                    var (width, height) = CalculateThumbnailSize(image.Width, image.Height, targetSize);
+
+                    image.Mutate(x => x.Resize(new ResizeOptions
+                    {
+                        Size = new Size(width, height),
+                        Mode = ResizeMode.Max
+                    }));
+
+                    // Convertir a JPEG
+                    using var ms = new MemoryStream();
+                    await image.SaveAsync(ms, new JpegEncoder { Quality = 85 }, cancellationToken);
+                    thumbnailBytes = ms.ToArray();
+                }
                 contentType = "image/jpeg";
             }
             else
