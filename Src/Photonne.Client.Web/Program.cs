@@ -133,6 +133,7 @@ builder.Services.AddScoped<IMaintenanceService>(sp =>
     return new MaintenanceService(httpClient, async () => await authService.GetTokenAsync());
 });
 builder.Services.AddSingleton<TimelineCache>();
+builder.Services.AddScoped<TimelinePersistenceService>();
 builder.Services.AddSingleton<PwaUpdateService>();
 
 await builder.Build().RunAsync();

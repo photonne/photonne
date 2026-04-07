@@ -8,6 +8,7 @@
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IDialogService DialogService
 @inject TimelineCache TimelineCache
+@inject TimelinePersistenceService TimelinePersistence
 @implements IDisposable
 
 <PageTitle>Timeline - Photonne</PageTitle>
@@ -1086,7 +1087,7 @@
         {
             if (TimelineCache.HasValidIndex && TimelineCache.Index != null)
             {
-                // Render instantáneo desde caché — sin barra de carga
+                // Nivel 1: render instantáneo desde caché en memoria — sin barra de carga
                 _timelineIndex = TimelineCache.Index;
                 BuildSections();
                 if (_sections.Any())
@@ -1098,12 +1099,31 @@
             }
             else
             {
-                _loading = true;
-                _timelineIndex = await AssetService.GetTimelineIndexAsync();
-                TimelineCache.SetIndex(_timelineIndex);
-                BuildSections();
-                if (_sections.Any())
-                    await LoadSection(_sections[0]);
+                // Nivel 2: intentar cargar desde IndexedDB antes de ir a la API
+                var persistedIndex = await TimelinePersistence.LoadIndexAsync();
+                if (persistedIndex != null)
+                {
+                    TimelineCache.SetIndex(persistedIndex);
+                    _timelineIndex = persistedIndex;
+                    BuildSections();
+                    if (_sections.Any())
+                        await LoadSection(_sections[0]);
+                    StateHasChanged();
+
+                    // Refresca desde la API en segundo plano
+                    _ = RefreshIndexInBackgroundAsync();
+                }
+                else
+                {
+                    // Arranque en frío: obtener desde la API y persistir
+                    _loading = true;
+                    _timelineIndex = await AssetService.GetTimelineIndexAsync();
+                    TimelineCache.SetIndex(_timelineIndex);
+                    _ = TimelinePersistence.SaveIndexAsync(_timelineIndex);
+                    BuildSections();
+                    if (_sections.Any())
+                        await LoadSection(_sections[0]);
+                }
             }
         }
         catch (Exception ex)
@@ -1125,13 +1145,14 @@
 
             if (!TimelineCache.IndexChangedFrom(freshIndex))
             {
-                // Sin cambios — renovar solo el TTL
+                // Sin cambios — renovar solo el TTL (sin escribir en IndexedDB)
                 TimelineCache.SetIndex(freshIndex);
                 return;
             }
 
             var changedMonths = TimelineCache.GetChangedMonths(freshIndex);
             TimelineCache.SetIndex(freshIndex);
+            _ = TimelinePersistence.SaveIndexAsync(freshIndex);
             foreach (var ym in changedMonths)
                 TimelineCache.InvalidateSection(ym);
 
@@ -1189,7 +1210,7 @@
     {
         if (section.IsLoaded || section.IsLoading) return;
 
-        // Servir desde caché de forma instantánea si está disponible
+        // Nivel 1: caché en memoria — instantáneo
         if (TimelineCache.TryGetSection(section.YearMonth, out var cachedItems))
         {
             section.Items = cachedItems;
@@ -1199,6 +1220,19 @@
             return;
         }
 
+        // Nivel 2: IndexedDB — sin spinner, sin red
+        var persistedItems = await TimelinePersistence.LoadSectionAsync(section.YearMonth);
+        if (persistedItems != null)
+        {
+            TimelineCache.SetSection(section.YearMonth, persistedItems);
+            section.Items = persistedItems;
+            section.IsLoaded = true;
+            RebuildGroupedAssets();
+            StateHasChanged();
+            return;
+        }
+
+        // Nivel 3: API — mostrar spinner
         section.IsLoading = true;
         StateHasChanged();
         try
@@ -1207,6 +1241,7 @@
             section.Items = result.Items;
             section.IsLoaded = true;
             TimelineCache.SetSection(section.YearMonth, result.Items);
+            _ = TimelinePersistence.SaveSectionAsync(section.YearMonth, result.Items);
         }
         catch (Exception ex)
         {
@@ -1471,6 +1506,7 @@
     {
         // Full reload (called after mutations like delete/archive)
         TimelineCache.InvalidateAll();
+        _ = TimelinePersistence.ClearAllAsync();
         foreach (var s in _sections) { s.IsLoaded = false; s.IsLoading = false; s.Items = new(); s.IsMasonryDone = false; }
         _groupedAssets = new();
         _activeGroup = "";
@@ -1482,6 +1518,7 @@
         {
             _timelineIndex = await AssetService.GetTimelineIndexAsync();
             TimelineCache.SetIndex(_timelineIndex);
+            _ = TimelinePersistence.SaveIndexAsync(_timelineIndex);
             BuildSections();
             if (_sections.Any())
                 await LoadSection(_sections[0]);
