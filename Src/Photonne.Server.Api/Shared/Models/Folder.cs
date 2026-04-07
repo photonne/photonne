@@ -20,6 +20,9 @@ public class Folder
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
+    public Guid? ExternalLibraryId { get; set; }
+    public ExternalLibrary? ExternalLibrary { get; set; }
+
     // Navigation properties
     public ICollection<FolderPermission> Permissions { get; set; } = new List<FolderPermission>();
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();

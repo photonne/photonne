@@ -13,5 +13,6 @@ public class FolderResponse
     public bool IsShared { get; set; }
     public bool IsOwner { get; set; }
     public int SharedWithCount { get; set; }
+    public Guid? ExternalLibraryId { get; set; }
     public List<FolderResponse> SubFolders { get; set; } = new();
 }

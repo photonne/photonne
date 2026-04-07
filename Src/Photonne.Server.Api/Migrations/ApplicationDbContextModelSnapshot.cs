@@ -519,6 +519,9 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<Guid?>("ExternalLibraryId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -533,6 +536,8 @@ namespace Photonne.Server.Api.Migrations
                         .HasColumnType("character varying(1000)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExternalLibraryId");
 
                     b.HasIndex("ParentFolderId");
 
@@ -1034,10 +1039,17 @@ namespace Photonne.Server.Api.Migrations
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Folder", b =>
                 {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.ExternalLibrary", "ExternalLibrary")
+                        .WithMany()
+                        .HasForeignKey("ExternalLibraryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Photonne.Server.Api.Shared.Models.Folder", "ParentFolder")
                         .WithMany("SubFolders")
                         .HasForeignKey("ParentFolderId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ExternalLibrary");
 
                     b.Navigation("ParentFolder");
                 });

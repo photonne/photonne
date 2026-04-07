@@ -14,4 +14,5 @@ public interface IFolderService
     Task DeleteFolderAsync(Guid folderId);
     Task MoveFolderAssetsAsync(MoveFolderAssetsRequest request);
     Task RemoveFolderAssetsAsync(RemoveFolderAssetsRequest request);
+    Task<FolderItem?> GetLibraryRootFolderAsync(Guid libraryId);
 }

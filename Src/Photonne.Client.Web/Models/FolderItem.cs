@@ -15,6 +15,7 @@ public class FolderItem
     public bool IsShared { get; set; }
     public bool IsOwner { get; set; }
     public int SharedWithCount { get; set; }
+    public Guid? ExternalLibraryId { get; set; }
     public List<FolderItem> SubFolders { get; set; } = new();
 
     public string? ThumbnailUrl => FirstAssetId.HasValue

@@ -139,4 +139,17 @@ public class FolderService : IFolderService
         var response = await _httpClient.PostAsJsonAsync("/api/folders/assets/remove", request);
         response.EnsureSuccessStatusCode();
     }
+
+    public async Task<FolderItem?> GetLibraryRootFolderAsync(Guid libraryId)
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            return await _httpClient.GetFromJsonAsync<FolderItem?>($"/api/folders/library/{libraryId}/root");
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

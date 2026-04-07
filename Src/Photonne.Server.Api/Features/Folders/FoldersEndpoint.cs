@@ -90,6 +90,98 @@ public class FoldersEndpoint : IEndpoint
         group.MapPost("assets/remove", RemoveFolderAssets)
             .WithName("RemoveFolderAssets")
             .WithDescription("Removes assets from a folder");
+
+        group.MapGet("library/{libraryId}/root", GetLibraryRootFolder)
+            .WithName("GetLibraryRootFolder")
+            .WithDescription("Gets the root folder of an external library");
+    }
+
+    private async Task<IResult> GetLibraryRootFolder(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromRoute] Guid libraryId,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
+            var library = await dbContext.ExternalLibraries
+                .FirstOrDefaultAsync(l => l.Id == libraryId, cancellationToken);
+
+            if (library == null)
+                return Results.NotFound(new { error = $"Library {libraryId} not found" });
+
+            var isAdmin = user.IsInRole("Admin");
+
+            if (!isAdmin)
+            {
+                var hasAccess = await dbContext.ExternalLibraryPermissions
+                    .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanView, cancellationToken);
+                if (!hasAccess)
+                    return Results.Forbid();
+            }
+
+            // Find root folder: ExternalLibraryId matches and parent does NOT belong to this library
+            var rootFolder = await dbContext.Folders
+                .Include(f => f.Assets)
+                .Include(f => f.SubFolders)
+                    .ThenInclude(sf => sf.Assets)
+                .Where(f => f.ExternalLibraryId == libraryId &&
+                            (f.ParentFolderId == null ||
+                             !dbContext.Folders.Any(p => p.Id == f.ParentFolderId && p.ExternalLibraryId == libraryId)))
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (rootFolder == null)
+                return Results.NotFound(new { error = "Library has not been scanned yet or has no indexed folders." });
+
+            var response = new FolderResponse
+            {
+                Id = rootFolder.Id,
+                Path = rootFolder.Path,
+                Name = rootFolder.Name,
+                ParentFolderId = rootFolder.ParentFolderId,
+                CreatedAt = rootFolder.CreatedAt,
+                AssetCount = rootFolder.Assets.Count(a => a.DeletedAt == null),
+                FirstAssetId = rootFolder.Assets
+                    .Where(a => a.DeletedAt == null)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .FirstOrDefault()?.Id,
+                PreviewAssetIds = rootFolder.Assets
+                    .Where(a => a.DeletedAt == null)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .Take(4).Select(a => a.Id).ToList(),
+                IsOwner = isAdmin,
+                IsShared = false,
+                ExternalLibraryId = rootFolder.ExternalLibraryId,
+                SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
+                {
+                    Id = sf.Id,
+                    Path = sf.Path,
+                    Name = sf.Name,
+                    ParentFolderId = sf.ParentFolderId,
+                    CreatedAt = sf.CreatedAt,
+                    AssetCount = sf.Assets.Count(a => a.DeletedAt == null),
+                    FirstAssetId = sf.Assets
+                        .Where(a => a.DeletedAt == null)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .FirstOrDefault()?.Id,
+                    PreviewAssetIds = sf.Assets
+                        .Where(a => a.DeletedAt == null)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .Take(4).Select(a => a.Id).ToList(),
+                    IsShared = false,
+                    ExternalLibraryId = sf.ExternalLibraryId
+                }).ToList()
+            };
+
+            return Results.Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+        }
     }
 
     private async Task<IResult> GetAllFolders(
@@ -158,7 +250,8 @@ public class FoldersEndpoint : IEndpoint
                         .Take(4).Select(a => a.Id).ToList(),
                     IsOwner = userPerm?.CanManagePermissions ?? isAdmin,
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
-                    SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0
+                    SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
+                    ExternalLibraryId = f.ExternalLibraryId
                 };
             }).ToList();
 
@@ -192,6 +285,7 @@ public class FoldersEndpoint : IEndpoint
             var folder = await dbContext.Folders
                 .Include(f => f.Assets)
                 .Include(f => f.SubFolders)
+                    .ThenInclude(sf => sf.Assets)
                 .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
 
             if (folder == null)
@@ -239,6 +333,7 @@ public class FoldersEndpoint : IEndpoint
                 IsOwner = userPermission?.CanManagePermissions ?? isAdmin,
                 IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = sharedCount,
+                ExternalLibraryId = folder.ExternalLibraryId,
                 SubFolders = folder.SubFolders.Select(sf => new FolderResponse
                 {
                     Id = sf.Id,
@@ -246,9 +341,17 @@ public class FoldersEndpoint : IEndpoint
                     Name = sf.Name,
                     ParentFolderId = sf.ParentFolderId,
                     CreatedAt = sf.CreatedAt,
-                    AssetCount = 0, // Don't load assets for subfolders in this query
-                    IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase)
-                    // Note: shared count for subfolders not loaded here for performance
+                    AssetCount = sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null),
+                    FirstAssetId = sf.Assets
+                        .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .FirstOrDefault()?.Id,
+                    PreviewAssetIds = sf.Assets
+                        .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .Take(4).Select(a => a.Id).ToList(),
+                    IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
+                    ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()
             };
 
@@ -881,15 +984,20 @@ public class FoldersEndpoint : IEndpoint
     private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, bool isAdmin, Guid folderId, CancellationToken ct)
     {
         if (isAdmin)
-        {
             return true;
-        }
 
         var folder = await dbContext.Folders
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == folderId, ct);
 
         if (folder == null) return false;
+
+        // Carpetas de biblioteca externa: verificar permiso de la biblioteca
+        if (folder.ExternalLibraryId.HasValue)
+        {
+            return await dbContext.ExternalLibraryPermissions
+                .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == folder.ExternalLibraryId && p.CanView, ct);
+        }
 
         var hasPermissions = await dbContext.FolderPermissions
             .AnyAsync(p => p.FolderId == folderId, ct);
@@ -991,17 +1099,27 @@ public class FoldersEndpoint : IEndpoint
 
         var allowedIds = new HashSet<Guid>(readableIds);
 
+        // Carpetas de espacio personal (sin permisos explícitos)
         foreach (var folder in allFolders)
         {
-            if (!foldersWithPermissions.Contains(folder.Id))
+            if (!foldersWithPermissions.Contains(folder.Id) && !folder.ExternalLibraryId.HasValue)
             {
-                // Si la carpeta no tiene permisos definidos, solo es accesible si está en el espacio personal del usuario
                 var userRootPath = GetUserRootPath(userId);
                 if (folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                {
                     allowedIds.Add(folder.Id);
-                }
             }
+        }
+
+        // Carpetas de bibliotecas externas accesibles
+        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
+            .Where(p => p.UserId == userId && p.CanView)
+            .Select(p => p.ExternalLibraryId)
+            .ToHashSetAsync(ct);
+
+        foreach (var folder in allFolders)
+        {
+            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
+                allowedIds.Add(folder.Id);
         }
 
         AddAncestorFolders(allFolders, allowedIds);

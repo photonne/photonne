@@ -1,7 +1,10 @@
 @page "/folders"
 @page "/folders/{Space}"
 @page "/folders/{FolderId:guid}"
+@page "/folders/library/{LibraryId:guid}"
+@using Photonne.Client.Web.Models
 @inject IFolderService FolderService
+@inject IExternalLibraryService ExternalLibraryService
 @inject FoldersCache FoldersCache
 @inject IAssetService AssetService
 @inject ISnackbar Snackbar
@@ -317,14 +320,15 @@
 @if (IsAtRoot && Trash != true)
 {
     <div class="ph-section-tabs">
-        <a href="/folders/own"    class="ph-section-tab @(_activeTab == 0 ? "ph-section-tab--active" : "")">Personal</a>
-        <a href="/folders/shared" class="ph-section-tab @(_activeTab == 1 ? "ph-section-tab--active" : "")">Compartido</a>
+        <a href="/folders/own"       class="ph-section-tab @(_activeTab == 0 ? "ph-section-tab--active" : "")">Personal</a>
+        <a href="/folders/shared"    class="ph-section-tab @(_activeTab == 1 ? "ph-section-tab--active" : "")">Compartido</a>
+        <a href="/folders/libraries" class="ph-section-tab @(_activeTab == 2 ? "ph-section-tab--active" : "")">Bibliotecas</a>
     </div>
 }
 
-@if (_selectedFolder == null)
+@if (_selectedFolder == null && _activeTab != 2)
 {
-    @* Vista de selección de raíz (fallback si no se pudo cargar una carpeta raíz) *@
+    @* Vista de selección de raíz Personal / Compartido *@
     @if (_folderViewMode == FolderViewMode.Grid)
     {
         @RenderFolderGrid(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))
@@ -332,6 +336,43 @@
     else
     {
         @RenderFolderList(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))
+    }
+}
+else if (_activeTab == 2 && _selectedFolder == null)
+{
+    @* Vista de lista de bibliotecas *@
+    @if (_loadingLibraries)
+    {
+        <MudProgressLinear Indeterminate="true" Class="my-4" />
+    }
+    else if (!_libraries.Any())
+    {
+        <EmptyState Icon="@Icons.Material.Filled.LibraryBooks"
+                    Title="Sin bibliotecas"
+                    Description="No tienes acceso a ninguna biblioteca externa." />
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var lib in _libraries)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <div class="folder-card-container" @onclick="@(() => NavigateToLibrary(lib))">
+                        <div class="folder-thumbnail-wrapper">
+                            <div class="folder-card-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Large" Style="color: white;" />
+                            </div>
+                            <div class="folder-card-overlay">
+                                <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@lib.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
+                                    @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
+                                </MudText>
+                            </div>
+                        </div>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
     }
 }
 else
@@ -586,18 +627,28 @@ else
 @code {
     [Parameter] public string? Space { get; set; }
     [Parameter] public Guid? FolderId { get; set; }
+    [Parameter] public Guid? LibraryId { get; set; }
     [SupplyParameterFromQuery(Name = "trash")] public bool? Trash { get; set; }
-    
-    private bool IsAtRoot => _selectedFolder == null || (Space != null && !FolderId.HasValue) ||
-                             IsUserRootPath(_selectedFolder.Path.Replace('\\', '/')) || 
-                             _selectedFolder.Path.Replace('\\', '/').TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsAtRoot => _selectedFolder == null || (Space != null && !FolderId.HasValue && !LibraryId.HasValue) ||
+                             IsUserRootPath(_selectedFolder.Path.Replace('\\', '/')) ||
+                             _selectedFolder.Path.Replace('\\', '/').TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase) ||
+                             IsLibraryRootFolder(_selectedFolder);
 
     private string PageHeader
     {
         get
         {
             if (Trash == true) return "Papelera";
-            return !IsAtRoot && _selectedFolder != null ? _selectedFolder.Name : (_activeTab == 1 ? "Espacio Compartido" : "Mi Espacio");
+            if (!IsAtRoot && _selectedFolder != null) return _selectedFolder.Name;
+            return _activeTab switch
+            {
+                1 => "Espacio Compartido",
+                2 => _currentLibraryId.HasValue
+                    ? (_libraries.FirstOrDefault(l => l.Id == _currentLibraryId)?.Name ?? "Biblioteca")
+                    : "Bibliotecas Externas",
+                _ => "Mi Espacio"
+            };
         }
     }
 
@@ -615,6 +666,9 @@ else
     private List<FolderItem> _personalFolders = new();
     private List<FolderItem> _sharedFolders = new();
     private List<FolderItem?> _breadcrumbFolders = new(); // Lista paralela con las carpetas del breadcrumb (null = raíz)
+    private List<ExternalLibraryDto> _libraries = new();
+    private bool _loadingLibraries = false;
+    private Guid? _currentLibraryId;
 
     private bool _createFolderSheetOpen = false;
     private bool _filterSheetOpen = false;
@@ -708,7 +762,7 @@ else
     private void OnTabChanged(int index)
     {
         _activeTab = index;
-        string space = index == 1 ? "shared" : "own";
+        string space = index switch { 1 => "shared", 2 => "libraries", _ => "own" };
         Navigation.NavigateTo($"/folders/{space}");
     }
 
@@ -718,11 +772,38 @@ else
         {
             var path = _selectedFolder.Path.Replace('\\', '/');
             bool isShared = _selectedFolder.IsShared || path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase);
-            
+
+            // Contexto de biblioteca externa
+            if (_selectedFolder.ExternalLibraryId.HasValue)
+            {
+                if (IsLibraryRootFolder(_selectedFolder))
+                {
+                    // En la raíz de la biblioteca → volver a la lista de bibliotecas
+                    _currentLibraryId = null;
+                    Navigation.NavigateTo("/folders/libraries");
+                    return;
+                }
+
+                // Subir al padre: si el padre también es de la misma biblioteca, navegar a él;
+                // si el padre no pertenece a la biblioteca, volver a la raíz de la biblioteca
+                if (_selectedFolder.ParentFolderId.HasValue)
+                {
+                    var parentFolder = _allFolders.FirstOrDefault(f => f.Id == _selectedFolder.ParentFolderId);
+                    if (parentFolder?.ExternalLibraryId == _selectedFolder.ExternalLibraryId)
+                    {
+                        Navigation.NavigateTo($"/folders/{_selectedFolder.ParentFolderId}");
+                        return;
+                    }
+                }
+                // Padre fuera de la biblioteca → volver a la raíz de la biblioteca
+                Navigation.NavigateTo($"/folders/library/{_selectedFolder.ExternalLibraryId}");
+                return;
+            }
+
             // Si ya estamos en una raíz (Personal o Compartida), ir a la selección de espacio (aquí ya debería estar en /folders/own o /folders/shared)
             if (IsUserRootPath(path) || path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
             {
-                // Ya estamos en la raíz, NavigateUp no debería ser llamado porque el botón está oculto, 
+                // Ya estamos en la raíz, NavigateUp no debería ser llamado porque el botón está oculto,
                 // pero por si acaso redirigimos a la URL limpia.
                 string space = isShared ? "shared" : "own";
                 Navigation.NavigateTo($"/folders/{space}");
@@ -949,11 +1030,40 @@ else
     
     private async Task HandleFolderNavigation()
     {
+        // Navegación a biblioteca específica: /folders/library/{guid}
+        if (LibraryId.HasValue)
+        {
+            _activeTab = 2;
+            _currentLibraryId = LibraryId;
+            await LoadLibraries();
+            var rootFolder = await FolderService.GetLibraryRootFolderAsync(LibraryId.Value);
+            if (rootFolder != null)
+            {
+                await LoadFolderContent(rootFolder);
+            }
+            else
+            {
+                Snackbar.Add("Esta biblioteca aún no ha sido escaneada o no tiene carpetas.", Severity.Info);
+                _selectedFolder = null;
+            }
+            return;
+        }
+
         if (Space != null && !FolderId.HasValue)
         {
-            _activeTab = Space.ToLower() == "shared" ? 1 : 0;
-            
-            // Si el usuario entra en "own" o "shared" sin ID de carpeta, 
+            _activeTab = Space.ToLower() switch { "shared" => 1, "libraries" => 2, _ => 0 };
+
+            if (Space.ToLower() == "libraries")
+            {
+                _currentLibraryId = null;
+                _selectedFolder = null;
+                _assets.Clear();
+                _subFoldersWithThumbnails.Clear();
+                await LoadLibraries();
+                return;
+            }
+
+            // Si el usuario entra en "own" o "shared" sin ID de carpeta,
             // cargamos la raíz correspondiente sin cambiar la URL.
             var rootFolder = Space.ToLower() == "shared" ? FindSharedRootFolder() : FindUserRootFolder();
             if (rootFolder != null)
@@ -969,6 +1079,16 @@ else
             var folder = await FolderService.GetFolderByIdAsync(FolderId.Value);
             if (folder != null)
             {
+                // Detectar si es carpeta de biblioteca y activar el tab correspondiente
+                if (folder.ExternalLibraryId.HasValue)
+                {
+                    _activeTab = 2;
+                    _currentLibraryId = folder.ExternalLibraryId;
+                    await LoadLibraries();
+                    await LoadFolderContent(folder);
+                    return;
+                }
+
                 // Si la carpeta es una raíz, redirigir a la URL limpia /folders/own o /folders/shared
                 var path = folder.Path.Replace('\\', '/');
                 if (IsUserRootPath(path))
@@ -1079,11 +1199,43 @@ else
     private FolderItem? FindTrashFolder()
     {
         if (!_allFolders.Any())
-        {
             return null;
-        }
-
         return _allFolders.FirstOrDefault(folder => IsBinPath(folder.Path));
+    }
+
+    private bool IsLibraryRootFolder(FolderItem? folder)
+    {
+        if (folder == null || !folder.ExternalLibraryId.HasValue) return false;
+        // Es raíz si su padre no pertenece a la misma biblioteca
+        if (!folder.ParentFolderId.HasValue) return true;
+        var parent = _allFolders.FirstOrDefault(f => f.Id == folder.ParentFolderId);
+        return parent == null || parent.ExternalLibraryId != folder.ExternalLibraryId;
+    }
+
+    private async Task NavigateToLibrary(ExternalLibraryDto lib)
+    {
+        _currentLibraryId = lib.Id;
+        Navigation.NavigateTo($"/folders/library/{lib.Id}");
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadLibraries()
+    {
+        if (_libraries.Any()) return;
+        try
+        {
+            _loadingLibraries = true;
+            StateHasChanged();
+            _libraries = await ExternalLibraryService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar bibliotecas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingLibraries = false;
+        }
     }
     
     private FolderItem? FindFolderInTreeById(Guid folderId, List<FolderItem> tree)

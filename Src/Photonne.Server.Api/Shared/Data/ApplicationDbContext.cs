@@ -77,7 +77,14 @@ public class ApplicationDbContext : DbContext
                 .WithMany(e => e.SubFolders)
                 .HasForeignKey(e => e.ParentFolderId)
                 .OnDelete(DeleteBehavior.Restrict);
-            
+
+            entity.HasOne(e => e.ExternalLibrary)
+                .WithMany()
+                .HasForeignKey(e => e.ExternalLibraryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.ExternalLibraryId);
+
             entity.Property(e => e.CreatedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(

@@ -165,7 +165,7 @@ public class AssetIndexingService
 
             // Folder
             var folderPath = Path.GetDirectoryName(physicalPath);
-            var folder = await GetOrCreateFolderForPathAsync(folderPath, ct);
+            var folder = await GetOrCreateFolderForPathAsync(folderPath, externalLibraryId, ct);
             asset.FolderId = folder?.Id;
 
             // EXIF
@@ -227,7 +227,7 @@ public class AssetIndexingService
         _ => AssetType.IMAGE
     };
 
-    private async Task<Folder?> GetOrCreateFolderForPathAsync(string? folderPath, CancellationToken ct)
+    private async Task<Folder?> GetOrCreateFolderForPathAsync(string? folderPath, Guid? externalLibraryId, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(folderPath))
             return null;
@@ -235,6 +235,17 @@ public class AssetIndexingService
         var virtualPath = NormalizeVirtualPath(await _settingsService.VirtualizePathAsync(folderPath));
         if (string.IsNullOrEmpty(virtualPath))
             return null;
+
+        // Determine the library root path so we only tag folders at or below it
+        string? libraryRootVirtual = null;
+        if (externalLibraryId.HasValue)
+        {
+            var library = await _dbContext.ExternalLibraries
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.Id == externalLibraryId.Value, ct);
+            if (library != null)
+                libraryRootVirtual = NormalizeVirtualPath(await _settingsService.VirtualizePathAsync(library.Path));
+        }
 
         var pathChain = new List<string>();
         var current = virtualPath;
@@ -279,14 +290,28 @@ public class AssetIndexingService
 
             if (folder != null)
             {
-                if (folder.ParentFolderId != parentFolder?.Id ||
-                    !string.Equals(folder.Path, path, StringComparison.OrdinalIgnoreCase))
+                var needsSave = folder.ParentFolderId != parentFolder?.Id ||
+                                !string.Equals(folder.Path, path, StringComparison.OrdinalIgnoreCase);
+
+                if (needsSave)
                 {
                     folder.Path = path;
                     folder.Name = GetVirtualFolderName(path);
                     folder.ParentFolderId = parentFolder?.Id;
-                    await _dbContext.SaveChangesAsync(ct);
                 }
+
+                // Tag with library only if at/below the library root and not already tagged for a different library
+                if (externalLibraryId.HasValue && IsWithinLibraryRoot(path, libraryRootVirtual))
+                {
+                    if (folder.ExternalLibraryId == null || folder.ExternalLibraryId == externalLibraryId)
+                    {
+                        folder.ExternalLibraryId = externalLibraryId;
+                        needsSave = true;
+                    }
+                }
+
+                if (needsSave)
+                    await _dbContext.SaveChangesAsync(ct);
             }
             else
             {
@@ -295,7 +320,10 @@ public class AssetIndexingService
                     Path = path,
                     Name = GetVirtualFolderName(path),
                     ParentFolderId = parentFolder?.Id,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    ExternalLibraryId = externalLibraryId.HasValue && IsWithinLibraryRoot(path, libraryRootVirtual)
+                        ? externalLibraryId
+                        : null
                 };
                 _dbContext.Folders.Add(folder);
                 await _dbContext.SaveChangesAsync(ct);
@@ -309,6 +337,16 @@ public class AssetIndexingService
         }
 
         return resultFolder;
+    }
+
+    private static bool IsWithinLibraryRoot(string path, string? libraryRootVirtual)
+    {
+        if (string.IsNullOrEmpty(libraryRootVirtual))
+            return true; // No root info → tag everything (fallback)
+
+        var normalizedPath = path.TrimEnd('/');
+        var normalizedRoot = libraryRootVirtual.TrimEnd('/');
+        return normalizedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<Guid?> GetPrimaryAdminIdAsync(CancellationToken ct)

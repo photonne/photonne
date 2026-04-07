@@ -12,27 +12,6 @@ namespace Photonne.Server.Api.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Folders",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Path = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
-                    Name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    ParentFolderId = table.Column<Guid>(type: "uuid", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Folders", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Folders_Folders_ParentFolderId",
-                        column: x => x.ParentFolderId,
-                        principalTable: "Folders",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Settings",
                 columns: table => new
                 {
@@ -92,43 +71,6 @@ namespace Photonne.Server.Api.Migrations
                     table.ForeignKey(
                         name: "FK_ExternalLibraries_Users_OwnerId",
                         column: x => x.OwnerId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FolderPermissions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    FolderId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CanRead = table.Column<bool>(type: "boolean", nullable: false),
-                    CanWrite = table.Column<bool>(type: "boolean", nullable: false),
-                    CanDelete = table.Column<bool>(type: "boolean", nullable: false),
-                    CanManagePermissions = table.Column<bool>(type: "boolean", nullable: false),
-                    GrantedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    GrantedByUserId = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FolderPermissions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_FolderPermissions_Folders_FolderId",
-                        column: x => x.FolderId,
-                        principalTable: "Folders",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_FolderPermissions_Users_GrantedByUserId",
-                        column: x => x.GrantedByUserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_FolderPermissions_Users_UserId",
-                        column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -203,6 +145,68 @@ namespace Photonne.Server.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ExternalLibraryPermissions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExternalLibraryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CanView = table.Column<bool>(type: "boolean", nullable: false),
+                    GrantedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    GrantedByUserId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExternalLibraryPermissions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExternalLibraryPermissions_ExternalLibraries_ExternalLibrar~",
+                        column: x => x.ExternalLibraryId,
+                        principalTable: "ExternalLibraries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ExternalLibraryPermissions_Users_GrantedByUserId",
+                        column: x => x.GrantedByUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_ExternalLibraryPermissions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Folders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Path = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    ParentFolderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ExternalLibraryId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Folders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Folders_ExternalLibraries_ExternalLibraryId",
+                        column: x => x.ExternalLibraryId,
+                        principalTable: "ExternalLibraries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Folders_Folders_ParentFolderId",
+                        column: x => x.ParentFolderId,
+                        principalTable: "Folders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Assets",
                 columns: table => new
                 {
@@ -252,33 +256,36 @@ namespace Photonne.Server.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ExternalLibraryPermissions",
+                name: "FolderPermissions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ExternalLibraryId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CanView = table.Column<bool>(type: "boolean", nullable: false),
+                    FolderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CanRead = table.Column<bool>(type: "boolean", nullable: false),
+                    CanWrite = table.Column<bool>(type: "boolean", nullable: false),
+                    CanDelete = table.Column<bool>(type: "boolean", nullable: false),
+                    CanManagePermissions = table.Column<bool>(type: "boolean", nullable: false),
                     GrantedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     GrantedByUserId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ExternalLibraryPermissions", x => x.Id);
+                    table.PrimaryKey("PK_FolderPermissions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ExternalLibraryPermissions_ExternalLibraries_ExternalLibrar~",
-                        column: x => x.ExternalLibraryId,
-                        principalTable: "ExternalLibraries",
+                        name: "FK_FolderPermissions_Folders_FolderId",
+                        column: x => x.FolderId,
+                        principalTable: "Folders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ExternalLibraryPermissions_Users_GrantedByUserId",
+                        name: "FK_FolderPermissions_Users_GrantedByUserId",
                         column: x => x.GrantedByUserId,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_ExternalLibraryPermissions_Users_UserId",
+                        name: "FK_FolderPermissions_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -715,6 +722,11 @@ namespace Photonne.Server.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Folders_ExternalLibraryId",
+                table: "Folders",
+                column: "ExternalLibraryId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Folders_ParentFolderId",
                 table: "Folders",
                 column: "ParentFolderId");
@@ -848,10 +860,10 @@ namespace Photonne.Server.Api.Migrations
                 name: "Assets");
 
             migrationBuilder.DropTable(
-                name: "ExternalLibraries");
+                name: "Folders");
 
             migrationBuilder.DropTable(
-                name: "Folders");
+                name: "ExternalLibraries");
 
             migrationBuilder.DropTable(
                 name: "Users");
