@@ -143,8 +143,7 @@
 
         var options = new DialogOptions
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
+            FullScreen = true
         };
 
         var dialog = await DialogService.ShowAsync<AlbumPermissionDialog>("Compartir Álbum", parameters, options);
@@ -171,8 +170,7 @@
 
         var options = new DialogOptions
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
+            FullScreen = true
         };
 
         var dialog = await DialogService.ShowAsync<AlbumPermissionDialog>("Editar Permisos", parameters, options);

@@ -165,8 +165,7 @@
 
         var options = new DialogOptions
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
+            FullScreen = true
         };
 
         var dialog = await DialogService.ShowAsync<FolderPermissionDialog>("Compartir Carpeta", parameters, options);
@@ -192,8 +191,7 @@
 
         var options = new DialogOptions
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
+            FullScreen = true
         };
 
         var dialog = await DialogService.ShowAsync<FolderPermissionDialog>("Editar Permisos", parameters, options);
