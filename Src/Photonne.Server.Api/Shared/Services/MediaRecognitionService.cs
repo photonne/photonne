@@ -114,7 +114,7 @@ public class MediaRecognitionService
         // - Asset type (only images)
         // - Size (large images)
         // - Should not have pending jobs already
-        return asset.Type == AssetType.IMAGE && 
+        return asset.Type == AssetType.Image && 
                exif != null &&
                exif.Width.HasValue && 
                exif.Height.HasValue &&

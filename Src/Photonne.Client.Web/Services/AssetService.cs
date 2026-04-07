@@ -78,14 +78,14 @@ public class AssetService : IAssetService
             Id = detail.Id,
             FileName = detail.FileName,
             FullPath = detail.FullPath,
-            CreatedDate = detail.CreatedDate,
-            ModifiedDate = detail.ModifiedDate,
+            FileCreatedAt = detail.FileCreatedAt,
+            FileModifiedAt = detail.FileModifiedAt,
             Extension = detail.Extension,
             Type = detail.Type,
             SyncStatus = AssetSyncStatus.Synced,
             Width = detail.Exif?.Width,
             Height = detail.Exif?.Height,
-            IsOffline = detail.IsOffline
+            IsFileMissing = detail.IsFileMissing
         };
     }
 
@@ -129,8 +129,8 @@ public class AssetService : IAssetService
             FileName = response.FileName,
             FullPath = response.FullPath,
             FileSize = response.FileSize,
-            CreatedDate = response.CreatedDate,
-            ModifiedDate = response.ModifiedDate,
+            FileCreatedAt = response.FileCreatedAt,
+            FileModifiedAt = response.FileModifiedAt,
             Extension = response.Extension,
             ScannedAt = response.ScannedAt,
             Type = response.Type,
@@ -170,8 +170,9 @@ public class AssetService : IAssetService
             SyncStatus = response.SyncStatus,
             IsFavorite = response.IsFavorite,
             IsArchived = response.IsArchived,
-            IsOffline = response.IsOffline,
-            Description = response.Description
+            IsFileMissing = response.IsFileMissing,
+            Caption = response.Caption,
+            AiDescription = response.AiDescription
         };
     }
 
@@ -438,13 +439,13 @@ public class AssetService : IAssetService
         return result ?? new List<TimelineItem>();
     }
 
-    public async Task<string?> UpdateDescriptionAsync(Guid assetId, string? description)
+    public async Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.PatchAsJsonAsync($"/api/assets/{assetId}/description", new { description });
+        var response = await _httpClient.PatchAsJsonAsync($"/api/assets/{assetId}/description", new { caption });
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<DescriptionUpdateResult>();
-        return result?.Description;
+        return result?.Caption;
     }
 
     public async Task<HashSet<string>> CheckExistingAsync(
@@ -489,7 +490,7 @@ public class AssetService : IAssetService
 
 file class DescriptionUpdateResult
 {
-    public string? Description { get; set; }
+    public string? Caption { get; set; }
 }
 
 file class CheckExistingResult

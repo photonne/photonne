@@ -70,11 +70,11 @@ public class UtilityFolderTreeEndpoint : IEndpoint
                 AssetCount = f.Assets.Count(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
                 FirstAssetId = f.Assets
                     .Where(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .FirstOrDefault()?.Id,
                 PreviewAssetIds = f.Assets
                     .Where(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
                 IsOwner = userPerm?.CanManagePermissions ?? false,
                 IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),

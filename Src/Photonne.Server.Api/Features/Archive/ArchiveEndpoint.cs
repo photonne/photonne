@@ -84,11 +84,11 @@ public class ArchiveEndpoint : IEndpoint
         }
 
         if (cursor.HasValue)
-            query = query.Where(a => a.CreatedDate < cursor.Value.ToUniversalTime());
+            query = query.Where(a => a.FileCreatedAt < cursor.Value.ToUniversalTime());
 
         var dbItems = await query
-            .OrderByDescending(a => a.CreatedDate)
-            .ThenByDescending(a => a.ModifiedDate)
+            .OrderByDescending(a => a.FileCreatedAt)
+            .ThenByDescending(a => a.FileModifiedAt)
             .Take(pageSize + 1)
             .ToListAsync(ct);
 
@@ -101,8 +101,8 @@ public class ArchiveEndpoint : IEndpoint
             FileName = asset.FileName,
             FullPath = asset.FullPath,
             FileSize = asset.FileSize,
-            CreatedDate = asset.CreatedDate,
-            ModifiedDate = asset.ModifiedDate,
+            FileCreatedAt = asset.FileCreatedAt,
+            FileModifiedAt = asset.FileModifiedAt,
             Extension = asset.Extension,
             ScannedAt = asset.ScannedAt,
             Type = asset.Type.ToString(),
@@ -117,7 +117,7 @@ public class ArchiveEndpoint : IEndpoint
             Tags = BuildTagList(asset)
         }).ToList();
 
-        var nextCursor = hasMore ? assets.Last().CreatedDate : (DateTime?)null;
+        var nextCursor = hasMore ? assets.Last().FileCreatedAt : (DateTime?)null;
 
         return Results.Ok(new
         {

@@ -88,8 +88,8 @@ public class AssetPendingEndpoint : IEndpoint
             FileName = fileInfo.Name,
             FullPath = path, // Mantener la ruta original (podría ser virtual) para el cliente
             FileSize = fileInfo.Length,
-            CreatedDate = fileInfo.CreationTimeUtc,
-            ModifiedDate = fileInfo.LastWriteTimeUtc,
+            FileCreatedAt = fileInfo.CreationTimeUtc,
+            FileModifiedAt = fileInfo.LastWriteTimeUtc,
             Extension = extension,
             ScannedAt = DateTime.MinValue,
             Type = type.ToString(),
@@ -206,7 +206,7 @@ public class AssetPendingEndpoint : IEndpoint
             byte[] thumbnailBytes;
             string contentType;
 
-            if (type == AssetType.IMAGE)
+            if (type == AssetType.Image)
             {
                 // Generar miniatura de imagen
                 var targetSize = thumbnailSize switch
@@ -303,7 +303,7 @@ public class AssetPendingEndpoint : IEndpoint
     private AssetType GetAssetType(string extension)
     {
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
-        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.IMAGE : AssetType.VIDEO;
+        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.Image : AssetType.Video;
     }
 
     private string GetContentType(string extension, AssetType type)
@@ -318,7 +318,7 @@ public class AssetPendingEndpoint : IEndpoint
             ".mov" => "video/quicktime",
             ".avi" => "video/x-msvideo",
             ".mkv" => "video/x-matroska",
-            _ => type == AssetType.VIDEO ? "video/mp4" : "application/octet-stream"
+            _ => type == AssetType.Video ? "video/mp4" : "application/octet-stream"
         };
     }
 

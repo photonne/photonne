@@ -58,7 +58,7 @@ public class AssetContentEndpoint : IEndpoint
             ".mov" => "video/quicktime",
             ".avi" => "video/x-msvideo",
             ".mkv" => "video/x-matroska",
-            _ => type == AssetType.VIDEO ? "video/mp4" : "application/octet-stream"
+            _ => type == AssetType.Video ? "video/mp4" : "application/octet-stream"
         };
     }
 }

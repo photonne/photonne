@@ -175,7 +175,7 @@ public class ExternalLibraryScanService
 
             foreach (var asset in offlineAssets)
             {
-                asset.IsOffline = true;
+                asset.IsFileMissing = true;
                 markedOffline++;
             }
 

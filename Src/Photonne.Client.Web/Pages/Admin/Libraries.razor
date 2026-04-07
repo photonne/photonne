@@ -491,7 +491,7 @@ else
         try
         {
             var result = await PermissionService.SetPermissionAsync(_permissionsLibrary.Id,
-                new SetExternalLibraryPermissionRequest { UserId = _selectedUser.Id, CanView = true });
+                new SetExternalLibraryPermissionRequest { UserId = _selectedUser.Id, CanRead = true });
 
             if (result != null)
             {

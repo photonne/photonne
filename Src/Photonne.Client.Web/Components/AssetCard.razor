@@ -109,7 +109,7 @@
         @if ((Asset.SyncStatus == AssetSyncStatus.Synced || Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied)
              && !(Asset.IsLocalOnly && string.IsNullOrEmpty(Asset.LocalThumbnailUrl)))
         {
-            @if (Asset.Type == "VIDEO")
+            @if (Asset.Type == "Video")
             {
                 <div class="video-preview-container">
                     <img src="@_thumbnailUrl" alt="@Asset.FileName" loading="lazy" class="asset-card-image thumbnail" />
@@ -165,14 +165,14 @@
         }
     </div>
 
-    @if (Asset.Type != "IMAGE")
+    @if (Asset.Type != "Image")
     {
         <div class="asset-type-icon">
             <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
         </div>
     }
 
-    @if (Asset.IsOffline)
+    @if (Asset.IsFileMissing)
     {
         <div class="asset-offline-overlay">
             <MudTooltip Text="Archivo no encontrado en disco">
@@ -181,7 +181,7 @@
         </div>
     }
 
-    @if (Asset.SyncStatus == AssetSyncStatus.Synced && Asset.Id != Guid.Empty && !Asset.IsOffline)
+    @if (Asset.SyncStatus == AssetSyncStatus.Synced && Asset.Id != Guid.Empty && !Asset.IsFileMissing)
     {
         <span @onclick:stopPropagation="true" class="favorite-btn @(Asset.IsFavorite ? "is-favorite" : "")">
             <MudIconButton Icon="@(Asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
@@ -287,7 +287,7 @@
 
     private async Task HandleMouseOver()
     {
-        if (Asset.Type == "VIDEO" && _videoRef.Context != null)
+        if (Asset.Type == "Video" && _videoRef.Context != null)
         {
             await JS.InvokeVoidAsync("videoHelpers.play", _videoRef);
         }
@@ -306,7 +306,7 @@
 
     private async Task HandleMouseLeave()
     {
-        if (Asset.Type == "VIDEO" && _videoRef.Context != null)
+        if (Asset.Type == "Video" && _videoRef.Context != null)
         {
             await JS.InvokeVoidAsync("videoHelpers.pause", _videoRef);
         }
@@ -314,6 +314,6 @@
 
     private string GetAssetIcon(string type)
     {
-        return type == "IMAGE" ? Icons.Material.Filled.Image : Icons.Material.Filled.VideoLibrary;
+        return type == "Image" ? Icons.Material.Filled.Image : Icons.Material.Filled.VideoLibrary;
     }
 }

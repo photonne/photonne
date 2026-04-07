@@ -53,8 +53,8 @@ public class AssetDetailEndpoint : IEndpoint
                 FileName = asset.FileName,
                 FullPath = asset.FullPath,
                 FileSize = asset.FileSize,
-                CreatedDate = asset.CreatedDate,
-                ModifiedDate = asset.ModifiedDate,
+                FileCreatedAt = asset.FileCreatedAt,
+                FileModifiedAt = asset.FileModifiedAt,
                 Extension = asset.Extension,
                 ScannedAt = asset.ScannedAt,
                 Type = asset.Type.ToString(),
@@ -94,8 +94,9 @@ public class AssetDetailEndpoint : IEndpoint
                 SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
                 IsFavorite = asset.IsFavorite,
                 IsArchived = asset.IsArchived,
-                IsOffline = asset.IsOffline,
-                Description = asset.Description
+                IsFileMissing = asset.IsFileMissing,
+                Caption = asset.Caption,
+                AiDescription = asset.AiDescription
             };
 
             return Results.Ok(response);

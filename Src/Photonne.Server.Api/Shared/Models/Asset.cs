@@ -4,8 +4,8 @@ namespace Photonne.Server.Api.Shared.Models;
 
 public enum AssetType
 {
-    IMAGE,
-    VIDEO
+    Image,
+    Video
 }
 
 public class Asset
@@ -28,9 +28,10 @@ public class Asset
     
     public AssetType Type { get; set; }
     
-    public DateTime CreatedDate { get; set; }
-    
-    public DateTime ModifiedDate { get; set; }
+    // File system dates (from the physical file, not the app)
+    public DateTime FileCreatedAt { get; set; }
+
+    public DateTime FileModifiedAt { get; set; }
     
     [Required]
     [MaxLength(10)]
@@ -49,7 +50,7 @@ public class Asset
     public ExternalLibrary? ExternalLibrary { get; set; }
 
     // True when the file no longer exists at FullPath (detected during library scan).
-    public bool IsOffline { get; set; }
+    public bool IsFileMissing { get; set; }
 
     public bool IsFavorite { get; set; }
 
@@ -63,8 +64,13 @@ public class Asset
     // For videos
     public TimeSpan? Duration { get; set; }
 
+    // User-defined caption (manually written by the user)
     [MaxLength(2000)]
-    public string? Description { get; set; }
+    public string? Caption { get; set; }
+
+    // AI-generated scene description
+    [MaxLength(2000)]
+    public string? AiDescription { get; set; }
     
     // Navigation properties
     public AssetExif? Exif { get; set; }

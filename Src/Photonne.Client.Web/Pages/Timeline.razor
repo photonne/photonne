@@ -1015,8 +1015,8 @@
 
     private IEnumerable<TimelineItem> FilteredAssets => _activeFilter switch
     {
-        "Photos"    => AllLoadedItems.Where(a => a.Type.Equals("IMAGE", StringComparison.OrdinalIgnoreCase)),
-        "Videos"    => AllLoadedItems.Where(a => a.Type.Equals("VIDEO", StringComparison.OrdinalIgnoreCase)),
+        "Photos"    => AllLoadedItems.Where(a => a.Type.Equals("Image", StringComparison.OrdinalIgnoreCase)),
+        "Videos"    => AllLoadedItems.Where(a => a.Type.Equals("Video", StringComparison.OrdinalIgnoreCase)),
         "Favorites" => AllLoadedItems.Where(a => a.IsFavorite),
         _           => AllLoadedItems
     };
@@ -1025,15 +1025,15 @@
     {
         var filtered = _activeFilter switch
         {
-            "Photos"    => section.Items.Where(a => a.Type.Equals("IMAGE", StringComparison.OrdinalIgnoreCase)),
-            "Videos"    => section.Items.Where(a => a.Type.Equals("VIDEO", StringComparison.OrdinalIgnoreCase)),
+            "Photos"    => section.Items.Where(a => a.Type.Equals("Image", StringComparison.OrdinalIgnoreCase)),
+            "Videos"    => section.Items.Where(a => a.Type.Equals("Video", StringComparison.OrdinalIgnoreCase)),
             "Favorites" => section.Items.Where(a => a.IsFavorite),
             _           => section.Items.AsEnumerable()
         };
         return filtered
-            .OrderByDescending(a => a.CreatedDate)
-            .GroupBy(a => a.CreatedDate.Date)
-            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
+            .OrderByDescending(a => a.FileCreatedAt)
+            .GroupBy(a => a.FileCreatedAt.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.FileCreatedAt).ToList());
     }
 
     private string GetFilterLabel() => _activeFilter switch
@@ -1432,9 +1432,9 @@
     private void RebuildGroupedAssets()
     {
         _groupedAssets = FilteredAssets
-            .OrderByDescending(a => a.CreatedDate)
-            .GroupBy(a => a.CreatedDate.Date)
-            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
+            .OrderByDescending(a => a.FileCreatedAt)
+            .GroupBy(a => a.FileCreatedAt.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.FileCreatedAt).ToList());
         if (_groupedAssets.Any())
             _activeGroup = _groupedAssets.Keys.First();
         _groupMapNeedsUpdate = true;

@@ -22,7 +22,7 @@
                          @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = heroAsset, GroupAssets = group.Value })">
                         <img src="@heroAsset.ThumbnailUrl" alt="memory" loading="lazy" />
 
-                        @if (heroAsset.Type == "VIDEO")
+                        @if (heroAsset.Type == "Video")
                         {
                             <div class="memories-video-badge">
                                 <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
@@ -48,7 +48,7 @@
                                 <div class="memories-strip-thumb"
                                      @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = asset, GroupAssets = group.Value })">
                                     <img src="@asset.ThumbnailUrl" alt="memory" loading="lazy" />
-                                    @if (asset.Type == "VIDEO")
+                                    @if (asset.Type == "Video")
                                     {
                                         <div class="memories-video-sm">
                                             <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
@@ -259,7 +259,7 @@
 
         var items = await AssetService.GetMemoriesAsync(Test);
         _yearGroups = items
-            .GroupBy(a => a.CreatedDate.Year)
+            .GroupBy(a => a.FileCreatedAt.Year)
             .OrderByDescending(g => g.Key)
             .ToDictionary(g => g.Key, g => g.ToList());
     }

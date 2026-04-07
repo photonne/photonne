@@ -119,7 +119,7 @@ public class NightlySchedulerService : BackgroundService
         await thumbnailService.RefreshThumbnailsPathAsync();
 
         var assets = await dbContext.Assets
-            .OrderBy(a => a.CreatedDate)
+            .OrderBy(a => a.FileCreatedAt)
             .Select(a => new { a.Id, a.FullPath, a.FileName })
             .ToListAsync(ct);
 
@@ -180,8 +180,8 @@ public class NightlySchedulerService : BackgroundService
 
         var assets = await dbContext.Assets
             .Include(a => a.Exif)
-            .Where(a => a.Type == AssetType.IMAGE || a.Type == AssetType.VIDEO)
-            .OrderBy(a => a.CreatedDate)
+            .Where(a => a.Type == AssetType.Image || a.Type == AssetType.Video)
+            .OrderBy(a => a.FileCreatedAt)
             .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
             .ToListAsync(ct);
 

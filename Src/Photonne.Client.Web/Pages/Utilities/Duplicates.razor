@@ -334,7 +334,7 @@
     private void AutoSelectGroup(UserDuplicateGroup group)
     {
         var best = group.Assets
-            .OrderByDescending(a => a.CreatedDate)
+            .OrderByDescending(a => a.FileCreatedAt)
             .ThenByDescending(a => a.FileSize)
             .First();
         _keepSelection[group.Hash] = new HashSet<Guid> { best.Id };

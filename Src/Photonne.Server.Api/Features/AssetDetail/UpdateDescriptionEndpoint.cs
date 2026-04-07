@@ -13,7 +13,7 @@ public class UpdateDescriptionEndpoint : IEndpoint
         app.MapPatch("/api/assets/{assetId}/description", Handle)
             .WithName("UpdateAssetDescription")
             .WithTags("Assets")
-            .WithDescription("Updates the user-defined description of an asset.")
+            .WithDescription("Updates the user-defined caption of an asset.")
             .RequireAuthorization();
     }
 
@@ -37,13 +37,13 @@ public class UpdateDescriptionEndpoint : IEndpoint
         if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, userId))
             return Results.Forbid();
 
-        asset.Description = string.IsNullOrWhiteSpace(request.Description)
+        asset.Caption = string.IsNullOrWhiteSpace(request.Caption)
             ? null
-            : request.Description.Trim()[..Math.Min(request.Description.Trim().Length, 2000)];
+            : request.Caption.Trim()[..Math.Min(request.Caption.Trim().Length, 2000)];
 
         await dbContext.SaveChangesAsync(ct);
 
-        return Results.Ok(new { description = asset.Description });
+        return Results.Ok(new { caption = asset.Caption });
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
@@ -61,5 +61,5 @@ public class UpdateDescriptionEndpoint : IEndpoint
 
 public class UpdateDescriptionRequest
 {
-    public string? Description { get; set; }
+    public string? Caption { get; set; }
 }

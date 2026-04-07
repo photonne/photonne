@@ -70,7 +70,7 @@ public class MapAssetsEndpoint : IEndpoint
                 allAssets = dbAssets.Select(a => new AssetLocation
                 {
                     Id = a.Id,
-                    CreatedDate = a.CreatedDate,
+                    FileCreatedAt = a.FileCreatedAt,
                     Latitude = a.Exif!.Latitude!.Value,
                     Longitude = a.Exif.Longitude!.Value,
                     HasThumbnails = a.Thumbnails.Any()
@@ -253,8 +253,8 @@ public class MapAssetsEndpoint : IEndpoint
                 Longitude = asset.Longitude,
                 Count = 1,
                 AssetIds = new List<Guid> { asset.Id },
-                EarliestDate = asset.CreatedDate,
-                LatestDate = asset.CreatedDate,
+                EarliestDate = asset.FileCreatedAt,
+                LatestDate = asset.FileCreatedAt,
                 HasThumbnail = asset.HasThumbnails
             };
 
@@ -316,10 +316,10 @@ public class MapAssetsEndpoint : IEndpoint
                     cluster.Longitude = (cluster.Longitude * (totalCount - 1) + newAsset.Longitude) / totalCount;
 
                     // Actualizar fechas
-                    if (newAsset.CreatedDate < cluster.EarliestDate)
-                        cluster.EarliestDate = newAsset.CreatedDate;
-                    if (newAsset.CreatedDate > cluster.LatestDate)
-                        cluster.LatestDate = newAsset.CreatedDate;
+                    if (newAsset.FileCreatedAt < cluster.EarliestDate)
+                        cluster.EarliestDate = newAsset.FileCreatedAt;
+                    if (newAsset.FileCreatedAt > cluster.LatestDate)
+                        cluster.LatestDate = newAsset.FileCreatedAt;
                 }
             }
 
@@ -781,7 +781,7 @@ public class MapAssetsEndpoint : IEndpoint
     private class AssetLocation
     {
         public Guid Id { get; set; }
-        public DateTime CreatedDate { get; set; }
+        public DateTime FileCreatedAt { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public bool HasThumbnails { get; set; }

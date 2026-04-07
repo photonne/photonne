@@ -10,7 +10,7 @@ public class ExternalLibraryPermission
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
 
-    public bool CanView { get; set; }
+    public bool CanRead { get; set; }
 
     public DateTime GrantedAt { get; set; } = DateTime.UtcNow;
 

@@ -50,8 +50,8 @@ public class ExtractMetadataEndpoint : IEndpoint
 
                 var assets = await dbContext.Assets
                     .Include(a => a.Exif)
-                    .Where(a => a.Type == AssetType.IMAGE || a.Type == AssetType.VIDEO)
-                    .OrderBy(a => a.CreatedDate)
+                    .Where(a => a.Type == AssetType.Image || a.Type == AssetType.Video)
+                    .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
                     .ToListAsync(cancellationToken);
 

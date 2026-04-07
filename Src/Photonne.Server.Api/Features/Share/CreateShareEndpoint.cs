@@ -41,7 +41,7 @@ public class CreateShareEndpoint : IEndpoint
                 .FirstOrDefaultAsync(a => a.Id == request.AlbumId, ct);
             if (album == null) return Results.NotFound(new { error = "Album not found" });
             var canShare = isAdmin || album.OwnerId == userId ||
-                           album.Permissions.Any(p => p.UserId == userId && p.CanEdit);
+                           album.Permissions.Any(p => p.UserId == userId && p.CanWrite);
             if (!canShare) return Results.Forbid();
         }
 

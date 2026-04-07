@@ -15,14 +15,14 @@ namespace Photonne.Server.Api.Migrations
                 name: "Settings",
                 columns: table => new
                 {
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OwnerId = table.Column<Guid>(type: "uuid", nullable: false),
                     Key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Settings", x => new { x.UserId, x.Key });
+                    table.PrimaryKey("PK_Settings", x => new { x.OwnerId, x.Key });
                 });
 
             migrationBuilder.CreateTable(
@@ -151,7 +151,7 @@ namespace Photonne.Server.Api.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     ExternalLibraryId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CanView = table.Column<bool>(type: "boolean", nullable: false),
+                    CanRead = table.Column<bool>(type: "boolean", nullable: false),
                     GrantedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     GrantedByUserId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
@@ -216,21 +216,22 @@ namespace Photonne.Server.Api.Migrations
                     FileSize = table.Column<long>(type: "bigint", nullable: false),
                     Checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     Type = table.Column<int>(type: "integer", nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    ModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    FileCreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    FileModifiedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     Extension = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
                     ScannedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     OwnerId = table.Column<Guid>(type: "uuid", nullable: true),
                     FolderId = table.Column<Guid>(type: "uuid", nullable: true),
                     ExternalLibraryId = table.Column<Guid>(type: "uuid", nullable: true),
-                    IsOffline = table.Column<bool>(type: "boolean", nullable: false),
+                    IsFileMissing = table.Column<bool>(type: "boolean", nullable: false),
                     IsFavorite = table.Column<bool>(type: "boolean", nullable: false),
                     IsArchived = table.Column<bool>(type: "boolean", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedFromPath = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     DeletedFromFolderId = table.Column<Guid>(type: "uuid", nullable: true),
                     Duration = table.Column<TimeSpan>(type: "interval", nullable: true),
-                    Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true)
+                    Caption = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    AiDescription = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -454,7 +455,6 @@ namespace Photonne.Server.Api.Migrations
                 name: "AlbumAssets",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
                     AlbumId = table.Column<Guid>(type: "uuid", nullable: false),
                     AssetId = table.Column<Guid>(type: "uuid", nullable: false),
                     Order = table.Column<int>(type: "integer", nullable: false),
@@ -462,7 +462,7 @@ namespace Photonne.Server.Api.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AlbumAssets", x => x.Id);
+                    table.PrimaryKey("PK_AlbumAssets", x => new { x.AlbumId, x.AssetId });
                     table.ForeignKey(
                         name: "FK_AlbumAssets_Albums_AlbumId",
                         column: x => x.AlbumId,
@@ -484,8 +484,8 @@ namespace Photonne.Server.Api.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     AlbumId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CanView = table.Column<bool>(type: "boolean", nullable: false),
-                    CanEdit = table.Column<bool>(type: "boolean", nullable: false),
+                    CanRead = table.Column<bool>(type: "boolean", nullable: false),
+                    CanWrite = table.Column<bool>(type: "boolean", nullable: false),
                     CanDelete = table.Column<bool>(type: "boolean", nullable: false),
                     CanManagePermissions = table.Column<bool>(type: "boolean", nullable: false),
                     GrantedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
@@ -557,12 +557,6 @@ namespace Photonne.Server.Api.Migrations
                 name: "IX_AlbumAssets_AlbumId",
                 table: "AlbumAssets",
                 column: "AlbumId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AlbumAssets_AlbumId_AssetId",
-                table: "AlbumAssets",
-                columns: new[] { "AlbumId", "AssetId" },
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_AlbumAssets_AssetId",
@@ -643,9 +637,9 @@ namespace Photonne.Server.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Assets_IsOffline",
+                name: "IX_Assets_IsFileMissing",
                 table: "Assets",
-                column: "IsOffline");
+                column: "IsFileMissing");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_OwnerId",

@@ -77,8 +77,8 @@ public class DeviceEndpoint : IEndpoint
                         FileName = file.FileName,
                         FullPath = file.FullPath,
                         FileSize = file.FileSize,
-                        CreatedDate = file.CreatedDate,
-                        ModifiedDate = file.ModifiedDate,
+                        FileCreatedAt = file.FileCreatedAt,
+                        FileModifiedAt = file.FileModifiedAt,
                         Extension = file.Extension,
                         ScannedAt = DateTime.MinValue,
                         Type = file.AssetType.ToString(),
@@ -94,7 +94,7 @@ public class DeviceEndpoint : IEndpoint
             Console.WriteLine($"[DEVICE] Returning {deviceItems.Count} pending assets (skipped {skippedIndexed} already indexed)");
 
             var orderedItems = deviceItems
-                .OrderByDescending(a => a.ModifiedDate)
+                .OrderByDescending(a => a.FileModifiedAt)
                 .ThenByDescending(a => a.FileName)
                 .ToList();
 

@@ -230,9 +230,9 @@
     private void GroupAssets()
     {
         _groupedAssets = _assets
-            .OrderByDescending(a => a.CreatedDate)
-            .GroupBy(a => a.CreatedDate.Date)
-            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.CreatedDate).ToList());
+            .OrderByDescending(a => a.FileCreatedAt)
+            .GroupBy(a => a.FileCreatedAt.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.FileCreatedAt).ToList());
     }
 
     private string FormatDayHeader(DateTime date)

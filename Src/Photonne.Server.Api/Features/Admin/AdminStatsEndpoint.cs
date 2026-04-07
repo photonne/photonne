@@ -62,10 +62,10 @@ public class AdminStatsEndpoint : IEndpoint
             .Select(group =>
             {
                 var ownerId = group.Key;
-                var photoCount = group.Where(a => a.Type == AssetType.IMAGE).Sum(a => a.Count);
-                var videoCount = group.Where(a => a.Type == AssetType.VIDEO).Sum(a => a.Count);
-                var photoBytes = group.Where(a => a.Type == AssetType.IMAGE).Sum(a => a.Bytes);
-                var videoBytes = group.Where(a => a.Type == AssetType.VIDEO).Sum(a => a.Bytes);
+                var photoCount = group.Where(a => a.Type == AssetType.Image).Sum(a => a.Count);
+                var videoCount = group.Where(a => a.Type == AssetType.Video).Sum(a => a.Count);
+                var photoBytes = group.Where(a => a.Type == AssetType.Image).Sum(a => a.Bytes);
+                var videoBytes = group.Where(a => a.Type == AssetType.Video).Sum(a => a.Bytes);
 
                 if (ownerId.HasValue && userLookup.TryGetValue(ownerId.Value, out var user))
                 {
@@ -97,8 +97,8 @@ public class AdminStatsEndpoint : IEndpoint
 
         var response = new AdminStatsResponse
         {
-            TotalPhotos = assetStats.Where(a => a.Type == AssetType.IMAGE).Sum(a => a.Count),
-            TotalVideos = assetStats.Where(a => a.Type == AssetType.VIDEO).Sum(a => a.Count),
+            TotalPhotos = assetStats.Where(a => a.Type == AssetType.Image).Sum(a => a.Count),
+            TotalVideos = assetStats.Where(a => a.Type == AssetType.Video).Sum(a => a.Count),
             TotalBytes = assetStats.Sum(a => a.Bytes),
             Users = userUsage
         };

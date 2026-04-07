@@ -134,7 +134,7 @@ public class ShareMediaEndpoint : IEndpoint
             ".mov" => "video/quicktime",
             ".avi" => "video/x-msvideo",
             ".mkv" => "video/x-matroska",
-            _ => asset.Type == AssetType.VIDEO ? "video/mp4" : "application/octet-stream"
+            _ => asset.Type == AssetType.Video ? "video/mp4" : "application/octet-stream"
         };
 
         if (download == true)

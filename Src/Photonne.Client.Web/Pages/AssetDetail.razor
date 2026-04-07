@@ -332,23 +332,23 @@ else if (_asset != null)
                                Disabled="@(_prevAsset == null)" />
             </span>
 
-            @if (_asset.Type == "VIDEO")
+            @if (_asset.Type == "Video")
             {
                 <video controls autoplay class="asset-detail-image">
                     <source src="@_displayContentUrl" type="video/mp4">
                     Tu navegador no soporta la reproducción de videos.
                 </video>
             }
-            else if (_asset.IsOffline || _imageLoadError)
+            else if (_asset.IsFileMissing || _imageLoadError)
             {
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; color: rgba(255,255,255,0.5);">
                     <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Style="width: 96px; height: 96px;" />
                     <MudText Typo="Typo.body2">Archivo no encontrado en disco</MudText>
                 </div>
             }
-            else if (_asset.HasThumbnails || _asset.Type == "IMAGE")
+            else if (_asset.HasThumbnails || _asset.Type == "Image")
             {
-                <img src="@(_asset.Type == "IMAGE" ? _displayContentUrl : _displayThumbnailUrl)"
+                <img src="@(_asset.Type == "Image" ? _displayContentUrl : _displayThumbnailUrl)"
                      alt="@_asset.FileName"
                      class="asset-detail-image @(_zoomed ? "zoomed" : "")"
                      @onerror="() => { _imageLoadError = true; StateHasChanged(); }" />
@@ -937,7 +937,7 @@ else
             // Asegurar que se actualice después de cargar el asset
             if (_asset != null && !_navigatingAway)
             {
-                _descriptionEdit = _asset.Description ?? string.Empty;
+                _descriptionEdit = _asset.Caption ?? string.Empty;
                 await UpdateAssetDisplayUrlsAsync();
                 if (!_navigatingAway)
                 {
@@ -1209,8 +1209,8 @@ else
         try
         {
             _savingDescription = true;
-            _asset.Description = await AssetService.UpdateDescriptionAsync(_asset.Id, _descriptionEdit);
-            _descriptionEdit = _asset.Description ?? string.Empty;
+            _asset.Caption = await AssetService.UpdateDescriptionAsync(_asset.Id, _descriptionEdit);
+            _descriptionEdit = _asset.Caption ?? string.Empty;
             Snackbar.Add("Descripción guardada", Severity.Success);
         }
         catch (Exception ex)
@@ -1426,7 +1426,7 @@ else
 
     private string GetAssetIcon(string type)
     {
-        return type == "IMAGE" ? Icons.Material.Filled.Image : Icons.Material.Filled.VideoLibrary;
+        return type == "Image" ? Icons.Material.Filled.Image : Icons.Material.Filled.VideoLibrary;
     }
 
     private string GetNavButtonClass(bool isPrev)

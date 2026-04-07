@@ -118,7 +118,7 @@ public class FoldersEndpoint : IEndpoint
             if (!isAdmin)
             {
                 var hasAccess = await dbContext.ExternalLibraryPermissions
-                    .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanView, cancellationToken);
+                    .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanRead, cancellationToken);
                 if (!hasAccess)
                     return Results.Forbid();
             }
@@ -146,11 +146,11 @@ public class FoldersEndpoint : IEndpoint
                 AssetCount = rootFolder.Assets.Count(a => a.DeletedAt == null),
                 FirstAssetId = rootFolder.Assets
                     .Where(a => a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .FirstOrDefault()?.Id,
                 PreviewAssetIds = rootFolder.Assets
                     .Where(a => a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
                 IsOwner = isAdmin,
                 IsShared = false,
@@ -165,11 +165,11 @@ public class FoldersEndpoint : IEndpoint
                     AssetCount = sf.Assets.Count(a => a.DeletedAt == null),
                     FirstAssetId = sf.Assets
                         .Where(a => a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .FirstOrDefault()?.Id,
                     PreviewAssetIds = sf.Assets
                         .Where(a => a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
                     IsShared = false,
                     ExternalLibraryId = sf.ExternalLibraryId
@@ -242,11 +242,11 @@ public class FoldersEndpoint : IEndpoint
                     AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
                     FirstAssetId = f.Assets
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .FirstOrDefault()?.Id,
                     PreviewAssetIds = f.Assets
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
                     IsOwner = userPerm?.CanManagePermissions ?? isAdmin,
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
@@ -324,11 +324,11 @@ public class FoldersEndpoint : IEndpoint
                 AssetCount = folder.Assets.Count(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null),
                 FirstAssetId = folder.Assets
                     .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .FirstOrDefault()?.Id,
                 PreviewAssetIds = folder.Assets
                     .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
                 IsOwner = userPermission?.CanManagePermissions ?? isAdmin,
                 IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
@@ -344,11 +344,11 @@ public class FoldersEndpoint : IEndpoint
                     AssetCount = sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null),
                     FirstAssetId = sf.Assets
                         .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .FirstOrDefault()?.Id,
                     PreviewAssetIds = sf.Assets
                         .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId
@@ -422,7 +422,7 @@ public class FoldersEndpoint : IEndpoint
                 .Where(a => a.FolderId == folderId)
                 .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                 .OrderByDescending(a => a.ScannedAt)
-                .ThenByDescending(a => a.ModifiedDate)
+                .ThenByDescending(a => a.FileModifiedAt)
                 .ToListAsync(cancellationToken);
 
             var response = assets.Select(asset => new TimelineResponse
@@ -431,8 +431,8 @@ public class FoldersEndpoint : IEndpoint
                 FileName = asset.FileName,
                 FullPath = asset.FullPath,
                 FileSize = asset.FileSize,
-                CreatedDate = asset.CreatedDate,
-                ModifiedDate = asset.ModifiedDate,
+                FileCreatedAt = asset.FileCreatedAt,
+                FileModifiedAt = asset.FileModifiedAt,
                 Extension = asset.Extension,
                 ScannedAt = asset.ScannedAt,
                 Type = asset.Type.ToString(),
@@ -513,11 +513,11 @@ public class FoldersEndpoint : IEndpoint
                     AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
                     FirstAssetId = f.Assets
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .FirstOrDefault()?.Id,
                     PreviewAssetIds = f.Assets
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.ModifiedDate)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
                     IsOwner = userPerm?.CanManagePermissions ?? isAdmin,
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
@@ -996,7 +996,7 @@ public class FoldersEndpoint : IEndpoint
         if (folder.ExternalLibraryId.HasValue)
         {
             return await dbContext.ExternalLibraryPermissions
-                .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == folder.ExternalLibraryId && p.CanView, ct);
+                .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == folder.ExternalLibraryId && p.CanRead, ct);
         }
 
         var hasPermissions = await dbContext.FolderPermissions
@@ -1112,7 +1112,7 @@ public class FoldersEndpoint : IEndpoint
 
         // Carpetas de bibliotecas externas accesibles
         var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanView)
+            .Where(p => p.UserId == userId && p.CanRead)
             .Select(p => p.ExternalLibraryId)
             .ToHashSetAsync(ct);
 

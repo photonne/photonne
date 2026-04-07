@@ -60,30 +60,23 @@ namespace Photonne.Server.Api.Migrations
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AlbumAsset", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<Guid>("AlbumId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AssetId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<int>("Order")
                         .HasColumnType("integer");
 
-                    b.HasKey("Id");
+                    b.HasKey("AlbumId", "AssetId");
 
                     b.HasIndex("AlbumId");
 
                     b.HasIndex("AssetId");
-
-                    b.HasIndex("AlbumId", "AssetId")
-                        .IsUnique();
 
                     b.ToTable("AlbumAssets");
                 });
@@ -100,13 +93,13 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<bool>("CanDelete")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("CanEdit")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("CanManagePermissions")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("CanView")
+                    b.Property<bool>("CanRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanWrite")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("GrantedAt")
@@ -138,13 +131,18 @@ namespace Photonne.Server.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AiDescription")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("Checksum")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
@@ -156,10 +154,6 @@ namespace Photonne.Server.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
                     b.Property<TimeSpan?>("Duration")
                         .HasColumnType("interval");
 
@@ -170,6 +164,12 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Property<Guid?>("ExternalLibraryId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("FileCreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("FileModifiedAt")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -193,11 +193,8 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsOffline")
+                    b.Property<bool>("IsFileMissing")
                         .HasColumnType("boolean");
-
-                    b.Property<DateTime>("ModifiedDate")
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("OwnerId")
                         .HasColumnType("uuid");
@@ -221,7 +218,7 @@ namespace Photonne.Server.Api.Migrations
                     b.HasIndex("FullPath")
                         .IsUnique();
 
-                    b.HasIndex("IsOffline");
+                    b.HasIndex("IsFileMissing");
 
                     b.HasIndex("OwnerId");
 
@@ -483,7 +480,7 @@ namespace Photonne.Server.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("CanView")
+                    b.Property<bool>("CanRead")
                         .HasColumnType("boolean");
 
                     b.Property<Guid>("ExternalLibraryId")
@@ -674,7 +671,7 @@ namespace Photonne.Server.Api.Migrations
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Setting", b =>
                 {
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Key")
@@ -686,10 +683,9 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("text");
 
-                    b.HasKey("UserId", "Key");
+                    b.HasKey("OwnerId", "Key");
 
                     b.ToTable("Settings");
                 });

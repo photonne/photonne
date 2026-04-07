@@ -34,7 +34,7 @@ public class PhysicalDuplicateFile
     public string FileName { get; set; } = string.Empty;
     public string Directory { get; set; } = string.Empty;
     public long FileSize { get; set; }
-    public DateTime ModifiedDate { get; set; }
+    public DateTime FileModifiedAt { get; set; }
     public bool IsIndexed { get; set; }
     public Guid? AssetId { get; set; }
     public string? OwnerUsername { get; set; }

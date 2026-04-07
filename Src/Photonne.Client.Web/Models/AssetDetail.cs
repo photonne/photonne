@@ -6,8 +6,8 @@ public class AssetDetail
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public long FileSize { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime ModifiedDate { get; set; }
+    public DateTime FileCreatedAt { get; set; }
+    public DateTime FileModifiedAt { get; set; }
     public string Extension { get; set; } = string.Empty;
     public DateTime ScannedAt { get; set; }
     public string Type { get; set; } = string.Empty;
@@ -22,8 +22,9 @@ public class AssetDetail
     public AssetSyncStatus SyncStatus { get; set; } = AssetSyncStatus.Pending;
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
-    public bool IsOffline { get; set; }
-    public string? Description { get; set; }
+    public bool IsFileMissing { get; set; }
+    public string? Caption { get; set; }
+    public string? AiDescription { get; set; }
 
     public string ThumbnailUrl => Id != Guid.Empty
         ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Large"
@@ -31,7 +32,7 @@ public class AssetDetail
     public string ContentUrl => Id != Guid.Empty
         ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/content"
         : $"{ApiConfig.BaseUrl}/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
-    public string DisplayDate => CreatedDate.ToString("dd MMM yyyy HH:mm");
+    public string DisplayDate => FileCreatedAt.ToString("dd MMM yyyy HH:mm");
     public string FileSizeFormatted => FormatFileSize(FileSize);
 
     private static string FormatFileSize(long bytes)

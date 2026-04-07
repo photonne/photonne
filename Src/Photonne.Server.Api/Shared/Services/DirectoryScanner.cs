@@ -104,7 +104,7 @@ public class DirectoryScanner
                                 continue;
                             }
                             
-                            var assetType = ImageExtensions.Contains(normalizedExtension) ? AssetType.IMAGE : AssetType.VIDEO;
+                            var assetType = ImageExtensions.Contains(normalizedExtension) ? AssetType.Image : AssetType.Video;
                             
                             var createdUtc = fileInfo.CreationTimeUtc;
                             var modifiedUtc = fileInfo.LastWriteTimeUtc;
@@ -115,8 +115,8 @@ public class DirectoryScanner
                                 FileName = fileInfo.Name,
                                 FullPath = fileInfo.FullName,
                                 FileSize = fileInfo.Length,
-                                CreatedDate = effectiveCreatedUtc,
-                                ModifiedDate = modifiedUtc,
+                                FileCreatedAt = effectiveCreatedUtc,
+                                FileModifiedAt = modifiedUtc,
                                 Extension = normalizedExtension, // Usar la extensión normalizada
                                 AssetType = assetType
                             });
@@ -172,8 +172,8 @@ public class ScannedFile
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public long FileSize { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime ModifiedDate { get; set; }
+    public DateTime FileCreatedAt { get; set; }
+    public DateTime FileModifiedAt { get; set; }
     public string Extension { get; set; } = string.Empty;
     public AssetType AssetType { get; set; }
 }

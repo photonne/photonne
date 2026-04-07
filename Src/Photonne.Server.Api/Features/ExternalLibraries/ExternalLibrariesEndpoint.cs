@@ -84,7 +84,7 @@ public class ExternalLibrariesEndpoint : IEndpoint
         var libraries = await db.ExternalLibraries
             .Where(l => isAdmin
                 ? l.OwnerId == userId.Value
-                : l.Permissions.Any(p => p.UserId == userId.Value && p.CanView))
+                : l.Permissions.Any(p => p.UserId == userId.Value && p.CanRead))
             .Select(l => new ExternalLibraryDto(
                 l.Id,
                 l.Name,
@@ -118,7 +118,7 @@ public class ExternalLibrariesEndpoint : IEndpoint
         var library = await db.ExternalLibraries
             .Where(l => l.Id == id && (isAdmin
                 ? l.OwnerId == userId.Value
-                : l.Permissions.Any(p => p.UserId == userId.Value && p.CanView)))
+                : l.Permissions.Any(p => p.UserId == userId.Value && p.CanRead)))
             .Select(l => new ExternalLibraryDto(
                 l.Id,
                 l.Name,

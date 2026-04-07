@@ -1,15 +1,26 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Photonne.Server.Api.Shared.Models;
 
 namespace Photonne.Server.Api.Shared.Data;
 
 public class ApplicationDbContext : DbContext
 {
+    // Reusable converters for UTC <-> timestamp without time zone
+    private static readonly ValueConverter<DateTime, DateTime> UtcConverter = new(
+        v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
+        v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+    private static readonly ValueConverter<DateTime?, DateTime?> NullableUtcConverter = new(
+        v => v.HasValue && v.Value.Kind == DateTimeKind.Utc
+            ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified)
+            : v,
+        v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null);
+
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
     }
-
-    // PhotoEntity removed - use Asset instead
+    
     public DbSet<Asset> Assets { get; set; }
     public DbSet<AssetExif> AssetExifs { get; set; }
     public DbSet<AssetThumbnail> AssetThumbnails { get; set; }
@@ -32,8 +43,6 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // PhotoEntity configuration removed - use Asset instead
-
         // Configure User entity
         modelBuilder.Entity<User>(entity =>
         {
@@ -47,20 +56,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsPrimaryAdmin).HasDefaultValue(false);
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-            entity.Property(e => e.LastLoginAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) 
-                        : v,
-                    v => v.HasValue 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) 
-                        : null);
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.LastLoginAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
 
         // Configure Folder entity
@@ -71,8 +68,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(500);
             entity.HasIndex(e => e.Path).IsUnique();
             entity.HasIndex(e => e.ParentFolderId);
-            
-            // Self-referencing relationship for folder hierarchy
+
             entity.HasOne(e => e.ParentFolder)
                 .WithMany(e => e.SubFolders)
                 .HasForeignKey(e => e.ParentFolderId)
@@ -84,43 +80,32 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => e.ExternalLibraryId);
-
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure FolderPermission entity
         modelBuilder.Entity<FolderPermission>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
-            // Foreign keys
+
             entity.HasOne(e => e.User)
                 .WithMany(e => e.FolderPermissions)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.Folder)
                 .WithMany(e => e.Permissions)
                 .HasForeignKey(e => e.FolderId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.GrantedByUser)
                 .WithMany()
                 .HasForeignKey(e => e.GrantedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
-            
-            // Unique constraint: one permission record per user-folder combination
+
             entity.HasIndex(e => new { e.UserId, e.FolderId }).IsUnique();
-            
-            entity.Property(e => e.GrantedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.GrantedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
         
         // Configure Asset entity
@@ -131,17 +116,19 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FullPath).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.Checksum).IsRequired().HasMaxLength(64);
             entity.Property(e => e.Extension).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Caption).HasMaxLength(2000);
+            entity.Property(e => e.AiDescription).HasMaxLength(2000);
             entity.HasIndex(e => e.FullPath).IsUnique();
             entity.HasIndex(e => e.Checksum);
             entity.HasIndex(e => e.FileName);
             entity.HasIndex(e => e.FolderId);
             entity.HasIndex(e => e.OwnerId);
-            
+
             entity.HasOne(e => e.Owner)
                 .WithMany(u => u.Assets)
                 .HasForeignKey(e => e.OwnerId)
                 .OnDelete(DeleteBehavior.SetNull);
-            
+
             entity.HasOne(e => e.Folder)
                 .WithMany(f => f.Assets)
                 .HasForeignKey(e => e.FolderId)
@@ -153,27 +140,13 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => e.ExternalLibraryId);
-            entity.HasIndex(e => e.IsOffline);
+            entity.HasIndex(e => e.IsFileMissing);
 
-            entity.Property(e => e.CreatedDate)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-            
-            entity.Property(e => e.ModifiedDate)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-            
-            entity.Property(e => e.ScannedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.FileCreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.FileModifiedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.ScannedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
-        
+
         // Configure AssetExif entity
         modelBuilder.Entity<AssetExif>(entity =>
         {
@@ -182,71 +155,47 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CameraModel).HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Keywords).HasMaxLength(1000);
-            
+
             entity.HasOne(e => e.Asset)
                 .WithOne(a => a.Exif)
                 .HasForeignKey<AssetExif>(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasIndex(e => e.AssetId).IsUnique();
-            
-            entity.Property(e => e.DateTimeOriginal)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) 
-                        : v,
-                    v => v.HasValue 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) 
-                        : null);
-            
-            entity.Property(e => e.ExtractedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.DateTimeOriginal).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
+            entity.Property(e => e.ExtractedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
-        
+
         // Configure AssetThumbnail entity
         modelBuilder.Entity<AssetThumbnail>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.FilePath).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.Format).IsRequired().HasMaxLength(20);
-            
+
             entity.HasOne(e => e.Asset)
                 .WithMany(a => a.Thumbnails)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasIndex(e => e.AssetId);
-            entity.HasIndex(e => new { e.AssetId, e.Size }).IsUnique(); // One thumbnail per size per asset
-            
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.HasIndex(e => new { e.AssetId, e.Size }).IsUnique();
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
-        
+
         // Configure AssetTag entity
         modelBuilder.Entity<AssetTag>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             entity.HasOne(e => e.Asset)
                 .WithMany(a => a.Tags)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasIndex(e => e.AssetId);
-            entity.HasIndex(e => new { e.AssetId, e.TagType }).IsUnique(); // One tag per type per asset
-            
-            entity.Property(e => e.DetectedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.HasIndex(e => new { e.AssetId, e.TagType }).IsUnique();
+            entity.Property(e => e.DetectedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure UserTag entity
@@ -263,12 +212,7 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.OwnerId);
             entity.HasIndex(e => new { e.OwnerId, e.NormalizedName }).IsUnique();
-
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AssetUserTag entity
@@ -289,60 +233,32 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.AssetId);
             entity.HasIndex(e => e.UserTagId);
         });
-        
+
         // Configure AssetMlJob entity
         modelBuilder.Entity<AssetMlJob>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
-            
+
             entity.HasOne(e => e.Asset)
                 .WithMany(a => a.MlJobs)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasIndex(e => e.AssetId);
-            entity.HasIndex(e => new { e.AssetId, e.JobType, e.Status }); // For efficient querying
-            
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-            
-            entity.Property(e => e.StartedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) 
-                        : v,
-                    v => v.HasValue 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) 
-                        : null);
-            
-            entity.Property(e => e.CompletedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) 
-                        : v,
-                    v => v.HasValue 
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) 
-                        : null);
+            entity.HasIndex(e => new { e.AssetId, e.JobType, e.Status });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.StartedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
+            entity.Property(e => e.CompletedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
 
         // Configure Setting entity
         modelBuilder.Entity<Setting>(entity =>
         {
-            entity.HasKey(e => new { e.UserId, e.Key });
-            entity.Property(e => e.UserId);
+            entity.HasKey(e => new { e.OwnerId, e.Key });
             entity.Property(e => e.Key).HasMaxLength(100);
-            entity.Property(e => e.Value).HasMaxLength(1000);
-            entity.Property(e => e.UpdatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.Value);  // text, no length limit
+            entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure Album entity
@@ -351,88 +267,67 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
-            
+
             entity.HasOne(e => e.CoverAsset)
                 .WithMany()
                 .HasForeignKey(e => e.CoverAssetId)
                 .OnDelete(DeleteBehavior.SetNull);
-            
+
             entity.HasOne(e => e.Owner)
                 .WithMany(u => u.OwnedAlbums)
                 .HasForeignKey(e => e.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
-            
+
             entity.HasIndex(e => e.CoverAssetId);
             entity.HasIndex(e => e.OwnerId);
-            
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-            
-            entity.Property(e => e.UpdatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
-        // Configure AlbumAsset entity
+        // Configure AlbumAsset entity — composite PK (AlbumId, AssetId)
         modelBuilder.Entity<AlbumAsset>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            
+            entity.HasKey(e => new { e.AlbumId, e.AssetId });
+
             entity.HasOne(e => e.Album)
                 .WithMany(a => a.AlbumAssets)
                 .HasForeignKey(e => e.AlbumId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.Asset)
                 .WithMany()
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasIndex(e => e.AlbumId);
             entity.HasIndex(e => e.AssetId);
-            entity.HasIndex(e => new { e.AlbumId, e.AssetId }).IsUnique(); // One asset can only appear once per album
-            
-            entity.Property(e => e.AddedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.AddedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AlbumPermission entity
         modelBuilder.Entity<AlbumPermission>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             entity.HasOne(e => e.Album)
                 .WithMany(a => a.Permissions)
                 .HasForeignKey(e => e.AlbumId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.User)
                 .WithMany(u => u.AlbumPermissions)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.GrantedByUser)
                 .WithMany()
                 .HasForeignKey(e => e.GrantedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
-            
+
             entity.HasIndex(e => e.AlbumId);
             entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => new { e.AlbumId, e.UserId }).IsUnique(); // One permission per user-album combination
-            
-            entity.Property(e => e.GrantedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.HasIndex(e => new { e.AlbumId, e.UserId }).IsUnique();
+            entity.Property(e => e.GrantedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure SharedLink entity
@@ -457,24 +352,11 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.CreatedById)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-
-            entity.Property(e => e.ExpiresAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified) : v,
-                    v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null);
-
             entity.Property(e => e.PasswordHash).HasMaxLength(200);
             entity.Property(e => e.AllowDownload).HasDefaultValue(true);
-            entity.Property(e => e.MaxViews);
             entity.Property(e => e.ViewCount).HasDefaultValue(0);
-
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.ExpiresAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
 
         // Configure Notification entity
@@ -493,12 +375,7 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.UserId, e.IsRead });
-
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure ExternalLibrary entity
@@ -515,22 +392,8 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.OwnerId);
-
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-
-            entity.Property(e => e.LastScannedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified)
-                        : v,
-                    v => v.HasValue
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)
-                        : null);
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.LastScannedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
 
         // Configure ExternalLibraryPermission entity
@@ -554,12 +417,7 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => new { e.ExternalLibraryId, e.UserId }).IsUnique();
-
-            entity.Property(e => e.GrantedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.GrantedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure RefreshToken entity
@@ -577,29 +435,9 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.UserId, e.DeviceId });
             entity.HasIndex(e => e.TokenHash).IsUnique();
-
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-
-            entity.Property(e => e.ExpiresAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? DateTime.SpecifyKind(v, DateTimeKind.Unspecified) : v,
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-
-            entity.Property(e => e.RevokedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Unspecified)
-                        : v,
-                    v => v.HasValue
-                        ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)
-                        : null);
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.ExpiresAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.RevokedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
     }
 }
-

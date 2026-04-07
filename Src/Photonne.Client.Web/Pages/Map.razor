@@ -214,7 +214,7 @@
             await JS.InvokeVoidAsync("mapHelpers.destroyMap");
             var navList = _points
                 .OrderByDescending(p => p.Date)
-                .Select(p => new TimelineItem { Id = p.Id, CreatedDate = p.Date, HasThumbnails = p.HasThumbnail })
+                .Select(p => new TimelineItem { Id = p.Id, FileCreatedAt = p.Date, HasThumbnails = p.HasThumbnail })
                 .ToList();
             AssetListNavigationState.SetList(navList, albumId: null);
             Navigation.NavigateTo($"/asset/{id}?returnTo=map");
@@ -239,7 +239,7 @@
         _drawerOpen = false;
         await JS.InvokeVoidAsync("mapHelpers.destroyMap");
         var navList = _drawerPoints
-            .Select(p => new TimelineItem { Id = p.Id, CreatedDate = p.Date, HasThumbnails = p.HasThumbnail })
+            .Select(p => new TimelineItem { Id = p.Id, FileCreatedAt = p.Date, HasThumbnails = p.HasThumbnail })
             .ToList();
         AssetListNavigationState.SetList(navList, albumId: null);
         Navigation.NavigateTo($"/asset/{point.Id}?returnTo=map");

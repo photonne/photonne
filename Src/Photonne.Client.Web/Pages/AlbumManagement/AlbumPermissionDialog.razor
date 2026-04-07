@@ -18,12 +18,12 @@
             
             <MudText Typo="Typo.subtitle1" Class="mb-3 mt-4">Permisos</MudText>
             
-            <MudSwitch @bind-Value="_canView" 
+            <MudSwitch @bind-Value="_canRead" 
                       Label="Puede ver el álbum" 
                       Color="Color.Success"
                       Class="mb-2" />
             
-            <MudSwitch @bind-Value="_canEdit" 
+            <MudSwitch @bind-Value="_canWrite" 
                       Label="Puede editar el álbum" 
                       Color="Color.Primary"
                       Class="mb-2" />
@@ -70,8 +70,8 @@
     private bool _isEdit;
 
     private Guid? _selectedUserId;
-    private bool _canView = true;
-    private bool _canEdit = false;
+    private bool _canRead = true;
+    private bool _canWrite = false;
     private bool _canDelete = false;
     private bool _canManagePermissions = false;
 
@@ -82,8 +82,8 @@
         if (_isEdit && Permission != null)
         {
             _selectedUserId = Permission.UserId;
-            _canView = Permission.CanView;
-            _canEdit = Permission.CanEdit;
+            _canRead = Permission.CanRead;
+            _canWrite = Permission.CanWrite;
             _canDelete = Permission.CanDelete;
             _canManagePermissions = Permission.CanManagePermissions;
         }
@@ -101,8 +101,8 @@
             var request = new SetAlbumPermissionRequest
             {
                 UserId = _selectedUserId.Value,
-                CanView = _canView,
-                CanEdit = _canEdit,
+                CanRead = _canRead,
+                CanWrite = _canWrite,
                 CanDelete = _canDelete,
                 CanManagePermissions = _canManagePermissions
             };

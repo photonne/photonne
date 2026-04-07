@@ -54,7 +54,7 @@ public class TimelineIndexEndpoint : IEndpoint
             var index = await dbContext.Assets
                 .Where(a => a.DeletedAt == null && !a.IsArchived
                          && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
-                .GroupBy(a => a.CreatedDate.Date)
+                .GroupBy(a => a.FileCreatedAt.Date)
                 .Select(g => new TimelineIndexItemResponse
                 {
                     Date = g.Key,

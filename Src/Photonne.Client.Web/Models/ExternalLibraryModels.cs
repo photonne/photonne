@@ -49,7 +49,7 @@ public class ExternalLibraryPermissionDto
     public Guid UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public bool CanView { get; set; }
+    public bool CanRead { get; set; }
     public DateTime GrantedAt { get; set; }
     public Guid? GrantedByUserId { get; set; }
 }
@@ -57,5 +57,5 @@ public class ExternalLibraryPermissionDto
 public class SetExternalLibraryPermissionRequest
 {
     public Guid UserId { get; set; }
-    public bool CanView { get; set; }
+    public bool CanRead { get; set; }
 }

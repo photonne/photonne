@@ -90,7 +90,7 @@ public class AlbumsEndpoint : IEndpoint
             return (false, false, false, false);
         }
 
-        return (permission.CanView, permission.CanEdit, permission.CanDelete, permission.CanManagePermissions);
+        return (permission.CanRead, permission.CanWrite, permission.CanDelete, permission.CanManagePermissions);
     }
 
     private async Task<IResult> GetAllAlbums(
@@ -119,14 +119,14 @@ public class AlbumsEndpoint : IEndpoint
                 .Include(a => a.CoverAsset)
                     .ThenInclude(ca => ca!.Thumbnails)
                 .Include(a => a.Permissions)
-                .Where(a => a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanView))
+                .Where(a => a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanRead))
                 .OrderByDescending(a => a.UpdatedAt)
                 .ToListAsync(cancellationToken);
 
             var albumIds = albums.Select(a => a.Id).ToList();
             var sharedCounts = await dbContext.AlbumPermissions
                 .Include(p => p.Album)
-                .Where(p => albumIds.Contains(p.AlbumId) && p.CanView)
+                .Where(p => albumIds.Contains(p.AlbumId) && p.CanRead)
                 .ToListAsync(cancellationToken);
 
             var albumSharedCounts = sharedCounts
@@ -158,10 +158,10 @@ public class AlbumsEndpoint : IEndpoint
                 UpdatedAt = a.UpdatedAt,
                 AssetCount = a.AlbumAssets.Count,
                 IsOwner = a.OwnerId == userId,
-                IsShared = a.Permissions.Any(p => p.CanView),
+                IsShared = a.Permissions.Any(p => p.CanRead),
                 SharedWithCount = albumSharedCounts.TryGetValue(a.Id, out var count) ? count : 0,
-                CanView = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanView),
-                CanEdit = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanEdit),
+                CanRead = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanRead),
+                CanWrite = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanWrite),
                 CanDelete = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = a.OwnerId == userId || a.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
                 HasActiveShareLink = albumsWithActiveLinks.Contains(a.Id),
@@ -229,7 +229,7 @@ public class AlbumsEndpoint : IEndpoint
             }
 
             var sharedCount = await dbContext.AlbumPermissions
-                .CountAsync(p => p.AlbumId == albumId && p.CanView && p.UserId != album.OwnerId, cancellationToken) + 1;
+                .CountAsync(p => p.AlbumId == albumId && p.CanRead && p.UserId != album.OwnerId, cancellationToken) + 1;
 
             string? coverUrl = null;
             if (album.CoverAssetId.HasValue && album.CoverAsset?.Thumbnails.Any(t => t.Size == ThumbnailSize.Medium) == true)
@@ -254,10 +254,10 @@ public class AlbumsEndpoint : IEndpoint
                 UpdatedAt = album.UpdatedAt,
                 AssetCount = album.AlbumAssets.Count,
                 IsOwner = album.OwnerId == userId,
-                IsShared = album.Permissions.Any(p => p.CanView),
+                IsShared = album.Permissions.Any(p => p.CanRead),
                 SharedWithCount = sharedCount,
-                CanView = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanView),
-                CanEdit = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanEdit),
+                CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
+                CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
                 CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
                 CoverThumbnailUrl = coverUrl
@@ -314,8 +314,8 @@ public class AlbumsEndpoint : IEndpoint
                 FileName = aa.Asset.FileName,
                 FullPath = aa.Asset.FullPath,
                 FileSize = aa.Asset.FileSize,
-                CreatedDate = aa.Asset.CreatedDate,
-                ModifiedDate = aa.Asset.ModifiedDate,
+                FileCreatedAt = aa.Asset.FileCreatedAt,
+                FileModifiedAt = aa.Asset.FileModifiedAt,
                 Extension = aa.Asset.Extension,
                 ScannedAt = aa.Asset.ScannedAt,
                 Type = aa.Asset.Type.ToString(),
@@ -383,8 +383,8 @@ public class AlbumsEndpoint : IEndpoint
                 UpdatedAt = album.UpdatedAt,
                 AssetCount = 0,
                 IsOwner = true,
-                CanView = true,
-                CanEdit = true,
+                CanRead = true,
+                CanWrite = true,
                 CanDelete = true,
                 CanManagePermissions = true
             };
@@ -456,8 +456,8 @@ public class AlbumsEndpoint : IEndpoint
                 UpdatedAt = album.UpdatedAt,
                 AssetCount = await dbContext.AlbumAssets.CountAsync(aa => aa.AlbumId == albumId, cancellationToken),
                 IsOwner = album.OwnerId == userId,
-                CanView = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanView),
-                CanEdit = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanEdit),
+                CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
+                CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
                 CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
                 CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions)
             };
@@ -869,8 +869,8 @@ public class AlbumResponse
     public bool IsOwner { get; set; }
     public bool IsShared { get; set; }
     public int SharedWithCount { get; set; }
-    public bool CanView { get; set; }
-    public bool CanEdit { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
     public bool HasActiveShareLink { get; set; }

@@ -252,7 +252,7 @@
 
     private static DateTime GetDeletedDate(TimelineItem asset)
     {
-        return asset.DeletedAt ?? asset.ModifiedDate;
+        return asset.DeletedAt ?? asset.FileModifiedAt;
     }
 
     private string FormatDayHeader(DateTime date)

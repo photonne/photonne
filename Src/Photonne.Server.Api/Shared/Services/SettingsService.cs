@@ -19,12 +19,12 @@ public class SettingsService
     public async Task<string> GetSettingAsync(string key, Guid userId, string defaultValue = "")
     {
         var setting = await _dbContext.Settings
-            .FirstOrDefaultAsync(s => s.UserId == userId && s.Key == key);
+            .FirstOrDefaultAsync(s => s.OwnerId == userId && s.Key == key);
 
         if (setting == null && userId != GlobalUserId)
         {
             setting = await _dbContext.Settings
-                .FirstOrDefaultAsync(s => s.UserId == GlobalUserId && s.Key == key);
+                .FirstOrDefaultAsync(s => s.OwnerId == GlobalUserId && s.Key == key);
         }
 
         return setting?.Value ?? defaultValue;
@@ -33,12 +33,12 @@ public class SettingsService
     public async Task SetSettingAsync(string key, string value, Guid userId)
     {
         var setting = await _dbContext.Settings
-            .FirstOrDefaultAsync(s => s.UserId == userId && s.Key == key);
+            .FirstOrDefaultAsync(s => s.OwnerId == userId && s.Key == key);
         if (setting == null)
         {
             setting = new Setting
             {
-                UserId = userId,
+                OwnerId = userId,
                 Key = key,
                 Value = value,
                 UpdatedAt = DateTime.UtcNow

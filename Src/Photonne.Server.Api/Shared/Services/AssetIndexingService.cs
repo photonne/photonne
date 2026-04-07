@@ -101,8 +101,8 @@ public class AssetIndexingService
                 // Update existing
                 existingByPath.Checksum = checksum;
                 existingByPath.FileSize = fileInfo.Length;
-                existingByPath.ModifiedDate = fileInfo.LastWriteTimeUtc;
-                existingByPath.IsOffline = false;
+                existingByPath.FileModifiedAt = fileInfo.LastWriteTimeUtc;
+                existingByPath.IsFileMissing = false;
                 asset = existingByPath;
                 isNew = false;
             }
@@ -111,7 +111,7 @@ public class AssetIndexingService
                 // File moved/renamed — update path
                 existingByChecksum.FullPath = storedPath;
                 existingByChecksum.FileName = fileInfo.Name;
-                existingByChecksum.ModifiedDate = fileInfo.LastWriteTimeUtc;
+                existingByChecksum.FileModifiedAt = fileInfo.LastWriteTimeUtc;
                 asset = existingByChecksum;
                 isNew = false;
             }
@@ -125,8 +125,8 @@ public class AssetIndexingService
                     Checksum = checksum,
                     Type = assetType,
                     Extension = extension,
-                    CreatedDate = fileInfo.CreationTimeUtc,
-                    ModifiedDate = fileInfo.LastWriteTimeUtc,
+                    FileCreatedAt = fileInfo.CreationTimeUtc,
+                    FileModifiedAt = fileInfo.LastWriteTimeUtc,
                     ScannedAt = DateTime.UtcNow,
                 };
                 isNew = true;
@@ -169,7 +169,7 @@ public class AssetIndexingService
             asset.FolderId = folder?.Id;
 
             // EXIF
-            if (assetType == AssetType.IMAGE || assetType == AssetType.VIDEO)
+            if (assetType == AssetType.Image || assetType == AssetType.Video)
             {
                 var exif = await _exifService.ExtractExifAsync(physicalPath, ct);
                 if (exif != null)
@@ -204,7 +204,7 @@ public class AssetIndexingService
             }
 
             // ML jobs
-            if (asset.Type == AssetType.IMAGE && _mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
+            if (asset.Type == AssetType.Image && _mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
             {
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceDetection, ct);
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectRecognition, ct);
@@ -222,9 +222,9 @@ public class AssetIndexingService
 
     private static AssetType DetermineAssetType(string extension) => extension switch
     {
-        "jpg" or "jpeg" or "png" or "gif" or "bmp" or "webp" or "tiff" or "tif" or "heic" or "heif" or "raw" or "cr2" or "nef" or "arw" => AssetType.IMAGE,
-        "mp4" or "mov" or "avi" or "mkv" or "wmv" or "flv" or "webm" or "m4v" or "3gp" => AssetType.VIDEO,
-        _ => AssetType.IMAGE
+        "jpg" or "jpeg" or "png" or "gif" or "bmp" or "webp" or "tiff" or "tif" or "heic" or "heif" or "raw" or "cr2" or "nef" or "arw" => AssetType.Image,
+        "mp4" or "mov" or "avi" or "mkv" or "wmv" or "flv" or "webm" or "m4v" or "3gp" => AssetType.Video,
+        _ => AssetType.Image
     };
 
     private async Task<Folder?> GetOrCreateFolderForPathAsync(string? folderPath, Guid? externalLibraryId, CancellationToken ct)

@@ -111,7 +111,7 @@ else if (_content.Album != null)
                         <div class="share-album-thumb @(_selectedAsset?.Id == item.Id ? "selected" : "")"
                              @onclick="() => SelectAsset(item)">
                             <img src="@item.ThumbnailUrl" alt="@item.FileName" loading="lazy" />
-                            @if (item.Type == "VIDEO")
+                            @if (item.Type == "Video")
                             {
                                 <div class="share-video-badge">
                                     <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
@@ -129,7 +129,7 @@ else if (_content.Album != null)
     {
         <div class="share-lightbox" @onclick="() => _selectedAsset = null">
             <div class="share-lightbox-inner" @onclick:stopPropagation="true">
-                @if (_selectedAsset.Type == "VIDEO")
+                @if (_selectedAsset.Type == "Video")
                 {
                     <video controls autoplay class="share-lightbox-media">
                         <source src="@_selectedAsset.ContentUrl" type="video/mp4" />

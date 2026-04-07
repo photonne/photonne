@@ -34,7 +34,7 @@
             }
             else if (_lightboxBlobUrl != null)
             {
-                @if (_lightboxAsset.Type == "VIDEO")
+                @if (_lightboxAsset.Type == "Video")
                 {
                     <video src="@_lightboxBlobUrl" controls autoplay playsinline class="local-lightbox-media" />
                 }
@@ -469,7 +469,7 @@
             // generar blob URLs para los 18k agotaría la memoria del móvil.
             const int maxThumbs = 300;
             var images = _assets
-                .Where(a => a.Type == "IMAGE" && string.IsNullOrEmpty(a.LocalThumbnailUrl))
+                .Where(a => a.Type == "Image" && string.IsNullOrEmpty(a.LocalThumbnailUrl))
                 .Take(maxThumbs)
                 .ToList();
             for (int i = 0; i < images.Count; i += thumbBatchSize)
@@ -517,10 +517,10 @@
             FileName = f.Name,
             FullPath = f.RelativePath,
             FileSize = f.Size,
-            CreatedDate  = DateTimeOffset.FromUnixTimeMilliseconds(f.LastModified).UtcDateTime,
-            ModifiedDate = DateTimeOffset.FromUnixTimeMilliseconds(f.LastModified).UtcDateTime,
+            FileCreatedAt  = DateTimeOffset.FromUnixTimeMilliseconds(f.LastModified).UtcDateTime,
+            FileModifiedAt = DateTimeOffset.FromUnixTimeMilliseconds(f.LastModified).UtcDateTime,
             Extension = Path.GetExtension(f.Name).TrimStart('.').ToLower(),
-            Type = f.IsImage ? "IMAGE" : "VIDEO",
+            Type = f.IsImage ? "Image" : "Video",
             SyncStatus = AssetSyncStatus.Pending,
             IsLocalOnly = true
         }).ToList();
@@ -537,8 +537,8 @@
     private void GroupAssets()
     {
         _groupedAssets = _assets
-            .OrderByDescending(a => a.ModifiedDate)
-            .GroupBy(a => a.ModifiedDate.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-ES")))
+            .OrderByDescending(a => a.FileModifiedAt)
+            .GroupBy(a => a.FileModifiedAt.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-ES")))
             .ToDictionary(
                 g => char.ToUpper(g.Key[0]) + g.Key[1..],
                 g => g.ToList());

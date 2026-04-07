@@ -66,8 +66,8 @@ public class AlbumPermissionsEndpoint : IEndpoint
             UserId = p.UserId,
             Username = p.User.Username,
             Email = p.User.Email,
-            CanView = p.CanView,
-            CanEdit = p.CanEdit,
+            CanRead = p.CanRead,
+            CanWrite = p.CanWrite,
             CanDelete = p.CanDelete,
             CanManagePermissions = p.CanManagePermissions,
             GrantedAt = p.GrantedAt,
@@ -135,8 +135,8 @@ public class AlbumPermissionsEndpoint : IEndpoint
         if (existingPermission != null)
         {
             // Actualizar permiso existente
-            existingPermission.CanView = request.CanView;
-            existingPermission.CanEdit = request.CanEdit;
+            existingPermission.CanRead = request.CanRead;
+            existingPermission.CanWrite = request.CanWrite;
             existingPermission.CanDelete = request.CanDelete;
             existingPermission.CanManagePermissions = request.CanManagePermissions;
             existingPermission.GrantedByUserId = currentUserId;
@@ -150,8 +150,8 @@ public class AlbumPermissionsEndpoint : IEndpoint
             {
                 AlbumId = albumId,
                 UserId = request.UserId,
-                CanView = request.CanView,
-                CanEdit = request.CanEdit,
+                CanRead = request.CanRead,
+                CanWrite = request.CanWrite,
                 CanDelete = request.CanDelete,
                 CanManagePermissions = request.CanManagePermissions,
                 GrantedByUserId = currentUserId,
@@ -173,8 +173,8 @@ public class AlbumPermissionsEndpoint : IEndpoint
             UserId = permission.UserId,
             Username = permission.User.Username,
             Email = permission.User.Email,
-            CanView = permission.CanView,
-            CanEdit = permission.CanEdit,
+            CanRead = permission.CanRead,
+            CanWrite = permission.CanWrite,
             CanDelete = permission.CanDelete,
             CanManagePermissions = permission.CanManagePermissions,
             GrantedAt = permission.GrantedAt,
@@ -242,8 +242,8 @@ public class AlbumPermissionsEndpoint : IEndpoint
 public class SetAlbumPermissionRequest
 {
     public Guid UserId { get; set; }
-    public bool CanView { get; set; }
-    public bool CanEdit { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
 }
@@ -254,8 +254,8 @@ public class AlbumPermissionDto
     public Guid UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public bool CanView { get; set; }
-    public bool CanEdit { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
     public DateTime GrantedAt { get; set; }

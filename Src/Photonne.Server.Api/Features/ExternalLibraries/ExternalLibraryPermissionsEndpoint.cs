@@ -14,11 +14,11 @@ public record ExternalLibraryPermissionDto(
     Guid UserId,
     string Username,
     string Email,
-    bool CanView,
+    bool CanRead,
     DateTime GrantedAt,
     Guid? GrantedByUserId);
 
-public record SetExternalLibraryPermissionRequest(Guid UserId, bool CanView);
+public record SetExternalLibraryPermissionRequest(Guid UserId, bool CanRead);
 
 // ─── Endpoint ────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
                 p.UserId,
                 p.User.Username,
                 p.User.Email,
-                p.CanView,
+                p.CanRead,
                 p.GrantedAt,
                 p.GrantedByUserId))
             .ToListAsync(ct);
@@ -103,7 +103,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
         ExternalLibraryPermission permission;
         if (existing is not null)
         {
-            existing.CanView = request.CanView;
+            existing.CanRead = request.CanRead;
             existing.GrantedByUserId = adminId.Value;
             existing.GrantedAt = DateTime.UtcNow;
             permission = existing;
@@ -114,7 +114,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
             {
                 ExternalLibraryId = libraryId,
                 UserId = request.UserId,
-                CanView = request.CanView,
+                CanRead = request.CanRead,
                 GrantedByUserId = adminId.Value,
                 GrantedAt = DateTime.UtcNow
             };
@@ -128,7 +128,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
             permission.UserId,
             targetUser.Username,
             targetUser.Email,
-            permission.CanView,
+            permission.CanRead,
             permission.GrantedAt,
             permission.GrantedByUserId));
     }

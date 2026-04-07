@@ -10,8 +10,8 @@ public class AlbumPermission
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
     
-    public bool CanView { get; set; }
-    public bool CanEdit { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
     

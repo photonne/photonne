@@ -660,7 +660,7 @@ else
             }
 
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" >
-                @if (_selectedAlbum?.CanEdit == true || _selectedAlbum?.IsOwner == true)
+                @if (_selectedAlbum?.CanWrite == true || _selectedAlbum?.IsOwner == true)
                 {
                     <MudMenuItem Icon="@Icons.Material.Outlined.AddPhotoAlternate" OnClick="@(() => Navigation.NavigateTo("/"))">Añadir fotos</MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="OpenEditDialog">Editar nombre/descripción</MudMenuItem>
@@ -1738,7 +1738,7 @@ else
     private bool CanEditSelectedAlbum()
     {
         var album = GetSingleSelectedAlbum();
-        return album != null && (album.CanEdit || album.IsOwner);
+        return album != null && (album.CanWrite || album.IsOwner);
     }
 
     private bool CanManagePermissionsSelectedAlbum()
@@ -1891,7 +1891,7 @@ else
 
     private bool CanEditAlbumAssets()
     {
-        return _selectedAlbum != null && (_selectedAlbum.CanEdit || _selectedAlbum.IsOwner);
+        return _selectedAlbum != null && (_selectedAlbum.CanWrite || _selectedAlbum.IsOwner);
     }
 
     private async Task RemoveSelectedAssetsAsync()

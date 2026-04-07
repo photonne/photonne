@@ -172,7 +172,7 @@
     private void RebuildGroups()
     {
         _groupedAssets = _assets
-            .GroupBy(a => a.CreatedDate.ToString("yyyy-MM-dd"))
+            .GroupBy(a => a.FileCreatedAt.ToString("yyyy-MM-dd"))
             .OrderByDescending(g => g.Key)
             .ToDictionary(g => g.Key, g => g.ToList());
     }

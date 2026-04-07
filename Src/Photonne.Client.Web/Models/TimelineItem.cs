@@ -6,8 +6,8 @@ public class TimelineItem
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public long FileSize { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime ModifiedDate { get; set; }
+    public DateTime FileCreatedAt { get; set; }
+    public DateTime FileModifiedAt { get; set; }
     public string Extension { get; set; } = string.Empty;
     public DateTime ScannedAt { get; set; }
     public string Type { get; set; } = string.Empty;
@@ -21,7 +21,7 @@ public class TimelineItem
     public List<string> Tags { get; set; } = new();
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
-    public bool IsOffline { get; set; }
+    public bool IsFileMissing { get; set; }
 
     public double AspectRatio => Width.HasValue && Height.HasValue && Height.Value > 0
         ? (double)Width.Value / Height.Value
@@ -40,7 +40,7 @@ public class TimelineItem
     public string ContentUrl => SyncStatus == AssetSyncStatus.Synced
         ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/content"
         : $"{ApiConfig.BaseUrl}/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
-    public string DisplayDate => CreatedDate.ToString("dd MMM yyyy");
+    public string DisplayDate => FileCreatedAt.ToString("dd MMM yyyy");
     public string FileSizeFormatted => FormatFileSize(FileSize);
 
     private static string FormatFileSize(long bytes)

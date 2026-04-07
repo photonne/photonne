@@ -330,7 +330,7 @@ else
                                             <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="word-break:break-all; font-family:monospace;">@file.VirtualPath</MudText>
                                             <div class="d-flex gap-1 mt-1 flex-wrap">
                                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@FormatBytes(file.FileSize)</MudChip>
-                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@file.ModifiedDate.ToLocalTime().ToString("dd/MM/yyyy")</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@file.FileModifiedAt.ToLocalTime().ToString("dd/MM/yyyy")</MudChip>
                                                 @if (file.OwnerUsername != null)
                                                 {
                                                     <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text"
@@ -660,7 +660,7 @@ else
             // Priority: indexed > most recently modified > largest file
             var best = Group.Files
                 .OrderByDescending(f => f.IsIndexed ? 1 : 0)
-                .ThenByDescending(f => f.ModifiedDate)
+                .ThenByDescending(f => f.FileModifiedAt)
                 .ThenByDescending(f => f.FileSize)
                 .First();
             KeepPaths.Clear();

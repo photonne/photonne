@@ -66,23 +66,23 @@ public class TimelineEndpoint : IEndpoint
                 .Where(a => a.DeletedAt == null && !a.IsArchived
                          && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
-            // Apply cursor (exclusive upper bound on CreatedDate)
+            // Apply cursor (exclusive upper bound on FileCreatedAt)
             if (cursor.HasValue)
             {
                 var cursorUtc = cursor.Value.ToUniversalTime();
-                query = query.Where(a => a.CreatedDate < cursorUtc);
+                query = query.Where(a => a.FileCreatedAt < cursorUtc);
             }
 
             if (from.HasValue)
             {
                 var fromUtc = from.Value.ToUniversalTime();
-                query = query.Where(a => a.CreatedDate >= fromUtc);
+                query = query.Where(a => a.FileCreatedAt >= fromUtc);
             }
 
             // Fetch one extra item to determine hasMore
             var dbItems = await query
-                .OrderByDescending(a => a.CreatedDate)
-                .ThenByDescending(a => a.ModifiedDate)
+                .OrderByDescending(a => a.FileCreatedAt)
+                .ThenByDescending(a => a.FileModifiedAt)
                 .Take(pageSize + 1)
                 .ToListAsync(cancellationToken);
 
@@ -107,8 +107,8 @@ public class TimelineEndpoint : IEndpoint
                 FileName = asset.FileName,
                 FullPath = asset.FullPath,
                 FileSize = asset.FileSize,
-                CreatedDate = asset.CreatedDate,
-                ModifiedDate = asset.ModifiedDate,
+                FileCreatedAt = asset.FileCreatedAt,
+                FileModifiedAt = asset.FileModifiedAt,
                 Extension = asset.Extension,
                 ScannedAt = asset.ScannedAt,
                 Type = asset.Type.ToString(),
@@ -122,7 +122,7 @@ public class TimelineEndpoint : IEndpoint
                 Tags = BuildTagList(asset),
                 IsFavorite = asset.IsFavorite,
                 IsArchived = asset.IsArchived,
-                IsOffline = asset.IsOffline
+                IsFileMissing = asset.IsFileMissing
             }).ToList();
 
             // Normalizar rutas existentes en BD para comparación
@@ -235,13 +235,13 @@ public class TimelineEndpoint : IEndpoint
                                 FileName = fileName,
                                 FullPath = virtualizedPath,
                                 FileSize = file.FileSize,
-                                CreatedDate = file.CreatedDate,
-                                ModifiedDate = file.ModifiedDate,
+                                FileCreatedAt = file.FileCreatedAt,
+                                FileModifiedAt = file.FileModifiedAt,
                                 Extension = file.Extension,
                                 ScannedAt = DateTime.MinValue,
                                 Type = file.AssetType.ToString(),
                                 SyncStatus = AssetSyncStatus.Copied,
-                                Width = null, // Se puede obtener más tarde si es necesario
+                                Width = null,
                                 Height = null,
                                 Tags = new List<string>()
                             });
@@ -256,11 +256,11 @@ public class TimelineEndpoint : IEndpoint
 
             // Re-order by most recent date (preferring CreatedDate but handles cases where only ModifiedDate is available)
             var orderedTimeline = timelineItems
-                .OrderByDescending(a => a.SyncStatus == AssetSyncStatus.Pending || a.SyncStatus == AssetSyncStatus.Copied ? a.ModifiedDate : a.CreatedDate)
+                .OrderByDescending(a => a.SyncStatus == AssetSyncStatus.Pending || a.SyncStatus == AssetSyncStatus.Copied ? a.FileModifiedAt : a.FileCreatedAt)
                 .ThenByDescending(a => a.FileName)
                 .ToList();
 
-            var nextCursor = hasMore ? assets.Last().CreatedDate : (DateTime?)null;
+            var nextCursor = hasMore ? assets.Last().FileCreatedAt : (DateTime?)null;
 
             return Results.Ok(new TimelinePageResponse
             {

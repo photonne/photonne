@@ -120,7 +120,7 @@ public class MaintenanceEndpoint : IEndpoint
         CancellationToken ct)
     {
         var assets = await dbContext.Assets
-            .Where(a => a.DeletedAt == null && !a.IsOffline)
+            .Where(a => a.DeletedAt == null && !a.IsFileMissing)
             .Select(a => new { a.Id, a.FullPath })
             .ToListAsync(ct);
 
@@ -137,7 +137,7 @@ public class MaintenanceEndpoint : IEndpoint
             {
                 await dbContext.Assets
                     .Where(a => a.Id == asset.Id)
-                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsOffline, true), ct);
+                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsFileMissing, true), ct);
                 markedOffline++;
             }
         }
@@ -163,7 +163,7 @@ public class MaintenanceEndpoint : IEndpoint
         CancellationToken ct)
     {
         var assets = await dbContext.Assets
-            .Where(a => a.DeletedAt == null && !a.IsOffline)
+            .Where(a => a.DeletedAt == null && !a.IsFileMissing)
             .Select(a => new { a.Id, a.FullPath, a.FileSize })
             .ToListAsync(ct);
 

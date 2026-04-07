@@ -53,7 +53,7 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                 await thumbnailService.RefreshThumbnailsPathAsync();
 
                 var assets = await dbContext.Assets
-                    .OrderBy(a => a.CreatedDate)
+                    .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new { a.Id, a.FullPath, a.FileName })
                     .ToListAsync(cancellationToken);
 

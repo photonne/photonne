@@ -62,7 +62,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
 
                 var assets = await dbContext.Assets
                     .Where(a => a.Checksum != null && a.Checksum != string.Empty)
-                    .OrderBy(a => a.CreatedDate)
+                    .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new { a.Id, a.FullPath, a.FileName, a.Checksum, a.FileSize, a.ScannedAt })
                     .ToListAsync(cancellationToken);
 
@@ -242,7 +242,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
                 // Build a DB lookup: virtualized path → (Id, Checksum, FileSize, ModifiedDate, OwnerUsername)
                 var dbIndex = await dbContext.Assets
                     .Where(a => a.Checksum != null && a.Checksum != string.Empty)
-                    .Select(a => new { a.Id, a.FullPath, a.Checksum, a.FileSize, a.ModifiedDate, OwnerUsername = a.Owner != null ? a.Owner.Username : null })
+                    .Select(a => new { a.Id, a.FullPath, a.Checksum, a.FileSize, a.FileModifiedAt, OwnerUsername = a.Owner != null ? a.Owner.Username : null })
                     .ToListAsync(cancellationToken);
 
                 var dbByPath = dbIndex.ToDictionary(
@@ -272,7 +272,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
                             assetId = dbEntry.Id;
                             ownerUsername = dbEntry.OwnerUsername;
                             // Use stored checksum if file hasn't changed
-                            if (!hashService.HasFileChanged(file.FullPath, dbEntry.FileSize, dbEntry.ModifiedDate))
+                            if (!hashService.HasFileChanged(file.FullPath, dbEntry.FileSize, dbEntry.FileModifiedAt))
                                 hash = dbEntry.Checksum!;
                             else
                                 hash = await hashService.CalculateFileHashAsync(file.FullPath, cancellationToken);
@@ -331,7 +331,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
                             FileName = System.IO.Path.GetFileName(f.PhysicalPath),
                             Directory = System.IO.Path.GetDirectoryName(f.PhysicalPath) ?? string.Empty,
                             FileSize = f.Size,
-                            ModifiedDate = File.GetLastWriteTimeUtc(f.PhysicalPath),
+                            FileModifiedAt = File.GetLastWriteTimeUtc(f.PhysicalPath),
                             IsIndexed = f.IsIndexed,
                             AssetId = f.AssetId,
                             OwnerUsername = f.OwnerUsername

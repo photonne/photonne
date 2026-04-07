@@ -18,7 +18,7 @@ public class SharedAssetInfo
     public Guid Id { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
-    public DateTime CreatedDate { get; set; }
+    public DateTime FileCreatedAt { get; set; }
     public long FileSize { get; set; }
     public int? Width { get; set; }
     public int? Height { get; set; }

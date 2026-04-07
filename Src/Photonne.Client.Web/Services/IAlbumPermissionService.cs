@@ -13,8 +13,8 @@ public class AlbumPermissionDto
     public Guid UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public bool CanView { get; set; }
-    public bool CanEdit { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
     public DateTime GrantedAt { get; set; }
@@ -24,8 +24,8 @@ public class AlbumPermissionDto
 public class SetAlbumPermissionRequest
 {
     public Guid UserId { get; set; }
-    public bool CanView { get; set; }
-    public bool CanEdit { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
 }

@@ -113,8 +113,8 @@ public class UploadAssetsEndpoint : IEndpoint
                 Checksum = checksum,
                 Type = assetType,
                 Extension = extension,
-                CreatedDate = fileInfo.CreationTimeUtc,
-                ModifiedDate = fileInfo.LastWriteTimeUtc,
+                FileCreatedAt = fileInfo.CreationTimeUtc,
+                FileModifiedAt = fileInfo.LastWriteTimeUtc,
                 ScannedAt = DateTime.UtcNow,
                 FolderId = uploadsFolder?.Id,
                 OwnerId = userId
@@ -127,8 +127,8 @@ public class UploadAssetsEndpoint : IEndpoint
                 asset.Exif = exif;
                 if (exif.DateTimeOriginal != null)
                 {
-                    asset.CreatedDate = exif.DateTimeOriginal.Value;
-                    asset.ModifiedDate = asset.CreatedDate;
+                    asset.FileCreatedAt = exif.DateTimeOriginal.Value;
+                    asset.FileModifiedAt = asset.FileCreatedAt;
                 }
                 var tags = await mediaRecognitionService.DetectMediaTypeAsync(targetPath, exif, cancellationToken);
                 if (tags.Any())
@@ -139,8 +139,8 @@ public class UploadAssetsEndpoint : IEndpoint
 
             try
             {
-                File.SetCreationTimeUtc(targetPath, asset.CreatedDate);
-                File.SetLastWriteTimeUtc(targetPath, asset.ModifiedDate);
+                File.SetCreationTimeUtc(targetPath, asset.FileCreatedAt);
+                File.SetLastWriteTimeUtc(targetPath, asset.FileModifiedAt);
             }
             catch (Exception ex)
             {
@@ -179,7 +179,7 @@ public class UploadAssetsEndpoint : IEndpoint
     private AssetType GetAssetType(string extension)
     {
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
-        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.IMAGE : AssetType.VIDEO;
+        return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.Image : AssetType.Video;
     }
 
     private static async Task<Folder?> EnsureFolderRecordAsync(

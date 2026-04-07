@@ -65,9 +65,9 @@ public class MemoriesEndpoint : IEndpoint
                 .ThenInclude(ut => ut.UserTag)
             .Where(a =>
                 a.DeletedAt == null &&
-                a.CreatedDate.Month == today.Month &&
-                a.CreatedDate.Day == today.Day &&
-                a.CreatedDate.Year < today.Year);
+                a.FileCreatedAt.Month == today.Month &&
+                a.FileCreatedAt.Day == today.Day &&
+                a.FileCreatedAt.Year < today.Year);
 
         if (!isAdmin)
         {
@@ -76,7 +76,7 @@ public class MemoriesEndpoint : IEndpoint
         }
 
         var assets = await query
-            .OrderByDescending(a => a.CreatedDate)
+            .OrderByDescending(a => a.FileCreatedAt)
             .Take(100)
             .ToListAsync(ct);
 
@@ -89,8 +89,8 @@ public class MemoriesEndpoint : IEndpoint
         FileName = a.FileName,
         FullPath = a.FullPath,
         FileSize = a.FileSize,
-        CreatedDate = a.CreatedDate,
-        ModifiedDate = a.ModifiedDate,
+        FileCreatedAt = a.FileCreatedAt,
+        FileModifiedAt = a.FileModifiedAt,
         Extension = a.Extension,
         ScannedAt = a.ScannedAt,
         Type = a.Type.ToString(),

@@ -8,8 +8,8 @@ public class TimelineResponse
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
     public long FileSize { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime ModifiedDate { get; set; }
+    public DateTime FileCreatedAt { get; set; }
+    public DateTime FileModifiedAt { get; set; }
     public string Extension { get; set; } = string.Empty;
     public DateTime ScannedAt { get; set; }
     public string Type { get; set; } = string.Empty; // IMAGE or VIDEO
@@ -23,6 +23,6 @@ public class TimelineResponse
     public List<string> Tags { get; set; } = new();
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
-    public bool IsOffline { get; set; }
+    public bool IsFileMissing { get; set; }
 }
 

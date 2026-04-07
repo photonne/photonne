@@ -79,7 +79,7 @@ public class GetShareEndpoint : IEndpoint
                     Id = aa.Asset.Id,
                     FileName = aa.Asset.FileName,
                     Type = aa.Asset.Type.ToString(),
-                    CreatedDate = aa.Asset.CreatedDate,
+                    FileCreatedAt = aa.Asset.FileCreatedAt,
                     FileSize = aa.Asset.FileSize,
                     Width = aa.Asset.Exif?.Width,
                     Height = aa.Asset.Exif?.Height,
@@ -128,7 +128,7 @@ public class SharedAssetDto
     public Guid Id { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
-    public DateTime CreatedDate { get; set; }
+    public DateTime FileCreatedAt { get; set; }
     public long FileSize { get; set; }
     public int? Width { get; set; }
     public int? Height { get; set; }

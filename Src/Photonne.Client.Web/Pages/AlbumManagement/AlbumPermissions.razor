@@ -55,12 +55,12 @@
                 <MudTd DataLabel="Usuario">@context.Username</MudTd>
                 <MudTd DataLabel="Email">@context.Email</MudTd>
                 <MudTd DataLabel="Ver">
-                    <MudIcon Icon="@(context.CanView ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" 
-                            Color="@(context.CanView ? Color.Success : Color.Error)" />
+                    <MudIcon Icon="@(context.CanRead ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" 
+                            Color="@(context.CanRead ? Color.Success : Color.Error)" />
                 </MudTd>
                 <MudTd DataLabel="Editar">
-                    <MudIcon Icon="@(context.CanEdit ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" 
-                            Color="@(context.CanEdit ? Color.Success : Color.Error)" />
+                    <MudIcon Icon="@(context.CanWrite ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" 
+                            Color="@(context.CanWrite ? Color.Success : Color.Error)" />
                 </MudTd>
                 <MudTd DataLabel="Eliminar">
                     <MudIcon Icon="@(context.CanDelete ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)" 

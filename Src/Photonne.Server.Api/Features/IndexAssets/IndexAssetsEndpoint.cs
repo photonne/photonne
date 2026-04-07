@@ -677,7 +677,7 @@ public class IndexAssetsEndpoint : IEndpoint
         Guid? ownerId = await GetValidatedOwnerIdAsync(dbPath, dbContext, cancellationToken);
         var fileDirectory = Path.GetDirectoryName(file.FullPath);
         var needsFullCheck = existingByPath == null || 
-            hashService.HasFileChanged(file.FullPath, existingByPath.FileSize, existingByPath.ModifiedDate);
+            hashService.HasFileChanged(file.FullPath, existingByPath.FileSize, existingByPath.FileModifiedAt);
         
         if (!needsFullCheck)
         {
@@ -709,7 +709,7 @@ public class IndexAssetsEndpoint : IEndpoint
             // File was moved/renamed - update path
             existingByChecksum.FullPath = dbPath;
             existingByChecksum.FileName = file.FileName;
-            existingByChecksum.ModifiedDate = file.ModifiedDate;
+            existingByChecksum.FileModifiedAt = file.FileModifiedAt;
             existingByChecksum.FileSize = file.FileSize;
             existingByChecksum.OwnerId = ownerId;
             var movedFolder = await GetOrCreateFolderForPathAsync(dbContext, settingsService, fileDirectory, cancellationToken);
@@ -722,7 +722,7 @@ public class IndexAssetsEndpoint : IEndpoint
             // File exists at same path - update if changed
             existingByPath.Checksum = checksum;
             existingByPath.FileSize = file.FileSize;
-            existingByPath.ModifiedDate = file.ModifiedDate;
+            existingByPath.FileModifiedAt = file.FileModifiedAt;
             existingByPath.OwnerId = ownerId;
             if (existingByPath.FolderId == null)
             {
@@ -745,8 +745,8 @@ public class IndexAssetsEndpoint : IEndpoint
                 Checksum = checksum,
                 Type = file.AssetType,
                 Extension = file.Extension,
-                CreatedDate = file.CreatedDate,
-                ModifiedDate = file.ModifiedDate,
+                FileCreatedAt = file.FileCreatedAt,
+                FileModifiedAt = file.FileModifiedAt,
                 FolderId = folder?.Id,
                 OwnerId = ownerId
             };
@@ -761,7 +761,7 @@ public class IndexAssetsEndpoint : IEndpoint
     // Método separado para decidir si debe extraerse EXIF
     private static bool ShouldExtractExif(Asset asset, bool isNew, HashSet<Guid> assetsWithDateTimeOriginal)
     {
-        if (asset.Type != AssetType.IMAGE && asset.Type != AssetType.VIDEO)
+        if (asset.Type != AssetType.Image && asset.Type != AssetType.Video)
             return false;
 
         if (isNew)
@@ -1002,7 +1002,7 @@ public class IndexAssetsEndpoint : IEndpoint
         IndexStatistics stats,
         CancellationToken cancellationToken)
     {
-        var imageAssets = assets.Where(a => a.Type == AssetType.IMAGE).ToList();
+        var imageAssets = assets.Where(a => a.Type == AssetType.Image).ToList();
         if (!imageAssets.Any())
             return;
         
@@ -1245,7 +1245,7 @@ public class IndexAssetsEndpoint : IEndpoint
             // actualizar el asset a mantener con la ruta más reciente
             var mostRecentPath = assetsInGroup
                 .OrderByDescending(a => a.ScannedAt)
-                .ThenByDescending(a => a.ModifiedDate)
+                .ThenByDescending(a => a.FileModifiedAt)
                 .First()
                 .FullPath;
             
