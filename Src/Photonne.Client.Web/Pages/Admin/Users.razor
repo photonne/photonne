@@ -206,8 +206,9 @@ else
 
         var options = new DialogOptions
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
+            FullScreen = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
         };
 
         var dialog = await DialogService.ShowAsync<UserDialog>("Crear Usuario", parameters, options);
@@ -229,8 +230,9 @@ else
 
         var options = new DialogOptions
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
+            FullScreen = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
         };
 
         var dialog = await DialogService.ShowAsync<UserDialog>("Editar Usuario", parameters, options);

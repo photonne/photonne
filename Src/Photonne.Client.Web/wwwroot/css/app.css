@@ -270,7 +270,7 @@ html, body {
 @media (max-width: 599px) {
     /* Margen lateral para todos los dialogs (evita que lleguen al borde) */
     .mud-dialog-container {
-        padding: 0 16px;
+        padding: 0;
         box-sizing: border-box;
     }
 

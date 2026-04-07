@@ -1,88 +1,103 @@
 <MudDialog>
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="@_isValid" @bind-Errors="@_errors">
-            <MudTextField @bind-Value="_username" 
-                         Label="Nombre de usuario" 
-                         Required="true"
-                         RequiredError="El nombre de usuario es obligatorio"
-                         Variant="Variant.Outlined"
-                         Disabled="@_isEdit"
-                         Class="mb-3" />
-            
-            <MudTextField @bind-Value="_email" 
-                         Label="Email" 
-                         Required="true"
-                         RequiredError="El email es obligatorio"
-                         Variant="Variant.Outlined"
-                         Class="mb-3" />
-            
-            @if (!_isEdit)
-            {
-                <MudTextField @bind-Value="_password" 
-                             Label="Contraseña" 
-                             InputType="InputType.Password"
+        <MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+            <MudForm @ref="_form" @bind-IsValid="@_isValid" @bind-Errors="@_errors">
+                <MudText Typo="Typo.subtitle1" Class="mb-4 mud-text-secondary">Información de la cuenta</MudText>
+
+                <MudTextField @bind-Value="_username"
+                             Label="Nombre de usuario"
                              Required="true"
-                             RequiredError="La contraseña es obligatoria"
+                             RequiredError="El nombre de usuario es obligatorio"
                              Variant="Variant.Outlined"
-                             Class="mb-3"
-                             HelperText="Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas, números y caracteres especiales" />
-            }
-            
-            <MudTextField @bind-Value="_firstName" 
-                         Label="Nombre" 
-                         Variant="Variant.Outlined"
-                         Class="mb-3" />
-            
-            <MudTextField @bind-Value="_lastName" 
-                         Label="Apellidos" 
-                         Variant="Variant.Outlined"
-                         Class="mb-3" />
-            
-            <MudSelect @bind-Value="_role" 
-                     Label="Rol" 
-                     Variant="Variant.Outlined"
-                     Class="mb-3">
-                <MudSelectItem Value="@("User")">Usuario</MudSelectItem>
-                <MudSelectItem Value="@("Admin")">Administrador</MudSelectItem>
-            </MudSelect>
-            
-            <MudSwitch @bind-Value="_isActive"
-                      Label="Usuario activo"
-                      Color="Color.Success"
-                      Class="mb-3" />
+                             Disabled="@_isEdit"
+                             Class="mb-3" />
 
-            <MudSelect @bind-Value="_quotaPreset"
-                       Label="Cuota de almacenamiento"
-                       Variant="Variant.Outlined"
-                       Class="mb-3">
-                <MudSelectItem Value="@(-1L)">Ilimitado</MudSelectItem>
-                <MudSelectItem Value="@(1L * 1024 * 1024 * 1024)">1 GB</MudSelectItem>
-                <MudSelectItem Value="@(5L * 1024 * 1024 * 1024)">5 GB</MudSelectItem>
-                <MudSelectItem Value="@(10L * 1024 * 1024 * 1024)">10 GB</MudSelectItem>
-                <MudSelectItem Value="@(50L * 1024 * 1024 * 1024)">50 GB</MudSelectItem>
-                <MudSelectItem Value="@(100L * 1024 * 1024 * 1024)">100 GB</MudSelectItem>
-                <MudSelectItem Value="@(0L)">Personalizado</MudSelectItem>
-            </MudSelect>
+                <MudTextField @bind-Value="_email"
+                             Label="Email"
+                             Required="true"
+                             RequiredError="El email es obligatorio"
+                             Variant="Variant.Outlined"
+                             Class="mb-3" />
 
-            @if (_quotaPreset == 0)
-            {
-                <MudNumericField @bind-Value="_quotaCustomGb"
-                                 Label="Cuota personalizada (GB)"
+                @if (!_isEdit)
+                {
+                    <MudTextField @bind-Value="_password"
+                                 Label="Contraseña"
+                                 InputType="InputType.Password"
+                                 Required="true"
+                                 RequiredError="La contraseña es obligatoria"
                                  Variant="Variant.Outlined"
-                                 Min="1"
-                                 Class="mb-3" />
-            }
-        </MudForm>
+                                 Class="mb-3"
+                                 HelperText="Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas, números y caracteres especiales" />
+                }
+
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle1" Class="mb-4 mud-text-secondary">Datos personales</MudText>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_firstName"
+                                     Label="Nombre"
+                                     Variant="Variant.Outlined"
+                                     Class="mb-3" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_lastName"
+                                     Label="Apellidos"
+                                     Variant="Variant.Outlined"
+                                     Class="mb-3" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle1" Class="mb-4 mud-text-secondary">Permisos y almacenamiento</MudText>
+
+                <MudSelect @bind-Value="_role"
+                         Label="Rol"
+                         Variant="Variant.Outlined"
+                         Class="mb-3">
+                    <MudSelectItem Value="@("User")">Usuario</MudSelectItem>
+                    <MudSelectItem Value="@("Admin")">Administrador</MudSelectItem>
+                </MudSelect>
+
+                <MudSwitch @bind-Value="_isActive"
+                          Label="Usuario activo"
+                          Color="Color.Success"
+                          Class="mb-3" />
+
+                <MudSelect @bind-Value="_quotaPreset"
+                           Label="Cuota de almacenamiento"
+                           Variant="Variant.Outlined"
+                           Class="mb-3">
+                    <MudSelectItem Value="@(-1L)">Ilimitado</MudSelectItem>
+                    <MudSelectItem Value="@(1L * 1024 * 1024 * 1024)">1 GB</MudSelectItem>
+                    <MudSelectItem Value="@(5L * 1024 * 1024 * 1024)">5 GB</MudSelectItem>
+                    <MudSelectItem Value="@(10L * 1024 * 1024 * 1024)">10 GB</MudSelectItem>
+                    <MudSelectItem Value="@(50L * 1024 * 1024 * 1024)">50 GB</MudSelectItem>
+                    <MudSelectItem Value="@(100L * 1024 * 1024 * 1024)">100 GB</MudSelectItem>
+                    <MudSelectItem Value="@(0L)">Personalizado</MudSelectItem>
+                </MudSelect>
+
+                @if (_quotaPreset == 0)
+                {
+                    <MudNumericField @bind-Value="_quotaCustomGb"
+                                     Label="Cuota personalizada (GB)"
+                                     Variant="Variant.Outlined"
+                                     Min="1"
+                                     Class="mb-3" />
+                }
+            </MudForm>
+        </MudContainer>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancelar</MudButton>
-        <MudButton Color="Color.Primary" 
-                  Variant="Variant.Filled" 
+        <MudButton Color="Color.Primary"
+                  Variant="Variant.Filled"
                   OnClick="Save"
                   Disabled="@(!_isValid || _saving)">
             @if (_saving)
             {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" />
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
             Guardar
         </MudButton>
