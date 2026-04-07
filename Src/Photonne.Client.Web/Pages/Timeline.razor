@@ -7,6 +7,7 @@
 @inject LayoutService LayoutService
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IDialogService DialogService
+@inject TimelineCache TimelineCache
 @implements IDisposable
 
 <PageTitle>Timeline - Photonne</PageTitle>
@@ -1083,11 +1084,27 @@
     {
         try
         {
-            _loading = true;
-            _timelineIndex = await AssetService.GetTimelineIndexAsync();
-            BuildSections();
-            if (_sections.Any())
-                await LoadSection(_sections[0]);
+            if (TimelineCache.HasValidIndex && TimelineCache.Index != null)
+            {
+                // Render instantáneo desde caché — sin barra de carga
+                _timelineIndex = TimelineCache.Index;
+                BuildSections();
+                if (_sections.Any())
+                    await LoadSection(_sections[0]);
+                StateHasChanged();
+
+                // Refresca el índice en segundo plano para detectar cambios
+                _ = RefreshIndexInBackgroundAsync();
+            }
+            else
+            {
+                _loading = true;
+                _timelineIndex = await AssetService.GetTimelineIndexAsync();
+                TimelineCache.SetIndex(_timelineIndex);
+                BuildSections();
+                if (_sections.Any())
+                    await LoadSection(_sections[0]);
+            }
         }
         catch (Exception ex)
         {
@@ -1096,6 +1113,42 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task RefreshIndexInBackgroundAsync()
+    {
+        try
+        {
+            var freshIndex = await AssetService.GetTimelineIndexAsync();
+            if (_isDisposed) return;
+
+            if (!TimelineCache.IndexChangedFrom(freshIndex))
+            {
+                // Sin cambios — renovar solo el TTL
+                TimelineCache.SetIndex(freshIndex);
+                return;
+            }
+
+            var changedMonths = TimelineCache.GetChangedMonths(freshIndex);
+            TimelineCache.SetIndex(freshIndex);
+            foreach (var ym in changedMonths)
+                TimelineCache.InvalidateSection(ym);
+
+            _timelineIndex = freshIndex;
+            BuildSections();
+
+            // Recargar las secciones visibles que hayan cambiado
+            var toReload = _sections.Where(s => changedMonths.Contains(s.YearMonth)).ToList();
+            if (toReload.Any())
+                await Task.WhenAll(toReload.Select(LoadSection));
+
+            if (!_isDisposed)
+                StateHasChanged();
+        }
+        catch
+        {
+            // Fallo silencioso — los datos en caché siguen siendo válidos
         }
     }
 
@@ -1135,6 +1188,17 @@
     private async Task LoadSection(TimelineSection section)
     {
         if (section.IsLoaded || section.IsLoading) return;
+
+        // Servir desde caché de forma instantánea si está disponible
+        if (TimelineCache.TryGetSection(section.YearMonth, out var cachedItems))
+        {
+            section.Items = cachedItems;
+            section.IsLoaded = true;
+            RebuildGroupedAssets();
+            StateHasChanged();
+            return;
+        }
+
         section.IsLoading = true;
         StateHasChanged();
         try
@@ -1142,6 +1206,7 @@
             var result = await AssetService.GetTimelineSectionAsync(section.StartDate, section.EndDate, pageSize: 500);
             section.Items = result.Items;
             section.IsLoaded = true;
+            TimelineCache.SetSection(section.YearMonth, result.Items);
         }
         catch (Exception ex)
         {
@@ -1405,6 +1470,7 @@
     private async Task LoadTimeline()
     {
         // Full reload (called after mutations like delete/archive)
+        TimelineCache.InvalidateAll();
         foreach (var s in _sections) { s.IsLoaded = false; s.IsLoading = false; s.Items = new(); s.IsMasonryDone = false; }
         _groupedAssets = new();
         _activeGroup = "";
@@ -1415,6 +1481,7 @@
         try
         {
             _timelineIndex = await AssetService.GetTimelineIndexAsync();
+            TimelineCache.SetIndex(_timelineIndex);
             BuildSections();
             if (_sections.Any())
                 await LoadSection(_sections[0]);
