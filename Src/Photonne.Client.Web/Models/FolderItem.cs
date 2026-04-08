@@ -19,7 +19,7 @@ public class FolderItem
     public List<FolderItem> SubFolders { get; set; } = new();
 
     public string? ThumbnailUrl => FirstAssetId.HasValue
-        ? $"{ApiConfig.BaseUrl}/api/assets/{FirstAssetId.Value}/thumbnail?size=Medium"
+        ? $"{ApiConfig.BaseUrl}/api/assets/{FirstAssetId.Value}/thumbnail?size=Small"
         : null;
 
     public List<string> PreviewThumbnailUrls => PreviewAssetIds

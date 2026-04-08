@@ -35,8 +35,8 @@ public class TimelineItem
 
     public string ThumbnailUrl => LocalThumbnailUrl
         ?? (SyncStatus == AssetSyncStatus.Synced
-            ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Medium"
-            : $"{ApiConfig.BaseUrl}/api/assets/pending/thumbnail?path={System.Net.WebUtility.UrlEncode(FullPath)}&size=Medium");
+            ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Small"
+            : $"{ApiConfig.BaseUrl}/api/assets/pending/thumbnail?path={System.Net.WebUtility.UrlEncode(FullPath)}&size=Small");
     public string ContentUrl => SyncStatus == AssetSyncStatus.Synced
         ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/content"
         : $"{ApiConfig.BaseUrl}/api/assets/pending/content?path={System.Net.WebUtility.UrlEncode(FullPath)}";
