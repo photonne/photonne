@@ -24,4 +24,12 @@ public class MetadataQueueService : IMetadataQueueService
         var url = $"/api/assets/metadata/stream?overwrite={overwriteAll}";
         return _httpClient.GetFromJsonAsAsyncEnumerable<MetadataProgressUpdate>(url, _jsonOptions, cancellationToken)!;
     }
+
+    public IAsyncEnumerable<MetadataProgressUpdate> ResumeAsync(
+        Guid taskId,
+        CancellationToken cancellationToken = default)
+    {
+        return _httpClient.GetFromJsonAsAsyncEnumerable<MetadataProgressUpdate>(
+            $"/api/tasks/{taskId}/stream", _jsonOptions, cancellationToken)!;
+    }
 }

@@ -23,4 +23,12 @@ public class IndexService : IIndexService
         var url = "/api/assets/index/stream";
         return _httpClient.GetFromJsonAsAsyncEnumerable<IndexProgressUpdate>(url, _jsonOptions, cancellationToken)!;
     }
+
+    public IAsyncEnumerable<IndexProgressUpdate> ResumeAsync(
+        Guid taskId,
+        CancellationToken cancellationToken = default)
+    {
+        return _httpClient.GetFromJsonAsAsyncEnumerable<IndexProgressUpdate>(
+            $"/api/tasks/{taskId}/stream", _jsonOptions, cancellationToken)!;
+    }
 }

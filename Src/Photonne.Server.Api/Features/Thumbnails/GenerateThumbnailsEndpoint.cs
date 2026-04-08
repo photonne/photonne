@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,10 +20,10 @@ public class GenerateThumbnailsEndpoint : IEndpoint
         var serviceProvider = app.ServiceProvider;
         app.MapGet("/api/assets/thumbnails/stream", (
             [FromQuery] bool regenerate,
-            [FromServices] ApplicationDbContext dbContext,
+            [FromServices] BackgroundTaskManager backgroundTaskManager,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
-            HandleStream(regenerate, serviceProvider,
+            HandleStream(regenerate, serviceProvider, backgroundTaskManager,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
         .WithName("GenerateThumbnailsStream")
@@ -34,10 +35,21 @@ public class GenerateThumbnailsEndpoint : IEndpoint
     private async IAsyncEnumerable<ThumbnailProgressUpdate> HandleStream(
         bool regenerate,
         IServiceProvider serviceProvider,
+        BackgroundTaskManager backgroundTaskManager,
         Guid userId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<ThumbnailProgressUpdate>();
+
+        var entry = backgroundTaskManager.Register(BackgroundTaskType.Thumbnails,
+            new Dictionary<string, string> { ["regenerate"] = regenerate.ToString() });
+        var taskCt = entry.Cts.Token;
+        void Send(ThumbnailProgressUpdate upd)
+        {
+            upd.TaskId = entry.Id;
+            channel.Writer.TryWrite(upd);
+            entry.Push(JsonSerializer.Serialize(upd), upd.Percentage, upd.Message);
+        }
 
         _ = Task.Run(async () =>
         {
@@ -55,20 +67,20 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                 var assets = await dbContext.Assets
                     .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new { a.Id, a.FullPath, a.FileName })
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(taskCt);
 
                 var stats = new ThumbnailJobStatistics { TotalAssets = assets.Count };
 
-                await channel.Writer.WriteAsync(new ThumbnailProgressUpdate
+                Send(new ThumbnailProgressUpdate
                 {
                     Message = $"Encontrados {assets.Count} assets. Iniciando...",
                     Percentage = 0,
                     Statistics = Clone(stats)
-                }, cancellationToken);
+                });
 
                 foreach (var asset in assets)
                 {
-                    if (cancellationToken.IsCancellationRequested) break;
+                    if (taskCt.IsCancellationRequested) break;
 
                     try
                     {
@@ -81,12 +93,12 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                         }
                         else
                         {
-                            await channel.Writer.WriteAsync(new ThumbnailProgressUpdate
+                            Send(new ThumbnailProgressUpdate
                             {
                                 Message = $"Procesando: {asset.FileName}",
                                 Percentage = stats.TotalAssets > 0 ? (double)stats.Processed / stats.TotalAssets * 100 : 0,
                                 Statistics = Clone(stats)
-                            }, cancellationToken);
+                            });
 
                             var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
 
@@ -97,17 +109,17 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                             else
                             {
                                 var generated = await thumbnailService.GenerateThumbnailsAsync(
-                                    physicalPath, asset.Id, cancellationToken);
+                                    physicalPath, asset.Id, taskCt);
 
                                 if (generated.Count > 0)
                                 {
                                     // Remove stale DB records and replace with fresh ones
                                     var existing = await dbContext.AssetThumbnails
                                         .Where(t => t.AssetId == asset.Id)
-                                        .ToListAsync(cancellationToken);
+                                        .ToListAsync(taskCt);
                                     dbContext.AssetThumbnails.RemoveRange(existing);
                                     dbContext.AssetThumbnails.AddRange(generated);
-                                    await dbContext.SaveChangesAsync(cancellationToken);
+                                    await dbContext.SaveChangesAsync(taskCt);
 
                                     stats.Generated += generated.Count;
                                 }
@@ -118,6 +130,7 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                             }
                         }
                     }
+                    catch (OperationCanceledException) { throw; }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[THUMBNAILS] Error procesando asset {asset.Id}: {ex.Message}");
@@ -127,24 +140,26 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                     stats.Processed++;
 
                     // Emit progress every asset to keep UI responsive
-                    await channel.Writer.WriteAsync(new ThumbnailProgressUpdate
+                    Send(new ThumbnailProgressUpdate
                     {
                         Message = stats.Failed > 0
                             ? $"Procesado {stats.Processed}/{stats.TotalAssets} — {stats.Failed} errores"
                             : $"Procesado {stats.Processed}/{stats.TotalAssets}",
                         Percentage = stats.TotalAssets > 0 ? (double)stats.Processed / stats.TotalAssets * 100 : 100,
                         Statistics = Clone(stats)
-                    }, cancellationToken);
+                    });
                 }
 
                 var completionMsg = BuildCompletionMessage(stats, regenerate);
-                await channel.Writer.WriteAsync(new ThumbnailProgressUpdate
+                Send(new ThumbnailProgressUpdate
                 {
                     Message = completionMsg,
                     Percentage = 100,
                     Statistics = Clone(stats),
                     IsCompleted = true
-                }, cancellationToken);
+                });
+
+                entry.Finish("Completed");
 
                 if (userId != Guid.Empty)
                     await notificationService.CreateAsync(userId, NotificationType.JobCompleted,
@@ -152,26 +167,20 @@ public class GenerateThumbnailsEndpoint : IEndpoint
             }
             catch (OperationCanceledException)
             {
-                await channel.Writer.WriteAsync(new ThumbnailProgressUpdate
-                {
-                    Message = "Proceso cancelado.",
-                    IsCompleted = true
-                });
+                Send(new ThumbnailProgressUpdate { Message = "Proceso cancelado.", IsCompleted = true });
+                entry.Finish("Cancelled");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[THUMBNAILS] Error fatal: {ex.Message}");
-                await channel.Writer.WriteAsync(new ThumbnailProgressUpdate
-                {
-                    Message = $"Error: {ex.Message}",
-                    IsCompleted = true
-                });
+                Send(new ThumbnailProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
+                entry.Finish("Failed");
             }
             finally
             {
-                channel.Writer.Complete();
+                channel.Writer.TryComplete();
             }
-        }, cancellationToken);
+        }, taskCt);
 
         await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
         {

@@ -41,6 +41,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<UserInitializationService>();
         builder.Services.AddScoped<AssetIndexingService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
+        builder.Services.AddSingleton<BackgroundTaskManager>();
 
         // Configure FFmpeg
         ConfigureFFmpeg(builder.Configuration);

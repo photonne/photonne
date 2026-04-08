@@ -70,4 +70,10 @@ public class ExternalLibraryService : IExternalLibraryService
         return _httpClient.GetFromJsonAsAsyncEnumerable<LibraryScanProgressUpdate>(
             $"/api/libraries/{id}/scan/stream", _jsonOptions, ct)!;
     }
+
+    public IAsyncEnumerable<LibraryScanProgressUpdate> ResumeAsync(Guid taskId, CancellationToken ct = default)
+    {
+        return _httpClient.GetFromJsonAsAsyncEnumerable<LibraryScanProgressUpdate>(
+            $"/api/tasks/{taskId}/stream", _jsonOptions, ct)!;
+    }
 }

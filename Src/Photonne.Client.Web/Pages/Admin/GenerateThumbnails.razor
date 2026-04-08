@@ -3,6 +3,7 @@
 @inject IAuthService AuthService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject BackgroundTaskStateService BackgroundTaskState
 
 <PageTitle>Generar miniaturas - Photonne</PageTitle>
 
@@ -64,6 +65,13 @@ else
                                        StartIcon="@Icons.Material.Filled.Stop">
                                 Detener
                             </MudButton>
+                        }
+                        @if (_running && _runningInBackground)
+                        {
+                            <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small"
+                                     Icon="@Icons.Material.Filled.CloudSync">
+                                Ejecutándose en segundo plano
+                            </MudChip>
                         }
                     </div>
                 </MudCardContent>
@@ -161,6 +169,7 @@ else
     private bool _isAuthorized;
     private bool _regenerateAll;
     private bool _running;
+    private bool _runningInBackground;
     private double _progress;
     private string _currentStatus = "Esperando inicio...";
     private ThumbnailJobStatistics? _stats;
@@ -181,12 +190,32 @@ else
         }
         var currentUser = await AuthService.GetCurrentUserAsync();
         _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+            await TryReconnectAsync();
+    }
+
+    private async Task TryReconnectAsync()
+    {
+        var task = await BackgroundTaskState.GetRunningTaskAsync("Thumbnails");
+        if (task == null) return;
+
+        _running = true;
+        _runningInBackground = true;
+        _progress = task.Percentage;
+        _currentStatus = task.LastMessage;
+        _startTime ??= task.StartedAt;
+        StateHasChanged();
+
+        _cts = new CancellationTokenSource();
+        await ConsumeStreamAsync(ThumbnailQueueService.ResumeAsync(task.Id, _cts.Token));
     }
 
     private async Task Start()
     {
         _cts = new CancellationTokenSource();
         _running = true;
+        _runningInBackground = false;
         _startTime = DateTime.UtcNow;
         _duration = null;
         _progress = 0;
@@ -196,10 +225,16 @@ else
         _etaSeconds = 0;
         _currentStatus = "Iniciando...";
 
+        await ConsumeStreamAsync(ThumbnailQueueService.GenerateThumbnailsAsync(_regenerateAll, _cts.Token));
+    }
+
+    private async Task ConsumeStreamAsync(IAsyncEnumerable<ThumbnailProgressUpdate> stream)
+    {
         try
         {
-            await foreach (var update in ThumbnailQueueService.GenerateThumbnailsAsync(_regenerateAll, _cts.Token))
+            await foreach (var update in stream)
             {
+                _runningInBackground = false;
                 _lastUpdate = update;
                 _currentStatus = update.Message;
                 _progress = update.Percentage;
@@ -235,6 +270,7 @@ else
         finally
         {
             _running = false;
+            _runningInBackground = false;
             _speed = 0;
             _etaSeconds = 0;
             StateHasChanged();

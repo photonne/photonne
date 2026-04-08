@@ -25,6 +25,7 @@ public class LibraryScanProgressUpdate
     public int AssetsMarkedOffline { get; set; }
     public bool IsCompleted { get; set; }
     public string? Error { get; set; }
+    public Guid? TaskId { get; set; }
 }
 
 public class CreateExternalLibraryRequest

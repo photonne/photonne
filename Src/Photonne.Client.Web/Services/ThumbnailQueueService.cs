@@ -24,4 +24,12 @@ public class ThumbnailQueueService : IThumbnailQueueService
         var url = $"/api/assets/thumbnails/stream?regenerate={regenerateAll}";
         return _httpClient.GetFromJsonAsAsyncEnumerable<ThumbnailProgressUpdate>(url, _jsonOptions, cancellationToken)!;
     }
+
+    public IAsyncEnumerable<ThumbnailProgressUpdate> ResumeAsync(
+        Guid taskId,
+        CancellationToken cancellationToken = default)
+    {
+        return _httpClient.GetFromJsonAsAsyncEnumerable<ThumbnailProgressUpdate>(
+            $"/api/tasks/{taskId}/stream", _jsonOptions, cancellationToken)!;
+    }
 }

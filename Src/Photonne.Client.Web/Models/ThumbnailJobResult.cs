@@ -6,6 +6,7 @@ public class ThumbnailProgressUpdate
     public double Percentage { get; set; }
     public ThumbnailJobStatistics? Statistics { get; set; }
     public bool IsCompleted { get; set; }
+    public Guid? TaskId { get; set; }
 }
 
 public class ThumbnailJobStatistics

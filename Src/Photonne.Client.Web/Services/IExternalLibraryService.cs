@@ -10,4 +10,5 @@ public interface IExternalLibraryService
     Task<bool> UpdateAsync(Guid id, UpdateExternalLibraryRequest request, CancellationToken ct = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
     IAsyncEnumerable<LibraryScanProgressUpdate> ScanAsync(Guid id, CancellationToken ct = default);
+    IAsyncEnumerable<LibraryScanProgressUpdate> ResumeAsync(Guid taskId, CancellationToken ct = default);
 }

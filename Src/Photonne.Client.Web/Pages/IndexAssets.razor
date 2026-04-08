@@ -5,6 +5,7 @@
 @inject ISettingsService SettingsService
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject BackgroundTaskStateService BackgroundTaskState
 
 <PageTitle>Indexar - Photonne</PageTitle>
 
@@ -55,6 +56,13 @@
                                        StartIcon="@Icons.Material.Filled.Stop">
                                 Detener
                             </MudButton>
+                        }
+                        @if (_scanning && _runningInBackground)
+                        {
+                            <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small"
+                                     Icon="@Icons.Material.Filled.CloudSync">
+                                Ejecutándose en segundo plano
+                            </MudChip>
                         }
                     </div>
                 </MudCardContent>
@@ -166,6 +174,7 @@
 @code {
     private bool _isAuthorized;
     private bool _scanning;
+    private bool _runningInBackground;
     private double _progress;
     private string _currentStatus = "Esperando inicio...";
     private IndexStatistics? _statistics;
@@ -187,12 +196,32 @@
         }
         var currentUser = await AuthService.GetCurrentUserAsync();
         _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+            await TryReconnectAsync();
+    }
+
+    private async Task TryReconnectAsync()
+    {
+        var task = await BackgroundTaskState.GetRunningTaskAsync("IndexAssets");
+        if (task == null) return;
+
+        _scanning = true;
+        _runningInBackground = true;
+        _progress = task.Percentage;
+        _currentStatus = task.LastMessage;
+        _indexingStartTime ??= task.StartedAt;
+        StateHasChanged();
+
+        _cts = new CancellationTokenSource();
+        await ConsumeStreamAsync(IndexService.ResumeAsync(task.Id, _cts.Token));
     }
 
     private async Task StartScan()
     {
         _cts = new CancellationTokenSource();
         _scanning = true;
+        _runningInBackground = false;
         _indexingStartTime = DateTime.UtcNow;
         _indexingDuration = null;
         _updates.Clear();
@@ -203,10 +232,16 @@
         _etaSeconds = 0;
         _currentStatus = "Iniciando...";
 
+        await ConsumeStreamAsync(IndexService.IndexDirectoryAsync(_cts.Token));
+    }
+
+    private async Task ConsumeStreamAsync(IAsyncEnumerable<IndexProgressUpdate> stream)
+    {
         try
         {
-            await foreach (var update in IndexService.IndexDirectoryAsync(_cts.Token))
+            await foreach (var update in stream)
             {
+                _runningInBackground = false;
                 _lastUpdate = update;
                 _currentStatus = update.Message;
                 _progress = update.Percentage;
@@ -241,6 +276,7 @@
         finally
         {
             _scanning = false;
+            _runningInBackground = false;
             _speed = 0;
             _etaSeconds = 0;
             StateHasChanged();

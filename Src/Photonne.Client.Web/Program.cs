@@ -136,5 +136,10 @@ builder.Services.AddSingleton<TimelineCache>();
 builder.Services.AddScoped<TimelinePersistenceService>();
 builder.Services.AddSingleton<PwaUpdateService>();
 builder.Services.AddSingleton<PwaInstallService>();
+builder.Services.AddScoped<BackgroundTaskStateService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    return new BackgroundTaskStateService(httpClient);
+});
 
 await builder.Build().RunAsync();

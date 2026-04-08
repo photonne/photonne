@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,9 +20,10 @@ public class ExtractMetadataEndpoint : IEndpoint
         var serviceProvider = app.ServiceProvider;
         app.MapGet("/api/assets/metadata/stream", (
             [FromQuery] bool overwrite,
+            [FromServices] BackgroundTaskManager backgroundTaskManager,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
-            HandleStream(overwrite, serviceProvider,
+            HandleStream(overwrite, serviceProvider, backgroundTaskManager,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
         .WithName("ExtractMetadataStream")
@@ -33,10 +35,21 @@ public class ExtractMetadataEndpoint : IEndpoint
     private async IAsyncEnumerable<MetadataProgressUpdate> HandleStream(
         bool overwrite,
         IServiceProvider serviceProvider,
+        BackgroundTaskManager backgroundTaskManager,
         Guid userId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<MetadataProgressUpdate>();
+
+        var entry = backgroundTaskManager.Register(BackgroundTaskType.Metadata,
+            new Dictionary<string, string> { ["overwrite"] = overwrite.ToString() });
+        var taskCt = entry.Cts.Token;
+        void Send(MetadataProgressUpdate upd)
+        {
+            upd.TaskId = entry.Id;
+            channel.Writer.TryWrite(upd);
+            entry.Push(JsonSerializer.Serialize(upd), upd.Percentage, upd.Message);
+        }
 
         _ = Task.Run(async () =>
         {
@@ -53,20 +66,20 @@ public class ExtractMetadataEndpoint : IEndpoint
                     .Where(a => a.Type == AssetType.Image || a.Type == AssetType.Video)
                     .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(taskCt);
 
                 var stats = new MetadataJobStatistics { TotalAssets = assets.Count };
 
-                await channel.Writer.WriteAsync(new MetadataProgressUpdate
+                Send(new MetadataProgressUpdate
                 {
                     Message = $"Encontrados {assets.Count} assets con soporte de metadatos. Iniciando...",
                     Percentage = 0,
                     Statistics = Clone(stats)
-                }, cancellationToken);
+                });
 
                 foreach (var asset in assets)
                 {
-                    if (cancellationToken.IsCancellationRequested) break;
+                    if (taskCt.IsCancellationRequested) break;
 
                     try
                     {
@@ -76,12 +89,12 @@ public class ExtractMetadataEndpoint : IEndpoint
                         }
                         else
                         {
-                            await channel.Writer.WriteAsync(new MetadataProgressUpdate
+                            Send(new MetadataProgressUpdate
                             {
                                 Message = $"Extrayendo: {asset.FileName}",
                                 Percentage = stats.TotalAssets > 0 ? (double)stats.Processed / stats.TotalAssets * 100 : 0,
                                 Statistics = Clone(stats)
-                            }, cancellationToken);
+                            });
 
                             var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
 
@@ -91,7 +104,7 @@ public class ExtractMetadataEndpoint : IEndpoint
                             }
                             else
                             {
-                                var extracted = await exifService.ExtractExifAsync(physicalPath, cancellationToken);
+                                var extracted = await exifService.ExtractExifAsync(physicalPath, taskCt);
 
                                 if (extracted != null)
                                 {
@@ -99,12 +112,12 @@ public class ExtractMetadataEndpoint : IEndpoint
 
                                     // Remove stale record and replace with fresh extraction
                                     var existing = await dbContext.AssetExifs
-                                        .FirstOrDefaultAsync(e => e.AssetId == asset.Id, cancellationToken);
+                                        .FirstOrDefaultAsync(e => e.AssetId == asset.Id, taskCt);
                                     if (existing != null)
                                         dbContext.AssetExifs.Remove(existing);
 
                                     dbContext.AssetExifs.Add(extracted);
-                                    await dbContext.SaveChangesAsync(cancellationToken);
+                                    await dbContext.SaveChangesAsync(taskCt);
 
                                     stats.Extracted++;
                                 }
@@ -115,6 +128,7 @@ public class ExtractMetadataEndpoint : IEndpoint
                             }
                         }
                     }
+                    catch (OperationCanceledException) { throw; }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[METADATA] Error procesando asset {asset.Id}: {ex.Message}");
@@ -123,24 +137,26 @@ public class ExtractMetadataEndpoint : IEndpoint
 
                     stats.Processed++;
 
-                    await channel.Writer.WriteAsync(new MetadataProgressUpdate
+                    Send(new MetadataProgressUpdate
                     {
                         Message = stats.Failed > 0
                             ? $"Procesado {stats.Processed}/{stats.TotalAssets} — {stats.Failed} errores"
                             : $"Procesado {stats.Processed}/{stats.TotalAssets}",
                         Percentage = stats.TotalAssets > 0 ? (double)stats.Processed / stats.TotalAssets * 100 : 100,
                         Statistics = Clone(stats)
-                    }, cancellationToken);
+                    });
                 }
 
                 var completionMsg = BuildCompletionMessage(stats);
-                await channel.Writer.WriteAsync(new MetadataProgressUpdate
+                Send(new MetadataProgressUpdate
                 {
                     Message = completionMsg,
                     Percentage = 100,
                     Statistics = Clone(stats),
                     IsCompleted = true
-                }, cancellationToken);
+                });
+
+                entry.Finish("Completed");
 
                 if (userId != Guid.Empty)
                     await notificationService.CreateAsync(userId, NotificationType.JobCompleted,
@@ -148,26 +164,20 @@ public class ExtractMetadataEndpoint : IEndpoint
             }
             catch (OperationCanceledException)
             {
-                await channel.Writer.WriteAsync(new MetadataProgressUpdate
-                {
-                    Message = "Proceso cancelado.",
-                    IsCompleted = true
-                });
+                Send(new MetadataProgressUpdate { Message = "Proceso cancelado.", IsCompleted = true });
+                entry.Finish("Cancelled");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[METADATA] Error fatal: {ex.Message}");
-                await channel.Writer.WriteAsync(new MetadataProgressUpdate
-                {
-                    Message = $"Error: {ex.Message}",
-                    IsCompleted = true
-                });
+                Send(new MetadataProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
+                entry.Finish("Failed");
             }
             finally
             {
-                channel.Writer.Complete();
+                channel.Writer.TryComplete();
             }
-        }, cancellationToken);
+        }, taskCt);
 
         await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
         {

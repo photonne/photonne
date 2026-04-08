@@ -6,6 +6,7 @@ public class MetadataProgressUpdate
     public double Percentage { get; set; }
     public MetadataJobStatistics? Statistics { get; set; }
     public bool IsCompleted { get; set; }
+    public Guid? TaskId { get; set; }
 }
 
 public class MetadataJobStatistics

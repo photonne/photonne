@@ -6,4 +6,5 @@ public class IndexProgressUpdate
     public double Percentage { get; set; }
     public IndexStatistics? Statistics { get; set; }
     public bool IsCompleted { get; set; }
+    public Guid? TaskId { get; set; }
 }

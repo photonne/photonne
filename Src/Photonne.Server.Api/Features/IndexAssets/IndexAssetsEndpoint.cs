@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,8 +28,9 @@ public class IndexAssetsEndpoint : IEndpoint
             [FromServices] IMlJobService mlJobService,
             [FromServices] SettingsService settingsService,
             [FromServices] ApplicationDbContext dbContext,
+            [FromServices] BackgroundTaskManager backgroundTaskManager,
             HttpContext httpContext,
-            CancellationToken cancellationToken) => HandleStream(directoryScanner, hashService, exifService, thumbnailService, mediaRecognitionService, mlJobService, settingsService, dbContext, serviceProvider,
+            CancellationToken cancellationToken) => HandleStream(directoryScanner, hashService, exifService, thumbnailService, mediaRecognitionService, mlJobService, settingsService, dbContext, serviceProvider, backgroundTaskManager,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
         .WithName("IndexAssetsStream")
@@ -62,12 +64,22 @@ public class IndexAssetsEndpoint : IEndpoint
         SettingsService settingsService,
         ApplicationDbContext dbContext,
         IServiceProvider serviceProvider,
+        BackgroundTaskManager backgroundTaskManager,
         Guid userId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<IndexProgressUpdate>();
         var indexStartTime = DateTime.UtcNow;
         var stats = new IndexStatistics();
+
+        var entry = backgroundTaskManager.Register(BackgroundTaskType.IndexAssets);
+        var taskCt = entry.Cts.Token;
+        void Send(IndexProgressUpdate upd)
+        {
+            upd.TaskId = entry.Id;
+            channel.Writer.TryWrite(upd);
+            entry.Push(JsonSerializer.Serialize(upd), upd.Percentage, upd.Message);
+        }
 
         // Background task to perform the scan
         _ = Task.Run(async () =>
@@ -83,37 +95,38 @@ public class IndexAssetsEndpoint : IEndpoint
                 var scopedThumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailGeneratorService>();
                 var scopedMlJobService = scope.ServiceProvider.GetRequiredService<IMlJobService>();
                 var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
-                
+
                 // Obtener la ruta interna del NAS (ASSETS_PATH)
                 var directoryPath = scopedSettingsService.GetInternalAssetsPath();
                 Console.WriteLine($"[SCAN] Indexando directorio interno: {directoryPath}");
-                
+
                 if (!Directory.Exists(directoryPath))
                 {
-                    await channel.Writer.WriteAsync(new IndexProgressUpdate 
-                    { 
-                        Message = $"Error: El directorio interno no existe: {directoryPath}", 
-                        IsCompleted = true 
-                    }, cancellationToken);
+                    Send(new IndexProgressUpdate
+                    {
+                        Message = $"Error: El directorio interno no existe: {directoryPath}",
+                        IsCompleted = true
+                    });
+                    entry.Finish("Failed");
                     return;
                 }
-                
-                await channel.Writer.WriteAsync(new IndexProgressUpdate { Message = "Iniciando descubrimiento de archivos...", Percentage = 0 }, cancellationToken);
+
+                Send(new IndexProgressUpdate { Message = "Iniciando descubrimiento de archivos...", Percentage = 0 });
 
                 // Repair any folders that were created outside the app and have no owner
-                await AssignAdminToOrphanedFoldersAsync(scopedDbContext, cancellationToken);
+                await AssignAdminToOrphanedFoldersAsync(scopedDbContext, taskCt);
 
                 // STEP 1: Recursive file discovery
-                var scannedFilesList = (await directoryScanner.ScanDirectoryAsync(directoryPath, cancellationToken)).ToList();
+                var scannedFilesList = (await directoryScanner.ScanDirectoryAsync(directoryPath, taskCt)).ToList();
                 stats.TotalFilesFound = scannedFilesList.Count;
-                
-                await channel.Writer.WriteAsync(new IndexProgressUpdate { Message = $"Descubiertos {stats.TotalFilesFound} archivos. Procesando...", Percentage = 10, Statistics = MapToBlazorStats(stats) }, cancellationToken);
+
+                Send(new IndexProgressUpdate { Message = $"Descubiertos {stats.TotalFilesFound} archivos. Procesando...", Percentage = 10, Statistics = MapToBlazorStats(stats) });
 
                 // Load existing assets for differential comparison (without Exif to reduce memory usage)
                 // Manejar duplicados: si hay múltiples assets con el mismo checksum, tomar el más reciente
                 var allAssets = await dbContext.Assets
                     .Where(a => a.DeletedAt == null)
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(taskCt);
                 var existingAssetsByChecksum = allAssets
                     .Where(a => !string.IsNullOrEmpty(a.Checksum))
                     .GroupBy(a => a.Checksum)
@@ -128,8 +141,8 @@ public class IndexAssetsEndpoint : IEndpoint
                 var assetsWithDateTimeOriginal = await dbContext.AssetExifs
                     .Where(e => e.DateTimeOriginal != null)
                     .Select(e => e.AssetId)
-                    .ToHashSetAsync(cancellationToken);
-                
+                    .ToHashSetAsync(taskCt);
+
                 // STEP 2 & 3: Process files
                 var indexContext = new IndexContext
                 {
@@ -141,36 +154,36 @@ public class IndexAssetsEndpoint : IEndpoint
                 };
 
                 int processedCount = 0;
-                
+
                 foreach (var file in scannedFilesList)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
+                    taskCt.ThrowIfCancellationRequested();
+
                     // Normalizar la ruta del archivo para comparar con la BD
                     var dbPath = await scopedSettingsService.VirtualizePathAsync(file.FullPath);
                     indexContext.AssetsToDelete.Add(dbPath); // Añadir a la lista de archivos que SI existen
-                    
+
                     var fileDirectory = Path.GetDirectoryName(file.FullPath);
                     if (!string.IsNullOrEmpty(fileDirectory))
                     {
                         var virtualFolder = await scopedSettingsService.VirtualizePathAsync(fileDirectory);
                         indexContext.ProcessedDirectories.Add(virtualFolder);
                     }
-                    
-                    await EnsureFolderStructureForFileAsync(scopedDbContext, scopedSettingsService, file.FullPath, new HashSet<string>(), cancellationToken);
-                    
-                    var changeResult = await VerifyFileChangesAsync(file, existingAssetsByPath, existingAssetsByChecksum, scopedHashService, scopedDbContext, stats, scopedSettingsService, cancellationToken);
-                    
+
+                    await EnsureFolderStructureForFileAsync(scopedDbContext, scopedSettingsService, file.FullPath, new HashSet<string>(), taskCt);
+
+                    var changeResult = await VerifyFileChangesAsync(file, existingAssetsByPath, existingAssetsByChecksum, scopedHashService, scopedDbContext, stats, scopedSettingsService, taskCt);
+
                     if (!changeResult.ShouldSkip)
                     {
                         var asset = changeResult.Asset!;
                         var isNew = changeResult.IsNew;
                         if (ShouldExtractExif(asset, isNew, assetsWithDateTimeOriginal))
-                            await ExtractExifMetadataAsync(asset, file.FullPath, exifService, stats, cancellationToken);
-                        
+                            await ExtractExifMetadataAsync(asset, file.FullPath, exifService, stats, taskCt);
+
                         if (asset.Exif != null)
-                            await DetectMediaTagsAsync(asset, file.FullPath, mediaRecognitionService, stats, cancellationToken);
-                        
+                            await DetectMediaTagsAsync(asset, file.FullPath, mediaRecognitionService, stats, taskCt);
+
                         if (!isNew)
                         {
                             indexContext.AssetsToUpdate.Add(asset);
@@ -190,44 +203,52 @@ public class IndexAssetsEndpoint : IEndpoint
                     processedCount++;
                     if (processedCount % 10 == 0 || processedCount == scannedFilesList.Count)
                     {
-                        await channel.Writer.WriteAsync(new IndexProgressUpdate 
-                        { 
-                            Message = $"Procesando archivo {processedCount} de {stats.TotalFilesFound}...", 
+                        Send(new IndexProgressUpdate
+                        {
+                            Message = $"Procesando archivo {processedCount} de {stats.TotalFilesFound}...",
                             Percentage = 10 + (processedCount * 40.0 / scannedFilesList.Count),
                             Statistics = MapToBlazorStats(stats)
-                        }, cancellationToken);
+                        });
                     }
                 }
 
                 // STEP 4: Database operations and thumbnail generation
-                await channel.Writer.WriteAsync(new IndexProgressUpdate { Message = "Guardando cambios y generando miniaturas...", Percentage = 50, Statistics = MapToBlazorStats(stats) }, cancellationToken);
-                
-                await ProcessDatabaseOperationsWithProgressAsync(indexContext, dbContext, thumbnailService, mediaRecognitionService, mlJobService, settingsService, channel.Writer, stats, cancellationToken);
+                Send(new IndexProgressUpdate { Message = "Guardando cambios y generando miniaturas...", Percentage = 50, Statistics = MapToBlazorStats(stats) });
+
+                await ProcessDatabaseOperationsWithProgressAsync(indexContext, dbContext, thumbnailService, mediaRecognitionService, mlJobService, settingsService, Send, stats, taskCt);
 
                 stats.IndexCompletedAt = DateTime.UtcNow;
                 stats.IndexDuration = stats.IndexCompletedAt - indexStartTime;
-                
-                await channel.Writer.WriteAsync(new IndexProgressUpdate
+
+                Send(new IndexProgressUpdate
                 {
                     Message = "Indexación completada con éxito.",
                     Percentage = 100,
                     Statistics = MapToBlazorStats(stats),
                     IsCompleted = true
-                }, cancellationToken);
+                });
+
+                entry.Finish("Completed");
 
                 if (userId != Guid.Empty)
                     await notificationService.CreateAsync(userId, NotificationType.JobCompleted,
                         "Indexación completada", "Indexación completada con éxito.");
             }
+            catch (OperationCanceledException)
+            {
+                Send(new IndexProgressUpdate { Message = "Indexación cancelada.", IsCompleted = true, Percentage = stats.TotalFilesFound > 0 ? 50 : 0 });
+                entry.Finish("Cancelled");
+            }
             catch (Exception ex)
             {
-                await channel.Writer.WriteAsync(new IndexProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true }, cancellationToken);
+                Send(new IndexProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
+                entry.Finish("Failed");
             }
             finally
             {
-                channel.Writer.Complete();
+                channel.Writer.TryComplete();
             }
-        }, cancellationToken);
+        }, taskCt);
 
         // Stream the updates from the channel
         await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
@@ -245,7 +266,7 @@ public class IndexAssetsEndpoint : IEndpoint
         MediaRecognitionService mediaRecognitionService,
         IMlJobService mlJobService,
         SettingsService settingsService,
-        ChannelWriter<IndexProgressUpdate> writer,
+        Action<IndexProgressUpdate> send,
         IndexStatistics apiStats,
         CancellationToken cancellationToken)
     {
@@ -254,7 +275,7 @@ public class IndexAssetsEndpoint : IEndpoint
 
         // STEP 4a: Cleanup - Remove orphaned assets
         await RemoveOrphanedAssetsAsync(context.AssetsToDelete, dbContext, apiStats, cancellationToken);
-        await writer.WriteAsync(new IndexProgressUpdate { Message = "Limpieza de archivos huérfanos completada.", Percentage = 60, Statistics = MapToBlazorStats(apiStats) }, cancellationToken);
+        send(new IndexProgressUpdate { Message = "Limpieza de archivos huérfanos completada.", Percentage = 60, Statistics = MapToBlazorStats(apiStats) });
 
         // STEP 4b & 4c: Insert new assets, then generate thumbnails in parallel with live progress
         if (context.AssetsToCreate.Any())
@@ -281,7 +302,7 @@ public class IndexAssetsEndpoint : IEndpoint
                     newWorkItems.Add((asset, p));
             }
 
-            // Generate thumbnails in parallel — ChannelWriter and ConcurrentBag are thread-safe
+            // Generate thumbnails in parallel — ConcurrentBag and Action<T> are thread-safe
             var newResults = new ConcurrentBag<(Guid assetId, List<AssetThumbnail> thumbnails)>();
             var newDone = 0;
             var newTotal = newWorkItems.Count;
@@ -296,12 +317,12 @@ public class IndexAssetsEndpoint : IEndpoint
                     Interlocked.Add(ref newThumbnailCount, thumbnails.Count);
                     apiStats.ThumbnailsGenerated = newThumbnailCount;
                     var done = Interlocked.Increment(ref newDone);
-                    await writer.WriteAsync(new IndexProgressUpdate
+                    send(new IndexProgressUpdate
                     {
                         Message = $"Generando miniaturas nuevas ({done}/{newTotal})...",
                         Percentage = 60 + (done * 15.0 / newTotal),
                         Statistics = MapToBlazorStats(apiStats)
-                    }, ct);
+                    });
                 });
 
             // Persist results and queue ML jobs (sequential)
@@ -313,7 +334,7 @@ public class IndexAssetsEndpoint : IEndpoint
             await dbContext.SaveChangesAsync(cancellationToken);
             await QueueMlJobsForNewAssetsAsync(context.AssetsToCreate, dbContext, mediaRecognitionService, mlJobService, apiStats, cancellationToken);
         }
-        await writer.WriteAsync(new IndexProgressUpdate { Message = "Nuevos archivos procesados.", Percentage = 75, Statistics = MapToBlazorStats(apiStats) }, cancellationToken);
+        send(new IndexProgressUpdate { Message = "Nuevos archivos procesados.", Percentage = 75, Statistics = MapToBlazorStats(apiStats) });
 
         // STEP 4d & 4e: Regenerate missing thumbnails for updated assets in parallel with live progress
         if (context.AssetsToUpdate.Any())
@@ -351,12 +372,12 @@ public class IndexAssetsEndpoint : IEndpoint
                         Interlocked.Add(ref regeneratedCount, newThumbs.Count);
                         apiStats.ThumbnailsRegenerated = regeneratedCount;
                         var done = Interlocked.Increment(ref updateDone);
-                        await writer.WriteAsync(new IndexProgressUpdate
+                        send(new IndexProgressUpdate
                         {
                             Message = $"Actualizando miniaturas ({done}/{updateTotal})...",
                             Percentage = 75 + (done * 10.0 / updateTotal),
                             Statistics = MapToBlazorStats(apiStats)
-                        }, ct);
+                        });
                     });
 
                 foreach (var (assetId, thumbs) in updateResults)
@@ -367,7 +388,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
         }
-        await writer.WriteAsync(new IndexProgressUpdate { Message = "Archivos actualizados.", Percentage = 85, Statistics = MapToBlazorStats(apiStats) }, cancellationToken);
+        send(new IndexProgressUpdate { Message = "Archivos actualizados.", Percentage = 85, Statistics = MapToBlazorStats(apiStats) });
 
         // STEP 4f: Verify thumbnails for unchanged assets in parallel with live progress
         var unchangedAssets = context.AllScannedAssets
@@ -403,12 +424,12 @@ public class IndexAssetsEndpoint : IEndpoint
                         var newThumbs = all.Where(t => item.missingSizes.Contains(t.Size)).ToList();
                         verifyResults.Add((item.asset.Id, newThumbs));
                         var done = Interlocked.Increment(ref verifyDone);
-                        await writer.WriteAsync(new IndexProgressUpdate
+                        send(new IndexProgressUpdate
                         {
                             Message = $"Verificando miniaturas existentes ({done}/{verifyTotal})...",
                             Percentage = 85 + (done * 10.0 / verifyTotal),
                             Statistics = MapToBlazorStats(apiStats)
-                        }, ct);
+                        });
                     });
 
                 foreach (var (assetId, thumbs) in verifyResults)
@@ -424,7 +445,7 @@ public class IndexAssetsEndpoint : IEndpoint
         }
 
         await RemoveOrphanedFoldersAsync(context.ProcessedDirectories, dbContext, apiStats, cancellationToken);
-        await writer.WriteAsync(new IndexProgressUpdate { Message = "Limpieza de carpetas completada.", Percentage = 98, Statistics = MapToBlazorStats(apiStats) }, cancellationToken);
+        send(new IndexProgressUpdate { Message = "Limpieza de carpetas completada.", Percentage = 98, Statistics = MapToBlazorStats(apiStats) });
     }
 
 

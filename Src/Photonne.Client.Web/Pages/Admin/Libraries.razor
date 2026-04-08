@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject BackgroundTaskStateService BackgroundTaskState
 
 <PageTitle>Bibliotecas externas - Photonne</PageTitle>
 
@@ -54,6 +55,13 @@ else
                 <div class="d-flex align-center gap-2">
                     <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
                     <MudText Typo="Typo.subtitle2">@_scanningLibrary?.Name</MudText>
+                    @if (_runningInBackground)
+                    {
+                        <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small"
+                                 Icon="@Icons.Material.Filled.CloudSync">
+                            Segundo plano
+                        </MudChip>
+                    }
                 </div>
                 <MudIconButton Icon="@Icons.Material.Filled.Close"
                                Size="Size.Small"
@@ -251,6 +259,7 @@ else
 
     // Scan
     private bool _scanning;
+    private bool _runningInBackground;
     private ExternalLibraryDto? _scanningLibrary;
     private string _scanMessage = string.Empty;
     private int _scanProgress;
@@ -268,6 +277,26 @@ else
         if (!_isAuthorized) return;
 
         await LoadLibrariesAsync();
+        await TryReconnectScanAsync();
+    }
+
+    private async Task TryReconnectScanAsync()
+    {
+        var task = await BackgroundTaskState.GetRunningTaskAsync("LibraryScan");
+        if (task == null) return;
+
+        // Try to find the library being scanned
+        if (task.Parameters.TryGetValue("libraryId", out var libIdStr) && Guid.TryParse(libIdStr, out var libId))
+            _scanningLibrary = _libraries.FirstOrDefault(l => l.Id == libId);
+
+        _scanning = true;
+        _runningInBackground = true;
+        _scanProgress = (int)task.Percentage;
+        _scanMessage = task.LastMessage;
+        StateHasChanged();
+
+        _scanCts = new CancellationTokenSource();
+        await ConsumeScanStreamAsync(LibraryService.ResumeAsync(task.Id, _scanCts.Token));
     }
 
     private async Task LoadLibrariesAsync()
@@ -395,6 +424,7 @@ else
         }
 
         _scanning = true;
+        _runningInBackground = false;
         _scanningLibrary = lib;
         _scanMessage = "Iniciando...";
         _scanProgress = 0;
@@ -403,10 +433,16 @@ else
         _scanOffline = 0;
         _scanCts = new CancellationTokenSource();
 
+        await ConsumeScanStreamAsync(LibraryService.ScanAsync(lib.Id, _scanCts.Token));
+    }
+
+    private async Task ConsumeScanStreamAsync(IAsyncEnumerable<LibraryScanProgressUpdate> stream)
+    {
         try
         {
-            await foreach (var update in LibraryService.ScanAsync(lib.Id, _scanCts.Token))
+            await foreach (var update in stream)
             {
+                _runningInBackground = false;
                 _scanMessage = update.Message;
                 _scanProgress = update.Percentage;
                 _scanFound = update.AssetsFound;
@@ -435,6 +471,7 @@ else
         finally
         {
             _scanning = false;
+            _runningInBackground = false;
             _scanCts?.Dispose();
             _scanCts = null;
             await LoadLibrariesAsync();
