@@ -117,9 +117,18 @@
                                                      Style="font-size:16px;color:var(--mud-palette-error);" />
                                         }
                                     </div>
+                                    <div class="dup-detail-btn"
+                                         @onclick="@(() => Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=utilities/duplicates"))"
+                                         @onclick:stopPropagation>
+                                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Style="font-size:14px;color:white;" />
+                                    </div>
                                 </div>
                                 <div class="dup-item-name">@asset.FileName</div>
                                 <div class="dup-item-meta">@asset.FileSizeFormatted</div>
+                                <div class="dup-item-folder" title="@asset.FullPath">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Folder" Style="font-size:10px;vertical-align:middle;" />
+                                    @GetFolderName(asset.FullPath)
+                                </div>
                             </div>
                         }
                     </div>
@@ -257,6 +266,32 @@
         justify-content: center;
     }
 
+    .dup-detail-btn {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 4px;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .dup-thumb:hover .dup-detail-btn {
+        opacity: 1;
+    }
+
+    @@media (max-width: 600px) {
+        .dup-detail-btn {
+            opacity: 1;
+        }
+    }
+
     .dup-item-name {
         font-size: 0.68rem;
         line-height: 1.2;
@@ -272,6 +307,17 @@
         font-size: 0.65rem;
         color: var(--mud-palette-text-secondary);
         white-space: nowrap;
+    }
+
+    .dup-item-folder {
+        font-size: 0.62rem;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 2px;
     }
 
     .dup-group-footer {
@@ -389,6 +435,14 @@
         {
             _deleting = false;
         }
+    }
+
+    private static string GetFolderName(string fullPath)
+    {
+        if (string.IsNullOrEmpty(fullPath)) return "—";
+        var dir = fullPath.Replace('\\', '/');
+        var parts = dir.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 ? parts[^2] : (parts.Length == 1 ? parts[0] : "—");
     }
 
     private static string FormatBytes(long bytes)
