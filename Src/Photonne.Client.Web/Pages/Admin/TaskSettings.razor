@@ -22,18 +22,38 @@ else
     <div class="mt-4">
         <MudText Typo="Typo.h5" Class="mb-2">Configuración de tareas</MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">
-            Define procesos simultáneos por tipo de tarea.
+            Cuántas fotos/vídeos se procesan al mismo tiempo para cada tipo de tarea en segundo plano.
         </MudText>
     </div>
+
+    <MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">
+        Un valor más alto puede acelerar el procesado, pero consume más recursos del servidor (CPU y memoria).
+        @if (_processorCount > 0)
+        {
+            <span>Este servidor tiene <strong>@_processorCount núcleos de CPU</strong> — se recomienda no superar ese valor, especialmente para detección y reconocimiento facial.</span>
+        }
+        else
+        {
+            <span>Se recomienda no superar el número de núcleos de CPU del servidor, especialmente para detección y reconocimiento facial.</span>
+        }
+    </MudAlert>
 
     <MudGrid Class="mt-4">
         <MudItem xs="12" md="6">
             <MudCard>
                 <MudCardContent>
-                    <MudNumericField T="int" Label="Miniaturas" @bind-Value="_thumbnailWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
-                    <MudNumericField T="int" Label="Extracción de metadatos" @bind-Value="_metadataWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
-                    <MudNumericField T="int" Label="Detección de caras" @bind-Value="_faceDetectionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
-                    <MudNumericField T="int" Label="Reconocimiento facial" @bind-Value="_faceRecognitionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" />
+                    <MudNumericField T="int" Label="Miniaturas"
+                        HelperText="@($"Fotos procesadas a la vez al generar miniaturas. Recomendado: {RecommendedIoWorkers}.")"
+                        @bind-Value="_thumbnailWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                    <MudNumericField T="int" Label="Extracción de metadatos"
+                        HelperText="@($"Fotos analizadas a la vez al leer metadatos EXIF. Recomendado: {RecommendedIoWorkers}.")"
+                        @bind-Value="_metadataWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                    <MudNumericField T="int" Label="Detección de caras"
+                        HelperText="@($"Fotos analizadas a la vez para detectar caras. Cada proceso ocupa un núcleo completo. Recomendado: {RecommendedMlWorkers}.")"
+                        @bind-Value="_faceDetectionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                    <MudNumericField T="int" Label="Reconocimiento facial"
+                        HelperText="@($"Fotos analizadas a la vez para identificar personas. Cada proceso ocupa un núcleo completo. Recomendado: {RecommendedMlWorkers}.")"
+                        @bind-Value="_faceRecognitionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" />
                 </MudCardContent>
                 <MudCardActions Class="px-4 pb-4">
                     <MudButton Variant="Variant.Filled" 
@@ -66,6 +86,10 @@ else
     private int _metadataWorkers = 2;
     private int _faceDetectionWorkers = 1;
     private int _faceRecognitionWorkers = 1;
+    private int _processorCount = 0;
+
+    private int RecommendedIoWorkers => _processorCount > 0 ? Math.Max(2, _processorCount / 2) : 2;
+    private int RecommendedMlWorkers => _processorCount > 0 ? Math.Max(1, _processorCount / 4) : 1;
 
     protected override async Task OnInitializedAsync()
     {
@@ -85,6 +109,7 @@ else
             _metadataWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyMetadataWorkers, "2"), 1, 32, 2);
             _faceDetectionWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyFaceDetectionWorkers, "1"), 1, 32, 1);
             _faceRecognitionWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyFaceRecognitionWorkers, "1"), 1, 32, 1);
+            _processorCount = await SettingsService.GetProcessorCountAsync();
         }
     }
 

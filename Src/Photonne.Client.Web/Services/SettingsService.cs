@@ -73,8 +73,27 @@ public class SettingsService : ISettingsService
         public string Value { get; set; } = string.Empty;
     }
 
+    public async Task<int> GetProcessorCountAsync()
+    {
+        try
+        {
+            await SetAuthHeaderAsync();
+            var response = await _httpClient.GetFromJsonAsync<ServerInfoResponse>("/api/settings/server-info");
+            return response?.ProcessorCount ?? 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     private class AssetsPathResponse
     {
         public string Path { get; set; } = string.Empty;
+    }
+
+    private class ServerInfoResponse
+    {
+        public int ProcessorCount { get; set; }
     }
 }

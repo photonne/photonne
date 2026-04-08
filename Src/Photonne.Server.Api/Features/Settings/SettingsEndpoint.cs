@@ -24,6 +24,14 @@ public class SettingsEndpoint : IEndpoint
         group.MapGet("/assets-path", GetAssetsPath)
             .WithName("GetAssetsPath")
             .WithDescription("Gets the current configured assets path");
+
+        var adminGroup = app.MapGroup("/api/settings")
+            .WithTags("Settings")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+        adminGroup.MapGet("/server-info", GetServerInfo)
+            .WithName("GetServerInfo")
+            .WithDescription("Gets server hardware information (processor count, etc.)");
     }
 
     private async Task<IResult> GetSetting(
@@ -92,6 +100,9 @@ public class SettingsEndpoint : IEndpoint
         key.StartsWith("NightlyTaskSettings.", StringComparison.Ordinal) ||
         key.StartsWith("NotificationSettings.", StringComparison.Ordinal) ||
         key.Equals("AssetsPath", StringComparison.Ordinal);
+
+    private static IResult GetServerInfo() =>
+        Results.Ok(new { processorCount = Environment.ProcessorCount });
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {
