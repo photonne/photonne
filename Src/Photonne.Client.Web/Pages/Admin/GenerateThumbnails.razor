@@ -84,39 +84,39 @@ else
         <MudCard Class="mt-4">
             <MudCardHeader>
                 <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Progreso</MudText>
+                    <div class="d-flex align-center flex-wrap gap-1">
+                        <MudText Typo="Typo.h6" Class="me-1">Progreso</MudText>
+                        @if (_running && _startTime.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
+                                @FormatDuration(DateTime.UtcNow - _startTime.Value)
+                            </MudChip>
+                            @if (_speed > 0)
+                            {
+                                <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
+                                    @($"{_speed:F1} assets/s")
+                                </MudChip>
+                            }
+                            @if (_etaSeconds > 0)
+                            {
+                                <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
+                                    ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
+                                </MudChip>
+                            }
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
+                        }
+                        else if (_duration.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
+                                @FormatDuration(_duration.Value)
+                            </MudChip>
+                            @if (_lastUpdate?.IsCompleted == true)
+                            {
+                                <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
+                            }
+                        }
+                    </div>
                 </CardHeaderContent>
-                <CardHeaderActions>
-                    @if (_running && _startTime.HasValue)
-                    {
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Timer">
-                            @FormatDuration(DateTime.UtcNow - _startTime.Value)
-                        </MudChip>
-                        @if (_speed > 0)
-                        {
-                            <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Speed">
-                                @($"{_speed:F1} assets/s")
-                            </MudChip>
-                        }
-                        @if (_etaSeconds > 0)
-                        {
-                            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.AccessTime">
-                                ETA @FormatDuration(TimeSpan.FromSeconds(_etaSeconds))
-                            </MudChip>
-                        }
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Autorenew">En curso</MudChip>
-                    }
-                    else if (_duration.HasValue)
-                    {
-                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.Schedule">
-                            @FormatDuration(_duration.Value)
-                        </MudChip>
-                        @if (_lastUpdate?.IsCompleted == true)
-                        {
-                            <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Completado</MudChip>
-                        }
-                    }
-                </CardHeaderActions>
             </MudCardHeader>
             <MudCardContent>
                 <MudText Typo="Typo.body1" Class="mb-2">@_currentStatus</MudText>
@@ -179,6 +179,7 @@ else
     private double _speed;
     private double _etaSeconds;
     private CancellationTokenSource? _cts;
+    private Guid? _taskId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -207,6 +208,7 @@ else
         _startTime ??= task.StartedAt;
         StateHasChanged();
 
+        _taskId = task.Id;
         _cts = new CancellationTokenSource();
         await ConsumeStreamAsync(ThumbnailQueueService.ResumeAsync(task.Id, _cts.Token));
     }
@@ -234,6 +236,9 @@ else
         {
             await foreach (var update in stream)
             {
+                if (update.TaskId.HasValue)
+                    _taskId = update.TaskId;
+
                 _runningInBackground = false;
                 _lastUpdate = update;
                 _currentStatus = update.Message;
@@ -277,8 +282,10 @@ else
         }
     }
 
-    private void Cancel()
+    private async Task Cancel()
     {
+        if (_taskId.HasValue)
+            await BackgroundTaskState.CancelTaskAsync(_taskId.Value);
         _cts?.Cancel();
     }
 

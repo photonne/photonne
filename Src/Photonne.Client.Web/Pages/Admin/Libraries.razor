@@ -267,6 +267,7 @@ else
     private int _scanIndexed;
     private int _scanOffline;
     private CancellationTokenSource? _scanCts;
+    private Guid? _scanTaskId;
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -295,6 +296,7 @@ else
         _scanMessage = task.LastMessage;
         StateHasChanged();
 
+        _scanTaskId = task.Id;
         _scanCts = new CancellationTokenSource();
         await ConsumeScanStreamAsync(LibraryService.ResumeAsync(task.Id, _scanCts.Token));
     }
@@ -442,6 +444,9 @@ else
         {
             await foreach (var update in stream)
             {
+                if (update.TaskId.HasValue)
+                    _scanTaskId = update.TaskId;
+
                 _runningInBackground = false;
                 _scanMessage = update.Message;
                 _scanProgress = update.Percentage;
@@ -479,8 +484,10 @@ else
         }
     }
 
-    private void CancelScan()
+    private async Task CancelScan()
     {
+        if (_scanTaskId.HasValue)
+            await BackgroundTaskState.CancelTaskAsync(_scanTaskId.Value);
         _scanCts?.Cancel();
     }
 

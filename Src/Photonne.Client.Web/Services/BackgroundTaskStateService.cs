@@ -36,4 +36,19 @@ public class BackgroundTaskStateService
             return null;
         }
     }
+
+    /// <summary>
+    /// Sends a cancellation request to the server for the given task ID.
+    /// </summary>
+    public async Task CancelTaskAsync(Guid taskId)
+    {
+        try
+        {
+            await _httpClient.DeleteAsync($"/api/tasks/{taskId}");
+        }
+        catch
+        {
+            // Best-effort cancellation
+        }
+    }
 }
