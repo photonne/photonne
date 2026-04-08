@@ -3,6 +3,6 @@
     <!-- Versión única de la aplicación.
          Actualizar aquí al hacer una nueva release; luego actualizar también
          window.APP_VERSION en wwwroot/index.html y SW_VERSION en service-worker.published.js -->
-    <Version>1.1.0</Version>
+    <Version>0.1.0</Version>
   </PropertyGroup>
 </Project>
