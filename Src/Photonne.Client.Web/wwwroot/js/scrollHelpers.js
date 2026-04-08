@@ -581,18 +581,16 @@ window.timelineVirtualScroll = {
         this._lastScrollTime = now;
         clearTimeout(this._idleTimer);
         var self = this;
-        if (velocity < this.VELOCITY_THRESHOLD) {
-            this._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc.scrollTop)
-                .catch(function () {});
-        } else {
-            this._idleTimer = setTimeout(function () {
-                var sc2 = document.getElementById('timeline-scroll-container');
-                if (sc2 && self._dotNetRef) {
-                    self._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc2.scrollTop)
-                        .catch(function () {});
-                }
-            }, 300);
-        }
+        // Always debounce — never invoke Blazor inline on every scroll event.
+        // Slow scroll: 150ms; fast scroll: 300ms. Only the final resting position fires.
+        var delay = velocity < this.VELOCITY_THRESHOLD ? 150 : 300;
+        this._idleTimer = setTimeout(function () {
+            var sc2 = document.getElementById('timeline-scroll-container');
+            if (sc2 && self._dotNetRef) {
+                self._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc2.scrollTop)
+                    .catch(function () {});
+            }
+        }, delay);
     },
 
     cleanup: function () {

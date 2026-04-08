@@ -43,14 +43,14 @@ public class AssetService : IAssetService
         return response ?? new TimelinePageResult();
     }
 
-    public async Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500)
+    public async Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500, CancellationToken cancellationToken = default)
     {
         await SetAuthHeaderAsync();
         var url = $"/api/assets/timeline" +
                   $"?from={Uri.EscapeDataString(from.ToUniversalTime().ToString("o"))}" +
                   $"&cursor={Uri.EscapeDataString(to.ToUniversalTime().ToString("o"))}" +
                   $"&pageSize={pageSize}";
-        var response = await _httpClient.GetFromJsonAsync<TimelinePageResult>(url);
+        var response = await _httpClient.GetFromJsonAsync<TimelinePageResult>(url, cancellationToken);
         return response ?? new TimelinePageResult();
     }
 

@@ -1162,7 +1162,7 @@
             // Recargar las secciones visibles que hayan cambiado
             var toReload = _sections.Where(s => changedMonths.Contains(s.YearMonth)).ToList();
             if (toReload.Any())
-                await Task.WhenAll(toReload.Select(LoadSection));
+                await Task.WhenAll(toReload.Select(s => LoadSection(s)));
 
             if (!_isDisposed)
                 StateHasChanged();
@@ -1206,7 +1206,7 @@
         return Math.Max(160, rows * (rowHeight + 4) + headerEstimate + 8);
     }
 
-    private async Task LoadSection(TimelineSection section)
+    private async Task LoadSection(TimelineSection section, CancellationToken ct = default)
     {
         if (section.IsLoaded || section.IsLoading) return;
 
@@ -1221,7 +1221,10 @@
         }
 
         // Nivel 2: IndexedDB — sin spinner, sin red
+        ct.ThrowIfCancellationRequested();
         var persistedItems = await TimelinePersistence.LoadSectionAsync(section.YearMonth);
+        if (ct.IsCancellationRequested) return;
+
         if (persistedItems != null)
         {
             TimelineCache.SetSection(section.YearMonth, persistedItems);
@@ -1235,13 +1238,19 @@
         // Nivel 3: API — mostrar spinner
         section.IsLoading = true;
         StateHasChanged();
+        var cancelled = false;
         try
         {
-            var result = await AssetService.GetTimelineSectionAsync(section.StartDate, section.EndDate, pageSize: 500);
+            var result = await AssetService.GetTimelineSectionAsync(section.StartDate, section.EndDate, pageSize: 500, ct);
             section.Items = result.Items;
             section.IsLoaded = true;
             TimelineCache.SetSection(section.YearMonth, result.Items);
             _ = TimelinePersistence.SaveSectionAsync(section.YearMonth, result.Items);
+        }
+        catch (OperationCanceledException)
+        {
+            // El usuario siguió haciendo scroll — resetear para que se cargue al parar.
+            cancelled = true;
         }
         catch (Exception ex)
         {
@@ -1250,8 +1259,11 @@
         finally
         {
             section.IsLoading = false;
-            RebuildGroupedAssets();
-            StateHasChanged();
+            if (!cancelled)
+            {
+                RebuildGroupedAssets();
+                StateHasChanged();
+            }
         }
     }
 
@@ -1259,10 +1271,21 @@
     public async Task OnVirtualScrollIdle(double scrollTop)
     {
         _lastScrollTop = scrollTop;
-        await LoadVisibleSectionsAsync(scrollTop);
+
+        // Cancel any in-progress section loading triggered by a previous scroll position.
+        _scrollLoadCts?.Cancel();
+        _scrollLoadCts?.Dispose();
+        _scrollLoadCts = new CancellationTokenSource();
+        var ct = _scrollLoadCts.Token;
+
+        try
+        {
+            await LoadVisibleSectionsAsync(scrollTop, ct);
+        }
+        catch (OperationCanceledException) { /* User scrolled away — nothing to do */ }
     }
 
-    private async Task LoadVisibleSectionsAsync(double scrollTop)
+    private async Task LoadVisibleSectionsAsync(double scrollTop, CancellationToken ct = default)
     {
         var unloadedIds = _sections
             .Where(s => !s.IsLoaded && !s.IsLoading)
@@ -1270,10 +1293,18 @@
             .ToList();
         if (!unloadedIds.Any()) return;
 
+        ct.ThrowIfCancellationRequested();
+
         var visibleIds = await JS.InvokeAsync<List<string>>("timelineHelpers.getVisibleSectionIds", unloadedIds);
         var toLoad = _sections.Where(s => visibleIds.Contains(s.SectionId)).ToList();
-        if (toLoad.Any())
-            await Task.WhenAll(toLoad.Select(LoadSection));
+
+        // Load sections one at a time so a cancellation mid-scrub aborts immediately
+        // rather than having N parallel HTTP requests all fighting for resources.
+        foreach (var section in toLoad)
+        {
+            ct.ThrowIfCancellationRequested();
+            await LoadSection(section, ct);
+        }
     }
 
     private string? GetDateFromQuery()
@@ -1302,6 +1333,7 @@
     private bool _isDisposed = false;
     private bool _masonryInitialized = false;
     private List<TimelineIndexItem> _timelineIndex = new();
+    private CancellationTokenSource? _scrollLoadCts;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -2073,6 +2105,9 @@
     public void Dispose()
     {
         _isDisposed = true;
+        _scrollLoadCts?.Cancel();
+        _scrollLoadCts?.Dispose();
+        _scrollLoadCts = null;
         _objRef?.Dispose();
         _longPressTimer?.Dispose();
         JS.InvokeVoidAsync("scrollHelpers.disableTimelineScroll");
