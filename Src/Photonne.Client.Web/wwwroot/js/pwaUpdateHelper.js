@@ -1,3 +1,65 @@
+window.pwaInstall = {
+    _dotNetHelper: null,
+    _deferredPrompt: null,
+    _available: false,
+
+    _isStandalone: function () {
+        return window.matchMedia('(display-mode: standalone)').matches
+            || window.matchMedia('(display-mode: window-controls-overlay)').matches
+            || window.navigator.standalone === true;
+    },
+
+    init: function (dotNetHelper) {
+        this._dotNetHelper = dotNetHelper;
+
+        // Already installed — nothing to show
+        if (this._isStandalone()) return;
+
+        // Pick up the event captured early in index.html (before Blazor loaded)
+        if (window.__pwaInstallPrompt) {
+            this._deferredPrompt = window.__pwaInstallPrompt;
+            window.__pwaInstallPrompt = null;
+            this._notifyAvailability(true);
+        }
+
+        // Also listen for future firings (e.g. after dismissal criteria reset)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this._deferredPrompt = e;
+            this._notifyAvailability(true);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            this._deferredPrompt = null;
+            window.__pwaInstallPrompt = null;
+            this._notifyAvailability(false);
+        });
+    },
+
+    _notifyAvailability: function (available) {
+        if (this._available === available) return;
+        this._available = available;
+        if (this._dotNetHelper) {
+            this._dotNetHelper.invokeMethodAsync('SetInstallAvailability', available);
+        }
+    },
+
+    promptInstall: async function () {
+        if (!this._deferredPrompt) return false;
+        this._deferredPrompt.prompt();
+        const { outcome } = await this._deferredPrompt.userChoice;
+        this._deferredPrompt = null;
+        if (outcome === 'accepted') {
+            this._notifyAvailability(false);
+        }
+        return outcome === 'accepted';
+    },
+
+    dismiss: function () {
+        this._notifyAvailability(false);
+    }
+};
+
 window.pwaUpdate = {
     _dotNetHelper: null,
     _registration: null,

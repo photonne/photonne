@@ -135,5 +135,6 @@ builder.Services.AddScoped<IMaintenanceService>(sp =>
 builder.Services.AddSingleton<TimelineCache>();
 builder.Services.AddScoped<TimelinePersistenceService>();
 builder.Services.AddSingleton<PwaUpdateService>();
+builder.Services.AddSingleton<PwaInstallService>();
 
 await builder.Build().RunAsync();

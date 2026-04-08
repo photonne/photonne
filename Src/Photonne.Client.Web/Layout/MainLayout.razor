@@ -8,6 +8,7 @@
 @inject ApiErrorNotifier ApiErrorNotifier
 @inject INotificationService NotificationService
 @inject PwaUpdateService PwaUpdateService
+@inject PwaInstallService PwaInstallService
 @inject IJSRuntime JS
 
 <MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
@@ -407,6 +408,38 @@
         </div>
     }
 
+    @* ── PWA INSTALL PROMPT ─────────────────────────────────────────────────── *@
+    @if (PwaInstallService.IsInstallAvailable)
+    {
+        <div class="pwa-install-backdrop" @onclick="@(() => _ = PwaInstallService.DismissAsync())">
+            <div class="pwa-install-card" @onclick:stopPropagation="true">
+                <div class="pwa-install-icon-wrap">
+                    <img src="@(LayoutService.IsDarkMode ? "dark/logo.png" : "light/logo.png")" alt="Photonne" class="pwa-install-logo" />
+                </div>
+                <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-1">Instala Photonne</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Class="mud-text-secondary mb-4">
+                    Añade la app a tu pantalla de inicio para acceder más rápido y disfrutar de una experiencia completa sin navegador.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.GetApp"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Class="mb-2"
+                           OnClick="@HandleInstallClickAsync">
+                    Instalar ahora
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           FullWidth="true"
+                           Size="Size.Medium"
+                           OnClick="@(() => _ = PwaInstallService.DismissAsync())">
+                    Ahora no
+                </MudButton>
+            </div>
+        </div>
+    }
+
     <style>
         /* Bottom sheet shared styles */
         .ph-bottom-sheet {
@@ -492,6 +525,48 @@
             color: var(--mud-palette-text-disabled);
             padding: 10px 0 6px;
         }
+
+        /* PWA Install Prompt */
+        .pwa-install-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0 0 env(safe-area-inset-bottom);
+            animation: pwa-backdrop-in 0.2s ease;
+        }
+        .pwa-install-card {
+            width: 100%;
+            max-width: 480px;
+            background: var(--mud-palette-surface);
+            border-radius: 20px 20px 0 0;
+            padding: 28px 24px 32px;
+            box-shadow: 0 -4px 32px rgba(0,0,0,0.25);
+            animation: pwa-card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .pwa-install-icon-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        .pwa-install-logo {
+            width: 240px;
+            height: 72px;
+            border-radius: 16px;
+            object-fit: contain;
+        }
+        @@keyframes pwa-backdrop-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @@keyframes pwa-card-in {
+            from { transform: translateY(100%); }
+            to   { transform: translateY(0); }
+        }
     </style>
 </MudLayout>
 
@@ -541,6 +616,7 @@
         Navigation.LocationChanged += HandleLocationChanged;
         ApiErrorNotifier.OnError += HandleApiError;
         PwaUpdateService.OnUpdateAvailable += HandlePwaUpdateAvailable;
+        PwaInstallService.OnInstallAvailabilityChanged += HandlePwaInstallAvailabilityChanged;
         UpdateSearchQueryFromUri();
     }
 
@@ -603,6 +679,7 @@
         Navigation.LocationChanged -= HandleLocationChanged;
         ApiErrorNotifier.OnError -= HandleApiError;
         PwaUpdateService.OnUpdateAvailable -= HandlePwaUpdateAvailable;
+        PwaInstallService.OnInstallAvailabilityChanged -= HandlePwaInstallAvailabilityChanged;
     }
 
     private UserDto? _currentUser;
@@ -662,6 +739,7 @@
         if (firstRender)
         {
             await PwaUpdateService.InitAsync(JS);
+            await PwaInstallService.InitAsync(JS);
             _appVersion = await JS.InvokeAsync<string>("pwaUpdate.getAppVersion");
         }
 
@@ -676,6 +754,16 @@
     private void HandlePwaUpdateAvailable()
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandlePwaInstallAvailabilityChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleInstallClickAsync()
+    {
+        await PwaInstallService.PromptInstallAsync();
     }
 
     private void HandleApiError(ApiErrorInfo info)

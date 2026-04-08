@@ -22,6 +22,17 @@
 </head>
 
 <body>
+    <script>
+        // Capture beforeinstallprompt as early as possible — before Blazor loads.
+        // pwaInstall.init() will pick it up from window.__pwaInstallPrompt later.
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            window.__pwaInstallPrompt = e;
+        });
+        window.addEventListener('appinstalled', function () {
+            window.__pwaInstallPrompt = null;
+        });
+    </script>
     <div id="app">
         <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />
