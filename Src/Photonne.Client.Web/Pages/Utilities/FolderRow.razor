@@ -1,0 +1,46 @@
+<MudListItem T="FolderItem" Dense="true" Style="@($"padding-left:{8 + Depth * 20}px;")">
+    <div class="d-flex align-center justify-space-between w-100 py-1">
+        <div class="d-flex align-center gap-2">
+            <MudIconButton Icon="@(Item.SubFolders.Count > 0 ? (_expanded ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder) : Icons.Material.Outlined.Folder)"
+                           Color="Color.Warning" Size="Size.Small"
+                           OnClick="@(() => _expanded = !_expanded)"
+                           Disabled="@(Item.SubFolders.Count == 0)" />
+            <div>
+                <MudText Typo="Typo.body2">@Item.Name</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="word-break:break-all;font-size:0.7rem;">
+                    @Item.Path
+                </MudText>
+            </div>
+        </div>
+        <div class="d-flex align-center gap-1 flex-shrink-0 ml-2">
+            @if (Item.AssetCount > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@Item.AssetCount</MudChip>
+            }
+            @if (Item.IsShared)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text"
+                         Icon="@Icons.Material.Outlined.People">
+                    Compartida
+                </MudChip>
+            }
+            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small"
+                           Href="@($"/folders/{Item.Id}")" Title="Abrir carpeta" />
+        </div>
+    </div>
+</MudListItem>
+
+@if (_expanded && Item.SubFolders.Count > 0)
+{
+    @foreach (var sub in Item.SubFolders)
+    {
+        <FolderRow Item="sub" Depth="@(Depth + 1)" />
+    }
+}
+
+@code {
+    [Parameter] public FolderItem Item { get; set; } = null!;
+    [Parameter] public int Depth { get; set; }
+
+    private bool _expanded = true;
+}

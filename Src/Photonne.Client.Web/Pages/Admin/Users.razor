@@ -1,0 +1,294 @@
+@page "/admin/users"
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de Usuarios - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Volver al inicio
+        </MudButton>
+    </div>
+}
+else
+{
+
+<div class="mt-4">
+    <div class="d-flex align-center justify-space-between mb-4">
+        <MudText Typo="Typo.h5">Gestión de Usuarios</MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="OpenCreateDialog"
+                   Size="Size.Small">
+            Nuevo
+        </MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+    }
+
+    <MudPaper Elevation="1" Class="overflow-hidden">
+        @foreach (var (user, index) in _users.Select((u, i) => (u, i)))
+        {
+            @if (index > 0)
+            {
+                <MudDivider />
+            }
+            <div class="user-row">
+                <MudAvatar Color="@(user.Role == "Admin" ? Color.Error : Color.Primary)"
+                           Size="Size.Medium" Class="flex-shrink-0">
+                    @GetInitials(user)
+                </MudAvatar>
+
+                <div class="user-info">
+                    <div class="d-flex align-center gap-2 flex-wrap">
+                        <MudText Typo="Typo.body1" Style="font-weight: 500; line-height: 1.2;">
+                            @user.Username
+                        </MudText>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(user.Role == "Admin" ? Color.Error : Color.Primary)"
+                                 Variant="Variant.Outlined"
+                                 Class="ma-0" Style="height: 20px;">
+                            @user.Role
+                        </MudChip>
+                        @if (!user.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                                     Variant="Variant.Outlined"
+                                     Class="ma-0" Style="height: 20px;">
+                                Inactivo
+                            </MudChip>
+                        }
+                    </div>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="line-height: 1.3;">
+                        @if (!string.IsNullOrEmpty(user.Email))
+                        {
+                            @user.Email
+                        }
+                        @if (user.LastLoginAt.HasValue)
+                        {
+                            <span> · @user.LastLoginAt.Value.ToString("dd/MM/yy")</span>
+                        }
+                    </MudText>
+                </div>
+
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                         Size="Size.Small" Color="Color.Default"
+                         AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight"
+                         Class="flex-shrink-0">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                 OnClick="@(() => OpenEditDialog(user))">
+                        Editar
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Lock"
+                                 OnClick="@(() => OpenResetPasswordDialog(user))">
+                        Restablecer contraseña
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                 Style="color: var(--mud-palette-error);"
+                                 OnClick="@(() => DeleteUser(user.Id))">
+                        Eliminar
+                    </MudMenuItem>
+                </MudMenu>
+            </div>
+        }
+
+        @if (!_loading && _users.Count == 0)
+        {
+            <div class="pa-8 d-flex flex-column align-center">
+                <MudIcon Icon="@Icons.Material.Filled.PeopleAlt"
+                         Style="font-size: 3rem; opacity: .3;" Class="mb-2" />
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    No hay usuarios
+                </MudText>
+            </div>
+        }
+    </MudPaper>
+</div>
+
+<style>
+    .user-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+    }
+    .user-info {
+        flex: 1;
+        min-width: 0;
+    }
+</style>
+}
+</div>
+
+@code {
+    private List<UserDto> _users = new();
+    private bool _loading = true;
+    private bool _isAuthorized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Verificar autenticación y rol
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser == null || currentUser.Role != "Admin")
+        {
+            _isAuthorized = false;
+            return;
+        }
+
+        _isAuthorized = true;
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            _loading = true;
+            _users = await UserService.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar usuarios: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetInitials(UserDto user)
+    {
+        if (!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName))
+            return $"{user.FirstName[0]}{user.LastName[0]}".ToUpper();
+        if (!string.IsNullOrEmpty(user.FirstName))
+            return user.FirstName[0..Math.Min(2, user.FirstName.Length)].ToUpper();
+        return user.Username[0..Math.Min(2, user.Username.Length)].ToUpper();
+    }
+
+    private string GetFullName(UserDto user)
+    {
+        if (!string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName))
+            return $"{user.FirstName} {user.LastName}";
+        if (!string.IsNullOrEmpty(user.FirstName))
+            return user.FirstName;
+        if (!string.IsNullOrEmpty(user.LastName))
+            return user.LastName;
+        return "-";
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["User"] = (UserDto?)null,
+            ["IsEdit"] = false
+        };
+
+        var options = new DialogOptions
+        {
+            FullScreen = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<UserDialog>("Crear Usuario", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadUsers();
+        }
+    }
+
+    private async Task OpenEditDialog(UserDto user)
+    {
+        var parameters = new DialogParameters
+        {
+            ["User"] = user,
+            ["IsEdit"] = true
+        };
+
+        var options = new DialogOptions
+        {
+            FullScreen = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<UserDialog>("Editar Usuario", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadUsers();
+        }
+    }
+
+    private async Task OpenResetPasswordDialog(UserDto user)
+    {
+        var parameters = new DialogParameters
+        {
+            ["User"] = user
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ResetPasswordDialog>("Restablecer Contraseña", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Contraseña restablecida correctamente", Severity.Success);
+        }
+    }
+
+    private async Task DeleteUser(Guid id)
+    {
+        var user = _users.FirstOrDefault(u => u.Id == id);
+        if (user == null) return;
+
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Confirmar eliminación",
+            $"¿Está seguro de que desea eliminar al usuario '{user.Username}'?",
+            yesText: "Eliminar",
+            cancelText: "Cancelar");
+
+        if (result == true)
+        {
+            try
+            {
+                await UserService.DeleteUserAsync(id);
+                Snackbar.Add("Usuario eliminado correctamente", Severity.Success);
+                await LoadUsers();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al eliminar usuario: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

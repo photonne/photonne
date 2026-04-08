@@ -1,0 +1,228 @@
+@inject IShareService ShareService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ISettingsService SettingsService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Outlined.Share" Class="mr-2" Style="vertical-align:middle;" />
+            Compartir @(AlbumName ?? "")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loadingLinks)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            </div>
+        }
+        else if (_publicLinks.Any())
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2 mud-text-secondary">Links activos</MudText>
+            @foreach (var link in _publicLinks)
+            {
+                <div class="share-link-row">
+                    <div class="share-link-info">
+                        <MudText Typo="Typo.body2" Class="share-link-url">
+                            @BuildShareUrl(link.Token)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            @if (link.HasPassword) { <span>🔒 Con contraseña · </span> }
+                            @if (!link.AllowDownload) { <span>⬇️ Sin descarga · </span> }
+                            @if (link.MaxViews.HasValue) { <span>👁 @link.ViewCount/@link.MaxViews vistas · </span> }
+                            @if (link.ExpiresAt.HasValue)
+                            { <span>Expira @link.ExpiresAt.Value.ToString("dd/MM/yyyy")</span> }
+                            else
+                            { <span>Sin expiración</span> }
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small"
+                                   Title="Copiar enlace" OnClick="() => CopyLink(link.Token)" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.LinkOff" Size="Size.Small"
+                                   Color="Color.Error" Title="Revocar"
+                                   OnClick="() => RevokePublicLink(link.Token)" />
+                </div>
+            }
+            <MudDivider Class="my-4" />
+        }
+
+        <MudText Typo="Typo.subtitle2" Class="mb-3 mud-text-secondary">Crear nuevo enlace</MudText>
+
+        <div class="d-flex flex-column gap-3">
+            <MudSwitch @bind-Value="_newLinkPasswordEnabled" Label="Proteger con contraseña" Color="Color.Primary" />
+            @if (_newLinkPasswordEnabled)
+            {
+                <MudTextField @bind-Value="_newLinkPassword"
+                              Label="Contraseña"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.Lock" />
+            }
+
+            <MudSwitch @bind-Value="_newLinkExpiryEnabled" Label="Fecha de expiración" Color="Color.Primary" />
+            @if (_newLinkExpiryEnabled)
+            {
+                <MudDatePicker @bind-Date="_newLinkExpiry"
+                               Label="Expira el"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               MinDate="DateTime.Today.AddDays(1)"
+                               DateFormat="dd/MM/yyyy" />
+            }
+
+            <MudSwitch @bind-Value="_newLinkMaxViewsEnabled" Label="Límite de vistas" Color="Color.Primary" />
+            @if (_newLinkMaxViewsEnabled)
+            {
+                <MudNumericField @bind-Value="_newLinkMaxViews"
+                                 Label="Máximo de vistas"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="1" Max="10000" />
+            }
+
+            <MudSwitch @bind-Value="_newLinkAllowDownload" Label="Permitir descarga" Color="Color.Primary" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.AddLink"
+                       Disabled="_creatingLink"
+                       Class="mb-2"
+                       OnClick="CreatePublicLink">
+                @if (_creatingLink)
+                { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                Crear enlace
+            </MudButton>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+<style>
+    .share-link-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .share-link-row:last-child { border-bottom: none; }
+    .share-link-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .share-link-url {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-family: monospace;
+        font-size: 0.78rem;
+        opacity: 0.75;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid? AlbumId { get; set; }
+    [Parameter] public string? AlbumName { get; set; }
+
+    // ── State ───────────────────────────────────────────────────────────────
+    private bool _loadingLinks = false;
+    private List<CreateShareLinkResponse> _publicLinks = new();
+    private string _publicUrl = "";
+
+    // New public link form
+    private bool _newLinkPasswordEnabled = false;
+    private string _newLinkPassword = string.Empty;
+    private bool _newLinkExpiryEnabled = false;
+    private DateTime? _newLinkExpiry = null;
+    private bool _newLinkMaxViewsEnabled = false;
+    private int _newLinkMaxViews = 10;
+    private bool _newLinkAllowDownload = true;
+    private bool _creatingLink = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loadingLinks = true;
+        try
+        {
+            _publicUrl = await SettingsService.GetSettingAsync("ServerSettings.PublicUrl", "");
+            _publicLinks = await ShareService.GetShareLinksAsync(null, AlbumId);
+        }
+        catch { /* non-critical */ }
+        finally { _loadingLinks = false; }
+    }
+
+    private string BuildShareUrl(string token)
+    {
+        var baseUrl = !string.IsNullOrWhiteSpace(_publicUrl)
+            ? _publicUrl.TrimEnd('/')
+            : $"{new Uri(Navigation.BaseUri).Scheme}://{new Uri(Navigation.BaseUri).Authority}";
+        return $"{baseUrl}/share/{token}";
+    }
+
+    private async Task CopyLink(string token)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", BuildShareUrl(token));
+        Snackbar.Add("Enlace copiado al portapapeles", Severity.Success);
+    }
+
+    private async Task RevokePublicLink(string token)
+    {
+        try
+        {
+            await ShareService.RevokeShareAsync(token);
+            _publicLinks.RemoveAll(l => l.Token == token);
+            Snackbar.Add("Enlace revocado", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("Error al revocar el enlace", Severity.Error);
+        }
+    }
+
+    private async Task CreatePublicLink()
+    {
+        if (_creatingLink) return;
+        try
+        {
+            _creatingLink = true;
+            var request = new CreateShareLinkRequest
+            {
+                AlbumId = AlbumId,
+                Password = _newLinkPasswordEnabled ? _newLinkPassword : null,
+                AllowDownload = _newLinkAllowDownload,
+                MaxViews = _newLinkMaxViewsEnabled ? _newLinkMaxViews : null,
+                ExpiresAt = _newLinkExpiryEnabled ? _newLinkExpiry?.ToUniversalTime() : null
+            };
+            var link = await ShareService.CreatePublicShareAsync(request);
+            if (link != null)
+            {
+                _publicLinks.Insert(0, link);
+                await CopyLink(link.Token);
+                ResetNewLinkForm();
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Error al crear el enlace", Severity.Error);
+        }
+        finally
+        {
+            _creatingLink = false;
+        }
+    }
+
+    private void ResetNewLinkForm()
+    {
+        _newLinkPasswordEnabled = false;
+        _newLinkPassword = string.Empty;
+        _newLinkExpiryEnabled = false;
+        _newLinkExpiry = null;
+        _newLinkMaxViewsEnabled = false;
+        _newLinkMaxViews = 10;
+        _newLinkAllowDownload = true;
+    }
+}

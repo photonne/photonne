@@ -1,0 +1,456 @@
+@page "/utilities/duplicates"
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Duplicados - Photonne</PageTitle>
+
+<div class="page-pad">
+    <div class="d-flex align-center gap-3 mb-2 flex-wrap">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/utilities"))">
+            Utilidades
+        </MudButton>
+        <MudText Typo="Typo.h5">Duplicados</MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Analizando tu biblioteca...</MudText>
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_groups.Count == 0)
+    {
+        <MudAlert Severity="Severity.Success" Icon="@Icons.Material.Filled.CheckCircle">
+            No se encontraron duplicados en tu biblioteca.
+        </MudAlert>
+    }
+    else
+    {
+        <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                <strong>@_groups.Count grupos</strong> &middot; @TotalDuplicates redundantes &middot;
+                <span class="mud-error-text">@FormatBytes(TotalWasted) recuperables</span>
+            </MudText>
+
+            @if (!_deleting)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           Disabled="@(SelectedToDelete == 0)"
+                           OnClick="@(() => _confirmOpen = true)">
+                    Mover @SelectedToDelete a la papelera
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="true">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    Eliminando...
+                </MudButton>
+            }
+        </div>
+
+        @if (_confirmOpen)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                    <span>Se moverán <strong>@SelectedToDelete archivos</strong> a la papelera.</span>
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" OnClick="ConfirmDelete">
+                            Confirmar
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _confirmOpen = false)">
+                            Cancelar
+                        </MudButton>
+                    </div>
+                </div>
+            </MudAlert>
+        }
+
+        <div class="dup-groups">
+            @foreach (var group in _groups)
+            {
+                var keepSet = _keepSelection[group.Hash];
+                int deleteCount = group.Assets.Count - keepSet.Count;
+
+                <div class="dup-group">
+                    <div class="dup-group-header">
+                        <div class="dup-group-info">
+                            <span class="dup-copies">@group.Assets.Count copias</span>
+                            <span class="dup-sep">&middot;</span>
+                            <span class="dup-size">@group.TotalSizeFormatted</span>
+                            @if (deleteCount > 0)
+                            {
+                                <span class="dup-sep">&middot;</span>
+                                <span class="dup-wasted mud-error-text">@group.WastedFormatted recuperables</span>
+                            }
+                        </div>
+                        <MudTooltip Text="Auto-seleccionar: conservar la más reciente">
+                            <MudIconButton Icon="@Icons.Material.Outlined.AutoAwesome"
+                                           Size="Size.Small"
+                                           OnClick="@(() => AutoSelectGroup(group))" />
+                        </MudTooltip>
+                    </div>
+
+                    <div class="dup-strip">
+                        @foreach (var asset in group.Assets)
+                        {
+                            bool isKeep = keepSet.Contains(asset.Id);
+                            bool isLast = isKeep && keepSet.Count == 1;
+
+                            <div class="dup-item @(isKeep ? "dup-keep" : "dup-delete") @(isLast ? "" : "dup-clickable")"
+                                 @onclick="@(() => ToggleKeep(group.Hash, asset.Id, keepSet))">
+                                <div class="dup-thumb">
+                                    <img src="@asset.ThumbnailUrl" alt="@asset.FileName"
+                                         class="@(!isKeep ? "dup-dimmed" : "")"
+                                         onerror="this.style.display='none'" />
+                                    <div class="dup-badge">
+                                        @if (isKeep)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                     Style="font-size:16px;color:var(--mud-palette-primary);" />
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Cancel"
+                                                     Style="font-size:16px;color:var(--mud-palette-error);" />
+                                        }
+                                    </div>
+                                    <div class="dup-detail-btn"
+                                         @onclick="@(() => Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=utilities/duplicates"))"
+                                         @onclick:stopPropagation>
+                                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Style="font-size:14px;color:white;" />
+                                    </div>
+                                </div>
+                                <div class="dup-item-name">@asset.FileName</div>
+                                <div class="dup-item-meta">@asset.FileSizeFormatted</div>
+                                <div class="dup-item-folder" title="@asset.FullPath">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Folder" Style="font-size:10px;vertical-align:middle;" />
+                                    @GetFolderName(asset.FullPath)
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (deleteCount > 0)
+                    {
+                        <div class="dup-group-footer">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @keepSet.Count a conservar &middot; @deleteCount a eliminar
+                            </MudText>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (_groups.Count > 2)
+        {
+            <div class="d-flex justify-end mt-4 mb-8">
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           Disabled="@(SelectedToDelete == 0 || _deleting)"
+                           OnClick="@(() => _confirmOpen = true)">
+                    Mover @SelectedToDelete a la papelera
+                </MudButton>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .dup-groups {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .dup-group {
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .dup-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px 4px 12px;
+        gap: 8px;
+    }
+
+    .dup-group-info {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        font-size: 0.8rem;
+    }
+
+    .dup-copies {
+        font-weight: 600;
+    }
+
+    .dup-sep {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .dup-size {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .dup-strip {
+        display: flex;
+        gap: 8px;
+        padding: 4px 12px 8px 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .dup-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .dup-item {
+        flex-shrink: 0;
+        width: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .dup-clickable {
+        cursor: pointer;
+    }
+
+    .dup-thumb {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--mud-palette-surface);
+    }
+
+    .dup-keep .dup-thumb {
+        box-shadow: 0 0 0 2px var(--mud-palette-primary);
+    }
+
+    .dup-delete .dup-thumb {
+        box-shadow: 0 0 0 2px var(--mud-palette-error);
+    }
+
+    .dup-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 0.15s;
+    }
+
+    .dup-dimmed {
+        opacity: 0.45;
+    }
+
+    .dup-badge {
+        position: absolute;
+        bottom: 3px;
+        right: 3px;
+        background: rgba(var(--mud-palette-surface-rgb, 255,255,255), 0.85);
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dup-detail-btn {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 4px;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .dup-thumb:hover .dup-detail-btn {
+        opacity: 1;
+    }
+
+    @@media (max-width: 600px) {
+        .dup-detail-btn {
+            opacity: 1;
+        }
+    }
+
+    .dup-item-name {
+        font-size: 0.68rem;
+        line-height: 1.2;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        word-break: break-all;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .dup-item-meta {
+        font-size: 0.65rem;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+    }
+
+    .dup-item-folder {
+        font-size: 0.62rem;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .dup-group-footer {
+        padding: 0 12px 8px 12px;
+    }
+
+    @@media (min-width: 600px) {
+        .dup-item {
+            width: 96px;
+        }
+
+        .dup-thumb {
+            width: 96px;
+            height: 96px;
+        }
+    }
+</style>
+
+@code {
+    private List<UserDuplicateGroup> _groups = new();
+    private bool _loading;
+    private bool _deleting;
+    private bool _confirmOpen;
+
+    // Hash → set of AssetIds to KEEP (the rest will be deleted)
+    private Dictionary<string, HashSet<Guid>> _keepSelection = new();
+
+    private int TotalDuplicates => _groups.Sum(g => g.Assets.Count - 1);
+    private long TotalWasted => _groups.Sum(g => g.WastedBytes);
+
+    private int SelectedToDelete => _keepSelection
+        .Sum(kv => _groups.FirstOrDefault(g => g.Hash == kv.Key) is { } grp
+            ? grp.Assets.Count - kv.Value.Count
+            : 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _groups = await AssetService.GetMyDuplicatesAsync();
+            AutoSelectAll();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al analizar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void AutoSelectAll()
+    {
+        foreach (var group in _groups)
+            AutoSelectGroup(group);
+    }
+
+    private void AutoSelectGroup(UserDuplicateGroup group)
+    {
+        var best = group.Assets
+            .OrderByDescending(a => a.FileCreatedAt)
+            .ThenByDescending(a => a.FileSize)
+            .First();
+        _keepSelection[group.Hash] = new HashSet<Guid> { best.Id };
+    }
+
+    private void ToggleKeep(string hash, Guid assetId, HashSet<Guid> keepSet)
+    {
+        if (keepSet.Contains(assetId))
+        {
+            // Only allow deselect if more than 1 is kept
+            if (keepSet.Count > 1)
+                keepSet.Remove(assetId);
+        }
+        else
+        {
+            keepSet.Add(assetId);
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        _confirmOpen = false;
+        _deleting = true;
+        StateHasChanged();
+
+        try
+        {
+            var toDelete = _groups
+                .Where(g => _keepSelection.ContainsKey(g.Hash))
+                .SelectMany(g => g.Assets.Where(a => !_keepSelection[g.Hash].Contains(a.Id)))
+                .Select(a => a.Id)
+                .ToList();
+
+            await AssetService.DeleteAssetsAsync(new DeleteAssetsRequest { AssetIds = toDelete });
+
+            // Remove deleted assets from view
+            foreach (var group in _groups.ToList())
+            {
+                if (!_keepSelection.TryGetValue(group.Hash, out var keepSet)) continue;
+                group.Assets.RemoveAll(a => !keepSet.Contains(a.Id));
+            }
+            _groups.RemoveAll(g => g.Assets.Count <= 1);
+            if (_groups.Count == 0) _keepSelection.Clear();
+
+            Snackbar.Add($"{toDelete.Count} archivos movidos a la papelera.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _deleting = false;
+        }
+    }
+
+    private static string GetFolderName(string fullPath)
+    {
+        if (string.IsNullOrEmpty(fullPath)) return "—";
+        var dir = fullPath.Replace('\\', '/');
+        var parts = dir.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 ? parts[^2] : (parts.Length == 1 ? parts[0] : "—");
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1) { order++; len /= 1024; }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}

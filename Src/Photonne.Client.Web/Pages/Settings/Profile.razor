@@ -1,0 +1,168 @@
+@page "/settings/profile"
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+
+<PageTitle>Perfil - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+<div class="page-pad">
+    <MudText Typo="Typo.h5" Class="mb-6">Perfil</MudText>
+
+    @if (!_loading)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudCard>
+                    <MudCardContent>
+                        <div class="d-flex flex-column align-center py-4">
+                            <MudAvatar Color="Color.Primary" Style="width: 80px; height: 80px; font-size: 2rem;" Class="mb-3">
+                                @_userInitial
+                            </MudAvatar>
+                            <MudText Typo="Typo.h6">@_userFullName</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="mt-1">
+                                @_currentUser?.Role
+                            </MudChip>
+                        </div>
+                        <MudDivider Class="my-2" />
+                        <MudList T="string" ReadOnly="true">
+                            <MudListItem Icon="@Icons.Material.Filled.CalendarToday" IconColor="Color.Inherit">
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Cuenta creada</MudText>
+                                    <MudText Typo="Typo.body2">@_currentUser?.CreatedAt.ToString("dd MMM yyyy")</MudText>
+                                </div>
+                            </MudListItem>
+                            @if (_currentUser?.LastLoginAt != null)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Login" IconColor="Color.Inherit">
+                                    <div>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Último acceso</MudText>
+                                        <MudText Typo="Typo.body2">@_currentUser.LastLoginAt.Value.ToString("dd MMM yyyy HH:mm")</MudText>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="9">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Datos personales</MudText>
+                            <MudText Typo="Typo.body2">Actualiza tu nombre, email y nombre de usuario.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_profile.FirstName" Label="Nombre" Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_profile.LastName" Label="Apellidos" Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_profile.Email" Label="Email" Variant="Variant.Outlined" FullWidth="true" InputType="InputType.Email" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_profile.Username" Label="Nombre de usuario" Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveProfile"
+                                   Disabled="_saving" StartIcon="@Icons.Material.Filled.Save">
+                            @if (_saving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar cambios
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+    private UserDto? _currentUser;
+    private string _userInitial = "?";
+    private string _userFullName = "";
+    private ProfileForm _profile = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _currentUser = await UserService.GetCurrentUserAsync();
+            _profile = new ProfileForm
+            {
+                FirstName = _currentUser.FirstName ?? "",
+                LastName  = _currentUser.LastName  ?? "",
+                Email     = _currentUser.Email,
+                Username  = _currentUser.Username,
+            };
+            RefreshDisplayName();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void RefreshDisplayName()
+    {
+        if (_currentUser == null) return;
+        var parts = new[] { _currentUser.FirstName, _currentUser.LastName }
+            .Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+        _userFullName = parts.Length > 0 ? string.Join(" ", parts) : _currentUser.Username;
+        _userInitial = !string.IsNullOrWhiteSpace(_currentUser.FirstName)
+            ? _currentUser.FirstName.Trim()[0].ToString().ToUpperInvariant()
+            : _currentUser.Username.Trim()[0].ToString().ToUpperInvariant();
+    }
+
+    private async Task SaveProfile()
+    {
+        if (string.IsNullOrWhiteSpace(_profile.Username) || string.IsNullOrWhiteSpace(_profile.Email))
+        {
+            Snackbar.Add("El email y el nombre de usuario son obligatorios", Severity.Warning);
+            return;
+        }
+        try
+        {
+            _saving = true;
+            _currentUser = await UserService.UpdateProfileAsync(new UpdateProfileRequest
+            {
+                FirstName = _profile.FirstName,
+                LastName  = _profile.LastName,
+                Email     = _profile.Email,
+                Username  = _profile.Username,
+            });
+            RefreshDisplayName();
+            Snackbar.Add("Perfil actualizado correctamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private class ProfileForm
+    {
+        public string FirstName { get; set; } = "";
+        public string LastName  { get; set; } = "";
+        public string Email     { get; set; } = "";
+        public string Username  { get; set; } = "";
+    }
+}

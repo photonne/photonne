@@ -1,0 +1,76 @@
+@implements IDisposable
+@inject IAuthService AuthService
+
+@if (_isAuthenticated)
+{
+    @if (_isAuthorized)
+    {
+        @Authorized
+    }
+    else
+    {
+        @NotAuthorized
+    }
+}
+else
+{
+    @NotAuthorized
+}
+
+@code {
+    [Parameter] public RenderFragment? Authorized { get; set; }
+    [Parameter] public RenderFragment? NotAuthorized { get; set; }
+    [Parameter] public string? Roles { get; set; }
+    
+    private bool _isAuthenticated = false;
+    private bool _isAuthorized = false;
+    private UserDto? _currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (_isAuthenticated)
+        {
+            _currentUser = await AuthService.GetCurrentUserAsync();
+            if (!string.IsNullOrEmpty(Roles))
+            {
+                var requiredRoles = Roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                _isAuthorized = _currentUser != null && requiredRoles.Contains(_currentUser.Role);
+            }
+            else
+            {
+                _isAuthorized = true;
+            }
+        }
+        
+        AuthService.OnAuthStateChanged += OnAuthStateChanged;
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (_isAuthenticated)
+        {
+            _currentUser = await AuthService.GetCurrentUserAsync();
+            if (!string.IsNullOrEmpty(Roles))
+            {
+                var requiredRoles = Roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                _isAuthorized = _currentUser != null && requiredRoles.Contains(_currentUser.Role);
+            }
+            else
+            {
+                _isAuthorized = true;
+            }
+        }
+        else
+        {
+            _isAuthorized = false;
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= OnAuthStateChanged;
+    }
+}

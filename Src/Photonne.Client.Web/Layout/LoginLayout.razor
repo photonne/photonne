@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject LayoutService LayoutService
+@inject ThemeService ThemeService
+
+<MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="login-layout @(LayoutService.IsDarkMode ? "" : "login-layout--light")">
+    @Body
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await LayoutService.InitializeAsync();
+        LayoutService.OnMajorUpdate += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        LayoutService.OnMajorUpdate -= StateHasChanged;
+    }
+}

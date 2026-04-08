@@ -1,0 +1,290 @@
+html, body {
+    font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+#app {
+    height: 100%;
+}
+
+/* ── Typography overrides ────────────────────────────────── */
+* {
+    font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    line-height: 1.6;
+}
+
+/* Botones en minúscula (MudBlazor pone uppercase por defecto) */
+.mud-button-label {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.mud-text-h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.mud-text-subtitle1 {
+    font-weight: 500;
+}
+
+/* ── Page loading bar (fijo en el borde superior, encima del AppBar) ─ */
+.page-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    margin: 0 !important;
+    height: 3px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.mud-button-root.mud-button-filled,
+.mud-button-root.mud-button-outlined {
+    padding: 10px 24px;
+    min-height: 44px;
+    font-size: 0.9375rem;
+    border-radius: 22px !important;
+}
+
+.mud-icon-button {
+    padding: 8px;
+}
+
+/* ── Asset cards ─────────────────────────────────────────── */
+.asset-card {
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+    height: 100%;
+}
+
+.asset-card:hover {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18) !important;
+}
+
+.asset-thumbnail {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.asset-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ── Search field ────────────────────────────────────────── */
+.search-field .mud-input-outlined-border {
+    border: none !important;
+    border-radius: 24px !important;
+    background: var(--mud-palette-background-gray);
+    transition: background 0.2s;
+}
+
+.search-field:focus-within .mud-input-outlined-border {
+    border: 1.5px solid var(--mud-palette-primary) !important;
+    background: var(--mud-palette-surface);
+}
+
+/* ── Album hero breadcrumb (siempre blanco sobre la imagen) ─ */
+.album-hero-content .mud-breadcrumb-item a,
+.album-hero-content .mud-breadcrumb-item span,
+.album-hero-content .mud-breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.album-hero-content .mud-breadcrumb-item a:hover {
+    color: white !important;
+}
+
+/* ── Dialog actions con margen generoso ─────────────────── */
+.mud-dialog-actions {
+    padding: 12px 24px 20px !important;
+    gap: 8px;
+}
+
+/* ── Nav active pill ─────────────────────────────────────── */
+.mud-nav-link {
+    border-radius: 8px !important;
+    box-sizing: border-box;
+}
+
+.mud-drawer .mud-nav-menu {
+    overflow-x: hidden;
+    padding: 0 8px;
+}
+
+/* ── Blazor loading screen ───────────────────────────────── */
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    margin: 20vh auto 1rem auto;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: #e0e0e0;
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: #FFD166;
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    position: relative;
+    text-align: center;
+    font-weight: bold;
+    top: -90px;
+}
+
+/* ── Blazor error bar ────────────────────────────────────── */
+#blazor-error-ui {
+    background: #1e1e2e;
+    color: #e2e8f0;
+    bottom: 0;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.4);
+    display: none;
+    left: 0;
+    padding: 0.75rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    display: none;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.7;
+}
+
+#blazor-error-ui .dismiss:hover {
+    opacity: 1;
+}
+
+/* ── Library card header: evita que la ruta larga empuje el menú fuera ── */
+.library-card .mud-card-header-content {
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* ── Page padding ─────────────────────────────────────── */
+.page-pad {
+    padding: 16px;
+}
+@media (min-width: 960px) {
+    .page-pad {
+        padding: 24px;
+    }
+}
+
+/* ── Section tabs (Albums / Folders / Links) ───────────── */
+.ph-section-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+}
+.ph-section-tabs::-webkit-scrollbar { display: none; }
+.ph-section-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--mud-palette-text-secondary);
+    background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.15s, color 0.15s;
+}
+.ph-section-tab--active {
+    color: var(--mud-palette-primary-text);
+    background: var(--mud-palette-primary);
+    font-weight: 600;
+}
+
+/* ── Photonne brand name – logo gold gradient ────────────── */
+.ph-brand-name {
+    background: linear-gradient(90deg, #ffffff 0%, #FFD166 55%, #E8A820 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Login layout background ─────────────────────────────── */
+.login-layout {
+    min-height: 100vh;
+    background-image: url('/dark/bg-portrait.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.login-layout--light {
+    background-image: url('/light/bg-portrait.png');
+}
+
+@media (orientation: landscape) {
+    .login-layout {
+        background-image: url('/dark/bg-landscape.png');
+    }
+
+    .login-layout--light {
+        background-image: url('/light/bg-landscape.png');
+    }
+}
+
+/* ── Mobile: márgenes en dialogs y bottom sheet ──────────── */
+@media (max-width: 599px) {
+    /* Margen lateral para todos los dialogs (evita que lleguen al borde) */
+    .mud-dialog-container {
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    /* Bottom sheet: sin márgenes, pegado al fondo */
+    .mud-dialog-container:has(.bottom-sheet-mobile) {
+        padding: 0;
+        align-items: flex-end;
+    }
+    .bottom-sheet-mobile {
+        border-radius: 16px 16px 0 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}

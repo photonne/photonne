@@ -1,0 +1,84 @@
+@inject IAlbumService AlbumService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Se creará un álbum con las <b>@AssetIds.Count fotos seleccionadas</b> y se abrirá el diálogo de compartir.
+        </MudText>
+
+        <MudTextField @bind-Value="_albumName"
+                      Label="Nombre del álbum"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      MaxLength="100"
+                      Immediate="true"
+                      @onkeydown="OnKeyDown" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel" Disabled="_busy">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.AddLink"
+                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_albumName))"
+                   OnClick="Submit">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Crear y compartir
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public HashSet<Guid> AssetIds { get; set; } = new();
+
+    private string _albumName = string.Empty;
+    private bool _busy = false;
+
+    protected override void OnInitialized()
+    {
+        _albumName = $"Selección — {DateTime.Now:d MMM yyyy}";
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_albumName) || _busy) return;
+        _busy = true;
+        try
+        {
+            var album = await AlbumService.CreateAlbumAsync(_albumName.Trim(), null);
+            if (album == null)
+            {
+                Snackbar.Add("Error al crear el álbum", Severity.Error);
+                return;
+            }
+
+            var ok = await AlbumService.AddAssetsToAlbumAsync(album.Id, AssetIds);
+            if (!ok)
+            {
+                Snackbar.Add("Álbum creado pero no se pudieron añadir las fotos", Severity.Warning);
+            }
+
+            MudDialog.Close(DialogResult.Ok(album));
+        }
+        catch
+        {
+            Snackbar.Add("Error al crear el álbum", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Submit();
+    }
+}

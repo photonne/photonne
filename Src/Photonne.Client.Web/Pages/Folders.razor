@@ -1,0 +1,2577 @@
+@page "/folders"
+@page "/folders/{Space}"
+@page "/folders/{FolderId:guid}"
+@page "/folders/library/{LibraryId:guid}"
+@using Photonne.Client.Web.Models
+@inject IFolderService FolderService
+@inject IExternalLibraryService ExternalLibraryService
+@inject FoldersCache FoldersCache
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IAuthService AuthService
+@inject LayoutService LayoutService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Carpetas - Photonne</PageTitle>
+
+<style>
+    .folder-card-container {
+        position: relative;
+        cursor: pointer;
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--mud-palette-surface);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid var(--mud-palette-divider);
+    }
+    .folder-card-container:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--mud-elevation-4);
+    }
+    .folder-thumbnail-wrapper {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+    }
+    .folder-card-thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.35s ease;
+    }
+    .folder-card-container:hover .folder-card-thumbnail {
+        transform: scale(1.06);
+    }
+    .folder-card-icon {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-dark) 100%);
+    }
+    .folder-card-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 12px;
+        background: linear-gradient(transparent, rgba(0,0,0,0.82));
+        color: white;
+        pointer-events: none;
+    }
+    /* ── Collage de previsualización ── */
+    .folder-collage-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        width: 100%;
+        height: 100%;
+        gap: 2px;
+        transition: gap 0.35s ease;
+    }
+    .folder-card-container:hover .folder-collage-grid {
+        gap: 3px;
+    }
+    .folder-collage-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+        display: block;
+    }
+    .folder-card-container:hover .folder-collage-img {
+        transform: scale(1.06);
+    }
+    .folder-card-overlay-name {
+        font-weight: 600;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .folder-card-overlay-count {
+        color: rgba(255,255,255,0.9);
+    }
+    .folder-shared-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        z-index: 5;
+    }
+    .folder-list-shared-badge {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.875rem;
+    }
+    .folder-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .folder-list-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--mud-palette-surface);
+        transition: background 0.2s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .folder-list-item:hover {
+        background: var(--mud-palette-action-hover);
+    }
+
+    .folder-list-thumb {
+        width: 96px;
+        height: 96px;
+        position: relative;
+        flex: 0 0 96px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .folder-list-info {
+        min-width: 0;
+        flex-grow: 1;
+    }
+
+    .folder-list-name {
+        font-weight: 600;
+    }
+
+    .folder-list-meta {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .folder-list-item:hover .folder-select-checkbox {
+        opacity: 1;
+    }
+
+    .folder-list-item.selection-mode .folder-select-checkbox,
+    .folder-list-item.selected .folder-select-checkbox {
+        opacity: 1;
+    }
+
+    .folders-search {
+        max-width: 300px;
+    }
+    /* View toggle in filter sheet — remove group border, pill items */
+    .folder-view-toggle {
+        gap: 8px;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .folder-view-toggle .mud-toggle-item {
+        border-radius: 20px !important;
+        background: var(--mud-palette-action-default-hover);
+        flex: 1;
+    }
+
+    .folder-view-toggle .mud-toggle-item-selected {
+        background: var(--mud-palette-primary) !important;
+        color: var(--mud-palette-primary-text) !important;
+    }
+
+    @@media (max-width: 959.98px) {
+        /* Compact folder title on mobile */
+        .folder-page-title {
+            font-size: 1rem !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+    }
+    .folder-select-checkbox {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 5;
+        opacity: 0;
+        transition: opacity 0.2s;
+        background: rgba(0,0,0,0.45);
+        border-radius: 999px;
+        padding: 2px;
+        color: white;
+    }
+
+    .folder-select-checkbox .mud-icon-root {
+        color: white !important;
+    }
+
+    .folder-card-container:hover .folder-select-checkbox {
+        opacity: 1;
+    }
+    .folder-card-container.selection-mode .folder-select-checkbox,
+    .folder-card-container.selected .folder-select-checkbox {
+        opacity: 1;
+    }
+    .asset-select-container {
+        position: relative;
+    }
+    .asset-select-checkbox {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 5;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        background: rgba(0,0,0,0.4);
+        border-radius: 999px;
+        padding: 2px;
+        color: white;
+    }
+
+    .asset-select-checkbox .mud-icon-root {
+        color: white !important;
+    }
+
+    .asset-select-container:hover .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .asset-select-container.selection-mode .asset-select-checkbox,
+    .asset-select-container.selected .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
+        }
+    }
+</style>
+
+<div class="page-pad">
+<div class="d-flex align-center justify-space-between mb-4">
+    <div class="d-flex align-center">
+        @if (!IsAtRoot)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateUp" Title="Volver" Class="mr-2" />
+        }
+        <MudText Typo="Typo.h5" Class="folder-page-title">@PageHeader</MudText>
+    </div>
+
+    <div class="d-flex align-center gap-1">
+        @if (_selectedFolder != null && _selectedFolder.IsOwner && _selectedFolder.IsShared && !IsAtRoot)
+        {
+            <MudIconButton Icon="@Icons.Material.Outlined.Group"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           OnClick="@(() => Navigation.NavigateTo($"/folders/{_selectedFolder.Id}/permissions"))"
+                           Title="Colaboradores" />
+        }
+        <MudTextField @bind-Value="_searchQuery"
+                      Placeholder="Buscar"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="folders-search d-none d-sm-flex" />
+
+        @if (_selectedFolder == null)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Title="Nueva carpeta"
+                           OnClick="@(() => OpenCreateFolderDialog(_activeTab == 1))" />
+        }
+        else
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Title="Nueva subcarpeta"
+                           OnClick="@(() => OpenCreateFolderDialog(_selectedFolder.IsShared))" />
+        }
+
+        <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                       Size="Size.Small"
+                       Title="Opciones de vista"
+                       OnClick="@(() => _filterSheetOpen = true)" />
+    </div>
+</div>
+
+@if (IsAtRoot && Trash != true)
+{
+    <div class="ph-section-tabs">
+        <a href="/folders/own"       class="ph-section-tab @(_activeTab == 0 ? "ph-section-tab--active" : "")">Personal</a>
+        <a href="/folders/shared"    class="ph-section-tab @(_activeTab == 1 ? "ph-section-tab--active" : "")">Compartido</a>
+        <a href="/folders/libraries" class="ph-section-tab @(_activeTab == 2 ? "ph-section-tab--active" : "")">Bibliotecas</a>
+    </div>
+}
+
+@if (_selectedFolder == null && _activeTab != 2)
+{
+    @* Vista de selección de raíz Personal / Compartido *@
+    @if (_folderViewMode == FolderViewMode.Grid)
+    {
+        @RenderFolderGrid(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))
+    }
+    else
+    {
+        @RenderFolderList(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))
+    }
+}
+else if (_activeTab == 2 && _selectedFolder == null)
+{
+    @* Vista de lista de bibliotecas *@
+    @if (_loadingLibraries)
+    {
+        <MudProgressLinear Indeterminate="true" Class="my-4" />
+    }
+    else if (!_libraries.Any())
+    {
+        <EmptyState Icon="@Icons.Material.Filled.LibraryBooks"
+                    Title="Sin bibliotecas"
+                    Description="No tienes acceso a ninguna biblioteca externa." />
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var lib in _libraries)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <div class="folder-card-container" @onclick="@(() => NavigateToLibrary(lib))">
+                        <div class="folder-thumbnail-wrapper">
+                            <div class="folder-card-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Large" Style="color: white;" />
+                            </div>
+                            <div class="folder-card-overlay">
+                                <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@lib.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
+                                    @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
+                                </MudText>
+                            </div>
+                        </div>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+else
+{
+    @if (!IsAtRoot)
+    {
+        <div class="mb-4 d-none d-md-block">
+            <MudBreadcrumbs Items="@_breadcrumbs" MaxItems="10" />
+        </div>
+    }
+
+    @if (_loadingAssets || _loadingSubFolders)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+    }
+
+    @if (GetFilteredSubFolders().Any())
+    {
+        @if (!IsAtRoot)
+        {
+            <MudText Typo="Typo.h6" Class="mb-3">Carpetas</MudText>
+        }
+        @if (_folderViewMode == FolderViewMode.Grid)
+        {
+            <MudGrid Class="mb-6">
+                @foreach (var folderData in GetFilteredSubFolders())
+                {
+                    <MudItem xs="6" sm="4" md="3" lg="2">
+                        @RenderFolderCard(folderData)
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <div class="folder-list mb-6">
+                @foreach (var folderData in GetFilteredSubFolders())
+                {
+                    @RenderFolderListItem(folderData)
+                }
+            </div>
+        }
+    }
+
+    @if (_assets.Any())
+    {
+        <MudText Typo="Typo.h6" Class="mb-3">Archivos</MudText>
+        <MudGrid>
+            @foreach (var asset in _assets)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                         data-asset-id="@asset.Id"
+                         @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                         @ontouchmove="OnCardTouchMove"
+                         @ontouchend="OnCardTouchEnd">
+                        <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                        <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                            <MudCheckBox T="bool"
+                                         Value="@IsAssetSelected(asset.Id)"
+                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                        </div>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (!_loadingAssets && !GetFilteredSubFolders().Any())
+    {
+        <div class="d-flex flex-column align-center justify-center py-12">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Large" Style="width: 120px; height: 120px; color: var(--mud-palette-text-disabled);" />
+            <MudText Typo="Typo.h5" Style="color: var(--mud-palette-text-disabled);" Class="mt-4">Esta carpeta está vacía</MudText>
+        </div>
+    }
+}
+</div>
+
+@* ── Crear carpeta — bottom sheet ── *@
+<MudDrawer @bind-Open="_createFolderSheetOpen"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@(_selectedFolder == null ? "Nueva carpeta" : "Nueva subcarpeta")</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="@(() => _createFolderSheetOpen = false)" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        <MudTextField @bind-Value="_folderNameInput"
+                      Label="Nombre"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true"
+                      Immediate="true"
+                      Autofocus="true"
+                      Class="mb-3" />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Size="Size.Medium"
+                   OnClick="CreateFolderAsync">
+            Crear
+        </MudButton>
+    </div>
+</MudDrawer>
+
+@* ── Opciones de vista — bottom sheet ── *@
+<MudDrawer @bind-Open="_filterSheetOpen"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Opciones de vista</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="@(() => _filterSheetOpen = false)" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Ordenar por</MudText>
+        <MudSelect T="FolderSort"
+                   Value="_folderSort"
+                   ValueChanged="OnFolderSortChanged"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   FullWidth="true"
+                   Class="mb-4">
+            <MudSelectItem Value="FolderSort.Name">Nombre</MudSelectItem>
+            <MudSelectItem Value="FolderSort.AssetCount">Cantidad de archivos</MudSelectItem>
+        </MudSelect>
+        <MudDivider Class="mb-3" />
+        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Vista</MudText>
+        <MudToggleGroup T="FolderViewMode" Value="_folderViewMode" ValueChanged="OnViewModeChanged"
+                        Color="Color.Primary" Outline="false" Delimiters="false" Size="Size.Small" Class="w-100 folder-view-toggle">
+            <MudToggleItem Value="FolderViewMode.Grid" Icon="@Icons.Material.Filled.ViewModule" Text="Cuadrícula" />
+            <MudToggleItem Value="FolderViewMode.List" Icon="@Icons.Material.Filled.ViewList" Text="Lista" />
+        </MudToggleGroup>
+    </div>
+</MudDrawer>
+
+@* ── Editar carpeta — bottom sheet ── *@
+@if (_editFolderSheetEverOpened)
+{
+<MudDrawer @bind-Open="_editFolderDialogVisible"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Editar carpeta</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="CloseEditFolderDialog" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        <MudTextField @bind-Value="_folderNameInput"
+                      Label="Nombre"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true"
+                      Class="mb-3" />
+        <MudAutocomplete T="Guid?"
+                         Label="Carpeta padre"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         @bind-Value="_editParentFolderId"
+                         SearchFunc="SearchEditParentFolderAsync"
+                         ToStringFunc="EditParentFolderToString"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="true"
+                         FullWidth="true"
+                         Class="mb-4" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   FullWidth="true" Size="Size.Medium"
+                   OnClick="UpdateFolderAsync">
+            Guardar
+        </MudButton>
+    </div>
+</MudDrawer>
+}
+
+<MudDialog @bind-Visible="_deleteFolderDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Eliminar carpeta</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Estás seguro de que quieres eliminar la carpeta "@_selectedFolder?.Name"?</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">Debe estar vacía para poder eliminarla.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDeleteFolderDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteFolderAsync">Eliminar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_moveAssetsDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Mover archivos</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAutocomplete T="Guid?"
+                         Label="Destino"
+                         Variant="Variant.Outlined"
+                         @bind-Value="_moveTargetFolderId"
+                         SearchFunc="SearchMoveFolderAsync"
+                         ToStringFunc="MoveFolderToString"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="true"
+                         FullWidth="true"
+                         Class="mb-3" />
+
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Seleccionados: @_selectedAssetIds.Count</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseMoveAssetsDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!_selectedAssetIds.Any() || !_moveTargetFolderId.HasValue)" OnClick="MoveAssetsAsync">Mover</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_deleteAssetsDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Eliminar archivos</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres mover estos archivos a la papelera?</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">Se borrarán automáticamente después de 7 días.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDeleteAssetsDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@(!_selectedAssetIds.Any())" OnClick="DeleteAssetsAsync">Eliminar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_restoreAssetsDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Restaurar archivos</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres restaurar estos archivos a su ubicación original?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseRestoreAssetsDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!_selectedAssetIds.Any())" OnClick="RestoreAssetsAsync">Restaurar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string? Space { get; set; }
+    [Parameter] public Guid? FolderId { get; set; }
+    [Parameter] public Guid? LibraryId { get; set; }
+    [SupplyParameterFromQuery(Name = "trash")] public bool? Trash { get; set; }
+
+    private bool IsAtRoot => _selectedFolder == null || (Space != null && !FolderId.HasValue && !LibraryId.HasValue) ||
+                             IsUserRootPath(_selectedFolder.Path.Replace('\\', '/')) ||
+                             _selectedFolder.Path.Replace('\\', '/').TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase) ||
+                             IsLibraryRootFolder(_selectedFolder);
+
+    private string PageHeader
+    {
+        get
+        {
+            if (Trash == true) return "Papelera";
+            if (!IsAtRoot && _selectedFolder != null) return _selectedFolder.Name;
+            return _activeTab switch
+            {
+                1 => "Espacio Compartido",
+                2 => _currentLibraryId.HasValue
+                    ? (_libraries.FirstOrDefault(l => l.Id == _currentLibraryId)?.Name ?? "Biblioteca")
+                    : "Bibliotecas Externas",
+                _ => "Mi Espacio"
+            };
+        }
+    }
+
+    private List<FolderItem> _folderTree = new();
+    private List<FolderItem> _allFolders = new(); // Todas las carpetas para búsqueda rápida
+    private List<TreeItemData<FolderItem>> _treeData = new();
+    private FolderItem? _selectedFolder;
+    private FolderItem? _selectedTreeFolder;
+    private List<TimelineItem> _assets = new();
+    private bool _loadingFolders = true;
+    private bool _loadingAssets = false;
+    private bool _loadingSubFolders = false;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private List<FolderItem> _subFoldersWithThumbnails = new();
+    private List<FolderItem> _personalFolders = new();
+    private List<FolderItem> _sharedFolders = new();
+    private List<FolderItem?> _breadcrumbFolders = new(); // Lista paralela con las carpetas del breadcrumb (null = raíz)
+    private List<ExternalLibraryDto> _libraries = new();
+    private bool _loadingLibraries = false;
+    private Guid? _currentLibraryId;
+
+    private bool _createFolderSheetOpen = false;
+    private bool _filterSheetOpen = false;
+    private bool _isSharedSpaceCreation = false;
+    private bool _editFolderDialogVisible = false;
+    private bool _editFolderSheetEverOpened = false;
+    private bool _deleteFolderDialogVisible = false;
+    private bool _moveAssetsDialogVisible = false;
+    private bool _deleteAssetsDialogVisible = false;
+    private bool _restoreAssetsDialogVisible = false;
+    private string _folderNameInput = string.Empty;
+    private string _searchQuery = string.Empty;
+    private FolderSort _folderSort = FolderSort.Name;
+    private Guid? _editParentFolderId;
+    private FolderItem? _editTargetFolder;
+    private Guid? _moveTargetFolderId;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _selectionMode = false;
+    private bool _folderSelectionMode = false;
+    private HashSet<Guid> _selectedFolderIds = new();
+
+    // Touch / long-press / drag-select
+    private DotNetObjectReference<Folders>? _objRef;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+    private Guid? _userId;
+    private string _userRootPrefix = string.Empty;
+    private string _userRootPhysicalPrefix = string.Empty;
+
+    private enum FolderSort
+    {
+        Name,
+        AssetCount
+    }
+
+    private enum FolderViewMode
+    {
+        Grid,
+        List
+    }
+    
+    private int _activeTab;
+    private FolderViewMode _folderViewMode = FolderViewMode.Grid;
+
+    private async Task OnViewModeChanged(FolderViewMode mode)
+    {
+        _folderViewMode = mode;
+        await JS.InvokeVoidAsync("localStorage.setItem", "photonne:folders:viewMode", mode.ToString());
+    }
+
+    private async Task OnFolderSortChanged(FolderSort sort)
+    {
+        _folderSort = sort;
+        await JS.InvokeVoidAsync("localStorage.setItem", "photonne:folders:sort", sort.ToString());
+    }
+
+    private List<FolderItem> GetFilteredFolders(List<FolderItem> source)
+    {
+        var filtered = source;
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            filtered = source.Where(f => f.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        return _folderSort switch
+        {
+            FolderSort.Name => filtered.OrderBy(f => f.Name).ToList(),
+            FolderSort.AssetCount => filtered.OrderByDescending(f => f.AssetCount).ToList(),
+            _ => filtered
+        };
+    }
+
+    private List<FolderItem> GetFilteredSubFolders()
+    {
+        var filtered = _subFoldersWithThumbnails;
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            filtered = _subFoldersWithThumbnails.Where(f => f.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        return _folderSort switch
+        {
+            FolderSort.Name => filtered.OrderBy(f => f.Name).ToList(),
+            FolderSort.AssetCount => filtered.OrderByDescending(f => f.AssetCount).ToList(),
+            _ => filtered
+        };
+    }
+
+    private void OnTabChanged(int index)
+    {
+        _activeTab = index;
+        string space = index switch { 1 => "shared", 2 => "libraries", _ => "own" };
+        Navigation.NavigateTo($"/folders/{space}");
+    }
+
+    private void NavigateUp()
+    {
+        if (_selectedFolder != null)
+        {
+            var path = _selectedFolder.Path.Replace('\\', '/');
+            bool isShared = _selectedFolder.IsShared || path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase);
+
+            // Contexto de biblioteca externa
+            if (_selectedFolder.ExternalLibraryId.HasValue)
+            {
+                if (IsLibraryRootFolder(_selectedFolder))
+                {
+                    // En la raíz de la biblioteca → volver a la lista de bibliotecas
+                    _currentLibraryId = null;
+                    Navigation.NavigateTo("/folders/libraries");
+                    return;
+                }
+
+                // Subir al padre: si el padre también es de la misma biblioteca, navegar a él;
+                // si el padre no pertenece a la biblioteca, volver a la raíz de la biblioteca
+                if (_selectedFolder.ParentFolderId.HasValue)
+                {
+                    var parentFolder = _allFolders.FirstOrDefault(f => f.Id == _selectedFolder.ParentFolderId);
+                    if (parentFolder?.ExternalLibraryId == _selectedFolder.ExternalLibraryId)
+                    {
+                        Navigation.NavigateTo($"/folders/{_selectedFolder.ParentFolderId}");
+                        return;
+                    }
+                }
+                // Padre fuera de la biblioteca → volver a la raíz de la biblioteca
+                Navigation.NavigateTo($"/folders/library/{_selectedFolder.ExternalLibraryId}");
+                return;
+            }
+
+            // Si ya estamos en una raíz (Personal o Compartida), ir a la selección de espacio (aquí ya debería estar en /folders/own o /folders/shared)
+            if (IsUserRootPath(path) || path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
+            {
+                // Ya estamos en la raíz, NavigateUp no debería ser llamado porque el botón está oculto,
+                // pero por si acaso redirigimos a la URL limpia.
+                string space = isShared ? "shared" : "own";
+                Navigation.NavigateTo($"/folders/{space}");
+                return;
+            }
+
+            if (_selectedFolder.ParentFolderId != null)
+            {
+                // Si al subir llegaríamos a la raíz del usuario o compartida, ir a la vista de "espacios"
+                var parentFolder = _allFolders.FirstOrDefault(f => f.Id == _selectedFolder.ParentFolderId);
+                if (parentFolder != null)
+                {
+                    var parentPath = parentFolder.Path.Replace('\\', '/');
+                    
+                    // Si el padre es una raíz, ir a la selección de espacio
+                    if (IsUserRootPath(parentPath) || parentPath.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string space = isShared ? "shared" : "own";
+                        Navigation.NavigateTo($"/folders/{space}");
+                        return;
+                    }
+
+                    // Bloqueo de seguridad: Si el padre es un ancestro de la raíz (assets, users, etc.)
+                    // NO navegar a él, sino ir a la selección de espacio.
+                    if (!isShared)
+                    {
+                        bool isAncestorOfPersonal = (!string.IsNullOrEmpty(_userRootPrefix) && _userRootPrefix.StartsWith(parentPath.EndsWith("/") ? parentPath : parentPath + "/", StringComparison.OrdinalIgnoreCase)) ||
+                                                   (!string.IsNullOrEmpty(_userRootPhysicalPrefix) && _userRootPhysicalPrefix.StartsWith(parentPath.EndsWith("/") ? parentPath : parentPath + "/", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (isAncestorOfPersonal)
+                        {
+                            Navigation.NavigateTo("/folders/own");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        bool isAncestorOfShared = "/assets/shared/".StartsWith(parentPath.EndsWith("/") ? parentPath : parentPath + "/", StringComparison.OrdinalIgnoreCase);
+                        if (isAncestorOfShared)
+                        {
+                            Navigation.NavigateTo("/folders/shared");
+                            return;
+                        }
+                    }
+                    
+                    Navigation.NavigateTo($"/folders/{_selectedFolder.ParentFolderId}");
+                    return;
+                }
+            }
+
+            // Si no hay ParentFolderId pero estamos en una subcarpeta (raro pero posible por inconsistencia de datos),
+            // redirigir al espacio correspondiente por seguridad.
+            string targetSpace = isShared ? "shared" : "own";
+            Navigation.NavigateTo($"/folders/{targetSpace}");
+        }
+    }
+
+    private RenderFragment RenderFolderGrid(List<FolderItem> folders) => __builder =>
+    {
+        if (folders.Any())
+        {
+            <MudGrid>
+                @foreach (var folderData in folders)
+                {
+                    <MudItem xs="6" sm="4" md="3" lg="2">
+                        @RenderFolderCard(folderData)
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Folder"
+                        Title="No hay carpetas"
+                        Description="Empieza creando una nueva." />
+        }
+    };
+
+    private RenderFragment RenderFolderList(List<FolderItem> folders) => __builder =>
+    {
+        if (folders.Any())
+        {
+            <div class="folder-list">
+                @foreach (var folderData in folders)
+                {
+                    @RenderFolderListItem(folderData)
+                }
+            </div>
+        }
+        else
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Folder"
+                        Title="No hay carpetas"
+                        Description="Empieza creando una nueva." />
+        }
+    };
+
+    private RenderFragment RenderFolderCard(FolderItem folderData) => __builder =>
+    {
+        <div class="folder-card-container @(_folderSelectionMode ? "selection-mode" : "") @(IsFolderSelected(folderData.Id) ? "selected" : "")"
+             @onclick="@(() => OnFolderCardClick(folderData))">
+
+            <div class="folder-thumbnail-wrapper">
+                <div class="folder-select-checkbox" @onclick:stopPropagation="true">
+                    <MudCheckBox T="bool"
+                                 Value="@IsFolderSelected(folderData.Id)"
+                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleFolderSelection(folderData.Id, value)))" />
+                </div>
+
+                @if (folderData.SharedWithCount > 0)
+                {
+                    <div class="folder-shared-badge" title="Compartida con @folderData.SharedWithCount usuarios">
+                        <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                        <span>@folderData.SharedWithCount</span>
+                    </div>
+                }
+
+                @if (folderData.PreviewThumbnailUrls.Count >= 4)
+                {
+                    <div class="folder-collage-grid">
+                        @foreach (var url in folderData.PreviewThumbnailUrls.Take(4))
+                        {
+                            <img src="@url" class="folder-collage-img" loading="lazy" alt="" />
+                        }
+                    </div>
+                }
+                else if (folderData.ThumbnailUrl != null)
+                {
+                    <img src="@folderData.ThumbnailUrl" alt="@folderData.Name" class="folder-card-thumbnail" loading="lazy" />
+                }
+                else
+                {
+                    <div class="folder-card-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Large" Style="color: white;" />
+                    </div>
+                }
+
+                <div class="folder-card-overlay">
+                    <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@GetDisplayFolderName(folderData)</MudText>
+                    <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
+                        @folderData.AssetCount @(folderData.AssetCount == 1 ? "archivo" : "archivos")
+                    </MudText>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderFolderListItem(FolderItem folderData) => __builder =>
+    {
+        <div class="folder-list-item @(_folderSelectionMode ? "selection-mode" : "") @(IsFolderSelected(folderData.Id) ? "selected" : "")"
+             @onclick="@(() => OnFolderCardClick(folderData))">
+
+            <div class="folder-list-thumb">
+                <div class="folder-select-checkbox" @onclick:stopPropagation="true">
+                    <MudCheckBox T="bool"
+                                 Value="@IsFolderSelected(folderData.Id)"
+                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleFolderSelection(folderData.Id, value)))" />
+                </div>
+                @if (folderData.ThumbnailUrl != null)
+                {
+                    <img src="@folderData.ThumbnailUrl" alt="@folderData.Name" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" />
+                }
+                else
+                {
+                    <div class="folder-card-icon" style="border-radius: 8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Medium" Color="Color.Primary" />
+                    </div>
+                }
+            </div>
+
+            <div class="folder-list-info">
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.subtitle1" Class="folder-list-name">@GetDisplayFolderName(folderData)</MudText>
+                    @if (folderData.SharedWithCount > 0)
+                    {
+                        <div class="folder-list-shared-badge" title="Compartida con @folderData.SharedWithCount usuarios">
+                            <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                            <span>@folderData.SharedWithCount</span>
+                        </div>
+                    }
+                </div>
+                <MudText Typo="Typo.body2" Class="folder-list-meta">
+                    @folderData.AssetCount @(folderData.AssetCount == 1 ? "archivo" : "archivos")
+                </MudText>
+            </div>
+        </div>
+    };
+
+    private bool _isNavigating = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPreferences();
+        await LoadUserRootAsync();
+        await LoadFolders();
+    }
+
+    private async Task LoadPreferences()
+    {
+        try
+        {
+            var sort = await JS.InvokeAsync<string?>("localStorage.getItem", "photonne:folders:sort");
+            if (Enum.TryParse<FolderSort>(sort, out var sortValue)) _folderSort = sortValue;
+
+            var viewMode = await JS.InvokeAsync<string?>("localStorage.getItem", "photonne:folders:viewMode");
+            if (Enum.TryParse<FolderViewMode>(viewMode, out var viewModeValue)) _folderViewMode = viewModeValue;
+        }
+        catch { }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isNavigating) return;
+        try 
+        {
+            _isNavigating = true;
+            await HandleFolderNavigation();
+        }
+        finally
+        {
+            _isNavigating = false;
+        }
+    }
+    
+    private async Task HandleFolderNavigation()
+    {
+        // Navegación a biblioteca específica: /folders/library/{guid}
+        if (LibraryId.HasValue)
+        {
+            _activeTab = 2;
+            _currentLibraryId = LibraryId;
+            await LoadLibraries();
+            var rootFolder = await FolderService.GetLibraryRootFolderAsync(LibraryId.Value);
+            if (rootFolder != null)
+            {
+                await LoadFolderContent(rootFolder);
+            }
+            else
+            {
+                Snackbar.Add("Esta biblioteca aún no ha sido escaneada o no tiene carpetas.", Severity.Info);
+                _selectedFolder = null;
+            }
+            return;
+        }
+
+        if (Space != null && !FolderId.HasValue)
+        {
+            _activeTab = Space.ToLower() switch { "shared" => 1, "libraries" => 2, _ => 0 };
+
+            if (Space.ToLower() == "libraries")
+            {
+                _currentLibraryId = null;
+                _selectedFolder = null;
+                _assets.Clear();
+                _subFoldersWithThumbnails.Clear();
+                await LoadLibraries();
+                return;
+            }
+
+            // Si el usuario entra en "own" o "shared" sin ID de carpeta,
+            // cargamos la raíz correspondiente sin cambiar la URL.
+            var rootFolder = Space.ToLower() == "shared" ? FindSharedRootFolder() : FindUserRootFolder();
+            if (rootFolder != null)
+            {
+                await LoadFolderContent(rootFolder);
+                return;
+            }
+        }
+
+        if (FolderId.HasValue)
+        {
+            // Navegar a la carpeta especificada en la URL
+            var folder = await FolderService.GetFolderByIdAsync(FolderId.Value);
+            if (folder != null)
+            {
+                // Detectar si es carpeta de biblioteca y activar el tab correspondiente
+                if (folder.ExternalLibraryId.HasValue)
+                {
+                    _activeTab = 2;
+                    _currentLibraryId = folder.ExternalLibraryId;
+                    await LoadLibraries();
+                    await LoadFolderContent(folder);
+                    return;
+                }
+
+                // Si la carpeta es una raíz, redirigir a la URL limpia /folders/own o /folders/shared
+                var path = folder.Path.Replace('\\', '/');
+                if (IsUserRootPath(path))
+                {
+                    Navigation.NavigateTo("/folders/own", replace: true);
+                    return;
+                }
+                if (path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
+                {
+                    Navigation.NavigateTo("/folders/shared", replace: true);
+                    return;
+                }
+
+                await LoadFolderContent(folder);
+            }
+            else
+            {
+                Snackbar.Add("Carpeta no encontrada", Severity.Warning);
+                Navigation.NavigateTo("/folders/own");
+            }
+        }
+        else
+        {
+            if (Trash == true)
+            {
+                var trashFolder = FindTrashFolder();
+                if (trashFolder != null)
+                {
+                    Navigation.NavigateTo($"/folders/{trashFolder.Id}", replace: true);
+                    return;
+                }
+
+                Snackbar.Add("No se encontró la papelera para este usuario.", Severity.Warning);
+                Navigation.NavigateTo("/folders/own", replace: true);
+                return;
+            }
+
+            _selectedFolder = null;
+            _selectedTreeFolder = null;
+            _assets.Clear();
+            _subFoldersWithThumbnails.Clear();
+            _breadcrumbs.Clear();
+            _breadcrumbFolders.Clear();
+        }
+    }
+
+    private async Task LoadFolderContent(FolderItem folder)
+    {
+        // Buscar la carpeta en el árbol para obtener las subcarpetas completas
+        var folderWithSubFolders = FindFolderInTreeById(folder.Id, _folderTree);
+        if (folderWithSubFolders != null)
+        {
+            folder = folderWithSubFolders;
+        }
+
+        _selectedFolder = folder;
+        _selectedTreeFolder = folder;
+        _subFoldersWithThumbnails.Clear();
+        _assets.Clear();
+
+        await Task.WhenAll(
+            LoadFolderAssets(folder.Id),
+            LoadSubFoldersWithThumbnails(folder),
+            UpdateBreadcrumbs(folder)
+        );
+    }
+
+    private FolderItem? FindUserRootFolder()
+    {
+        if (!_allFolders.Any())
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(_userRootPrefix))
+        {
+            var normalizedRoot = _userRootPrefix.TrimEnd('/');
+            var match = _allFolders.FirstOrDefault(f =>
+                f.Path.Replace('\\', '/').TrimEnd('/').Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(_userRootPhysicalPrefix))
+        {
+            var normalizedRoot = _userRootPhysicalPrefix.TrimEnd('/');
+            return _allFolders.FirstOrDefault(f =>
+                f.Path.Replace('\\', '/').TrimEnd('/').Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return null;
+    }
+
+    private FolderItem? FindSharedRootFolder()
+    {
+        if (!_allFolders.Any())
+        {
+            return null;
+        }
+
+        const string sharedRootPath = "/assets/shared";
+        return _allFolders.FirstOrDefault(f =>
+            f.Path.Replace('\\', '/').TrimEnd('/').Equals(sharedRootPath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private FolderItem? FindTrashFolder()
+    {
+        if (!_allFolders.Any())
+            return null;
+        return _allFolders.FirstOrDefault(folder => IsBinPath(folder.Path));
+    }
+
+    private bool IsLibraryRootFolder(FolderItem? folder)
+    {
+        if (folder == null || !folder.ExternalLibraryId.HasValue) return false;
+        // Es raíz si su padre no pertenece a la misma biblioteca
+        if (!folder.ParentFolderId.HasValue) return true;
+        var parent = _allFolders.FirstOrDefault(f => f.Id == folder.ParentFolderId);
+        return parent == null || parent.ExternalLibraryId != folder.ExternalLibraryId;
+    }
+
+    private async Task NavigateToLibrary(ExternalLibraryDto lib)
+    {
+        _currentLibraryId = lib.Id;
+        Navigation.NavigateTo($"/folders/library/{lib.Id}");
+        await Task.CompletedTask;
+    }
+
+    private async Task LoadLibraries()
+    {
+        if (_libraries.Any()) return;
+        try
+        {
+            _loadingLibraries = true;
+            StateHasChanged();
+            _libraries = await ExternalLibraryService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar bibliotecas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingLibraries = false;
+        }
+    }
+    
+    private FolderItem? FindFolderInTreeById(Guid folderId, List<FolderItem> tree)
+    {
+        foreach (var folder in tree)
+        {
+            if (folder.Id == folderId)
+            {
+                return folder;
+            }
+            
+            if (folder.SubFolders != null && folder.SubFolders.Any())
+            {
+                var found = FindFolderInTreeById(folderId, folder.SubFolders);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task LoadFolders(bool forceRefresh = false)
+    {
+        try
+        {
+            _loadingFolders = true;
+            if (!forceRefresh && FoldersCache.IsValid)
+            {
+                _folderTree = FoldersCache.Tree!;
+                _allFolders = FoldersCache.Folders!;
+                UpdateUserRootPhysicalPrefix();
+                FilterFoldersToUserRoot();
+                _treeData = MapToTreeItemData(_folderTree);
+                await LoadRootSpaces();
+                return;
+            }
+            _folderTree = await FolderService.GetFolderTreeAsync();
+            _allFolders = await FolderService.GetFoldersAsync(); // Cargar todas las carpetas para búsqueda rápida
+            FoldersCache.Set(_folderTree, _allFolders);
+            UpdateUserRootPhysicalPrefix();
+            FilterFoldersToUserRoot();
+            _treeData = MapToTreeItemData(_folderTree);
+            
+            // Cargar carpetas raíz para los dos espacios
+            await LoadRootSpaces();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar carpetas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingFolders = false;
+        }
+    }
+
+    private async Task LoadRootSpaces()
+    {
+        _personalFolders.Clear();
+        _sharedFolders.Clear();
+
+        // Asegurar que tenemos todas las carpetas cargadas
+        if (!_allFolders.Any())
+        {
+            if (FoldersCache.IsValid)
+                _allFolders = FoldersCache.Folders!;
+            else
+                _allFolders = await FolderService.GetFoldersAsync();
+        }
+
+        // 1. Identificar carpetas raíz técnicas (ParentFolderId == null) que pertenecen al usuario o son compartidas
+        var rootFolders = _allFolders.Where(f => f.ParentFolderId == null && !IsBinPath(f.Path)).ToList();
+
+        foreach (var folder in rootFolders)
+        {
+            if (folder.IsShared || folder.Path.Replace('\\', '/').StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_sharedFolders.Any(f => f.Id == folder.Id))
+                    _sharedFolders.Add(folder);
+            }
+            else
+            {
+                var normalized = folder.Path.Replace('\\', '/');
+                bool isInUserRoot = false;
+
+                if (!string.IsNullOrEmpty(_userRootPrefix) && normalized.StartsWith(_userRootPrefix, StringComparison.OrdinalIgnoreCase))
+                    isInUserRoot = true;
+                else if (!string.IsNullOrEmpty(_userRootPhysicalPrefix) && normalized.StartsWith(_userRootPhysicalPrefix, StringComparison.OrdinalIgnoreCase))
+                    isInUserRoot = true;
+                else if (normalized.Contains($"/assets/users/{_userId}/", StringComparison.OrdinalIgnoreCase))
+                    isInUserRoot = true;
+
+                if (isInUserRoot && !_personalFolders.Any(f => f.Id == folder.Id))
+                    _personalFolders.Add(folder);
+            }
+        }
+
+        // 2. Fallback: carpeta raíz del usuario si no fue clasificada arriba
+        var userRoot = FindUserRootFolder();
+        if (userRoot != null && !_personalFolders.Any(f => f.Id == userRoot.Id))
+            _personalFolders.Add(userRoot);
+
+        // 3. Fallback: espacio compartido si quedó vacío
+        if (!_sharedFolders.Any())
+        {
+            const string sharedRootPath = "/assets/shared";
+            var sharedRoot = _allFolders.FirstOrDefault(f =>
+                f.Path.Replace('\\', '/').TrimEnd('/').Equals(sharedRootPath, StringComparison.OrdinalIgnoreCase));
+            if (sharedRoot != null)
+                _sharedFolders.Add(sharedRoot);
+        }
+    }
+
+    private void ClearCurrentFolderView()
+    {
+        _selectedFolder = null;
+        _selectedTreeFolder = null;
+        _assets.Clear();
+        _subFoldersWithThumbnails.Clear();
+        _breadcrumbs.Clear();
+        _breadcrumbFolders.Clear();
+        StateHasChanged();
+    }
+
+    private async Task RefreshFoldersViewAsync(Guid? targetFolderId = null)
+    {
+        await LoadFolders(forceRefresh: true);
+
+        var folderId = targetFolderId ?? _selectedFolder?.Id;
+        if (folderId.HasValue)
+        {
+            var updatedFolder = _allFolders.FirstOrDefault(f => f.Id == folderId.Value)
+                ?? FindFolderInTreeById(folderId.Value, _folderTree);
+
+            if (updatedFolder == null)
+            {
+                ClearCurrentFolderView();
+                return;
+            }
+
+            _selectedFolder = updatedFolder;
+            _selectedTreeFolder = updatedFolder;
+            _subFoldersWithThumbnails.Clear();
+            _assets.Clear();
+
+            await Task.WhenAll(
+                LoadFolderAssets(updatedFolder.Id),
+                LoadSubFoldersWithThumbnails(updatedFolder),
+                UpdateBreadcrumbs(updatedFolder)
+            );
+        }
+        else
+        {
+            ClearCurrentFolderView();
+        }
+
+        StateHasChanged();
+    }
+
+    private List<TreeItemData<FolderItem>> MapToTreeItemData(List<FolderItem> folders)
+    {
+        return folders
+            .Where(folder => !IsBinPath(folder.Path))
+            .Select(folder => new TreeItemData<FolderItem>
+            {
+                Value = folder,
+                Text = $"{GetDisplayFolderName(folder)} ({folder.AssetCount})",
+                Icon = Icons.Material.Filled.Folder,
+                Children = folder.SubFolders.Any() ? MapToTreeItemData(folder.SubFolders) : null
+            })
+            .ToList();
+    }
+
+    private Task OnFolderSelected(FolderItem folder)
+    {
+        if (folder == null) return Task.CompletedTask;
+        
+        var path = folder.Path.Replace('\\', '/');
+        if (IsUserRootPath(path))
+        {
+            Navigation.NavigateTo("/folders/own", replace: false);
+        }
+        else if (path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/folders/shared", replace: false);
+        }
+        else
+        {
+            Navigation.NavigateTo($"/folders/{folder.Id}", replace: false);
+        }
+        
+        return Task.CompletedTask;
+    }
+
+    private async Task OnFolderClick(FolderItem folder)
+    {
+        await OnFolderSelected(folder);
+    }
+
+    private async Task LoadFolderAssets(Guid folderId)
+    {
+        try
+        {
+            _loadingAssets = true;
+            var assets = await FolderService.GetFolderAssetsAsync(folderId);
+            _assets = assets ?? new List<TimelineItem>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar archivos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingAssets = false;
+        }
+    }
+
+    private async Task UpdateBreadcrumbs(FolderItem folder)
+    {
+        _breadcrumbs = new List<BreadcrumbItem>();
+        _breadcrumbFolders = new List<FolderItem?>();
+        
+        // Determinar el nombre de la raíz y el icono según el tipo de espacio
+        bool isShared = folder.IsShared || folder.Path.Replace('\\', '/').StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase);
+        string rootName = isShared ? "Espacio Compartido" : "Mi Espacio";
+        string rootIcon = isShared ? Icons.Material.Filled.Groups : Icons.Material.Filled.Person;
+        string space = isShared ? "shared" : "own";
+
+        // Si la carpeta actual es una raíz, los breadcrumbs NO se deben mostrar (según lógica IsAtRoot),
+        // pero por consistencia si se llegaran a renderizar, apuntarían a la URL limpia.
+        _breadcrumbs.Add(new BreadcrumbItem(rootName, href: $"/folders/{space}", icon: rootIcon));
+        _breadcrumbFolders.Add(null); // null indica que es la raíz
+        
+        // Construir la ruta completa desde la raíz hasta la carpeta actual
+        var pathFolders = await BuildPathFolders(folder);
+        
+        bool foundRoot = false;
+        foreach (var pathFolder in pathFolders)
+        {
+            var path = pathFolder.Path.Replace('\\', '/');
+            
+            // Si aún no hemos encontrado la raíz del usuario, comprobamos si esta carpeta es la raíz o un ancestro
+            if (!foundRoot)
+            {
+                if (IsUserRootPath(path) || (isShared && path.Equals("/assets/shared", StringComparison.OrdinalIgnoreCase)))
+                {
+                    foundRoot = true;
+                    continue; // Saltamos la raíz porque ya agregamos "Mi Espacio" / "Espacio Compartido"
+                }
+                
+                // Si es un ancestro de la raíz del usuario, lo saltamos
+                if (!string.IsNullOrEmpty(_userRootPrefix) && _userRootPrefix.StartsWith(path.EndsWith("/") ? path : path + "/", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!string.IsNullOrEmpty(_userRootPhysicalPrefix) && _userRootPhysicalPrefix.StartsWith(path.EndsWith("/") ? path : path + "/", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (isShared && "/assets/shared/".StartsWith(path.EndsWith("/") ? path : path + "/", StringComparison.OrdinalIgnoreCase))
+                    continue;
+            }
+
+            var breadcrumbText = GetDisplayFolderName(pathFolder);
+            // Usar href con el ID de la carpeta para navegación directa
+            _breadcrumbs.Add(new BreadcrumbItem(breadcrumbText, $"/folders/{pathFolder.Id}"));
+            _breadcrumbFolders.Add(pathFolder);
+        }
+    }
+    
+    private async Task<List<FolderItem>> BuildPathFolders(FolderItem folder)
+    {
+        var pathFolders = new List<FolderItem>();
+        
+        // Primero intentar buscar la carpeta en el árbol para obtener la ruta completa
+        var folderPath = FindFolderInTree(folder.Id, _folderTree);
+        if (folderPath != null && folderPath.Any())
+        {
+            pathFolders = folderPath;
+        }
+        else
+        {
+            // Si no se encuentra en el árbol, construir la ruta usando el path
+            if (!string.IsNullOrEmpty(folder.Path))
+            {
+                var pathParts = folder.Path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                var currentPath = "";
+                
+                foreach (var part in pathParts)
+                {
+                    currentPath = string.IsNullOrEmpty(currentPath) ? part : $"{currentPath}/{part}";
+                    var normalizedCurrentPath = currentPath.Replace('\\', '/').TrimEnd('/');
+                    
+                    // Buscar la carpeta por su path completo en el árbol
+                    var foundFolder = FindFolderByPathInTree(normalizedCurrentPath, _folderTree);
+                    if (foundFolder != null)
+                    {
+                        pathFolders.Add(foundFolder);
+                    }
+                    else
+                    {
+                        // Si no se encuentra en el árbol, buscar en todas las carpetas cargadas
+                        var folderByPath = _allFolders.FirstOrDefault(f => 
+                        {
+                            var folderNormalizedPath = f.Path.Replace('\\', '/').TrimEnd('/');
+                            return folderNormalizedPath.Equals(normalizedCurrentPath, StringComparison.OrdinalIgnoreCase);
+                        });
+                        
+                        if (folderByPath != null)
+                        {
+                            pathFolders.Add(folderByPath);
+                        }
+                    }
+                }
+            }
+            
+            // Si aún no tenemos la ruta completa, construir usando ParentFolderId
+            if (!pathFolders.Any() || pathFolders.LastOrDefault()?.Id != folder.Id)
+            {
+                // Construir la ruta desde la carpeta actual hacia arriba usando ParentFolderId
+                var pathFromParent = await BuildPathFromParent(folder);
+                if (pathFromParent.Any())
+                {
+                    pathFolders = pathFromParent;
+                }
+                else
+                {
+                    // Si todo falla, agregar solo la carpeta actual
+                    pathFolders.Add(folder);
+                }
+            }
+        }
+        
+        return pathFolders;
+    }
+    
+    private async Task<List<FolderItem>> BuildPathFromParent(FolderItem folder)
+    {
+        var path = new List<FolderItem>();
+        var currentFolder = folder;
+        var visited = new HashSet<Guid>(); // Para evitar ciclos
+        
+        // Construir la ruta desde la carpeta actual hacia arriba
+        while (currentFolder != null && !visited.Contains(currentFolder.Id))
+        {
+            visited.Add(currentFolder.Id);
+            path.Insert(0, currentFolder); // Insertar al inicio para mantener el orden
+            
+            if (currentFolder.ParentFolderId.HasValue)
+            {
+                var parentId = currentFolder.ParentFolderId.Value;
+                // Buscar la carpeta padre en las carpetas cargadas
+                var parentFolder = _allFolders.FirstOrDefault(f => f.Id == parentId);
+                if (parentFolder == null)
+                {
+                    // Si no está en las carpetas cargadas, intentar obtenerla del API
+                    try
+                    {
+                        parentFolder = await FolderService.GetFolderByIdAsync(parentId);
+                    }
+                    catch
+                    {
+                        break;
+                    }
+                }
+                currentFolder = parentFolder;
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        return path;
+    }
+    
+    private FolderItem? FindFolderByPathInTree(string path, List<FolderItem> tree)
+    {
+        var normalizedPath = path.Replace('\\', '/').TrimEnd('/');
+        
+        foreach (var folder in tree)
+        {
+            var folderPath = folder.Path.Replace('\\', '/').TrimEnd('/');
+            if (folderPath.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return folder;
+            }
+            
+            if (folder.SubFolders != null && folder.SubFolders.Any())
+            {
+                var found = FindFolderByPathInTree(path, folder.SubFolders);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private List<FolderItem>? FindFolderInTree(Guid folderId, List<FolderItem> tree, List<FolderItem>? currentPath = null)
+    {
+        if (currentPath == null)
+        {
+            currentPath = new List<FolderItem>();
+        }
+        
+        foreach (var folder in tree)
+        {
+            var newPath = new List<FolderItem>(currentPath) { folder };
+            
+            if (folder.Id == folderId)
+            {
+                return newPath;
+            }
+            
+            if (folder.SubFolders != null && folder.SubFolders.Any())
+            {
+                var found = FindFolderInTree(folderId, folder.SubFolders, newPath);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private FolderItem? FindFolderByNameInTree(string name, List<FolderItem> tree)
+    {
+        foreach (var folder in tree)
+        {
+            if (folder.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                return folder;
+            }
+            
+            if (folder.SubFolders != null && folder.SubFolders.Any())
+            {
+                var found = FindFolderByNameInTree(name, folder.SubFolders);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    private Task LoadSubFoldersWithThumbnails(FolderItem folder)
+    {
+        try
+        {
+            _loadingSubFolders = true;
+
+            // Si la carpeta no tiene subcarpetas en el objeto, intentar obtenerlas del árbol
+            if (folder.SubFolders == null || !folder.SubFolders.Any())
+            {
+                var folderInTree = FindFolderInTreeById(folder.Id, _folderTree);
+                if (folderInTree != null && folderInTree.SubFolders != null && folderInTree.SubFolders.Any())
+                    folder.SubFolders = folderInTree.SubFolders;
+                else
+                {
+                    _subFoldersWithThumbnails = new List<FolderItem>();
+                    return Task.CompletedTask;
+                }
+            }
+
+            // Los FolderItem ya traen FirstAssetId embebido desde la API — sin llamadas extra
+            _subFoldersWithThumbnails = folder.SubFolders.Where(s => !IsBinPath(s.Path)).ToList();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar subcarpetas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingSubFolders = false;
+        }
+        return Task.CompletedTask;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _objRef = DotNetObjectReference.Create(this);
+    }
+
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_selectionMode)
+        {
+            var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAssetSelected(assetId)) return;
+        ToggleAssetSelection(assetId, select);
+        StateHasChanged();
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            return;
+        }
+
+        var returnTo = _selectedFolder != null
+            ? $"folders/{_selectedFolder.Id}"
+            : (_activeTab == 1 ? "folders/shared" : "folders/own");
+        var returnToEncoded = System.Net.WebUtility.UrlEncode(returnTo);
+        Navigation.NavigateTo($"/asset/{asset.Id}?returnTo={returnToEncoded}");
+    }
+
+    private void OpenCreateFolderDialog(bool isSharedSpace = false)
+    {
+        _folderNameInput = string.Empty;
+        _isSharedSpaceCreation = isSharedSpace;
+        _createFolderSheetOpen = true;
+    }
+
+    private void CloseCreateFolderDialog()
+    {
+        _createFolderSheetOpen = false;
+    }
+
+    private async Task CreateFolderAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_folderNameInput))
+        {
+            Snackbar.Add("El nombre de la carpeta es obligatorio", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var request = new CreateFolderRequest
+            {
+                Name = _folderNameInput.Trim(),
+                ParentFolderId = _selectedFolder?.Id,
+                IsSharedSpace = _isSharedSpaceCreation
+            };
+
+            var created = await FolderService.CreateFolderAsync(request);
+            _createFolderSheetOpen = false;
+            await RefreshFoldersViewAsync(created.Id);
+            Navigation.NavigateTo($"/folders/{created.Id}", replace: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al crear carpeta: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenEditFolderDialog(FolderItem? folder = null)
+    {
+        if (folder != null)
+        {
+            _selectedFolderIds.Clear();
+            _selectedFolderIds.Add(folder.Id);
+            _folderSelectionMode = true;
+        }
+
+        var targetFolder = GetSelectedFolderForEdit();
+        if (targetFolder == null) return;
+        _editTargetFolder = targetFolder;
+        _folderNameInput = targetFolder.Name;
+        _editParentFolderId = targetFolder.ParentFolderId;
+        _editFolderSheetEverOpened = true;
+        _editFolderDialogVisible = true;
+    }
+
+    private void CloseEditFolderDialog()
+    {
+        _editFolderDialogVisible = false;
+        _editTargetFolder = null;
+        if (_folderSelectionMode && _selectedFolderIds.Any())
+        {
+             UpdateSelectionNavbar();
+        }
+    }
+
+    private async Task UpdateFolderAsync()
+    {
+        if (_editTargetFolder == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_folderNameInput))
+        {
+            Snackbar.Add("El nombre de la carpeta es obligatorio", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var request = new UpdateFolderRequest
+            {
+                Name = _folderNameInput.Trim(),
+                ParentFolderId = _editParentFolderId
+            };
+
+            await FolderService.UpdateFolderAsync(_editTargetFolder.Id, request);
+            _editFolderDialogVisible = false;
+            _editTargetFolder = null;
+            await RefreshFoldersViewAsync(_selectedFolder?.Id);
+            ExitFolderSelectionMode();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al actualizar carpeta: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenDeleteFolderDialog(FolderItem? folder = null)
+    {
+        if (folder != null)
+        {
+            _selectedFolderIds.Clear();
+            _selectedFolderIds.Add(folder.Id);
+            _folderSelectionMode = true;
+        }
+
+        if (!_selectedFolderIds.Any()) return;
+        _deleteFolderDialogVisible = true;
+    }
+
+    private void OpenDeleteFolderDialogFromSelection()
+    {
+        if (!_selectedFolderIds.Any()) return;
+        _deleteFolderDialogVisible = true;
+    }
+
+    private void OpenEditFolderDialogFromSelection()
+    {
+        var targetFolder = GetSelectedFolderForEdit();
+        if (targetFolder == null) return;
+        _editTargetFolder = targetFolder;
+        _folderNameInput = targetFolder.Name;
+        _editParentFolderId = targetFolder.ParentFolderId;
+        _editFolderSheetEverOpened = true;
+        _editFolderDialogVisible = true;
+    }
+
+    private void CloseDeleteFolderDialog()
+    {
+        _deleteFolderDialogVisible = false;
+    }
+
+    private async Task DeleteFolderAsync()
+    {
+        if (!_selectedFolderIds.Any()) return;
+
+        try
+        {
+            var isShared = _selectedFolder?.IsShared ?? false;
+            foreach (var folderId in _selectedFolderIds.ToList())
+            {
+                await FolderService.DeleteFolderAsync(folderId);
+            }
+            
+            _deleteFolderDialogVisible = false;
+            
+            // Si estábamos dentro de una carpeta que hemos borrado (no debería ser posible borrar la actual desde la lista, 
+            // pero si se borra una subcarpeta queremos refrescar la vista actual)
+            if (_selectedFolder != null && _selectedFolderIds.Contains(_selectedFolder.Id))
+            {
+                await RefreshFoldersViewAsync(null);
+                string space = isShared ? "shared" : "own";
+                Navigation.NavigateTo($"/folders/{space}", replace: true);
+            }
+            else
+            {
+                // Refrescar la carpeta actual
+                await RefreshFoldersViewAsync(_selectedFolder?.Id);
+            }
+            
+            ExitFolderSelectionMode();
+            Snackbar.Add("Carpeta eliminada correctamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar carpeta: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenMoveAssetsDialog()
+    {
+        if (_selectedFolder == null) return;
+        _moveTargetFolderId = null;
+        _moveAssetsDialogVisible = true;
+    }
+
+    private void CloseMoveAssetsDialog()
+    {
+        _moveAssetsDialogVisible = false;
+    }
+
+    private void OpenDeleteAssetsDialog()
+    {
+        if (_selectedFolder == null) return;
+        _deleteAssetsDialogVisible = true;
+    }
+
+    private void CloseDeleteAssetsDialog()
+    {
+        _deleteAssetsDialogVisible = false;
+    }
+
+    private void OpenRestoreAssetsDialog()
+    {
+        if (_selectedFolder == null) return;
+        _restoreAssetsDialogVisible = true;
+    }
+
+    private void CloseRestoreAssetsDialog()
+    {
+        _restoreAssetsDialogVisible = false;
+    }
+
+    private void ToggleAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_selectionMode)
+        {
+            _selectionMode = true;
+            // No limpiar _selectedFolderIds aquí para permitir selecciones mixtas si fuera necesario,
+            // aunque usualmente _folderSelectionMode y _selectionMode son excluyentes en la UI.
+            _folderSelectionMode = false;
+        }
+
+        if (selected)
+        {
+            _selectedAssetIds.Add(assetId);
+        }
+        else
+        {
+            _selectedAssetIds.Remove(assetId);
+            if (_selectedAssetIds.Count == 0)
+            {
+                ExitSelectionMode();
+                return;
+            }
+        }
+        UpdateSelectionNavbar();
+        StateHasChanged();
+    }
+
+    private bool IsAssetSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private bool IsTrashFolderSelected
+        => _selectedFolder != null && _selectedFolder.Path.Replace('\\', '/').Contains("/_trash", StringComparison.OrdinalIgnoreCase);
+
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        UpdateSelectionNavbar();
+    }
+
+    private void ExitSelectionFromNavbar()
+    {
+        if (_selectionMode)
+        {
+            ExitSelectionMode();
+        }
+
+        if (_folderSelectionMode)
+        {
+            ExitFolderSelectionMode();
+        }
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode && !_folderSelectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectionMode ? _selectedAssetIds.Count : _selectedFolderIds.Count;
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                @if (_selectionMode)
+                {
+                    @* Botones individuales — solo desktop *@
+                    <span class="d-none d-md-flex">
+                        @if (!IsTrashFolderSelected)
+                        {
+                            <MudTooltip Text="Mover">
+                                <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog" />
+                            </MudTooltip>
+                            <MudTooltip Text="Eliminar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudTooltip Text="Restaurar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Restore" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenRestoreAssetsDialog" />
+                            </MudTooltip>
+                        }
+                    </span>
+
+                    @* Menú de desbordamiento — solo móvil *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        @if (!IsTrashFolderSelected)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.DriveFileMove" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog">
+                                Mover
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
+                                <MudText Color="Color.Error">Eliminar</MudText>
+                            </MudMenuItem>
+                        }
+                        else
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Restore" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenRestoreAssetsDialog">
+                                Restaurar
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                }
+                else if (_folderSelectionMode)
+                {
+                    var selectedFolder = GetSelectedFolderForEdit();
+
+                    @* Botones individuales — solo desktop *@
+                    <span class="d-none d-md-flex">
+                        @if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
+                        {
+                            <MudTooltip Text="Colaboradores">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Group" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))" />
+                            </MudTooltip>
+                        }
+                        <MudTooltip Text="Renombrar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.DriveFileRenameOutline" Color="Color.Inherit" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection" />
+                        </MudTooltip>
+                        <MudTooltip Text="Eliminar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedFolderIds.Any())" OnClick="OpenDeleteFolderDialogFromSelection" />
+                        </MudTooltip>
+                    </span>
+
+                    @* Menú de desbordamiento — solo móvil *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        @if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Group" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))">
+                                Colaboradores
+                            </MudMenuItem>
+                        }
+                        <MudMenuItem Icon="@Icons.Material.Outlined.DriveFileRenameOutline" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection">
+                            Renombrar
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedFolderIds.Any())" OnClick="OpenDeleteFolderDialogFromSelection">
+                            <MudText Color="Color.Error">Eliminar</MudText>
+                        </MudMenuItem>
+                    </MudMenu>
+                }
+            </text>
+        , keepDrawerVisible: true);
+    }
+
+    private async Task MoveAssetsAsync()
+    {
+        if (!_moveTargetFolderId.HasValue || !_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new MoveFolderAssetsRequest
+            {
+                SourceFolderId = null, // Permitir mover desde múltiples carpetas
+                TargetFolderId = _moveTargetFolderId.Value,
+                AssetIds = _selectedAssetIds.ToList()
+            };
+
+            await FolderService.MoveFolderAssetsAsync(request);
+            _moveAssetsDialogVisible = false;
+            await RefreshFoldersViewAsync();
+            ExitSelectionMode();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al mover archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteAssetsAsync()
+    {
+        if (!_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new DeleteAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            };
+
+            await AssetService.DeleteAssetsAsync(request);
+            _deleteAssetsDialogVisible = false;
+            await RefreshFoldersViewAsync();
+            ExitSelectionMode();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RestoreAssetsAsync()
+    {
+        if (!_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new RestoreAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            };
+
+            await AssetService.RestoreAssetsAsync(request);
+            _restoreAssetsDialogVisible = false;
+            await RefreshFoldersViewAsync();
+            ExitSelectionMode();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al restaurar archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private void ExitFolderSelectionMode()
+    {
+        _folderSelectionMode = false;
+        _selectedFolderIds.Clear();
+        UpdateSelectionNavbar();
+    }
+
+    private void OnFolderCardClick(FolderItem folder)
+    {
+        if (_folderSelectionMode)
+        {
+            ToggleFolderSelection(folder.Id, !IsFolderSelected(folder.Id));
+            return;
+        }
+
+        var path = folder.Path.Replace('\\', '/');
+        if (IsUserRootPath(path))
+        {
+            Navigation.NavigateTo("/folders/own");
+        }
+        else if (path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/folders/shared");
+        }
+        else
+        {
+            Navigation.NavigateTo($"/folders/{folder.Id}");
+        }
+    }
+
+    private void ToggleFolderSelection(Guid folderId, bool selected)
+    {
+        if (!_folderSelectionMode)
+        {
+            _folderSelectionMode = true;
+            _selectionMode = false;
+            _selectedAssetIds.Clear();
+        }
+
+        if (selected)
+        {
+            _selectedFolderIds.Add(folderId);
+        }
+        else
+        {
+            _selectedFolderIds.Remove(folderId);
+            if (_selectedFolderIds.Count == 0)
+            {
+                ExitFolderSelectionMode();
+                return;
+            }
+        }
+
+        UpdateSelectionNavbar();
+        StateHasChanged();
+    }
+
+    private bool IsFolderSelected(Guid folderId) => _selectedFolderIds.Contains(folderId);
+
+    private FolderItem? GetSelectedFolderForEdit()
+    {
+        if (_selectedFolderIds.Count != 1)
+        {
+            return null;
+        }
+
+        var folderId = _selectedFolderIds.First();
+        return _allFolders.FirstOrDefault(f => f.Id == folderId) ?? _selectedFolder;
+    }
+
+    private Task<IEnumerable<Guid?>> SearchMoveFolderAsync(string value, CancellationToken cancellationToken)
+    {
+        var query = string.IsNullOrWhiteSpace(value)
+            ? _allFolders.AsEnumerable()
+            : _allFolders.Where(f =>
+                GetDisplayPath(f).Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                f.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
+
+        var results = query
+            .Where(f => _selectedFolder == null || f.Id != _selectedFolder.Id)
+            .OrderBy(f => f.Path)
+            .Select(f => (Guid?)f.Id)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<Guid?>>(results);
+    }
+
+    private string MoveFolderToString(Guid? folderId)
+    {
+        if (!folderId.HasValue)
+        {
+            return string.Empty;
+        }
+
+        var folder = _allFolders.FirstOrDefault(f => f.Id == folderId.Value);
+        return folder == null ? string.Empty : GetDisplayPath(folder);
+    }
+
+    private Task<IEnumerable<Guid?>> SearchEditParentFolderAsync(string value, CancellationToken cancellationToken)
+    {
+        var query = string.IsNullOrWhiteSpace(value)
+            ? GetEditableParentFolders()
+            : GetEditableParentFolders().Where(f =>
+                GetDisplayPath(f).Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                f.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
+
+        var results = query
+            .OrderBy(f => f.Path)
+            .Select(f => (Guid?)f.Id)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<Guid?>>(results);
+    }
+
+    private string EditParentFolderToString(Guid? folderId)
+    {
+        if (!folderId.HasValue)
+        {
+            return "Inicio";
+        }
+
+        var folder = _allFolders.FirstOrDefault(f => f.Id == folderId.Value);
+        return folder == null ? string.Empty : GetDisplayPath(folder);
+    }
+
+    private IEnumerable<FolderItem> GetEditableParentFolders()
+    {
+        return _allFolders.Where(f =>
+            _selectedFolder == null || f.Id != _selectedFolder.Id)
+            .Where(f => !IsUserRootPath(f.Path.Replace('\\', '/')) && !f.Path.Replace('\\', '/').TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task LoadUserRootAsync()
+    {
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            _userId = currentUser.Id;
+            _userRootPrefix = $"/assets/users/{currentUser.Id}/";
+        }
+    }
+
+    private void UpdateUserRootPhysicalPrefix()
+    {
+        if (_userId == null || !_allFolders.Any())
+        {
+            return;
+        }
+
+        var marker = $"/users/{_userId}/";
+        var match = _allFolders
+            .Select(f => f.Path.Replace('\\', '/'))
+            .FirstOrDefault(p => p.Contains(marker, StringComparison.OrdinalIgnoreCase));
+
+        if (match == null)
+        {
+            return;
+        }
+
+        var index = match.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index >= 0)
+        {
+            _userRootPhysicalPrefix = match.Substring(0, index) + marker;
+        }
+    }
+
+    private void FilterFoldersToUserRoot()
+    {
+        // En la raíz lógica (/folders/own o /folders/shared sin FolderId), no filtramos por usuario 
+        // ya que mostramos personal vs compartido por separado.
+        if (_selectedFolder == null && !FolderId.HasValue && Space == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_userRootPrefix) && string.IsNullOrEmpty(_userRootPhysicalPrefix))
+        {
+            return;
+        }
+
+        bool IsInUserRoot(FolderItem folder)
+        {
+            var normalized = folder.Path.Replace('\\', '/');
+            // Si la carpeta es compartida, NO la filtramos de la vista (permitimos ver subcarpetas compartidas)
+            if (folder.IsShared || normalized.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase)) return true;
+
+            if (!string.IsNullOrEmpty(_userRootPrefix) &&
+                (normalized.Equals(_userRootPrefix.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ||
+                 normalized.StartsWith(_userRootPrefix, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(_userRootPhysicalPrefix) &&
+                (normalized.Equals(_userRootPhysicalPrefix.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ||
+                 normalized.StartsWith(_userRootPhysicalPrefix, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        List<FolderItem> FilterTree(List<FolderItem> folders)
+        {
+            var filtered = new List<FolderItem>();
+            foreach (var folder in folders)
+            {
+                var subFolders = folder.SubFolders;
+                if (subFolders != null && subFolders.Any())
+                {
+                    folder.SubFolders = FilterTree(subFolders);
+                }
+
+                if (IsInUserRoot(folder))
+                {
+                    filtered.Add(folder);
+                }
+                else if (folder.SubFolders != null && folder.SubFolders.Any())
+                {
+                    filtered.AddRange(folder.SubFolders);
+                }
+            }
+
+            return filtered;
+        }
+
+        _allFolders = _allFolders.Where(IsInUserRoot).ToList();
+        _folderTree = FilterTree(_folderTree);
+    }
+
+    private string GetDisplayPath(FolderItem folder)
+    {
+        var normalized = folder.Path.Replace('\\', '/');
+
+        // Espacio Compartido
+        const string sharedPrefix = "/assets/shared/";
+        if (normalized.Equals(sharedPrefix.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            return "Espacio Compartido";
+        }
+        if (normalized.StartsWith(sharedPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var relative = normalized.Substring(sharedPrefix.Length).TrimStart('/');
+            return string.IsNullOrEmpty(relative) ? "Espacio Compartido" : $"Espacio Compartido/{GetDisplayRelativePath(relative)}";
+        }
+
+        // Espacio Personal
+        if (IsUserRootPath(normalized))
+        {
+            return "Mi Espacio";
+        }
+
+        if (!string.IsNullOrEmpty(_userRootPrefix) &&
+            normalized.StartsWith(_userRootPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var relative = normalized.Substring(_userRootPrefix.Length).TrimStart('/');
+            return string.IsNullOrEmpty(relative) ? "Mi Espacio" : $"Mi Espacio/{GetDisplayRelativePath(relative)}";
+        }
+
+        if (!string.IsNullOrEmpty(_userRootPhysicalPrefix) &&
+            normalized.StartsWith(_userRootPhysicalPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var relative = normalized.Substring(_userRootPhysicalPrefix.Length).TrimStart('/');
+            return string.IsNullOrEmpty(relative) ? "Mi Espacio" : $"Mi Espacio/{GetDisplayRelativePath(relative)}";
+        }
+
+        return folder.Path;
+    }
+
+    private string GetDisplayFolderName(FolderItem folder)
+    {
+        var normalized = folder.Path.Replace('\\', '/');
+        
+        // Comprobar si es raíz compartida o personal (basado en prefijos)
+        if (normalized.Equals("/assets/shared", StringComparison.OrdinalIgnoreCase) || 
+            normalized.Equals("/assets/shared/", StringComparison.OrdinalIgnoreCase) ||
+            IsUserRootPath(normalized))
+        {
+            return "Inicio";
+        }
+
+        if (IsBinPath(normalized))
+        {
+            return "Papelera";
+        }
+
+        return folder.Name;
+    }
+
+    private bool IsUserRootPath(string normalizedPath)
+    {
+        if (!string.IsNullOrEmpty(_userRootPrefix) &&
+            normalizedPath.Equals(_userRootPrefix.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(_userRootPhysicalPrefix) &&
+            normalizedPath.Equals(_userRootPhysicalPrefix.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsBinPath(string normalizedPath)
+    {
+        return normalizedPath.Replace('\\', '/').EndsWith("/_trash", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetDisplayRelativePath(string relativePath)
+    {
+        var normalized = relativePath.Replace('\\', '/');
+        if (normalized.Equals("_trash", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("_trash/", StringComparison.OrdinalIgnoreCase))
+        {
+            return normalized.Replace("_trash", "Papelera", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return normalized;
+    }
+
+    public void Dispose()
+    {
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
+        LayoutService.ResetNavbar();
+    }
+}

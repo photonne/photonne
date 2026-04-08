@@ -1,0 +1,367 @@
+@page "/settings/device"
+@inject ILocalFolderService LocalFolderService
+@inject DeviceAssetsCache DeviceCache
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Dispositivo - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+<div class="page-pad">
+    <MudText Typo="Typo.h5" Class="mb-6">Dispositivo</MudText>
+
+    @if (!_loading)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Carpeta de fotos</MudText>
+                            <MudText Typo="Typo.body2">Carpeta del dispositivo donde están tus fotos y vídeos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (!_isSupported)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                Tu navegador no soporta la selección de carpetas. Usa Chrome o Edge en Android o escritorio.
+                            </MudAlert>
+                        }
+                        else if (!string.IsNullOrEmpty(_folderName))
+                        {
+                            <MudPaper Class="d-flex align-center gap-3 px-4 py-3 mb-4" Elevation="0"
+                                      Style="border: 1px solid var(--mud-palette-divider); border-radius: 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" />
+                                <div class="flex-grow-1 min-width-0">
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Carpeta seleccionada</MudText>
+                                    <MudText Typo="Typo.body1" Style="word-break: break-all; font-weight: 500;">@_folderName</MudText>
+                                </div>
+                            </MudPaper>
+                            <MudAlert Severity="Severity.Info" Class="mb-4">
+                                El permiso de acceso se solicita en cada sesión por seguridad del navegador.
+                                Ve a <strong>Mi Dispositivo</strong> para ver y sincronizar tus fotos.
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="mb-4">
+                                Selecciona la carpeta de tu dispositivo que contiene tus fotos y vídeos.
+                                Photonne solo lee los archivos para subirlos al servidor.
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    @if (_isSupported)
+                    {
+                        <div class="px-4 pb-4 d-flex flex-column gap-2">
+                            @if (!string.IsNullOrEmpty(_folderName))
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Photo"
+                                           FullWidth="true"
+                                           OnClick="@(() => Navigation.NavigateTo("/device"))">
+                                    Ver mis fotos
+                                </MudButton>
+                            }
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.FolderOpen"
+                                       FullWidth="true"
+                                       OnClick="PickFolderAsync"
+                                       Disabled="_picking">
+                                @if (_picking)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                @(string.IsNullOrEmpty(_folderName) ? "Seleccionar carpeta" : "Cambiar carpeta")
+                            </MudButton>
+
+                            @if (!string.IsNullOrEmpty(_folderName))
+                            {
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Default"
+                                           StartIcon="@Icons.Material.Filled.FolderOff"
+                                           FullWidth="true"
+                                           OnClick="ClearFolderAsync">
+                                    Quitar carpeta
+                                </MudButton>
+                            }
+                        </div>
+                    }
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Caché de miniaturas</MudText>
+                            <MudText Typo="Typo.body2">Miniaturas almacenadas localmente para carga rápida.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_thumbnailCount > 0)
+                        {
+                            <MudText Typo="Typo.body2">@_thumbnailCount miniatura@(_thumbnailCount == 1 ? "" : "s") en caché · @FormatSize(_thumbnailSize)</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin miniaturas en caché.</MudText>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.ClearAll"
+                                   OnClick="ClearThumbnailCacheAsync"
+                                   Disabled="@(_thumbnailCount == 0 || _clearingCache)">
+                            @if (_clearingCache)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Borrar caché
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="8">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Caché del timeline</MudText>
+                            <MudText Typo="Typo.body2">Índice y secciones del timeline almacenados localmente.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            Si el timeline no carga correctamente, borra esta caché para forzar una recarga desde el servidor.
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.ClearAll"
+                                   OnClick="ClearTimelineCacheAsync"
+                                   Disabled="_clearingTimelineCache">
+                            @if (_clearingTimelineCache)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Borrar caché
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @if (!string.IsNullOrEmpty(_folderName))
+            {
+                <MudItem xs="12" md="8">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Caché de dispositivo</MudText>
+                                <MudText Typo="Typo.body2">Lista de archivos y estado de sincronización almacenados localmente.</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (_deviceCacheInfo != null)
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-1">
+                                    @_deviceCacheInfo.FileCount archivo@(_deviceCacheInfo.FileCount == 1 ? "" : "s") en caché · @FormatSize(_deviceCacheInfo.TotalSize)
+                                </MudText>
+                                @if (_deviceCacheInfo.ExistingKeyCount > 0)
+                                {
+                                    <MudText Typo="Typo.body2" Class="mb-1">
+                                        @_deviceCacheInfo.ExistingKeyCount @(_deviceCacheInfo.ExistingKeyCount == 1 ? "ya estaba" : "ya estaban") en el servidor (cacheado).
+                                    </MudText>
+                                }
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    Actualizado @GetCacheAge(_deviceCacheInfo.CachedAt).
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin caché de dispositivo.</MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions Class="px-4 pb-4">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Warning"
+                                       StartIcon="@Icons.Material.Filled.ClearAll"
+                                       OnClick="ClearDeviceCacheAsync"
+                                       Disabled="@(_deviceCacheInfo == null || _clearingDeviceCache)">
+                                @if (_clearingDeviceCache)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Borrar caché
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private record ThumbnailCacheInfo(int Count, long Size);
+
+    private bool _loading = true;
+    private bool _picking;
+    private bool _isSupported;
+    private string _folderName = "";
+    private int _thumbnailCount;
+    private long _thumbnailSize;
+    private bool _clearingCache;
+    private DeviceCacheInfo? _deviceCacheInfo;
+    private bool _clearingDeviceCache;
+    private bool _clearingTimelineCache;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isSupported = await LocalFolderService.IsSupportedAsync();
+            if (_isSupported)
+            {
+                _folderName = await LocalFolderService.GetStoredFolderNameAsync() ?? "";
+            }
+            var thumbnailTask = JS.InvokeAsync<ThumbnailCacheInfo>("thumbnailCache.getInfo").AsTask();
+            var deviceCacheTask = string.IsNullOrEmpty(_folderName)
+                ? Task.FromResult<DeviceCacheInfo?>(null)
+                : LocalFolderService.GetDeviceCacheInfoAsync(_folderName);
+
+            await Task.WhenAll(thumbnailTask, deviceCacheTask);
+            _thumbnailCount = thumbnailTask.Result.Count;
+            _thumbnailSize = thumbnailTask.Result.Size;
+            _deviceCacheInfo = deviceCacheTask.Result;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task PickFolderAsync()
+    {
+        _picking = true;
+        try
+        {
+            var name = await LocalFolderService.PickFolderAsync();
+            if (name != null)
+            {
+                _folderName = name;
+                Snackbar.Add($"Carpeta «{name}» seleccionada", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al seleccionar carpeta: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _picking = false;
+        }
+    }
+
+    private async Task ClearFolderAsync()
+    {
+        DeviceCache.Invalidate();
+        await LocalFolderService.ClearAsync();
+        _folderName = "";
+        _deviceCacheInfo = null;
+        Snackbar.Add("Carpeta eliminada", Severity.Info);
+    }
+
+    private async Task ClearThumbnailCacheAsync()
+    {
+        _clearingCache = true;
+        try
+        {
+            await JS.InvokeVoidAsync("thumbnailCache.clear");
+            _thumbnailCount = 0;
+            _thumbnailSize = 0;
+            Snackbar.Add("Caché de miniaturas borrada.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Error al borrar la caché.", Severity.Error);
+        }
+        finally
+        {
+            _clearingCache = false;
+        }
+    }
+
+    private async Task ClearDeviceCacheAsync()
+    {
+        _clearingDeviceCache = true;
+        try
+        {
+            DeviceCache.Invalidate();
+            await LocalFolderService.ClearDeviceCacheAsync(_folderName);
+            _deviceCacheInfo = null;
+            Snackbar.Add("Caché de dispositivo borrada.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Error al borrar la caché.", Severity.Error);
+        }
+        finally
+        {
+            _clearingDeviceCache = false;
+        }
+    }
+
+    private async Task ClearTimelineCacheAsync()
+    {
+        _clearingTimelineCache = true;
+        try
+        {
+            await JS.InvokeVoidAsync("timelineDb.clearAll");
+            Snackbar.Add("Caché del timeline borrada.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Error al borrar la caché del timeline.", Severity.Error);
+        }
+        finally
+        {
+            _clearingTimelineCache = false;
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+
+    private static string GetCacheAge(long cachedAt)
+    {
+        var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(cachedAt);
+        if (age.TotalMinutes < 1) return "hace menos de 1 minuto";
+        if (age.TotalHours < 1)
+        {
+            var m = (int)age.TotalMinutes;
+            return $"hace {m} minuto{(m == 1 ? "" : "s")}";
+        }
+        if (age.TotalDays < 1)
+        {
+            var h = (int)age.TotalHours;
+            return $"hace {h} hora{(h == 1 ? "" : "s")}";
+        }
+        var d = (int)age.TotalDays;
+        return $"hace {d} día{(d == 1 ? "" : "s")}";
+    }
+}

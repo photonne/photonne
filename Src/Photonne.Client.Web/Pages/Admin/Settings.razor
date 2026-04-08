@@ -1,0 +1,206 @@
+@page "/admin/settings"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Administración - Ajustes - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Volver al inicio
+        </MudButton>
+    </div>
+}
+else
+{
+    <div class="mt-4">
+        <MudText Typo="Typo.h5" Class="mb-2">Ajustes</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Configuración de administración del servidor.
+        </MudText>
+    </div>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Configuración de tareas</MudText>
+                        <MudText Typo="Typo.body2">Procesos simultáneos por tipo de tarea.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/tasks"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Ajustes de imagen</MudText>
+                        <MudText Typo="Typo.body2">Parámetros de calidad, formatos y miniaturas.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/images"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Mantenimiento</MudText>
+                        <MudText Typo="Typo.body2">Limpieza, reindexado y tareas de salud.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/maintenance"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Configuración de metadatos</MudText>
+                        <MudText Typo="Typo.body2">Lectura y escritura de EXIF/IPTC/XMP.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/metadata"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Configuración de tareas nocturnas</MudText>
+                        <MudText Typo="Typo.body2">Ventanas de ejecución y prioridades.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/nightly"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Configuración de notificaciones</MudText>
+                        <MudText Typo="Typo.body2">Alertas del sistema y avisos al usuario.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/notifications"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Configuración del servidor</MudText>
+                        <MudText Typo="Typo.body2">Red, rutas y parámetros del backend.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/server"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Configuración de papelera</MudText>
+                        <MudText Typo="Typo.body2">Retención, borrado y cuotas.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/trash"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Ajustes de usuario</MudText>
+                        <MudText Typo="Typo.body2">Preferencias globales de cuentas.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/user-defaults"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Verificar versión del servidor</MudText>
+                        <MudText Typo="Typo.body2">Comprueba si hay una nueva release del servidor en GitHub.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/version"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+</div>
+
+@code {
+    private bool _isAuthorized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+}

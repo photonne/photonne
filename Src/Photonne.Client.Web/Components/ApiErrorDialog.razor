@@ -1,0 +1,85 @@
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inherits ComponentBase
+
+<MudDialog>
+    <DialogContent>
+        @* <MudText Typo="Typo.h6">@Error.Title</MudText> *@
+
+        <MudText Typo="Typo.subtitle2" Class="mt-1">@Error.Message</MudText>
+
+        <MudDivider Class="my-3" />
+
+        <MudStack Spacing="1">
+            @if (!string.IsNullOrWhiteSpace(Error.Method) || !string.IsNullOrWhiteSpace(Error.Url))
+            {
+                <MudText Typo="Typo.body2">
+                    <b>Solicitud:</b> @($"{Error.Method} {Error.Url}")
+                </MudText>
+            }
+            @if (Error.StatusCode.HasValue)
+            {
+                <MudText Typo="Typo.body2">
+                    <b>Estado:</b> @Error.StatusCode @Error.ReasonPhrase
+                </MudText>
+            }
+            @if (!string.IsNullOrWhiteSpace(Error.TraceId))
+            {
+                <MudText Typo="Typo.body2">
+                    <b>TraceId:</b> @Error.TraceId
+                </MudText>
+            }
+            <MudText Typo="Typo.body2">
+                <b>Hora:</b> @Error.Timestamp.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            </MudText>
+        </MudStack>
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle2">Detalle de la respuesta</MudText>
+        <MudTextField T="string"
+                      Value="@GetRawContent()"
+                      Variant="Variant.Outlined"
+                      ReadOnly="true"
+                      Lines="8"
+                      Class="mt-2"
+                      Style="max-height: 40vh; overflow: auto;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="CopyDetails">
+            Copiar detalles
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">
+            Cerrar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public ApiErrorInfo Error { get; set; } = new();
+
+    private string GetRawContent()
+        => string.IsNullOrWhiteSpace(Error.RawContent)
+            ? "(sin cuerpo de respuesta)"
+            : Error.RawContent!;
+
+    private async Task CopyDetails()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Error.ToJson());
+            Snackbar.Add("Detalles copiados al portapapeles.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("No se pudo copiar al portapapeles.", Severity.Error);
+        }
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}

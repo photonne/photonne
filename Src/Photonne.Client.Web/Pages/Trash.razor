@@ -1,0 +1,563 @@
+@page "/trash"
+@inject IFolderService FolderService
+@inject IAssetService AssetService
+@inject LayoutService LayoutService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Papelera - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+<div class="px-3 pt-3">
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">Papelera</MudText>
+        <div class="d-flex align-center gap-1">
+            <MudIconButton Icon="@Icons.Material.Outlined.RestoreFromTrash"
+                           Size="Size.Small"
+                           Disabled="@(!_assets.Any())"
+                           Title="Restaurar todo"
+                           OnClick="OpenRestoreAllDialog" />
+            <MudIconButton Icon="@Icons.Material.Outlined.DeleteForever"
+                           Size="Size.Small"
+                           Color="Color.Error"
+                           Disabled="@(!_assets.Any())"
+                           Title="Vaciar papelera"
+                           OnClick="OpenEmptyTrashDialog" />
+        </div>
+    </div>
+</div>
+
+<div class="assets-grid-content">
+    @if (_groupedAssets.Any())
+    {
+        @foreach (var group in _groupedAssets)
+        {
+            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+            <div class="day-group" id="@GetGroupId(group.Key)">
+                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                <MudGrid Spacing="1">
+                    @foreach (var asset in group.Value)
+                    {
+                        <MudItem xs="4" sm="3" md="2">
+                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                                 data-asset-id="@asset.Id"
+                                 @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                                 @ontouchmove="OnCardTouchMove"
+                                 @ontouchend="OnCardTouchEnd">
+                                <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                                <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                    <MudCheckBox T="bool"
+                                                 Value="@IsAssetSelected(asset.Id)"
+                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                                </div>
+                            </div>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </div>
+        }
+    }
+    else if (!_loading)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Delete"
+                    Title="La papelera está vacía"
+                    Description="Los elementos eliminados aparecerán aquí." />
+    }
+</div>
+
+<MudDialog @bind-Visible="_purgeSelectedDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Eliminar permanentemente</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres eliminar permanentemente los elementos seleccionados?</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">Esta acción no se puede deshacer.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="ClosePurgeSelectedDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@(!_selectedAssetIds.Any())" OnClick="PurgeSelectedAsync">Eliminar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_restoreAllDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Restaurar todo</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres restaurar todos los elementos de la papelera?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseRestoreAllDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="RestoreAllAsync">Restaurar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="_emptyTrashDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Vaciar papelera</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres eliminar permanentemente todos los elementos de la papelera?</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">Esta acción no se puede deshacer.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseEmptyTrashDialog">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="EmptyTrashAsync">Vaciar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .assets-grid-content {
+        padding: 4px 4px 80px 4px;
+    }
+
+    .day-group {
+        margin-bottom: 32px;
+    }
+
+    .day-header {
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: capitalize;
+        padding: 0 4px 6px 4px;
+        display: block;
+    }
+
+    @@media (max-width: 599.98px) {
+        .day-header {
+            font-size: 0.78rem !important;
+        }
+    }
+
+    .asset-select-container {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+    }
+
+    .asset-select-checkbox {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        z-index: 5;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        background: rgba(0,0,0,0.4);
+        border-radius: 999px;
+        padding: 2px;
+        color: white;
+    }
+
+    .asset-select-checkbox .mud-icon-root {
+        color: white !important;
+    }
+
+    .asset-select-container:hover .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .asset-select-container.selection-mode .asset-select-checkbox,
+    .asset-select-container.selected .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
+        }
+    }
+</style>
+
+@code {
+    private List<TimelineItem> _assets = new();
+    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    private bool _loading = true;
+    private bool _selectionMode = false;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _purgeSelectedDialogVisible = false;
+    private bool _restoreAllDialogVisible = false;
+    private bool _emptyTrashDialogVisible = false;
+
+    // Touch / long-press / drag-select
+    private DotNetObjectReference<Trash>? _objRef;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTrashAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _objRef = DotNetObjectReference.Create(this);
+    }
+
+    private async Task LoadTrashAsync()
+    {
+        try
+        {
+            _loading = true;
+            var folders = await FolderService.GetFoldersAsync();
+            var trashFolder = folders.FirstOrDefault(folder => IsBinPath(folder.Path));
+            if (trashFolder == null)
+            {
+                _assets = new List<TimelineItem>();
+                _groupedAssets = new Dictionary<string, List<TimelineItem>>();
+                return;
+            }
+
+            var trashRootPath = NormalizePath(trashFolder.Path);
+            var trashFolderIds = folders
+                .Where(folder => NormalizePath(folder.Path).StartsWith($"{trashRootPath}/", StringComparison.OrdinalIgnoreCase))
+                .Select(folder => folder.Id)
+                .Distinct()
+                .ToList();
+
+            trashFolderIds.Insert(0, trashFolder.Id);
+
+            var assetLists = await Task.WhenAll(trashFolderIds.Select(FolderService.GetFolderAssetsAsync));
+            _assets = assetLists.SelectMany(list => list).ToList();
+            GroupAssets();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar la papelera: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void GroupAssets()
+    {
+        _groupedAssets = _assets
+            .OrderByDescending(GetDeletedDate)
+            .GroupBy(asset => GetDeletedDate(asset).Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(GetDeletedDate).ToList());
+    }
+
+    private static DateTime GetDeletedDate(TimelineItem asset)
+    {
+        return asset.DeletedAt ?? asset.FileModifiedAt;
+    }
+
+    private string FormatDayHeader(DateTime date)
+    {
+        var today = DateTime.Today;
+        var yesterday = today.AddDays(-1);
+
+        if (date.Date == today)
+            return "Hoy";
+        if (date.Date == yesterday)
+            return "Ayer";
+        if (date.Year == today.Year)
+            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
+        return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_selectionMode)
+        {
+            var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAssetSelected(assetId)) return;
+        ToggleAssetSelection(assetId, select);
+        StateHasChanged();
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            return;
+        }
+
+        if (asset.SyncStatus == AssetSyncStatus.Synced)
+        {
+            Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=trash");
+        }
+        else
+        {
+            var encodedPath = System.Net.WebUtility.UrlEncode(asset.FullPath);
+            Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}&returnTo=trash");
+        }
+    }
+
+    private string GetGroupId(string groupName) => "group-" + groupName.Replace(" ", "-").ToLower();
+
+    private static bool IsBinPath(string path)
+    {
+        return path.Replace('\\', '/').EndsWith("/_trash", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return path.Replace('\\', '/').TrimEnd('/');
+    }
+
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        UpdateSelectionNavbar();
+    }
+
+    private void ToggleAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_selectionMode)
+        {
+            _selectionMode = true;
+        }
+
+        if (selected)
+        {
+            _selectedAssetIds.Add(assetId);
+        }
+        else
+        {
+            _selectedAssetIds.Remove(assetId);
+            if (_selectedAssetIds.Count == 0)
+            {
+                ExitSelectionMode();
+                return;
+            }
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private bool IsAssetSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private void ToggleSelectAll()
+    {
+        if (_selectedAssetIds.Count == _assets.Count && _assets.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+
+        _selectedAssetIds = _assets.Select(asset => asset.Id).ToHashSet();
+        UpdateSelectionNavbar();
+    }
+
+    private void ExitSelectionFromNavbar()
+    {
+        ExitSelectionMode();
+    }
+
+    public void Dispose()
+    {
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
+        LayoutService.ResetNavbar();
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectedAssetIds.Count;
+        var allSelected = _assets.Any() && selectedCount == _assets.Count;
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+                <MudTooltip Text="Restaurar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Restore" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="RestoreSelectedAsync" />
+                </MudTooltip>
+                <MudTooltip Text="Eliminar permanentemente">
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenPurgeSelectedDialog" />
+                </MudTooltip>
+            </text>
+        , keepDrawerVisible: true);
+    }
+
+    private async Task RestoreSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            await AssetService.RestoreAssetsAsync(new RestoreAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            });
+
+            ExitSelectionMode();
+            await LoadTrashAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al restaurar archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenPurgeSelectedDialog()
+    {
+        _purgeSelectedDialogVisible = true;
+    }
+
+    private void ClosePurgeSelectedDialog()
+    {
+        _purgeSelectedDialogVisible = false;
+    }
+
+    private async Task PurgeSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any())
+        {
+            return;
+        }
+
+        try
+        {
+            await AssetService.PurgeAssetsAsync(new PurgeAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            });
+
+            _purgeSelectedDialogVisible = false;
+            ExitSelectionMode();
+            await LoadTrashAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenRestoreAllDialog()
+    {
+        _restoreAllDialogVisible = true;
+    }
+
+    private void CloseRestoreAllDialog()
+    {
+        _restoreAllDialogVisible = false;
+    }
+
+    private async Task RestoreAllAsync()
+    {
+        try
+        {
+            await AssetService.RestoreTrashAsync();
+            _restoreAllDialogVisible = false;
+            ExitSelectionMode();
+            await LoadTrashAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al restaurar la papelera: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenEmptyTrashDialog()
+    {
+        _emptyTrashDialogVisible = true;
+    }
+
+    private void CloseEmptyTrashDialog()
+    {
+        _emptyTrashDialogVisible = false;
+    }
+
+    private async Task EmptyTrashAsync()
+    {
+        try
+        {
+            await AssetService.EmptyTrashAsync();
+            _emptyTrashDialogVisible = false;
+            ExitSelectionMode();
+            await LoadTrashAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al vaciar la papelera: {ex.Message}", Severity.Error);
+        }
+    }
+
+}

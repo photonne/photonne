@@ -1,0 +1,11 @@
+@page "/settings"
+@inject NavigationManager Navigation
+
+<PageTitle>Configuración - Photonne</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/settings/profile", replace: true);
+    }
+}

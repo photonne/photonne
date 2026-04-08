@@ -1,0 +1,271 @@
+@page "/admin/settings/user-defaults"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Ajustes de usuario - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="mt-8 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Ajustes de usuario</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Valores por defecto que se aplican al crear nuevas cuentas.
+        </MudText>
+
+        <MudGrid>
+
+            @* ── Defaults para nuevas cuentas ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Valores por defecto</MudText>
+                            <MudText Typo="Typo.body2">
+                                Se aplican al crear un nuevo usuario si no se especifica un valor explícito.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Rol</MudText>
+                        <MudRadioGroup T="string" @bind-Value="_defaultRole" Class="mb-4">
+                            <MudRadio T="string" Value="@("User")" Color="Color.Primary">
+                                <MudText Typo="Typo.body1"><strong>Usuario</strong></MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                    Acceso estándar a sus propios archivos y colecciones compartidas.
+                                </MudText>
+                            </MudRadio>
+                            <MudRadio T="string" Value="@("Admin")" Color="Color.Warning" Class="mt-2">
+                                <MudText Typo="Typo.body1"><strong>Administrador</strong></MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                    Acceso completo, incluida la administración del servidor.
+                                </MudText>
+                            </MudRadio>
+                        </MudRadioGroup>
+
+                        <MudDivider Class="mb-4" />
+
+                        <MudSwitch T="bool"
+                                   @bind-Value="_defaultIsActive"
+                                   Color="Color.Primary"
+                                   Label="@(_defaultIsActive ? "Cuenta activa por defecto" : "Cuenta inactiva por defecto")"
+                                   Class="mb-4" />
+
+                        <MudDivider Class="mb-4" />
+
+                        <MudNumericField T="int"
+                                         Label="Cuota de almacenamiento por defecto (GB)"
+                                         @bind-Value="_defaultStorageQuotaGb"
+                                         Min="0"
+                                         Max="102400"
+                                         Variant="Variant.Outlined"
+                                         FullWidth="true"
+                                         HelperText="0 = sin límite. La cuota puede ajustarse individualmente en la gestión de usuarios." />
+
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveDefaults"
+                                   Disabled="_saving">
+                            @if (_saving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Resumen de cuentas ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Resumen de cuentas</MudText>
+                            <MudText Typo="Typo.body2">Estado actual de los usuarios registrados.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_statsLoading)
+                        {
+                            <MudProgressLinear Indeterminate="true" />
+                        }
+                        else
+                        {
+                            <MudGrid Spacing="2">
+                                <MudItem xs="6">
+                                    <MudPaper Elevation="1" Class="text-center pa-3">
+                                        <MudText Typo="Typo.h4" Color="Color.Primary">@_totalUsers</MudText>
+                                        <MudText Typo="Typo.caption">Total</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudPaper Elevation="1" Class="text-center pa-3">
+                                        <MudText Typo="Typo.h4" Color="Color.Success">@_activeUsers</MudText>
+                                        <MudText Typo="Typo.caption">Activos</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudPaper Elevation="1" Class="text-center pa-3">
+                                        <MudText Typo="Typo.h4" Color="Color.Default">@_inactiveUsers</MudText>
+                                        <MudText Typo="Typo.caption">Inactivos</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudPaper Elevation="1" Class="text-center pa-3">
+                                        <MudText Typo="Typo.h4" Color="Color.Warning">@_adminUsers</MudText>
+                                        <MudText Typo="Typo.caption">Administradores</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
+
+                            @if (_usersWithQuota > 0 || _usersWithoutQuota > 0)
+                            {
+                                <MudDivider Class="my-3" />
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @_usersWithQuota con cuota definida · @_usersWithoutQuota sin límite
+                                </MudText>
+                            }
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Text"
+                                   StartIcon="@Icons.Material.Filled.People"
+                                   OnClick="@(() => Navigation.NavigateTo("/admin/users"))">
+                            Gestionar usuarios
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private const string KeyDefaultRole      = "UserSettings.DefaultRole";
+    private const string KeyDefaultIsActive  = "UserSettings.DefaultIsActive";
+    private const string KeyDefaultQuotaGb   = "UserSettings.DefaultStorageQuotaGb";
+
+    private bool _isAuthorized;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _statsLoading = true;
+
+    private string _defaultRole         = "User";
+    private bool   _defaultIsActive     = true;
+    private int    _defaultStorageQuotaGb = 0;
+
+    private int _totalUsers;
+    private int _activeUsers;
+    private int _inactiveUsers;
+    private int _adminUsers;
+    private int _usersWithQuota;
+    private int _usersWithoutQuota;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+            await Task.WhenAll(LoadSettings(), LoadStats());
+
+        _loading = false;
+    }
+
+    private async Task LoadSettings()
+    {
+        _defaultRole = await SettingsService.GetSettingAsync(KeyDefaultRole, "User");
+        if (_defaultRole != "Admin") _defaultRole = "User";
+
+        var activeRaw = await SettingsService.GetSettingAsync(KeyDefaultIsActive, "true");
+        _defaultIsActive = !activeRaw.Equals("false", StringComparison.OrdinalIgnoreCase);
+
+        _defaultStorageQuotaGb = ParseInt(
+            await SettingsService.GetSettingAsync(KeyDefaultQuotaGb, "0"), 0, 102400, 0);
+    }
+
+    private async Task LoadStats()
+    {
+        _statsLoading = true;
+        try
+        {
+            var users = await UserService.GetUsersAsync();
+            _totalUsers       = users.Count;
+            _activeUsers      = users.Count(u => u.IsActive);
+            _inactiveUsers    = users.Count(u => !u.IsActive);
+            _adminUsers       = users.Count(u => u.Role == "Admin");
+            _usersWithQuota   = users.Count(u => u.StorageQuotaBytes.HasValue);
+            _usersWithoutQuota = users.Count(u => !u.StorageQuotaBytes.HasValue);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar estadísticas: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            _statsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveDefaults()
+    {
+        _saving = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyDefaultRole, _defaultRole)
+                  && await SettingsService.SaveSettingAsync(KeyDefaultIsActive, _defaultIsActive ? "true" : "false")
+                  && await SettingsService.SaveSettingAsync(KeyDefaultQuotaGb, _defaultStorageQuotaGb.ToString());
+
+            if (ok)
+                Snackbar.Add("Ajustes de usuario guardados correctamente.", Severity.Success);
+            else
+                Snackbar.Add("Error al guardar los ajustes.", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static int ParseInt(string value, int min, int max, int defaultValue)
+    {
+        if (!int.TryParse(value, out var n)) return defaultValue;
+        return Math.Clamp(n, min, max);
+    }
+}

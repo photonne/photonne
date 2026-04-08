@@ -1,0 +1,78 @@
+@page "/utilities/locations"
+@inject IFolderService FolderService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Ubicaciones - Photonne</PageTitle>
+
+<div class="page-pad">
+    <div class="d-flex align-center gap-3 mb-4 flex-wrap">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/utilities"))">
+            Utilidades
+        </MudButton>
+        <MudText Typo="Typo.h5">Ubicaciones de almacenamiento</MudText>
+    </div>
+
+<MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+    Carpetas y rutas donde se organizan tus archivos.
+</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_rootFolders.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No se encontraron carpetas.</MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3">
+        @_totalFolders carpetas · @_totalAssets archivos en total
+    </MudText>
+
+    <MudPaper Elevation="1" Class="pa-0">
+        <MudList T="FolderItem" Dense="true">
+            @foreach (var folder in _rootFolders)
+            {
+                <FolderRow Item="folder" Depth="0" />
+            }
+        </MudList>
+    </MudPaper>
+}
+</div>
+
+@code {
+    private List<FolderItem> _rootFolders = new();
+    private bool _loading;
+    private int _totalFolders;
+    private int _totalAssets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var tree = await FolderService.GetMyFolderTreeAsync();
+            _rootFolders = tree.Where(f => f.ParentFolderId == null).ToList();
+            _totalFolders = CountAll(tree);
+            _totalAssets = tree.Sum(f => f.AssetCount);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar carpetas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static int CountAll(List<FolderItem> folders)
+    {
+        int count = 0;
+        foreach (var f in folders) { count++; count += CountAll(f.SubFolders); }
+        return count;
+    }
+}

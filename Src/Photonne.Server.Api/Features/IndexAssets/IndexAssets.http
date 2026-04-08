@@ -1,0 +1,15 @@
+### Variables
+@HostUrl = http://localhost:5000
+
+### Index Assets - Index internal assets directory (ASSETS_PATH)
+GET {{HostUrl}}/api/assets/index
+Accept: application/json
+
+###
+
+### Index Assets Stream - Stream indexing progress for internal assets directory
+GET {{HostUrl}}/api/assets/index/stream
+Accept: application/json
+
+###
+

@@ -1,0 +1,292 @@
+@inject NavigationManager Navigation
+@inject LayoutService LayoutService
+@implements IDisposable
+
+@* ── SECTION CONTEXT BAR (mobile only, settings & admin) ── *@
+@if ((IsSettingsSection || IsAdminSection) && !LayoutService.HideBottomNav)
+{
+    <div class="ph-section-header">
+        <a href="/" class="ph-section-header__back">
+            <MudIcon Icon="@Icons.Material.Outlined.ArrowBack" Class="ph-section-header__back-icon" />
+            <span>Volver</span>
+        </a>
+        <span class="ph-section-header__title">
+            @(IsSettingsSection ? "Configuración" : "Administración")
+        </span>
+    </div>
+}
+
+@if (!LayoutService.HideBottomNav)
+{
+    @if (IsSettingsSection)
+    {
+        @* ── SETTINGS NAV ── *@
+        <nav class="ph-bottom-nav" role="navigation" aria-label="Configuración">
+            <a href="/settings/profile"    class="ph-bottom-nav__tab @(IsActive("/settings/profile")    ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/settings/profile")    ? Icons.Material.Filled.Person       : Icons.Material.Outlined.Person)"       Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Perfil</span>
+            </a>
+            <a href="/settings/security"   class="ph-bottom-nav__tab @(IsActive("/settings/security")   ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/settings/security")   ? Icons.Material.Filled.Lock         : Icons.Material.Outlined.Lock)"         Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Seguridad</span>
+            </a>
+            <a href="/settings/appearance" class="ph-bottom-nav__tab @(IsActive("/settings/appearance") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/settings/appearance") ? Icons.Material.Filled.Palette      : Icons.Material.Outlined.Palette)"      Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Apariencia</span>
+            </a>
+            <a href="/settings/device"     class="ph-bottom-nav__tab @(IsActive("/settings/device")     ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/settings/device")     ? Icons.Material.Filled.PhoneAndroid : Icons.Material.Outlined.PhoneAndroid)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Dispositivo</span>
+            </a>
+        </nav>
+    }
+    else if (IsAdminSection)
+    {
+        @* ── ADMIN NAV ── *@
+        <nav class="ph-bottom-nav" role="navigation" aria-label="Administración">
+            <a href="/admin/users"     class="ph-bottom-nav__tab @(IsActive("/admin/users")     ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/admin/users")     ? Icons.Material.Filled.People         : Icons.Material.Outlined.People)"         Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Usuarios</span>
+            </a>
+            <a href="/admin/libraries" class="ph-bottom-nav__tab @(IsActive("/admin/libraries") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/admin/libraries") ? Icons.Material.Filled.FolderSpecial   : Icons.Material.Outlined.FolderSpecial)"   Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Bibliotecas</span>
+            </a>
+            <a href="/admin/stats"     class="ph-bottom-nav__tab @(IsActive("/admin/stats")     ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/admin/stats")     ? Icons.Material.Filled.QueryStats     : Icons.Material.Outlined.QueryStats)"     Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Estadísticas</span>
+            </a>
+            <a href="/admin/settings"  class="ph-bottom-nav__tab @(IsActive("/admin/settings")  ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsActive("/admin/settings")  ? Icons.Material.Filled.Settings       : Icons.Material.Outlined.Settings)"       Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Ajustes</span>
+            </a>
+            <a href="/admin/system"    class="ph-bottom-nav__tab @(IsAdminSystemTab             ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsAdminSystemTab             ? Icons.Material.Filled.Storage        : Icons.Material.Outlined.Storage)"        Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Sistema</span>
+            </a>
+        </nav>
+    }
+    else
+    {
+        @* ── MAIN NAV ── *@
+        <nav class="ph-bottom-nav" role="navigation" aria-label="Navegación principal">
+            <a href="/" class="ph-bottom-nav__tab @(IsTabActive("/", exact: true) ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsTabActive("/", exact: true) ? Icons.Material.Filled.PhotoLibrary : Icons.Material.Outlined.PhotoLibrary)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Fotos</span>
+            </a>
+            <a href="/search" class="ph-bottom-nav__tab @(IsTabActive("/search") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsTabActive("/search") ? Icons.Material.Filled.Search : Icons.Material.Outlined.Search)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Buscar</span>
+            </a>
+            <a href="/albums/own" class="ph-bottom-nav__tab @(IsTabActive("/albums") || IsTabActive("/my-shares") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsTabActive("/albums") || IsTabActive("/my-shares") ? Icons.Material.Filled.Collections : Icons.Material.Outlined.Collections)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Álbumes</span>
+            </a>
+            <a href="/folders/own" class="ph-bottom-nav__tab @(IsTabActive("/folders") ? "ph-bottom-nav__tab--active" : "")">
+                <MudIcon Icon="@(IsTabActive("/folders") ? Icons.Material.Filled.Folder : Icons.Material.Outlined.FolderOpen)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Carpetas</span>
+            </a>
+            <button class="ph-bottom-nav__tab ph-bottom-nav__tab--btn @(IsMoreSection || IsMoreSheetOpen ? "ph-bottom-nav__tab--active" : "")"
+                    @onclick="@(() => OnOpenMoreSheet.InvokeAsync())">
+                <MudIcon Icon="@(IsMoreSection ? Icons.Material.Filled.GridView : Icons.Material.Outlined.GridView)" Class="ph-bottom-nav__icon" />
+                <span class="ph-bottom-nav__label">Más</span>
+            </button>
+        </nav>
+
+
+    }
+}
+
+<style>
+    /* Section context bar — mobile only (settings & admin) */
+    .ph-section-header {
+        display: none;
+        position: fixed;
+        top: 64px; /* MudAppBar height for 600px–959px range */
+        left: 0;
+        right: 0;
+        height: 48px;
+        align-items: center;
+        padding: 0 16px;
+        background-color: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
+        z-index: 1099;
+        box-sizing: border-box;
+    }
+
+    @@media (max-width: 959.98px) {
+        .ph-section-header {
+            display: flex;
+        }
+
+        /* Push page content down to clear the context bar (app bar offset already handled by MudBlazor) */
+        body:has(.ph-section-header) .page-content {
+            padding-top: 48px !important;
+        }
+    }
+
+    /* MudAppBar shrinks to 56px below 600px (MudBlazor xs breakpoint) */
+    @@media (max-width: 599.98px) {
+        .ph-section-header {
+            top: 56px;
+        }
+    }
+
+    .ph-section-header__back {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px 4px 0;
+        color: var(--mud-palette-text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        transition: color 0.15s ease;
+        z-index: 1;
+    }
+
+    .ph-section-header__back:active {
+        opacity: 0.65;
+    }
+
+    .ph-section-header__back-icon {
+        font-size: 20px !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    .ph-section-header__title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    /* Bottom nav — mobile only */
+    .ph-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: none;
+        align-items: center;
+        height: 64px;
+        padding-bottom: env(safe-area-inset-bottom);
+        box-sizing: content-box;
+        background-color: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-divider);
+        box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.14);
+        z-index: 1200;
+    }
+
+    @@media (max-width: 959.98px) {
+        .ph-bottom-nav {
+            display: flex;
+        }
+    }
+
+    /* Tabs */
+    .ph-bottom-nav__tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 8px 4px;
+        text-decoration: none;
+        color: var(--mud-palette-text-secondary);
+        height: 100%;
+        transition: color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+    }
+
+    .ph-bottom-nav__tab:active {
+        opacity: 0.65;
+    }
+
+    .ph-bottom-nav__tab--active {
+        color: var(--mud-palette-primary);
+    }
+
+    .ph-bottom-nav__icon {
+        font-size: 24px !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    .ph-bottom-nav__label {
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+
+    .ph-bottom-nav__tab--active .ph-bottom-nav__label {
+        font-weight: 600;
+    }
+
+
+    /* "Más" tab — button reset */
+    .ph-bottom-nav__tab--btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+    }
+
+</style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+        LayoutService.OnMajorUpdate += HandleMajorUpdate;
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    private void HandleMajorUpdate()
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+        LayoutService.OnMajorUpdate -= HandleMajorUpdate;
+    }
+
+    [Parameter] public EventCallback OnOpenMoreSheet { get; set; }
+    [Parameter] public bool IsMoreSheetOpen { get; set; }
+
+    private bool IsActive(string path, bool exact = false)
+    {
+        var currentPath = new Uri(Navigation.Uri).AbsolutePath;
+        return exact
+            ? currentPath.Equals(path, StringComparison.OrdinalIgnoreCase)
+            : currentPath.StartsWith(path, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsTabActive(string path, bool exact = false)
+        => !IsMoreSheetOpen && IsActive(path, exact);
+
+    private bool IsSettingsSection  => IsActive("/settings");
+    private bool IsAdminSection     => IsActive("/admin");
+    private bool IsAdminSystemTab   => IsActive("/admin/system") || IsActive("/admin/tasks") || IsActive("/admin/backup");
+
+    private bool IsMoreSection =>
+        IsActive("/favorites") || IsActive("/map")     ||
+        IsActive("/device")    || IsActive("/archive") || IsActive("/trash") ||
+        IsActive("/utilities");
+}

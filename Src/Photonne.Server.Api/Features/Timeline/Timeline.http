@@ -1,0 +1,11 @@
+### Variables
+@HostUrl = http://localhost:5000
+
+### Get Timeline - Get all scanned assets (images and videos) ordered by scan date
+GET {{HostUrl}}/api/assets/timeline
+Accept: application/json
+
+###
+
+
+

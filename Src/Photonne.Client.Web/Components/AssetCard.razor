@@ -1,0 +1,319 @@
+
+<div class="asset-card-container" @ref="_containerRef" @onclick="@OnClick" @onmouseover="HandleMouseOver" @onmouseleave="HandleMouseLeave">
+    <style>
+        .asset-card-container {
+            position: relative;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            transition: opacity 0.2s;
+            background-color: #333;
+            border-radius: 8px;
+        }
+        
+        /* Si no tiene altura definida, usar aspect-ratio 1:1 por defecto */
+        .asset-card-container:not([style*="height"]) {
+            aspect-ratio: 1 / 1;
+        }
+        .asset-card-container:hover {
+            opacity: 1;
+        }
+        .asset-card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-preview-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .preview-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+        .asset-card-container:hover .preview-video {
+            opacity: 1;
+        }
+        .thumbnail {
+            position: relative;
+            z-index: 0;
+        }
+        .asset-card-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 8px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 2;
+        }
+        .asset-card-container:hover .asset-card-overlay {
+            opacity: 1;
+        }
+        .asset-type-icon {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            color: white;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+            z-index: 2;
+        }
+        .sync-status-icon {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            color: white;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+            z-index: 2;
+        }
+        .favorite-btn {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            z-index: 3;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: white;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.6));
+        }
+        .asset-card-container:hover .favorite-btn {
+            opacity: 1;
+        }
+        .favorite-btn.is-favorite {
+            opacity: 1;
+        }
+        .asset-pending {
+            opacity: 0.6;
+        }
+        .asset-offline-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4;
+            border-radius: 8px;
+        }
+    </style>
+    
+    <div class="@(Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied ? "asset-pending" : "") h-100 w-100">
+        @if ((Asset.SyncStatus == AssetSyncStatus.Synced || Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied)
+             && !(Asset.IsLocalOnly && string.IsNullOrEmpty(Asset.LocalThumbnailUrl)))
+        {
+            @if (Asset.Type == "Video")
+            {
+                <div class="video-preview-container">
+                    <img src="@_thumbnailUrl" alt="@Asset.FileName" loading="lazy" class="asset-card-image thumbnail" />
+                    <video @ref="_videoRef" src="@_contentUrl" muted loop class="asset-card-image preview-video" preload="metadata" playsinline></video>
+                </div>
+            }
+            else
+            {
+                <img src="@_thumbnailUrl" alt="@Asset.FileName" loading="lazy" class="asset-card-image" />
+            }
+        }
+        else
+        {
+            <div class="d-flex align-center justify-center w-100 h-100">
+                <MudIcon Icon="@GetAssetIcon(Asset.Type)" Size="Size.Large" Color="Color.Inherit" />
+            </div>
+        }
+    </div>
+
+    <div class="sync-status-icon">
+        @if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Synced)
+        {
+            <MudTooltip Text="Ya sincronizado">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="color: #4caf50;" />
+            </MudTooltip>
+        }
+        else if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Pending)
+        {
+            <MudTooltip Text="Pendiente de subir">
+                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Small" Color="Color.Inherit" />
+            </MudTooltip>
+        }
+        else if (Asset.SyncStatus == AssetSyncStatus.Copied)
+        {
+            <MudTooltip Text="Pendiente de indexar">
+                <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Inherit" />
+            </MudTooltip>
+        }
+        else if (Asset.SyncStatus == AssetSyncStatus.Pending && !Asset.IsLocalOnly)
+        {
+            <MudTooltip Text="Sincronizar ahora">
+                <span @onclick:stopPropagation="true">
+                    <MudIconButton Icon="@Icons.Material.Filled.CloudUpload"
+                                   Size="Size.Small"
+                                   Color="Color.Inherit"
+                                   OnClick="SyncNow" />
+                </span>
+            </MudTooltip>
+        }
+        else if (Asset.SyncStatus == AssetSyncStatus.Syncing)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+        }
+    </div>
+
+    @if (Asset.Type != "Image")
+    {
+        <div class="asset-type-icon">
+            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+        </div>
+    }
+
+    @if (Asset.IsFileMissing)
+    {
+        <div class="asset-offline-overlay">
+            <MudTooltip Text="Archivo no encontrado en disco">
+                <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Large" Style="color: rgba(255,255,255,0.8);" />
+            </MudTooltip>
+        </div>
+    }
+
+    @if (Asset.SyncStatus == AssetSyncStatus.Synced && Asset.Id != Guid.Empty && !Asset.IsFileMissing)
+    {
+        <span @onclick:stopPropagation="true" class="favorite-btn @(Asset.IsFavorite ? "is-favorite" : "")">
+            <MudIconButton Icon="@(Asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                           Size="Size.Medium"
+                           Color="Color.Inherit"
+                           OnClick="ToggleFavoriteAsync" />
+        </span>
+    }
+
+    <div class="asset-card-overlay">
+        <MudText Typo="Typo.caption" Class="white-text" Style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 36px;">
+            @Asset.FileName
+        </MudText>
+    </div>
+</div>
+
+@code {
+    [Parameter] public TimelineItem Asset { get; set; } = null!;
+    [Parameter] public EventCallback<TimelineItem> OnAssetClick { get; set; }
+    [Inject] private IAuthService AuthService { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private IAssetService AssetService { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+
+    private ElementReference _containerRef;
+    private ElementReference _videoRef;
+    private string _thumbnailUrl = string.Empty;
+    private string _contentUrl = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await UpdateAssetUrlsAsync();
+    }
+
+    private async Task UpdateAssetUrlsAsync()
+    {
+        var thumbnailUrl = Asset.ThumbnailUrl;
+        var contentUrl = Asset.ContentUrl;
+
+        if (Asset.SyncStatus != AssetSyncStatus.Synced && !Asset.IsLocalOnly)
+        {
+            var token = await AuthService.GetTokenAsync();
+            thumbnailUrl = AppendAccessToken(thumbnailUrl, token);
+            contentUrl = AppendAccessToken(contentUrl, token);
+        }
+
+        _thumbnailUrl = thumbnailUrl;
+        _contentUrl = contentUrl;
+    }
+
+    private async Task OnClick()
+    {
+        if (Asset.SyncStatus == AssetSyncStatus.Syncing) return;
+        if (_containerRef.Context != null)
+            await JS.InvokeVoidAsync("assetTransition.saveOrigin", _containerRef);
+        await OnAssetClick.InvokeAsync(Asset);
+    }
+
+    private async Task SyncNow()
+    {
+        if (Asset.SyncStatus != AssetSyncStatus.Pending) return;
+
+        Asset.SyncStatus = AssetSyncStatus.Syncing;
+        StateHasChanged();
+
+        var result = await AssetService.SyncAssetAsync(Asset.FullPath);
+        if (result != null && !string.IsNullOrEmpty(result.Message))
+        {
+            // Si tiene AssetId, significa que ya estaba indexado
+            if (result.AssetId.HasValue)
+            {
+                Asset.Id = result.AssetId.Value;
+                Asset.SyncStatus = AssetSyncStatus.Synced;
+                Asset.HasThumbnails = true;
+            }
+            else
+            {
+                // El archivo se copió correctamente, pero aún no está indexado
+                Asset.SyncStatus = AssetSyncStatus.Copied;
+            }
+            Snackbar.Add(result.Message, Severity.Success);
+        }
+        else
+        {
+            Asset.SyncStatus = AssetSyncStatus.Pending;
+            Snackbar.Add("Error al sincronizar el asset", Severity.Error);
+        }
+        StateHasChanged();
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        try
+        {
+            Asset.IsFavorite = await AssetService.ToggleFavoriteAsync(Asset.Id);
+            StateHasChanged();
+        }
+        catch
+        {
+            Snackbar.Add("Error al actualizar favorito", Severity.Error);
+        }
+    }
+
+    private async Task HandleMouseOver()
+    {
+        if (Asset.Type == "Video" && _videoRef.Context != null)
+        {
+            await JS.InvokeVoidAsync("videoHelpers.play", _videoRef);
+        }
+    }
+
+    private static string AppendAccessToken(string url, string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || url.Contains("access_token=", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        var separator = url.Contains('?') ? "&" : "?";
+        return $"{url}{separator}access_token={Uri.EscapeDataString(token)}";
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        if (Asset.Type == "Video" && _videoRef.Context != null)
+        {
+            await JS.InvokeVoidAsync("videoHelpers.pause", _videoRef);
+        }
+    }
+
+    private string GetAssetIcon(string type)
+    {
+        return type == "Image" ? Icons.Material.Filled.Image : Icons.Material.Filled.VideoLibrary;
+    }
+}

@@ -1,0 +1,63 @@
+@page "/utilities"
+@inject NavigationManager Navigation
+
+<PageTitle>Utilidades - Photonne</PageTitle>
+
+<div class="page-pad">
+    <div class="mb-2">
+    <MudText Typo="Typo.h5" Class="mb-2">Utilidades</MudText>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+        Herramientas para mantener tu biblioteca organizada.
+    </MudText>
+</div>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Buscar duplicados</MudText>
+                    <MudText Typo="Typo.body2">Identifica fotos y videos repetidos.</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardActions Class="px-4 pb-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/utilities/duplicates"))">
+                    Abrir
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Revisar archivos grandes</MudText>
+                    <MudText Typo="Typo.body2">Encuentra los elementos que más espacio ocupan.</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardActions Class="px-4 pb-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/utilities/large-files"))">
+                    Abrir
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Administrar ubicación</MudText>
+                    <MudText Typo="Typo.body2">Gestiona rutas y ubicaciones de almacenamiento.</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardActions Class="px-4 pb-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/utilities/locations"))">
+                    Abrir
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+</div>

@@ -1,0 +1,228 @@
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+            <MudForm @ref="_form" @bind-IsValid="@_isValid" @bind-Errors="@_errors">
+                <MudText Typo="Typo.subtitle1" Class="mb-4 mud-text-secondary">Información de la cuenta</MudText>
+
+                <MudTextField @bind-Value="_username"
+                             Label="Nombre de usuario"
+                             Required="true"
+                             RequiredError="El nombre de usuario es obligatorio"
+                             Variant="Variant.Outlined"
+                             Disabled="@_isEdit"
+                             Class="mb-3" />
+
+                <MudTextField @bind-Value="_email"
+                             Label="Email"
+                             Required="true"
+                             RequiredError="El email es obligatorio"
+                             Variant="Variant.Outlined"
+                             Class="mb-3" />
+
+                @if (!_isEdit)
+                {
+                    <MudTextField @bind-Value="_password"
+                                 Label="Contraseña"
+                                 InputType="InputType.Password"
+                                 Required="true"
+                                 RequiredError="La contraseña es obligatoria"
+                                 Variant="Variant.Outlined"
+                                 Class="mb-3"
+                                 HelperText="Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas, números y caracteres especiales" />
+                }
+
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle1" Class="mb-4 mud-text-secondary">Datos personales</MudText>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_firstName"
+                                     Label="Nombre"
+                                     Variant="Variant.Outlined"
+                                     Class="mb-3" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_lastName"
+                                     Label="Apellidos"
+                                     Variant="Variant.Outlined"
+                                     Class="mb-3" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.subtitle1" Class="mb-4 mud-text-secondary">Permisos y almacenamiento</MudText>
+
+                <MudSelect @bind-Value="_role"
+                         Label="Rol"
+                         Variant="Variant.Outlined"
+                         Class="mb-3">
+                    <MudSelectItem Value="@("User")">Usuario</MudSelectItem>
+                    <MudSelectItem Value="@("Admin")">Administrador</MudSelectItem>
+                </MudSelect>
+
+                <MudSwitch @bind-Value="_isActive"
+                          Label="Usuario activo"
+                          Color="Color.Success"
+                          Class="mb-3" />
+
+                <MudSelect @bind-Value="_quotaPreset"
+                           Label="Cuota de almacenamiento"
+                           Variant="Variant.Outlined"
+                           Class="mb-3">
+                    <MudSelectItem Value="@(-1L)">Ilimitado</MudSelectItem>
+                    <MudSelectItem Value="@(1L * 1024 * 1024 * 1024)">1 GB</MudSelectItem>
+                    <MudSelectItem Value="@(5L * 1024 * 1024 * 1024)">5 GB</MudSelectItem>
+                    <MudSelectItem Value="@(10L * 1024 * 1024 * 1024)">10 GB</MudSelectItem>
+                    <MudSelectItem Value="@(50L * 1024 * 1024 * 1024)">50 GB</MudSelectItem>
+                    <MudSelectItem Value="@(100L * 1024 * 1024 * 1024)">100 GB</MudSelectItem>
+                    <MudSelectItem Value="@(0L)">Personalizado</MudSelectItem>
+                </MudSelect>
+
+                @if (_quotaPreset == 0)
+                {
+                    <MudNumericField @bind-Value="_quotaCustomGb"
+                                     Label="Cuota personalizada (GB)"
+                                     Variant="Variant.Outlined"
+                                     Min="1"
+                                     Class="mb-3" />
+                }
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary"
+                  Variant="Variant.Filled"
+                  OnClick="Save"
+                  Disabled="@(!_isValid || _saving)">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Guardar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public UserDto? User { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Inject] public IUserService UserService { get; set; } = null!;
+    [Inject] public ISnackbar Snackbar { get; set; } = null!;
+
+    private MudForm? _form;
+    private bool _isValid;
+    private string[] _errors = Array.Empty<string>();
+    private bool _saving = false;
+    private bool _isEdit;
+
+    private string _username = string.Empty;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string? _firstName;
+    private string? _lastName;
+    private string _role = "User";
+    private bool _isActive = true;
+    private long _quotaPreset = -1L; // -1 = ilimitado, 0 = personalizado, resto = bytes
+    private int _quotaCustomGb = 10;
+
+    protected override void OnParametersSet()
+    {
+        _isEdit = IsEdit && User != null;
+        
+        if (_isEdit && User != null)
+        {
+            _username = User.Username;
+            _email = User.Email;
+            _firstName = User.FirstName;
+            _lastName = User.LastName;
+            _role = User.Role;
+            _isActive = User.IsActive;
+            InitQuotaFromUser(User.StorageQuotaBytes);
+        }
+    }
+
+    private void InitQuotaFromUser(long? quotaBytes)
+    {
+        if (quotaBytes == null)
+        {
+            _quotaPreset = -1L;
+            return;
+        }
+        long[] presets = [1L * 1024 * 1024 * 1024, 5L * 1024 * 1024 * 1024, 10L * 1024 * 1024 * 1024, 50L * 1024 * 1024 * 1024, 100L * 1024 * 1024 * 1024];
+        if (Array.IndexOf(presets, quotaBytes.Value) >= 0)
+        {
+            _quotaPreset = quotaBytes.Value;
+        }
+        else
+        {
+            _quotaPreset = 0L;
+            _quotaCustomGb = (int)(quotaBytes.Value / (1024 * 1024 * 1024));
+        }
+    }
+
+    private long? GetQuotaBytes()
+    {
+        if (_quotaPreset == -1L) return null;
+        if (_quotaPreset == 0L) return (long)_quotaCustomGb * 1024 * 1024 * 1024;
+        return _quotaPreset;
+    }
+
+    private async Task Save()
+    {
+        await _form!.Validate();
+        if (!_isValid) return;
+
+        try
+        {
+            _saving = true;
+
+            if (_isEdit && User != null)
+            {
+                var updateRequest = new UpdateUserRequest
+                {
+                    Username = _username,
+                    Email = _email,
+                    FirstName = _firstName,
+                    LastName = _lastName,
+                    Role = _role,
+                    IsActive = _isActive,
+                    StorageQuotaBytes = GetQuotaBytes() ?? -1
+                };
+                await UserService.UpdateUserAsync(User.Id, updateRequest);
+                Snackbar.Add("Usuario actualizado correctamente", Severity.Success);
+            }
+            else
+            {
+                var createRequest = new CreateUserRequest
+                {
+                    Username = _username,
+                    Email = _email,
+                    Password = _password,
+                    FirstName = _firstName,
+                    LastName = _lastName,
+                    Role = _role,
+                    IsActive = _isActive
+                };
+                await UserService.CreateUserAsync(createRequest);
+                Snackbar.Add("Usuario creado correctamente", Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

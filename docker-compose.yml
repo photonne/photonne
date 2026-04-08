@@ -1,0 +1,61 @@
+services:
+  photonne-api:
+    image: ghcr.io/photonne/photonne:latest
+    container_name: photonne-api
+    ports:
+      - "${API_PORT:-1107}:8080"
+    environment:
+      - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
+      - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
+      - Jwt__Issuer=Photonne
+      - Jwt__Audience=Photonne
+      - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
+      - AdminUser__Username=${ADMIN_USERNAME:-admin}
+      - AdminUser__Email=${ADMIN_EMAIL:-admin@photonne.local}
+      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+      - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
+      - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
+    volumes:
+      - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
+      - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgresql:
+    image: postgres:17-alpine
+    container_name: photonne-db
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-photonne}
+      - POSTGRES_USER=${POSTGRES_USER:-photonne_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-photonne_password}
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-photonne_user} -d $${POSTGRES_DB:-photonne}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: photonne-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgresql_data:
+  pgadmin_data:

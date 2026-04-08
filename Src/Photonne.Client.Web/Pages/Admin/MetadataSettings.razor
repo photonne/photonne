@@ -1,0 +1,316 @@
+@page "/admin/settings/metadata"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Configuración de metadatos - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="mt-8 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Configuración de metadatos</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Controla qué información EXIF/IPTC/XMP se lee de cada archivo y cómo se interpreta.
+        </MudText>
+
+        <MudGrid>
+
+            @* ── Grupos de extracción ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Grupos de extracción</MudText>
+                            <MudText Typo="Typo.body2">
+                                Selecciona qué bloques de metadatos se leen de cada archivo.
+                                Los cambios se aplican en la próxima extracción.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudCheckBox T="bool" @bind-Value="_extractDateTime"
+                                     Color="Color.Primary" Class="mb-1">
+                            <MudText Typo="Typo.body1"><strong>Fecha de toma</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                DateTimeOriginal — se usa como fecha principal del activo.
+                            </MudText>
+                        </MudCheckBox>
+
+                        <MudCheckBox T="bool" @bind-Value="_extractCameraInfo"
+                                     Color="Color.Primary" Class="mb-1">
+                            <MudText Typo="Typo.body1"><strong>Información de cámara</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                Marca, modelo, ISO, apertura, velocidad de obturación y distancia focal.
+                            </MudText>
+                        </MudCheckBox>
+
+                        <MudCheckBox T="bool" @bind-Value="_extractGps"
+                                     Color="Color.Primary" Class="mb-1">
+                            <MudText Typo="Typo.body1"><strong>Coordenadas GPS</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                Latitud, longitud y altitud — necesario para el mapa.
+                            </MudText>
+                        </MudCheckBox>
+
+                        <MudCheckBox T="bool" @bind-Value="_extractIptc"
+                                     Color="Color.Primary">
+                            <MudText Typo="Typo.body1"><strong>IPTC / XMP</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                Descripción y palabras clave (Caption y Keywords).
+                            </MudText>
+                        </MudCheckBox>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveGroups"
+                                   Disabled="_savingGroups">
+                            @if (_savingGroups)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Zona horaria ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Zona horaria por defecto</MudText>
+                            <MudText Typo="Typo.body2">
+                                Zona horaria que se asume cuando el EXIF no incluye información de offset.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSelect T="string"
+                                   @bind-Value="_defaultTimezone"
+                                   Label="Zona horaria"
+                                   Variant="Variant.Outlined"
+                                   FullWidth="true">
+                            @foreach (var tz in _timezones)
+                            {
+                                <MudSelectItem Value="@tz.Id">@tz.Label</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block">
+                            Las fechas ya almacenadas no se ven afectadas. Ejecuta
+                            <strong>Extracción de metadatos → Sobreescribir todos</strong> para reaplicar.
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveTimezone"
+                                   Disabled="_savingTimezone">
+                            @if (_savingTimezone)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Sidecar XMP ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Sidecar XMP</MudText>
+                            <MudText Typo="Typo.body2">
+                                Lee metadatos de archivos <code>.xmp</code> junto al archivo principal.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSwitch T="bool"
+                                   @bind-Value="_readXmpSidecar"
+                                   Color="Color.Primary"
+                                   Label="@(_readXmpSidecar ? "Leer sidecar .xmp activado" : "Leer sidecar .xmp desactivado")" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block">
+                            Busca <code>archivo.jpg.xmp</code> o <code>archivo.xmp</code> en el mismo
+                            directorio. Útil para flujos de trabajo con Lightroom o darktable que
+                            exportan ediciones en sidecar.
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveSidecar"
+                                   Disabled="_savingSidecar">
+                            @if (_savingSidecar)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private const string KeyExtractCameraInfo = "MetadataSettings.ExtractCameraInfo";
+    private const string KeyExtractGps        = "MetadataSettings.ExtractGps";
+    private const string KeyExtractIptc       = "MetadataSettings.ExtractIptc";
+    private const string KeyExtractDateTime   = "MetadataSettings.ExtractDateTime";
+    private const string KeyDefaultTimezone   = "MetadataSettings.DefaultTimezone";
+    private const string KeyReadXmpSidecar    = "MetadataSettings.ReadXmpSidecar";
+
+    private bool _isAuthorized;
+    private bool _loading = true;
+
+    private bool   _extractCameraInfo = true;
+    private bool   _extractGps        = true;
+    private bool   _extractIptc       = true;
+    private bool   _extractDateTime   = true;
+    private string _defaultTimezone   = "UTC";
+    private bool   _readXmpSidecar    = false;
+
+    private bool _savingGroups;
+    private bool _savingTimezone;
+    private bool _savingSidecar;
+
+    // Curated list of common IANA timezone IDs
+    private readonly record struct TzOption(string Id, string Label);
+    private static readonly TzOption[] _timezones =
+    [
+        new("UTC",                          "UTC (Coordinated Universal Time)"),
+        new("Europe/Madrid",                "Europe/Madrid (ES — España)"),
+        new("Europe/London",                "Europe/London (GB — Reino Unido)"),
+        new("Europe/Paris",                 "Europe/Paris (FR — Francia)"),
+        new("Europe/Berlin",                "Europe/Berlin (DE — Alemania)"),
+        new("Europe/Rome",                  "Europe/Rome (IT — Italia)"),
+        new("Europe/Lisbon",                "Europe/Lisbon (PT — Portugal)"),
+        new("Europe/Amsterdam",             "Europe/Amsterdam (NL — Países Bajos)"),
+        new("Europe/Brussels",              "Europe/Brussels (BE — Bélgica)"),
+        new("Europe/Warsaw",                "Europe/Warsaw (PL — Polonia)"),
+        new("Europe/Bucharest",             "Europe/Bucharest (RO — Rumanía)"),
+        new("Europe/Athens",                "Europe/Athens (GR — Grecia)"),
+        new("Europe/Helsinki",              "Europe/Helsinki (FI — Finlandia)"),
+        new("Europe/Stockholm",             "Europe/Stockholm (SE — Suecia)"),
+        new("Europe/Moscow",                "Europe/Moscow (RU — Rusia occidental)"),
+        new("America/New_York",             "America/New_York (EE. UU. — Este)"),
+        new("America/Chicago",              "America/Chicago (EE. UU. — Centro)"),
+        new("America/Denver",               "America/Denver (EE. UU. — Montaña)"),
+        new("America/Los_Angeles",          "America/Los_Angeles (EE. UU. — Pacífico)"),
+        new("America/Sao_Paulo",            "America/Sao_Paulo (BR — Brasil)"),
+        new("America/Argentina/Buenos_Aires", "America/Buenos_Aires (AR — Argentina)"),
+        new("America/Mexico_City",          "America/Mexico_City (MX — México)"),
+        new("America/Bogota",               "America/Bogota (CO — Colombia)"),
+        new("Asia/Tokyo",                   "Asia/Tokyo (JP — Japón)"),
+        new("Asia/Shanghai",                "Asia/Shanghai (CN — China)"),
+        new("Asia/Kolkata",                 "Asia/Kolkata (IN — India)"),
+        new("Asia/Dubai",                   "Asia/Dubai (AE — EAU)"),
+        new("Asia/Seoul",                   "Asia/Seoul (KR — Corea del Sur)"),
+        new("Asia/Singapore",               "Asia/Singapore (SG — Singapur)"),
+        new("Australia/Sydney",             "Australia/Sydney (AU — Australia oriental)"),
+        new("Pacific/Auckland",             "Pacific/Auckland (NZ — Nueva Zelanda)"),
+        new("Africa/Cairo",                 "Africa/Cairo (EG — Egipto)"),
+        new("Africa/Johannesburg",          "Africa/Johannesburg (ZA — Sudáfrica)"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+            await LoadSettings();
+
+        _loading = false;
+    }
+
+    private async Task LoadSettings()
+    {
+        bool ParseBool(string v, bool def) =>
+            string.IsNullOrEmpty(v) ? def : !v.Equals("false", StringComparison.OrdinalIgnoreCase);
+
+        _extractCameraInfo = ParseBool(await SettingsService.GetSettingAsync(KeyExtractCameraInfo, "true"),  true);
+        _extractGps        = ParseBool(await SettingsService.GetSettingAsync(KeyExtractGps,        "true"),  true);
+        _extractIptc       = ParseBool(await SettingsService.GetSettingAsync(KeyExtractIptc,       "true"),  true);
+        _extractDateTime   = ParseBool(await SettingsService.GetSettingAsync(KeyExtractDateTime,   "true"),  true);
+        _defaultTimezone   = await SettingsService.GetSettingAsync(KeyDefaultTimezone, "UTC");
+        _readXmpSidecar    = ParseBool(await SettingsService.GetSettingAsync(KeyReadXmpSidecar,    "false"), false);
+
+        // Fallback to UTC if the stored value is not in the list
+        if (!_timezones.Any(t => t.Id == _defaultTimezone))
+            _defaultTimezone = "UTC";
+    }
+
+    private async Task SaveGroups()
+    {
+        _savingGroups = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyExtractCameraInfo, _extractCameraInfo ? "true" : "false")
+                  && await SettingsService.SaveSettingAsync(KeyExtractGps,        _extractGps        ? "true" : "false")
+                  && await SettingsService.SaveSettingAsync(KeyExtractIptc,       _extractIptc       ? "true" : "false")
+                  && await SettingsService.SaveSettingAsync(KeyExtractDateTime,   _extractDateTime   ? "true" : "false");
+
+            Snackbar.Add(ok ? "Grupos de extracción guardados." : "Error al guardar los grupos.",
+                ok ? Severity.Success : Severity.Error);
+        }
+        finally { _savingGroups = false; }
+    }
+
+    private async Task SaveTimezone()
+    {
+        _savingTimezone = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyDefaultTimezone, _defaultTimezone);
+            Snackbar.Add(ok ? "Zona horaria guardada." : "Error al guardar la zona horaria.",
+                ok ? Severity.Success : Severity.Error);
+        }
+        finally { _savingTimezone = false; }
+    }
+
+    private async Task SaveSidecar()
+    {
+        _savingSidecar = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyReadXmpSidecar, _readXmpSidecar ? "true" : "false");
+            Snackbar.Add(ok ? "Configuración de sidecar guardada." : "Error al guardar.",
+                ok ? Severity.Success : Severity.Error);
+        }
+        finally { _savingSidecar = false; }
+    }
+}

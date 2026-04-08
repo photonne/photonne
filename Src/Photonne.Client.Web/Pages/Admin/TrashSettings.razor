@@ -1,0 +1,384 @@
+@page "/admin/settings/trash"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject HttpClient HttpClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Configuración de papelera - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="mt-8 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Configuración de papelera</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Retención, borrado automático y cuotas de la papelera.
+        </MudText>
+
+        <MudGrid>
+
+            @* ── Activar papelera ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Papelera</MudText>
+                            <MudText Typo="Typo.body2">Comportamiento al eliminar archivos.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSwitch T="bool"
+                                   @bind-Value="_trashEnabled"
+                                   Color="Color.Primary"
+                                   Label="@(_trashEnabled ? "Papelera activada" : "Papelera desactivada")" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1 d-block">
+                            @if (_trashEnabled)
+                            {
+                                <span>Los archivos eliminados se mueven a la papelera y pueden restaurarse.</span>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error">
+                                    Los archivos eliminados se borran permanentemente de forma inmediata. Esta acción no se puede deshacer.
+                                </MudText>
+                            }
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveEnabled"
+                                   Disabled="_savingEnabled">
+                            @if (_savingEnabled)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Retención ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Retención automática</MudText>
+                            <MudText Typo="Typo.body2">Tiempo máximo que un archivo permanece en la papelera.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudNumericField T="int"
+                                         Label="Días de retención"
+                                         @bind-Value="_retentionDays"
+                                         Min="0"
+                                         Max="365"
+                                         Variant="Variant.Outlined"
+                                         FullWidth="true"
+                                         HelperText="0 = conservar indefinidamente. Los elementos expirados se eliminan al ejecutar la limpieza." />
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveRetention"
+                                   Disabled="_savingRetention">
+                            @if (_savingRetention)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Cuota ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Cuota por usuario</MudText>
+                            <MudText Typo="Typo.body2">Espacio máximo que puede ocupar la papelera de cada usuario.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudNumericField T="int"
+                                         Label="Cuota máxima (MB)"
+                                         @bind-Value="_maxQuotaMb"
+                                         Min="0"
+                                         Max="102400"
+                                         Variant="Variant.Outlined"
+                                         FullWidth="true"
+                                         HelperText="0 = sin límite. Al superar la cuota, los elementos más antiguos se eliminan en la próxima limpieza." />
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveQuota"
+                                   Disabled="_savingQuota">
+                            @if (_savingQuota)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── Estado y limpieza ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Estado de la papelera</MudText>
+                            <MudText Typo="Typo.body2">Estadísticas globales y limpieza manual de elementos expirados.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_statsLoading)
+                        {
+                            <MudProgressLinear Indeterminate="true" />
+                        }
+                        else if (_stats != null)
+                        {
+                            <MudGrid Spacing="2">
+                                <MudItem xs="6">
+                                    <MudPaper Elevation="1" Class="text-center pa-3">
+                                        <MudText Typo="Typo.h5" Color="Color.Primary">@_stats.TotalItems</MudText>
+                                        <MudText Typo="Typo.caption">Elementos</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudPaper Elevation="1" Class="text-center pa-3">
+                                        <MudText Typo="Typo.h5" Color="Color.Primary">@FormatBytes(_stats.TotalBytes)</MudText>
+                                        <MudText Typo="Typo.caption">Espacio ocupado</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                @if (_stats.RetentionDays > 0)
+                                {
+                                    <MudItem xs="12">
+                                        <MudPaper Elevation="1" Class="text-center pa-3">
+                                            <MudText Typo="Typo.h5"
+                                                     Color="@(_stats.ExpiredItems > 0 ? Color.Warning : Color.Default)">
+                                                @_stats.ExpiredItems
+                                            </MudText>
+                                            <MudText Typo="Typo.caption">
+                                                Expirados (más de @_stats.RetentionDays días)
+                                            </MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+
+                            @if (_cleanupResult != null)
+                            {
+                                <MudAlert Severity="@(_cleanupResult.Success ? Severity.Success : Severity.Error)"
+                                          Dense="true" Class="mt-3">
+                                    @_cleanupResult.Message
+                                </MudAlert>
+                            }
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4 d-flex gap-2 flex-wrap">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Default"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="LoadStats"
+                                   Disabled="_statsLoading">
+                            Actualizar
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.AutoDelete"
+                                   OnClick="RunCleanup"
+                                   Disabled="@(_cleanupRunning || _stats == null || (_stats.RetentionDays > 0 && _stats.ExpiredItems == 0))"
+                                   Title="@(_retentionDays == 0 ? "La retención está configurada como indefinida" : "")">
+                            @if (_cleanupRunning)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span>Limpiando...</span>
+                            }
+                            else
+                            {
+                                <span>Limpiar expirados</span>
+                            }
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private const string KeyEnabled       = "TrashSettings.Enabled";
+    private const string KeyRetentionDays = "TrashSettings.RetentionDays";
+    private const string KeyMaxQuotaMb    = "TrashSettings.MaxQuotaMb";
+
+    private bool _isAuthorized;
+    private bool _loading = true;
+
+    private bool _trashEnabled    = true;
+    private int  _retentionDays   = 30;
+    private int  _maxQuotaMb      = 0;
+
+    private bool _savingEnabled;
+    private bool _savingRetention;
+    private bool _savingQuota;
+
+    private bool               _statsLoading   = true;
+    private bool               _cleanupRunning;
+    private TrashStatsResponse? _stats;
+    private TrashCleanupResult? _cleanupResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+        {
+            await Task.WhenAll(LoadSettings(), LoadStats());
+        }
+
+        _loading = false;
+    }
+
+    private async Task LoadSettings()
+    {
+        var enabledRaw    = await SettingsService.GetSettingAsync(KeyEnabled, "true");
+        _trashEnabled     = !enabledRaw.Equals("false", StringComparison.OrdinalIgnoreCase);
+        _retentionDays    = ParseInt(await SettingsService.GetSettingAsync(KeyRetentionDays, "30"), 0, 365, 30);
+        _maxQuotaMb       = ParseInt(await SettingsService.GetSettingAsync(KeyMaxQuotaMb, "0"), 0, 102400, 0);
+    }
+
+    private async Task LoadStats()
+    {
+        _statsLoading = true;
+        try
+        {
+            _stats = await HttpClient.GetFromJsonAsync<TrashStatsResponse>("/api/admin/trash/stats");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar estadísticas: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            _statsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveEnabled()
+    {
+        _savingEnabled = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyEnabled, _trashEnabled ? "true" : "false");
+            ShowResult(ok, "Configuración de papelera");
+        }
+        finally { _savingEnabled = false; }
+    }
+
+    private async Task SaveRetention()
+    {
+        _savingRetention = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyRetentionDays, _retentionDays.ToString());
+            ShowResult(ok, "Retención");
+            if (ok) await LoadStats();
+        }
+        finally { _savingRetention = false; }
+    }
+
+    private async Task SaveQuota()
+    {
+        _savingQuota = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyMaxQuotaMb, _maxQuotaMb.ToString());
+            ShowResult(ok, "Cuota");
+        }
+        finally { _savingQuota = false; }
+    }
+
+    private async Task RunCleanup()
+    {
+        _cleanupRunning = true;
+        _cleanupResult  = null;
+        try
+        {
+            var response = await HttpClient.PostAsync("/api/admin/trash/cleanup-expired", null);
+            response.EnsureSuccessStatusCode();
+            _cleanupResult = await response.Content.ReadFromJsonAsync<TrashCleanupResult>();
+            if (_cleanupResult != null)
+                Snackbar.Add(_cleanupResult.Message, _cleanupResult.Success ? Severity.Success : Severity.Error);
+            await LoadStats();
+        }
+        catch (Exception ex)
+        {
+            _cleanupResult = new TrashCleanupResult { Success = false, Message = $"Error: {ex.Message}" };
+            Snackbar.Add(_cleanupResult.Message, Severity.Error);
+        }
+        finally
+        {
+            _cleanupRunning = false;
+        }
+    }
+
+    private void ShowResult(bool ok, string section)
+    {
+        if (ok)
+            Snackbar.Add($"{section} guardado correctamente.", Severity.Success);
+        else
+            Snackbar.Add($"Error al guardar {section.ToLower()}.", Severity.Error);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1_073_741_824)
+            return $"{bytes / 1_073_741_824.0:F1} GB";
+        if (bytes >= 1_048_576)
+            return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1_024)
+            return $"{bytes / 1_024.0:F1} KB";
+        return $"{bytes} B";
+    }
+
+    private static int ParseInt(string value, int min, int max, int defaultValue)
+    {
+        if (!int.TryParse(value, out var n)) return defaultValue;
+        return Math.Clamp(n, min, max);
+    }
+}

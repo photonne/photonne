@@ -1,0 +1,221 @@
+@page "/notifications"
+@inject INotificationService NotificationService
+@inject NavigationManager Navigation
+
+<PageTitle>Notificaciones</PageTitle>
+
+<div class="page-pad">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5">Notificaciones</MudText>
+        <MudHidden Breakpoint="Breakpoint.SmAndUp">
+            <MudTooltip Text="Marcar todas como leídas">
+                <MudIconButton Icon="@Icons.Material.Outlined.DoneAll"
+                               Variant="Variant.Outlined"
+                               Size="Size.Small"
+                               OnClick="MarkAllRead"
+                               Disabled="@(_pagedResult == null || _pagedResult.UnreadCount == 0 || _loading)" />
+            </MudTooltip>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.Xs">
+            <MudButton Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.DoneAll"
+                       OnClick="MarkAllRead"
+                       Disabled="@(_pagedResult == null || _pagedResult.UnreadCount == 0 || _loading)">
+                Marcar todas como leídas
+            </MudButton>
+        </MudHidden>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <MudChip T="string"
+                 Color="@(!_unreadOnly ? Color.Primary : Color.Default)"
+                 Variant="@(!_unreadOnly ? Variant.Filled : Variant.Outlined)"
+                 OnClick="@(() => SetFilter(false))">
+            Todas
+        </MudChip>
+        <MudChip T="string"
+                 Color="@(_unreadOnly ? Color.Primary : Color.Default)"
+                 Variant="@(_unreadOnly ? Variant.Filled : Variant.Outlined)"
+                 OnClick="@(() => SetFilter(true))">
+            No leídas
+            @if (_pagedResult?.UnreadCount > 0)
+            {
+                <MudText Typo="Typo.caption" Class="ml-1">(@_pagedResult.UnreadCount)</MudText>
+            }
+        </MudChip>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="d-flex justify-center pa-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        </div>
+    }
+    else if (_pagedResult == null || _pagedResult.Items.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.NotificationsNone"
+                    Title="@(_unreadOnly ? "No hay notificaciones sin leer." : "No hay notificaciones.")"
+                    Description="Aquí aparecerán los avisos sobre tu biblioteca." />
+    }
+    else
+    {
+        <MudPaper Elevation="0" Outlined="true">
+            @foreach (var (notification, index) in _pagedResult.Items.Select((n, i) => (n, i)))
+            {
+                @if (index > 0)
+                {
+                    <MudDivider />
+                }
+                <div class="@GetItemClass(notification)" @onclick="@(() => HandleNotificationClick(notification))">
+                    <div class="d-flex align-start gap-3 pa-4">
+                        <MudIcon Icon="@GetTypeIcon(notification.Type)"
+                                 Color="@GetTypeColor(notification.Type)"
+                                 Class="mt-1 flex-shrink-0" />
+                        <div class="flex-grow-1 min-width-0">
+                            <MudText Typo="Typo.subtitle2"
+                                     Class="@(notification.IsRead ? "mud-text-secondary" : "font-weight-bold")">
+                                @notification.Title
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">@notification.Message</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                                @FormatDate(notification.CreatedAt)
+                            </MudText>
+                        </div>
+                        @if (!notification.IsRead)
+                        {
+                            <div class="flex-shrink-0 mt-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                         Color="Color.Primary"
+                                         Style="font-size: 10px;" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </MudPaper>
+
+        @if (_pagedResult.TotalPages > 1)
+        {
+            <div class="d-flex justify-center mt-4">
+                <MudPagination Count="_pagedResult.TotalPages"
+                               Selected="_currentPage"
+                               SelectedChanged="OnPageChanged"
+                               Color="Color.Primary" />
+            </div>
+        }
+
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block text-center">
+            @_pagedResult.TotalCount notificaciones en total
+        </MudText>
+    }
+</div>
+
+<style>
+    .notification-item {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        border-left: 3px solid transparent;
+    }
+    .notification-item:hover {
+        background-color: var(--mud-palette-action-hover);
+    }
+    .notification-item-unread {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        border-left: 3px solid var(--mud-palette-primary);
+    }
+    .notification-item-unread:hover {
+        background-color: var(--mud-palette-action-hover);
+    }
+</style>
+
+@code {
+    private NotificationsPageResponse? _pagedResult;
+    private bool _loading = true;
+    private bool _unreadOnly;
+    private int _currentPage = 1;
+    private const int PageSize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _pagedResult = await NotificationService.GetNotificationsAsync(_currentPage, PageSize, _unreadOnly);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SetFilter(bool unreadOnly)
+    {
+        _unreadOnly = unreadOnly;
+        _currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadAsync();
+    }
+
+    private async Task MarkAllRead()
+    {
+        await NotificationService.MarkAllAsReadAsync();
+        await LoadAsync();
+    }
+
+    private async Task HandleNotificationClick(NotificationDto notification)
+    {
+        if (!notification.IsRead)
+        {
+            await NotificationService.MarkAsReadAsync(notification.Id);
+            notification.IsRead = true;
+            if (_pagedResult != null && _pagedResult.UnreadCount > 0)
+                _pagedResult.UnreadCount--;
+            StateHasChanged();
+        }
+
+        if (!string.IsNullOrEmpty(notification.ActionUrl))
+            Navigation.NavigateTo(notification.ActionUrl);
+    }
+
+    private static string GetItemClass(NotificationDto n)
+        => n.IsRead ? "notification-item" : "notification-item-unread";
+
+    private static string GetTypeIcon(NotificationTypeDto type) => type switch
+    {
+        NotificationTypeDto.JobCompleted => Icons.Material.Filled.CheckCircle,
+        NotificationTypeDto.JobFailed   => Icons.Material.Filled.Error,
+        NotificationTypeDto.ShareViewed => Icons.Material.Filled.Visibility,
+        _                               => Icons.Material.Filled.Notifications
+    };
+
+    private static Color GetTypeColor(NotificationTypeDto type) => type switch
+    {
+        NotificationTypeDto.JobCompleted => Color.Success,
+        NotificationTypeDto.JobFailed   => Color.Error,
+        NotificationTypeDto.ShareViewed => Color.Info,
+        _                               => Color.Default
+    };
+
+    private static string FormatDate(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt;
+        if (diff.TotalMinutes < 1) return "Ahora mismo";
+        if (diff.TotalHours < 1)   return $"Hace {(int)diff.TotalMinutes} min";
+        if (diff.TotalDays < 1)    return $"Hace {(int)diff.TotalHours}h";
+        if (diff.TotalDays < 7)    return $"Hace {(int)diff.TotalDays}d";
+        return dt.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    }
+}

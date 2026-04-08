@@ -1,0 +1,59 @@
+@inject LayoutService LayoutService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<Router AppAssembly="@typeof(App).Assembly"
+        OnNavigateAsync="OnNavigateAsync">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>No encontrado</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <MudContainer>
+                <MudText Typo="Typo.h3">Página no encontrada</MudText>
+                <MudText>Lo sentimos, la página que buscas no existe.</MudText>
+                <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                    Volver al inicio
+                </MudButton>
+            </MudContainer>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private bool _initialized;
+
+    private async Task OnNavigateAsync(Microsoft.AspNetCore.Components.Routing.NavigationContext context)
+    {
+        if (!_initialized)
+        {
+            await LayoutService.InitializeAsync();
+            _initialized = true;
+        }
+
+        var path = context.Path.Trim('/').ToLowerInvariant();
+        if (path.StartsWith("login") || path.StartsWith("share"))
+        {
+            return;
+        }
+
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+            var loginUrl = BuildLoginUrl(returnUrl);
+            Navigation.NavigateTo(loginUrl);
+        }
+    }
+
+    private static string BuildLoginUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl))
+        {
+            return "/login";
+        }
+
+        return $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
+    }
+}

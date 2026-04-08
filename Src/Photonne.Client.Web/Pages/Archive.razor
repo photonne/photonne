@@ -1,0 +1,431 @@
+@page "/archive"
+@inject IAssetService AssetService
+@inject LayoutService LayoutService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Archivo - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+<div class="px-3 pt-3">
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">Archivo</MudText>
+        <div class="d-flex align-center gap-1">
+            <MudIconButton Icon="@Icons.Material.Outlined.Unarchive"
+                           Size="Size.Small"
+                           Disabled="@(!_assets.Any())"
+                           Title="Desarchivar todo"
+                           OnClick="OpenUnarchiveAllDialog" />
+        </div>
+    </div>
+</div>
+
+<div class="assets-grid-content">
+    @if (_groupedAssets.Any())
+    {
+        @foreach (var group in _groupedAssets)
+        {
+            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+            <div class="day-group" id="@GetGroupId(group.Key)">
+                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                <MudGrid Spacing="1">
+                    @foreach (var asset in group.Value)
+                    {
+                        <MudItem xs="4" sm="3" md="2">
+                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                                 data-asset-id="@asset.Id"
+                                 @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                                 @ontouchmove="OnCardTouchMove"
+                                 @ontouchend="OnCardTouchEnd">
+                                <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                                <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                    <MudCheckBox T="bool"
+                                                 Value="@IsAssetSelected(asset.Id)"
+                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                                </div>
+                            </div>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </div>
+        }
+    }
+    else if (!_loading)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Archive"
+                    Title="El archivo está vacío"
+                    Description="Los elementos archivados aparecerán aquí." />
+    }
+
+    @if (_hasMore)
+    {
+        <div class="d-flex justify-center pa-4">
+            <MudButton Variant="Variant.Text" OnClick="LoadMoreAsync" Disabled="_loadingMore">
+                @if (_loadingMore)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Cargar más
+            </MudButton>
+        </div>
+    }
+</div>
+
+<MudDialog @bind-Visible="_unarchiveAllDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Desarchivar todo</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>¿Quieres mover todos los elementos de vuelta a tu biblioteca?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _unarchiveAllDialogVisible = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="UnarchiveAllAsync">Desarchivar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .assets-grid-content {
+        padding: 4px 4px 80px 4px;
+    }
+
+    .day-group {
+        margin-bottom: 32px;
+    }
+
+    .day-header {
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: capitalize;
+        padding: 0 4px 6px 4px;
+        display: block;
+    }
+
+    @@media (max-width: 599.98px) {
+        .day-header {
+            font-size: 0.78rem !important;
+        }
+    }
+
+    .asset-select-container {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+    }
+
+    .asset-select-checkbox {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        z-index: 5;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        background: rgba(0,0,0,0.4);
+        border-radius: 999px;
+        padding: 2px;
+        color: white;
+    }
+
+    .asset-select-checkbox .mud-icon-root {
+        color: white !important;
+    }
+
+    .asset-select-container:hover .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .asset-select-container.selection-mode .asset-select-checkbox,
+    .asset-select-container.selected .asset-select-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    @@media (max-width: 959.98px) {
+        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+            opacity: 0;
+            pointer-events: none;
+        }
+    }
+</style>
+
+@code {
+    private List<TimelineItem> _assets = new();
+    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    private bool _loading = true;
+    private bool _loadingMore;
+    private bool _hasMore;
+    private DateTime? _cursor;
+    private bool _selectionMode;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _unarchiveAllDialogVisible;
+
+    // Touch / long-press / drag-select
+    private DotNetObjectReference<Archive>? _objRef;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _objRef = DotNetObjectReference.Create(this);
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _loading = true;
+            var result = await AssetService.GetArchivedPageAsync();
+            _assets = result.Items;
+            _hasMore = result.HasMore;
+            _cursor = result.NextCursor;
+            GroupAssets();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar el archivo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (!_hasMore || _loadingMore) return;
+        try
+        {
+            _loadingMore = true;
+            var result = await AssetService.GetArchivedPageAsync(cursor: _cursor);
+            _assets.AddRange(result.Items);
+            _hasMore = result.HasMore;
+            _cursor = result.NextCursor;
+            GroupAssets();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar más: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    private void GroupAssets()
+    {
+        _groupedAssets = _assets
+            .OrderByDescending(a => a.FileCreatedAt)
+            .GroupBy(a => a.FileCreatedAt.Date)
+            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.FileCreatedAt).ToList());
+    }
+
+    private string FormatDayHeader(DateTime date)
+    {
+        var today = DateTime.Today;
+        if (date.Date == today) return "Hoy";
+        if (date.Date == today.AddDays(-1)) return "Ayer";
+        if (date.Year == today.Year)
+            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
+        return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_selectionMode)
+        {
+            var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAssetSelected(assetId)) return;
+        ToggleAssetSelection(assetId, select);
+        StateHasChanged();
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            return;
+        }
+        Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=archive");
+    }
+
+    private string GetGroupId(string groupName) => "group-" + groupName.Replace(" ", "-").ToLower();
+
+    private void ToggleAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_selectionMode) _selectionMode = true;
+
+        if (selected)
+            _selectedAssetIds.Add(assetId);
+        else
+        {
+            _selectedAssetIds.Remove(assetId);
+            if (_selectedAssetIds.Count == 0) ExitSelectionMode();
+            else UpdateSelectionNavbar();
+            return;
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private bool IsAssetSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        LayoutService.ResetNavbar();
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (_selectedAssetIds.Count == _assets.Count && _assets.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+        _selectedAssetIds = _assets.Select(a => a.Id).ToHashSet();
+        UpdateSelectionNavbar();
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectedAssetIds.Count;
+        var allSelected = _assets.Any() && selectedCount == _assets.Count;
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+                <MudTooltip Text="Desarchivar seleccionadas">
+                    <MudIconButton Icon="@Icons.Material.Filled.Unarchive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="UnarchiveSelectedAsync" />
+                </MudTooltip>
+            </text>
+        , keepDrawerVisible: true);
+    }
+
+    private async Task UnarchiveSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+        try
+        {
+            await AssetService.UnarchiveAssetsAsync(new UnarchiveAssetsRequest
+            {
+                AssetIds = _selectedAssetIds.ToList()
+            });
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al desarchivar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
+        LayoutService.ResetNavbar();
+    }
+
+    private void OpenUnarchiveAllDialog() => _unarchiveAllDialogVisible = true;
+
+    private async Task UnarchiveAllAsync()
+    {
+        try
+        {
+            await AssetService.UnarchiveAllAsync();
+            _unarchiveAllDialogVisible = false;
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al desarchivar todo: {ex.Message}", Severity.Error);
+        }
+    }
+
+}

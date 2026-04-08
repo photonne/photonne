@@ -1,0 +1,136 @@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_isValid" @bind-Errors="@_errors">
+            <MudSelect T="Guid?" @bind-Value="_selectedUserId" 
+                     Label="Usuario" 
+                     Variant="Variant.Outlined"
+                     Required="true"
+                     RequiredError="Debe seleccionar un usuario"
+                     Disabled="@_isEdit"
+                     Class="mb-3">
+                @foreach (var user in Users)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)user.Id)">
+                        @user.Username (@user.Email)
+                    </MudSelectItem>
+                }
+            </MudSelect>
+            
+            <MudText Typo="Typo.subtitle1" Class="mb-3 mt-4">Permisos</MudText>
+            
+            <MudSwitch @bind-Value="_canRead" 
+                      Label="Puede ver el álbum" 
+                      Color="Color.Success"
+                      Class="mb-2" />
+            
+            <MudSwitch @bind-Value="_canWrite" 
+                      Label="Puede editar el álbum" 
+                      Color="Color.Primary"
+                      Class="mb-2" />
+            
+            <MudSwitch @bind-Value="_canDelete" 
+                      Label="Puede eliminar el álbum (para todos)" 
+                      Color="Color.Warning"
+                      Class="mb-2" />
+            
+            <MudSwitch @bind-Value="_canManagePermissions" 
+                      Label="Puede gestionar permisos" 
+                      Color="Color.Error"
+                      Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled" 
+                  OnClick="Save"
+                  Disabled="@(!_isValid || _saving)">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" />
+            }
+            Guardar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public List<ShareableUserDto> Users { get; set; } = new();
+    [Parameter] public AlbumPermissionDto? Permission { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public Guid AlbumId { get; set; }
+    [Inject] public IAlbumPermissionService AlbumPermissionService { get; set; } = null!;
+    [Inject] public ISnackbar Snackbar { get; set; } = null!;
+
+    private MudForm? _form;
+    private bool _isValid;
+    private string[] _errors = Array.Empty<string>();
+    private bool _saving = false;
+    private bool _isEdit;
+
+    private Guid? _selectedUserId;
+    private bool _canRead = true;
+    private bool _canWrite = false;
+    private bool _canDelete = false;
+    private bool _canManagePermissions = false;
+
+    protected override void OnParametersSet()
+    {
+        _isEdit = IsEdit && Permission != null;
+        
+        if (_isEdit && Permission != null)
+        {
+            _selectedUserId = Permission.UserId;
+            _canRead = Permission.CanRead;
+            _canWrite = Permission.CanWrite;
+            _canDelete = Permission.CanDelete;
+            _canManagePermissions = Permission.CanManagePermissions;
+        }
+    }
+
+    private async Task Save()
+    {
+        await _form!.Validate();
+        if (!_isValid || !_selectedUserId.HasValue) return;
+
+        try
+        {
+            _saving = true;
+
+            var request = new SetAlbumPermissionRequest
+            {
+                UserId = _selectedUserId.Value,
+                CanRead = _canRead,
+                CanWrite = _canWrite,
+                CanDelete = _canDelete,
+                CanManagePermissions = _canManagePermissions
+            };
+
+            if (AlbumId != Guid.Empty)
+            {
+                await AlbumPermissionService.SetAlbumPermissionAsync(AlbumId, request);
+                var userName = Users.FirstOrDefault(u => u.Id == _selectedUserId.Value)?.Username ?? "usuario";
+                Snackbar.Add($"Álbum compartido exitosamente con {userName}", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error: No se pudo determinar el ID del álbum", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
