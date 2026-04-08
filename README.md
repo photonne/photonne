@@ -12,9 +12,11 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 - **Mapa** — Visualización geográfica por metadatos de ubicación
 - **Favoritos** — Marca assets como favoritos para acceso rápido
 - **Etiquetas** — Tags automáticos por ML y tags manuales de usuario
+- **Memorias** — Revive fotos y vídeos de este mismo día en años anteriores
 
 **Gestión de archivos**
 - **Sincronización desde dispositivo** — Subida de assets desde el navegador
+- **Compartir** — Comparte assets y álbumes con otros usuarios o mediante enlaces públicos con token
 - **Archivado** — Archiva assets para ocultarlos de la vista principal sin eliminarlos
 - **Papelera** — Eliminación suave con posibilidad de restauración
 - **Detección de duplicados** — Identifica assets duplicados en la biblioteca
@@ -87,7 +89,19 @@ git clone https://github.com/marccafo/photonne.git
 cd photonne
 ```
 
-### 2. Levantar la infraestructura (producción)
+### 2. Configurar las variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Edita `.env` y rellena al menos los valores marcados como obligatorios: `POSTGRES_PASSWORD`, `JWT_KEY` y `ADMIN_PASSWORD`. Puedes generar una clave JWT segura con:
+
+```bash
+openssl rand -base64 48
+```
+
+### 3. Levantar la infraestructura (producción)
 
 ```bash
 docker compose up -d
@@ -98,7 +112,7 @@ Usa la imagen pre-construida de GitHub Container Registry (`ghcr.io/marccafo/pho
 - **PgAdmin 4** en `http://localhost:5050`
 - **Photonne API** en `http://localhost:1107`
 
-### 3. Ejecutar en desarrollo (sin Docker)
+### 4. Ejecutar en desarrollo (sin Docker)
 
 ```bash
 cd Src/Photonne.Server.Api
@@ -108,7 +122,7 @@ dotnet run
 La API estará disponible en `https://localhost:5001`.
 Documentación interactiva: `https://localhost:5001/scalar`
 
-### 4. Ejecutar en desarrollo con Docker
+### 5. Ejecutar en desarrollo con Docker
 
 ```bash
 docker compose up -d
@@ -116,7 +130,7 @@ docker compose up -d
 
 El archivo `docker-compose.override.yml` se aplica automáticamente en desarrollo: compila la imagen localmente y expone la API en `http://localhost:5000` y PostgreSQL en `localhost:5432`.
 
-### 5. Cliente web
+### 6. Cliente web
 
 ```bash
 cd Src/Photonne.Client.Web
@@ -130,7 +144,10 @@ dotnet run
 | Clave | Descripción | Default |
 |---|---|---|
 | `ConnectionStrings__Postgres` | Cadena de conexión PostgreSQL | `Host=photonne-db;...` |
-| `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) | `TOKEN_SUPER_SECRET` |
+| `POSTGRES_DB` | Nombre de la base de datos | `photonne` |
+| `POSTGRES_USER` | Usuario de PostgreSQL | `photonne_user` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `photonne_password` |
+| `Jwt__Key` | Clave secreta para JWT (mín. 32 caracteres) — usar `JWT_KEY` en `.env` | `TOKEN_SUPER_SECRET` |
 | `Jwt__Issuer` | Emisor del token | `Photonne` |
 | `Jwt__Audience` | Audiencia del token | `Photonne` |
 | `HTTPS_REDIRECT` | Forzar redirección HTTPS | `false` |
@@ -195,17 +212,28 @@ La API sigue una estructura por features. Endpoints principales:
 
 | Área | Endpoints |
 |---|---|
-| Auth | `POST /api/login`, `POST /api/refresh-token` |
+| Auth | `POST /api/auth/login`, `POST /api/auth/refresh` |
 | Assets | `GET /api/assets`, `GET /api/assets/{id}`, `GET /api/assets/{id}/content` |
+| Búsqueda | `GET /api/assets/search` |
 | Indexación | `GET /api/assets/index/stream` (SSE), `GET /api/assets/index` |
 | Subida | `POST /api/assets/upload` |
-| Miniaturas | `GET /api/assets/{id}/thumbnail/{size}` |
-| Álbumes | `GET/POST /api/albums`, `GET /api/albums/{id}` |
-| Carpetas | `GET /api/folders` |
-| Línea de tiempo | `GET /api/timeline` |
-| Mapa | `GET /api/map` |
+| Sincronización | `POST /api/assets/sync` |
+| Miniaturas | `GET /api/assets/{id}/thumbnail` |
+| Memorias | `GET /api/assets/memories` |
+| Favoritos | `GET /api/assets/favorites`, `POST /api/assets/{id}/favorite` |
+| Etiquetas | `GET /api/tags`, `POST/DELETE /api/assets/{id}/tags` |
+| Compartir | `GET/POST /api/share`, `GET/PATCH/DELETE /api/share/{token}` |
+| Álbumes | `GET/POST /api/albums`, `GET/PUT/DELETE /api/albums/{id}` |
+| Carpetas | `GET /api/folders`, `GET /api/folders/tree` |
+| Línea de tiempo | `GET /api/assets/timeline` |
+| Mapa | `GET /api/assets/map` |
+| Notificaciones | `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all` |
+| Usuarios | `GET /api/users/me`, `GET/PUT/DELETE /api/users/{id}`, `POST /api/users/{id}/reset-password` |
+| Tareas | `GET /api/tasks`, `GET /api/tasks/{id}/stream` |
+| Bibliotecas externas | `GET/POST/PUT/DELETE /api/libraries`, `GET /api/libraries/{id}/scan/stream` |
+| Utilidades | `GET /api/utilities/duplicates`, `GET /api/utilities/large-files` |
 | Configuración | `GET/PUT /api/settings` |
-| Administración | `GET /api/admin/stats`, `GET /api/admin/users` |
+| Administración | `GET /api/admin/stats`, `GET /api/admin/version`, `GET /api/admin/trash/stats` |
 
 Documentación interactiva disponible en `/scalar` (modo desarrollo).
 
