@@ -57,19 +57,24 @@ public class TimelineGridEndpoint : IEndpoint
                 }
             }
 
-            // ── Lightweight projection — no thumbnails, no tags, no checksums ──────
+            // ── Layout projection — includes Id, dimensions, and dominant color ──
             var rawItems = await dbContext.Assets
                 .Where(a => a.DeletedAt == null && !a.IsArchived
                          && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
                 .OrderByDescending(a => a.FileCreatedAt)
                 .Select(a => new
                 {
+                    a.Id,
                     Year  = a.FileCreatedAt.Year,
                     Month = a.FileCreatedAt.Month,
                     Day   = a.FileCreatedAt.Day,
                     Type  = a.Type,
                     ExifWidth  = a.Exif != null ? a.Exif.Width  : 0,
-                    ExifHeight = a.Exif != null ? a.Exif.Height : 0
+                    ExifHeight = a.Exif != null ? a.Exif.Height : 0,
+                    DominantColor = a.Thumbnails
+                        .Where(t => t.Size == ThumbnailSize.Small)
+                        .Select(t => t.DominantColor)
+                        .FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
 
@@ -81,11 +86,15 @@ public class TimelineGridEndpoint : IEndpoint
                     YearMonth = g.Key,
                     Items = g.Select(i => new TimelineGridItemResponse
                     {
+                        Id          = i.Id,
                         Type        = i.Type == AssetType.Video ? "Video" : "Image",
                         AspectRatio = i.ExifWidth > 0 && i.ExifHeight > 0
                             ? Math.Round((double)((double)i.ExifWidth / i.ExifHeight), 4)
                             : 1.0,
-                        Date = $"{i.Year:D4}-{i.Month:D2}-{i.Day:D2}"
+                        Date = $"{i.Year:D4}-{i.Month:D2}-{i.Day:D2}",
+                        DominantColor = i.DominantColor,
+                        Width  = i.ExifWidth ?? 0,
+                        Height = i.ExifHeight ?? 0
                     }).ToList()
                 })
                 .ToList();

@@ -1,7 +1,6 @@
 window.timelineDb = {
     DB_NAME: 'photonne-timeline',
-    DB_VERSION: 1,
-    MAX_SECTIONS: 24,
+    DB_VERSION: 2,
 
     _db: null,
 
@@ -14,8 +13,13 @@ window.timelineDb = {
                 if (!db.objectStoreNames.contains('index')) {
                     db.createObjectStore('index');
                 }
-                if (!db.objectStoreNames.contains('sections')) {
-                    db.createObjectStore('sections');
+                // v2: grid store replaces per-section storage
+                if (!db.objectStoreNames.contains('grid')) {
+                    db.createObjectStore('grid');
+                }
+                // Remove legacy sections store if present
+                if (db.objectStoreNames.contains('sections')) {
+                    db.deleteObjectStore('sections');
                 }
             };
             req.onsuccess = e => {
@@ -26,7 +30,6 @@ window.timelineDb = {
         });
     },
 
-    // Devuelve el array de TimelineIndexItem o null si no hay nada guardado
     async loadIndex() {
         try {
             const db = await this._open();
@@ -53,13 +56,12 @@ window.timelineDb = {
         } catch { }
     },
 
-    // Devuelve el array de TimelineItem para el mes dado o null
-    async loadSection(yearMonth) {
+    async loadGrid() {
         try {
             const db = await this._open();
             return new Promise(resolve => {
-                const tx = db.transaction('sections', 'readonly');
-                const req = tx.objectStore('sections').get(yearMonth);
+                const tx = db.transaction('grid', 'readonly');
+                const req = tx.objectStore('grid').get('main');
                 req.onsuccess = () => resolve(req.result ? req.result.items : null);
                 req.onerror = () => resolve(null);
             });
@@ -68,53 +70,28 @@ window.timelineDb = {
         }
     },
 
-    async saveSection(yearMonth, items) {
+    async saveGrid(items) {
         try {
             const db = await this._open();
-            await new Promise((resolve, reject) => {
-                const tx = db.transaction('sections', 'readwrite');
-                tx.objectStore('sections').put({ items, savedAt: Date.now() }, yearMonth);
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('grid', 'readwrite');
+                tx.objectStore('grid').put({ items, savedAt: Date.now() }, 'main');
                 tx.oncomplete = resolve;
                 tx.onerror = () => reject(tx.error);
             });
-            await this._trimOldSections();
         } catch { }
     },
 
     async clearAll() {
         try {
             const db = await this._open();
+            var stores = ['index', 'grid'].filter(s => db.objectStoreNames.contains(s));
+            if (stores.length === 0) return;
             return new Promise(resolve => {
-                const tx = db.transaction(['index', 'sections'], 'readwrite');
-                tx.objectStore('index').clear();
-                tx.objectStore('sections').clear();
+                const tx = db.transaction(stores, 'readwrite');
+                for (var s of stores) tx.objectStore(s).clear();
                 tx.oncomplete = resolve;
                 tx.onerror = resolve;
-            });
-        } catch { }
-    },
-
-    // Elimina las entradas más antiguas si se supera MAX_SECTIONS
-    async _trimOldSections() {
-        try {
-            const db = await this._open();
-            return new Promise(resolve => {
-                const tx = db.transaction('sections', 'readwrite');
-                const store = tx.objectStore('sections');
-                const req = store.getAllKeys();
-                req.onsuccess = () => {
-                    const keys = req.result;
-                    if (keys.length <= this.MAX_SECTIONS) { resolve(); return; }
-                    // Los keys son "yyyy-MM"; ordenar descendente y borrar los más antiguos
-                    keys.sort().reverse();
-                    const toDelete = keys.slice(this.MAX_SECTIONS);
-                    for (const key of toDelete) {
-                        store.delete(key);
-                    }
-                    tx.oncomplete = resolve;
-                    tx.onerror = resolve;
-                };
-                req.onerror = () => resolve();
             });
         } catch { }
     }

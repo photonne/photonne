@@ -4,7 +4,7 @@ using Photonne.Client.Web.Models;
 namespace Photonne.Client.Web.Services;
 
 /// <summary>
-/// Persiste el índice y las secciones del timeline en IndexedDB para sobrevivir recargas de página.
+/// Persiste el índice y el grid del timeline en IndexedDB para sobrevivir recargas de página.
 /// Las operaciones de escritura son fire-and-forget (no bloquean el render).
 /// </summary>
 public class TimelinePersistenceService
@@ -16,9 +16,6 @@ public class TimelinePersistenceService
         _js = js;
     }
 
-    /// <summary>
-    /// Carga el índice guardado en IndexedDB. Devuelve null si no hay datos o falla.
-    /// </summary>
     public async Task<List<TimelineIndexItem>?> LoadIndexAsync()
     {
         try
@@ -31,9 +28,6 @@ public class TimelinePersistenceService
         }
     }
 
-    /// <summary>
-    /// Persiste el índice en IndexedDB. No bloquea: llamar con fire-and-forget.
-    /// </summary>
     public async Task SaveIndexAsync(List<TimelineIndexItem> items)
     {
         try
@@ -43,14 +37,11 @@ public class TimelinePersistenceService
         catch { }
     }
 
-    /// <summary>
-    /// Carga los items de una sección mensual desde IndexedDB. Devuelve null si no hay datos.
-    /// </summary>
-    public async Task<List<TimelineItem>?> LoadSectionAsync(string yearMonth)
+    public async Task<List<TimelineGridSection>?> LoadGridAsync()
     {
         try
         {
-            return await _js.InvokeAsync<List<TimelineItem>?>("timelineDb.loadSection", yearMonth);
+            return await _js.InvokeAsync<List<TimelineGridSection>?>("timelineDb.loadGrid");
         }
         catch
         {
@@ -58,22 +49,15 @@ public class TimelinePersistenceService
         }
     }
 
-    /// <summary>
-    /// Persiste una sección mensual en IndexedDB. No bloquea: llamar con fire-and-forget.
-    /// Elimina automáticamente secciones antiguas si se superan los 24 meses.
-    /// </summary>
-    public async Task SaveSectionAsync(string yearMonth, List<TimelineItem> items)
+    public async Task SaveGridAsync(List<TimelineGridSection> grid)
     {
         try
         {
-            await _js.InvokeVoidAsync("timelineDb.saveSection", yearMonth, items);
+            await _js.InvokeVoidAsync("timelineDb.saveGrid", grid);
         }
         catch { }
     }
 
-    /// <summary>
-    /// Borra todos los datos del timeline en IndexedDB. Llamar tras mutaciones (delete/archive).
-    /// </summary>
     public async Task ClearAllAsync()
     {
         try

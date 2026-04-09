@@ -4,7 +4,7 @@ namespace Photonne.Client.Web.Services;
 
 /// <summary>
 /// Singleton que persiste los datos del timeline entre navegaciones SPA.
-/// El índice tiene un TTL de 5 minutos; las secciones se invalidan explícitamente tras mutaciones.
+/// El índice tiene un TTL de 5 minutos; el grid y las secciones se invalidan explícitamente tras mutaciones.
 /// </summary>
 public class TimelineCache
 {
@@ -12,12 +12,15 @@ public class TimelineCache
 
     private List<TimelineIndexItem>? _index;
     private DateTime _indexFetchedAt;
-    private readonly Dictionary<string, List<TimelineItem>> _sections = new();
+    private List<TimelineGridSection>? _grid;
 
     public bool HasValidIndex =>
         _index != null && DateTime.UtcNow - _indexFetchedAt < IndexTtl;
 
     public List<TimelineIndexItem>? Index => _index;
+
+    public bool HasGrid => _grid != null;
+    public List<TimelineGridSection>? Grid => _grid;
 
     public void SetIndex(List<TimelineIndexItem> index)
     {
@@ -25,31 +28,15 @@ public class TimelineCache
         _indexFetchedAt = DateTime.UtcNow;
     }
 
-    public bool TryGetSection(string yearMonth, out List<TimelineItem> items)
+    public void SetGrid(List<TimelineGridSection> grid)
     {
-        if (_sections.TryGetValue(yearMonth, out var entry))
-        {
-            items = entry;
-            return true;
-        }
-        items = null!;
-        return false;
-    }
-
-    public void SetSection(string yearMonth, List<TimelineItem> items)
-    {
-        _sections[yearMonth] = items;
-    }
-
-    public void InvalidateSection(string yearMonth)
-    {
-        _sections.Remove(yearMonth);
+        _grid = grid;
     }
 
     public void InvalidateAll()
     {
         _index = null;
-        _sections.Clear();
+        _grid = null;
     }
 
     /// <summary>

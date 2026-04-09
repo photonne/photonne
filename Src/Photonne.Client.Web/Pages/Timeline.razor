@@ -56,77 +56,45 @@
                 <div class="timeline-content @(_density == "S" ? "density-s" : _density == "L" ? "density-l" : "")"  >
                     <MemoriesWidget OnThumbClick="OpenMemoryAsset" Test="false" />
 
-                    @if (_sections.Any())
+                    @if (_groupedGridItems.Any())
                     {
                         <div class="timeline-flat-grid">
-                        @foreach (var section in _sections)
+                        @foreach (var group in _groupedGridItems)
                         {
-                            @if (section.IsLoaded)
+                            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+                            <div class="day-header-row" id="@GetGroupId(group.Key)">
+                                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                            </div>
+                            @foreach (var item in group.Value)
                             {
-                                @foreach (var group in GetFilteredGroupsForSection(section))
-                                {
-                                    var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
-                                    <div class="day-header-row" id="@GetGroupId(group.Key)">
-                                        <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
-                                    </div>
-                                    @foreach (var asset in group.Value)
-                                    {
-                                        <div class="masonry-item"
-                                             data-day="@group.Key"
-                                             data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
-                                             data-width="@(asset.Width?.ToString() ?? "0")"
-                                             data-height="@(asset.Height?.ToString() ?? "0")">
-                                            <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
-                                                 data-asset-id="@asset.Id"
-                                                 @ontouchstart="@(e => OnCardTouchStart(e, asset))"
-                                                 @ontouchmove="OnCardTouchMove"
-                                                 @ontouchend="OnCardTouchEnd">
-                                                <AssetCard Asset="@asset" OnAssetClick="OnTimelineAssetClick" />
-                                                <div class="asset-select-checkbox" @onclick:stopPropagation="true">
-                                                    <MudCheckBox T="bool"
-                                                                 Value="@IsAssetSelected(asset.Id)"
-                                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
-                                                </div>
+                                <div class="masonry-item"
+                                     data-day="@group.Key"
+                                     data-aspect-ratio="@item.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                                     data-width="@item.Width"
+                                     data-height="@item.Height">
+                                    <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(item.Id) ? "selected" : "")"
+                                         data-asset-id="@item.Id"
+                                         @ontouchstart="@(e => OnGridItemTouchStart(e, item))"
+                                         @ontouchmove="OnCardTouchMove"
+                                         @ontouchend="OnCardTouchEnd">
+                                        <div class="asset-card-container" @onclick="@(() => OnGridItemClick(item))">
+                                            <div class="asset-placeholder"
+                                                 style="@(!string.IsNullOrEmpty(item.DominantColor) ? $"background-color:{item.DominantColor};" : "")">
                                             </div>
-                                        </div>
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                <div class="section-skeleton-row" id="@(section.SectionId)">
-                                    @if (section.GridItems != null)
-                                    {
-                                        <!-- Grid data available: render masonry-matched skeleton with correct aspect ratios and type icons -->
-                                        @foreach (var dayGroup in section.GridItems.GroupBy(i => i.Date).OrderByDescending(g => g.Key))
-                                        {
-                                            var skeletonDayDate = DateTime.ParseExact(dayGroup.Key, "yyyy-MM-dd", null);
-                                            <div class="day-header-row">
-                                                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(skeletonDayDate)</MudText>
-                                            </div>
-                                            @foreach (var gridItem in dayGroup)
+                                            <img data-src="@item.ThumbnailUrl" alt="" class="asset-card-image lazy-img" />
+                                            @if (item.Type == "Video")
                                             {
-                                                // Pre-compute an estimated width so the section has proper scroll height
-                                                // before masonry JS runs. Masonry will overwrite style.width with the exact value.
-                                                var estimatedWidth = (gridItem.AspectRatio * 180.0).ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
-                                                <div class="masonry-item skeleton-tile @(section.IsLoading ? "skeleton-tile-active" : "")"
-                                                     data-day="@dayGroup.Key"
-                                                     data-aspect-ratio="@gridItem.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
-                                                     data-width="0" data-height="0"
-                                                     style="width: @(estimatedWidth)px">
-                                                    <div class="skeleton-type-icon @(gridItem.Type == "Video" ? "skeleton-icon-video" : "skeleton-icon-photo")"></div>
+                                                <div class="asset-type-icon">
+                                                    <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
                                                 </div>
                                             }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <!-- No grid data yet: approximate uniform tiles -->
-                                        @for (int si = 0; si < Math.Min(section.EstimatedCount, 48); si++)
-                                        {
-                                            <div class="skeleton-tile @(section.IsLoading ? "skeleton-tile-active" : "")"></div>
-                                        }
-                                    }
+                                        </div>
+                                        <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                            <MudCheckBox T="bool"
+                                                         Value="@IsAssetSelected(item.Id)"
+                                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(item.Id, value)))" />
+                                        </div>
+                                    </div>
                                 </div>
                             }
                         }
@@ -151,7 +119,7 @@
             </div>
         </div>
         
-        @if (_sections.Any())
+        @if (_groupedGridItems.Any())
         {
             <div class="scrubber-overlay">
                 <div class="scrubber-track" id="scrubber-track">
@@ -170,7 +138,7 @@
                             var scrubYear = yearGroup.Key.ToString();
                             var yearPos = indexTotal > 0 ? (double)indexCumulative / indexTotal * 100 : 0;
                             var yearPosStr = yearPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                            var loadedGroupId = _groupedAssets.Keys.FirstOrDefault(k => k.StartsWith(scrubYear + "-")) ?? "";
+                            var loadedGroupId = _groupedGridItems.Keys.FirstOrDefault(k => k.StartsWith(scrubYear + "-")) ?? "";
                             <div class="scrubber-year-marker @(IsActiveYear(scrubYear) ? "active" : "")"
                                  data-group-id="@(string.IsNullOrEmpty(loadedGroupId) ? "" : GetGroupId(loadedGroupId))"
                                  style="top: @($"{yearPosStr}%")">
@@ -183,7 +151,7 @@
                     else
                     {
                         var renderedScrubYears = new HashSet<string>();
-                        @foreach (var group in _groupedAssets)
+                        @foreach (var group in _groupedGridItems)
                         {
                             var scrubYear = GetYearFromGroup(group.Key);
                             @if (!renderedScrubYears.Contains(scrubYear))
@@ -462,71 +430,6 @@
         align-content: flex-start;
     }
 
-    /* ── Synology-style skeleton: individual shimmer tiles ── */
-    .section-skeleton-row {
-        flex: 0 0 100%;
-        width: 100%;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2px;
-        padding: 40px 0 8px; /* approximate space for missing day headers */
-        box-sizing: border-box;
-        align-content: flex-start;
-    }
-
-    /* ── Approximate skeleton tiles (no grid data) ── */
-    .skeleton-tile:not(.masonry-item) {
-        /* Default density M: ~3 tiles per row */
-        flex: 0 0 calc(33.333% - 2px);
-        height: 200px;
-    }
-    .density-s .skeleton-tile:not(.masonry-item) {
-        flex-basis: calc(20% - 2px);
-        height: 120px;
-    }
-    .density-l .skeleton-tile:not(.masonry-item) {
-        flex-basis: calc(50% - 2px);
-        height: 300px;
-    }
-    @@media (min-width: 600px)  { .skeleton-tile:not(.masonry-item) { height: 200px; } .density-s .skeleton-tile:not(.masonry-item) { height: 110px; } }
-    @@media (min-width: 960px)  { .skeleton-tile:not(.masonry-item) { height: 220px; } .density-s .skeleton-tile:not(.masonry-item) { height: 120px; } }
-    @@media (min-width: 1280px) { .skeleton-tile:not(.masonry-item) { height: 240px; } .density-s .skeleton-tile:not(.masonry-item) { height: 130px; } .density-l .skeleton-tile:not(.masonry-item) { height: 320px; } }
-
-    /* ── All skeleton tiles (shared styles) ── */
-    .skeleton-tile {
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-        background: linear-gradient(90deg, #1c1c1c 25%, #262626 50%, #1c1c1c 75%);
-        background-size: 200% 100%;
-    }
-
-    /* Shimmer animation — only when section is actively loading */
-    @@keyframes skeleton-shimmer {
-        0%   { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    .skeleton-tile-active {
-        animation: skeleton-shimmer 1.5s ease-in-out infinite;
-    }
-
-    /* ── Type icons for accurate skeleton tiles ── */
-    .skeleton-type-icon {
-        position: absolute;
-        inset: 0;
-        opacity: 0.09;
-        background: center / 26px no-repeat;
-        pointer-events: none;
-    }
-    /* Photo icon (landscape image) */
-    .skeleton-icon-photo {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/%3E%3C/svg%3E");
-    }
-    /* Video icon (play circle) */
-    .skeleton-icon-video {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z'/%3E%3C/svg%3E");
-    }
-
     /* Cabecera de día: ocupa todo el ancho y fuerza nueva fila */
     .day-header-row {
         flex: 0 0 100%;
@@ -597,9 +500,75 @@
     @@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; contain-intrinsic-block-size: 380px !important; } }
     @@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; contain-intrinsic-block-size: 420px !important; } }
 
+    /* ── Inline asset card (no AssetCard component) ── */
+    .asset-card-container {
+        position: relative;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #333;
+    }
+
+    .asset-placeholder {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        background: linear-gradient(90deg, #252525 25%, #303030 50%, #252525 75%);
+        background-size: 200% 100%;
+        animation: asset-shimmer 1.6s infinite ease-in-out;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+
+    .asset-placeholder[style*="background-color"] {
+        background-image: none;
+        animation: none;
+        background-size: auto;
+    }
+
+    @@keyframes asset-shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    .asset-card-container.img-loaded .asset-placeholder {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .lazy-img {
+        opacity: 0;
+        transition: opacity 0.35s ease;
+    }
+
+    .asset-card-container.img-loaded .lazy-img {
+        opacity: 1;
+    }
+
+    .asset-card-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .asset-type-icon {
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        z-index: 2;
+        color: white;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+    }
+
     .masonry-item .asset-card-container {
         width: 100%;
         height: 100%;
+        border-radius: 0 !important;
+    }
+
+    .masonry-item .asset-placeholder {
         border-radius: 0 !important;
     }
 
@@ -1043,10 +1012,8 @@
 </MudDialog>
 
 @code {
-    private List<TimelineSection> _sections = new();
-    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
-    // Lightweight grid data (type + aspectRatio per item), loaded eagerly for accurate skeleton tiles.
-    private Dictionary<string, List<TimelineGridItem>> _gridData = new();
+    private List<TimelineGridSection> _gridSections = new();
+    private Dictionary<string, List<TimelineGridItem>> _groupedGridItems = new();
     private bool _loading = true;
     private double _lastScrollTop = 0;
     private string _activeGroup = "";
@@ -1067,31 +1034,16 @@
     private string _density = "M"; // S, M, L
     private bool _filterSheetOpen = false;
 
-    private IEnumerable<TimelineItem> AllLoadedItems =>
-        _sections.Where(s => s.IsLoaded).SelectMany(s => s.Items);
+    private IEnumerable<TimelineGridItem> AllGridItems =>
+        _gridSections.SelectMany(s => s.Items);
 
-    private IEnumerable<TimelineItem> FilteredAssets => _activeFilter switch
+    private IEnumerable<TimelineGridItem> FilteredGridItems => _activeFilter switch
     {
-        "Photos"    => AllLoadedItems.Where(a => a.Type.Equals("Image", StringComparison.OrdinalIgnoreCase)),
-        "Videos"    => AllLoadedItems.Where(a => a.Type.Equals("Video", StringComparison.OrdinalIgnoreCase)),
-        "Favorites" => AllLoadedItems.Where(a => a.IsFavorite),
-        _           => AllLoadedItems
+        "Photos" => AllGridItems.Where(a => a.Type.Equals("Image", StringComparison.OrdinalIgnoreCase)),
+        "Videos" => AllGridItems.Where(a => a.Type.Equals("Video", StringComparison.OrdinalIgnoreCase)),
+        // Favorites filter not available in grid-only mode (no IsFavorite field)
+        _ => AllGridItems
     };
-
-    private Dictionary<string, List<TimelineItem>> GetFilteredGroupsForSection(TimelineSection section)
-    {
-        var filtered = _activeFilter switch
-        {
-            "Photos"    => section.Items.Where(a => a.Type.Equals("Image", StringComparison.OrdinalIgnoreCase)),
-            "Videos"    => section.Items.Where(a => a.Type.Equals("Video", StringComparison.OrdinalIgnoreCase)),
-            "Favorites" => section.Items.Where(a => a.IsFavorite),
-            _           => section.Items.AsEnumerable()
-        };
-        return filtered
-            .OrderByDescending(a => a.FileCreatedAt)
-            .GroupBy(a => a.FileCreatedAt.Date)
-            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.FileCreatedAt).ToList());
-    }
 
     private string GetFilterLabel() => _activeFilter switch
     {
@@ -1108,12 +1060,9 @@
     {
         if (_density == density) return;
         _density = density;
+        _masonryInitialized = false;
         StateHasChanged();
         await JS.InvokeVoidAsync("localStorage.setItem", "timelineDensity", density);
-        await Task.Delay(50); // wait for CSS to apply
-        await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
-        _masonryInitialized = true;
-        foreach (var s in _sections) s.IsMasonryDone = false; // re-trigger masonry for all sections
     }
 
     private async Task SetFilter(string filter)
@@ -1121,12 +1070,11 @@
         if (_activeFilter == filter) return;
         _activeFilter = filter;
         _masonryInitialized = false;
-        foreach (var s in _sections) s.IsMasonryDone = false;
-        RebuildGroupedAssets();
+        RebuildGroupedGridItems();
         StateHasChanged();
         await Task.Delay(50);
-        if (_groupedAssets.Any() && _scrollSetupDone)
-            await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(_groupedAssets.Keys.First()));
+        if (_groupedGridItems.Any() && _scrollSetupDone)
+            await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(_groupedGridItems.Keys.First()));
     }
 
     protected override async Task OnInitializedAsync()
@@ -1140,46 +1088,52 @@
     {
         try
         {
-            if (TimelineCache.HasValidIndex && TimelineCache.Index != null)
+            // Try memory cache first (instant)
+            if (TimelineCache.HasValidIndex && TimelineCache.Index != null && TimelineCache.HasGrid && TimelineCache.Grid != null)
             {
-                // Nivel 1: render instantáneo desde caché en memoria — sin barra de carga
                 _timelineIndex = TimelineCache.Index;
-                BuildSections();
-                if (_sections.Any())
-                    await LoadSection(_sections[0]);
+                _gridSections = TimelineCache.Grid;
+                RebuildGroupedGridItems();
+                _loading = false;
                 StateHasChanged();
-
-                // Refresca el índice en segundo plano para detectar cambios
-                _ = RefreshIndexInBackgroundAsync();
+                _ = RefreshInBackgroundAsync();
+                return;
             }
-            else
+
+            // Try IndexedDB next
+            var persistedIndex = await TimelinePersistence.LoadIndexAsync();
+            var persistedGrid = await TimelinePersistence.LoadGridAsync();
+
+            if (persistedIndex != null && persistedGrid != null)
             {
-                // Nivel 2: intentar cargar desde IndexedDB antes de ir a la API
-                var persistedIndex = await TimelinePersistence.LoadIndexAsync();
-                if (persistedIndex != null)
-                {
-                    TimelineCache.SetIndex(persistedIndex);
-                    _timelineIndex = persistedIndex;
-                    BuildSections();
-                    if (_sections.Any())
-                        await LoadSection(_sections[0]);
-                    StateHasChanged();
-
-                    // Refresca desde la API en segundo plano
-                    _ = RefreshIndexInBackgroundAsync();
-                }
-                else
-                {
-                    // Arranque en frío: obtener desde la API y persistir
-                    _loading = true;
-                    _timelineIndex = await AssetService.GetTimelineIndexAsync();
-                    TimelineCache.SetIndex(_timelineIndex);
-                    _ = TimelinePersistence.SaveIndexAsync(_timelineIndex);
-                    BuildSections();
-                    if (_sections.Any())
-                        await LoadSection(_sections[0]);
-                }
+                TimelineCache.SetIndex(persistedIndex);
+                TimelineCache.SetGrid(persistedGrid);
+                _timelineIndex = persistedIndex;
+                _gridSections = persistedGrid;
+                RebuildGroupedGridItems();
+                _loading = false;
+                StateHasChanged();
+                _ = RefreshInBackgroundAsync();
+                return;
             }
+
+            // Cold start: fetch from API
+            _loading = true;
+            StateHasChanged();
+
+            var indexTask = AssetService.GetTimelineIndexAsync();
+            var gridTask = AssetService.GetTimelineGridAsync();
+            await Task.WhenAll(indexTask, gridTask);
+
+            _timelineIndex = indexTask.Result;
+            _gridSections = gridTask.Result;
+
+            TimelineCache.SetIndex(_timelineIndex);
+            TimelineCache.SetGrid(_gridSections);
+            _ = TimelinePersistence.SaveIndexAsync(_timelineIndex);
+            _ = TimelinePersistence.SaveGridAsync(_gridSections);
+
+            RebuildGroupedGridItems();
         }
         catch (Exception ex)
         {
@@ -1188,70 +1142,36 @@
         finally
         {
             _loading = false;
-            // Load grid data in background — gives skeleton tiles correct aspect ratios & type icons
-            _ = LoadGridInBackgroundAsync();
         }
     }
 
-    private async Task LoadGridInBackgroundAsync()
+    private async Task RefreshInBackgroundAsync()
     {
         try
         {
-            var gridSections = await AssetService.GetTimelineGridAsync();
+            var indexTask = AssetService.GetTimelineIndexAsync();
+            var gridTask = AssetService.GetTimelineGridAsync();
+            await Task.WhenAll(indexTask, gridTask);
             if (_isDisposed) return;
 
-            foreach (var gs in gridSections)
-                _gridData[gs.YearMonth] = gs.Items;
-
-            // Apply grid items to sections that are still in skeleton state
-            var updated = false;
-            foreach (var section in _sections)
-            {
-                if (!section.IsLoaded && section.GridItems == null
-                    && _gridData.TryGetValue(section.YearMonth, out var items))
-                {
-                    section.GridItems = items;
-                    section.IsSkeletonMasonryDone = false;
-                    updated = true;
-                }
-            }
-
-            if (updated && !_isDisposed)
-                StateHasChanged();
-        }
-        catch
-        {
-            // Grid data is optional — skeleton falls back to approximate tiles
-        }
-    }
-
-    private async Task RefreshIndexInBackgroundAsync()
-    {
-        try
-        {
-            var freshIndex = await AssetService.GetTimelineIndexAsync();
-            if (_isDisposed) return;
+            var freshIndex = indexTask.Result;
+            var freshGrid = gridTask.Result;
 
             if (!TimelineCache.IndexChangedFrom(freshIndex))
             {
-                // Sin cambios — renovar solo el TTL (sin escribir en IndexedDB)
                 TimelineCache.SetIndex(freshIndex);
                 return;
             }
 
-            var changedMonths = TimelineCache.GetChangedMonths(freshIndex);
             TimelineCache.SetIndex(freshIndex);
+            TimelineCache.SetGrid(freshGrid);
             _ = TimelinePersistence.SaveIndexAsync(freshIndex);
-            foreach (var ym in changedMonths)
-                TimelineCache.InvalidateSection(ym);
+            _ = TimelinePersistence.SaveGridAsync(freshGrid);
 
             _timelineIndex = freshIndex;
-            BuildSections();
-
-            // Recargar las secciones visibles que hayan cambiado
-            var toReload = _sections.Where(s => changedMonths.Contains(s.YearMonth)).ToList();
-            if (toReload.Any())
-                await Task.WhenAll(toReload.Select(s => LoadSection(s)));
+            _gridSections = freshGrid;
+            _masonryInitialized = false;
+            RebuildGroupedGridItems();
 
             if (!_isDisposed)
                 StateHasChanged();
@@ -1259,144 +1179,6 @@
         catch
         {
             // Fallo silencioso — los datos en caché siguen siendo válidos
-        }
-    }
-
-    private void BuildSections()
-    {
-        _sections = _timelineIndex
-            .GroupBy(i => new { i.Date.Year, i.Date.Month })
-            .OrderByDescending(g => g.Key.Year * 100 + g.Key.Month)
-            .Select(g =>
-            {
-                var start = new DateTime(g.Key.Year, g.Key.Month, 1);
-                var count = g.Sum(i => i.Count);
-                var ym = $"{g.Key.Year:D4}-{g.Key.Month:D2}";
-                _gridData.TryGetValue(ym, out var gridItems);
-                return new TimelineSection
-                {
-                    YearMonth = ym,
-                    StartDate = start,
-                    EndDate = start.AddMonths(1),
-                    EstimatedCount = count,
-                    EstimatedHeight = EstimateSectionHeight(count),
-                    GridItems = gridItems
-                };
-            })
-            .ToList();
-        _scrollSetupDone = false;
-        _masonryInitialized = false;
-        _groupedAssets = new();
-    }
-
-    private int EstimateSectionHeight(int count)
-    {
-        var rowHeight = _density switch { "S" => 110, "L" => 310, _ => 185 };
-        var itemsPerRow = _density switch { "S" => 5, "L" => 2, _ => 3 };
-        var rows = (int)Math.Ceiling((double)count / itemsPerRow);
-        var headerEstimate = (int)Math.Ceiling(count / 6.0) * 36;
-        return Math.Max(160, rows * (rowHeight + 4) + headerEstimate + 8);
-    }
-
-    private async Task LoadSection(TimelineSection section, CancellationToken ct = default)
-    {
-        if (section.IsLoaded || section.IsLoading) return;
-
-        // Nivel 1: caché en memoria — instantáneo
-        if (TimelineCache.TryGetSection(section.YearMonth, out var cachedItems))
-        {
-            section.Items = cachedItems;
-            section.IsLoaded = true;
-            RebuildGroupedAssets();
-            StateHasChanged();
-            return;
-        }
-
-        // Nivel 2: IndexedDB — sin spinner, sin red
-        ct.ThrowIfCancellationRequested();
-        var persistedItems = await TimelinePersistence.LoadSectionAsync(section.YearMonth);
-        if (ct.IsCancellationRequested) return;
-
-        if (persistedItems != null)
-        {
-            TimelineCache.SetSection(section.YearMonth, persistedItems);
-            section.Items = persistedItems;
-            section.IsLoaded = true;
-            RebuildGroupedAssets();
-            StateHasChanged();
-            return;
-        }
-
-        // Nivel 3: API — mostrar spinner
-        section.IsLoading = true;
-        StateHasChanged();
-        var cancelled = false;
-        try
-        {
-            var result = await AssetService.GetTimelineSectionAsync(section.StartDate, section.EndDate, pageSize: 500, ct);
-            section.Items = result.Items;
-            section.IsLoaded = true;
-            section.IsSkeletonMasonryDone = false; // masonry must re-run with real data
-            TimelineCache.SetSection(section.YearMonth, result.Items);
-            _ = TimelinePersistence.SaveSectionAsync(section.YearMonth, result.Items);
-        }
-        catch (OperationCanceledException)
-        {
-            // El usuario siguió haciendo scroll — resetear para que se cargue al parar.
-            cancelled = true;
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error cargando sección: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            section.IsLoading = false;
-            if (!cancelled)
-            {
-                RebuildGroupedAssets();
-                StateHasChanged();
-            }
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnVirtualScrollIdle(double scrollTop)
-    {
-        _lastScrollTop = scrollTop;
-
-        // Cancel any in-progress section loading triggered by a previous scroll position.
-        _scrollLoadCts?.Cancel();
-        _scrollLoadCts?.Dispose();
-        _scrollLoadCts = new CancellationTokenSource();
-        var ct = _scrollLoadCts.Token;
-
-        try
-        {
-            await LoadVisibleSectionsAsync(scrollTop, ct);
-        }
-        catch (OperationCanceledException) { /* User scrolled away — nothing to do */ }
-    }
-
-    private async Task LoadVisibleSectionsAsync(double scrollTop, CancellationToken ct = default)
-    {
-        var unloadedIds = _sections
-            .Where(s => !s.IsLoaded && !s.IsLoading)
-            .Select(s => s.SectionId)
-            .ToList();
-        if (!unloadedIds.Any()) return;
-
-        ct.ThrowIfCancellationRequested();
-
-        var visibleIds = await JS.InvokeAsync<List<string>>("timelineHelpers.getVisibleSectionIds", unloadedIds);
-        var toLoad = _sections.Where(s => visibleIds.Contains(s.SectionId)).ToList();
-
-        // Load sections one at a time so a cancellation mid-scrub aborts immediately
-        // rather than having N parallel HTTP requests all fighting for resources.
-        foreach (var section in toLoad)
-        {
-            ct.ThrowIfCancellationRequested();
-            await LoadSection(section, ct);
         }
     }
 
@@ -1426,7 +1208,6 @@
     private bool _isDisposed = false;
     private bool _masonryInitialized = false;
     private List<TimelineIndexItem> _timelineIndex = new();
-    private CancellationTokenSource? _scrollLoadCts;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -1438,7 +1219,7 @@
             if (_objRef == null) _objRef = DotNetObjectReference.Create(this);
         }
 
-        if (!_groupedAssets.Any()) return;
+        if (!_groupedGridItems.Any()) return;
 
         if (!_scrollSetupDone)
         {
@@ -1446,12 +1227,10 @@
             _groupMapNeedsUpdate = false;
             await SetupScrollListener();
             await InitScrubber();
-            if (_objRef != null)
-                await JS.InvokeVoidAsync("timelineVirtualScroll.init", _objRef);
 
-            // Initialise the scroll-aware image loader and register any already-rendered images
+            // Initialise the scroll-aware image loader and register all images
             await JS.InvokeVoidAsync("imageLoadManager.init");
-            await JS.InvokeVoidAsync("imageLoadManager.observeAll");
+            await JS.InvokeVoidAsync("timelineVirtualScroll.init", _objRef);
 
             if (_isDisposed) return;
             var dateParam = GetDateFromQuery();
@@ -1462,59 +1241,17 @@
         {
             _groupMapNeedsUpdate = false;
             await JS.InvokeVoidAsync("scrubberHelpers.updateGroupMap", BuildGroupData());
-            // Update scroll listener group list with newly loaded groups
-            var groupIds = _groupedAssets.Keys.Select(GetGroupId).ToList();
+            var groupIds = _groupedGridItems.Keys.Select(GetGroupId).ToList();
             await JS.InvokeVoidAsync("scrollHelpers.updateGroupIds", groupIds);
         }
 
         if (_isDisposed) return;
 
-        // Run masonry for skeleton sections that just received grid data
-        // (masonry-item tiles with correct data-aspect-ratio are now in the DOM)
-        var skeletonSectionsNeedingMasonry = _sections
-            .Where(s => !s.IsLoaded && s.GridItems != null && !s.IsSkeletonMasonryDone)
-            .ToList();
-        if (skeletonSectionsNeedingMasonry.Any() && _masonryInitialized)
+        // Single masonry pass: run once after grid renders, re-run on density/filter change
+        if (!_masonryInitialized && _groupedGridItems.Any())
         {
-            await Task.Delay(50); // allow DOM to settle
-            if (_isDisposed) return;
-            var skeletonDayKeys = skeletonSectionsNeedingMasonry
-                .SelectMany(s => s.GridItems!.Select(i => i.Date).Distinct().Select(GetGroupId))
-                .ToList();
-            foreach (var s in skeletonSectionsNeedingMasonry)
-                s.IsSkeletonMasonryDone = true;
-            if (skeletonDayKeys.Any())
-                await JS.InvokeVoidAsync("masonryHelpers.updateMasonryForGroups", skeletonDayKeys);
-            if (!_isDisposed)
-                await JS.InvokeVoidAsync("imageLoadManager.observeAll");
-        }
-
-        // Run masonry for sections that just loaded
-        var sectionsNeedingMasonry = _sections.Where(s => s.IsLoaded && !s.IsMasonryDone).ToList();
-        if (sectionsNeedingMasonry.Any())
-        {
-            await Task.Delay(300);
-            if (_isDisposed) return;
-
-            var groupIds = sectionsNeedingMasonry
-                .SelectMany(s => GetFilteredGroupsForSection(s).Keys)
-                .Select(GetGroupId)
-                .ToList();
-
-            foreach (var s in sectionsNeedingMasonry)
-                s.IsMasonryDone = true;
-
-            if (!_masonryInitialized)
-            {
-                _masonryInitialized = true;
-                await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
-            }
-            else if (groupIds.Any())
-            {
-                await JS.InvokeVoidAsync("masonryHelpers.updateMasonryForGroups", groupIds);
-            }
-
-            // Register new images from the loaded sections with the lazy loader
+            _masonryInitialized = true;
+            await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
             if (!_isDisposed)
                 await JS.InvokeVoidAsync("imageLoadManager.observeAll");
         }
@@ -1546,11 +1283,11 @@
             return result;
         }
 
-        // Fallback: use loaded groups
-        var totalAssets = _groupedAssets.Values.Sum(g => g.Count);
+        // Fallback: use loaded grid groups
+        var totalAssets = _groupedGridItems.Values.Sum(g => g.Count);
         var fallbackCumulative = 0;
         var fallbackResult = new List<object>();
-        foreach (var kvp in _groupedAssets)
+        foreach (var kvp in _groupedGridItems)
         {
             fallbackResult.Add(new
             {
@@ -1577,41 +1314,20 @@
     
     private async Task ScrollToDate(string dateString)
     {
-        Console.WriteLine($"[TIMELINE] ScrollToDate requested for: {dateString}");
         if (DateTime.TryParse(dateString, out var targetDate))
         {
-            // Si el timeline aún no está cargado, esperar un poco
-            int attempts = 0;
-            while (!_groupedAssets.Any() && attempts < 20) // Aumentar intentos
-            {
-                Console.WriteLine($"[TIMELINE] Waiting for assets to load... attempt {attempts}");
-                await Task.Delay(500);
-                attempts++;
-            }
+            if (!_groupedGridItems.Any()) return;
 
-            if (!_groupedAssets.Any())
-            {
-                Console.WriteLine("[TIMELINE] No assets found after waiting.");
-                return;
-            }
-
-            // Buscar el grupo que contiene esta fecha (por día)
-            var targetGroup = _groupedAssets.Keys.FirstOrDefault(g => 
+            var targetGroup = _groupedGridItems.Keys.FirstOrDefault(g =>
             {
                 var groupDate = GetDayDateFromGroup(g);
                 return groupDate.Date == targetDate.Date;
             });
-            
+
             if (!string.IsNullOrEmpty(targetGroup))
             {
-                Console.WriteLine($"[TIMELINE] Target group found: {targetGroup}. Scrolling...");
-                // Esperar un poco más para asegurar que el DOM esté listo y el masonry inicializado
-                await Task.Delay(1500); // Un poco más de tiempo para estar seguros
+                await Task.Delay(300); // allow masonry to settle
                 await ScrollToGroup(targetGroup);
-            }
-            else
-            {
-                Console.WriteLine($"[TIMELINE] Target group NOT found for date: {targetDate.Date}");
             }
         }
     }
@@ -1622,26 +1338,33 @@
         {
             _objRef = DotNetObjectReference.Create(this);
         }
-        var groupIds = _groupedAssets.Keys.Select(GetGroupId).ToList();
+        var groupIds = _groupedGridItems.Keys.Select(GetGroupId).ToList();
         await JS.InvokeVoidAsync("scrollHelpers.onWindowScroll", _objRef, groupIds);
+    }
+
+    [JSInvokable]
+    public Task OnVirtualScrollIdle(double scrollTop)
+    {
+        _lastScrollTop = scrollTop;
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
     public void OnScrollUpdated(string activeGroupId)
     {
-        var groupName = _groupedAssets.Keys.FirstOrDefault(k => GetGroupId(k) == activeGroupId);
+        var groupName = _groupedGridItems.Keys.FirstOrDefault(k => GetGroupId(k) == activeGroupId);
         if (!string.IsNullOrEmpty(groupName))
             _activeGroup = groupName;
     }
 
     private double GetGroupPosition(string groupName)
     {
-        if (!_groupedAssets.Any()) return 0;
-        var totalAssets = _groupedAssets.Values.Sum(g => g.Count);
+        if (!_groupedGridItems.Any()) return 0;
+        var totalAssets = _groupedGridItems.Values.Sum(g => g.Count);
         if (totalAssets == 0) return 0;
 
         var cumulative = 0;
-        foreach (var kvp in _groupedAssets)
+        foreach (var kvp in _groupedGridItems)
         {
             if (kvp.Key == groupName)
                 return (double)cumulative / totalAssets * 100;
@@ -1660,40 +1383,24 @@
         // Full reload (called after mutations like delete/archive)
         TimelineCache.InvalidateAll();
         _ = TimelinePersistence.ClearAllAsync();
-        foreach (var s in _sections) { s.IsLoaded = false; s.IsLoading = false; s.Items = new(); s.IsMasonryDone = false; }
-        _groupedAssets = new();
+        _groupedGridItems = new();
+        _gridSections = new();
         _activeGroup = "";
         _scrollSetupDone = false;
         _masonryInitialized = false;
         _loading = true;
         StateHasChanged();
-        try
-        {
-            _timelineIndex = await AssetService.GetTimelineIndexAsync();
-            TimelineCache.SetIndex(_timelineIndex);
-            _ = TimelinePersistence.SaveIndexAsync(_timelineIndex);
-            BuildSections();
-            if (_sections.Any())
-                await LoadSection(_sections[0]);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al cargar timeline: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
+        await InitializeTimelineAsync();
     }
 
-    private void RebuildGroupedAssets()
+    private void RebuildGroupedGridItems()
     {
-        _groupedAssets = FilteredAssets
-            .OrderByDescending(a => a.FileCreatedAt)
-            .GroupBy(a => a.FileCreatedAt.Date)
-            .ToDictionary(g => g.Key.ToString("yyyy-MM-dd"), g => g.OrderByDescending(a => a.FileCreatedAt).ToList());
-        if (_groupedAssets.Any())
-            _activeGroup = _groupedAssets.Keys.First();
+        _groupedGridItems = FilteredGridItems
+            .GroupBy(a => a.Date)
+            .OrderByDescending(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        if (_groupedGridItems.Any())
+            _activeGroup = _groupedGridItems.Keys.First();
         _groupMapNeedsUpdate = true;
     }
     
@@ -1712,18 +1419,9 @@
             return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
     }
 
-    private void OpenAsset(TimelineItem asset)
+    private void OpenAsset(Guid assetId)
     {
-        AssetListNavigationState.SetList(AllLoadedItems.ToList(), albumId: null);
-        if (asset.SyncStatus == AssetSyncStatus.Synced)
-        {
-            Navigation.NavigateTo($"/asset/{asset.Id}");
-        }
-        else
-        {
-            var encodedPath = System.Net.WebUtility.UrlEncode(asset.FullPath);
-            Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}");
-        }
+        Navigation.NavigateTo($"/asset/{assetId}");
     }
 
     private void OpenMemoryAsset(MemoryClickArgs args)
@@ -1746,33 +1444,31 @@
     private double _touchStartX;
     private double _touchStartY;
 
-    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    private async Task OnGridItemTouchStart(TouchEventArgs e, TimelineGridItem item)
     {
         if (e.Touches.Length == 0) return;
         _touchStartX = e.Touches[0].ClientX;
         _touchStartY = e.Touches[0].ClientY;
         _longPressHandled = false;
 
-        // Si ya estamos en modo selección, el dedo inicia el arrastre directamente
         if (_selectionMode)
         {
-            var selectMode = !IsAssetSelected(asset.Id);
-            _longPressHandled = true; // suprime el click sintético post-touch
-            ToggleAssetSelection(asset.Id, selectMode);
+            var selectMode = !IsAssetSelected(item.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection(item.Id, selectMode);
             await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
             if (_objRef != null)
                 await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
             return;
         }
 
-        // Long press → entrar en modo selección y arrancar arrastre
         _longPressTimer?.Dispose();
         _longPressTimer = new System.Threading.Timer(_ =>
         {
             InvokeAsync(async () =>
             {
                 _longPressHandled = true;
-                ToggleAssetSelection(asset.Id, true);
+                ToggleAssetSelection(item.Id, true);
                 await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
                 if (_objRef != null)
                     await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
@@ -1811,9 +1507,8 @@
     }
     // ───────────────────────────────────────────────────────────────────────
 
-    private void OnTimelineAssetClick(TimelineItem asset)
+    private void OnGridItemClick(TimelineGridItem item)
     {
-        // Suprimir el click sintético que el navegador emite tras un long press
         if (_longPressHandled)
         {
             _longPressHandled = false;
@@ -1822,11 +1517,11 @@
 
         if (_selectionMode)
         {
-            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            ToggleAssetSelection(item.Id, !IsAssetSelected(item.Id));
             return;
         }
 
-        OpenAsset(asset);
+        OpenAsset(item.Id);
     }
 
     private void ToggleAssetSelection(Guid assetId, bool selected)
@@ -1864,7 +1559,7 @@
 
     private void ToggleSelectAll()
     {
-        var allItems = AllLoadedItems.ToList();
+        var allItems = AllGridItems.ToList();
         if (_selectedAssetIds.Count == allItems.Count && allItems.Any())
         {
             _selectedAssetIds.Clear();
@@ -2133,7 +1828,7 @@
         }
 
         var selectedCount = _selectedAssetIds.Count;
-        var allSelected = AllLoadedItems.Any() && selectedCount == AllLoadedItems.Count();
+        var allSelected = AllGridItems.Any() && selectedCount == AllGridItems.Count();
 
         LayoutService.SetCustomNavbar(
             @<text>
@@ -2141,7 +1836,7 @@
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
                 <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
-                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!AllLoadedItems.Any())" OnClick="ToggleSelectAll" />
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!AllGridItems.Any())" OnClick="ToggleSelectAll" />
                 </MudTooltip>
 
                 @* Botones individuales — solo desktop *@
@@ -2226,9 +1921,6 @@
     public void Dispose()
     {
         _isDisposed = true;
-        _scrollLoadCts?.Cancel();
-        _scrollLoadCts?.Dispose();
-        _scrollLoadCts = null;
         _objRef?.Dispose();
         _longPressTimer?.Dispose();
         JS.InvokeVoidAsync("scrollHelpers.disableTimelineScroll");

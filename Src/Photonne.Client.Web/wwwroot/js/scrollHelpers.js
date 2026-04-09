@@ -76,7 +76,7 @@ window.scrollHelpers = {
         }
     },
     onWindowScroll: function (dotnetHelper, groupIds) {
-        // Remover listener anterior si existe
+        // Remove previous listener
         if (window._timelineScrollHandler) {
             const oldContainer = window._timelineScrollContainer || window;
             if (oldContainer !== window) {
@@ -90,36 +90,46 @@ window.scrollHelpers = {
         window._timelineScrollContainer = scrollContainer;
 
         let scrollDebounceTimer = null;
+        let rafPending = false;
 
         window._timelineGroupIds = groupIds;
+
         const handleScroll = () => {
-            let activeId = "";
+            // Throttle to one update per animation frame (P0)
+            if (rafPending) return;
+            rafPending = true;
+            requestAnimationFrame(() => {
+                rafPending = false;
 
-            for (const id of window._timelineGroupIds) {
-                const element = document.getElementById(id);
-                if (element) {
-                    const rect = element.getBoundingClientRect();
-                    if (scrollContainer === window) {
-                        if (rect.top <= 150) activeId = id;
-                    } else {
-                        const containerRect = scrollContainer.getBoundingClientRect();
-                        if (rect.top - containerRect.top <= 150) activeId = id;
-                    }
+                // Update scrubber thumb position from scroll % (no DOM queries needed)
+                if (window.scrubberHelpers) {
+                    window.scrubberHelpers.updateThumb(scrollContainer);
                 }
-            }
 
-            // Actualizar thumb y year markers del scrubber directamente en JS (sin round-trip a Blazor)
-            if (window.scrubberHelpers) {
-                window.scrubberHelpers.updateThumb(scrollContainer);
-                window.scrubberHelpers.updateActiveMarker(activeId);
-            }
-
-            // Notificar a Blazor solo para mantener _activeGroup sincronizado (sin StateHasChanged)
-            clearTimeout(scrollDebounceTimer);
-            scrollDebounceTimer = setTimeout(() => {
-                dotnetHelper.invokeMethodAsync('OnScrollUpdated', activeId)
-                    .catch(err => console.error('Error updating scroll:', err));
-            }, 200);
+                // Debounce Blazor notification (only for _activeGroup sync, no StateHasChanged)
+                clearTimeout(scrollDebounceTimer);
+                scrollDebounceTimer = setTimeout(() => {
+                    // Determine active group using scrubber's _groupMap (binary search, no DOM queries)
+                    var activeId = '';
+                    if (window.scrubberHelpers && window.scrubberHelpers._groupMap.length > 0) {
+                        var sc = scrollContainer === window ? document.documentElement : scrollContainer;
+                        var scrollable = sc.scrollHeight - sc.clientHeight;
+                        var pct = scrollable > 0 ? sc.scrollTop / scrollable : 0;
+                        for (var i = 0; i < window.scrubberHelpers._groupMap.length; i++) {
+                            if (window.scrubberHelpers._groupMap[i].position <= pct + 0.001) {
+                                activeId = window.scrubberHelpers._groupMap[i].id;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if (window.scrubberHelpers) {
+                        window.scrubberHelpers.updateActiveMarker(activeId);
+                    }
+                    dotnetHelper.invokeMethodAsync('OnScrollUpdated', activeId)
+                        .catch(function () {});
+                }, 200);
+            });
         };
 
         if (scrollContainer === window) {
@@ -129,7 +139,7 @@ window.scrollHelpers = {
         }
         window._timelineScrollHandler = handleScroll;
 
-        // Estado inicial
+        // Initial state
         handleScroll();
     },
     updateScrollProgress: function () {},
@@ -328,47 +338,6 @@ window.scrubberHelpers = {
         if (scrollable <= 0) return;
         var pct = sc.scrollTop / scrollable;
         this._setThumbPercent(pct);
-        this._updateLabelFromDOM(sc);
-    },
-
-    _updateLabelFromDOM: function (sc) {
-        if (!this._label || !this._groupMap.length) return;
-        var scRect = sc.getBoundingClientRect();
-        var headers = document.querySelectorAll('.day-header-row[id^="group-"]');
-
-        // Find the header whose top is closest to (but at or past) the container's top edge.
-        // We look for maximum (rect.top - scRect.top) that is still <= 0.
-        // No DOM order assumed — all headers are checked.
-        var activeId = null;
-        var bestRelTop = -Infinity;
-
-        for (var i = 0; i < headers.length; i++) {
-            var relTop = headers[i].getBoundingClientRect().top - scRect.top;
-            if (relTop <= 0 && relTop > bestRelTop) {
-                bestRelTop = relTop;
-                activeId = headers[i].id;
-            }
-        }
-
-        var label = null;
-        if (activeId) {
-            for (var j = 0; j < this._groupMap.length; j++) {
-                if (this._groupMap[j].id === activeId) {
-                    label = this._groupMap[j].label;
-                    break;
-                }
-            }
-            if (!label) {
-                var match = activeId.match(/^group-(\d{4})-(\d{2})-\d{2}$/);
-                if (match) {
-                    var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-                    label = months[parseInt(match[2], 10) - 1] + ' ' + match[1];
-                }
-            }
-        }
-
-        if (label) this._label.textContent = label;
-        else if (!activeId) this._label.textContent = this._groupMap[0].label;
     },
 
     updateGroupMap: function (groupData) {
@@ -573,34 +542,15 @@ window.focusElement = function (element) {
     if (element) element.focus();
 };
 
-window.timelineHelpers = {
-    getVisibleSectionIds: function (sectionIds) {
-        var sc = document.getElementById('timeline-scroll-container');
-        if (!sc) return [];
-        var buffer = 1200;
-        var viewTop = sc.scrollTop - buffer;
-        var viewBottom = sc.scrollTop + sc.clientHeight + buffer;
-        var visible = [];
-        for (var i = 0; i < sectionIds.length; i++) {
-            var el = document.getElementById(sectionIds[i]);
-            if (!el) continue;
-            var elTop = el.offsetTop;
-            var elBottom = elTop + el.offsetHeight;
-            if (elBottom >= viewTop && elTop <= viewBottom) {
-                visible.push(sectionIds[i]);
-            }
-        }
-        return visible;
-    }
-};
+window.timelineHelpers = {};
 
 window.timelineVirtualScroll = {
     _dotNetRef: null,
     _lastScrollTop: 0,
     _lastScrollTime: 0,
     _idleTimer: null,
-    _scrollDirection: 0, // +1 = down, -1 = up
-    VELOCITY_THRESHOLD: 600, // px/s — above this = fast scroll, show skeleton
+    _scrollDirection: 0,
+    VELOCITY_THRESHOLD: 600,
 
     init: function (dotNetRef) {
         this._dotNetRef = dotNetRef;
@@ -614,34 +564,26 @@ window.timelineVirtualScroll = {
 
     _onScroll: function () {
         var sc = document.getElementById('timeline-scroll-container');
-        if (!sc || !this._dotNetRef) return;
+        if (!sc) return;
         var now = performance.now();
         var dt = now - this._lastScrollTime;
         var delta = sc.scrollTop - this._lastScrollTop;
         var velocity = dt > 0 ? (Math.abs(delta) / dt) * 1000 : 0;
 
-        // Track direction for directional prefetch
         if (delta !== 0) this._scrollDirection = delta > 0 ? 1 : -1;
 
         this._lastScrollTop = sc.scrollTop;
         this._lastScrollTime = now;
 
-        // Notify image manager that scroll is active (pauses thumbnail loading)
+        // Pause thumbnail loading during scroll
         if (window.imageLoadManager) window.imageLoadManager.onScrollStart();
 
         clearTimeout(this._idleTimer);
         var self = this;
-        // Always debounce — never invoke Blazor inline on every scroll event.
-        // Slow scroll: 150ms; fast scroll: 300ms. Only the final resting position fires.
         var delay = velocity < this.VELOCITY_THRESHOLD ? 150 : 300;
         this._idleTimer = setTimeout(function () {
-            var sc2 = document.getElementById('timeline-scroll-container');
-            if (sc2 && self._dotNetRef) {
-                // Resume image loading: pass scroll direction for directional prefetch
-                if (window.imageLoadManager) window.imageLoadManager.onScrollIdle(self._scrollDirection);
-                self._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc2.scrollTop)
-                    .catch(function () {});
-            }
+            // Resume image loading on scroll idle
+            if (window.imageLoadManager) window.imageLoadManager.onScrollIdle(self._scrollDirection);
         }, delay);
     },
 

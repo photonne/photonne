@@ -1,25 +1,20 @@
 
-<div class="asset-card-container" @ref="_containerRef" @onclick="@OnClick" @onmouseover="HandleMouseOver" @onmouseleave="HandleMouseLeave">
+<div class="asset-card-container @(_imgLoaded ? "img-loaded" : "")" @ref="_containerRef" @onclick="@OnClick" @onmouseover="HandleMouseOver" @onmouseleave="HandleMouseLeave">
     <style>
         .asset-card-container {
             position: relative;
             cursor: pointer;
             width: 100%;
-            height: 100%;
             overflow: hidden;
-            transition: opacity 0.2s;
             background-color: #333;
             border-radius: 8px;
-        }
-        
-        /* Si no tiene altura definida, usar aspect-ratio 1:1 por defecto */
-        .asset-card-container:not([style*="height"]) {
             aspect-ratio: 1 / 1;
         }
         .asset-card-container:hover {
             opacity: 1;
         }
         .asset-card-image {
+            display: block;
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -31,7 +26,6 @@
             z-index: 0;
             border-radius: 8px;
             overflow: hidden;
-            /* Default: animated shimmer (no dominant color available) */
             background: linear-gradient(90deg, #252525 25%, #303030 50%, #252525 75%);
             background-size: 200% 100%;
             animation: asset-shimmer 1.6s infinite ease-in-out;
@@ -41,7 +35,6 @@
             pointer-events: none;
             transition: opacity 0.25s ease;
         }
-        /* When dominant color is set via inline style, disable the shimmer animation */
         .asset-placeholder[style*="background-color"] {
             background-image: none;
             animation: none;
@@ -51,16 +44,10 @@
             0%   { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
-        .asset-placeholder-icon {
-            opacity: 0.15;
-            color: white;
-        }
-        /* Once JS sets img-loaded on the container: hide placeholder, show image */
         .asset-card-container.img-loaded .asset-placeholder {
             opacity: 0;
             pointer-events: none;
         }
-        /* Lazy image — starts transparent, fades in on load */
         .lazy-img {
             opacity: 0;
             transition: opacity 0.35s ease;
@@ -88,16 +75,19 @@
             position: relative;
             z-index: 0;
         }
+        /* Bottom overlay: gradient + filename, visible on hover */
         .asset-card-overlay {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 8px;
+            padding: 6px 8px;
+            padding-right: 40px;
             background: linear-gradient(transparent, rgba(0,0,0,0.7));
             opacity: 0;
             transition: opacity 0.2s;
-            z-index: 2;
+            z-index: 3;
+            pointer-events: none;
         }
         .asset-card-container:hover .asset-card-overlay {
             opacity: 1;
@@ -118,21 +108,21 @@
             filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
             z-index: 2;
         }
+        /* Favorite button: always visible */
         .favorite-btn {
             position: absolute;
-            bottom: 2px;
-            right: 2px;
-            z-index: 3;
-            opacity: 0;
-            transition: opacity 0.2s;
-            color: white;
-            filter: drop-shadow(0 0 2px rgba(0,0,0,0.6));
+            bottom: 4px;
+            right: 4px;
+            z-index: 5;
+            color: rgba(255,255,255,0.7);
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
+            transition: color 0.2s;
         }
-        .asset-card-container:hover .favorite-btn {
-            opacity: 1;
+        .favorite-btn:hover {
+            color: white;
         }
         .favorite-btn.is-favorite {
-            opacity: 1;
+            color: white;
         }
         .asset-pending {
             opacity: 0.6;
@@ -148,39 +138,33 @@
             border-radius: 8px;
         }
     </style>
-    
-    <div class="@(Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied ? "asset-pending" : "") h-100 w-100">
-        @if ((Asset.SyncStatus == AssetSyncStatus.Synced || Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied)
-             && !(Asset.IsLocalOnly && string.IsNullOrEmpty(Asset.LocalThumbnailUrl)))
+
+    @if ((Asset.SyncStatus == AssetSyncStatus.Synced || Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied)
+         && !(Asset.IsLocalOnly && string.IsNullOrEmpty(Asset.LocalThumbnailUrl)))
+    {
+        <div class="asset-placeholder"
+             style="@(!string.IsNullOrEmpty(Asset.DominantColor) ? $"background-color:{Asset.DominantColor};" : "")">
+        </div>
+        @if (Asset.Type == "Video")
         {
-            <!-- Shimmer placeholder: visible until JS marks container with img-loaded.
-                 When DominantColor is known, the placeholder shows the real color of the photo
-                 instead of a generic shimmer. -->
-            <div class="asset-placeholder"
-                 style="@(!string.IsNullOrEmpty(Asset.DominantColor) ? $"background-color:{Asset.DominantColor};" : "")">
-                <span class="asset-placeholder-icon">
-                    <MudIcon Icon="@(Asset.Type == "Video" ? Icons.Material.Filled.PlayCircle : Icons.Material.Filled.Image)" Size="Size.Large" />
-                </span>
+            <div class="video-preview-container @(Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied ? "asset-pending" : "")">
+                <img src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail" @onload="OnImageLoaded" @onerror="OnImageLoaded" />
+                <video @ref="_videoRef" src="@_contentUrl" muted loop class="asset-card-image preview-video" preload="metadata" playsinline></video>
             </div>
-            @if (Asset.Type == "Video")
-            {
-                <div class="video-preview-container">
-                    <img data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail lazy-img" />
-                    <video @ref="_videoRef" src="@_contentUrl" muted loop class="asset-card-image preview-video" preload="metadata" playsinline></video>
-                </div>
-            }
-            else
-            {
-                <img data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image lazy-img" />
-            }
         }
         else
         {
-            <div class="d-flex align-center justify-center w-100 h-100">
-                <MudIcon Icon="@GetAssetIcon(Asset.Type)" Size="Size.Large" Color="Color.Inherit" />
-            </div>
+            <img src="@_thumbnailUrl" alt="@Asset.FileName"
+                 class="asset-card-image @(Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied ? "asset-pending" : "")"
+                 @onload="OnImageLoaded" @onerror="OnImageLoaded" />
         }
-    </div>
+    }
+    else
+    {
+        <div class="d-flex align-center justify-center w-100 h-100">
+            <MudIcon Icon="@GetAssetIcon(Asset.Type)" Size="Size.Large" Color="Color.Inherit" />
+        </div>
+    }
 
     <div class="sync-status-icon">
         @if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Synced)
@@ -238,14 +222,14 @@
     {
         <span @onclick:stopPropagation="true" class="favorite-btn @(Asset.IsFavorite ? "is-favorite" : "")">
             <MudIconButton Icon="@(Asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
-                           Size="Size.Medium"
+                           Size="Size.Small"
                            Color="Color.Inherit"
                            OnClick="ToggleFavoriteAsync" />
         </span>
     }
 
     <div class="asset-card-overlay">
-        <MudText Typo="Typo.caption" Class="white-text" Style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 36px;">
+        <MudText Typo="Typo.caption" Class="white-text" Style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             @Asset.FileName
         </MudText>
     </div>
@@ -303,7 +287,6 @@
         var result = await AssetService.SyncAssetAsync(Asset.FullPath);
         if (result != null && !string.IsNullOrEmpty(result.Message))
         {
-            // Si tiene AssetId, significa que ya estaba indexado
             if (result.AssetId.HasValue)
             {
                 Asset.Id = result.AssetId.Value;
@@ -312,7 +295,6 @@
             }
             else
             {
-                // El archivo se copió correctamente, pero aún no está indexado
                 Asset.SyncStatus = AssetSyncStatus.Copied;
             }
             Snackbar.Add(result.Message, Severity.Success);
@@ -336,6 +318,13 @@
         {
             Snackbar.Add("Error al actualizar favorito", Severity.Error);
         }
+    }
+
+    private bool _imgLoaded;
+
+    private void OnImageLoaded()
+    {
+        _imgLoaded = true;
     }
 
     private async Task HandleMouseOver()
