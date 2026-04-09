@@ -7,6 +7,7 @@ public interface IAssetService
     Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150);
     Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500, CancellationToken cancellationToken = default);
     Task<List<TimelineIndexItem>> GetTimelineIndexAsync();
+    Task<List<TimelineGridSection>> GetTimelineGridAsync();
     Task<List<TimelineItem>> GetDeviceAssetsAsync();
     Task<TimelineItem?> GetAssetByIdAsync(Guid id);
     Task<AssetDetail?> GetAssetDetailAsync(Guid id);

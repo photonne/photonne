@@ -414,6 +414,7 @@ namespace Photonne.Server.Api.Migrations
                     Height = table.Column<int>(type: "integer", nullable: false),
                     FileSize = table.Column<long>(type: "bigint", nullable: false),
                     Format = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    DominantColor = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>

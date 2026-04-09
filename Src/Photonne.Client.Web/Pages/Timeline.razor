@@ -94,14 +94,39 @@
                             }
                             else
                             {
-                                <div class="section-skeleton-row" id="@(section.SectionId)"
-                                     style="height: @(section.EstimatedHeight)px; flex: 0 0 100%; width: 100%;">
-                                    <div class="section-skeleton-inner @(section.IsLoading ? "skeleton-loading" : "")">
-                                        @for (int si = 0; si < Math.Min(section.EstimatedCount, 24); si++)
+                                <div class="section-skeleton-row" id="@(section.SectionId)">
+                                    @if (section.GridItems != null)
+                                    {
+                                        <!-- Grid data available: render masonry-matched skeleton with correct aspect ratios and type icons -->
+                                        @foreach (var dayGroup in section.GridItems.GroupBy(i => i.Date).OrderByDescending(g => g.Key))
                                         {
-                                            <div class="skeleton-item"></div>
+                                            var skeletonDayDate = DateTime.ParseExact(dayGroup.Key, "yyyy-MM-dd", null);
+                                            <div class="day-header-row">
+                                                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(skeletonDayDate)</MudText>
+                                            </div>
+                                            @foreach (var gridItem in dayGroup)
+                                            {
+                                                // Pre-compute an estimated width so the section has proper scroll height
+                                                // before masonry JS runs. Masonry will overwrite style.width with the exact value.
+                                                var estimatedWidth = (gridItem.AspectRatio * 180.0).ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+                                                <div class="masonry-item skeleton-tile @(section.IsLoading ? "skeleton-tile-active" : "")"
+                                                     data-day="@dayGroup.Key"
+                                                     data-aspect-ratio="@gridItem.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                                                     data-width="0" data-height="0"
+                                                     style="width: @(estimatedWidth)px">
+                                                    <div class="skeleton-type-icon @(gridItem.Type == "Video" ? "skeleton-icon-video" : "skeleton-icon-photo")"></div>
+                                                </div>
+                                            }
                                         }
-                                    </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- No grid data yet: approximate uniform tiles -->
+                                        @for (int si = 0; si < Math.Min(section.EstimatedCount, 48); si++)
+                                        {
+                                            <div class="skeleton-tile @(section.IsLoading ? "skeleton-tile-active" : "")"></div>
+                                        }
+                                    }
                                 </div>
                             }
                         }
@@ -437,41 +462,69 @@
         align-content: flex-start;
     }
 
-    /* Skeleton placeholder for unloaded sections */
+    /* ── Synology-style skeleton: individual shimmer tiles ── */
     .section-skeleton-row {
         flex: 0 0 100%;
         width: 100%;
         display: flex;
-        align-items: flex-start;
-        padding: 36px 0 8px;
-        box-sizing: border-box;
-    }
-
-    .section-skeleton-inner {
-        display: flex;
         flex-wrap: wrap;
         gap: 2px;
-        width: 100%;
+        padding: 40px 0 8px; /* approximate space for missing day headers */
+        box-sizing: border-box;
         align-content: flex-start;
     }
 
-    .skeleton-item {
-        flex: 1 1 calc(25% - 2px);
-        min-width: 80px;
-        max-width: 33%;
-        background: var(--mud-palette-action-default);
-        border-radius: 4px;
-        opacity: 0.15;
-        aspect-ratio: 1.4 / 1;
+    /* ── Approximate skeleton tiles (no grid data) ── */
+    .skeleton-tile:not(.masonry-item) {
+        /* Default density M: ~3 tiles per row */
+        flex: 0 0 calc(33.333% - 2px);
+        height: 200px;
+    }
+    .density-s .skeleton-tile:not(.masonry-item) {
+        flex-basis: calc(20% - 2px);
+        height: 120px;
+    }
+    .density-l .skeleton-tile:not(.masonry-item) {
+        flex-basis: calc(50% - 2px);
+        height: 300px;
+    }
+    @@media (min-width: 600px)  { .skeleton-tile:not(.masonry-item) { height: 200px; } .density-s .skeleton-tile:not(.masonry-item) { height: 110px; } }
+    @@media (min-width: 960px)  { .skeleton-tile:not(.masonry-item) { height: 220px; } .density-s .skeleton-tile:not(.masonry-item) { height: 120px; } }
+    @@media (min-width: 1280px) { .skeleton-tile:not(.masonry-item) { height: 240px; } .density-s .skeleton-tile:not(.masonry-item) { height: 130px; } .density-l .skeleton-tile:not(.masonry-item) { height: 320px; } }
+
+    /* ── All skeleton tiles (shared styles) ── */
+    .skeleton-tile {
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        background: linear-gradient(90deg, #1c1c1c 25%, #262626 50%, #1c1c1c 75%);
+        background-size: 200% 100%;
     }
 
-    @@keyframes skeletonPulse {
-        0%, 100% { opacity: 0.10; }
-        50%       { opacity: 0.22; }
+    /* Shimmer animation — only when section is actively loading */
+    @@keyframes skeleton-shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .skeleton-tile-active {
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
     }
 
-    .skeleton-loading .skeleton-item {
-        animation: skeletonPulse 1.4s ease-in-out infinite;
+    /* ── Type icons for accurate skeleton tiles ── */
+    .skeleton-type-icon {
+        position: absolute;
+        inset: 0;
+        opacity: 0.09;
+        background: center / 26px no-repeat;
+        pointer-events: none;
+    }
+    /* Photo icon (landscape image) */
+    .skeleton-icon-photo {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/%3E%3C/svg%3E");
+    }
+    /* Video icon (play circle) */
+    .skeleton-icon-video {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z'/%3E%3C/svg%3E");
     }
 
     /* Cabecera de día: ocupa todo el ancho y fuerza nueva fila */
@@ -992,6 +1045,8 @@
 @code {
     private List<TimelineSection> _sections = new();
     private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    // Lightweight grid data (type + aspectRatio per item), loaded eagerly for accurate skeleton tiles.
+    private Dictionary<string, List<TimelineGridItem>> _gridData = new();
     private bool _loading = true;
     private double _lastScrollTop = 0;
     private string _activeGroup = "";
@@ -1133,6 +1188,40 @@
         finally
         {
             _loading = false;
+            // Load grid data in background — gives skeleton tiles correct aspect ratios & type icons
+            _ = LoadGridInBackgroundAsync();
+        }
+    }
+
+    private async Task LoadGridInBackgroundAsync()
+    {
+        try
+        {
+            var gridSections = await AssetService.GetTimelineGridAsync();
+            if (_isDisposed) return;
+
+            foreach (var gs in gridSections)
+                _gridData[gs.YearMonth] = gs.Items;
+
+            // Apply grid items to sections that are still in skeleton state
+            var updated = false;
+            foreach (var section in _sections)
+            {
+                if (!section.IsLoaded && section.GridItems == null
+                    && _gridData.TryGetValue(section.YearMonth, out var items))
+                {
+                    section.GridItems = items;
+                    section.IsSkeletonMasonryDone = false;
+                    updated = true;
+                }
+            }
+
+            if (updated && !_isDisposed)
+                StateHasChanged();
+        }
+        catch
+        {
+            // Grid data is optional — skeleton falls back to approximate tiles
         }
     }
 
@@ -1182,13 +1271,16 @@
             {
                 var start = new DateTime(g.Key.Year, g.Key.Month, 1);
                 var count = g.Sum(i => i.Count);
+                var ym = $"{g.Key.Year:D4}-{g.Key.Month:D2}";
+                _gridData.TryGetValue(ym, out var gridItems);
                 return new TimelineSection
                 {
-                    YearMonth = $"{g.Key.Year:D4}-{g.Key.Month:D2}",
+                    YearMonth = ym,
                     StartDate = start,
                     EndDate = start.AddMonths(1),
                     EstimatedCount = count,
-                    EstimatedHeight = EstimateSectionHeight(count)
+                    EstimatedHeight = EstimateSectionHeight(count),
+                    GridItems = gridItems
                 };
             })
             .ToList();
@@ -1244,6 +1336,7 @@
             var result = await AssetService.GetTimelineSectionAsync(section.StartDate, section.EndDate, pageSize: 500, ct);
             section.Items = result.Items;
             section.IsLoaded = true;
+            section.IsSkeletonMasonryDone = false; // masonry must re-run with real data
             TimelineCache.SetSection(section.YearMonth, result.Items);
             _ = TimelinePersistence.SaveSectionAsync(section.YearMonth, result.Items);
         }
@@ -1356,6 +1449,10 @@
             if (_objRef != null)
                 await JS.InvokeVoidAsync("timelineVirtualScroll.init", _objRef);
 
+            // Initialise the scroll-aware image loader and register any already-rendered images
+            await JS.InvokeVoidAsync("imageLoadManager.init");
+            await JS.InvokeVoidAsync("imageLoadManager.observeAll");
+
             if (_isDisposed) return;
             var dateParam = GetDateFromQuery();
             if (!string.IsNullOrEmpty(dateParam))
@@ -1371,6 +1468,26 @@
         }
 
         if (_isDisposed) return;
+
+        // Run masonry for skeleton sections that just received grid data
+        // (masonry-item tiles with correct data-aspect-ratio are now in the DOM)
+        var skeletonSectionsNeedingMasonry = _sections
+            .Where(s => !s.IsLoaded && s.GridItems != null && !s.IsSkeletonMasonryDone)
+            .ToList();
+        if (skeletonSectionsNeedingMasonry.Any() && _masonryInitialized)
+        {
+            await Task.Delay(50); // allow DOM to settle
+            if (_isDisposed) return;
+            var skeletonDayKeys = skeletonSectionsNeedingMasonry
+                .SelectMany(s => s.GridItems!.Select(i => i.Date).Distinct().Select(GetGroupId))
+                .ToList();
+            foreach (var s in skeletonSectionsNeedingMasonry)
+                s.IsSkeletonMasonryDone = true;
+            if (skeletonDayKeys.Any())
+                await JS.InvokeVoidAsync("masonryHelpers.updateMasonryForGroups", skeletonDayKeys);
+            if (!_isDisposed)
+                await JS.InvokeVoidAsync("imageLoadManager.observeAll");
+        }
 
         // Run masonry for sections that just loaded
         var sectionsNeedingMasonry = _sections.Where(s => s.IsLoaded && !s.IsMasonryDone).ToList();
@@ -1396,6 +1513,10 @@
             {
                 await JS.InvokeVoidAsync("masonryHelpers.updateMasonryForGroups", groupIds);
             }
+
+            // Register new images from the loaded sections with the lazy loader
+            if (!_isDisposed)
+                await JS.InvokeVoidAsync("imageLoadManager.observeAll");
         }
     }
 
@@ -2113,6 +2234,7 @@
         JS.InvokeVoidAsync("scrollHelpers.disableTimelineScroll");
         JS.InvokeVoidAsync("scrubberHelpers.cleanup");
         JS.InvokeVoidAsync("timelineVirtualScroll.cleanup");
+        JS.InvokeVoidAsync("imageLoadManager.cleanup");
         LayoutService.ResetNavbar();
     }
 }

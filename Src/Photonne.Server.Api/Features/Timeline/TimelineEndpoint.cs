@@ -122,7 +122,9 @@ public class TimelineEndpoint : IEndpoint
                 Tags = BuildTagList(asset),
                 IsFavorite = asset.IsFavorite,
                 IsArchived = asset.IsArchived,
-                IsFileMissing = asset.IsFileMissing
+                IsFileMissing = asset.IsFileMissing,
+                DominantColor = asset.Thumbnails
+                    .FirstOrDefault(t => t.Size == ThumbnailSize.Small)?.DominantColor
             }).ToList();
 
             // Normalizar rutas existentes en BD para comparación

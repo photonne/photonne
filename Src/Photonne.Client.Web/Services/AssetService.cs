@@ -61,6 +61,13 @@ public class AssetService : IAssetService
         return response ?? new List<TimelineIndexItem>();
     }
 
+    public async Task<List<TimelineGridSection>> GetTimelineGridAsync()
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.GetFromJsonAsync<List<TimelineGridSection>>("/api/assets/timeline/grid");
+        return response ?? new List<TimelineGridSection>();
+    }
+
     public async Task<List<TimelineItem>> GetDeviceAssetsAsync()
     {
         await SetAuthHeaderAsync();

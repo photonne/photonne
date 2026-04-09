@@ -12,7 +12,7 @@ using Photonne.Server.Api.Shared.Data;
 namespace Photonne.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260407190725_InitialCreate")]
+    [Migration("20260409134126_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -376,6 +376,10 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DominantColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
 
                     b.Property<string>("FilePath")
                         .IsRequired()

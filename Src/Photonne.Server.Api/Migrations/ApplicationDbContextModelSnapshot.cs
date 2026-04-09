@@ -374,6 +374,10 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<string>("DominantColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
                     b.Property<string>("FilePath")
                         .IsRequired()
                         .HasMaxLength(1000)
