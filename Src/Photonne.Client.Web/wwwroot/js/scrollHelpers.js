@@ -328,6 +328,47 @@ window.scrubberHelpers = {
         if (scrollable <= 0) return;
         var pct = sc.scrollTop / scrollable;
         this._setThumbPercent(pct);
+        this._updateLabelFromDOM(sc);
+    },
+
+    _updateLabelFromDOM: function (sc) {
+        if (!this._label || !this._groupMap.length) return;
+        var scRect = sc.getBoundingClientRect();
+        var headers = document.querySelectorAll('.day-header-row[id^="group-"]');
+
+        // Find the header whose top is closest to (but at or past) the container's top edge.
+        // We look for maximum (rect.top - scRect.top) that is still <= 0.
+        // No DOM order assumed — all headers are checked.
+        var activeId = null;
+        var bestRelTop = -Infinity;
+
+        for (var i = 0; i < headers.length; i++) {
+            var relTop = headers[i].getBoundingClientRect().top - scRect.top;
+            if (relTop <= 0 && relTop > bestRelTop) {
+                bestRelTop = relTop;
+                activeId = headers[i].id;
+            }
+        }
+
+        var label = null;
+        if (activeId) {
+            for (var j = 0; j < this._groupMap.length; j++) {
+                if (this._groupMap[j].id === activeId) {
+                    label = this._groupMap[j].label;
+                    break;
+                }
+            }
+            if (!label) {
+                var match = activeId.match(/^group-(\d{4})-(\d{2})-\d{2}$/);
+                if (match) {
+                    var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+                    label = months[parseInt(match[2], 10) - 1] + ' ' + match[1];
+                }
+            }
+        }
+
+        if (label) this._label.textContent = label;
+        else if (!activeId) this._label.textContent = this._groupMap[0].label;
     },
 
     updateGroupMap: function (groupData) {
