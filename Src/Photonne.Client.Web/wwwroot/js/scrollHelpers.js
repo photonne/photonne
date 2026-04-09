@@ -558,6 +558,7 @@ window.timelineVirtualScroll = {
     _lastScrollTop: 0,
     _lastScrollTime: 0,
     _idleTimer: null,
+    _scrollDirection: 0, // +1 = down, -1 = up
     VELOCITY_THRESHOLD: 600, // px/s — above this = fast scroll, show skeleton
 
     init: function (dotNetRef) {
@@ -575,10 +576,18 @@ window.timelineVirtualScroll = {
         if (!sc || !this._dotNetRef) return;
         var now = performance.now();
         var dt = now - this._lastScrollTime;
-        var dy = Math.abs(sc.scrollTop - this._lastScrollTop);
-        var velocity = dt > 0 ? (dy / dt) * 1000 : 0;
+        var delta = sc.scrollTop - this._lastScrollTop;
+        var velocity = dt > 0 ? (Math.abs(delta) / dt) * 1000 : 0;
+
+        // Track direction for directional prefetch
+        if (delta !== 0) this._scrollDirection = delta > 0 ? 1 : -1;
+
         this._lastScrollTop = sc.scrollTop;
         this._lastScrollTime = now;
+
+        // Notify image manager that scroll is active (pauses thumbnail loading)
+        if (window.imageLoadManager) window.imageLoadManager.onScrollStart();
+
         clearTimeout(this._idleTimer);
         var self = this;
         // Always debounce — never invoke Blazor inline on every scroll event.
@@ -587,6 +596,8 @@ window.timelineVirtualScroll = {
         this._idleTimer = setTimeout(function () {
             var sc2 = document.getElementById('timeline-scroll-container');
             if (sc2 && self._dotNetRef) {
+                // Resume image loading: pass scroll direction for directional prefetch
+                if (window.imageLoadManager) window.imageLoadManager.onScrollIdle(self._scrollDirection);
                 self._dotNetRef.invokeMethodAsync('OnVirtualScrollIdle', sc2.scrollTop)
                     .catch(function () {});
             }
@@ -596,6 +607,148 @@ window.timelineVirtualScroll = {
     cleanup: function () {
         clearTimeout(this._idleTimer);
         this._dotNetRef = null;
+    }
+};
+
+// Scroll-velocity-aware image loader.
+// During fast scroll: queues intersection entries without loading.
+// On scroll idle: flushes queue loading center-viewport images first.
+window.imageLoadManager = {
+    _observer: null,
+    _isScrolling: false,
+    _pendingEntries: [],
+
+    init: function () {
+        if (this._observer) return; // already initialised
+        var self = this;
+        var sc = document.getElementById('timeline-scroll-container');
+        this._observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                var img = entry.target;
+                if (!img.getAttribute('data-src')) {
+                    // Already loaded (data-src removed), nothing to do
+                    self._observer.unobserve(img);
+                    return;
+                }
+                if (self._isScrolling) {
+                    // Queue the entry — don't fire an HTTP request mid-scroll
+                    self._pendingEntries.push(img);
+                } else {
+                    self._loadImage(img);
+                }
+            });
+        }, {
+            root: sc || null,
+            rootMargin: '150px 0px', // pre-load a bit ahead/behind viewport
+            threshold: 0
+        });
+    },
+
+    // Register all img[data-src] elements inside the scroll container.
+    // Safe to call multiple times — IntersectionObserver.observe() is idempotent.
+    observeAll: function () {
+        if (!this._observer) this.init();
+        var sc = document.getElementById('timeline-scroll-container');
+        if (!sc || !this._observer) return;
+        sc.querySelectorAll('img[data-src]').forEach(function (img) {
+            window.imageLoadManager._observer.observe(img);
+        });
+    },
+
+    // Called by timelineVirtualScroll on every scroll event
+    onScrollStart: function () {
+        this._isScrolling = true;
+    },
+
+    // Called by timelineVirtualScroll after debounce (scroll stopped).
+    // direction: +1 = scrolled down, -1 = scrolled up, 0 = unknown
+    onScrollIdle: function (direction) {
+        this._isScrolling = false;
+        this._flushPending(direction || 0);
+        this._scanViewport(direction || 0);
+    },
+
+    // Sort comparator for directional prefetch.
+    // Images in the direction of travel load first; center-of-viewport loads first overall.
+    _sortByPriority: function (imgs, scRect, direction) {
+        var centerY = scRect.top + (scRect.height || 0) / 2;
+        imgs.sort(function (a, b) {
+            var ra = a.getBoundingClientRect();
+            var rb = b.getBoundingClientRect();
+            var aMidY = ra.top + ra.height / 2;
+            var bMidY = rb.top + rb.height / 2;
+
+            if (direction !== 0) {
+                // Split screen into "ahead" (direction of travel) and "behind"
+                var aAhead = direction > 0 ? aMidY >= centerY : aMidY <= centerY;
+                var bAhead = direction > 0 ? bMidY >= centerY : bMidY <= centerY;
+                if (aAhead !== bAhead) return aAhead ? -1 : 1;
+            }
+
+            // Within the same zone, prioritise by distance from center
+            return Math.abs(aMidY - centerY) - Math.abs(bMidY - centerY);
+        });
+    },
+
+    // Process queued entries — only those still in the viewport, direction-first
+    _flushPending: function (direction) {
+        if (this._pendingEntries.length === 0) return;
+        var sc = document.getElementById('timeline-scroll-container');
+        var self = this;
+        var scRect = sc ? sc.getBoundingClientRect() : { top: 0, bottom: window.innerHeight, height: window.innerHeight };
+
+        var still_visible = this._pendingEntries.filter(function (img) {
+            if (!img.isConnected || !img.getAttribute('data-src')) return false;
+            var r = img.getBoundingClientRect();
+            return r.bottom > scRect.top - 150 && r.top < scRect.bottom + 150;
+        });
+
+        this._sortByPriority(still_visible, scRect, direction);
+        still_visible.forEach(function (img) { self._loadImage(img); });
+        this._pendingEntries = [];
+    },
+
+    // Direct viewport scan — catches images that the observer may have missed
+    // (e.g. newly rendered sections that entered the viewport during scroll)
+    _scanViewport: function (direction) {
+        if (!this._observer) return;
+        var sc = document.getElementById('timeline-scroll-container');
+        if (!sc) return;
+        var scRect = sc.getBoundingClientRect();
+        var self = this;
+
+        var imgs = Array.from(sc.querySelectorAll('img[data-src]')).filter(function (img) {
+            var r = img.getBoundingClientRect();
+            return r.bottom > scRect.top - 150 && r.top < scRect.bottom + 150;
+        });
+
+        this._sortByPriority(imgs, scRect, direction);
+        imgs.forEach(function (img) { self._loadImage(img); });
+    },
+
+    _loadImage: function (img) {
+        var src = img.getAttribute('data-src');
+        if (!src) return;
+        if (this._observer) this._observer.unobserve(img);
+        img.removeAttribute('data-src');
+        img.src = src;
+        var markLoaded = function () {
+            var container = img.closest('.asset-card-container');
+            if (container) container.classList.add('img-loaded');
+        };
+        img.addEventListener('load', markLoaded, { once: true });
+        // Mark as loaded on error too — avoid infinite shimmer on broken images
+        img.addEventListener('error', markLoaded, { once: true });
+    },
+
+    cleanup: function () {
+        if (this._observer) {
+            this._observer.disconnect();
+            this._observer = null;
+        }
+        this._pendingEntries = [];
+        this._isScrolling = false;
     }
 };
 

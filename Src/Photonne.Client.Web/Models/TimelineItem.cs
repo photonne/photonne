@@ -22,6 +22,8 @@ public class TimelineItem
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
     public bool IsFileMissing { get; set; }
+    // Dominant color (#rrggbb) extracted from the Small thumbnail. Null until thumbnails are generated.
+    public string? DominantColor { get; set; }
 
     public double AspectRatio => Width.HasValue && Height.HasValue && Height.Value > 0
         ? (double)Width.Value / Height.Value

@@ -24,6 +24,50 @@
             height: 100%;
             object-fit: cover;
         }
+        /* Shimmer placeholder — visible while thumbnail hasn't loaded yet */
+        .asset-placeholder {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            /* Default: animated shimmer (no dominant color available) */
+            background: linear-gradient(90deg, #252525 25%, #303030 50%, #252525 75%);
+            background-size: 200% 100%;
+            animation: asset-shimmer 1.6s infinite ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        /* When dominant color is set via inline style, disable the shimmer animation */
+        .asset-placeholder[style*="background-color"] {
+            background-image: none;
+            animation: none;
+            background-size: auto;
+        }
+        @@keyframes asset-shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .asset-placeholder-icon {
+            opacity: 0.15;
+            color: white;
+        }
+        /* Once JS sets img-loaded on the container: hide placeholder, show image */
+        .asset-card-container.img-loaded .asset-placeholder {
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Lazy image — starts transparent, fades in on load */
+        .lazy-img {
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        .asset-card-container.img-loaded .lazy-img {
+            opacity: 1;
+        }
         .video-preview-container {
             position: relative;
             width: 100%;
@@ -109,16 +153,25 @@
         @if ((Asset.SyncStatus == AssetSyncStatus.Synced || Asset.SyncStatus == AssetSyncStatus.Pending || Asset.SyncStatus == AssetSyncStatus.Copied)
              && !(Asset.IsLocalOnly && string.IsNullOrEmpty(Asset.LocalThumbnailUrl)))
         {
+            <!-- Shimmer placeholder: visible until JS marks container with img-loaded.
+                 When DominantColor is known, the placeholder shows the real color of the photo
+                 instead of a generic shimmer. -->
+            <div class="asset-placeholder"
+                 style="@(!string.IsNullOrEmpty(Asset.DominantColor) ? $"background-color:{Asset.DominantColor};" : "")">
+                <span class="asset-placeholder-icon">
+                    <MudIcon Icon="@(Asset.Type == "Video" ? Icons.Material.Filled.PlayCircle : Icons.Material.Filled.Image)" Size="Size.Large" />
+                </span>
+            </div>
             @if (Asset.Type == "Video")
             {
                 <div class="video-preview-container">
-                    <img src="@_thumbnailUrl" alt="@Asset.FileName" loading="lazy" class="asset-card-image thumbnail" />
+                    <img data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image thumbnail lazy-img" />
                     <video @ref="_videoRef" src="@_contentUrl" muted loop class="asset-card-image preview-video" preload="metadata" playsinline></video>
                 </div>
             }
             else
             {
-                <img src="@_thumbnailUrl" alt="@Asset.FileName" loading="lazy" class="asset-card-image" />
+                <img data-src="@_thumbnailUrl" alt="@Asset.FileName" class="asset-card-image lazy-img" />
             }
         }
         else

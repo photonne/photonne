@@ -26,10 +26,14 @@ public class AssetThumbnail
     public int Height { get; set; }
     
     public long FileSize { get; set; }
-    
+
     [MaxLength(20)]
     public string Format { get; set; } = "JPEG"; // JPEG, WebP
-    
+
+    // Dominant color of the image, stored as hex "#rrggbb". Only populated for Small thumbnails.
+    [MaxLength(7)]
+    public string? DominantColor { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

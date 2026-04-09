@@ -12,4 +12,10 @@ public class TimelineSection
     public bool IsMasonryDone { get; set; }
     public List<TimelineItem> Items { get; set; } = new();
     public string SectionId => $"section-{YearMonth}";
+
+    // Lightweight grid data loaded eagerly for accurate skeleton rendering.
+    // Null until the grid endpoint responds.
+    public List<TimelineGridItem>? GridItems { get; set; }
+    // True once masonry has been applied to the skeleton tiles for this section.
+    public bool IsSkeletonMasonryDone { get; set; }
 }

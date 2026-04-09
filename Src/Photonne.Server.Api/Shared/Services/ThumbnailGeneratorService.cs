@@ -3,6 +3,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.PixelFormats;
 using Xabe.FFmpeg;
 using ImageMagick;
 
@@ -398,6 +399,11 @@ public class ThumbnailGeneratorService
 
             var fileInfo = new FileInfo(thumbnailPath);
 
+            // Extract dominant color from the small thumbnail — fast 16×16 pixel average
+            string? dominantColor = null;
+            if (size == ThumbnailSize.Small)
+                dominantColor = ExtractDominantColor(thumbnail);
+
             return new AssetThumbnail
             {
                 AssetId = assetId,
@@ -406,7 +412,8 @@ public class ThumbnailGeneratorService
                 Width = width,
                 Height = height,
                 FileSize = fileInfo.Length,
-                Format = options.UseWebP ? "WebP" : "JPEG"
+                Format = options.UseWebP ? "WebP" : "JPEG",
+                DominantColor = dominantColor
             };
         }
         catch
@@ -415,6 +422,42 @@ public class ThumbnailGeneratorService
         }
     }
     
+    /// <summary>
+    /// Computes the dominant (average) color of an image by downsampling to 16×16 and averaging all pixels.
+    /// Returns a CSS hex string like "#a3b2c1".
+    /// </summary>
+    private static string? ExtractDominantColor(Image image)
+    {
+        try
+        {
+            using var small = image.CloneAs<Rgba32>();
+            small.Mutate(ctx => ctx.Resize(16, 16, KnownResamplers.Box));
+
+            long r = 0, g = 0, b = 0, count = 0;
+            small.ProcessPixelRows(accessor =>
+            {
+                for (int y = 0; y < accessor.Height; y++)
+                {
+                    var row = accessor.GetRowSpan(y);
+                    for (int x = 0; x < row.Length; x++)
+                    {
+                        r += row[x].R;
+                        g += row[x].G;
+                        b += row[x].B;
+                        count++;
+                    }
+                }
+            });
+
+            if (count == 0) return null;
+            return $"#{(byte)(r / count):X2}{(byte)(g / count):X2}{(byte)(b / count):X2}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private (int width, int height) CalculateThumbnailDimensions(
         int originalWidth, 
         int originalHeight, 

@@ -24,5 +24,7 @@ public class TimelineResponse
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }
     public bool IsFileMissing { get; set; }
+    // Dominant color from the Small thumbnail (#rrggbb). Null for assets without thumbnails.
+    public string? DominantColor { get; set; }
 }
 
