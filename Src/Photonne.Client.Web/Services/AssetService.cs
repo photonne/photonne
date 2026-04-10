@@ -1,5 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Photonne.Client.Web.Models;
 
 namespace Photonne.Client.Web.Services;
@@ -66,6 +69,29 @@ public class AssetService : IAssetService
         await SetAuthHeaderAsync();
         var response = await _httpClient.GetFromJsonAsync<List<TimelineGridSection>>("/api/assets/timeline/grid");
         return response ?? new List<TimelineGridSection>();
+    }
+
+    public async IAsyncEnumerable<TimelineGridSection> GetTimelineGridStreamAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await SetAuthHeaderAsync();
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/assets/timeline/grid");
+        request.SetBrowserResponseStreamingEnabled(true);
+
+        using var response = await _httpClient.SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        await foreach (var section in JsonSerializer.DeserializeAsyncEnumerable<TimelineGridSection>(
+            stream, options, cancellationToken))
+        {
+            if (section != null)
+                yield return section;
+        }
     }
 
     public async Task<List<TimelineItem>> GetDeviceAssetsAsync()

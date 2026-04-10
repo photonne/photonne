@@ -1137,20 +1137,29 @@
                 return;
             }
 
-            // Cold start: fetch from API
+            // Cold start: fetch index + stream grid sections progressively
             _loading = true;
             StateHasChanged();
 
-            var indexTask = AssetService.GetTimelineIndexAsync();
-            var gridTask = AssetService.GetTimelineGridAsync();
-            await Task.WhenAll(indexTask, gridTask);
-
-            _timelineIndex = indexTask.Result;
-            _gridSections = gridTask.Result;
-
+            _timelineIndex = await AssetService.GetTimelineIndexAsync();
             TimelineCache.SetIndex(_timelineIndex);
-            TimelineCache.SetGrid(_gridSections);
             _ = TimelinePersistence.SaveIndexAsync(_timelineIndex);
+
+            _gridSections = new List<TimelineGridSection>();
+            var sectionsReceived = 0;
+            await foreach (var section in AssetService.GetTimelineGridStreamAsync())
+            {
+                _gridSections.Add(section);
+                sectionsReceived++;
+                // Render progressively: first batch immediately, then every 3 sections
+                if (sectionsReceived == 1 || sectionsReceived % 3 == 0)
+                {
+                    RebuildGroupedGridItems();
+                    StateHasChanged();
+                }
+            }
+
+            TimelineCache.SetGrid(_gridSections);
             _ = TimelinePersistence.SaveGridAsync(_gridSections);
 
             RebuildGroupedGridItems();
@@ -1169,18 +1178,21 @@
     {
         try
         {
-            var indexTask = AssetService.GetTimelineIndexAsync();
-            var gridTask = AssetService.GetTimelineGridAsync();
-            await Task.WhenAll(indexTask, gridTask);
+            var freshIndex = await AssetService.GetTimelineIndexAsync();
             if (_isDisposed) return;
-
-            var freshIndex = indexTask.Result;
-            var freshGrid = gridTask.Result;
 
             if (!TimelineCache.IndexChangedFrom(freshIndex))
             {
                 TimelineCache.SetIndex(freshIndex);
                 return;
+            }
+
+            // Index changed — stream fresh grid
+            var freshGrid = new List<TimelineGridSection>();
+            await foreach (var section in AssetService.GetTimelineGridStreamAsync())
+            {
+                if (_isDisposed) return;
+                freshGrid.Add(section);
             }
 
             TimelineCache.SetIndex(freshIndex);

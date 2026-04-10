@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -9,11 +10,13 @@ namespace Photonne.Server.Api.Features.Timeline;
 
 /// <summary>
 /// Returns a lightweight grid of all timeline assets (type + aspect ratio + date only).
-/// Used by the client to render accurate skeleton tiles for unloaded sections before
-/// full section data is fetched.
+/// The response is streamed section-by-section so the client can begin rendering
+/// while the remaining data is still in transit.
 /// </summary>
 public class TimelineGridEndpoint : IEndpoint
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/timeline/grid", Handle)
@@ -23,14 +26,18 @@ public class TimelineGridEndpoint : IEndpoint
             .RequireAuthorization();
     }
 
-    private async Task<IResult> Handle(
+    private async Task Handle(
+        HttpContext context,
         [FromServices] ApplicationDbContext dbContext,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
-            return Results.Unauthorized();
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
 
         try
         {
@@ -99,11 +106,28 @@ public class TimelineGridEndpoint : IEndpoint
                 })
                 .ToList();
 
-            return Results.Ok(sections);
+            // ── Stream the JSON array section-by-section ──────────────────────────
+            context.Response.ContentType = "application/json";
+
+            var body = context.Response.Body;
+            var newline = "\n"u8.ToArray();
+
+            await context.Response.WriteAsync("[", cancellationToken);
+            for (var i = 0; i < sections.Count; i++)
+            {
+                if (i > 0) await context.Response.WriteAsync(",", cancellationToken);
+                await JsonSerializer.SerializeAsync(body, sections[i], JsonOptions, cancellationToken);
+                await body.FlushAsync(cancellationToken);
+            }
+            await context.Response.WriteAsync("]", cancellationToken);
         }
         catch (Exception ex)
         {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            if (!context.Response.HasStarted)
+            {
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                await context.Response.WriteAsJsonAsync(new { detail = ex.Message }, cancellationToken);
+            }
         }
     }
 }
