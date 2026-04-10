@@ -15,9 +15,7 @@
 
 @if (_loading && _asset == null)
 {
-    <div class="asset-detail-container">
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-    </div>
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
 }
 else if (_asset != null)
 {
