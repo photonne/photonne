@@ -26,5 +26,6 @@ public class TimelineResponse
     public bool IsFileMissing { get; set; }
     // Dominant color from the Small thumbnail (#rrggbb). Null for assets without thumbnails.
     public string? DominantColor { get; set; }
+    public bool IsReadOnly { get; set; }
 }
 

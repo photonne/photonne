@@ -7,10 +7,12 @@
 @inject IExternalLibraryService ExternalLibraryService
 @inject FoldersCache FoldersCache
 @inject IAssetService AssetService
+@inject IAlbumService AlbumService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject LayoutService LayoutService
+@inject IDialogService DialogService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -636,6 +638,86 @@ else
     </DialogActions>
 </MudDialog>
 
+<MudDialog @bind-Visible="_addToAlbumDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Añadir a álbum</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@($"{_selectedAssetIds.Count} elementos seleccionados")</MudText>
+        @if (!_showCreateAlbum)
+        {
+            @if (_loadingAlbums)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (_availableAlbums.Any())
+            {
+                <MudRadioGroup T="Guid?" @bind-Value="_selectedAlbumId">
+                    @foreach (var album in _availableAlbums)
+                    {
+                        <MudRadio T="Guid?" Value="@album.Id">
+                            <div class="d-flex flex-column">
+                                <MudText Typo="Typo.subtitle2">@album.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@album.AssetCount fotos</MudText>
+                            </div>
+                        </MudRadio>
+                    }
+                </MudRadioGroup>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">No hay álbumes disponibles.</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       Class="mt-3"
+                       OnClick="@(() => _showCreateAlbum = true)">
+                Crear nuevo álbum
+            </MudButton>
+        }
+        else
+        {
+            <MudTextField @bind-Value="_newAlbumName"
+                          Label="Nombre del álbum"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="_newAlbumDescription"
+                          Label="Descripción (opcional)"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Lines="3" />
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       Class="mt-3"
+                       OnClick="@(() => _showCreateAlbum = false)">
+                Volver a selección
+            </MudButton>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@CloseAddToAlbumDialog">Cancelar</MudButton>
+        @if (_showCreateAlbum)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAlbumAndAddAsync">
+                Crear y añadir
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="AddSelectionToAlbumAsync"
+                       Disabled="@(!_selectedAlbumId.HasValue)">
+                Añadir
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
 @code {
     [Parameter] public string? Space { get; set; }
     [Parameter] public Guid? FolderId { get; set; }
@@ -701,6 +783,14 @@ else
     private bool _selectionMode = false;
     private bool _folderSelectionMode = false;
     private HashSet<Guid> _selectedFolderIds = new();
+    private bool _addToAlbumDialogVisible = false;
+    private bool _downloadingZip = false;
+    private List<AlbumItem> _availableAlbums = new();
+    private bool _loadingAlbums = false;
+    private Guid? _selectedAlbumId = null;
+    private bool _showCreateAlbum = false;
+    private string _newAlbumName = "";
+    private string? _newAlbumDescription = "";
 
     // Touch / long-press / drag-select
     private DotNetObjectReference<Folders>? _objRef;
@@ -2079,6 +2169,195 @@ else
         }
     }
 
+    private void ToggleSelectAllAssets()
+    {
+        if (_selectedAssetIds.Count == _assets.Count && _assets.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+
+        foreach (var asset in _assets)
+        {
+            _selectedAssetIds.Add(asset.Id);
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private async Task OpenShareSelectionDialog()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        var parameters = new DialogParameters<ShareSelectionDialog>
+        {
+            { x => x.AssetIds, new HashSet<Guid>(_selectedAssetIds) }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+        var dialogRef = await DialogService.ShowAsync<ShareSelectionDialog>("Compartir selección", parameters, options);
+        var result = await dialogRef.Result;
+
+        if (result is { Canceled: false, Data: AlbumItem album })
+        {
+            ExitSelectionMode();
+            var shareParams = new DialogParameters<ShareDialog>
+            {
+                { x => x.AlbumId, album.Id },
+                { x => x.AlbumName, album.Name }
+            };
+            var shareOptions = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+            await DialogService.ShowAsync<ShareDialog>($"Compartir álbum", shareParams, shareOptions);
+        }
+    }
+
+    private void OpenAddToAlbumDialog()
+    {
+        if (!_selectedAssetIds.Any()) return;
+        _addToAlbumDialogVisible = true;
+        _loadingAlbums = true;
+        _ = LoadAlbumsForSelectionAsync();
+    }
+
+    private async Task LoadAlbumsForSelectionAsync()
+    {
+        try
+        {
+            _availableAlbums = await AlbumService.GetAlbumsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar álbumes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingAlbums = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseAddToAlbumDialog()
+    {
+        _addToAlbumDialogVisible = false;
+        _showCreateAlbum = false;
+        _selectedAlbumId = null;
+    }
+
+    private async Task AddSelectionToAlbumAsync()
+    {
+        if (!_selectedAlbumId.HasValue || !_selectedAssetIds.Any()) return;
+
+        var failed = 0;
+        var alreadyInAlbum = 0;
+        var permissionDenied = false;
+        foreach (var assetId in _selectedAssetIds.ToList())
+        {
+            try
+            {
+                var success = await AlbumService.AddAssetToAlbumAsync(_selectedAlbumId.Value, assetId);
+                if (!success) failed++;
+            }
+            catch (InvalidOperationException)
+            {
+                alreadyInAlbum++;
+                failed++;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                permissionDenied = true;
+                failed++;
+                break;
+            }
+            catch
+            {
+                failed++;
+            }
+        }
+
+        CloseAddToAlbumDialog();
+        ExitSelectionMode();
+
+        if (permissionDenied)
+        {
+            Snackbar.Add("No tienes permisos suficientes para añadir elementos a este álbum.", Severity.Error);
+            return;
+        }
+
+        if (failed == 0)
+        {
+            Snackbar.Add("Elementos añadidos al álbum", Severity.Success);
+        }
+        else
+        {
+            if (alreadyInAlbum > 0)
+            {
+                var message = alreadyInAlbum == 1
+                    ? "El elemento ya está en el álbum."
+                    : $"{alreadyInAlbum} elementos ya estaban en el álbum.";
+                Snackbar.Add(message, Severity.Warning);
+            }
+            if (failed > alreadyInAlbum)
+            {
+                Snackbar.Add("Algunos elementos no se pudieron añadir", Severity.Warning);
+            }
+        }
+    }
+
+    private async Task CreateAlbumAndAddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newAlbumName))
+        {
+            Snackbar.Add("El nombre del álbum es obligatorio", Severity.Warning);
+            return;
+        }
+
+        var album = await AlbumService.CreateAlbumAsync(_newAlbumName, _newAlbumDescription);
+        if (album == null)
+        {
+            Snackbar.Add("Error al crear el álbum", Severity.Error);
+            return;
+        }
+
+        _selectedAlbumId = album.Id;
+        await AddSelectionToAlbumAsync();
+    }
+
+    private async Task DownloadSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        _downloadingZip = true;
+        UpdateSelectionNavbar();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedAssetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photonne_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            UpdateSelectionNavbar();
+        }
+    }
+
     private void UpdateSelectionNavbar()
     {
         if (!_selectionMode && !_folderSelectionMode)
@@ -2088,6 +2367,7 @@ else
         }
 
         var selectedCount = _selectionMode ? _selectedAssetIds.Count : _selectedFolderIds.Count;
+        var isReadOnlyContext = _currentLibraryId.HasValue;
 
         LayoutService.SetCustomNavbar(
             @<text>
@@ -2096,16 +2376,33 @@ else
                 <MudSpacer />
                 @if (_selectionMode)
                 {
+                    var allSelected = _assets.Any() && _selectedAssetIds.Count == _assets.Count;
+                    <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                        <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAllAssets" />
+                    </MudTooltip>
+
                     @* Botones individuales — solo desktop *@
                     <span class="d-none d-md-flex">
                         @if (!IsTrashFolderSelected)
                         {
-                            <MudTooltip Text="Mover">
-                                <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog" />
+                            <MudTooltip Text="Compartir selección">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Share" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog" />
                             </MudTooltip>
-                            <MudTooltip Text="Eliminar">
-                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
+                            <MudTooltip Text="Añadir a álbum">
+                                <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
                             </MudTooltip>
+                            <MudTooltip Text="Descargar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
+                            </MudTooltip>
+                            @if (!isReadOnlyContext)
+                            {
+                                <MudTooltip Text="Mover">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog" />
+                                </MudTooltip>
+                                <MudTooltip Text="Eliminar">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
+                                </MudTooltip>
+                            }
                         }
                         else
                         {
@@ -2121,12 +2418,24 @@ else
                              Class="d-flex d-md-none">
                         @if (!IsTrashFolderSelected)
                         {
-                            <MudMenuItem Icon="@Icons.Material.Outlined.DriveFileMove" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog">
-                                Mover
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Share" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog">
+                                Compartir
                             </MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
-                                <MudText Color="Color.Error">Eliminar</MudText>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.AddToPhotos" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog">
+                                Añadir a álbum
                             </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Download" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync">
+                                Descargar
+                            </MudMenuItem>
+                            @if (!isReadOnlyContext)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Outlined.DriveFileMove" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog">
+                                    Mover
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
+                                    <MudText Color="Color.Error">Eliminar</MudText>
+                                </MudMenuItem>
+                            }
                         }
                         else
                         {

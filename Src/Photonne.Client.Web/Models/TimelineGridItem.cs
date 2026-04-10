@@ -13,6 +13,7 @@ public class TimelineGridItem
     public string? DominantColor { get; set; }   // "#rrggbb"
     public int Width { get; set; }
     public int Height { get; set; }
+    public bool IsReadOnly { get; set; }
 
     public string ThumbnailUrl => $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Small";
 }

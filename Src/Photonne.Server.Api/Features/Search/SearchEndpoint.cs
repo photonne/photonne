@@ -117,7 +117,8 @@ public class SearchEndpoint : IEndpoint
             Height = a.Exif?.Height,
             Tags = BuildTagList(a),
             IsFavorite = a.IsFavorite,
-            IsFileMissing = a.IsFileMissing
+            IsFileMissing = a.IsFileMissing,
+            IsReadOnly = a.ExternalLibraryId.HasValue
         }).ToList();
 
         return Results.Ok(new SearchResponse { Items = items, HasMore = hasMore });

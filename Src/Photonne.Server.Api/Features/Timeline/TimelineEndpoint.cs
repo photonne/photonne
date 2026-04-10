@@ -124,7 +124,8 @@ public class TimelineEndpoint : IEndpoint
                 IsArchived = asset.IsArchived,
                 IsFileMissing = asset.IsFileMissing,
                 DominantColor = asset.Thumbnails
-                    .FirstOrDefault(t => t.Size == ThumbnailSize.Small)?.DominantColor
+                    .FirstOrDefault(t => t.Size == ThumbnailSize.Small)?.DominantColor,
+                IsReadOnly = asset.ExternalLibraryId.HasValue
             }).ToList();
 
             // Normalizar rutas existentes en BD para comparación

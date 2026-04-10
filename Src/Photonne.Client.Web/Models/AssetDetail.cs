@@ -25,6 +25,7 @@ public class AssetDetail
     public bool IsFileMissing { get; set; }
     public string? Caption { get; set; }
     public string? AiDescription { get; set; }
+    public bool IsReadOnly { get; set; }
 
     public string ThumbnailUrl => Id != Guid.Empty
         ? $"{ApiConfig.BaseUrl}/api/assets/{Id}/thumbnail?size=Large"

@@ -25,6 +25,7 @@ public class AssetDetailResponse
     public bool IsFileMissing { get; set; }
     public string? Caption { get; set; }
     public string? AiDescription { get; set; }
+    public bool IsReadOnly { get; set; }
 }
 
 public class ExifDataResponse

@@ -100,7 +100,8 @@ public class FavoritesEndpoint : IEndpoint
             Width = asset.Exif?.Width,
             Height = asset.Exif?.Height,
             IsFavorite = true,
-            Tags = BuildTagList(asset)
+            Tags = BuildTagList(asset),
+            IsReadOnly = asset.ExternalLibraryId.HasValue
         }).ToList();
 
         var nextCursor = hasMore ? assets.Last().FileCreatedAt : (DateTime?)null;

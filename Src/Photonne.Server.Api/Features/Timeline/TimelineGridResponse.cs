@@ -14,6 +14,7 @@ public class TimelineGridItemResponse
     public string? DominantColor { get; set; }  // "#rrggbb" from Small thumbnail
     public int Width { get; set; }
     public int Height { get; set; }
+    public bool IsReadOnly { get; set; }
 }
 
 /// <summary>

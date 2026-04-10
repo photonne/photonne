@@ -324,7 +324,8 @@ public class AlbumsEndpoint : IEndpoint
                 HasThumbnails = aa.Asset.Thumbnails.Any(),
                 IsFavorite = aa.Asset.IsFavorite,
                 SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
-                DeletedAt = aa.Asset.DeletedAt
+                DeletedAt = aa.Asset.DeletedAt,
+                IsReadOnly = aa.Asset.ExternalLibraryId.HasValue
             }).ToList();
 
             return Results.Ok(response);

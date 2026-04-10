@@ -67,7 +67,8 @@ public class LargeFilesEndpoint : IEndpoint
             Height = a.Exif?.Height,
             Tags = BuildTagList(a),
             IsFavorite = a.IsFavorite,
-            IsArchived = a.IsArchived
+            IsArchived = a.IsArchived,
+            IsReadOnly = a.ExternalLibraryId.HasValue
         }).ToList();
 
         return Results.Ok(result);

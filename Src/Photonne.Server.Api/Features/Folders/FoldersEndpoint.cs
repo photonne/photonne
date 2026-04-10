@@ -440,7 +440,8 @@ public class FoldersEndpoint : IEndpoint
                 HasExif = asset.Exif != null,
                 HasThumbnails = asset.Thumbnails.Any(),
                 IsFavorite = asset.IsFavorite,
-                DeletedAt = asset.DeletedAt
+                DeletedAt = asset.DeletedAt,
+                IsReadOnly = asset.ExternalLibraryId.HasValue
             }).ToList();
 
             return Results.Ok(response);

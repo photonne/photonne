@@ -205,7 +205,8 @@ public class AssetService : IAssetService
             IsArchived = response.IsArchived,
             IsFileMissing = response.IsFileMissing,
             Caption = response.Caption,
-            AiDescription = response.AiDescription
+            AiDescription = response.AiDescription,
+            IsReadOnly = response.IsReadOnly
         };
     }
 

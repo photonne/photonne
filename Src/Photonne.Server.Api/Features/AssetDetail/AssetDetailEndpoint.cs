@@ -96,7 +96,8 @@ public class AssetDetailEndpoint : IEndpoint
                 IsArchived = asset.IsArchived,
                 IsFileMissing = asset.IsFileMissing,
                 Caption = asset.Caption,
-                AiDescription = asset.AiDescription
+                AiDescription = asset.AiDescription,
+                IsReadOnly = asset.ExternalLibraryId.HasValue
             };
 
             return Results.Ok(response);

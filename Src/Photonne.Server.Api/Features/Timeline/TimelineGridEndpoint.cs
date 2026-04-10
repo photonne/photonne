@@ -93,7 +93,8 @@ public class TimelineGridEndpoint : IEndpoint
                     DominantColor = a.Thumbnails
                         .Where(t => t.Size == ThumbnailSize.Small)
                         .Select(t => t.DominantColor)
-                        .FirstOrDefault()
+                        .FirstOrDefault(),
+                    IsReadOnly = a.ExternalLibraryId.HasValue
                 })
                 .ToListAsync(cancellationToken);
 
@@ -113,7 +114,8 @@ public class TimelineGridEndpoint : IEndpoint
                         Date = $"{i.Year:D4}-{i.Month:D2}-{i.Day:D2}",
                         DominantColor = i.DominantColor,
                         Width  = i.ExifWidth ?? 0,
-                        Height = i.ExifHeight ?? 0
+                        Height = i.ExifHeight ?? 0,
+                        IsReadOnly = i.IsReadOnly
                     }).ToList()
                 })
                 .ToList();

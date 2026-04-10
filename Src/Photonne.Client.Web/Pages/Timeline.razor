@@ -1968,6 +1968,7 @@
 
         var selectedCount = _selectedAssetIds.Count;
         var allSelected = AllGridItems.Any() && selectedCount == AllGridItems.Count();
+        var hasReadOnly = _selectedAssetIds.Any(id => AllGridItems.Any(i => i.Id == id && i.IsReadOnly));
 
         LayoutService.SetCustomNavbar(
             @<text>
@@ -1989,12 +1990,15 @@
                     <MudTooltip Text="Descargar">
                         <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
                     </MudTooltip>
-                    <MudTooltip Text="Archivar">
-                        <MudIconButton Icon="@Icons.Material.Outlined.Archive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync" />
-                    </MudTooltip>
-                    <MudTooltip Text="Eliminar">
-                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
-                    </MudTooltip>
+                    @if (!hasReadOnly)
+                    {
+                        <MudTooltip Text="Archivar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Archive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync" />
+                        </MudTooltip>
+                        <MudTooltip Text="Eliminar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
+                        </MudTooltip>
+                    }
                 </span>
 
                 @* Menú de desbordamiento — solo móvil *@
@@ -2010,12 +2014,15 @@
                     <MudMenuItem Icon="@Icons.Material.Outlined.Download" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync">
                         Descargar
                     </MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Archive" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync">
-                        Archivar
-                    </MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
-                        <MudText Color="Color.Error">Eliminar</MudText>
-                    </MudMenuItem>
+                    @if (!hasReadOnly)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Archive" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync">
+                            Archivar
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog">
+                            <MudText Color="Color.Error">Eliminar</MudText>
+                        </MudMenuItem>
+                    }
                 </MudMenu>
             </text>
         , keepDrawerVisible: true);

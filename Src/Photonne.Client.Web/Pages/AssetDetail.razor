@@ -712,6 +712,7 @@ else
     private bool _imageLoadError = false;
     private bool _deleting = false;
     private bool _deleteConfirmOpen = false;
+    private bool _isReadOnly => _asset?.IsReadOnly == true;
     private bool _tagBusy = false;
     private bool _favoriteBusy = false;
     private bool _archiveBusy = false;
@@ -869,18 +870,21 @@ else
                                                    Color="Color.Inherit" OnClick="StartSlideshow" />
                                 </MudTooltip>
                             }
-                            <MudTooltip Text="@(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")">
-                                <MudIconButton Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
-                                               Color="Color.Inherit"
-                                               OnClick="ToggleArchiveAsync"
-                                               Disabled="@_archiveBusy" />
-                            </MudTooltip>
-                            <MudTooltip Text="Eliminar">
-                                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
-                                               Color="Color.Error"
-                                               OnClick="@(() => _deleteConfirmOpen = true)"
-                                               Disabled="@_deleting" />
-                            </MudTooltip>
+                            @if (!_isReadOnly)
+                            {
+                                <MudTooltip Text="@(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")">
+                                    <MudIconButton Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
+                                                   Color="Color.Inherit"
+                                                   OnClick="ToggleArchiveAsync"
+                                                   Disabled="@_archiveBusy" />
+                                </MudTooltip>
+                                <MudTooltip Text="Eliminar">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => _deleteConfirmOpen = true)"
+                                                   Disabled="@_deleting" />
+                                </MudTooltip>
+                            }
                         </span>
 
                         @* Menú de desbordamiento — solo en móvil *@
@@ -900,15 +904,18 @@ else
                                     Presentación
                                 </MudMenuItem>
                             }
-                            <MudMenuItem Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
-                                         OnClick="ToggleArchiveAsync">
-                                @(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")
-                            </MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
-                                         IconColor="Color.Error"
-                                         OnClick="@(() => _deleteConfirmOpen = true)">
-                                <MudText Color="Color.Error">Eliminar</MudText>
-                            </MudMenuItem>
+                            @if (!_isReadOnly)
+                            {
+                                <MudMenuItem Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
+                                             OnClick="ToggleArchiveAsync">
+                                    @(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                             IconColor="Color.Error"
+                                             OnClick="@(() => _deleteConfirmOpen = true)">
+                                    <MudText Color="Color.Error">Eliminar</MudText>
+                                </MudMenuItem>
+                            }
                         </MudMenu>
                     }
                 </div>

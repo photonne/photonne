@@ -114,7 +114,8 @@ public class ArchiveEndpoint : IEndpoint
             Height = asset.Exif?.Height,
             IsFavorite = asset.IsFavorite,
             IsArchived = true,
-            Tags = BuildTagList(asset)
+            Tags = BuildTagList(asset),
+            IsReadOnly = asset.ExternalLibraryId.HasValue
         }).ToList();
 
         var nextCursor = hasMore ? assets.Last().FileCreatedAt : (DateTime?)null;
