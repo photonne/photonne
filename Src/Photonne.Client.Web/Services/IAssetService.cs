@@ -37,6 +37,7 @@ public interface IAssetService
     Task<List<UserDuplicateGroup>> GetMyDuplicatesAsync();
     Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50);
     Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption);
+    Task<TimelineNeighborsResult> GetTimelineNeighborsAsync(Guid assetId, int before = 50, int after = 50);
 }
 
 public class ArchiveAssetsRequest

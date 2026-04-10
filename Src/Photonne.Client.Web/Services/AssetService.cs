@@ -455,6 +455,14 @@ public class AssetService : IAssetService
         return result?.Caption;
     }
 
+    public async Task<TimelineNeighborsResult> GetTimelineNeighborsAsync(Guid assetId, int before = 50, int after = 50)
+    {
+        await SetAuthHeaderAsync();
+        var url = $"/api/assets/{assetId}/timeline-neighbors?before={before}&after={after}";
+        var response = await _httpClient.GetFromJsonAsync<TimelineNeighborsResult>(url);
+        return response ?? new TimelineNeighborsResult();
+    }
+
     public async Task<HashSet<string>> CheckExistingAsync(
         IEnumerable<(string Name, long Size)> files,
         CancellationToken cancellationToken = default)

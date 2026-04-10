@@ -11,7 +11,7 @@ public interface IAssetListNavigationState
     /// <summary>Guarda la lista antes de navegar. <paramref name="albumId"/> null = timeline; con valor = álbum.</summary>
     void SetList(IReadOnlyList<TimelineItem> list, Guid? albumId = null);
 
-    /// <summary>Recupera la lista si existe para el contexto actual (mismo albumId). La consume y la borra.</summary>
+    /// <summary>Recupera la lista si existe para el contexto actual (mismo albumId). La mantiene para reusos posteriores.</summary>
     /// <returns>La lista si había una guardada para este contexto; si no, null.</returns>
     List<TimelineItem>? TryGetList(Guid? albumId);
 }
@@ -36,9 +36,6 @@ public class AssetListNavigationState : IAssetListNavigationState
         if (_albumId != albumId)
             return null;
 
-        var result = _list;
-        _list = null;
-        _albumId = null;
-        return result;
+        return _list;
     }
 }

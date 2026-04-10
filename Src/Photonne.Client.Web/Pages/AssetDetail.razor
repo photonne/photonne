@@ -724,6 +724,8 @@ else
     private TimelineItem? _prevAsset;
     private TimelineItem? _nextAsset;
     private List<TimelineItem> _allAssets = new();
+    private bool _hasMoreBefore;
+    private bool _hasMoreAfter;
 
     // Slideshow
     private bool _slideshowActive = false;
@@ -957,18 +959,19 @@ else
                 {
                     _allAssets = await AlbumService.GetAlbumAssetsAsync(AlbumId.Value);
                 }
-                else if (ReturnTo is not ("archive" or "trash" or "my-shares"
+                else if (AssetId != Guid.Empty && ReturnTo is not ("archive" or "trash" or "my-shares"
                     or "utilities/duplicates" or "utilities/large-files"))
                 {
-                    var assets = new List<TimelineItem>();
-                    DateTime? cursor = null;
-                    do
+                    var neighbors = await AssetService.GetTimelineNeighborsAsync(AssetId);
+                    _allAssets = neighbors.Items.Select(n => new TimelineItem
                     {
-                        var page = await AssetService.GetTimelinePageAsync(cursor, pageSize: 500);
-                        assets.AddRange(page.Items);
-                        cursor = page.NextCursor;
-                    } while (cursor.HasValue);
-                    _allAssets = assets;
+                        Id = n.Id,
+                        FullPath = n.FullPath,
+                        FileCreatedAt = n.FileCreatedAt,
+                        SyncStatus = AssetSyncStatus.Synced
+                    }).ToList();
+                    _hasMoreBefore = neighbors.HasMoreBefore;
+                    _hasMoreAfter = neighbors.HasMoreAfter;
                 }
             }
             
@@ -1031,7 +1034,70 @@ else
         {
             _prevAsset = currentIndex > 0 ? _allAssets[currentIndex - 1] : null;
             _nextAsset = currentIndex < _allAssets.Count - 1 ? _allAssets[currentIndex + 1] : null;
+
+            // Prefetch more items when approaching window edges
+            const int edgeThreshold = 10;
+            if (_hasMoreBefore && currentIndex < edgeThreshold)
+            {
+                _ = ExpandWindowBeforeAsync();
+            }
+            else if (_hasMoreAfter && currentIndex > _allAssets.Count - 1 - edgeThreshold)
+            {
+                _ = ExpandWindowAfterAsync();
+            }
         }
+    }
+
+    private async Task ExpandWindowBeforeAsync()
+    {
+        if (!_hasMoreBefore || _allAssets.Count == 0) return;
+        var firstId = _allAssets[0].Id;
+        if (firstId == Guid.Empty) return;
+
+        var neighbors = await AssetService.GetTimelineNeighborsAsync(firstId, before: 50, after: 0);
+        if (neighbors.Items.Count <= 1) { _hasMoreBefore = false; return; }
+
+        // Items before the first asset (exclude the first asset itself which is at CurrentIndex)
+        var newItems = neighbors.Items
+            .Take(neighbors.CurrentIndex)
+            .Select(n => new TimelineItem
+            {
+                Id = n.Id, FullPath = n.FullPath, FileCreatedAt = n.FileCreatedAt,
+                SyncStatus = AssetSyncStatus.Synced
+            })
+            .ToList();
+
+        if (newItems.Count > 0)
+        {
+            _allAssets.InsertRange(0, newItems);
+        }
+        _hasMoreBefore = neighbors.HasMoreBefore;
+    }
+
+    private async Task ExpandWindowAfterAsync()
+    {
+        if (!_hasMoreAfter || _allAssets.Count == 0) return;
+        var lastId = _allAssets[^1].Id;
+        if (lastId == Guid.Empty) return;
+
+        var neighbors = await AssetService.GetTimelineNeighborsAsync(lastId, before: 0, after: 50);
+        if (neighbors.Items.Count <= 1) { _hasMoreAfter = false; return; }
+
+        // Items after the last asset (exclude the last asset itself which is at CurrentIndex)
+        var newItems = neighbors.Items
+            .Skip(neighbors.CurrentIndex + 1)
+            .Select(n => new TimelineItem
+            {
+                Id = n.Id, FullPath = n.FullPath, FileCreatedAt = n.FileCreatedAt,
+                SyncStatus = AssetSyncStatus.Synced
+            })
+            .ToList();
+
+        if (newItems.Count > 0)
+        {
+            _allAssets.AddRange(newItems);
+        }
+        _hasMoreAfter = neighbors.HasMoreAfter;
     }
 
     private async Task UpdateAssetDisplayUrlsAsync()
