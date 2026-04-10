@@ -56,10 +56,14 @@
                 <div class="timeline-content @(_density == "S" ? "density-s" : _density == "L" ? "density-l" : "")"  >
                     <MemoriesWidget OnThumbClick="OpenMemoryAsset" Test="false" />
 
-                    @if (_groupedGridItems.Any())
+                    @if (_visibleGroupedGridItems.Any())
                     {
+                        @if (_topSpacerHeight > 0)
+                        {
+                            <div class="timeline-spacer" style="height: @(_topSpacerHeight)px;"></div>
+                        }
                         <div class="timeline-flat-grid">
-                        @foreach (var group in _groupedGridItems)
+                        @foreach (var group in _visibleGroupedGridItems)
                         {
                             var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
                             <div class="day-header-row" id="@GetGroupId(group.Key)">
@@ -99,6 +103,10 @@
                             }
                         }
                         </div>
+                        @if (_bottomSpacerHeight > 0)
+                        {
+                            <div class="timeline-spacer" style="height: @(_bottomSpacerHeight)px;"></div>
+                        }
                     }
                     else if (!_loading)
                     {
@@ -420,6 +428,11 @@
         padding-bottom: 80px;
     }
 
+
+    .timeline-spacer {
+        flex: 0 0 100%;
+        width: 100%;
+    }
 
     /* Grid continuo — todas las fotos en un único contenedor flex */
     .timeline-flat-grid {
@@ -1014,7 +1027,14 @@
 @code {
     private List<TimelineGridSection> _gridSections = new();
     private Dictionary<string, List<TimelineGridItem>> _groupedGridItems = new();
+    private Dictionary<string, List<TimelineGridItem>> _visibleGroupedGridItems = new();
     private bool _loading = true;
+    private bool _loadingMore = false;
+    // Window-based rendering: only render groups within [_windowStart, _windowEnd) item range
+    private int _windowStart = 0;
+    private int _windowEnd = WINDOW_SIZE;
+    private const int WINDOW_SIZE = 600;       // max items rendered at once
+    private const int LOAD_MORE_BATCH = 300;   // items added when scrolling near edges
     private double _lastScrollTop = 0;
     private string _activeGroup = "";
     private DotNetObjectReference<Timeline>? _objRef;
@@ -1343,6 +1363,15 @@
     }
 
     [JSInvokable]
+    public async Task ScrollToGroupFromJS(string groupKey)
+    {
+        if (_groupedGridItems.ContainsKey(groupKey))
+        {
+            await ScrollToGroup(groupKey);
+        }
+    }
+
+    [JSInvokable]
     public Task OnVirtualScrollIdle(double scrollTop)
     {
         _lastScrollTop = scrollTop;
@@ -1401,7 +1430,94 @@
             .ToDictionary(g => g.Key, g => g.ToList());
         if (_groupedGridItems.Any())
             _activeGroup = _groupedGridItems.Keys.First();
+        _windowStart = 0;
+        _windowEnd = WINDOW_SIZE;
+        RebuildVisibleItems();
         _groupMapNeedsUpdate = true;
+    }
+
+    private int _topSpacerHeight = 0;
+    private int _bottomSpacerHeight = 0;
+
+    private void RebuildVisibleItems()
+    {
+        var visible = new Dictionary<string, List<TimelineGridItem>>();
+        var index = 0;
+        var beforeCount = 0;
+        var afterCount = 0;
+        var inWindow = false;
+
+        foreach (var kvp in _groupedGridItems)
+        {
+            var groupEnd = index + kvp.Value.Count;
+
+            if (groupEnd <= _windowStart)
+            {
+                // Entire group is before the window
+                beforeCount += kvp.Value.Count;
+            }
+            else if (index >= _windowEnd)
+            {
+                // Entire group is after the window
+                afterCount += kvp.Value.Count;
+            }
+            else
+            {
+                // Group overlaps the window — include it fully
+                visible[kvp.Key] = kvp.Value;
+                inWindow = true;
+            }
+            index = groupEnd;
+        }
+        _visibleGroupedGridItems = visible;
+
+        // Estimate spacer heights: ~200px row height, ~5 items per row
+        _topSpacerHeight = (int)((double)beforeCount / 5 * 200);
+        _bottomSpacerHeight = (int)((double)afterCount / 5 * 200);
+    }
+
+    /// <summary>
+    /// Called from JS when the user scrolls near the bottom of the rendered content.
+    /// Extends the window downward.
+    /// </summary>
+    [JSInvokable]
+    public async Task LoadMoreItems()
+    {
+        if (_loadingMore) return;
+        var totalItems = _groupedGridItems.Values.Sum(g => g.Count);
+        if (_windowEnd >= totalItems) return;
+
+        _loadingMore = true;
+        _windowEnd = Math.Min(_windowEnd + LOAD_MORE_BATCH, totalItems);
+        // Reclaim from the top if window exceeds max size
+        if (_windowEnd - _windowStart > WINDOW_SIZE)
+            _windowStart = _windowEnd - WINDOW_SIZE;
+        RebuildVisibleItems();
+        _masonryInitialized = false;
+        StateHasChanged();
+        await Task.Yield();
+        _loadingMore = false;
+    }
+
+    /// <summary>
+    /// Called from JS when the user scrolls near the top of the rendered content.
+    /// Extends the window upward.
+    /// </summary>
+    [JSInvokable]
+    public async Task LoadPreviousItems()
+    {
+        if (_loadingMore || _windowStart <= 0) return;
+
+        _loadingMore = true;
+        _windowStart = Math.Max(_windowStart - LOAD_MORE_BATCH, 0);
+        // Reclaim from the bottom if window exceeds max size
+        if (_windowEnd - _windowStart > WINDOW_SIZE)
+            _windowEnd = _windowStart + WINDOW_SIZE;
+        RebuildVisibleItems();
+        _masonryInitialized = false;
+        StateHasChanged();
+        await Task.Yield();
+        _loadingMore = false;
     }
     
     private string FormatDayHeader(DateTime date)
@@ -1898,9 +2014,33 @@
 
     private async Task ScrollToGroup(string groupName)
     {
-        // Al hacer scroll manual, actualizamos el estado
+        // Ensure items up to this group are rendered before scrolling
+        await EnsureGroupRendered(groupName);
         _activeGroup = groupName;
         await JS.InvokeVoidAsync("scrollHelpers.scrollToElement", GetGroupId(groupName));
+    }
+
+    private async Task EnsureGroupRendered(string groupName)
+    {
+        if (_visibleGroupedGridItems.ContainsKey(groupName)) return;
+
+        // Find the item index where this group starts
+        var groupStart = 0;
+        foreach (var kvp in _groupedGridItems)
+        {
+            if (kvp.Key == groupName) break;
+            groupStart += kvp.Value.Count;
+        }
+
+        // Center the window on this group
+        var half = WINDOW_SIZE / 2;
+        _windowStart = Math.Max(0, groupStart - half);
+        _windowEnd = _windowStart + WINDOW_SIZE;
+        RebuildVisibleItems();
+        _masonryInitialized = false;
+        StateHasChanged();
+        // Allow Blazor to render the new DOM before scrolling
+        await Task.Delay(50);
     }
 
     private bool IsActiveYear(string year) 

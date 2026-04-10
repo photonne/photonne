@@ -232,7 +232,15 @@ window.scrubberHelpers = {
             if (marker) {
                 e.stopPropagation();
                 var gid = marker.getAttribute('data-group-id');
-                if (gid) window.scrollHelpers.scrollToElement(gid);
+                if (!gid) return;
+                // If element exists in DOM, scroll directly; otherwise ask .NET to render it first
+                var el = document.getElementById(gid);
+                if (el) {
+                    window.scrollHelpers.scrollToElement(gid);
+                } else {
+                    var dateStr = gid.replace(/^group-/, '');
+                    window.timelineVirtualScroll.navigateToGroup(dateStr);
+                }
                 return;
             }
             // Bare track click — jump scroll to that vertical position
@@ -305,6 +313,27 @@ window.scrubberHelpers = {
 
     _scrollToPercent: function (pct) {
         if (!this._sc) return;
+        // Find the group closest to this percentage and navigate to it
+        if (this._groupMap.length > 0) {
+            var targetGroup = this._groupMap[0];
+            for (var i = 0; i < this._groupMap.length; i++) {
+                if (this._groupMap[i].position <= pct + 0.001) {
+                    targetGroup = this._groupMap[i];
+                } else {
+                    break;
+                }
+            }
+            var el = document.getElementById(targetGroup.id);
+            if (el) {
+                // Group is in the DOM — scroll directly to it
+                el.scrollIntoView({ behavior: 'instant', block: 'start' });
+                return;
+            }
+            // Group not rendered — debounced navigation via .NET
+            var dateStr = targetGroup.id.replace(/^group-/, '');
+            window.timelineVirtualScroll.navigateToGroup(dateStr);
+            return;
+        }
         var scrollable = this._sc.scrollHeight - this._sc.clientHeight;
         this._sc.scrollTop = pct * scrollable;
     },
@@ -550,10 +579,16 @@ window.timelineVirtualScroll = {
     _lastScrollTime: 0,
     _idleTimer: null,
     _scrollDirection: 0,
+    _loadMorePending: false,
+    _loadPrevPending: false,
+    _scrubberNavTimer: null,
     VELOCITY_THRESHOLD: 600,
+    LOAD_MORE_THRESHOLD: 1500, // px from edge to trigger loading
 
     init: function (dotNetRef) {
         this._dotNetRef = dotNetRef;
+        this._loadMorePending = false;
+        this._loadPrevPending = false;
         var sc = document.getElementById('timeline-scroll-container');
         if (!sc) return;
         this._lastScrollTop = sc.scrollTop;
@@ -578,6 +613,31 @@ window.timelineVirtualScroll = {
         // Pause thumbnail loading during scroll
         if (window.imageLoadManager) window.imageLoadManager.onScrollStart();
 
+        if (this._dotNetRef) {
+            // Near bottom — load more items forward
+            var distanceFromBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+            if (distanceFromBottom < this.LOAD_MORE_THRESHOLD && !this._loadMorePending) {
+                this._loadMorePending = true;
+                var self = this;
+                this._dotNetRef.invokeMethodAsync('LoadMoreItems').then(function () {
+                    self._loadMorePending = false;
+                }).catch(function () {
+                    self._loadMorePending = false;
+                });
+            }
+
+            // Near top — load previous items backward
+            if (sc.scrollTop < this.LOAD_MORE_THRESHOLD && !this._loadPrevPending) {
+                this._loadPrevPending = true;
+                var self = this;
+                this._dotNetRef.invokeMethodAsync('LoadPreviousItems').then(function () {
+                    self._loadPrevPending = false;
+                }).catch(function () {
+                    self._loadPrevPending = false;
+                });
+            }
+        }
+
         clearTimeout(this._idleTimer);
         var self = this;
         var delay = velocity < this.VELOCITY_THRESHOLD ? 150 : 300;
@@ -587,8 +647,21 @@ window.timelineVirtualScroll = {
         }, delay);
     },
 
+    // Debounced scrubber navigation: waits for the user to settle on a position
+    // before asking .NET to render that section (avoids spamming during fast drag)
+    navigateToGroup: function (dateStr) {
+        clearTimeout(this._scrubberNavTimer);
+        var self = this;
+        this._scrubberNavTimer = setTimeout(function () {
+            if (self._dotNetRef) {
+                self._dotNetRef.invokeMethodAsync('ScrollToGroupFromJS', dateStr);
+            }
+        }, 150);
+    },
+
     cleanup: function () {
         clearTimeout(this._idleTimer);
+        clearTimeout(this._scrubberNavTimer);
         this._dotNetRef = null;
     }
 };
