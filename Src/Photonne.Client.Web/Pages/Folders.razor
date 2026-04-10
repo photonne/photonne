@@ -228,7 +228,20 @@
     }
     .asset-select-container {
         position: relative;
+        transition: transform 0.15s ease, background-color 0.15s ease;
+        background-color: transparent;
     }
+
+    .asset-select-container.selected {
+        transform: scale(0.90);
+        background-color: var(--mud-palette-background-gray);
+    }
+
+    .asset-select-container.selection-mode:active {
+        transform: scale(0.90);
+        transition-duration: 0.06s;
+    }
+
     .asset-select-checkbox {
         position: absolute;
         top: 8px;
@@ -251,7 +264,6 @@
         opacity: 1;
         pointer-events: auto;
     }
-    .asset-select-container.selection-mode .asset-select-checkbox,
     .asset-select-container.selected .asset-select-checkbox {
         opacity: 1;
         pointer-events: auto;
