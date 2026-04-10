@@ -397,8 +397,18 @@ public class TimelineEndpoint : IEndpoint
             }
         }
 
-        // Añadir ancestros para consistencia, aunque para assets quizás no es estrictamente necesario 
-        // si solo queremos assets de carpetas finales permitidas.
+        // Carpetas de bibliotecas externas accesibles
+        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
+            .Where(p => p.UserId == userId && p.CanRead)
+            .Select(p => p.ExternalLibraryId)
+            .ToHashSetAsync(ct);
+
+        foreach (var folder in allFolders)
+        {
+            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
+                allowedIds.Add(folder.Id);
+        }
+
         return allowedIds;
     }
 
@@ -427,8 +437,7 @@ public class TimelineEndpoint : IEndpoint
         // Añadir espacio personal
         allowedPaths.Add(userRootPath.TrimEnd('/') + "/");
 
-        // Añadir carpetas que no tienen permisos explícitos pero están en espacio personal (ya cubierto por userRootPath)
-        // Pero por si acaso hay carpetas sin permisos en shared (que no deberían verse), el bucle asegura que solo las del usuario se añadan si no tienen permisos.
+        // Añadir carpetas que no tienen permisos explícitos pero están en espacio personal
         foreach (var folder in allFolders)
         {
             if (!foldersWithPermissionsSet.Contains(folder.Id))
@@ -438,6 +447,21 @@ public class TimelineEndpoint : IEndpoint
                 {
                     allowedPaths.Add(normalizedPath);
                 }
+            }
+        }
+
+        // Carpetas de bibliotecas externas accesibles
+        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
+            .Where(p => p.UserId == userId && p.CanRead)
+            .Select(p => p.ExternalLibraryId)
+            .ToHashSetAsync(ct);
+
+        foreach (var folder in allFolders)
+        {
+            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
+            {
+                var normalizedPath = folder.Path.Replace('\\', '/').TrimEnd('/') + "/";
+                allowedPaths.Add(normalizedPath);
             }
         }
 

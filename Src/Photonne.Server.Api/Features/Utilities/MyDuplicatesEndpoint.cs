@@ -111,6 +111,18 @@ public class MyDuplicatesEndpoint : IEndpoint
             }
         }
 
+        // Carpetas de bibliotecas externas accesibles
+        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
+            .Where(p => p.UserId == userId && p.CanRead)
+            .Select(p => p.ExternalLibraryId)
+            .ToHashSetAsync(ct);
+
+        foreach (var folder in allFolders)
+        {
+            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
+                allowedIds.Add(folder.Id);
+        }
+
         return allowedIds;
     }
 

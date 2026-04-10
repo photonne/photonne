@@ -132,6 +132,19 @@ public class MemoriesEndpoint : IEndpoint
                 f.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
                 allowedIds.Add(f.Id);
         }
+
+        // Carpetas de bibliotecas externas accesibles
+        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
+            .Where(p => p.UserId == userId && p.CanRead)
+            .Select(p => p.ExternalLibraryId)
+            .ToHashSetAsync(ct);
+
+        foreach (var f in allFolders)
+        {
+            if (f.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(f.ExternalLibraryId.Value))
+                allowedIds.Add(f.Id);
+        }
+
         return allowedIds;
     }
 }
