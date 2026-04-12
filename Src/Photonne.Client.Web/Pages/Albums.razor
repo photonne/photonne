@@ -29,6 +29,7 @@
         left: 8px;
         z-index: 5;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 0.2s;
         background: rgba(0,0,0,0.45);
         border-radius: 999px;
@@ -40,62 +41,15 @@
         color: white !important;
     }
 
-    .album-card-container:hover .album-select-checkbox {
-        opacity: 1;
-    }
-
-    .album-card-container.selection-mode .album-select-checkbox,
+    .album-card-container:hover .album-select-checkbox,
     .album-card-container.selected .album-select-checkbox {
-        opacity: 1;
-    }
-
-    .asset-select-container {
-        position: relative;
-        height: 100%;
-        transition: transform 0.15s ease, background-color 0.15s ease;
-        background-color: transparent;
-    }
-
-    .asset-select-container.selected {
-        transform: scale(0.90);
-        background-color: var(--mud-palette-background-gray);
-    }
-
-    .asset-select-container.selection-mode:active {
-        transform: scale(0.90);
-        transition-duration: 0.06s;
-    }
-
-    .asset-select-checkbox {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        z-index: 5;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s;
-        background: rgba(0,0,0,0.4);
-        border-radius: 999px;
-        padding: 2px;
-        color: white;
-    }
-
-    .asset-select-checkbox .mud-icon-root {
-        color: white !important;
-    }
-
-    .asset-select-container:hover .asset-select-checkbox {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    .asset-select-container.selected .asset-select-checkbox {
         opacity: 1;
         pointer-events: auto;
     }
 
     @@media (max-width: 959.98px) {
-        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+        /* Touch devices: hide checkbox unless the album is actually selected */
+        .album-card-container:not(.selected):hover .album-select-checkbox {
             opacity: 0;
             pointer-events: none;
         }
@@ -114,6 +68,9 @@
         background: var(--mud-palette-surface);
         transition: transform 0.2s, box-shadow 0.2s;
         border: 1px solid var(--mud-palette-divider);
+        /* Skip layout/paint when off-screen — major perf win for large album lists */
+        content-visibility: auto;
+        contain-intrinsic-size: 220px 260px;
     }
 
     .album-card-container:hover {
@@ -121,9 +78,20 @@
         box-shadow: var(--mud-elevation-4);
     }
 
-    .album-card {
-        background: transparent !important;
-        box-shadow: none !important;
+    .album-overlay-name {
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    .album-overlay-count {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.75rem;
+        line-height: 1.4;
     }
 
     /* ── Collage de previsualización ── */
@@ -274,6 +242,21 @@
         gap: 12px;
     }
 
+    /* Lightweight responsive grid for album cards — replaces MudGrid + MudItem
+       to eliminate the per-item Blazor component overhead. */
+    .album-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    @@media (max-width: 599.98px) {
+        .album-card-grid {
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 6px;
+        }
+    }
+
     .album-list-item {
         display: flex;
         align-items: center;
@@ -284,6 +267,9 @@
         transition: background 0.2s ease;
         cursor: pointer;
         position: relative;
+        /* Skip layout/paint when off-screen — major perf win for long album lists */
+        content-visibility: auto;
+        contain-intrinsic-size: 100% 120px;
     }
 
     .album-list-item:hover {
@@ -291,10 +277,10 @@
     }
 
     .album-list-thumb {
-        width: 96px;
-        height: 96px;
+        width: 70px;
+        height: 70px;
         position: relative;
-        flex: 0 0 96px;
+        flex: 0 0 80px;
         border-radius: 8px;
         overflow: hidden;
     }
@@ -491,70 +477,68 @@
 
                 if (_albumViewMode == AlbumViewMode.Grid)
                 {
-                    <MudGrid>
+                    <div class="album-card-grid">
                         @foreach (var album in group.Albums)
                         {
-                            <MudItem xs="6" sm="4" md="3" lg="2">
-                                <div class="album-card-container @(_albumSelectionMode ? "selection-mode" : "") @(IsAlbumSelected(album.Id) ? "selected" : "")"
-                                     @onclick="@(() => OnAlbumCardClick(album.Id))">
-                                    <div class="album-select-checkbox" @onclick:stopPropagation="true">
-                                        <MudCheckBox T="bool"
-                                                     Value="@IsAlbumSelected(album.Id)"
-                                                     ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAlbumSelection(album.Id, value)))" />
-                                    </div>
-                                    <div class="album-grid-badges">
-                                        @if (album.SharedWithCount > 0)
-                                        {
-                                            <div class="album-shared-badge" title="Compartido con @album.SharedWithCount usuarios">
-                                                <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" Color="Color.Inherit" />
-                                                <span>@album.SharedWithCount</span>
-                                            </div>
-                                        }
-                                        @if (album.IsOwner)
-                                        {
-                                            <div class="album-grid-share-btn @(album.HasActiveShareLink ? "active" : "")"
-                                                 title="@(album.HasActiveShareLink ? "Gestionar enlace" : "Compartir álbum")"
-                                                 @onclick:stopPropagation="true"
-                                                 @onclick="() => OpenShareDialogForAlbum(album.Id, album.Name)">
-                                                <MudIcon Icon="@Icons.Material.Outlined.Share" Size="Size.Small" Color="Color.Inherit" />
-                                            </div>
-                                        }
-                                    </div>
-                                    <MudCard Class="album-card" Style="cursor: pointer;">
-                                        <MudCardContent Style="padding: 0;">
-                                            <div class="album-thumb-collage">
-                                                @if (album.PreviewThumbnailUrls.Count >= 4)
-                                                {
-                                                    <div class="collage-grid">
-                                                        @foreach (var url in album.PreviewThumbnailUrls.Take(4))
-                                                        {
-                                                            <img src="@url" class="collage-img" loading="lazy" alt="" />
-                                                        }
-                                                    </div>
-                                                }
-                                                else if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
-                                                {
-                                                    <img src="@album.CoverThumbnailUrl" class="collage-single" loading="lazy" alt="@album.Name" />
-                                                }
-                                                else
-                                                {
-                                                    <div class="collage-empty">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Collections" Size="Size.Large" Color="Color.Inherit" />
-                                                    </div>
-                                                }
-                                                <div class="collage-overlay">
-                                                    <MudText Typo="Typo.body2" Style="color: white; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">@album.Name</MudText>
-                                                    <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.9);">
-                                                        @album.AssetCount @(album.AssetCount == 1 ? "foto" : "fotos")
-                                                    </MudText>
-                                                </div>
-                                            </div>
-                                        </MudCardContent>
-                                    </MudCard>
+                            <div class="album-card-container @(_albumSelectionMode ? "selection-mode" : "") @(IsAlbumSelected(album.Id) ? "selected" : "")"
+                                 @key="album.Id"
+                                 @onclick="@(() => OnAlbumCardClick(album.Id))"
+                                 @ontouchstart="@(e => OnAlbumItemTouchStart(e, album))"
+                                 @ontouchmove="OnCardTouchMove"
+                                 @ontouchend="OnCardTouchEnd">
+                                <div class="album-select-checkbox" @onclick:stopPropagation="true">
+                                    <MudCheckBox T="bool"
+                                                 Value="@IsAlbumSelected(album.Id)"
+                                                 ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAlbumSelection(album.Id, value)))" />
                                 </div>
-                            </MudItem>
+                                <div class="album-grid-badges">
+                                    @if (album.SharedWithCount > 0)
+                                    {
+                                        <div class="album-shared-badge" title="Compartido con @album.SharedWithCount usuarios">
+                                            <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" Color="Color.Inherit" />
+                                            <span>@album.SharedWithCount</span>
+                                        </div>
+                                    }
+                                    @if (album.IsOwner)
+                                    {
+                                        <div class="album-grid-share-btn @(album.HasActiveShareLink ? "active" : "")"
+                                             title="@(album.HasActiveShareLink ? "Gestionar enlace" : "Compartir álbum")"
+                                             @onclick:stopPropagation="true"
+                                             @onclick="() => OpenShareDialogForAlbum(album.Id, album.Name)">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Share" Size="Size.Small" Color="Color.Inherit" />
+                                        </div>
+                                    }
+                                </div>
+                                <div class="album-thumb-collage">
+                                    @if (album.PreviewThumbnailUrls.Count >= 4)
+                                    {
+                                        <div class="collage-grid">
+                                            @foreach (var url in album.PreviewThumbnailUrls.Take(4))
+                                            {
+                                                <img src="@url" class="collage-img" loading="lazy" alt="" />
+                                            }
+                                        </div>
+                                    }
+                                    else if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
+                                    {
+                                        <img src="@album.CoverThumbnailUrl" class="collage-single" loading="lazy" alt="@album.Name" />
+                                    }
+                                    else
+                                    {
+                                        <div class="collage-empty">
+                                            <MudIcon Icon="@Icons.Material.Filled.Collections" Size="Size.Large" Color="Color.Inherit" />
+                                        </div>
+                                    }
+                                    <div class="collage-overlay">
+                                        <div class="album-overlay-name">@album.Name</div>
+                                        <div class="album-overlay-count">
+                                            @album.AssetCount @(album.AssetCount == 1 ? "foto" : "fotos")
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                 }
                 else
                 {
@@ -562,7 +546,11 @@
                         @foreach (var album in group.Albums)
                         {
                             <div class="album-list-item album-card-container @(_albumSelectionMode ? "selection-mode" : "") @(IsAlbumSelected(album.Id) ? "selected" : "")"
-                                 @onclick="@(() => OnAlbumCardClick(album.Id))">
+                                 @key="album.Id"
+                                 @onclick="@(() => OnAlbumCardClick(album.Id))"
+                                 @ontouchstart="@(e => OnAlbumItemTouchStart(e, album))"
+                                 @ontouchmove="OnCardTouchMove"
+                                 @ontouchend="OnCardTouchEnd">
                                 <div class="album-list-thumb">
                                     <div class="album-select-checkbox" @onclick:stopPropagation="true">
                                         <MudCheckBox T="bool"
@@ -679,7 +667,7 @@ else
                 @if (_selectedAlbum?.CanManagePermissions == true || _selectedAlbum?.IsOwner == true)
                 {
                     <MudMenuItem Icon="@Icons.Material.Outlined.Group"
-                                 OnClick="@(() => Navigation.NavigateTo($"/albums/{AlbumId}/permissions"))">
+                                 OnClick="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.Id ?? AlbumId)}/permissions"))">
                         Colaboradores
                     </MudMenuItem>
                 }
@@ -738,25 +726,55 @@ else
             <div class="mb-3">
                 <MudText Typo="Typo.h6">Archivos</MudText>
             </div>
-            <MudGrid Spacing="2">
-                @foreach (var asset in _albumAssets)
+            @{
+                var visibleAssets = Math.Min(_albumAssetVisibleCount, _albumAssets.Count);
+            }
+            <div class="media-thumb-grid">
+                @for (var i = 0; i < visibleAssets; i++)
                 {
-                    <MudItem xs="4" sm="3" md="2" lg="2" xl="1">
-                        <div class="asset-select-container @(_assetSelectionMode ? "selection-mode" : "") @(IsAlbumAssetSelected(asset.Id) ? "selected" : "")"
-                             data-asset-id="@asset.Id"
-                             @ontouchstart="@(e => OnCardTouchStart(e, asset))"
-                             @ontouchmove="OnCardTouchMove"
-                             @ontouchend="OnCardTouchEnd">
-                            <AssetCard Asset="@asset" OnAssetClick="OnAlbumAssetClick" />
-                            <div class="asset-select-checkbox" @onclick:stopPropagation="true">
-                                <MudCheckBox T="bool"
-                                             Value="@IsAlbumAssetSelected(asset.Id)"
-                                             ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAlbumAssetSelection(asset.Id, value)))" />
+                    var asset = _albumAssets[i];
+                    var isSelected = IsAlbumAssetSelected(asset.Id);
+                    <div class="media-thumb-cell @(_assetSelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
+                         data-asset-id="@asset.Id"
+                         @key="asset.Id"
+                         @onclick="@(() => OnAlbumAssetClick(asset))"
+                         @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                         @ontouchmove="OnCardTouchMove"
+                         @ontouchend="OnCardTouchEnd">
+                        @if (asset.HasThumbnails && !asset.IsFileMissing)
+                        {
+                            <img src="@asset.ThumbnailUrl"
+                                 alt="@asset.FileName"
+                                 loading="lazy"
+                                 decoding="async" />
+                        }
+                        @if (asset.IsFileMissing)
+                        {
+                            <div class="media-thumb-broken">
+                                <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
                             </div>
+                        }
+                        @if (asset.Type == "Video")
+                        {
+                            <div class="media-thumb-video-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                            </div>
+                        }
+                        <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
+                            <MudCheckBox T="bool"
+                                         Value="@isSelected"
+                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAlbumAssetSelection(asset.Id, value)))" />
                         </div>
-                    </MudItem>
+                    </div>
                 }
-            </MudGrid>
+            </div>
+            @if (_albumAssetVisibleCount < _albumAssets.Count)
+            {
+                <div id="album-assets-load-more-sentinel" style="height:4px;"></div>
+                <div class="d-flex justify-center py-4">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                </div>
+            }
         </div>
     }
     else
@@ -1058,8 +1076,22 @@ else
     private List<AlbumItem> _albums = new();
     private AlbumItem? _selectedAlbum;
     private List<TimelineItem> _albumAssets = new();
+    // Paged rendering of the asset grid: avoids creating thousands of AssetCard
+    // components at once when opening an album with a lot of items.
+    private const int ALBUM_ASSETS_INITIAL_BATCH = 120;
+    private const int ALBUM_ASSETS_LOAD_MORE_BATCH = 120;
+    private int _albumAssetVisibleCount = 0;
+    private bool _albumAssetsSentinelAttached = false;
+    private bool _albumAssetsLoadingMore = false;
     private bool _loading = true;
     private bool _loadingAssets = false;
+
+    // Prefetch cache — NavigateToAlbumInPlace stores data here BEFORE calling
+    // NavigateTo so LoadAlbum can use it instantly (no flash, no scroll jump).
+    private Guid? _prefetchedAlbumId;
+    private AlbumItem? _prefetchedAlbum;
+    private List<TimelineItem>? _prefetchedAlbumAssets;
+    private bool _scrollToTopAfterRender;
     private bool _albumSelectionMode = false;
     private bool _assetSelectionMode = false;
     private HashSet<Guid> _selectedAlbumIds = new();
@@ -1127,9 +1159,70 @@ else
         return "background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-dark) 100%);";
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) _objRef = DotNetObjectReference.Create(this);
+
+        // Scroll to top after in-place album navigation completes
+        if (_scrollToTopAfterRender)
+        {
+            _scrollToTopAfterRender = false;
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+
+        // (Re)attach the asset-grid load-more sentinel whenever the visible count
+        // is below the total. The flag avoids redundant JS interop calls between paged loads.
+        if (_selectedAlbum != null && _albumAssetVisibleCount < _albumAssets.Count && !_albumAssetsSentinelAttached && _objRef != null)
+        {
+            _albumAssetsSentinelAttached = true;
+            try
+            {
+                await JS.InvokeVoidAsync(
+                    "setupLoadMoreObserver",
+                    "album-assets-load-more-sentinel",
+                    _objRef,
+                    nameof(LoadMoreAlbumAssetsFromJs),
+                    null,
+                    "300px");
+            }
+            catch
+            {
+                _albumAssetsSentinelAttached = false;
+            }
+        }
+        else if (_albumAssetVisibleCount >= _albumAssets.Count && _albumAssetsSentinelAttached)
+        {
+            _albumAssetsSentinelAttached = false;
+            try { await JS.InvokeVoidAsync("disconnectLoadMoreObserver", "album-assets-load-more-sentinel"); }
+            catch { }
+        }
+    }
+
+    [JSInvokable]
+    public Task LoadMoreAlbumAssetsFromJs()
+    {
+        if (_albumAssetsLoadingMore) return Task.CompletedTask;
+        if (_albumAssetVisibleCount >= _albumAssets.Count) return Task.CompletedTask;
+
+        _albumAssetsLoadingMore = true;
+        _albumAssetVisibleCount = Math.Min(_albumAssetVisibleCount + ALBUM_ASSETS_LOAD_MORE_BATCH, _albumAssets.Count);
+        // Force the sentinel to be re-attached after the next render so the
+        // observer keeps firing while there's still more to show.
+        _albumAssetsSentinelAttached = false;
+        StateHasChanged();
+        _albumAssetsLoadingMore = false;
+        return Task.CompletedTask;
+    }
+
+    private void ResetAlbumAssetPaging()
+    {
+        _albumAssetVisibleCount = 0;
+        _albumAssetsLoadingMore = false;
+        if (_albumAssetsSentinelAttached)
+        {
+            _albumAssetsSentinelAttached = false;
+            _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "album-assets-load-more-sentinel");
+        }
     }
 
     private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
@@ -1181,6 +1274,37 @@ else
     {
         _longPressTimer?.Dispose();
         _longPressTimer = null;
+    }
+
+    // Album-specific long-press: same UX as the asset cells. Triggers selection
+    // mode after 500 ms held on an album card / list item.
+    private async Task OnAlbumItemTouchStart(TouchEventArgs e, AlbumItem album)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_albumSelectionMode)
+        {
+            var selectMode = !IsAlbumSelected(album.Id);
+            _longPressHandled = true;
+            ToggleAlbumSelection(album.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAlbumSelection(album.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
     }
 
     [JSInvokable]
@@ -1261,6 +1385,7 @@ else
                 await LoadAlbums();
             _selectedAlbum = null;
             _albumAssets = new();
+            ResetAlbumAssetPaging();
             _assetSelectionMode = false;
             _selectedAlbumAssetIds.Clear();
         }
@@ -1297,11 +1422,41 @@ else
             _loadingAssets = true;
             _assetSelectionMode = false;
             _selectedAlbumAssetIds.Clear();
-            _selectedAlbum = await AlbumService.GetAlbumByIdAsync(albumId);
-            
+            // Don't call ResetAlbumAssetPaging() here — keep old assets visible
+            // while the new album loads so the page height doesn't collapse
+            // Use prefetched data if available, otherwise fetch from API
+            if (_prefetchedAlbum != null && _prefetchedAlbumId == albumId)
+            {
+                _selectedAlbum = _prefetchedAlbum;
+                _prefetchedAlbum = null;
+            }
+            else
+            {
+                _selectedAlbum = await AlbumService.GetAlbumByIdAsync(albumId);
+            }
+
             if (_selectedAlbum != null)
             {
-                _albumAssets = await AlbumService.GetAlbumAssetsAsync(albumId);
+                List<TimelineItem>? newAssets;
+                if (_prefetchedAlbumAssets != null && _prefetchedAlbumId == albumId)
+                {
+                    newAssets = _prefetchedAlbumAssets;
+                    _prefetchedAlbumAssets = null;
+                    _prefetchedAlbumId = null;
+                }
+                else
+                {
+                    newAssets = await AlbumService.GetAlbumAssetsAsync(albumId);
+                }
+                // Atomic swap: new data + paging reset in one render cycle.
+                _albumAssets = newAssets;
+                _albumAssetVisibleCount = Math.Min(ALBUM_ASSETS_INITIAL_BATCH, _albumAssets.Count);
+                _albumAssetsLoadingMore = false;
+                if (_albumAssetsSentinelAttached)
+                {
+                    _albumAssetsSentinelAttached = false;
+                    _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "album-assets-load-more-sentinel");
+                }
                 _breadcrumbs = new List<BreadcrumbItem>
                 {
                     new BreadcrumbItem("Álbumes", href: "/albums"),
@@ -1375,12 +1530,68 @@ else
         return query.ToList();
     }
 
-    private void OpenAlbum(Guid albumId)
+    private async Task OpenAlbum(Guid albumId)
     {
+        await NavigateToAlbumInPlace(albumId);
+    }
+
+    /// <summary>
+    /// Pre-fetches album data, stores it in cache, then calls NavigateTo so the
+    /// router updates parameters correctly (back button works). LoadAlbum will
+    /// find the cached data and render instantly — no flash, no scroll jump.
+    /// </summary>
+    private async Task NavigateToAlbumInPlace(Guid albumId)
+    {
+        _loadingAssets = true;
+        StateHasChanged(); // show loading bar on CURRENT view
+
+        try
+        {
+            var albumTask = AlbumService.GetAlbumByIdAsync(albumId);
+            var assetsTask = AlbumService.GetAlbumAssetsAsync(albumId);
+            await Task.WhenAll(albumTask, assetsTask);
+
+            var album = await albumTask;
+            if (album == null)
+            {
+                Snackbar.Add("Álbum no encontrado", Severity.Warning);
+                _loadingAssets = false;
+                StateHasChanged();
+                Navigation.NavigateTo("/albums");
+                return;
+            }
+
+            // Store in cache — LoadAlbum will consume these instantly after NavigateTo
+            _prefetchedAlbumId = albumId;
+            _prefetchedAlbum = album;
+            _prefetchedAlbumAssets = await assetsTask;
+            _scrollToTopAfterRender = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Snackbar.Add("No tienes permisos suficientes para acceder a este álbum.", Severity.Error);
+            _loadingAssets = false;
+            StateHasChanged();
+            Navigation.NavigateTo("/albums");
+            return;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar álbum: {ex.Message}", Severity.Error);
+            _prefetchedAlbumId = null;
+            _prefetchedAlbum = null;
+            _prefetchedAlbumAssets = null;
+            _loadingAssets = false;
+            StateHasChanged();
+            return;
+        }
+
+        // Navigate via the router — data is cached so LoadAlbum uses it instantly.
+        // Router updates AlbumId so the browser back button works correctly.
         Navigation.NavigateTo($"/albums/{albumId}");
     }
 
-    private void OnAlbumAssetClick(TimelineItem asset)
+    private async Task OnAlbumAssetClick(TimelineItem asset)
     {
         if (_longPressHandled)
         {
@@ -1393,13 +1604,17 @@ else
             ToggleAlbumAssetSelection(asset.Id, !IsAlbumAssetSelected(asset.Id));
             return;
         }
+        // Save the click origin so the asset detail page can play the
+        // zoom-from-origin enter animation (preserves the AssetCard behaviour).
+        await JS.InvokeVoidAsync("assetTransition.saveOriginByAssetId", asset.Id.ToString());
         OpenAsset(asset);
     }
 
     private void OpenAsset(TimelineItem asset)
     {
-        AssetListNavigationState.SetList(_albumAssets, AlbumId);
-        Navigation.NavigateTo($"/asset/{asset.Id}?albumId={AlbumId}");
+        var effectiveAlbumId = _selectedAlbum?.Id ?? AlbumId;
+        AssetListNavigationState.SetList(_albumAssets, effectiveAlbumId);
+        Navigation.NavigateTo($"/asset/{asset.Id}?albumId={effectiveAlbumId}");
     }
 
     private void OpenCreateDialog()
@@ -1681,15 +1896,21 @@ else
         }
     }
 
-    private void OnAlbumCardClick(Guid albumId)
+    private async Task OnAlbumCardClick(Guid albumId)
     {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
         if (_albumSelectionMode)
         {
             ToggleAlbumSelection(albumId, !IsAlbumSelected(albumId));
             return;
         }
 
-        OpenAlbum(albumId);
+        await OpenAlbum(albumId);
     }
 
     private void EnterAlbumSelectionMode()
@@ -2152,6 +2373,11 @@ else
         _longPressTimer?.Dispose();
         _objRef?.Dispose();
         LayoutService.ResetNavbar();
+        if (_albumAssetsSentinelAttached)
+        {
+            try { _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "album-assets-load-more-sentinel"); }
+            catch { }
+        }
     }
 
     private async Task ToggleAlbumViewMode()

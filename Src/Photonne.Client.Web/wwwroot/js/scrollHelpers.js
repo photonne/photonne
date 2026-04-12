@@ -153,31 +153,76 @@ window.scrollHelpers = {
     }
 };
 
-window.setupLoadMoreObserver = function (sentinelId, dotnetHelper, methodName) {
-    if (window._loadMoreObserver) {
-        window._loadMoreObserver.disconnect();
-        window._loadMoreObserver = null;
+// Multi-instance load-more observer registry, keyed by sentinel ID.
+// Backwards-compatible with the legacy single-observer API.
+window._loadMoreObservers = window._loadMoreObservers || {};
+
+/**
+ * Sets up an IntersectionObserver that fires `methodName` on the given .NET ref
+ * whenever `sentinelId` enters the viewport.
+ *
+ * @param {string} sentinelId  ID of the sentinel element to observe.
+ * @param {object} dotnetHelper  DotNetObjectReference.
+ * @param {string} methodName  JSInvokable method name to call.
+ * @param {string} [rootId]  Optional ID of the scroll container. Defaults to
+ *   `timeline-scroll-container` if present, otherwise the viewport.
+ * @param {string} [rootMargin]  Optional rootMargin (default '200px').
+ */
+window.setupLoadMoreObserver = function (sentinelId, dotnetHelper, methodName, rootId, rootMargin) {
+    // Disconnect any previous observer for the same sentinel
+    var existing = window._loadMoreObservers[sentinelId];
+    if (existing) {
+        try { existing.disconnect(); } catch (e) { }
+        delete window._loadMoreObservers[sentinelId];
     }
+
     var sentinel = document.getElementById(sentinelId);
     if (!sentinel) return;
 
-    var scrollContainer = document.getElementById('timeline-scroll-container');
-    window._loadMoreObserver = new IntersectionObserver(function (entries) {
+    var rootEl = null;
+    if (rootId) {
+        rootEl = document.getElementById(rootId);
+    } else {
+        // Backward compat: legacy callers expect timeline-scroll-container as default root
+        rootEl = document.getElementById('timeline-scroll-container');
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
         if (entries[0].isIntersecting) {
             dotnetHelper.invokeMethodAsync(methodName);
         }
     }, {
-        root: scrollContainer || null,
-        threshold: 0.1
+        root: rootEl || null,
+        rootMargin: rootMargin || '200px',
+        threshold: 0
     });
-    window._loadMoreObserver.observe(sentinel);
+    observer.observe(sentinel);
+    window._loadMoreObservers[sentinelId] = observer;
+
+    // Keep legacy single-observer reference in sync so disconnectLoadMoreObserver()
+    // (no-args) keeps working for the original Favorites caller.
+    window._loadMoreObserver = observer;
 };
 
-window.disconnectLoadMoreObserver = function () {
-    if (window._loadMoreObserver) {
-        window._loadMoreObserver.disconnect();
-        window._loadMoreObserver = null;
+/**
+ * Disconnects a previously-registered load-more observer.
+ * If `sentinelId` is provided, only that observer is removed; otherwise all are removed.
+ */
+window.disconnectLoadMoreObserver = function (sentinelId) {
+    if (sentinelId) {
+        var obs = window._loadMoreObservers[sentinelId];
+        if (obs) {
+            try { obs.disconnect(); } catch (e) { }
+            delete window._loadMoreObservers[sentinelId];
+        }
+        return;
     }
+    // No id: disconnect everything (legacy behaviour)
+    Object.keys(window._loadMoreObservers).forEach(function (key) {
+        try { window._loadMoreObservers[key].disconnect(); } catch (e) { }
+    });
+    window._loadMoreObservers = {};
+    window._loadMoreObserver = null;
 };
 
 window.scrubberHelpers = {

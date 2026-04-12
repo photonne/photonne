@@ -28,6 +28,9 @@
         background: var(--mud-palette-surface);
         transition: transform 0.2s, box-shadow 0.2s;
         border: 1px solid var(--mud-palette-divider);
+        /* Skip layout/paint when off-screen — major perf win for large folder lists */
+        content-visibility: auto;
+        contain-intrinsic-size: 220px 240px;
     }
     .folder-card-container:hover {
         transform: translateY(-4px);
@@ -124,6 +127,21 @@
         gap: 12px;
     }
 
+    /* Lightweight responsive grid for folder/library cards — replaces MudGrid
+       + MudItem to eliminate the per-item Blazor component overhead. */
+    .folder-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    @@media (max-width: 599.98px) {
+        .folder-card-grid {
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 6px;
+        }
+    }
+
     .folder-list-item {
         display: flex;
         align-items: center;
@@ -134,6 +152,9 @@
         transition: background 0.2s ease;
         cursor: pointer;
         position: relative;
+        /* Skip layout/paint when off-screen — major perf win for long folder lists */
+        content-visibility: auto;
+        contain-intrinsic-size: 100% 120px;
     }
 
     .folder-list-item:hover {
@@ -141,10 +162,10 @@
     }
 
     .folder-list-thumb {
-        width: 96px;
-        height: 96px;
+        width: 70px;
+        height: 70px;
         position: relative;
-        flex: 0 0 96px;
+        flex: 0 0 80px;
         border-radius: 8px;
         overflow: hidden;
     }
@@ -162,13 +183,10 @@
         color: var(--mud-palette-text-secondary);
     }
 
-    .folder-list-item:hover .folder-select-checkbox {
-        opacity: 1;
-    }
-
-    .folder-list-item.selection-mode .folder-select-checkbox,
+    .folder-list-item:hover .folder-select-checkbox,
     .folder-list-item.selected .folder-select-checkbox {
         opacity: 1;
+        pointer-events: auto;
     }
 
     .folders-search {
@@ -210,6 +228,7 @@
         left: 8px;
         z-index: 5;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 0.2s;
         background: rgba(0,0,0,0.45);
         border-radius: 999px;
@@ -221,60 +240,17 @@
         color: white !important;
     }
 
-    .folder-card-container:hover .folder-select-checkbox {
-        opacity: 1;
-    }
-    .folder-card-container.selection-mode .folder-select-checkbox,
+    .folder-card-container:hover .folder-select-checkbox,
     .folder-card-container.selected .folder-select-checkbox {
-        opacity: 1;
-    }
-    .asset-select-container {
-        position: relative;
-        transition: transform 0.15s ease, background-color 0.15s ease;
-        background-color: transparent;
-    }
-
-    .asset-select-container.selected {
-        transform: scale(0.90);
-        background-color: var(--mud-palette-background-gray);
-    }
-
-    .asset-select-container.selection-mode:active {
-        transform: scale(0.90);
-        transition-duration: 0.06s;
-    }
-
-    .asset-select-checkbox {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        z-index: 5;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s;
-        background: rgba(0,0,0,0.4);
-        border-radius: 999px;
-        padding: 2px;
-        color: white;
-    }
-
-    .asset-select-checkbox .mud-icon-root {
-        color: white !important;
-    }
-
-    .asset-select-container:hover .asset-select-checkbox {
-        opacity: 1;
-        pointer-events: auto;
-    }
-    .asset-select-container.selected .asset-select-checkbox {
         opacity: 1;
         pointer-events: auto;
     }
 
     @@media (max-width: 959.98px) {
-        .asset-select-container:not(.selection-mode):not(.selected):hover .asset-select-checkbox {
+        /* Touch devices: hide checkbox unless the folder is actually selected */
+        .folder-card-container:not(.selected):hover .folder-select-checkbox,
+        .folder-list-item:not(.selected):hover .folder-select-checkbox {
             opacity: 0;
-            pointer-events: none;
         }
     }
 </style>
@@ -367,26 +343,24 @@ else if (_activeTab == 2 && _selectedFolder == null)
     }
     else
     {
-        <MudGrid>
+        <div class="folder-card-grid">
             @foreach (var lib in _libraries)
             {
-                <MudItem xs="6" sm="4" md="3" lg="2">
-                    <div class="folder-card-container" @onclick="@(() => NavigateToLibrary(lib))">
-                        <div class="folder-thumbnail-wrapper">
-                            <div class="folder-card-icon">
-                                <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Large" Style="color: white;" />
-                            </div>
-                            <div class="folder-card-overlay">
-                                <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@lib.Name</MudText>
-                                <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
-                                    @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
-                                </MudText>
-                            </div>
+                <div class="folder-card-container" @onclick="@(() => NavigateToLibrary(lib))">
+                    <div class="folder-thumbnail-wrapper">
+                        <div class="folder-card-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Large" Style="color: white;" />
+                        </div>
+                        <div class="folder-card-overlay">
+                            <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@lib.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
+                                @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
+                            </MudText>
                         </div>
                     </div>
-                </MudItem>
+                </div>
             }
-        </MudGrid>
+        </div>
     }
 }
 else
@@ -411,14 +385,12 @@ else
         }
         @if (_folderViewMode == FolderViewMode.Grid)
         {
-            <MudGrid Class="mb-6">
+            <div class="folder-card-grid mb-6">
                 @foreach (var folderData in GetFilteredSubFolders())
                 {
-                    <MudItem xs="6" sm="4" md="3" lg="2">
-                        @RenderFolderCard(folderData)
-                    </MudItem>
+                    @RenderFolderCard(folderData)
                 }
-            </MudGrid>
+            </div>
         }
         else
         {
@@ -434,25 +406,54 @@ else
     @if (_assets.Any())
     {
         <MudText Typo="Typo.h6" Class="mb-3">Archivos</MudText>
-        <MudGrid>
-            @foreach (var asset in _assets)
+        
+        var visibleFolderAssets = Math.Min(_folderAssetVisibleCount, _assets.Count);
+        <div class="media-thumb-grid">
+            @for (var i = 0; i < visibleFolderAssets; i++)
             {
-                <MudItem xs="6" sm="4" md="3" lg="2">
-                    <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
-                         data-asset-id="@asset.Id"
-                         @ontouchstart="@(e => OnCardTouchStart(e, asset))"
-                         @ontouchmove="OnCardTouchMove"
-                         @ontouchend="OnCardTouchEnd">
-                        <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
-                        <div class="asset-select-checkbox" @onclick:stopPropagation="true">
-                            <MudCheckBox T="bool"
-                                         Value="@IsAssetSelected(asset.Id)"
-                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
+                var asset = _assets[i];
+                var isSelected = IsAssetSelected(asset.Id);
+                <div class="media-thumb-cell @(_selectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
+                     data-asset-id="@asset.Id"
+                     @key="asset.Id"
+                     @onclick="@(() => OpenAsset(asset))"
+                     @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                     @ontouchmove="OnCardTouchMove"
+                     @ontouchend="OnCardTouchEnd">
+                    @if (asset.HasThumbnails && !asset.IsFileMissing)
+                    {
+                        <img src="@asset.ThumbnailUrl"
+                             alt="@asset.FileName"
+                             loading="lazy"
+                             decoding="async" />
+                    }
+                    @if (asset.IsFileMissing)
+                    {
+                        <div class="media-thumb-broken">
+                            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
                         </div>
+                    }
+                    @if (asset.Type == "Video")
+                    {
+                        <div class="media-thumb-video-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                        </div>
+                    }
+                    <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
+                        <MudCheckBox T="bool"
+                                     Value="@isSelected"
+                                     ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
                     </div>
-                </MudItem>
+                </div>
             }
-        </MudGrid>
+        </div>
+        @if (_folderAssetVisibleCount < _assets.Count)
+        {
+            <div id="folder-assets-load-more-sentinel" style="height:4px;"></div>
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
     }
     else if (!_loadingAssets && !GetFilteredSubFolders().Any())
     {
@@ -724,7 +725,7 @@ else
     [Parameter] public Guid? LibraryId { get; set; }
     [SupplyParameterFromQuery(Name = "trash")] public bool? Trash { get; set; }
 
-    private bool IsAtRoot => _selectedFolder == null || (Space != null && !FolderId.HasValue && !LibraryId.HasValue) ||
+    private bool IsAtRoot => _selectedFolder == null ||
                              IsUserRootPath(_selectedFolder.Path.Replace('\\', '/')) ||
                              _selectedFolder.Path.Replace('\\', '/').TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase) ||
                              IsLibraryRootFolder(_selectedFolder);
@@ -752,9 +753,24 @@ else
     private FolderItem? _selectedFolder;
     private FolderItem? _selectedTreeFolder;
     private List<TimelineItem> _assets = new();
+    // Paged rendering of the asset grid: avoids creating thousands of AssetCard
+    // components at once when opening a folder with a lot of items.
+    private const int FOLDER_ASSETS_INITIAL_BATCH = 120;
+    private const int FOLDER_ASSETS_LOAD_MORE_BATCH = 120;
+    private int _folderAssetVisibleCount = 0;
+    private bool _folderAssetsSentinelAttached = false;
+    private bool _folderAssetsLoadingMore = false;
     private bool _loadingFolders = true;
     private bool _loadingAssets = false;
     private bool _loadingSubFolders = false;
+
+    // Prefetch cache — NavigateToFolderInPlace stores data here BEFORE calling
+    // NavigateTo, so HandleFolderNavigation can use it instantly (no API calls,
+    // no intermediate empty state, no scroll jump).
+    private Guid? _prefetchedFolderId;
+    private FolderItem? _prefetchedFolder;
+    private List<TimelineItem>? _prefetchedAssets;
+    private bool _scrollToTopAfterRender;
     private List<BreadcrumbItem> _breadcrumbs = new();
     private List<FolderItem> _subFoldersWithThumbnails = new();
     private List<FolderItem> _personalFolders = new();
@@ -967,14 +983,12 @@ else
     {
         if (folders.Any())
         {
-            <MudGrid>
+            <div class="folder-card-grid">
                 @foreach (var folderData in folders)
                 {
-                    <MudItem xs="6" sm="4" md="3" lg="2">
-                        @RenderFolderCard(folderData)
-                    </MudItem>
+                    @RenderFolderCard(folderData)
                 }
-            </MudGrid>
+            </div>
         }
         else
         {
@@ -1006,7 +1020,11 @@ else
     private RenderFragment RenderFolderCard(FolderItem folderData) => __builder =>
     {
         <div class="folder-card-container @(_folderSelectionMode ? "selection-mode" : "") @(IsFolderSelected(folderData.Id) ? "selected" : "")"
-             @onclick="@(() => OnFolderCardClick(folderData))">
+             @key="folderData.Id"
+             @onclick="@(() => OnFolderCardClick(folderData))"
+             @ontouchstart="@(e => OnFolderItemTouchStart(e, folderData))"
+             @ontouchmove="OnCardTouchMove"
+             @ontouchend="OnCardTouchEnd">
 
             <div class="folder-thumbnail-wrapper">
                 <div class="folder-select-checkbox" @onclick:stopPropagation="true">
@@ -1056,7 +1074,11 @@ else
     private RenderFragment RenderFolderListItem(FolderItem folderData) => __builder =>
     {
         <div class="folder-list-item @(_folderSelectionMode ? "selection-mode" : "") @(IsFolderSelected(folderData.Id) ? "selected" : "")"
-             @onclick="@(() => OnFolderCardClick(folderData))">
+             @key="folderData.Id"
+             @onclick="@(() => OnFolderCardClick(folderData))"
+             @ontouchstart="@(e => OnFolderItemTouchStart(e, folderData))"
+             @ontouchmove="OnCardTouchMove"
+             @ontouchend="OnCardTouchEnd">
 
             <div class="folder-list-thumb">
                 <div class="folder-select-checkbox" @onclick:stopPropagation="true">
@@ -1160,6 +1182,7 @@ else
                 _currentLibraryId = null;
                 _selectedFolder = null;
                 _assets.Clear();
+                ResetFolderAssetPaging();
                 _subFoldersWithThumbnails.Clear();
                 await LoadLibraries();
                 return;
@@ -1177,8 +1200,17 @@ else
 
         if (FolderId.HasValue)
         {
-            // Navegar a la carpeta especificada en la URL
-            var folder = await FolderService.GetFolderByIdAsync(FolderId.Value);
+            // Use prefetched data if available (from NavigateToFolderInPlace), otherwise fetch
+            FolderItem? folder;
+            if (_prefetchedFolder != null && _prefetchedFolderId == FolderId.Value)
+            {
+                folder = _prefetchedFolder;
+                _prefetchedFolder = null;
+            }
+            else
+            {
+                folder = await FolderService.GetFolderByIdAsync(FolderId.Value);
+            }
             if (folder != null)
             {
                 // Detectar si es carpeta de biblioteca y activar el tab correspondiente
@@ -1231,6 +1263,7 @@ else
             _selectedFolder = null;
             _selectedTreeFolder = null;
             _assets.Clear();
+            ResetFolderAssetPaging();
             _subFoldersWithThumbnails.Clear();
             _breadcrumbs.Clear();
             _breadcrumbFolders.Clear();
@@ -1248,8 +1281,10 @@ else
 
         _selectedFolder = folder;
         _selectedTreeFolder = folder;
-        _subFoldersWithThumbnails.Clear();
-        _assets.Clear();
+        // Don't clear old content: keep it visible while loading to prevent the page
+        // height from collapsing to zero (which resets the scroll position to the top).
+        // Both LoadFolderAssets and LoadSubFoldersWithThumbnails overwrite the lists
+        // atomically when new data arrives.
 
         await Task.WhenAll(
             LoadFolderAssets(folder.Id),
@@ -1459,6 +1494,7 @@ else
         _selectedFolder = null;
         _selectedTreeFolder = null;
         _assets.Clear();
+        ResetFolderAssetPaging();
         _subFoldersWithThumbnails.Clear();
         _breadcrumbs.Clear();
         _breadcrumbFolders.Clear();
@@ -1483,8 +1519,8 @@ else
 
             _selectedFolder = updatedFolder;
             _selectedTreeFolder = updatedFolder;
-            _subFoldersWithThumbnails.Clear();
-            _assets.Clear();
+            // Don't clear — LoadFolderAssets and LoadSubFoldersWithThumbnails
+            // overwrite atomically when new data arrives.
 
             await Task.WhenAll(
                 LoadFolderAssets(updatedFolder.Id),
@@ -1514,25 +1550,10 @@ else
             .ToList();
     }
 
-    private Task OnFolderSelected(FolderItem folder)
+    private async Task OnFolderSelected(FolderItem folder)
     {
-        if (folder == null) return Task.CompletedTask;
-        
-        var path = folder.Path.Replace('\\', '/');
-        if (IsUserRootPath(path))
-        {
-            Navigation.NavigateTo("/folders/own", replace: false);
-        }
-        else if (path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
-        {
-            Navigation.NavigateTo("/folders/shared", replace: false);
-        }
-        else
-        {
-            Navigation.NavigateTo($"/folders/{folder.Id}", replace: false);
-        }
-        
-        return Task.CompletedTask;
+        if (folder == null) return;
+        await NavigateToFolderInPlace(folder);
     }
 
     private async Task OnFolderClick(FolderItem folder)
@@ -1545,8 +1566,27 @@ else
         try
         {
             _loadingAssets = true;
-            var assets = await FolderService.GetFolderAssetsAsync(folderId);
+            // Use prefetched data if available, otherwise fetch from API
+            List<TimelineItem>? assets;
+            if (_prefetchedAssets != null && _prefetchedFolderId == folderId)
+            {
+                assets = _prefetchedAssets;
+                _prefetchedAssets = null;
+                _prefetchedFolderId = null;
+            }
+            else
+            {
+                assets = await FolderService.GetFolderAssetsAsync(folderId);
+            }
+            // Atomic swap: new data + paging reset in one batch, no intermediate empty state.
             _assets = assets ?? new List<TimelineItem>();
+            _folderAssetVisibleCount = Math.Min(FOLDER_ASSETS_INITIAL_BATCH, _assets.Count);
+            _folderAssetsLoadingMore = false;
+            if (_folderAssetsSentinelAttached)
+            {
+                _folderAssetsSentinelAttached = false;
+                _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "folder-assets-load-more-sentinel");
+            }
         }
         catch (Exception ex)
         {
@@ -1556,6 +1596,33 @@ else
         {
             _loadingAssets = false;
         }
+    }
+
+    private void ResetFolderAssetPaging()
+    {
+        _folderAssetVisibleCount = 0;
+        _folderAssetsLoadingMore = false;
+        if (_folderAssetsSentinelAttached)
+        {
+            _folderAssetsSentinelAttached = false;
+            _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "folder-assets-load-more-sentinel");
+        }
+    }
+
+    [JSInvokable]
+    public Task LoadMoreFolderAssetsFromJs()
+    {
+        if (_folderAssetsLoadingMore) return Task.CompletedTask;
+        if (_folderAssetVisibleCount >= _assets.Count) return Task.CompletedTask;
+
+        _folderAssetsLoadingMore = true;
+        _folderAssetVisibleCount = Math.Min(_folderAssetVisibleCount + FOLDER_ASSETS_LOAD_MORE_BATCH, _assets.Count);
+        // Force the sentinel to be re-attached after the next render so the
+        // observer keeps firing while there's still more to show.
+        _folderAssetsSentinelAttached = false;
+        StateHasChanged();
+        _folderAssetsLoadingMore = false;
+        return Task.CompletedTask;
     }
 
     private async Task UpdateBreadcrumbs(FolderItem folder)
@@ -1823,9 +1890,43 @@ else
         return Task.CompletedTask;
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) _objRef = DotNetObjectReference.Create(this);
+
+        // Scroll to top after in-place folder navigation completes
+        if (_scrollToTopAfterRender)
+        {
+            _scrollToTopAfterRender = false;
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+
+        // (Re)attach the asset-grid load-more sentinel whenever the visible count
+        // is below the total. The flag avoids redundant JS interop calls between paged loads.
+        if (_selectedFolder != null && _folderAssetVisibleCount < _assets.Count && !_folderAssetsSentinelAttached && _objRef != null)
+        {
+            _folderAssetsSentinelAttached = true;
+            try
+            {
+                await JS.InvokeVoidAsync(
+                    "setupLoadMoreObserver",
+                    "folder-assets-load-more-sentinel",
+                    _objRef,
+                    nameof(LoadMoreFolderAssetsFromJs),
+                    null,
+                    "300px");
+            }
+            catch
+            {
+                _folderAssetsSentinelAttached = false;
+            }
+        }
+        else if (_folderAssetVisibleCount >= _assets.Count && _folderAssetsSentinelAttached)
+        {
+            _folderAssetsSentinelAttached = false;
+            try { await JS.InvokeVoidAsync("disconnectLoadMoreObserver", "folder-assets-load-more-sentinel"); }
+            catch { }
+        }
     }
 
     private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
@@ -1873,6 +1974,37 @@ else
         }
     }
 
+    // Folder-specific long-press: same UX as the asset cells. Triggers selection
+    // mode after 500 ms held on a folder card / list item.
+    private async Task OnFolderItemTouchStart(TouchEventArgs e, FolderItem folder)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_folderSelectionMode)
+        {
+            var selectMode = !IsFolderSelected(folder.Id);
+            _longPressHandled = true;
+            ToggleFolderSelection(folder.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleFolderSelection(folder.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
     private void OnCardTouchEnd(TouchEventArgs e)
     {
         _longPressTimer?.Dispose();
@@ -1888,7 +2020,7 @@ else
         StateHasChanged();
     }
 
-    private void OpenAsset(TimelineItem asset)
+    private async Task OpenAsset(TimelineItem asset)
     {
         if (_longPressHandled)
         {
@@ -1901,6 +2033,10 @@ else
             ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
             return;
         }
+
+        // Save the click origin so the asset detail page can play the
+        // zoom-from-origin enter animation (preserves the AssetCard behaviour).
+        await JS.InvokeVoidAsync("assetTransition.saveOriginByAssetId", asset.Id.ToString());
 
         var returnTo = _selectedFolder != null
             ? $"folders/{_selectedFolder.Id}"
@@ -2572,27 +2708,82 @@ else
         UpdateSelectionNavbar();
     }
 
-    private void OnFolderCardClick(FolderItem folder)
+    private async Task OnFolderCardClick(FolderItem folder)
     {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
         if (_folderSelectionMode)
         {
             ToggleFolderSelection(folder.Id, !IsFolderSelected(folder.Id));
             return;
         }
 
+        await NavigateToFolderInPlace(folder);
+    }
+
+    /// <summary>
+    /// Pre-fetches folder data, stores it in cache, then calls NavigateTo so the
+    /// router updates parameters correctly (back button works). HandleFolderNavigation
+    /// will find the cached data and render instantly — no flash, no scroll jump.
+    /// </summary>
+    private async Task NavigateToFolderInPlace(FolderItem folder)
+    {
+        _loadingAssets = true;
+        _loadingSubFolders = true;
+        StateHasChanged(); // show loading bar on CURRENT view
+
+        try
+        {
+            // Pre-fetch folder + assets in parallel while the user still sees the current view
+            var folderTask = FolderService.GetFolderByIdAsync(folder.Id);
+            var assetsTask = FolderService.GetFolderAssetsAsync(folder.Id);
+            await Task.WhenAll(folderTask, assetsTask);
+
+            var freshFolder = await folderTask;
+            if (freshFolder == null)
+            {
+                Snackbar.Add("Carpeta no encontrada", Severity.Warning);
+                _loadingAssets = false;
+                _loadingSubFolders = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Store in the prefetch cache — HandleFolderNavigation / LoadFolderAssets
+            // will consume these instantly after NavigateTo fires.
+            _prefetchedFolderId = folder.Id;
+            _prefetchedFolder = freshFolder;
+            _prefetchedAssets = await assetsTask;
+            _scrollToTopAfterRender = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar carpeta: {ex.Message}", Severity.Error);
+            _prefetchedFolderId = null;
+            _prefetchedFolder = null;
+            _prefetchedAssets = null;
+            _loadingAssets = false;
+            _loadingSubFolders = false;
+            StateHasChanged();
+            return;
+        }
+
+        // Navigate via the router — data is cached so HandleFolderNavigation will
+        // use it instantly (no API calls, no empty-state flash). The router updates
+        // FolderId so the browser back button works correctly.
         var path = folder.Path.Replace('\\', '/');
+        string url;
         if (IsUserRootPath(path))
-        {
-            Navigation.NavigateTo("/folders/own");
-        }
+            url = "/folders/own";
         else if (path.TrimEnd('/').Equals("/assets/shared", StringComparison.OrdinalIgnoreCase))
-        {
-            Navigation.NavigateTo("/folders/shared");
-        }
+            url = "/folders/shared";
         else
-        {
-            Navigation.NavigateTo($"/folders/{folder.Id}");
-        }
+            url = $"/folders/{folder.Id}";
+        Navigation.NavigateTo(url);
     }
 
     private void ToggleFolderSelection(Guid folderId, bool selected)
@@ -2894,5 +3085,10 @@ else
         _longPressTimer?.Dispose();
         _objRef?.Dispose();
         LayoutService.ResetNavbar();
+        if (_folderAssetsSentinelAttached)
+        {
+            try { _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "folder-assets-load-more-sentinel"); }
+            catch { }
+        }
     }
 }

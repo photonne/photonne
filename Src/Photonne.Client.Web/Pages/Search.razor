@@ -3,6 +3,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IAssetListNavigationState AssetListNavigationState
+@inject IJSRuntime JS
 
 <PageTitle>Buscar - Photonne</PageTitle>
 
@@ -57,32 +58,30 @@
 <div class="page-pad">
 
     @* ── Desktop: always-visible filters (search is in AppBar) ── *@
-    <div class="search-filters mb-4 d-none d-md-block">
-        <MudGrid Spacing="2" AlignItems="AlignItems.End">
-            <MudItem xs="12" sm="6" md="3">
-                <MudDatePicker Label="Desde" Date="_fromDate" DateChanged="OnFromDateChanged"
-                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                               MaxDate="_toDate" Clearable="true" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="3">
-                <MudDatePicker Label="Hasta" Date="_toDate" DateChanged="OnToDateChanged"
-                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                               MinDate="_fromDate" Clearable="true" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_folderFilter"
-                              @bind-Value:after="OnFolderFilterChanged"
-                              Label="Ruta de carpeta"
-                              Placeholder="Ej. vacaciones, 2024/agosto..."
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Immediate="true"
-                              DebounceInterval="400"
-                              Clearable="true" />
-            </MudItem>
-        </MudGrid>
+    <div class="search-filters mb-4 d-none d-md-flex" style="gap:12px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="flex:1; min-width:180px; max-width:240px;">
+            <MudDatePicker Label="Desde" Date="_fromDate" DateChanged="OnFromDateChanged"
+                           Variant="Variant.Outlined" Margin="Margin.Dense"
+                           MaxDate="_toDate" Clearable="true" />
+        </div>
+        <div style="flex:1; min-width:180px; max-width:240px;">
+            <MudDatePicker Label="Hasta" Date="_toDate" DateChanged="OnToDateChanged"
+                           Variant="Variant.Outlined" Margin="Margin.Dense"
+                           MinDate="_fromDate" Clearable="true" />
+        </div>
+        <div style="flex:2; min-width:200px;">
+            <MudTextField @bind-Value="_folderFilter"
+                          @bind-Value:after="OnFolderFilterChanged"
+                          Label="Ruta de carpeta"
+                          Placeholder="Ej. vacaciones, 2024/agosto..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          DebounceInterval="400"
+                          Clearable="true" />
+        </div>
     </div>
 
     @if (_loading)
@@ -112,14 +111,34 @@
                 </MudChip>
             }
         </div>
-        <MudGrid Class="mt-1">
+        <div class="media-thumb-grid mt-1">
             @foreach (var asset in _results)
             {
-                <MudItem xs="6" sm="6" md="4" lg="3" xl="2">
-                    <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
-                </MudItem>
+                <div class="media-thumb-cell"
+                     @key="asset.Id"
+                     @onclick="@(() => OpenAsset(asset))">
+                    @if (asset.HasThumbnails && !asset.IsFileMissing)
+                    {
+                        <img src="@asset.ThumbnailUrl"
+                             alt="@asset.FileName"
+                             loading="lazy"
+                             decoding="async" />
+                    }
+                    @if (asset.IsFileMissing)
+                    {
+                        <div class="media-thumb-broken">
+                            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
+                        </div>
+                    }
+                    @if (asset.Type == "Video")
+                    {
+                        <div class="media-thumb-video-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                        </div>
+                    }
+                </div>
             }
-        </MudGrid>
+        </div>
     }
 </div>
 
@@ -237,8 +256,9 @@
         }
     }
 
-    private void OpenAsset(TimelineItem asset)
+    private async Task OpenAsset(TimelineItem asset)
     {
+        await JS.InvokeVoidAsync("assetTransition.saveOriginByAssetId", asset.Id.ToString());
         if (asset.SyncStatus == AssetSyncStatus.Synced)
             Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=search");
         else

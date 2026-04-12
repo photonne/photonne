@@ -32,6 +32,15 @@ window.assetTransition = {
         this._rect = { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom };
     },
 
+    // Helper: looks up the element by [data-asset-id="..."] and saves its bounds.
+    // Used by lightweight grid cells (Albums, Folders) that don't pass an
+    // ElementReference to .NET — they only know the asset id.
+    saveOriginByAssetId: function (assetId) {
+        if (!assetId) return;
+        var el = document.querySelector('[data-asset-id="' + CSS.escape(assetId) + '"]');
+        if (el) this.saveOrigin(el);
+    },
+
     playEnterAnimation: function (element) {
         if (!element) return;
         var rect = this._rect;
@@ -72,7 +81,7 @@ window.assetGridHelpers = {
     _getRowAssetIds(el) {
         const container = el?.closest('[data-asset-id]');
         if (!container) return [];
-        const grid = container.closest('.timeline-flat-grid, .mud-grid');
+        const grid = container.closest('.timeline-flat-grid, .mud-grid, .media-thumb-grid');
         if (!grid) return [];
         const rect = container.getBoundingClientRect();
         const ids = [];

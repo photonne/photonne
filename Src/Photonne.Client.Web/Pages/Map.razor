@@ -40,21 +40,38 @@
             <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
                            OnClick="CloseDrawer" />
         </div>
-        <div style="flex:1; min-height:0; overflow-y:auto;" @onclick:stopPropagation>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:3px; padding:0 8px 16px;">
-                @foreach (var point in _drawerPoints)
+        <div id="map-drawer-scroll" style="flex:1; min-height:0; overflow-y:auto;" @onclick:stopPropagation>
+            <div class="map-drawer-grid">
+                @{
+                    var visible = Math.Min(_drawerVisibleCount, _drawerPoints.Count);
+                }
+                @for (var i = 0; i < visible; i++)
                 {
-                    <div style="aspect-ratio:1; cursor:pointer; border-radius:4px; overflow:hidden; background:#333;"
+                    var point = _drawerPoints[i];
+                    <div class="map-drawer-cell"
+                         @key="point.Id"
                          @onclick="@(() => OpenClusterAsset(point))">
                         @if (!string.IsNullOrEmpty(point.ThumbnailUrl))
                         {
                             <img src="@point.ThumbnailUrl"
                                  style="width:100%; height:100%; object-fit:cover; display:block;"
-                                 loading="lazy" />
+                                 loading="lazy"
+                                 decoding="async" />
                         }
                     </div>
                 }
             </div>
+            @if (_drawerVisibleCount < _drawerPoints.Count)
+            {
+                <div id="map-drawer-sentinel" style="height:4px;"></div>
+                <div style="display:flex; justify-content:center; padding:12px 0 16px;">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                </div>
+            }
+            else
+            {
+                <div style="height:16px;"></div>
+            }
         </div>
     </div>
 }
@@ -62,6 +79,25 @@
 <style>
     #map {
         z-index: 0;
+    }
+
+    /* Bottom sheet grid: responsive, content-visibility for off-screen culling */
+    .map-drawer-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 3px;
+        padding: 0 8px 8px;
+    }
+
+    .map-drawer-cell {
+        aspect-ratio: 1;
+        cursor: pointer;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #333;
+        /* Let the browser skip layout/paint when cell is off-screen */
+        content-visibility: auto;
+        contain-intrinsic-size: 110px 110px;
     }
 
     .map-cluster-icon {
@@ -131,16 +167,30 @@
     private DotNetObjectReference<Map>? _objRef;
     private string _mapStyle => LayoutService.IsDarkMode ? "dark" : "light";
     private List<MapPoint> _points = new();
+    // Pre-built lookup so OnClusterClick is O(1) per asset id, even with 20k+ points
+    private Dictionary<Guid, MapPoint>? _pointsById;
 
     private bool _drawerOpen = false;
     private List<MapPoint> _drawerPoints = new();
+    // Paged rendering of the bottom sheet to avoid creating thousands of DOM nodes at once
+    private const int DRAWER_INITIAL_BATCH = 120;
+    private const int DRAWER_LOAD_MORE_BATCH = 120;
+    private int _drawerVisibleCount = 0;
+    private bool _drawerSentinelAttached = false;
+    private bool _drawerLoadingMore = false;
+
     protected override async Task OnInitializedAsync()
     {
         _objRef = DotNetObjectReference.Create(this);
         LayoutService.OnMajorUpdate += OnLayoutUpdate;
     }
 
-    private void CloseDrawer() => _drawerOpen = false;
+    private void CloseDrawer()
+    {
+        _drawerOpen = false;
+        _drawerSentinelAttached = false;
+        _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "map-drawer-sentinel");
+    }
 
     private async void OnLayoutUpdate()
     {
@@ -203,6 +253,27 @@
                 StateHasChanged();
             }
         }
+
+        // (Re)attach the bottom-sheet load-more sentinel after each render where it's needed.
+        // The flag prevents redundant JS interop calls between paged loads.
+        if (_drawerOpen && !_drawerSentinelAttached && _drawerVisibleCount < _drawerPoints.Count && _objRef != null)
+        {
+            _drawerSentinelAttached = true;
+            try
+            {
+                await JS.InvokeVoidAsync(
+                    "setupLoadMoreObserver",
+                    "map-drawer-sentinel",
+                    _objRef,
+                    nameof(LoadMoreDrawerItems),
+                    "map-drawer-scroll",
+                    "300px");
+            }
+            catch
+            {
+                _drawerSentinelAttached = false;
+            }
+        }
     }
 
     [JSInvokable]
@@ -225,18 +296,54 @@
     public void OnClusterClick(string[] assetIds)
     {
         Console.WriteLine($"[MAP] OnClusterClick: {assetIds.Length} assets");
-        var ids = assetIds.ToHashSet();
-        _drawerPoints = _points
-            .Where(p => ids.Contains(p.Id.ToString()))
-            .OrderByDescending(p => p.Date)
-            .ToList();
+
+        // Lazy-build the dictionary the first time a cluster is clicked. Cached afterwards.
+        if (_pointsById == null)
+        {
+            _pointsById = new Dictionary<Guid, MapPoint>(_points.Count);
+            foreach (var p in _points)
+                _pointsById[p.Id] = p;
+        }
+
+        // Filter using the dictionary: O(N) over assetIds with O(1) per lookup,
+        // and avoids per-point ToString() allocations on the full _points list.
+        var picked = new List<MapPoint>(assetIds.Length);
+        foreach (var idStr in assetIds)
+        {
+            if (Guid.TryParse(idStr, out var id) && _pointsById.TryGetValue(id, out var point))
+                picked.Add(point);
+        }
+        picked.Sort((a, b) => b.Date.CompareTo(a.Date));
+
+        _drawerPoints = picked;
+        _drawerVisibleCount = Math.Min(DRAWER_INITIAL_BATCH, _drawerPoints.Count);
+        _drawerLoadingMore = false;
+        _drawerSentinelAttached = false;
         _drawerOpen = true;
         StateHasChanged();
+    }
+
+    [JSInvokable]
+    public Task LoadMoreDrawerItems()
+    {
+        if (_drawerLoadingMore) return Task.CompletedTask;
+        if (_drawerVisibleCount >= _drawerPoints.Count) return Task.CompletedTask;
+
+        _drawerLoadingMore = true;
+        _drawerVisibleCount = Math.Min(_drawerVisibleCount + DRAWER_LOAD_MORE_BATCH, _drawerPoints.Count);
+        // Force the sentinel to be re-attached after the next render so the
+        // observer fires again if there's still more to load.
+        _drawerSentinelAttached = false;
+        StateHasChanged();
+        _drawerLoadingMore = false;
+        return Task.CompletedTask;
     }
 
     private async Task OpenClusterAsset(MapPoint point)
     {
         _drawerOpen = false;
+        _drawerSentinelAttached = false;
+        await JS.InvokeVoidAsync("disconnectLoadMoreObserver", "map-drawer-sentinel");
         await JS.InvokeVoidAsync("mapHelpers.destroyMap");
         var navList = _drawerPoints
             .Select(p => new TimelineItem { Id = p.Id, FileCreatedAt = p.Date, HasThumbnails = p.HasThumbnail })
@@ -249,6 +356,14 @@
     {
         LayoutService.OnMajorUpdate -= OnLayoutUpdate;
         _objRef?.Dispose();
+        try
+        {
+            await JS.InvokeVoidAsync("disconnectLoadMoreObserver", "map-drawer-sentinel");
+        }
+        catch
+        {
+            // ignore
+        }
         try
         {
             // Safety net: si el usuario navegó de otra forma (p.ej. navMenu),

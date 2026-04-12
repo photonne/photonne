@@ -288,3 +288,112 @@ html, body {
         overflow-y: auto;
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Lightweight media thumb grid — shared between Albums, Folders and the
+   Map cluster bottom sheet. Uses a CSS grid with auto-fill columns, inline
+   <img> elements (no Blazor component overhead), native lazy loading and
+   `content-visibility: auto` so off-screen cells skip layout/paint.
+
+   Markup pattern:
+
+       <div class="media-thumb-grid">
+           <div class="media-thumb-cell" @key="..." @onclick="...">
+               <img src="..." loading="lazy" decoding="async" />
+               <div class="media-thumb-video-icon">▶</div>     // optional
+               <div class="media-thumb-checkbox">…</div>       // optional
+           </div>
+       </div>
+   ───────────────────────────────────────────────────────────────────────── */
+.media-thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 3px;
+}
+
+.media-thumb-cell {
+    position: relative;
+    aspect-ratio: 1;
+    cursor: pointer;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #333;
+    /* Browser skips layout/paint when the cell is off-screen */
+    content-visibility: auto;
+    contain-intrinsic-size: 110px 110px;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.media-thumb-cell > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.media-thumb-cell.selected {
+    transform: scale(0.90);
+    background-color: var(--mud-palette-background-gray);
+}
+
+.media-thumb-cell.selection-mode:active {
+    transform: scale(0.90);
+    transition-duration: 0.06s;
+}
+
+/* Video play indicator */
+.media-thumb-video-icon {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    color: white;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Selection checkbox overlay */
+.media-thumb-checkbox {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 999px;
+    padding: 2px;
+    color: white;
+}
+
+.media-thumb-checkbox .mud-icon-root {
+    color: white !important;
+}
+
+.media-thumb-cell:hover .media-thumb-checkbox,
+.media-thumb-cell.selected .media-thumb-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Broken image indicator (when the file is missing on disk) */
+.media-thumb-broken {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.85);
+    z-index: 3;
+}
+
+@media (max-width: 959.98px) {
+    /* On touch devices the checkbox should only appear once an item is
+       actually selected — long-press is what enters selection mode. */
+    .media-thumb-cell:not(.selected):hover .media-thumb-checkbox {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
