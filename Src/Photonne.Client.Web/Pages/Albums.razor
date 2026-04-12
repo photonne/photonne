@@ -875,7 +875,13 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) _objRef = DotNetObjectReference.Create(this);
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+            await DeviceLayout.InitializeAsync();
+            DeviceLayout.OnChanged += OnDeviceLayoutChanged;
+            StateHasChanged();
+        }
 
         // Scroll to top after in-place album navigation completes
         if (_scrollToTopAfterRender)
@@ -2104,8 +2110,11 @@ else
         }
     }
 
+    private void OnDeviceLayoutChanged() => InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
+        DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
         _longPressTimer?.Dispose();
         _objRef?.Dispose();
         LayoutService.ResetNavbar();

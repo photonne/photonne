@@ -19,11 +19,6 @@
     .ph-section-header {
         display: flex;
     }
-
-    /* Push page content down to clear the context bar (app bar offset already handled by MudBlazor) */
-    ::deep body:has(.ph-section-header) .page-content {
-        padding-top: 48px !important;
-    }
 }
 
 /* MudAppBar shrinks to 56px below 600px (MudBlazor xs breakpoint) */

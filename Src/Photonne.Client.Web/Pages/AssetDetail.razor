@@ -225,6 +225,7 @@ else
         {
             await DeviceLayout.InitializeAsync();
             DeviceLayout.OnChanged += OnDeviceLayoutChanged;
+            StateHasChanged();
         }
 
         if (_containerRef.Context != null)

@@ -384,6 +384,7 @@ else
         {
             await DeviceLayout.InitializeAsync();
             DeviceLayout.OnChanged += OnDeviceLayoutChanged;
+            StateHasChanged();
             await JS.InvokeVoidAsync("scrollHelpers.enableTimelineScroll");
             if (_objRef == null) _objRef = DotNetObjectReference.Create(this);
         }

@@ -1,24 +1,4 @@
-/* Desactivar scroll en body/html y contenedores de MudBlazor */
-::deep :global(body.timeline-page) {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-::deep :global(body.timeline-page html) {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-::deep :global(body.timeline-page .mud-layout) {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-::deep :global(body.timeline-page .mud-main-content) {
-    overflow: hidden !important;
-    height: 100vh !important;
-    position: relative !important;
-}
+/* body.timeline-page global overrides are in app.css (cannot be scoped) */
 
 /* Contenedor principal del timeline */
 .timeline-wrapper {

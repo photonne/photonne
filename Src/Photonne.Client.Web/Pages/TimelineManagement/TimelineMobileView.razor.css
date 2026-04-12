@@ -1,24 +1,4 @@
-/* Desactivar scroll en body/html y contenedores de MudBlazor */
-::deep :global(body.timeline-page) {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-::deep :global(body.timeline-page html) {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-::deep :global(body.timeline-page .mud-layout) {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-
-::deep :global(body.timeline-page .mud-main-content) {
-    overflow: hidden !important;
-    height: 100vh !important;
-    position: relative !important;
-}
+/* body.timeline-page global overrides are in app.css (cannot be scoped) */
 
 /* Contenedor principal del timeline */
 .timeline-wrapper {
@@ -246,16 +226,17 @@
 }
 
 /* ===== Custom Scrubber (mobile style) ===== */
+/* Absolutely positioned so it doesn't take horizontal space from the grid */
 .scrubber-overlay {
-    position: relative;
-    top: auto;
-    bottom: auto;
-    right: auto;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
     width: 40px;
-    flex-shrink: 0;
     pointer-events: auto;
     opacity: 0;
     transition: opacity 0.25s ease;
+    z-index: 10;
 }
 
 .scrubber-overlay.scrubber-visible {
@@ -307,7 +288,8 @@
     pointer-events: auto;
 }
 
-::deep .mud-dark .scrubber-thumb {
+/* .mud-dark applied via :global() since it's on a parent element */
+:global(.mud-dark) .scrubber-thumb {
     background: rgba(255, 255, 255, 0.22);
 }
 
@@ -329,7 +311,7 @@
     flex-shrink: 0;
 }
 
-::deep .mud-dark .scrubber-arrow {
+:global(.mud-dark) .scrubber-arrow {
     color: rgba(255, 255, 255, 0.75);
 }
 
