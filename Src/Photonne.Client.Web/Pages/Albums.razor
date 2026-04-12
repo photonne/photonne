@@ -12,11 +12,181 @@
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IJSRuntime JS
 @inject ISettingsService SettingsService
+@inject DeviceLayoutService DeviceLayout
 @implements IDisposable
 
 <PageTitle>Álbumes - Photonne</PageTitle>
 
-<style>
+@{
+    var albumGroups = GetAlbumGroups();
+}
+
+@if (DeviceLayout.IsMobile)
+{
+    <AlbumsMobileView Loading="_loading"
+                      Filter="@Filter"
+                      AlbumSearch="@_albumSearch"
+                      OnAlbumSearchChanged="OnAlbumSearchChanged"
+                      AlbumViewMode="_albumViewMode"
+                      AlbumSelectionMode="_albumSelectionMode"
+                      SelectedAlbumIds="_selectedAlbumIds"
+                      AlbumGroups="albumGroups"
+                      OnAlbumCardClick="OnAlbumCardClick"
+                      OnAlbumItemTouchStart="OnAlbumItemTouchStartFromView"
+                      OnCardTouchMove="OnCardTouchMove"
+                      OnCardTouchEnd="OnCardTouchEnd"
+                      OnToggleAlbumSelection="OnToggleAlbumSelectionFromView"
+                      OnOpenCreateDialog="OpenCreateDialog"
+                      OnOpenFilterSheet="@(() => { _albumFilterSheetEverOpened = true; _albumFilterSheetOpen = true; })"
+                      OnOpenShareDialog="OnOpenShareDialogFromView"
+                      SelectedAlbum="_selectedAlbum"
+                      AlbumAssets="_albumAssets"
+                      LoadingAssets="_loadingAssets"
+                      AlbumAssetVisibleCount="_albumAssetVisibleCount"
+                      AssetSelectionMode="_assetSelectionMode"
+                      SelectedAlbumAssetIds="_selectedAlbumAssetIds"
+                      DownloadingZip="_downloadingZip"
+                      Breadcrumbs="_breadcrumbs"
+                      OnAlbumAssetClick="OnAlbumAssetClick"
+                      OnAssetTouchStart="OnAssetTouchStartFromView"
+                      OnToggleAlbumAssetSelection="OnToggleAlbumAssetSelectionFromView"
+                      OnNavigateBack="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
+                      OnOpenAlbumShareDialog="OpenAlbumShareDialog"
+                      OnDownloadAlbum="DownloadAlbumAsync"
+                      OnNavigateToAddPhotos="@(() => Navigation.NavigateTo("/"))"
+                      OnOpenEditDialog="OpenEditDialog"
+                      OnNavigateToPermissions="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.Id ?? AlbumId)}/permissions"))"
+                      OnLeaveAlbum="LeaveAlbum"
+                      OnOpenDeleteDialog="OpenDeleteDialog" />
+}
+else
+{
+    <AlbumsDesktopView Loading="_loading"
+                       Filter="@Filter"
+                       AlbumSearch="@_albumSearch"
+                       OnAlbumSearchChanged="OnAlbumSearchChanged"
+                       AlbumViewMode="_albumViewMode"
+                       AlbumSelectionMode="_albumSelectionMode"
+                       SelectedAlbumIds="_selectedAlbumIds"
+                       AlbumGroups="albumGroups"
+                       OnAlbumCardClick="OnAlbumCardClick"
+                       OnAlbumItemTouchStart="OnAlbumItemTouchStartFromView"
+                       OnCardTouchMove="OnCardTouchMove"
+                       OnCardTouchEnd="OnCardTouchEnd"
+                       OnToggleAlbumSelection="OnToggleAlbumSelectionFromView"
+                       OnOpenCreateDialog="OpenCreateDialog"
+                       OnOpenFilterSheet="@(() => { _albumFilterSheetEverOpened = true; _albumFilterSheetOpen = true; })"
+                       OnOpenShareDialog="OnOpenShareDialogFromView"
+                       SelectedAlbum="_selectedAlbum"
+                       AlbumAssets="_albumAssets"
+                       LoadingAssets="_loadingAssets"
+                       AlbumAssetVisibleCount="_albumAssetVisibleCount"
+                       AssetSelectionMode="_assetSelectionMode"
+                       SelectedAlbumAssetIds="_selectedAlbumAssetIds"
+                       DownloadingZip="_downloadingZip"
+                       Breadcrumbs="_breadcrumbs"
+                       OnAlbumAssetClick="OnAlbumAssetClick"
+                       OnAssetTouchStart="OnAssetTouchStartFromView"
+                       OnToggleAlbumAssetSelection="OnToggleAlbumAssetSelectionFromView"
+                       OnNavigateBack="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
+                       OnOpenAlbumShareDialog="OpenAlbumShareDialog"
+                       OnDownloadAlbum="DownloadAlbumAsync"
+                       OnNavigateToAddPhotos="@(() => Navigation.NavigateTo("/"))"
+                       OnOpenEditDialog="OpenEditDialog"
+                       OnNavigateToPermissions="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.Id ?? AlbumId)}/permissions"))"
+                       OnLeaveAlbum="LeaveAlbum"
+                       OnOpenDeleteDialog="OpenDeleteDialog" />
+}
+
+@* ── Crear álbum — bottom sheet ── *@
+@if (_createAlbumSheetEverOpened)
+{
+<MudDrawer @bind-Open="_createDialogVisible"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Nuevo álbum</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="CloseCreateDialog" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        <MudTextField @bind-Value="_newAlbumName"
+                      Label="Nombre"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true"
+                      Autofocus="true"
+                      Class="mb-3" />
+        <MudTextField @bind-Value="_newAlbumDescription"
+                      Label="Descripción (opcional)"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true"
+                      Lines="2"
+                      Class="mb-3" />
+        @if (_albumFilter == AlbumFilter.Shared)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                Al crear podrás añadir colaboradores de inmediato.
+            </MudAlert>
+        }
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   FullWidth="true" Size="Size.Medium"
+                   OnClick="CreateAlbum">
+            Crear
+        </MudButton>
+    </div>
+</MudDrawer>
+}
+
+@* ── Opciones de vista — bottom sheet ── *@
+@if (_albumFilterSheetEverOpened)
+{
+<MudDrawer @bind-Open="_albumFilterSheetOpen"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Opciones de vista</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="@(() => _albumFilterSheetOpen = false)" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Ordenar por</MudText>
+        <MudSelect T="AlbumSort"
+                   Value="_albumSort"
+                   ValueChanged="OnAlbumSortChanged"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   FullWidth="true"
+                   Class="mb-4">
+            <MudSelectItem Value="AlbumSort.Recent">Foto más reciente</MudSelectItem>
+            <MudSelectItem Value="AlbumSort.Oldest">Foto más antigua</MudSelectItem>
+            <MudSelectItem Value="AlbumSort.Name">Nombre</MudSelectItem>
+        </MudSelect>
+        <MudDivider Class="mb-3" />
+        <MudSwitch T="bool" Value="_groupByYear" ValueChanged="ToggleGroupByYear"
+                   Color="Color.Primary" Label="Agrupar por año" Class="mb-3" />
+        <MudDivider Class="mb-3" />
+        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Vista</MudText>
+        <MudToggleGroup T="AlbumViewMode" Value="_albumViewMode" ValueChanged="OnViewModeChanged"
+                        Color="Color.Primary" Outline="false" Delimiters="false" Size="Size.Small"
+                        Class="w-100 album-view-toggle">
+            <MudToggleItem Value="AlbumViewMode.Grid" Icon="@Icons.Material.Filled.ViewModule" Text="Cuadrícula" />
+            <MudToggleItem Value="AlbumViewMode.List" Icon="@Icons.Material.Filled.ViewList" Text="Lista" />
+        </MudToggleGroup>
+    </div>
+</MudDrawer>
+}
+
+REMOVE_START_MARKER
     .album-card-container {
         position: relative;
         cursor: pointer;

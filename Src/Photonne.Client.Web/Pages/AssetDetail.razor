@@ -10,6 +10,7 @@
 @inject LayoutService LayoutService
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IJSRuntime JSRuntime
+@inject DeviceLayoutService DeviceLayout
 
 <PageTitle>Detalle - Photonne</PageTitle>
 
@@ -19,659 +20,124 @@
 }
 else if (_asset != null)
 {
-    <div class="asset-detail-container" @ref="_containerRef" @onkeydown="HandleKeyDown" @onmousemove="OnSlideshowMouseMove" tabindex="0">
-        <style>
-            .asset-detail-container {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 1100;
-                display: flex;
-                flex-direction: column;
-                outline: none;
-                margin: -24px;
-                width: calc(100% + 48px);
-                height: calc(100% + 48px);
-                background-color: black;
-            }
-            .asset-detail-content {
-                flex-grow: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                overflow: hidden;
-                position: relative;
-                transition: margin-right 0.3s ease;
-            }
-            .asset-detail-content.info-open {
-                margin-right: 360px;
-            }
-            .asset-detail-image {
-                max-width: 100%;
-                max-height: 100%;
-                object-fit: contain;
-                user-select: none;
-            }
-            video.asset-detail-image {
-                width: 100%;
-                outline: none;
-                background-color: black;
-            }
-            @@media (max-width: 600px) {
-                .asset-detail-content.info-open {
-                    margin-right: 0;
-                }
-            }
-            .asset-info-drawer {
-                width: 360px;
-                background-color: #1a1a1a;
-                overflow-y: auto;
-                transition: transform 0.3s ease;
-                position: fixed;
-                right: 0;
-                top: var(--mud-appbar-height, 64px);
-                height: calc(100% - var(--mud-appbar-height, 64px));
-                z-index: 1400;
-                border-left: 1px solid #333;
-                color: #e1e1e1;
-                padding-bottom: env(safe-area-inset-bottom, 0px);
-            }
-            .asset-info-drawer.closed {
-                transform: translateX(100%);
-            }
-            .asset-info-drawer-backdrop {
-                display: none;
-            }
-            .asset-info-drawer-handle {
-                display: none;
-            }
-            @@media (max-width: 600px) {
-                .asset-info-drawer {
-                    width: 100%;
-                    height: 72vh;
-                    top: auto;
-                    bottom: 0;
-                    right: 0;
-                    border-left: none;
-                    border-top: 1px solid #333;
-                    border-radius: 16px 16px 0 0;
-                    padding-bottom: env(safe-area-inset-bottom, 12px);
-                }
-                .asset-info-drawer.closed {
-                    transform: translateY(100%);
-                }
-                .asset-info-drawer-handle {
-                    display: flex;
-                    justify-content: center;
-                    padding: 10px 0 4px;
-                    flex-shrink: 0;
-                }
-                .asset-info-drawer-handle-pill {
-                    width: 36px;
-                    height: 4px;
-                    background-color: #555;
-                    border-radius: 2px;
-                }
-                .asset-info-drawer-backdrop {
-                    display: block;
-                    position: fixed;
-                    inset: 0;
-                    background: rgba(0, 0, 0, 0.6);
-                    z-index: 1399;
-                    opacity: 1;
-                    transition: opacity 0.3s ease;
-                }
-                .asset-info-drawer-backdrop.hidden {
-                    opacity: 0;
-                    pointer-events: none;
-                }
-            }
-            /* Forzar inputs del drawer a colores oscuros independientemente del tema */
-            .asset-info-drawer .mud-input-root input,
-            .asset-info-drawer .mud-input-root textarea,
-            .asset-info-drawer .mud-input,
-            .asset-info-drawer .mud-input-slot {
-                color: #e1e1e1 !important;
-            }
-            .asset-info-drawer .mud-input-root input::placeholder,
-            .asset-info-drawer .mud-input-root textarea::placeholder {
-                color: #888 !important;
-                opacity: 1 !important;
-            }
-            .asset-info-drawer .mud-input-outlined fieldset {
-                border-color: #555 !important;
-            }
-            .asset-info-drawer .mud-input-outlined:hover fieldset {
-                border-color: #888 !important;
-            }
-            .asset-info-drawer .mud-input-outlined.mud-focused fieldset {
-                border-color: var(--mud-palette-primary) !important;
-            }
-            .asset-info-drawer .mud-input-control-input-slot {
-                background-color: #2a2a2a !important;
-                border-radius: 4px;
-            }
-            .nav-button {
-                position: absolute;
-                top: 50%;
-                transform: translateY(-50%);
-                z-index: 20;
-                background-color: rgba(0,0,0,0.3);
-                color: white !important;
-                border-radius: 50% !important;
-                transition: opacity 0.3s ease, background-color 0.2s, right 0.3s ease;
-            }
-            .nav-button:hover {
-                background-color: rgba(0,0,0,0.6);
-            }
-            .nav-button.prev { left: 36px; }
-            .nav-button.next { right: 36px; }
-            .asset-detail-content.info-open .nav-button.next {
-                right: calc(360px + 36px);
-            }
-            @@media (max-width: 600px) {
-                .asset-detail-content.info-open .nav-button.next {
-                    right: 36px;
-                }
-            }
-            .nav-button.hidden {
-                opacity: 0;
-                pointer-events: none;
-            }
-            .asset-detail-menu-popover {
-                background-color: #1a1a1a !important;
-                color: #e1e1e1 !important;
-                border: 1px solid #333 !important;
-            }
-            .asset-detail-menu-popover .mud-popover-paper {
-                background-color: #1a1a1a !important;
-                box-shadow: 0px 5px 5px -3px rgba(0,0,0,0.2),0px 8px 10px 1px rgba(0,0,0,0.14),0px 3px 14px 2px rgba(0,0,0,0.12) !important;
-                border: 1px solid #333 !important;
-            }
-            .asset-detail-menu-popover .mud-list-item {
-                color: #e1e1e1 !important;
-            }
-            .asset-detail-menu-popover .mud-list-item:hover {
-                background-color: rgba(255, 255, 255, 0.1) !important;
-            }
-            .asset-detail-content.zoomed-container {
-                overflow: auto;
-                align-items: flex-start;
-                justify-content: flex-start;
-                cursor: zoom-out;
-            }
-            .asset-detail-image.zoomed {
-                max-width: none;
-                max-height: none;
-                width: auto;
-                height: auto;
-            }
-            /* ── Slideshow ── */
-            .slideshow-controls-bar {
-                position: absolute;
-                bottom: 48px;
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: 60;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                background: rgba(0, 0, 0, 0.65);
-                backdrop-filter: blur(10px);
-                border-radius: 999px;
-                padding: 6px 16px;
-                color: white;
-                transition: opacity 0.4s ease;
-            }
-            .slideshow-controls-bar.controls-hidden {
-                opacity: 0;
-                pointer-events: none;
-            }
-            .slideshow-speed-btn {
-                min-width: 36px !important;
-                padding: 0 8px !important;
-                border-radius: 999px !important;
-                font-size: 0.75rem !important;
-                min-height: 28px !important;
-                color: white !important;
-            }
-            .slideshow-speed-btn.active {
-                background: rgba(255,255,255,0.2) !important;
-            }
-            .slideshow-divider {
-                width: 1px;
-                height: 24px;
-                background: rgba(255,255,255,0.25);
-                margin: 0 6px;
-            }
-            @@keyframes slideshow-advance {
-                from { width: 0%; }
-                to   { width: 100%; }
-            }
-            .slideshow-progress {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                height: 3px;
-                background: rgba(255,255,255,0.15);
-                z-index: 60;
-            }
-            .slideshow-progress-fill {
-                height: 3px;
-                width: 0%;
-                background: var(--mud-palette-primary, #FFD166);
-                animation: slideshow-advance linear forwards;
-            }
-            .slideshow-progress-fill.paused {
-                animation-play-state: paused;
-            }
-            /* ── Add to Album bottom sheet ── */
-            .add-to-album-drawer {
-                width: 100%;
-                max-width: 520px;
-                max-height: 80vh;
-                overflow-y: auto;
-                background-color: #1a1a1a;
-                border-radius: 16px 16px 0 0;
-                border-top: 1px solid #333;
-                position: fixed;
-                bottom: 0;
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: 1402;
-                transition: transform 0.3s ease;
-                color: #e1e1e1;
-                padding-bottom: env(safe-area-inset-bottom, 12px);
-            }
-            .add-to-album-drawer.closed {
-                transform: translateX(-50%) translateY(100%);
-            }
-            .add-to-album-drawer-backdrop {
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.6);
-                z-index: 1401;
-                opacity: 1;
-                transition: opacity 0.3s ease;
-            }
-            .add-to-album-drawer-backdrop.hidden {
-                opacity: 0;
-                pointer-events: none;
-            }
-            .add-to-album-drawer .mud-input-root input,
-            .add-to-album-drawer .mud-input,
-            .add-to-album-drawer .mud-input-slot {
-                color: #e1e1e1 !important;
-            }
-            .add-to-album-drawer .mud-input-outlined fieldset {
-                border-color: #555 !important;
-            }
-            .add-to-album-drawer .mud-input-outlined:hover fieldset {
-                border-color: #888 !important;
-            }
-            .add-to-album-drawer .mud-input-outlined.mud-focused fieldset {
-                border-color: var(--mud-palette-primary) !important;
-            }
-            .add-to-album-drawer .mud-input-control-input-slot {
-                background-color: #2a2a2a !important;
-                border-radius: 4px;
-            }
-        </style>
-
-        <div class="asset-detail-content @(_zoomed ? "zoomed-container" : "") @(_infoOpen ? "info-open" : "")" @onclick="ToggleToolbar" @ontouchstart="HandleTouchStart" @ontouchend="HandleTouchEnd">
-            <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" 
-                               Class="@GetNavButtonClass(true)" 
-                               Size="Size.Large"
-                               OnClick="NavigatePrev"
-                               Disabled="@(_prevAsset == null)" />
-            </span>
-
-            @if (_asset.Type == "Video")
-            {
-                <video controls autoplay class="asset-detail-image">
-                    <source src="@_displayContentUrl" type="video/mp4">
-                    Tu navegador no soporta la reproducción de videos.
-                </video>
-            }
-            else if (_asset.IsFileMissing || _imageLoadError)
-            {
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; color: rgba(255,255,255,0.5);">
-                    <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Style="width: 96px; height: 96px;" />
-                    <MudText Typo="Typo.body2">Archivo no encontrado en disco</MudText>
-                </div>
-            }
-            else if (_asset.HasThumbnails || _asset.Type == "Image")
-            {
-                <img src="@(_asset.Type == "Image" ? _displayContentUrl : _displayThumbnailUrl)"
-                     alt="@_asset.FileName"
-                     class="asset-detail-image @(_zoomed ? "zoomed" : "")"
-                     @onerror="() => { _imageLoadError = true; StateHasChanged(); }" />
-            }
-            else
-            {
-                <MudIcon Icon="@GetAssetIcon(_asset.Type)" Size="Size.Large" Color="Color.Inherit" Style="width: 128px; height: 128px;" />
-            }
-
-            <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" 
-                               Class="@GetNavButtonClass(false)" 
-                               Size="Size.Large"
-                               OnClick="NavigateNext"
-                               Disabled="@(_nextAsset == null)" />
-            </span>
-        </div>
-
-        @if (_slideshowActive)
-        {
-            <div class="slideshow-controls-bar @(_slideshowControlsVisible ? "" : "controls-hidden")">
-                <MudTooltip Text="Anterior">
-                    <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious" Color="Color.Inherit" Size="Size.Medium"
-                                   OnClick="NavigatePrev" Disabled="@(_prevAsset == null)" />
-                </MudTooltip>
-                <MudIconButton Icon="@(_slideshowPaused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
-                               Color="Color.Inherit" Size="Size.Large"
-                               OnClick="ToggleSlideshowPause" />
-                <MudTooltip Text="Siguiente">
-                    <MudIconButton Icon="@Icons.Material.Filled.SkipNext" Color="Color.Inherit" Size="Size.Medium"
-                                   OnClick="NavigateNext" Disabled="@(_nextAsset == null)" />
-                </MudTooltip>
-                <div class="slideshow-divider"></div>
-                @foreach (var secs in new[] { 3, 5, 10 })
-                {
-                    <button class="slideshow-speed-btn @(_slideshowInterval == secs ? "active" : "")"
-                            @onclick="@(() => SetSlideshowInterval(secs))">@secs s</button>
-                }
-                <div class="slideshow-divider"></div>
-                <MudTooltip Text="Salir (Esc)">
-                    <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Medium"
-                                   OnClick="StopSlideshow" />
-                </MudTooltip>
-            </div>
-            <div class="slideshow-progress">
-                <div @key="_slideshowProgressKey"
-                     class="slideshow-progress-fill @(_slideshowPaused ? "paused" : "")"
-                     style="animation-duration: @(_slideshowInterval)s;"></div>
-            </div>
-        }
-
-        <div class="asset-info-drawer-backdrop @(_infoOpen ? "" : "hidden")" @onclick="ToggleInfo"></div>
-
-        <div class="add-to-album-drawer-backdrop @(_addToAlbumDialogVisible ? "" : "hidden")"
-             @onclick="CloseAddToAlbumDrawer"></div>
-        <div class="add-to-album-drawer @(_addToAlbumDialogVisible ? "" : "closed")">
-            <div class="asset-info-drawer-handle">
-                <div class="asset-info-drawer-handle-pill"></div>
-            </div>
-            <div class="pa-4">
-                <div class="d-flex align-center mb-3">
-                    <MudText Typo="Typo.h6">Añadir a Álbum</MudText>
-                    <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Inherit"
-                                   OnClick="CloseAddToAlbumDrawer" />
-                </div>
-                @if (!_showCreateAlbum)
-                {
-                    @if (_loadingAlbums)
-                    {
-                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
-                    }
-                    else if (_availableAlbums.Any())
-                    {
-                        <MudRadioGroup T="Guid?" @bind-Value="_selectedAlbumId">
-                            @foreach (var album in _availableAlbums)
-                            {
-                                <MudRadio T="Guid?" Value="@album.Id">
-                                    <div class="d-flex align-center gap-2">
-                                        @if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
-                                        {
-                                            <img src="@album.CoverThumbnailUrl"
-                                                 style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px;"
-                                                 alt="@album.Name" />
-                                        }
-                                        else
-                                        {
-                                            <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #333; border-radius: 4px;">
-                                                <MudIcon Icon="@Icons.Material.Filled.Collections" Size="Size.Small" />
-                                            </div>
-                                        }
-                                        <div>
-                                            <MudText Typo="Typo.body1">@album.Name</MudText>
-                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                                @album.AssetCount @(album.AssetCount == 1 ? "foto" : "fotos")
-                                            </MudText>
-                                        </div>
-                                    </div>
-                                </MudRadio>
-                            }
-                        </MudRadioGroup>
-                    }
-                    else
-                    {
-                        <MudAlert Severity="Severity.Info" Class="mb-3">
-                            No tienes ningún álbum. Crea uno nuevo para añadir esta foto.
-                        </MudAlert>
-                    }
-
-                    <MudDivider Class="my-3" Style="background-color: #444;" />
-                    <MudButton Variant="Variant.Text"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="@(() => _showCreateAlbum = true)"
-                               FullWidth="true">
-                        Crear nuevo álbum
-                    </MudButton>
-                }
-                else
-                {
-                    <MudTextField @bind-Value="_newAlbumName"
-                                  Label="Nombre del álbum"
-                                  Variant="Variant.Outlined"
-                                  FullWidth="true"
-                                  Class="mb-3" />
-                    <MudTextField @bind-Value="_newAlbumDescription"
-                                  Label="Descripción (opcional)"
-                                  Variant="Variant.Outlined"
-                                  FullWidth="true"
-                                  Lines="3" />
-                    <MudButton Variant="Variant.Text"
-                               StartIcon="@Icons.Material.Filled.ArrowBack"
-                               OnClick="@(() => _showCreateAlbum = false)"
-                               Class="mt-2">
-                        Volver a seleccionar álbum
-                    </MudButton>
-                }
-
-                <div class="d-flex justify-end gap-2 mt-4">
-                    <MudButton OnClick="CloseAddToAlbumDrawer">Cancelar</MudButton>
-                    @if (_showCreateAlbum)
-                    {
-                        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAlbumAndAdd">
-                            Crear y Añadir
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Color="Color.Primary"
-                                   Variant="Variant.Filled"
-                                   OnClick="AddToAlbum"
-                                   Disabled="@(!_selectedAlbumId.HasValue)">
-                            Añadir
-                        </MudButton>
-                    }
-                </div>
-            </div>
-        </div>
-        <div class="asset-info-drawer @(_infoOpen ? "" : "closed")">
-            <div class="asset-info-drawer-handle">
-                <div class="asset-info-drawer-handle-pill"></div>
-            </div>
-            <div class="pa-4">
-                <div class="d-flex align-center mb-4">
-                    <MudText Typo="Typo.h6">Información</MudText>
-                    <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Inherit" OnClick="ToggleInfo" />
-                </div>
-
-                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Detalles del archivo</MudText>
-                <MudList T="string"  ReadOnly="true">
-                    <MudListItem Icon="@Icons.Material.Filled.InsertDriveFile" IconColor="Color.Info">
-                        <MudText Typo="Typo.body2">@_asset.FileName</MudText>
-                    </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.CalendarToday" IconColor="Color.Info">
-                        <MudText Typo="Typo.body2">@_asset.DisplayDate</MudText>
-                    </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.SdStorage" IconColor="Color.Info">
-                        <MudText Typo="Typo.body2">@_asset.FileSizeFormatted</MudText>
-                    </MudListItem>
-                    @if (!string.IsNullOrEmpty(_asset.FolderPath))
-                    {
-                        <MudListItem Icon="@Icons.Material.Filled.Folder" IconColor="Color.Info">
-                            <MudText Typo="Typo.body2">@_asset.FolderPath</MudText>
-                        </MudListItem>
-                    }
-                </MudList>
-
-                @if (_asset.Exif != null)
-                {
-                    <MudDivider Class="my-4" Style="background-color: #333;" />
-                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Información técnica</MudText>
-                    <MudList T="string"  ReadOnly="true">
-                        @if (_asset.Exif.CameraMake != null)
-                        {
-                            <MudListItem Icon="@Icons.Material.Filled.Camera" IconColor="Color.Info">
-                                <MudText Typo="Typo.body2">@_asset.Exif.CameraMake @_asset.Exif.CameraModel</MudText>
-                            </MudListItem>
-                        }
-                        @if (_asset.Exif.Width.HasValue)
-                        {
-                            <MudListItem Icon="@Icons.Material.Filled.AspectRatio" IconColor="Color.Info">
-                                <MudText Typo="Typo.body2">@_asset.Exif.Width x @_asset.Exif.Height</MudText>
-                            </MudListItem>
-                        }
-                        @if (_asset.Exif.Iso.HasValue || _asset.Exif.Aperture.HasValue || _asset.Exif.ShutterSpeed.HasValue)
-                        {
-                            <MudListItem Icon="@Icons.Material.Filled.Settings" IconColor="Color.Info">
-                                <MudText Typo="Typo.body2">
-                                    @( _asset.Exif.Iso.HasValue ? $"ISO {_asset.Exif.Iso} " : "" )
-                                    @( _asset.Exif.Aperture.HasValue ? $"f/{_asset.Exif.Aperture:0.#} " : "" )
-                                    @if (_asset.Exif.ShutterSpeed.HasValue)
-                                    {
-                                        var ss = _asset.Exif.ShutterSpeed.Value;
-                                        var ssText = ss < 1 ? $"1/{(int)Math.Round(1 / ss)}s" : $"{ss:0.#}s";
-                                        <span>@ssText </span>
-                                    }
-                                    @( _asset.Exif.FocalLength.HasValue ? $"{_asset.Exif.FocalLength:0.#}mm" : "" )
-                                </MudText>
-                            </MudListItem>
-                        }
-                    </MudList>
-
-                    @if (_asset.Exif.Latitude.HasValue && _asset.Exif.Longitude.HasValue)
-                    {
-                        <MudDivider Class="my-4" Style="background-color: #333;" />
-                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-2">Ubicación</MudText>
-
-                        <div id="asset-mini-map" style="width: 100%; height: 180px; border-radius: 12px; overflow: hidden;"></div>
-
-                        <div class="d-flex align-center justify-space-between mt-2">
-                            <div class="d-flex flex-column">
-                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                    @_asset.Exif.Latitude.Value.ToString("F6"), @_asset.Exif.Longitude.Value.ToString("F6")
-                                </MudText>
-                                @if (_asset.Exif.Altitude.HasValue)
-                                {
-                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                        Altitud: @_asset.Exif.Altitude.Value.ToString("F0") m
-                                    </MudText>
-                                }
-                            </div>
-                            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
-                                           Size="Size.Small"
-                                           Color="Color.Primary"
-                                           Title="Ver en OpenStreetMap"
-                                           Href="@($"https://www.openstreetmap.org/?mlat={_asset.Exif.Latitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}&mlon={_asset.Exif.Longitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}#map=15/{_asset.Exif.Latitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}/{_asset.Exif.Longitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}")"
-                                           Target="_blank" />
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(_asset.Exif.Description))
-                    {
-                        <MudDivider Class="my-4" Style="background-color: #333;" />
-                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Descripción EXIF</MudText>
-                        <MudText Typo="Typo.body2" Class="px-4 py-2" Style="font-style: italic;">@_asset.Exif.Description</MudText>
-                    }
-                }
-
-                <MudDivider Class="my-4" Style="background-color: #333;" />
-                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-2">Descripción</MudText>
-                <MudTextField @bind-Value="_descriptionEdit"
-                              Placeholder="Añade una descripción..."
-                              Variant="Variant.Outlined"
-                              Lines="3"
-                              MaxLength="2000"
-                              FullWidth="true"
-                              Class="mb-2"
-                              Style="font-size: 0.85rem;" />
-                <div class="d-flex justify-end">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               Disabled="@_savingDescription"
-                               OnClick="SaveDescriptionAsync">
-                        @if (_savingDescription)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
-                        }
-                        Guardar
-                    </MudButton>
-                </div>
-
-                <MudDivider Class="my-4" Style="background-color: #333;" />
-                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-2">Etiquetas</MudText>
-                <div class="d-flex flex-wrap gap-2">
-                    @if (_asset.Tags.Any())
-                    {
-                        @foreach (var tag in _asset.Tags)
-                        {
-                            <MudChip T="string"
-                                     Size="Size.Small"
-                                     Variant="Variant.Text"
-                                     Color="Color.Primary"
-                                     Closable="@CanEditTags"
-                                     OnClose="() => RemoveTagAsync(tag)">
-                                @tag
-                            </MudChip>
-                        }
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Sin etiquetas</MudText>
-                    }
-                </div>
-                @if (CanEditTags)
-                {
-                    <div class="d-flex align-center gap-2 mt-3">
-                        <MudTextField @bind-Value="_newTag"
-                                      Placeholder="Añadir etiqueta"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                                                           Immediate="true"
-                                      Disabled="@_tagBusy"
-                                      Class="flex-grow-1" />
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="@_tagBusy"
-                                   OnClick="AddTagAsync">
-                            Añadir
-                        </MudButton>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+    @if (DeviceLayout.IsMobile)
+    {
+        <AssetDetailMobileView Asset="_asset"
+                               Loading="_loading"
+                               InfoOpen="_infoOpen"
+                               Zoomed="_zoomed"
+                               ToolbarVisible="_toolbarVisible"
+                               PrevAsset="_prevAsset"
+                               NextAsset="_nextAsset"
+                               DisplayContentUrl="_displayContentUrl"
+                               DisplayThumbnailUrl="_displayThumbnailUrl"
+                               ImageLoadError="_imageLoadError"
+                               AssetIcon="@GetAssetIcon(_asset.Type)"
+                               NavButtonPrevClass="@GetNavButtonClass(true)"
+                               NavButtonNextClass="@GetNavButtonClass(false)"
+                               SlideshowActive="_slideshowActive"
+                               SlideshowPaused="_slideshowPaused"
+                               SlideshowControlsVisible="_slideshowControlsVisible"
+                               SlideshowInterval="_slideshowInterval"
+                               SlideshowProgressKey="_slideshowProgressKey"
+                               AddToAlbumDialogVisible="_addToAlbumDialogVisible"
+                               AvailableAlbums="_availableAlbums"
+                               LoadingAlbums="_loadingAlbums"
+                               SelectedAlbumId="_selectedAlbumId"
+                               ShowCreateAlbum="_showCreateAlbum"
+                               NewAlbumName="_newAlbumName"
+                               NewAlbumDescription="_newAlbumDescription"
+                               DescriptionEdit="_descriptionEdit"
+                               SavingDescription="_savingDescription"
+                               NewTag="_newTag"
+                               TagBusy="_tagBusy"
+                               CanEditTags="CanEditTags"
+                               ContainerRefChanged="OnContainerRefChanged"
+                               OnToggleToolbar="ToggleToolbar"
+                               OnToggleInfo="ToggleInfo"
+                               OnNavigatePrev="NavigatePrev"
+                               OnNavigateNext="NavigateNext"
+                               OnKeyDown="HandleKeyDown"
+                               OnTouchStart="HandleTouchStart"
+                               OnTouchEnd="HandleTouchEnd"
+                               OnImageError="OnImageLoadError"
+                               OnSlideshowMouseMove="OnSlideshowMouseMove"
+                               OnToggleSlideshowPause="ToggleSlideshowPause"
+                               OnSetSlideshowInterval="SetSlideshowInterval"
+                               OnStopSlideshow="StopSlideshow"
+                               OnCloseAddToAlbumDrawer="CloseAddToAlbumDrawer"
+                               OnAddToAlbum="AddToAlbum"
+                               OnCreateAlbumAndAdd="CreateAlbumAndAdd"
+                               OnShowCreateAlbum="@(() => _showCreateAlbum = true)"
+                               OnHideCreateAlbum="@(() => _showCreateAlbum = false)"
+                               OnSelectedAlbumIdChanged="@(v => _selectedAlbumId = v)"
+                               OnNewAlbumNameChanged="@(v => _newAlbumName = v)"
+                               OnNewAlbumDescriptionChanged="@(v => _newAlbumDescription = v)"
+                               OnDescriptionEditChanged="@(v => _descriptionEdit = v)"
+                               OnSaveDescription="SaveDescriptionAsync"
+                               OnNewTagChanged="@(v => _newTag = v)"
+                               OnAddTag="AddTagAsync"
+                               OnRemoveTag="RemoveTagAsync" />
+    }
+    else
+    {
+        <AssetDetailDesktopView Asset="_asset"
+                                Loading="_loading"
+                                InfoOpen="_infoOpen"
+                                Zoomed="_zoomed"
+                                ToolbarVisible="_toolbarVisible"
+                                PrevAsset="_prevAsset"
+                                NextAsset="_nextAsset"
+                                DisplayContentUrl="_displayContentUrl"
+                                DisplayThumbnailUrl="_displayThumbnailUrl"
+                                ImageLoadError="_imageLoadError"
+                                AssetIcon="@GetAssetIcon(_asset.Type)"
+                                NavButtonPrevClass="@GetNavButtonClass(true)"
+                                NavButtonNextClass="@GetNavButtonClass(false)"
+                                SlideshowActive="_slideshowActive"
+                                SlideshowPaused="_slideshowPaused"
+                                SlideshowControlsVisible="_slideshowControlsVisible"
+                                SlideshowInterval="_slideshowInterval"
+                                SlideshowProgressKey="_slideshowProgressKey"
+                                AddToAlbumDialogVisible="_addToAlbumDialogVisible"
+                                AvailableAlbums="_availableAlbums"
+                                LoadingAlbums="_loadingAlbums"
+                                SelectedAlbumId="_selectedAlbumId"
+                                ShowCreateAlbum="_showCreateAlbum"
+                                NewAlbumName="_newAlbumName"
+                                NewAlbumDescription="_newAlbumDescription"
+                                DescriptionEdit="_descriptionEdit"
+                                SavingDescription="_savingDescription"
+                                NewTag="_newTag"
+                                TagBusy="_tagBusy"
+                                CanEditTags="CanEditTags"
+                                ContainerRefChanged="OnContainerRefChanged"
+                                OnToggleToolbar="ToggleToolbar"
+                                OnToggleInfo="ToggleInfo"
+                                OnNavigatePrev="NavigatePrev"
+                                OnNavigateNext="NavigateNext"
+                                OnKeyDown="HandleKeyDown"
+                                OnTouchStart="HandleTouchStart"
+                                OnTouchEnd="HandleTouchEnd"
+                                OnImageError="OnImageLoadError"
+                                OnSlideshowMouseMove="OnSlideshowMouseMove"
+                                OnToggleSlideshowPause="ToggleSlideshowPause"
+                                OnSetSlideshowInterval="SetSlideshowInterval"
+                                OnStopSlideshow="StopSlideshow"
+                                OnCloseAddToAlbumDrawer="CloseAddToAlbumDrawer"
+                                OnAddToAlbum="AddToAlbum"
+                                OnCreateAlbumAndAdd="CreateAlbumAndAdd"
+                                OnShowCreateAlbum="@(() => _showCreateAlbum = true)"
+                                OnHideCreateAlbum="@(() => _showCreateAlbum = false)"
+                                OnSelectedAlbumIdChanged="@(v => _selectedAlbumId = v)"
+                                OnNewAlbumNameChanged="@(v => _newAlbumName = v)"
+                                OnNewAlbumDescriptionChanged="@(v => _newAlbumDescription = v)"
+                                OnDescriptionEditChanged="@(v => _descriptionEdit = v)"
+                                OnSaveDescription="SaveDescriptionAsync"
+                                OnNewTagChanged="@(v => _newTag = v)"
+                                OnAddTag="AddTagAsync"
+                                OnRemoveTag="RemoveTagAsync" />
+    }
 }
 else
 {
@@ -755,6 +221,12 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await DeviceLayout.InitializeAsync();
+            DeviceLayout.OnChanged += OnDeviceLayoutChanged;
+        }
+
         if (_containerRef.Context != null)
         {
             if (firstRender)
@@ -783,6 +255,7 @@ else
     public void Dispose()
     {
         _navigatingAway = true;
+        DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
         LayoutService.ResetNavbar();
         DisposeSlideshowTimers();
         _ = JSRuntime.InvokeVoidAsync("miniMapHelpers.destroy", "asset-mini-map").AsTask();
@@ -1533,6 +1006,19 @@ else
         var baseClass = isPrev ? "nav-button prev" : "nav-button next";
         var hasAsset = isPrev ? _prevAsset != null : _nextAsset != null;
         return _toolbarVisible && hasAsset ? baseClass : $"{baseClass} hidden";
+    }
+
+    private void OnDeviceLayoutChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnContainerRefChanged(ElementReference containerRef)
+    {
+        _containerRef = containerRef;
+    }
+
+    private void OnImageLoadError()
+    {
+        _imageLoadError = true;
+        StateHasChanged();
     }
 
     // ── Slideshow ──────────────────────────────────────────────────────────
