@@ -1,0 +1,22 @@
+.storage-widget {
+    padding: 12px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.storage-widget-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--mud-palette-text-secondary);
+}
+
+::deep .storage-icon {
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+::deep .storage-bar {
+    width: 100%;
+}

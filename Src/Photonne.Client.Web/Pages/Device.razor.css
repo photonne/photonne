@@ -1,0 +1,40 @@
+    .device-date-header {
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: capitalize;
+        padding: 0 4px 6px 4px;
+    }
+    @media (max-width: 599.98px) {
+        .device-date-header { font-size: 0.78rem !important; }
+    }
+    .device-asset-row {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+    .device-asset-cell {
+        flex: 1;
+        min-width: 0;
+        aspect-ratio: 1 / 1;
+    }
+    .local-lightbox {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.96);
+        z-index: 9999;
+        display: flex; flex-direction: column;
+    }
+    .local-lightbox-toolbar {
+        display: flex; align-items: center; gap: 4px;
+        padding: 8px 8px 8px 16px;
+        background: rgba(0,0,0,.6);
+        flex-shrink: 0;
+    }
+    .local-lightbox-content {
+        flex: 1; display: flex;
+        align-items: center; justify-content: center;
+        overflow: hidden; padding: 8px;
+    }
+    .local-lightbox-media {
+        max-width: 100%; max-height: 100%;
+        object-fit: contain; border-radius: 4px;
+    }

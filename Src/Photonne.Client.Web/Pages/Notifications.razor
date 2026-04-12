@@ -111,25 +111,6 @@
     }
 </div>
 
-<style>
-    .notification-item {
-        cursor: pointer;
-        transition: background-color 0.15s ease;
-        border-left: 3px solid transparent;
-    }
-    .notification-item:hover {
-        background-color: var(--mud-palette-action-hover);
-    }
-    .notification-item-unread {
-        cursor: pointer;
-        transition: background-color 0.15s ease;
-        border-left: 3px solid var(--mud-palette-primary);
-    }
-    .notification-item-unread:hover {
-        background-color: var(--mud-palette-action-hover);
-    }
-</style>
-
 @code {
     private NotificationsPageResponse? _pagedResult;
     private bool _loading = true;

@@ -81,3 +81,13 @@
         overflow-y: auto;
     }
 }
+
+.nav-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.nav-spacer {
+    flex: 1;
+}
