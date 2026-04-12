@@ -955,7 +955,8 @@ else
             
             if (_allAssets.Count == 0)
             {
-                var listFromNavigation = AssetListNavigationState.TryGetList(AlbumId);
+                var navContextKey = GetNavigationContextKey();
+                var listFromNavigation = AssetListNavigationState.TryGetList(navContextKey);
                 if (listFromNavigation != null)
                 {
                     _allAssets = listFromNavigation;
@@ -965,7 +966,9 @@ else
                     _allAssets = await AlbumService.GetAlbumAssetsAsync(AlbumId.Value);
                 }
                 else if (AssetId != Guid.Empty && ReturnTo is not ("archive" or "trash" or "my-shares"
-                    or "utilities/duplicates" or "utilities/large-files"))
+                    or "utilities/duplicates" or "utilities/large-files")
+                    && !(ReturnTo?.StartsWith("folders/") == true)
+                    && ReturnTo != "map")
                 {
                     var neighbors = await AssetService.GetTimelineNeighborsAsync(AssetId);
                     _allAssets = neighbors.Items.Select(n => new TimelineItem
@@ -1137,6 +1140,31 @@ else
 
         var separator = url.Contains('?') ? "&" : "?";
         return $"{url}{separator}access_token={Uri.EscapeDataString(token)}";
+    }
+
+    /// <summary>
+    /// Deriva la clave de contexto de navegación a partir de los parámetros de la URL.
+    /// Debe coincidir con lo que el origen (Folders, Map, Albums, etc.) pasó a SetList().
+    /// </summary>
+    private string? GetNavigationContextKey()
+    {
+        if (AlbumId.HasValue && AlbumId.Value != Guid.Empty)
+            return $"album:{AlbumId.Value}";
+
+        if (ReturnTo != null)
+        {
+            // "folders/{guid}" → "folder:{guid}"
+            if (ReturnTo.StartsWith("folders/") && Guid.TryParse(ReturnTo.AsSpan(8), out var folderId))
+                return $"folder:{folderId}";
+            if (ReturnTo == "map")
+                return "map";
+            if (ReturnTo == "favorites")
+                return "favorites";
+            if (ReturnTo == "search")
+                return "search";
+        }
+
+        return null; // timeline
     }
 
     private void NavigatePrev()

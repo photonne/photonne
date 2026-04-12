@@ -136,6 +136,28 @@ public class FoldersEndpoint : IEndpoint
             if (rootFolder == null)
                 return Results.NotFound(new { error = "Library has not been scanned yet or has no indexed folders." });
 
+            // Compute recursive asset counts for subfolders (single batch query)
+            var libRecursiveCounts = new Dictionary<Guid, int>();
+            if (rootFolder.SubFolders.Count > 0)
+            {
+                var rootNormPath = NormalizeVirtualPath(rootFolder.Path);
+                var allDescendants = await dbContext.Folders
+                    .Where(f => EF.Functions.Like(f.Path, rootNormPath + "/%"))
+                    .Select(f => new { f.Id, f.Path, AssetCount = f.Assets.Count(a => a.DeletedAt == null) })
+                    .ToListAsync(cancellationToken);
+
+                foreach (var sf in rootFolder.SubFolders)
+                {
+                    var sfNormPath = NormalizeVirtualPath(sf.Path);
+                    var sfPrefix = sfNormPath + "/";
+                    var directCount = sf.Assets.Count(a => a.DeletedAt == null);
+                    var descendantCount = allDescendants
+                        .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
+                        .Sum(d => d.AssetCount);
+                    libRecursiveCounts[sf.Id] = directCount + descendantCount;
+                }
+            }
+
             var response = new FolderResponse
             {
                 Id = rootFolder.Id,
@@ -162,7 +184,7 @@ public class FoldersEndpoint : IEndpoint
                     Name = sf.Name,
                     ParentFolderId = sf.ParentFolderId,
                     CreatedAt = sf.CreatedAt,
-                    AssetCount = sf.Assets.Count(a => a.DeletedAt == null),
+                    AssetCount = libRecursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => a.DeletedAt == null)),
                     FirstAssetId = sf.Assets
                         .Where(a => a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
@@ -314,6 +336,34 @@ public class FoldersEndpoint : IEndpoint
             var userPermission = await dbContext.FolderPermissions
                 .FirstOrDefaultAsync(p => p.FolderId == folderId && p.UserId == userId, cancellationToken);
 
+            // Compute recursive asset counts for each subfolder.
+            // Batch approach: fetch all descendant folders of this folder, group by
+            // which immediate subfolder they belong to, and sum asset counts.
+            var recursiveCounts = new Dictionary<Guid, int>();
+            if (folder.SubFolders.Count > 0)
+            {
+                var isBin = IsBinPath(folder.Path);
+                var parentNormPath = NormalizeVirtualPath(folder.Path);
+
+                // Get all descendant folders (any depth) under this folder
+                var allDescendantFolders = await dbContext.Folders
+                    .Where(f => EF.Functions.Like(f.Path, parentNormPath + "/%"))
+                    .Select(f => new { f.Id, f.Path, AssetCount = f.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null) })
+                    .ToListAsync(cancellationToken);
+
+                // Map each descendant to its immediate subfolder
+                foreach (var sf in folder.SubFolders)
+                {
+                    var sfNormPath = NormalizeVirtualPath(sf.Path);
+                    var sfPrefix = sfNormPath + "/";
+                    var directCount = sf.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null);
+                    var descendantCount = allDescendantFolders
+                        .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
+                        .Sum(d => d.AssetCount);
+                    recursiveCounts[sf.Id] = directCount + descendantCount;
+                }
+            }
+
             var response = new FolderResponse
             {
                 Id = folder.Id,
@@ -341,7 +391,7 @@ public class FoldersEndpoint : IEndpoint
                     Name = sf.Name,
                     ParentFolderId = sf.ParentFolderId,
                     CreatedAt = sf.CreatedAt,
-                    AssetCount = sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null),
+                    AssetCount = recursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)),
                     FirstAssetId = sf.Assets
                         .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)

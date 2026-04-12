@@ -14,6 +14,7 @@
 @inject LayoutService LayoutService
 @inject IDialogService DialogService
 @inject IJSRuntime JS
+@inject IAssetListNavigationState AssetListNavigationState
 @implements IDisposable
 
 <PageTitle>Carpetas - Photonne</PageTitle>
@@ -861,20 +862,40 @@ else
         };
     }
 
+    // Cached filtered/sorted subfolders — avoids recomputing during a single render pass
+    // (called up to 4 times per render). Invalidated when inputs change.
+    private List<FolderItem>? _filteredSubFoldersCache;
+    private string? _filteredSubFoldersSearchKey;
+    private FolderSort _filteredSubFoldersSortKey;
+    private int _filteredSubFoldersVersion;
+    private int _subFoldersVersion;
+
     private List<FolderItem> GetFilteredSubFolders()
     {
+        if (_filteredSubFoldersCache != null
+            && _filteredSubFoldersSearchKey == _searchQuery
+            && _filteredSubFoldersSortKey == _folderSort
+            && _filteredSubFoldersVersion == _subFoldersVersion)
+        {
+            return _filteredSubFoldersCache;
+        }
+
         var filtered = _subFoldersWithThumbnails;
         if (!string.IsNullOrWhiteSpace(_searchQuery))
         {
             filtered = _subFoldersWithThumbnails.Where(f => f.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        return _folderSort switch
+        _filteredSubFoldersCache = _folderSort switch
         {
             FolderSort.Name => filtered.OrderBy(f => f.Name).ToList(),
             FolderSort.AssetCount => filtered.OrderByDescending(f => f.AssetCount).ToList(),
             _ => filtered
         };
+        _filteredSubFoldersSearchKey = _searchQuery;
+        _filteredSubFoldersSortKey = _folderSort;
+        _filteredSubFoldersVersion = _subFoldersVersion;
+        return _filteredSubFoldersCache;
     }
 
     private void OnTabChanged(int index)
@@ -1183,7 +1204,7 @@ else
                 _selectedFolder = null;
                 _assets.Clear();
                 ResetFolderAssetPaging();
-                _subFoldersWithThumbnails.Clear();
+                _subFoldersWithThumbnails.Clear(); _subFoldersVersion++;
                 await LoadLibraries();
                 return;
             }
@@ -1264,7 +1285,7 @@ else
             _selectedTreeFolder = null;
             _assets.Clear();
             ResetFolderAssetPaging();
-            _subFoldersWithThumbnails.Clear();
+            _subFoldersWithThumbnails.Clear(); _subFoldersVersion++;
             _breadcrumbs.Clear();
             _breadcrumbFolders.Clear();
         }
@@ -1495,7 +1516,7 @@ else
         _selectedTreeFolder = null;
         _assets.Clear();
         ResetFolderAssetPaging();
-        _subFoldersWithThumbnails.Clear();
+        _subFoldersWithThumbnails.Clear(); _subFoldersVersion++;
         _breadcrumbs.Clear();
         _breadcrumbFolders.Clear();
         StateHasChanged();
@@ -1870,13 +1891,13 @@ else
                     folder.SubFolders = folderInTree.SubFolders;
                 else
                 {
-                    _subFoldersWithThumbnails = new List<FolderItem>();
+                    _subFoldersWithThumbnails = new List<FolderItem>(); _subFoldersVersion++;
                     return Task.CompletedTask;
                 }
             }
 
             // Los FolderItem ya traen FirstAssetId embebido desde la API — sin llamadas extra
-            _subFoldersWithThumbnails = folder.SubFolders.Where(s => !IsBinPath(s.Path)).ToList();
+            _subFoldersWithThumbnails = folder.SubFolders.Where(s => !IsBinPath(s.Path)).ToList(); _subFoldersVersion++;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -2042,6 +2063,13 @@ else
             ? $"folders/{_selectedFolder.Id}"
             : (_activeTab == 1 ? "folders/shared" : "folders/own");
         var returnToEncoded = System.Net.WebUtility.UrlEncode(returnTo);
+
+        // Set nav list so AssetDetail navigates within this folder's assets only
+        if (_selectedFolder != null)
+        {
+            AssetListNavigationState.SetList(_assets, $"folder:{_selectedFolder.Id}");
+        }
+
         Navigation.NavigateTo($"/asset/{asset.Id}?returnTo={returnToEncoded}");
     }
 

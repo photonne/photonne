@@ -132,7 +132,7 @@
             _hasMore = page.HasMore;
             _nextCursor = page.NextCursor;
             RebuildGroups();
-            AssetListNavigationState.SetList(_assets, null);
+            AssetListNavigationState.SetList(_assets, "favorites");
         }
         catch (Exception ex)
         {
@@ -156,7 +156,7 @@
             _hasMore = page.HasMore;
             _nextCursor = page.NextCursor;
             RebuildGroups();
-            AssetListNavigationState.SetList(_assets, null);
+            AssetListNavigationState.SetList(_assets, "favorites");
         }
         catch (Exception ex)
         {
@@ -179,7 +179,7 @@
 
     private void OpenAsset(TimelineItem asset)
     {
-        AssetListNavigationState.SetList(_assets, null);
+        AssetListNavigationState.SetList(_assets, "favorites");
         Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=favorites");
     }
 

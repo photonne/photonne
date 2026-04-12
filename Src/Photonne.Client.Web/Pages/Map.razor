@@ -283,11 +283,12 @@
         if (Guid.TryParse(assetId, out var id))
         {
             await JS.InvokeVoidAsync("mapHelpers.destroyMap");
+            // When clicking a single marker (no cluster), use all map points as nav list
             var navList = _points
                 .OrderByDescending(p => p.Date)
                 .Select(p => new TimelineItem { Id = p.Id, FileCreatedAt = p.Date, HasThumbnails = p.HasThumbnail })
                 .ToList();
-            AssetListNavigationState.SetList(navList, albumId: null);
+            AssetListNavigationState.SetList(navList, "map");
             Navigation.NavigateTo($"/asset/{id}?returnTo=map");
         }
     }
@@ -345,10 +346,11 @@
         _drawerSentinelAttached = false;
         await JS.InvokeVoidAsync("disconnectLoadMoreObserver", "map-drawer-sentinel");
         await JS.InvokeVoidAsync("mapHelpers.destroyMap");
+        // Only include assets from this cluster, not all map points
         var navList = _drawerPoints
             .Select(p => new TimelineItem { Id = p.Id, FileCreatedAt = p.Date, HasThumbnails = p.HasThumbnail })
             .ToList();
-        AssetListNavigationState.SetList(navList, albumId: null);
+        AssetListNavigationState.SetList(navList, "map");
         Navigation.NavigateTo($"/asset/{point.Id}?returnTo=map");
     }
 
