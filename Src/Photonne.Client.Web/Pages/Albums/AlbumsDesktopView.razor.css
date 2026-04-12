@@ -1,0 +1,365 @@
+::deep .album-card-container {
+    position: relative;
+    cursor: pointer;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--mud-palette-divider);
+    content-visibility: auto;
+    contain-intrinsic-size: 220px 260px;
+}
+
+::deep .album-card-container:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--mud-elevation-4);
+}
+
+::deep .album-select-checkbox {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    background: rgba(0,0,0,0.45);
+    border-radius: 999px;
+    padding: 2px;
+    color: white;
+}
+
+::deep .album-select-checkbox .mud-icon-root {
+    color: white !important;
+}
+
+::deep .album-card-container:hover .album-select-checkbox,
+::deep .album-card-container.selected .album-select-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+::deep .albums-search {
+    max-width: 300px;
+}
+
+::deep .album-overlay-name {
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+::deep .album-overlay-count {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+/* ── Collage ── */
+::deep .album-thumb-collage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+}
+
+::deep .collage-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+    gap: 2px;
+    transition: gap 0.35s ease;
+}
+
+::deep .album-card-container:hover .collage-grid {
+    gap: 3px;
+}
+
+::deep .collage-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+    display: block;
+}
+
+::deep .album-card-container:hover .collage-img {
+    transform: scale(1.06);
+}
+
+::deep .collage-single {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+    display: block;
+}
+
+::deep .album-card-container:hover .collage-single {
+    transform: scale(1.06);
+}
+
+::deep .collage-empty {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-dark, #4f46e5) 100%);
+    color: white;
+}
+
+::deep .collage-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.82));
+    pointer-events: none;
+}
+
+::deep .albums-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+
+::deep .album-year-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 16px 0 8px;
+}
+
+::deep .album-year-count {
+    color: var(--mud-palette-text-secondary);
+}
+
+::deep .album-grid-badges {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    z-index: 5;
+}
+
+::deep .album-shared-badge {
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+::deep .album-grid-share-btn {
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 3px 5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    z-index: 5;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+::deep .album-grid-share-btn.active {
+    color: var(--mud-palette-primary-lighten);
+}
+
+::deep .album-grid-share-btn:hover {
+    background: var(--mud-palette-primary);
+    color: white;
+}
+
+::deep .album-list-share-btn {
+    flex-shrink: 0;
+}
+
+::deep .album-list-shared-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+::deep .album-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+::deep .album-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+::deep .album-list-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--mud-palette-surface);
+    transition: background 0.2s ease;
+    cursor: pointer;
+    position: relative;
+    content-visibility: auto;
+    contain-intrinsic-size: 100% 120px;
+}
+
+::deep .album-list-item:hover {
+    background: var(--mud-palette-action-hover);
+}
+
+::deep .album-list-thumb {
+    width: 70px;
+    height: 70px;
+    position: relative;
+    flex: 0 0 80px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+::deep .album-list-info {
+    flex: 1;
+    min-width: 0;
+}
+
+::deep .album-list-title {
+    font-weight: 600;
+}
+
+::deep .album-list-meta {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.85rem;
+}
+
+/* ── Album hero ── */
+::deep .album-hero {
+    position: relative;
+    width: calc(100% + 48px);
+    margin-left: -24px;
+    margin-right: -24px;
+    margin-top: -24px;
+    min-height: 360px;
+    border-radius: 0;
+    overflow: hidden;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+::deep .album-hero-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(20px) brightness(0.7);
+    transform: scale(1.1);
+}
+
+::deep .album-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 24px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    color: white;
+}
+
+::deep .album-hero-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    color: white;
+}
+
+::deep .album-hero-back {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    color: white;
+}
+
+::deep .album-description-text {
+    max-height: 100px;
+    overflow-y: auto;
+    opacity: 0.9;
+}
+
+::deep .album-detail-scroll {
+    height: calc(100vh - var(--mud-appbar-height, 64px));
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* View toggle in filter sheet */
+::deep .album-view-toggle {
+    gap: 8px;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+::deep .album-view-toggle .mud-toggle-item {
+    border-radius: 20px !important;
+    background: var(--mud-palette-action-default-hover);
+    flex: 1;
+}
+
+::deep .album-view-toggle .mud-toggle-item-selected {
+    background: var(--mud-palette-primary) !important;
+    color: var(--mud-palette-primary-text) !important;
+}
+
+::deep .share-link-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+::deep .share-link-row:last-child {
+    border-bottom: none;
+}
+
+::deep .share-link-info {
+    flex: 1;
+    min-width: 0;
+}
+
+::deep .share-link-url {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: monospace;
+    font-size: 0.78rem;
+    opacity: 0.75;
+}

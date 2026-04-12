@@ -1,0 +1,226 @@
+<div class="timeline-wrapper">
+    <div class="timeline-main-container">
+        <div class="timeline-content-wrapper">
+
+            <div class="filter-chips-bar">
+                <div class="filter-density-controls">
+                    <MudTooltip Text="Compacto">
+                        <MudIconButton Icon="@Icons.Material.Outlined.GridOn"
+                                       Size="Size.Small"
+                                       Color="@(Density == "S" ? Color.Primary : Color.Inherit)"
+                                       OnClick="@(async () => await OnSetDensity.InvokeAsync("S"))" />
+                    </MudTooltip>
+                    <MudTooltip Text="Mediano">
+                        <MudIconButton Icon="@Icons.Material.Outlined.GridView"
+                                       Size="Size.Small"
+                                       Color="@(Density == "M" ? Color.Primary : Color.Inherit)"
+                                       OnClick="@(async () => await OnSetDensity.InvokeAsync("M"))" />
+                    </MudTooltip>
+                    <MudTooltip Text="Grande">
+                        <MudIconButton Icon="@Icons.Material.Outlined.PhotoSizeSelectLarge"
+                                       Size="Size.Small"
+                                       Color="@(Density == "L" ? Color.Primary : Color.Inherit)"
+                                       OnClick="@(async () => await OnSetDensity.InvokeAsync("L"))" />
+                    </MudTooltip>
+                </div>
+            </div>
+
+            <div class="timeline-container" id="timeline-scroll-container">
+                <div class="timeline-content @(Density == "S" ? "density-s" : Density == "L" ? "density-l" : "")">
+                    <MemoriesWidget OnThumbClick="OnMemoryThumbClick" Test="false" />
+
+                    @if (VisibleGroupedGridItems.Any())
+                    {
+                        @if (TopSpacerHeight > 0)
+                        {
+                            <div class="timeline-spacer" style="height: @(TopSpacerHeight)px;"></div>
+                        }
+                        <div class="timeline-flat-grid">
+                        @foreach (var group in VisibleGroupedGridItems)
+                        {
+                            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
+                            <div class="day-header-row" id="@GetGroupId(group.Key)">
+                                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                            </div>
+                            @foreach (var item in group.Value)
+                            {
+                                <div class="masonry-item"
+                                     data-day="@group.Key"
+                                     data-aspect-ratio="@item.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
+                                     data-width="@item.Width"
+                                     data-height="@item.Height">
+                                    <div class="asset-select-container @(SelectionMode ? "selection-mode" : "") @(SelectedAssetIds.Contains(item.Id) ? "selected" : "")"
+                                         data-asset-id="@item.Id"
+                                         @ontouchstart="@(e => OnGridItemTouchStart.InvokeAsync((e, item)))"
+                                         @ontouchmove="@(e => OnCardTouchMove.InvokeAsync(e))"
+                                         @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))">
+                                        <div class="asset-card-container" @onclick="@(() => OnGridItemClick.InvokeAsync(item))">
+                                            <div class="asset-placeholder"
+                                                 style="@(!string.IsNullOrEmpty(item.DominantColor) ? $"background-color:{item.DominantColor};" : "")">
+                                            </div>
+                                            <img data-src="@item.ThumbnailUrl" alt="" class="asset-card-image lazy-img" />
+                                            @if (item.Type == "Video")
+                                            {
+                                                <div class="asset-type-icon">
+                                                    <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                                            <MudCheckBox T="bool"
+                                                         Value="@SelectedAssetIds.Contains(item.Id)"
+                                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => OnToggleAssetSelection.InvokeAsync((item.Id, value))))" />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        </div>
+                        @if (BottomSpacerHeight > 0)
+                        {
+                            <div class="timeline-spacer" style="height: @(BottomSpacerHeight)px;"></div>
+                        }
+                    }
+                    else if (!Loading)
+                    {
+                        @if (ActiveFilter != "All")
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.FilterAlt"
+                                        Title="Sin resultados"
+                                        Description="No hay elementos que coincidan con el filtro seleccionado." />
+                        }
+                        else
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
+                                        Title="No hay fotografías disponibles"
+                                        Description="Indexa un directorio para comenzar." />
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (GroupedGridItems.Any())
+        {
+            <div class="scrubber-overlay">
+                <div class="scrubber-track" id="scrubber-track">
+                    <div class="scrubber-thumb" id="scrubber-thumb">
+                        <span class="scrubber-thumb-label" id="scrubber-thumb-label"></span>
+                        <svg class="scrubber-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <div class="scrubber-thumb-bar"></div>
+                        <svg class="scrubber-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </div>
+                    @if (TimelineIndex.Any())
+                    {
+                        var indexTotal = TimelineIndex.Sum(i => i.Count);
+                        var indexCumulative = 0;
+                        foreach (var yearGroup in TimelineIndex.GroupBy(i => i.Date.Year).OrderByDescending(g => g.Key))
+                        {
+                            var scrubYear = yearGroup.Key.ToString();
+                            var yearPos = indexTotal > 0 ? (double)indexCumulative / indexTotal * 100 : 0;
+                            var yearPosStr = yearPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                            var loadedGroupId = GroupedGridItems.Keys.FirstOrDefault(k => k.StartsWith(scrubYear + "-")) ?? "";
+                            <div class="scrubber-year-marker @(IsActiveYear(scrubYear) ? "active" : "")"
+                                 data-group-id="@(string.IsNullOrEmpty(loadedGroupId) ? "" : GetGroupId(loadedGroupId))"
+                                 style="top: @($"{yearPosStr}%")">
+                                <span class="scrubber-year-label">@scrubYear</span>
+                                <div class="scrubber-year-dot"></div>
+                            </div>
+                            indexCumulative += yearGroup.Sum(i => i.Count);
+                        }
+                    }
+                    else
+                    {
+                        var renderedScrubYears = new HashSet<string>();
+                        @foreach (var group in GroupedGridItems)
+                        {
+                            var scrubYear = GetYearFromGroup(group.Key);
+                            @if (!renderedScrubYears.Contains(scrubYear))
+                            {
+                                renderedScrubYears.Add(scrubYear);
+                                var scrubPos = GetGroupPosition(group.Key);
+                                var scrubPosStr = scrubPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                                <div class="scrubber-year-marker @(IsActiveYear(scrubYear) ? "active" : "")"
+                                     data-group-id="@GetGroupId(group.Key)"
+                                     style="top: @($"{scrubPosStr}%")">
+                                    <span class="scrubber-year-label">@scrubYear</span>
+                                    <div class="scrubber-year-dot"></div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string Density { get; set; } = "M";
+    [Parameter] public string ActiveFilter { get; set; } = "All";
+    [Parameter] public bool SelectionMode { get; set; }
+    [Parameter] public int TopSpacerHeight { get; set; }
+    [Parameter] public int BottomSpacerHeight { get; set; }
+    [Parameter] public Dictionary<string, List<TimelineGridItem>> GroupedGridItems { get; set; } = new();
+    [Parameter] public Dictionary<string, List<TimelineGridItem>> VisibleGroupedGridItems { get; set; } = new();
+    [Parameter] public List<TimelineIndexItem> TimelineIndex { get; set; } = new();
+    [Parameter] public HashSet<Guid> SelectedAssetIds { get; set; } = new();
+    [Parameter] public string ActiveGroup { get; set; } = "";
+
+    [Parameter] public EventCallback<string> OnSetDensity { get; set; }
+    [Parameter] public EventCallback<string> OnSetFilter { get; set; }
+    [Parameter] public EventCallback<TimelineGridItem> OnGridItemClick { get; set; }
+    [Parameter] public EventCallback<(TouchEventArgs, TimelineGridItem)> OnGridItemTouchStart { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnCardTouchMove { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnCardTouchEnd { get; set; }
+    [Parameter] public EventCallback<(Guid, bool)> OnToggleAssetSelection { get; set; }
+    [Parameter] public EventCallback<MemoryClickArgs> OnMemoryThumbClick { get; set; }
+
+    private string GetGroupId(string groupName) =>
+        "group-" + groupName.Replace(" ", "-").ToLower();
+
+    private string FormatDayHeader(DateTime date)
+    {
+        var today = DateTime.Today;
+        var yesterday = today.AddDays(-1);
+
+        if (date.Date == today)
+            return "Hoy";
+        else if (date.Date == yesterday)
+            return "Ayer";
+        else if (date.Year == today.Year)
+            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
+        else
+            return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    private bool IsActiveYear(string year)
+    {
+        if (string.IsNullOrEmpty(ActiveGroup)) return false;
+        return GetYearFromGroup(ActiveGroup) == year;
+    }
+
+    private string GetYearFromGroup(string groupKey)
+    {
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
+            return date.Year.ToString();
+        return "";
+    }
+
+    private double GetGroupPosition(string groupName)
+    {
+        if (!GroupedGridItems.Any()) return 0;
+        var totalAssets = GroupedGridItems.Values.Sum(g => g.Count);
+        if (totalAssets == 0) return 0;
+
+        var cumulative = 0;
+        foreach (var kvp in GroupedGridItems)
+        {
+            if (kvp.Key == groupName)
+                return (double)cumulative / totalAssets * 100;
+            cumulative += kvp.Value.Count;
+        }
+        return 0;
+    }
+}
