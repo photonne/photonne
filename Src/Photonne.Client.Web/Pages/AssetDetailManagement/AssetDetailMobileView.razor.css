@@ -124,7 +124,7 @@ video.asset-detail-image {
 }
 
 /* ── Navigation buttons ── */
-.nav-button {
+::deep .nav-button {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -135,16 +135,16 @@ video.asset-detail-image {
     transition: opacity 0.3s ease, background-color 0.2s;
 }
 
-.nav-button:hover {
+::deep .nav-button:hover {
     background-color: rgba(0,0,0,0.6);
 }
 
-.nav-button.prev { left: 36px; }
-.nav-button.next { right: 36px; }
+::deep .nav-button.prev { left: 36px; }
+::deep .nav-button.next { right: 36px; }
 
 /* Mobile: no right offset for nav button when info open */
 
-.nav-button.hidden {
+::deep .nav-button.hidden {
     opacity: 0;
     pointer-events: none;
 }

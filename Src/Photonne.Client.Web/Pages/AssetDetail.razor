@@ -461,6 +461,8 @@ else
 
             UpdateNavigation();
             UpdateNavbar(); // refresh after _allAssets is populated (slideshow button visibility)
+            Console.WriteLine($"[AssetDetail] allAssets={_allAssets.Count}, prev={_prevAsset?.Id}, next={_nextAsset?.Id}, toolbar={_toolbarVisible}");
+            StateHasChanged(); // forzar re-render para que los botones prev/next se actualicen
             _lastLoadedAssetId = AssetId;
             _lastLoadedPath = Path ?? string.Empty;
 
