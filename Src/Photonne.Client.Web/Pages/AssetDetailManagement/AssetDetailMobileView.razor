@@ -1,3 +1,4 @@
+@{ Console.WriteLine($"[MobileView] Rendering. Asset={Asset?.FileName}, Type={Asset?.Type}, IsFileMissing={Asset?.IsFileMissing}, HasThumbnails={Asset?.HasThumbnails}, ImageLoadError={ImageLoadError}, ContentUrl='{DisplayContentUrl}'"); }
 <div class="asset-detail-container" @ref="ContainerRef" @onkeydown="OnKeyDown" @onmousemove="OnSlideshowMouseMove" tabindex="0">
     <div class="asset-detail-content @(Zoomed ? "zoomed-container" : "")" @onclick="OnToggleToolbar" @ontouchstart="OnTouchStart" @ontouchend="OnTouchEnd">
         <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
