@@ -24,6 +24,10 @@
         }
         else if (Asset.HasThumbnails || Asset.Type == "Image")
         {
+            @* DEBUG: quitar tras resolver el problema *@
+            <p style="position:fixed;top:0;left:0;z-index:9999;background:red;color:white;font-size:11px;padding:4px;max-width:100%;word-break:break-all;">
+                SRC=@(Asset.Type == "Image" ? DisplayContentUrl : DisplayThumbnailUrl)
+            </p>
             <img src="@(Asset.Type == "Image" ? DisplayContentUrl : DisplayThumbnailUrl)"
                  alt="@Asset.FileName"
                  class="asset-detail-image @(Zoomed ? "zoomed" : "")"
