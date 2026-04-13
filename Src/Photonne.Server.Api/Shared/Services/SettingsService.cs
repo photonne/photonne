@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
@@ -80,6 +81,21 @@ public class SettingsService
             return Path.Combine(assetsPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         }
 
+        // Para rutas externas, comprobar si el archivo existe; si no, probar
+        // con la normalización Unicode opuesta (NFC ↔ NFD) para cubrir
+        // diferencias entre cómo el filesystem y la BD almacenan acentos.
+        if (File.Exists(dbPath))
+            return dbPath;
+
+        var nfcPath = dbPath.Normalize(NormalizationForm.FormC);
+        if (nfcPath != dbPath && File.Exists(nfcPath))
+            return nfcPath;
+
+        var nfdPath = dbPath.Normalize(NormalizationForm.FormD);
+        if (nfdPath != dbPath && File.Exists(nfdPath))
+            return nfdPath;
+
+        // Devolver la ruta original; el caller se encargará del 404
         return dbPath;
     }
 
