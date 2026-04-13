@@ -405,6 +405,7 @@ else
         try
         {
             _loading = true;
+            Console.WriteLine($"[AssetDetail] LoadAsset start. AssetId={AssetId}, Path={Path}");
             if (AssetId != Guid.Empty)
             {
                 _asset = await AssetService.GetAssetDetailAsync(AssetId);
@@ -413,18 +414,29 @@ else
             {
                 _asset = await PendingAssetsProvider.GetPendingAssetDetailAsync(Path);
             }
-            
+            Console.WriteLine($"[AssetDetail] Asset loaded: {_asset != null}, IsFileMissing={_asset?.IsFileMissing}, Type={_asset?.Type}, HasThumbnails={_asset?.HasThumbnails}");
+
             // Actualizar el navbar una vez cargado el asset para habilitar botones
             // Asegurar que se actualice después de cargar el asset
             if (_asset != null && !_navigatingAway)
             {
                 _descriptionEdit = _asset.Caption ?? string.Empty;
                 await UpdateAssetDisplayUrlsAsync();
+                Console.WriteLine($"[AssetDetail] URLs set: content='{_displayContentUrl}', thumb='{_displayThumbnailUrl}', imageLoadError={_imageLoadError}");
                 if (!_navigatingAway)
                 {
                     UpdateNavbar();
                     StateHasChanged();
+                    Console.WriteLine("[AssetDetail] StateHasChanged called after URL setup");
                 }
+                else
+                {
+                    Console.WriteLine("[AssetDetail] SKIPPED StateHasChanged - _navigatingAway=true");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[AssetDetail] SKIPPED URL setup - _asset={_asset != null}, _navigatingAway={_navigatingAway}");
             }
             
             if (_allAssets.Count == 0)
