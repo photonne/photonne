@@ -176,6 +176,7 @@ else
     private bool _syncing = false;
     private bool _zoomed = false;
     private bool _imageLoadError = false;
+    private bool _contentFallbackToThumbnail = false;
     private bool _deleting = false;
     private bool _deleteConfirmOpen = false;
     private bool _isReadOnly => _asset?.IsReadOnly == true;
@@ -402,6 +403,7 @@ else
     {
         _navigatingAway = false;
         _imageLoadError = false;
+        _contentFallbackToThumbnail = false;
         try
         {
             _loading = true;
@@ -604,6 +606,7 @@ else
         _displayContentUrl = contentUrl;
         _displayThumbnailUrl = thumbnailUrl;
         _imageLoadError = false;
+        _contentFallbackToThumbnail = false;
     }
 
     private static string AppendAccessToken(string url, string? token)
@@ -1019,7 +1022,16 @@ else
 
     private void OnImageLoadError()
     {
-        _imageLoadError = true;
+        // Si falló la carga del contenido original y hay thumbnail disponible, usarlo como fallback
+        if (!_contentFallbackToThumbnail && _asset?.HasThumbnails == true && !string.IsNullOrEmpty(_displayThumbnailUrl))
+        {
+            _contentFallbackToThumbnail = true;
+            _displayContentUrl = _displayThumbnailUrl;
+        }
+        else
+        {
+            _imageLoadError = true;
+        }
         StateHasChanged();
     }
 

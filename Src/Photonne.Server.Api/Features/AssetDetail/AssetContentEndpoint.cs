@@ -20,6 +20,7 @@ public class AssetContentEndpoint : IEndpoint
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] ILogger<AssetContentEndpoint> logger,
         [FromRoute] Guid assetId,
         [FromQuery] bool? download,
         CancellationToken cancellationToken)
@@ -35,6 +36,8 @@ public class AssetContentEndpoint : IEndpoint
 
         if (!File.Exists(physicalPath))
         {
+            logger.LogWarning("Asset {AssetId}: file not found at resolved path '{PhysicalPath}' (DB path: '{DbPath}')",
+                assetId, physicalPath, asset.FullPath);
             return Results.NotFound(new { error = $"File not found at: {physicalPath}" });
         }
 

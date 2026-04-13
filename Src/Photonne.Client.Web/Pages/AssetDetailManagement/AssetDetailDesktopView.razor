@@ -19,7 +19,7 @@
         {
             <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; color: rgba(255,255,255,0.5);">
                 <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Style="width: 96px; height: 96px;" />
-                <MudText Typo="Typo.body2">Archivo no encontrado en disco</MudText>
+                <MudText Typo="Typo.body2">@(Asset.IsFileMissing ? "Archivo no encontrado en disco" : "No se pudo cargar la imagen")</MudText>
             </div>
         }
         else if (Asset.HasThumbnails || Asset.Type == "Image")
