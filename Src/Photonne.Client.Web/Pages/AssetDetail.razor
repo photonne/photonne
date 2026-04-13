@@ -29,8 +29,8 @@ else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
                                ToolbarVisible="_toolbarVisible"
                                PrevAsset="_prevAsset"
                                NextAsset="_nextAsset"
-                               DisplayContentUrl="_displayContentUrl"
-                               DisplayThumbnailUrl="_displayThumbnailUrl"
+                               DisplayContentUrl="@_displayContentUrl"
+                               DisplayThumbnailUrl="@_displayThumbnailUrl"
                                ImageLoadError="_imageLoadError"
                                AssetIcon="@GetAssetIcon(_asset.Type)"
                                NavButtonPrevClass="@GetNavButtonClass(true)"
@@ -45,11 +45,11 @@ else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
                                LoadingAlbums="_loadingAlbums"
                                SelectedAlbumId="_selectedAlbumId"
                                ShowCreateAlbum="_showCreateAlbum"
-                               NewAlbumName="_newAlbumName"
-                               NewAlbumDescription="_newAlbumDescription"
-                               DescriptionEdit="_descriptionEdit"
+                               NewAlbumName="@_newAlbumName"
+                               NewAlbumDescription="@_newAlbumDescription"
+                               DescriptionEdit="@_descriptionEdit"
                                SavingDescription="_savingDescription"
-                               NewTag="_newTag"
+                               NewTag="@_newTag"
                                TagBusy="_tagBusy"
                                CanEditTags="CanEditTags"
                                ContainerRefChanged="OnContainerRefChanged"
@@ -88,8 +88,8 @@ else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
                                 ToolbarVisible="_toolbarVisible"
                                 PrevAsset="_prevAsset"
                                 NextAsset="_nextAsset"
-                                DisplayContentUrl="_displayContentUrl"
-                                DisplayThumbnailUrl="_displayThumbnailUrl"
+                                DisplayContentUrl="@_displayContentUrl"
+                                DisplayThumbnailUrl="@_displayThumbnailUrl"
                                 ImageLoadError="_imageLoadError"
                                 AssetIcon="@GetAssetIcon(_asset.Type)"
                                 NavButtonPrevClass="@GetNavButtonClass(true)"
@@ -104,11 +104,11 @@ else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
                                 LoadingAlbums="_loadingAlbums"
                                 SelectedAlbumId="_selectedAlbumId"
                                 ShowCreateAlbum="_showCreateAlbum"
-                                NewAlbumName="_newAlbumName"
-                                NewAlbumDescription="_newAlbumDescription"
-                                DescriptionEdit="_descriptionEdit"
+                                NewAlbumName="@_newAlbumName"
+                                NewAlbumDescription="@_newAlbumDescription"
+                                DescriptionEdit="@_descriptionEdit"
                                 SavingDescription="_savingDescription"
-                                NewTag="_newTag"
+                                NewTag="@_newTag"
                                 TagBusy="_tagBusy"
                                 CanEditTags="CanEditTags"
                                 ContainerRefChanged="OnContainerRefChanged"
@@ -604,7 +604,6 @@ else
         _displayContentUrl = contentUrl;
         _displayThumbnailUrl = thumbnailUrl;
         _imageLoadError = false;
-        Console.WriteLine($"[AssetDetail] URLs set: content='{_displayContentUrl}', thumbnail='{_displayThumbnailUrl}', id={_asset.Id}");
     }
 
     private static string AppendAccessToken(string url, string? token)
@@ -1020,7 +1019,6 @@ else
 
     private void OnImageLoadError()
     {
-        Console.WriteLine($"[AssetDetail] Image load error. ContentUrl='{_displayContentUrl}', Asset={_asset?.Id}, Type={_asset?.Type}");
         _imageLoadError = true;
         StateHasChanged();
     }
