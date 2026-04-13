@@ -10,6 +10,7 @@
 }
 
 .map-drawer-cell {
+    position: relative;
     aspect-ratio: 1;
     cursor: pointer;
     border-radius: 4px;
@@ -17,6 +18,16 @@
     background: #333;
     content-visibility: auto;
     contain-intrinsic-size: 110px 110px;
+    transition: transform 0.15s ease;
+}
+
+.map-drawer-cell.selected {
+    transform: scale(0.90);
+}
+
+.map-drawer-cell.selection-mode:active {
+    transform: scale(0.90);
+    transition-duration: 0.06s;
 }
 
 .map-cluster-icon {

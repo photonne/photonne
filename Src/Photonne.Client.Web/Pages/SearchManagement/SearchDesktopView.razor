@@ -56,9 +56,14 @@
         <div class="media-thumb-grid mt-1">
             @foreach (var asset in Results)
             {
-                <div class="media-thumb-cell"
+                var isSelected = SelectedAssetIds.Contains(asset.Id);
+                <div class="media-thumb-cell @(SelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
+                     data-asset-id="@asset.Id"
                      @key="asset.Id"
-                     @onclick="@(() => OnOpenAsset.InvokeAsync(asset))">
+                     @onclick="@(() => OnOpenAsset.InvokeAsync(asset))"
+                     @ontouchstart="@(e => OnAssetTouchStart.InvokeAsync((e, asset)))"
+                     @ontouchmove="OnCardTouchMove"
+                     @ontouchend="OnCardTouchEnd">
                     @if (asset.HasThumbnails && !asset.IsFileMissing)
                     {
                         <img src="@asset.ThumbnailUrl"
@@ -78,6 +83,11 @@
                             <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
                         </div>
                     }
+                    <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
+                        <MudCheckBox T="bool"
+                                     Value="@isSelected"
+                                     ValueChanged="@(value => OnToggleSelection.InvokeAsync((asset.Id, value)))" />
+                    </div>
                 </div>
             }
         </div>
@@ -96,9 +106,16 @@
     [Parameter] public EventCallback<string> OnFolderFilterChanged { get; set; }
     [Parameter] public string ResultCountLabel { get; set; } = "";
     [Parameter] public bool HasAnyFilter { get; set; }
+    [Parameter] public bool SelectionMode { get; set; }
+    [Parameter] public HashSet<Guid> SelectedAssetIds { get; set; } = new();
+    [Parameter] public EventCallback<(Guid id, bool selected)> OnToggleSelection { get; set; }
+    [Parameter] public EventCallback<(TouchEventArgs e, TimelineItem asset)> OnAssetTouchStart { get; set; }
     [Parameter] public EventCallback<TimelineItem> OnOpenAsset { get; set; }
 
     private string _localFolderFilter = string.Empty;
+
+    private void OnCardTouchMove(TouchEventArgs e) { }
+    private void OnCardTouchEnd(TouchEventArgs e) { }
 
     protected override void OnParametersSet()
     {

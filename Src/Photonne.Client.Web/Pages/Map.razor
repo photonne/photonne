@@ -1,5 +1,6 @@
 @page "/map"
 @inject IMapService MapService
+@inject IAssetService AssetService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -33,12 +34,35 @@
                 max-height:65vh; display:flex; flex-direction:column;
                 box-shadow:0 -4px 24px rgba(0,0,0,0.35);">
         <div style="display:flex; align-items:center; padding:12px 16px 8px; flex-shrink:0;">
-            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
-                @_drawerPoints.Count foto@(_drawerPoints.Count == 1 ? "" : "s")
-            </MudText>
-            <MudSpacer />
-            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
-                           OnClick="CloseDrawer" />
+            @if (_drawerSelectionMode)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               OnClick="ExitDrawerSelectionMode" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;" Class="ml-2">
+                    @_selectedDrawerAssetIds.Count seleccionada@(_selectedDrawerAssetIds.Count == 1 ? "" : "s")
+                </MudText>
+                <MudSpacer />
+                
+                var allDrawerSelected = _drawerPoints.Any() && _selectedDrawerAssetIds.Count == _drawerPoints.Count;
+                
+                <MudTooltip Text="@(allDrawerSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small"
+                                   Disabled="@(!_drawerPoints.Any())" OnClick="ToggleSelectAllDrawer" />
+                </MudTooltip>
+                <MudTooltip Text="Descargar">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
+                                   Disabled="@(!_selectedDrawerAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedDrawerAsync" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                    @_drawerPoints.Count foto@(_drawerPoints.Count == 1 ? "" : "s")
+                </MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               OnClick="CloseDrawer" />
+            }
         </div>
         <div id="map-drawer-scroll" style="flex:1; min-height:0; overflow-y:auto;" @onclick:stopPropagation>
             <div class="map-drawer-grid">
@@ -48,15 +72,27 @@
                 @for (var i = 0; i < visible; i++)
                 {
                     var point = _drawerPoints[i];
-                    <div class="map-drawer-cell"
+                    var isSelected = _selectedDrawerAssetIds.Contains(point.Id);
+                    <div class="map-drawer-cell @(_drawerSelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
                          @key="point.Id"
-                         @onclick="@(() => OpenClusterAsset(point))">
+                         @onclick="@(() => OnDrawerCellClick(point))"
+                         @ontouchstart="@(e => OnDrawerCellTouchStart(e, point))"
+                         @ontouchmove="OnDrawerCellTouchMove"
+                         @ontouchend="OnDrawerCellTouchEnd">
                         @if (!string.IsNullOrEmpty(point.ThumbnailUrl))
                         {
                             <img src="@point.ThumbnailUrl"
                                  style="width:100%; height:100%; object-fit:cover; display:block;"
                                  loading="lazy"
                                  decoding="async" />
+                        }
+                        @if (_drawerSelectionMode)
+                        {
+                            <div style="position:absolute; top:2px; left:2px;" @onclick:stopPropagation="true">
+                                <MudCheckBox T="bool"
+                                             Value="@isSelected"
+                                             ValueChanged="@(value => ToggleDrawerAssetSelection(point.Id, value))" />
+                            </div>
                         }
                     </div>
                 }
@@ -94,6 +130,15 @@
     private bool _drawerSentinelAttached = false;
     private bool _drawerLoadingMore = false;
 
+    // Drawer selection
+    private bool _drawerSelectionMode = false;
+    private HashSet<Guid> _selectedDrawerAssetIds = new();
+    private bool _downloadingZip = false;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
     protected override async Task OnInitializedAsync()
     {
         _objRef = DotNetObjectReference.Create(this);
@@ -104,6 +149,8 @@
     {
         _drawerOpen = false;
         _drawerSentinelAttached = false;
+        _drawerSelectionMode = false;
+        _selectedDrawerAssetIds.Clear();
         _ = JS.InvokeVoidAsync("disconnectLoadMoreObserver", "map-drawer-sentinel");
     }
 
@@ -235,6 +282,8 @@
         _drawerVisibleCount = Math.Min(DRAWER_INITIAL_BATCH, _drawerPoints.Count);
         _drawerLoadingMore = false;
         _drawerSentinelAttached = false;
+        _drawerSelectionMode = false;
+        _selectedDrawerAssetIds.Clear();
         _drawerOpen = true;
         StateHasChanged();
     }
@@ -255,6 +304,135 @@
         return Task.CompletedTask;
     }
 
+    private async Task OnDrawerCellTouchStart(TouchEventArgs e, MapPoint point)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_drawerSelectionMode)
+        {
+            var selectMode = !_selectedDrawerAssetIds.Contains(point.Id);
+            _longPressHandled = true;
+            ToggleDrawerAssetSelection(point.Id, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                _longPressHandled = true;
+                ToggleDrawerAssetSelection(point.Id, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnDrawerCellTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnDrawerCellTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    private void OnDrawerCellClick(MapPoint point)
+    {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_drawerSelectionMode)
+        {
+            ToggleDrawerAssetSelection(point.Id, !_selectedDrawerAssetIds.Contains(point.Id));
+            return;
+        }
+
+        _ = OpenClusterAsset(point);
+    }
+
+    private void ToggleDrawerAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_drawerSelectionMode) _drawerSelectionMode = true;
+
+        if (selected)
+            _selectedDrawerAssetIds.Add(assetId);
+        else
+        {
+            _selectedDrawerAssetIds.Remove(assetId);
+            if (_selectedDrawerAssetIds.Count == 0)
+            {
+                ExitDrawerSelectionMode();
+                return;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void ExitDrawerSelectionMode()
+    {
+        _drawerSelectionMode = false;
+        _selectedDrawerAssetIds.Clear();
+        StateHasChanged();
+    }
+
+    private void ToggleSelectAllDrawer()
+    {
+        if (_selectedDrawerAssetIds.Count == _drawerPoints.Count && _drawerPoints.Any())
+        {
+            _selectedDrawerAssetIds.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        _selectedDrawerAssetIds = _drawerPoints.Select(p => p.Id).ToHashSet();
+        if (_selectedDrawerAssetIds.Any())
+        {
+            _drawerSelectionMode = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task DownloadSelectedDrawerAsync()
+    {
+        if (!_selectedDrawerAssetIds.Any()) return;
+
+        _downloadingZip = true;
+        StateHasChanged();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedDrawerAssetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photonne_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task OpenClusterAsset(MapPoint point)
     {
         _drawerOpen = false;
@@ -272,6 +450,7 @@
     public async ValueTask DisposeAsync()
     {
         LayoutService.OnMajorUpdate -= OnLayoutUpdate;
+        _longPressTimer?.Dispose();
         _objRef?.Dispose();
         try
         {

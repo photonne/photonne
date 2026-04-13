@@ -833,15 +833,15 @@ else
 
     private void ToggleSelectAll()
     {
-        var allItems = AllGridItems.ToList();
-        if (_selectedAssetIds.Count == allItems.Count && allItems.Any())
+        var visibleItems = FilteredGridItems.ToList();
+        if (_selectedAssetIds.Count == visibleItems.Count && visibleItems.Any())
         {
             _selectedAssetIds.Clear();
             UpdateSelectionNavbar();
             return;
         }
 
-        _selectedAssetIds = allItems.Select(asset => asset.Id).ToHashSet();
+        _selectedAssetIds = visibleItems.Select(asset => asset.Id).ToHashSet();
         if (_selectedAssetIds.Any())
         {
             _selectionMode = true;
@@ -1102,8 +1102,9 @@ else
         }
 
         var selectedCount = _selectedAssetIds.Count;
-        var allSelected = AllGridItems.Any() && selectedCount == AllGridItems.Count();
-        var hasReadOnly = _selectedAssetIds.Any(id => AllGridItems.Any(i => i.Id == id && i.IsReadOnly));
+        var visibleItems = FilteredGridItems.ToList();
+        var allSelected = visibleItems.Any() && selectedCount == visibleItems.Count;
+        var hasReadOnly = _selectedAssetIds.Any(id => visibleItems.Any(i => i.Id == id && i.IsReadOnly));
 
         LayoutService.SetCustomNavbar(
             @<text>
@@ -1111,7 +1112,7 @@ else
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
                 <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
-                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!AllGridItems.Any())" OnClick="ToggleSelectAll" />
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!visibleItems.Any())" OnClick="ToggleSelectAll" />
                 </MudTooltip>
 
                 @* Botones individuales — solo desktop *@

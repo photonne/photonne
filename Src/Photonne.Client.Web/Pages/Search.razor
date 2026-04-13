@@ -1,5 +1,6 @@
 @page "/search"
 @inject IAssetService AssetService
+@inject LayoutService LayoutService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IAssetListNavigationState AssetListNavigationState
@@ -27,6 +28,10 @@
                       ActiveFilterCount="ActiveFilterCount"
                       ResultCountLabel="@ResultCountLabel"
                       HasAnyFilter="HasAnyFilter"
+                      SelectionMode="_selectionMode"
+                      SelectedAssetIds="_selectedAssetIds"
+                      OnToggleSelection="ToggleAssetSelection"
+                      OnAssetTouchStart="OnCardTouchStart"
                       OnOpenAsset="OpenAsset" />
 }
 else
@@ -42,6 +47,10 @@ else
                        OnFolderFilterChanged="HandleFolderFilterChanged"
                        ResultCountLabel="@ResultCountLabel"
                        HasAnyFilter="HasAnyFilter"
+                       SelectionMode="_selectionMode"
+                       SelectedAssetIds="_selectedAssetIds"
+                       OnToggleSelection="ToggleAssetSelection"
+                       OnAssetTouchStart="OnCardTouchStart"
                        OnOpenAsset="OpenAsset" />
 }
 
@@ -56,6 +65,16 @@ else
     private DateTime? _toDate;
     private string _folderFilter = string.Empty;
     private bool _filtersExpanded;
+
+    // Selection
+    private bool _selectionMode;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _downloadingZip;
+    private DotNetObjectReference<Search>? _objRef;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
 
     private int ActiveFilterCount =>
         (_fromDate.HasValue ? 1 : 0) +
@@ -76,6 +95,7 @@ else
     {
         if (firstRender)
         {
+            _objRef = DotNetObjectReference.Create(this);
             await DeviceLayout.InitializeAsync();
             DeviceLayout.OnChanged += OnDeviceLayoutChanged;
             StateHasChanged();
@@ -148,6 +168,7 @@ else
 
             _results = items;
             _hasMore = hasMore;
+            if (_selectionMode) ExitSelectionMode();
             AssetListNavigationState.SetList(_results, "search");
         }
         catch (Exception ex)
@@ -160,8 +181,156 @@ else
         }
     }
 
+    private async Task OnCardTouchStart((TouchEventArgs e, TimelineItem asset) args)
+    {
+        var (e, asset) = args;
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_selectionMode)
+        {
+            var selectMode = !_selectedAssetIds.Contains(asset.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection((asset.Id, selectMode));
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection((asset.Id, true));
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == _selectedAssetIds.Contains(assetId)) return;
+        ToggleAssetSelection((assetId, select));
+        StateHasChanged();
+    }
+
+    private void ToggleAssetSelection((Guid id, bool selected) args)
+    {
+        if (!_selectionMode) _selectionMode = true;
+
+        if (args.selected)
+            _selectedAssetIds.Add(args.id);
+        else
+        {
+            _selectedAssetIds.Remove(args.id);
+            if (_selectedAssetIds.Count == 0)
+            {
+                ExitSelectionMode();
+                return;
+            }
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        LayoutService.ResetNavbar();
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (_selectedAssetIds.Count == _results.Count && _results.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+
+        _selectedAssetIds = _results.Select(a => a.Id).ToHashSet();
+        if (_selectedAssetIds.Any())
+        {
+            _selectionMode = true;
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectedAssetIds.Count;
+        var allSelected = _results.Any() && selectedCount == _results.Count;
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_results.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+                <MudTooltip Text="Descargar">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
+                </MudTooltip>
+            </text>
+        );
+    }
+
+    private async Task DownloadSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+
+        _downloadingZip = true;
+        UpdateSelectionNavbar();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedAssetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photonne_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            UpdateSelectionNavbar();
+        }
+    }
+
     private async Task OpenAsset(TimelineItem asset)
     {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            ToggleAssetSelection((asset.Id, !_selectedAssetIds.Contains(asset.Id)));
+            return;
+        }
+
         await JS.InvokeVoidAsync("assetTransition.saveOriginByAssetId", asset.Id.ToString());
         if (asset.SyncStatus == AssetSyncStatus.Synced)
             Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=search");
@@ -179,6 +348,9 @@ else
 
     public void Dispose()
     {
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
+        LayoutService.ResetNavbar();
         DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
     }
 }

@@ -1835,6 +1835,23 @@ else
         UpdateSelectionNavbar();
     }
 
+    private void ToggleSelectAllAlbumAssets()
+    {
+        if (_selectedAlbumAssetIds.Count == _albumAssets.Count && _albumAssets.Any())
+        {
+            _selectedAlbumAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+
+        _selectedAlbumAssetIds = _albumAssets.Select(a => a.Id).ToHashSet();
+        if (_selectedAlbumAssetIds.Any())
+        {
+            _assetSelectionMode = true;
+        }
+        UpdateSelectionNavbar();
+    }
+
     private void ToggleAlbumAssetSelection(Guid assetId, bool selected)
     {
         if (!_assetSelectionMode)
@@ -2026,6 +2043,12 @@ else
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
                     <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                     <MudSpacer />
+                    @{
+                        var allAlbumAssetsSelected = _albumAssets.Any() && selectedCount == _albumAssets.Count;
+                    }
+                    <MudTooltip Text="@(allAlbumAssetsSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                        <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_albumAssets.Any())" OnClick="ToggleSelectAllAlbumAssets" />
+                    </MudTooltip>
 
                     @* Botones individuales — solo desktop *@
                     <span class="d-none d-md-flex">
