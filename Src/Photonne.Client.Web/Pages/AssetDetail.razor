@@ -176,7 +176,6 @@ else
     private bool _syncing = false;
     private bool _zoomed = false;
     private bool _imageLoadError = false;
-    private bool _contentFallbackToThumbnail = false;
     private bool _deleting = false;
     private bool _deleteConfirmOpen = false;
     private bool _isReadOnly => _asset?.IsReadOnly == true;
@@ -403,7 +402,6 @@ else
     {
         _navigatingAway = false;
         _imageLoadError = false;
-        _contentFallbackToThumbnail = false;
         try
         {
             _loading = true;
@@ -606,7 +604,7 @@ else
         _displayContentUrl = contentUrl;
         _displayThumbnailUrl = thumbnailUrl;
         _imageLoadError = false;
-        _contentFallbackToThumbnail = false;
+        Console.WriteLine($"[AssetDetail] URLs set: content='{_displayContentUrl}', thumbnail='{_displayThumbnailUrl}', id={_asset.Id}");
     }
 
     private static string AppendAccessToken(string url, string? token)
@@ -1022,16 +1020,8 @@ else
 
     private void OnImageLoadError()
     {
-        // Si falló la carga del contenido original y hay thumbnail disponible, usarlo como fallback
-        if (!_contentFallbackToThumbnail && _asset?.HasThumbnails == true && !string.IsNullOrEmpty(_displayThumbnailUrl))
-        {
-            _contentFallbackToThumbnail = true;
-            _displayContentUrl = _displayThumbnailUrl;
-        }
-        else
-        {
-            _imageLoadError = true;
-        }
+        Console.WriteLine($"[AssetDetail] Image load error. ContentUrl='{_displayContentUrl}', Asset={_asset?.Id}, Type={_asset?.Type}");
+        _imageLoadError = true;
         StateHasChanged();
     }
 
