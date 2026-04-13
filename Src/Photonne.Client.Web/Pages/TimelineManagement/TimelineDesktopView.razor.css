@@ -1,0 +1,424 @@
+/* body.timeline-page global overrides are in app.css (cannot be scoped) */
+
+/* Contenedor principal del timeline */
+.timeline-wrapper {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - var(--mud-appbar-height, 64px));
+}
+
+/* Contenedor principal con flex para layout horizontal */
+.timeline-main-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Contenedor del contenido principal */
+.timeline-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Barra de filtros */
+.filter-chips-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 48px 4px 0;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+
+.filter-density-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+/* Contenedor del timeline es el unico con scroll */
+.timeline-container {
+    display: flex;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    overflow-anchor: auto;
+}
+
+/* Hide native scrollbar — custom scrubber replaces it */
+.timeline-container::-webkit-scrollbar {
+    display: none;
+}
+
+.timeline-container {
+    scrollbar-width: none;
+}
+
+.timeline-content {
+    flex: 1;
+    padding-right: 40px;
+    padding-bottom: 80px;
+}
+
+.timeline-spacer {
+    flex: 0 0 100%;
+    width: 100%;
+}
+
+/* Grid continuo — todas las fotos en un unico contenedor flex */
+.timeline-flat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: flex-start;
+    align-content: flex-start;
+}
+
+/* Cabecera de dia: ocupa todo el ancho y fuerza nueva fila */
+.day-header-row {
+    flex: 0 0 100%;
+    width: 100%;
+    padding-top: 20px;
+}
+
+.day-header-row:first-child {
+    padding-top: 4px;
+}
+
+.day-header {
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    text-transform: capitalize;
+    padding: 0 4px 6px 4px;
+    display: block;
+}
+
+.masonry-item {
+    height: 180px;
+    flex-shrink: 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    content-visibility: auto;
+    contain-intrinsic-block-size: 180px;
+}
+
+@media (min-width: 600px) {
+    .masonry-item {
+        height: 200px;
+        contain-intrinsic-block-size: 200px;
+    }
+}
+
+@media (min-width: 960px) {
+    .masonry-item {
+        height: 220px;
+        contain-intrinsic-block-size: 220px;
+    }
+}
+
+@media (min-width: 1280px) {
+    .masonry-item {
+        height: 240px;
+        contain-intrinsic-block-size: 240px;
+    }
+}
+
+@media (min-width: 1920px) {
+    .masonry-item {
+        height: 260px;
+        contain-intrinsic-block-size: 260px;
+    }
+}
+
+/* -- Density: Small -- */
+.density-s .masonry-item { height: 100px !important; contain-intrinsic-block-size: 100px !important; }
+@media (min-width: 600px)  { .density-s .masonry-item { height: 110px !important; contain-intrinsic-block-size: 110px !important; } }
+@media (min-width: 960px)  { .density-s .masonry-item { height: 120px !important; contain-intrinsic-block-size: 120px !important; } }
+@media (min-width: 1280px) { .density-s .masonry-item { height: 130px !important; contain-intrinsic-block-size: 130px !important; } }
+@media (min-width: 1920px) { .density-s .masonry-item { height: 140px !important; contain-intrinsic-block-size: 140px !important; } }
+
+/* -- Density: Large -- */
+.density-l .masonry-item { height: 260px !important; contain-intrinsic-block-size: 260px !important; }
+@media (min-width: 600px)  { .density-l .masonry-item { height: 300px !important; contain-intrinsic-block-size: 300px !important; } }
+@media (min-width: 960px)  { .density-l .masonry-item { height: 340px !important; contain-intrinsic-block-size: 340px !important; } }
+@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; contain-intrinsic-block-size: 380px !important; } }
+@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; contain-intrinsic-block-size: 420px !important; } }
+
+/* -- Inline asset card -- */
+.asset-card-container {
+    position: relative;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #333;
+}
+
+.asset-placeholder {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: linear-gradient(90deg, #252525 25%, #303030 50%, #252525 75%);
+    background-size: 200% 100%;
+    animation: asset-shimmer 1.6s infinite ease-in-out;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.asset-placeholder[style*="background-color"] {
+    background-image: none;
+    animation: none;
+    background-size: auto;
+}
+
+@keyframes asset-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.asset-card-container.img-loaded .asset-placeholder {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.lazy-img {
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+.asset-card-container.img-loaded .lazy-img {
+    opacity: 1;
+}
+
+.asset-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.asset-type-icon {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    z-index: 2;
+    color: white;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+.masonry-item .asset-card-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 0 !important;
+}
+
+.masonry-item .asset-placeholder {
+    border-radius: 0 !important;
+}
+
+.masonry-item img,
+.masonry-item video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.asset-select-container {
+    position: relative;
+    height: 100%;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    background-color: transparent;
+}
+
+.asset-select-container.selected {
+    transform: scale(0.90);
+    background-color: var(--mud-palette-background-gray);
+}
+
+.asset-select-container.selection-mode:active {
+    transform: scale(0.90);
+    transition-duration: 0.06s;
+}
+
+.asset-select-checkbox {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    background: rgba(0,0,0,0.4);
+    border-radius: 999px;
+    padding: 2px;
+    color: white;
+}
+
+.asset-select-checkbox ::deep .mud-icon-root {
+    color: white !important;
+}
+
+.asset-select-container:hover .asset-select-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.asset-select-container.selected .asset-select-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ===== Custom Scrubber ===== */
+.scrubber-overlay {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 25px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* Arrows — only visible on touch devices */
+@media (hover: hover) {
+    .scrubber-arrow {
+        display: none;
+    }
+}
+
+/* Large invisible hit area + visual bar via ::before */
+.scrubber-track {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    bottom: 8px;
+    width: 25px;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.scrubber-track::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: rgba(128, 128, 128, 0.2);
+    border-radius: 2px;
+    pointer-events: none;
+    transition: background 0.2s;
+}
+
+.scrubber-track:hover::before {
+    background: rgba(128, 128, 128, 0.35);
+}
+
+/* Thumb: horizontal bar spanning the full track width */
+.scrubber-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+    will-change: transform;
+    pointer-events: auto;
+}
+
+.scrubber-thumb.dragging {
+    cursor: grabbing;
+}
+
+.scrubber-thumb-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--mud-palette-primary);
+    border-radius: 2px;
+    flex-shrink: 0;
+    transition: height 0.15s ease;
+}
+
+.scrubber-track:hover .scrubber-thumb-bar,
+.scrubber-thumb.dragging .scrubber-thumb-bar {
+    height: 6px;
+}
+
+.scrubber-thumb-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.scrubber-track:hover .scrubber-thumb-label,
+.scrubber-thumb.dragging .scrubber-thumb-label {
+    opacity: 1;
+}
+
+/* Year markers */
+.scrubber-year-marker {
+    position: absolute;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.scrubber-year-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(128, 128, 128, 0.5);
+    flex-shrink: 0;
+    margin-right: -2px;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.scrubber-year-marker:hover .scrubber-year-dot,
+.scrubber-year-marker.active .scrubber-year-dot {
+    background: var(--mud-palette-primary);
+    transform: scale(1.4);
+}
+
+.scrubber-year-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    order: -1;
+}
+
+.scrubber-track:hover .scrubber-year-label,
+.scrubber-year-marker.active .scrubber-year-label {
+    opacity: 1;
+}

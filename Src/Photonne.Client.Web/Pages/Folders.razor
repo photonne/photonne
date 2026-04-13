@@ -15,457 +15,91 @@
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 @inject IAssetListNavigationState AssetListNavigationState
+@inject DeviceLayoutService DeviceLayout
 @implements IDisposable
 
 <PageTitle>Carpetas - Photonne</PageTitle>
 
-<style>
-    .folder-card-container {
-        position: relative;
-        cursor: pointer;
-        width: 100%;
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--mud-palette-surface);
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 1px solid var(--mud-palette-divider);
-        /* Skip layout/paint when off-screen — major perf win for large folder lists */
-        content-visibility: auto;
-        contain-intrinsic-size: 220px 240px;
-    }
-    .folder-card-container:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--mud-elevation-4);
-    }
-    .folder-thumbnail-wrapper {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 1 / 1;
-        overflow: hidden;
-    }
-    .folder-card-thumbnail {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.35s ease;
-    }
-    .folder-card-container:hover .folder-card-thumbnail {
-        transform: scale(1.06);
-    }
-    .folder-card-icon {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-dark) 100%);
-    }
-    .folder-card-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        padding: 12px;
-        background: linear-gradient(transparent, rgba(0,0,0,0.82));
-        color: white;
-        pointer-events: none;
-    }
-    /* ── Collage de previsualización ── */
-    .folder-collage-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
-        width: 100%;
-        height: 100%;
-        gap: 2px;
-        transition: gap 0.35s ease;
-    }
-    .folder-card-container:hover .folder-collage-grid {
-        gap: 3px;
-    }
-    .folder-collage-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.4s ease;
-        display: block;
-    }
-    .folder-card-container:hover .folder-collage-img {
-        transform: scale(1.06);
-    }
-    .folder-card-overlay-name {
-        font-weight: 600;
-        text-overflow: ellipsis;
-        overflow: hidden;
-        white-space: nowrap;
-    }
-    .folder-card-overlay-count {
-        color: rgba(255,255,255,0.9);
-    }
-    .folder-shared-badge {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        background: rgba(0,0,0,0.5);
-        color: white;
-        padding: 2px 6px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        z-index: 5;
-    }
-    .folder-list-shared-badge {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        color: var(--mud-palette-text-secondary);
-        font-size: 0.875rem;
-    }
-    .folder-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    /* Lightweight responsive grid for folder/library cards — replaces MudGrid
-       + MudItem to eliminate the per-item Blazor component overhead. */
-    .folder-card-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 12px;
-    }
-
-    @@media (max-width: 599.98px) {
-        .folder-card-grid {
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 6px;
-        }
-    }
-
-    .folder-list-item {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 12px;
-        border-radius: 12px;
-        background: var(--mud-palette-surface);
-        transition: background 0.2s ease;
-        cursor: pointer;
-        position: relative;
-        /* Skip layout/paint when off-screen — major perf win for long folder lists */
-        content-visibility: auto;
-        contain-intrinsic-size: 100% 120px;
-    }
-
-    .folder-list-item:hover {
-        background: var(--mud-palette-action-hover);
-    }
-
-    .folder-list-thumb {
-        width: 70px;
-        height: 70px;
-        position: relative;
-        flex: 0 0 80px;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .folder-list-info {
-        min-width: 0;
-        flex-grow: 1;
-    }
-
-    .folder-list-name {
-        font-weight: 600;
-    }
-
-    .folder-list-meta {
-        color: var(--mud-palette-text-secondary);
-    }
-
-    .folder-list-item:hover .folder-select-checkbox,
-    .folder-list-item.selected .folder-select-checkbox {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    .folders-search {
-        max-width: 300px;
-    }
-    /* View toggle in filter sheet — remove group border, pill items */
-    .folder-view-toggle {
-        gap: 8px;
-        border: none !important;
-        box-shadow: none !important;
-    }
-
-    .folder-view-toggle .mud-toggle-item {
-        border-radius: 20px !important;
-        background: var(--mud-palette-action-default-hover);
-        flex: 1;
-    }
-
-    .folder-view-toggle .mud-toggle-item-selected {
-        background: var(--mud-palette-primary) !important;
-        color: var(--mud-palette-primary-text) !important;
-    }
-
-    @@media (max-width: 959.98px) {
-        /* Compact folder title on mobile */
-        .folder-page-title {
-            font-size: 1rem !important;
-            font-weight: 600 !important;
-            line-height: 1.4 !important;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 160px;
-        }
-    }
-    .folder-select-checkbox {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        z-index: 5;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s;
-        background: rgba(0,0,0,0.45);
-        border-radius: 999px;
-        padding: 2px;
-        color: white;
-    }
-
-    .folder-select-checkbox .mud-icon-root {
-        color: white !important;
-    }
-
-    .folder-card-container:hover .folder-select-checkbox,
-    .folder-card-container.selected .folder-select-checkbox {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    @@media (max-width: 959.98px) {
-        /* Touch devices: hide checkbox unless the folder is actually selected */
-        .folder-card-container:not(.selected):hover .folder-select-checkbox,
-        .folder-list-item:not(.selected):hover .folder-select-checkbox {
-            opacity: 0;
-        }
-    }
-</style>
-
-<div class="page-pad">
-<div class="d-flex align-center justify-space-between mb-4">
-    <div class="d-flex align-center">
-        @if (!IsAtRoot)
-        {
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateUp" Title="Volver" Class="mr-2" />
-        }
-        <MudText Typo="Typo.h5" Class="folder-page-title">@PageHeader</MudText>
-    </div>
-
-    <div class="d-flex align-center gap-1">
-        @if (_selectedFolder != null && _selectedFolder.IsOwner && _selectedFolder.IsShared && !IsAtRoot)
-        {
-            <MudIconButton Icon="@Icons.Material.Outlined.Group"
-                           Color="Color.Inherit"
-                           Size="Size.Small"
-                           OnClick="@(() => Navigation.NavigateTo($"/folders/{_selectedFolder.Id}/permissions"))"
-                           Title="Colaboradores" />
-        }
-        <MudTextField @bind-Value="_searchQuery"
-                      Placeholder="Buscar"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Immediate="true"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Class="folders-search d-none d-sm-flex" />
-
-        @if (_selectedFolder == null)
-        {
-            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder"
-                           Color="Color.Primary"
-                           Size="Size.Small"
-                           Title="Nueva carpeta"
-                           OnClick="@(() => OpenCreateFolderDialog(_activeTab == 1))" />
-        }
-        else
-        {
-            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder"
-                           Color="Color.Primary"
-                           Size="Size.Small"
-                           Title="Nueva subcarpeta"
-                           OnClick="@(() => OpenCreateFolderDialog(_selectedFolder.IsShared))" />
-        }
-
-        <MudIconButton Icon="@Icons.Material.Filled.Tune"
-                       Size="Size.Small"
-                       Title="Opciones de vista"
-                       OnClick="@(() => _filterSheetOpen = true)" />
-    </div>
-</div>
-
-@if (IsAtRoot && Trash != true)
+@if (DeviceLayout.IsMobile)
 {
-    <div class="ph-section-tabs">
-        <a href="/folders/own"       class="ph-section-tab @(_activeTab == 0 ? "ph-section-tab--active" : "")">Personal</a>
-        <a href="/folders/shared"    class="ph-section-tab @(_activeTab == 1 ? "ph-section-tab--active" : "")">Compartido</a>
-        <a href="/folders/libraries" class="ph-section-tab @(_activeTab == 2 ? "ph-section-tab--active" : "")">Bibliotecas</a>
-    </div>
-}
-
-@if (_selectedFolder == null && _activeTab != 2)
-{
-    @* Vista de selección de raíz Personal / Compartido *@
-    @if (_folderViewMode == FolderViewMode.Grid)
-    {
-        @RenderFolderGrid(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))
-    }
-    else
-    {
-        @RenderFolderList(_activeTab == 0 ? GetFilteredFolders(_personalFolders) : GetFilteredFolders(_sharedFolders))
-    }
-}
-else if (_activeTab == 2 && _selectedFolder == null)
-{
-    @* Vista de lista de bibliotecas *@
-    @if (_loadingLibraries)
-    {
-        <MudProgressLinear Indeterminate="true" Class="my-4" />
-    }
-    else if (!_libraries.Any())
-    {
-        <EmptyState Icon="@Icons.Material.Filled.LibraryBooks"
-                    Title="Sin bibliotecas"
-                    Description="No tienes acceso a ninguna biblioteca externa." />
-    }
-    else
-    {
-        <div class="folder-card-grid">
-            @foreach (var lib in _libraries)
-            {
-                <div class="folder-card-container" @onclick="@(() => NavigateToLibrary(lib))">
-                    <div class="folder-thumbnail-wrapper">
-                        <div class="folder-card-icon">
-                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Large" Style="color: white;" />
-                        </div>
-                        <div class="folder-card-overlay">
-                            <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@lib.Name</MudText>
-                            <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
-                                @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
-                            </MudText>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-    }
+    <FoldersMobileView IsAtRoot="IsAtRoot"
+                       Trash="Trash"
+                       PageHeader="@PageHeader"
+                       ActiveTab="_activeTab"
+                       FolderViewMode="@((FoldersMobileView.FolderViewModeEnum)(int)_folderViewMode)"
+                       SelectedFolder="_selectedFolder"
+                       LoadingAssets="_loadingAssets"
+                       LoadingSubFolders="_loadingSubFolders"
+                       LoadingLibraries="_loadingLibraries"
+                       SelectionMode="_selectionMode"
+                       FolderSelectionMode="_folderSelectionMode"
+                       SearchQuery="@_searchQuery"
+                       SearchQueryChanged="HandleSearchQueryChanged"
+                       FilteredPersonalFolders="GetFilteredFolders(_personalFolders)"
+                       FilteredSharedFolders="GetFilteredFolders(_sharedFolders)"
+                       FilteredSubFolders="GetFilteredSubFolders()"
+                       Assets="_assets"
+                       FolderAssetVisibleCount="_folderAssetVisibleCount"
+                       SelectedAssetIds="_selectedAssetIds"
+                       SelectedFolderIds="_selectedFolderIds"
+                       Breadcrumbs="_breadcrumbs"
+                       Libraries="_libraries"
+                       OnNavigateUp="NavigateUp"
+                       OnNavigateToPermissions="NavigateToPermissionsView"
+                       OnCreateFolder="OpenCreateFolderDialogFromView"
+                       OnOpenFilterSheet="@(() => _filterSheetOpen = true)"
+                       OnFolderCardClick="OnFolderCardClick"
+                       OnOpenAsset="OpenAsset"
+                       OnNavigateToLibrary="NavigateToLibrary"
+                       OnToggleAssetSelection="ToggleAssetSelectionFromView"
+                       OnToggleFolderSelection="ToggleFolderSelectionFromView"
+                       OnCardTouchStart="OnCardTouchStartFromView"
+                       OnCardTouchMove="OnCardTouchMove"
+                       OnCardTouchEnd="OnCardTouchEnd"
+                       OnFolderItemTouchStart="OnFolderItemTouchStartFromView"
+                       GetDisplayFolderName="GetDisplayFolderName" />
 }
 else
 {
-    @if (!IsAtRoot)
-    {
-        <div class="mb-4 d-none d-md-block">
-            <MudBreadcrumbs Items="@_breadcrumbs" MaxItems="10" />
-        </div>
-    }
-
-    @if (_loadingAssets || _loadingSubFolders)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
-    }
-
-    @if (GetFilteredSubFolders().Any())
-    {
-        @if (!IsAtRoot)
-        {
-            <MudText Typo="Typo.h6" Class="mb-3">Carpetas</MudText>
-        }
-        @if (_folderViewMode == FolderViewMode.Grid)
-        {
-            <div class="folder-card-grid mb-6">
-                @foreach (var folderData in GetFilteredSubFolders())
-                {
-                    @RenderFolderCard(folderData)
-                }
-            </div>
-        }
-        else
-        {
-            <div class="folder-list mb-6">
-                @foreach (var folderData in GetFilteredSubFolders())
-                {
-                    @RenderFolderListItem(folderData)
-                }
-            </div>
-        }
-    }
-
-    @if (_assets.Any())
-    {
-        <MudText Typo="Typo.h6" Class="mb-3">Archivos</MudText>
-        
-        var visibleFolderAssets = Math.Min(_folderAssetVisibleCount, _assets.Count);
-        <div class="media-thumb-grid">
-            @for (var i = 0; i < visibleFolderAssets; i++)
-            {
-                var asset = _assets[i];
-                var isSelected = IsAssetSelected(asset.Id);
-                <div class="media-thumb-cell @(_selectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
-                     data-asset-id="@asset.Id"
-                     @key="asset.Id"
-                     @onclick="@(() => OpenAsset(asset))"
-                     @ontouchstart="@(e => OnCardTouchStart(e, asset))"
-                     @ontouchmove="OnCardTouchMove"
-                     @ontouchend="OnCardTouchEnd">
-                    @if (asset.HasThumbnails && !asset.IsFileMissing)
-                    {
-                        <img src="@asset.ThumbnailUrl"
-                             alt="@asset.FileName"
-                             loading="lazy"
-                             decoding="async" />
-                    }
-                    @if (asset.IsFileMissing)
-                    {
-                        <div class="media-thumb-broken">
-                            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
-                        </div>
-                    }
-                    @if (asset.Type == "Video")
-                    {
-                        <div class="media-thumb-video-icon">
-                            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
-                        </div>
-                    }
-                    <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
-                        <MudCheckBox T="bool"
-                                     Value="@isSelected"
-                                     ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
-                    </div>
-                </div>
-            }
-        </div>
-        @if (_folderAssetVisibleCount < _assets.Count)
-        {
-            <div id="folder-assets-load-more-sentinel" style="height:4px;"></div>
-            <div class="d-flex justify-center py-4">
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
-            </div>
-        }
-    }
-    else if (!_loadingAssets && !GetFilteredSubFolders().Any())
-    {
-        <div class="d-flex flex-column align-center justify-center py-12">
-            <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Large" Style="width: 120px; height: 120px; color: var(--mud-palette-text-disabled);" />
-            <MudText Typo="Typo.h5" Style="color: var(--mud-palette-text-disabled);" Class="mt-4">Esta carpeta está vacía</MudText>
-        </div>
-    }
+    <FoldersDesktopView IsAtRoot="IsAtRoot"
+                        Trash="Trash"
+                        PageHeader="@PageHeader"
+                        ActiveTab="_activeTab"
+                        FolderViewMode="@((FoldersDesktopView.FolderViewModeEnum)(int)_folderViewMode)"
+                        SelectedFolder="_selectedFolder"
+                        LoadingAssets="_loadingAssets"
+                        LoadingSubFolders="_loadingSubFolders"
+                        LoadingLibraries="_loadingLibraries"
+                        SelectionMode="_selectionMode"
+                        FolderSelectionMode="_folderSelectionMode"
+                        SearchQuery="@_searchQuery"
+                        SearchQueryChanged="HandleSearchQueryChanged"
+                        FilteredPersonalFolders="GetFilteredFolders(_personalFolders)"
+                        FilteredSharedFolders="GetFilteredFolders(_sharedFolders)"
+                        FilteredSubFolders="GetFilteredSubFolders()"
+                        Assets="_assets"
+                        FolderAssetVisibleCount="_folderAssetVisibleCount"
+                        SelectedAssetIds="_selectedAssetIds"
+                        SelectedFolderIds="_selectedFolderIds"
+                        Breadcrumbs="_breadcrumbs"
+                        Libraries="_libraries"
+                        OnNavigateUp="NavigateUp"
+                        OnNavigateToPermissions="NavigateToPermissionsView"
+                        OnCreateFolder="OpenCreateFolderDialogFromView"
+                        OnOpenFilterSheet="@(() => _filterSheetOpen = true)"
+                        OnFolderCardClick="OnFolderCardClick"
+                        OnOpenAsset="OpenAsset"
+                        OnNavigateToLibrary="NavigateToLibrary"
+                        OnToggleAssetSelection="ToggleAssetSelectionFromView"
+                        OnToggleFolderSelection="ToggleFolderSelectionFromView"
+                        OnCardTouchStart="OnCardTouchStartFromView"
+                        OnCardTouchMove="OnCardTouchMove"
+                        OnCardTouchEnd="OnCardTouchEnd"
+                        OnFolderItemTouchStart="OnFolderItemTouchStartFromView"
+                        GetDisplayFolderName="GetDisplayFolderName" />
 }
-</div>
 
+@* ── Dialogs and drawers (shared between desktop/mobile) ── *@
 @* ── Crear carpeta — bottom sheet ── *@
 <MudDrawer @bind-Open="_createFolderSheetOpen"
            Anchor="Anchor.Bottom"
@@ -1913,7 +1547,13 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) _objRef = DotNetObjectReference.Create(this);
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+            await DeviceLayout.InitializeAsync();
+            DeviceLayout.OnChanged += OnDeviceLayoutChanged;
+            StateHasChanged();
+        }
 
         // Scroll to top after in-place folder navigation completes
         if (_scrollToTopAfterRender)
@@ -3108,8 +2748,24 @@ else
         return normalized;
     }
 
+    // ── View wrapper methods ──
+    private void OnDeviceLayoutChanged() => InvokeAsync(StateHasChanged);
+
+    private void ToggleAssetSelectionFromView((Guid id, bool value) args) => ToggleAssetSelection(args.id, args.value);
+    private void ToggleFolderSelectionFromView((Guid id, bool value) args) => ToggleFolderSelection(args.id, args.value);
+    private async Task OnCardTouchStartFromView((TouchEventArgs e, TimelineItem asset) args) => await OnCardTouchStart(args.e, args.asset);
+    private async Task OnFolderItemTouchStartFromView((TouchEventArgs e, FolderItem folder) args) => await OnFolderItemTouchStart(args.e, args.folder);
+    private void NavigateToPermissionsView(FolderItem folder) => Navigation.NavigateTo($"/folders/{folder.Id}/permissions");
+    private void OpenCreateFolderDialogFromView(bool isSharedSpace) => OpenCreateFolderDialog(isSharedSpace);
+    private async Task HandleSearchQueryChanged(string query)
+    {
+        _searchQuery = query;
+        StateHasChanged();
+    }
+
     public void Dispose()
     {
+        DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
         _longPressTimer?.Dispose();
         _objRef?.Dispose();
         LayoutService.ResetNavbar();

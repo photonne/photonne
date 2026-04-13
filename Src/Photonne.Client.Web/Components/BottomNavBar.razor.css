@@ -1,0 +1,140 @@
+/* Section context bar — mobile only (settings & admin) */
+.ph-section-header {
+    display: none;
+    position: fixed;
+    top: 64px; /* MudAppBar height for 600px–959px range */
+    left: 0;
+    right: 0;
+    height: 48px;
+    align-items: center;
+    padding: 0 16px;
+    background-color: var(--mud-palette-surface);
+    border-top: 1px solid var(--mud-palette-divider);
+    border-bottom: 1px solid var(--mud-palette-divider);
+    z-index: 1099;
+    box-sizing: border-box;
+}
+
+@media (max-width: 959.98px) {
+    .ph-section-header {
+        display: flex;
+    }
+}
+
+/* MudAppBar shrinks to 56px below 600px (MudBlazor xs breakpoint) */
+@media (max-width: 599.98px) {
+    .ph-section-header {
+        top: 56px;
+    }
+}
+
+.ph-section-header__back {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px 4px 0;
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: color 0.15s ease;
+    z-index: 1;
+}
+
+.ph-section-header__back:active {
+    opacity: 0.65;
+}
+
+::deep .ph-section-header__back-icon {
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.ph-section-header__title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Bottom nav — mobile only */
+.ph-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    align-items: center;
+    height: 64px;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-sizing: content-box;
+    background-color: var(--mud-palette-surface);
+    border-top: 1px solid var(--mud-palette-divider);
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.14);
+    z-index: 1200;
+}
+
+@media (max-width: 959.98px) {
+    .ph-bottom-nav {
+        display: flex;
+    }
+}
+
+/* Tabs */
+.ph-bottom-nav__tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 4px;
+    text-decoration: none;
+    color: var(--mud-palette-text-secondary);
+    height: 100%;
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.ph-bottom-nav__tab:active {
+    opacity: 0.65;
+}
+
+.ph-bottom-nav__tab--active {
+    color: var(--mud-palette-primary);
+}
+
+::deep .ph-bottom-nav__icon {
+    font-size: 24px !important;
+    width: 24px !important;
+    height: 24px !important;
+}
+
+.ph-bottom-nav__label {
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.ph-bottom-nav__tab--active .ph-bottom-nav__label {
+    font-weight: 600;
+}
+
+
+/* "Más" tab — button reset */
+.ph-bottom-nav__tab--btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}

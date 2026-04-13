@@ -1,0 +1,410 @@
+@using Photonne.Client.Web.Models
+
+<div class="page-pad">
+<div class="d-flex align-center justify-space-between mb-4">
+    <div class="d-flex align-center">
+        @if (!IsAtRoot)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="OnNavigateUp" Title="Volver" Class="mr-2" />
+        }
+        <MudText Typo="Typo.h5" Class="folder-page-title">@PageHeader</MudText>
+    </div>
+
+    <div class="d-flex align-center gap-1">
+        @if (SelectedFolder != null && SelectedFolder.IsOwner && SelectedFolder.IsShared && !IsAtRoot)
+        {
+            <MudIconButton Icon="@Icons.Material.Outlined.Group"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           OnClick="@(() => OnNavigateToPermissions.InvokeAsync(SelectedFolder))"
+                           Title="Colaboradores" />
+        }
+        <MudTextField @bind-Value="_localSearchQuery"
+                      @bind-Value:after="OnSearchInput"
+                      Placeholder="Buscar"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="folders-search" />
+
+        @if (SelectedFolder == null)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Title="Nueva carpeta"
+                           OnClick="@(() => OnCreateFolder.InvokeAsync(ActiveTab == 1))" />
+        }
+        else
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Title="Nueva subcarpeta"
+                           OnClick="@(() => OnCreateFolder.InvokeAsync(SelectedFolder.IsShared))" />
+        }
+
+        <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                       Size="Size.Small"
+                       Title="Opciones de vista"
+                       OnClick="OnOpenFilterSheet" />
+    </div>
+</div>
+
+@if (IsAtRoot && Trash != true)
+{
+    <div class="ph-section-tabs">
+        <a href="/folders/own"       class="ph-section-tab @(ActiveTab == 0 ? "ph-section-tab--active" : "")">Personal</a>
+        <a href="/folders/shared"    class="ph-section-tab @(ActiveTab == 1 ? "ph-section-tab--active" : "")">Compartido</a>
+        <a href="/folders/libraries" class="ph-section-tab @(ActiveTab == 2 ? "ph-section-tab--active" : "")">Bibliotecas</a>
+    </div>
+}
+
+@if (SelectedFolder == null && ActiveTab != 2)
+{
+    @* Vista de seleccion de raiz Personal / Compartido *@
+    @if (FolderViewMode == FolderViewModeEnum.Grid)
+    {
+        @RenderFolderGrid(ActiveTab == 0 ? FilteredPersonalFolders : FilteredSharedFolders)
+    }
+    else
+    {
+        @RenderFolderList(ActiveTab == 0 ? FilteredPersonalFolders : FilteredSharedFolders)
+    }
+}
+else if (ActiveTab == 2 && SelectedFolder == null)
+{
+    @* Vista de lista de bibliotecas *@
+    @if (LoadingLibraries)
+    {
+        <MudProgressLinear Indeterminate="true" Class="my-4" />
+    }
+    else if (!Libraries.Any())
+    {
+        <EmptyState Icon="@Icons.Material.Filled.LibraryBooks"
+                    Title="Sin bibliotecas"
+                    Description="No tienes acceso a ninguna biblioteca externa." />
+    }
+    else
+    {
+        <div class="folder-card-grid">
+            @foreach (var lib in Libraries)
+            {
+                <div class="folder-card-container" @onclick="@(() => OnNavigateToLibrary.InvokeAsync(lib))">
+                    <div class="folder-thumbnail-wrapper">
+                        <div class="folder-card-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Large" Style="color: white;" />
+                        </div>
+                        <div class="folder-card-overlay">
+                            <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@lib.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
+                                @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
+                            </MudText>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+else
+{
+    @if (!IsAtRoot)
+    {
+        <div class="mb-4">
+            <MudBreadcrumbs Items="@Breadcrumbs" MaxItems="10" />
+        </div>
+    }
+
+    @if (LoadingAssets || LoadingSubFolders)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+    }
+
+    @if (FilteredSubFolders.Any())
+    {
+        @if (!IsAtRoot)
+        {
+            <MudText Typo="Typo.h6" Class="mb-3">Carpetas</MudText>
+        }
+        @if (FolderViewMode == FolderViewModeEnum.Grid)
+        {
+            <div class="folder-card-grid mb-6">
+                @foreach (var folderData in FilteredSubFolders)
+                {
+                    @RenderFolderCard(folderData)
+                }
+            </div>
+        }
+        else
+        {
+            <div class="folder-list mb-6">
+                @foreach (var folderData in FilteredSubFolders)
+                {
+                    @RenderFolderListItem(folderData)
+                }
+            </div>
+        }
+    }
+
+    @if (Assets.Any())
+    {
+        <MudText Typo="Typo.h6" Class="mb-3">Archivos</MudText>
+
+        var visibleFolderAssets = Math.Min(FolderAssetVisibleCount, Assets.Count);
+        <div class="media-thumb-grid">
+            @for (var i = 0; i < visibleFolderAssets; i++)
+            {
+                var asset = Assets[i];
+                var isSelected = SelectedAssetIds.Contains(asset.Id);
+                <div class="media-thumb-cell @(SelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
+                     data-asset-id="@asset.Id"
+                     @key="asset.Id"
+                     @onclick="@(() => OnOpenAsset.InvokeAsync(asset))"
+                     @ontouchstart="@(e => OnCardTouchStart.InvokeAsync((e, asset)))"
+                     @ontouchmove="@(e => OnCardTouchMove.InvokeAsync(e))"
+                     @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))">
+                    @if (asset.HasThumbnails && !asset.IsFileMissing)
+                    {
+                        <img src="@asset.ThumbnailUrl"
+                             alt="@asset.FileName"
+                             loading="lazy"
+                             decoding="async" />
+                    }
+                    @if (asset.IsFileMissing)
+                    {
+                        <div class="media-thumb-broken">
+                            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
+                        </div>
+                    }
+                    @if (asset.Type == "Video")
+                    {
+                        <div class="media-thumb-video-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                        </div>
+                    }
+                    <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
+                        <MudCheckBox T="bool"
+                                     Value="@isSelected"
+                                     ValueChanged="@(value => OnToggleAssetSelection.InvokeAsync((asset.Id, value)))" />
+                    </div>
+                </div>
+            }
+        </div>
+        @if (FolderAssetVisibleCount < Assets.Count)
+        {
+            <div id="folder-assets-load-more-sentinel" style="height:4px;"></div>
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
+    }
+    else if (!LoadingAssets && !FilteredSubFolders.Any())
+    {
+        <div class="d-flex flex-column align-center justify-center py-12">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Large" Style="width: 120px; height: 120px; color: var(--mud-palette-text-disabled);" />
+            <MudText Typo="Typo.h5" Style="color: var(--mud-palette-text-disabled);" Class="mt-4">Esta carpeta esta vacia</MudText>
+        </div>
+    }
+}
+</div>
+
+@code {
+    // ── Enums ──
+    public enum FolderViewModeEnum { Grid, List }
+
+    // ── State parameters ──
+    [Parameter] public bool IsAtRoot { get; set; }
+    [Parameter] public bool? Trash { get; set; }
+    [Parameter] public string PageHeader { get; set; } = "";
+    [Parameter] public int ActiveTab { get; set; }
+    [Parameter] public FolderViewModeEnum FolderViewMode { get; set; }
+    [Parameter] public FolderItem? SelectedFolder { get; set; }
+    [Parameter] public bool LoadingAssets { get; set; }
+    [Parameter] public bool LoadingSubFolders { get; set; }
+    [Parameter] public bool LoadingLibraries { get; set; }
+    [Parameter] public bool SelectionMode { get; set; }
+    [Parameter] public bool FolderSelectionMode { get; set; }
+    [Parameter] public string SearchQuery { get; set; } = "";
+    [Parameter] public EventCallback<string> SearchQueryChanged { get; set; }
+    [Parameter] public List<FolderItem> FilteredPersonalFolders { get; set; } = new();
+    [Parameter] public List<FolderItem> FilteredSharedFolders { get; set; } = new();
+    [Parameter] public List<FolderItem> FilteredSubFolders { get; set; } = new();
+    [Parameter] public List<TimelineItem> Assets { get; set; } = new();
+    [Parameter] public int FolderAssetVisibleCount { get; set; }
+    [Parameter] public HashSet<Guid> SelectedAssetIds { get; set; } = new();
+    [Parameter] public HashSet<Guid> SelectedFolderIds { get; set; } = new();
+    [Parameter] public List<BreadcrumbItem> Breadcrumbs { get; set; } = new();
+    [Parameter] public List<ExternalLibraryDto> Libraries { get; set; } = new();
+
+    // ── Event callbacks ──
+    [Parameter] public EventCallback OnNavigateUp { get; set; }
+    [Parameter] public EventCallback<FolderItem> OnNavigateToPermissions { get; set; }
+    [Parameter] public EventCallback<bool> OnCreateFolder { get; set; }
+    [Parameter] public EventCallback OnOpenFilterSheet { get; set; }
+    [Parameter] public EventCallback<FolderItem> OnFolderCardClick { get; set; }
+    [Parameter] public EventCallback<TimelineItem> OnOpenAsset { get; set; }
+    [Parameter] public EventCallback<ExternalLibraryDto> OnNavigateToLibrary { get; set; }
+    [Parameter] public EventCallback<(Guid, bool)> OnToggleAssetSelection { get; set; }
+    [Parameter] public EventCallback<(Guid, bool)> OnToggleFolderSelection { get; set; }
+    [Parameter] public EventCallback<(TouchEventArgs, TimelineItem)> OnCardTouchStart { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnCardTouchMove { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnCardTouchEnd { get; set; }
+    [Parameter] public EventCallback<(TouchEventArgs, FolderItem)> OnFolderItemTouchStart { get; set; }
+
+    // ── Display helpers (passed from page) ──
+    [Parameter] public Func<FolderItem, string> GetDisplayFolderName { get; set; } = f => f.Name;
+
+    // Local search state
+    private string _localSearchQuery = "";
+
+    protected override void OnParametersSet()
+    {
+        _localSearchQuery = SearchQuery;
+    }
+
+    private async Task OnSearchInput()
+    {
+        await SearchQueryChanged.InvokeAsync(_localSearchQuery);
+    }
+
+    // ── Render helpers ──
+    private RenderFragment RenderFolderGrid(List<FolderItem> folders) => __builder =>
+    {
+        if (folders.Any())
+        {
+            <div class="folder-card-grid">
+                @foreach (var folderData in folders)
+                {
+                    @RenderFolderCard(folderData)
+                }
+            </div>
+        }
+        else
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Folder"
+                        Title="No hay carpetas"
+                        Description="Empieza creando una nueva." />
+        }
+    };
+
+    private RenderFragment RenderFolderList(List<FolderItem> folders) => __builder =>
+    {
+        if (folders.Any())
+        {
+            <div class="folder-list">
+                @foreach (var folderData in folders)
+                {
+                    @RenderFolderListItem(folderData)
+                }
+            </div>
+        }
+        else
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Folder"
+                        Title="No hay carpetas"
+                        Description="Empieza creando una nueva." />
+        }
+    };
+
+    private RenderFragment RenderFolderCard(FolderItem folderData) => __builder =>
+    {
+        <div class="folder-card-container @(FolderSelectionMode ? "selection-mode" : "") @(SelectedFolderIds.Contains(folderData.Id) ? "selected" : "")"
+             @key="folderData.Id"
+             @onclick="@(() => OnFolderCardClick.InvokeAsync(folderData))"
+             @ontouchstart="@(e => OnFolderItemTouchStart.InvokeAsync((e, folderData)))"
+             @ontouchmove="@(e => OnCardTouchMove.InvokeAsync(e))"
+             @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))">
+
+            <div class="folder-thumbnail-wrapper">
+                <div class="folder-select-checkbox" @onclick:stopPropagation="true">
+                    <MudCheckBox T="bool"
+                                 Value="@SelectedFolderIds.Contains(folderData.Id)"
+                                 ValueChanged="@(value => OnToggleFolderSelection.InvokeAsync((folderData.Id, value)))" />
+                </div>
+
+                @if (folderData.SharedWithCount > 0)
+                {
+                    <div class="folder-shared-badge" title="Compartida con @folderData.SharedWithCount usuarios">
+                        <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                        <span>@folderData.SharedWithCount</span>
+                    </div>
+                }
+
+                @if (folderData.PreviewThumbnailUrls.Count >= 4)
+                {
+                    <div class="folder-collage-grid">
+                        @foreach (var url in folderData.PreviewThumbnailUrls.Take(4))
+                        {
+                            <img src="@url" class="folder-collage-img" loading="lazy" alt="" />
+                        }
+                    </div>
+                }
+                else if (folderData.ThumbnailUrl != null)
+                {
+                    <img src="@folderData.ThumbnailUrl" alt="@folderData.Name" class="folder-card-thumbnail" loading="lazy" />
+                }
+                else
+                {
+                    <div class="folder-card-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Large" Style="color: white;" />
+                    </div>
+                }
+
+                <div class="folder-card-overlay">
+                    <MudText Typo="Typo.body2" Class="folder-card-overlay-name">@GetDisplayFolderName(folderData)</MudText>
+                    <MudText Typo="Typo.caption" Class="folder-card-overlay-count">
+                        @folderData.AssetCount @(folderData.AssetCount == 1 ? "archivo" : "archivos")
+                    </MudText>
+                </div>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderFolderListItem(FolderItem folderData) => __builder =>
+    {
+        <div class="folder-list-item @(FolderSelectionMode ? "selection-mode" : "") @(SelectedFolderIds.Contains(folderData.Id) ? "selected" : "")"
+             @key="folderData.Id"
+             @onclick="@(() => OnFolderCardClick.InvokeAsync(folderData))"
+             @ontouchstart="@(e => OnFolderItemTouchStart.InvokeAsync((e, folderData)))"
+             @ontouchmove="@(e => OnCardTouchMove.InvokeAsync(e))"
+             @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))">
+
+            <div class="folder-list-thumb">
+                <div class="folder-select-checkbox" @onclick:stopPropagation="true">
+                    <MudCheckBox T="bool"
+                                 Value="@SelectedFolderIds.Contains(folderData.Id)"
+                                 ValueChanged="@(value => OnToggleFolderSelection.InvokeAsync((folderData.Id, value)))" />
+                </div>
+                @if (folderData.ThumbnailUrl != null)
+                {
+                    <img src="@folderData.ThumbnailUrl" alt="@folderData.Name" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" />
+                }
+                else
+                {
+                    <div class="folder-card-icon" style="border-radius: 8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Medium" Color="Color.Primary" />
+                    </div>
+                }
+            </div>
+
+            <div class="folder-list-info">
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.subtitle1" Class="folder-list-name">@GetDisplayFolderName(folderData)</MudText>
+                    @if (folderData.SharedWithCount > 0)
+                    {
+                        <div class="folder-list-shared-badge" title="Compartida con @folderData.SharedWithCount usuarios">
+                            <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                            <span>@folderData.SharedWithCount</span>
+                        </div>
+                    }
+                </div>
+                <MudText Typo="Typo.body2" Class="folder-list-meta">
+                    @folderData.AssetCount @(folderData.AssetCount == 1 ? "archivo" : "archivos")
+                </MudText>
+            </div>
+        </div>
+    };
+}

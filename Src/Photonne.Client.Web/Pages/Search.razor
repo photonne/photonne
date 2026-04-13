@@ -4,159 +4,46 @@
 @inject NavigationManager Navigation
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IJSRuntime JS
+@inject DeviceLayoutService DeviceLayout
+@implements IDisposable
 
 <PageTitle>Buscar - Photonne</PageTitle>
 
-@* ── Mobile: fixed search bar + collapsible filters ── *@
-<div class="ph-search-bar d-md-none">
-        <div class="d-flex align-center gap-2">
-            <MudTextField @bind-Value="_searchTerm"
-                          @bind-Value:after="OnSearchTermChangedByPage"
-                          Placeholder="Buscar fotos, vídeos..."
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Immediate="true"
-                          DebounceInterval="300"
-                          Clearable="true"
-                          Class="flex-grow-1" />
-            <MudBadge Content="@ActiveFilterCount" Visible="@(ActiveFilterCount > 0)"
-                      Color="Color.Primary" Overlap="true">
-                <MudIconButton Icon="@Icons.Material.Outlined.FilterList"
-                               Color="@(ActiveFilterCount > 0 ? Color.Primary : Color.Inherit)"
-                               OnClick="@(() => _filtersExpanded = !_filtersExpanded)" />
-            </MudBadge>
-        </div>
-        @if (_filtersExpanded)
-        {
-            <div class="d-flex flex-column gap-2 pt-2 pb-1">
-                <MudDatePicker Label="Desde" Date="_fromDate" DateChanged="OnFromDateChanged"
-                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                               MaxDate="_toDate" Clearable="true" />
-                <MudDatePicker Label="Hasta" Date="_toDate" DateChanged="OnToDateChanged"
-                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                               MinDate="_fromDate" Clearable="true" />
-                <MudTextField @bind-Value="_folderFilter"
-                              @bind-Value:after="OnFolderFilterChanged"
-                              Label="Ruta de carpeta"
-                              Placeholder="Ej. vacaciones, 2024/agosto..."
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Immediate="true"
-                              DebounceInterval="400"
-                              Clearable="true" />
-            </div>
-        }
-    </div>
-
-@* Spacer — reserves space occupied by the fixed bar above (mobile only) *@
-<div class="@(_filtersExpanded ? "ph-search-spacer--expanded" : "ph-search-spacer") d-md-none"></div>
-
-<div class="page-pad">
-
-    @* ── Desktop: always-visible filters (search is in AppBar) ── *@
-    <div class="search-filters mb-4 d-none d-md-flex" style="gap:12px; flex-wrap:wrap; align-items:flex-end;">
-        <div style="flex:1; min-width:180px; max-width:240px;">
-            <MudDatePicker Label="Desde" Date="_fromDate" DateChanged="OnFromDateChanged"
-                           Variant="Variant.Outlined" Margin="Margin.Dense"
-                           MaxDate="_toDate" Clearable="true" />
-        </div>
-        <div style="flex:1; min-width:180px; max-width:240px;">
-            <MudDatePicker Label="Hasta" Date="_toDate" DateChanged="OnToDateChanged"
-                           Variant="Variant.Outlined" Margin="Margin.Dense"
-                           MinDate="_fromDate" Clearable="true" />
-        </div>
-        <div style="flex:2; min-width:200px;">
-            <MudTextField @bind-Value="_folderFilter"
-                          @bind-Value:after="OnFolderFilterChanged"
-                          Label="Ruta de carpeta"
-                          Placeholder="Ej. vacaciones, 2024/agosto..."
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Outlined.FolderOpen"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Immediate="true"
-                          DebounceInterval="400"
-                          Clearable="true" />
-        </div>
-    </div>
-
-    @if (_loading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
-    }
-    else if (!HasAnyFilter)
-    {
-        <EmptyState Icon="@Icons.Material.Filled.Search"
-                    Title="Escribe algo para buscar"
-                    Description="Busca por nombre de archivo, etiqueta (#paisaje) o ruta de carpeta. También puedes filtrar por fecha." />
-    }
-    else if (!_results.Any())
-    {
-        <EmptyState Icon="@Icons.Material.Filled.SearchOff"
-                    Title="Sin resultados"
-                    Description="Prueba con otro término o ajusta los filtros." />
-    }
-    else
-    {
-        <div class="d-flex align-center mb-3 gap-2">
-            <MudText Typo="Typo.subtitle2">@ResultCountLabel</MudText>
-            @if (_hasMore)
-            {
-                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
-                    Hay más — refina la búsqueda
-                </MudChip>
-            }
-        </div>
-        <div class="media-thumb-grid mt-1">
-            @foreach (var asset in _results)
-            {
-                <div class="media-thumb-cell"
-                     @key="asset.Id"
-                     @onclick="@(() => OpenAsset(asset))">
-                    @if (asset.HasThumbnails && !asset.IsFileMissing)
-                    {
-                        <img src="@asset.ThumbnailUrl"
-                             alt="@asset.FileName"
-                             loading="lazy"
-                             decoding="async" />
-                    }
-                    @if (asset.IsFileMissing)
-                    {
-                        <div class="media-thumb-broken">
-                            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
-                        </div>
-                    }
-                    @if (asset.Type == "Video")
-                    {
-                        <div class="media-thumb-video-icon">
-                            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
-                        </div>
-                    }
-                </div>
-            }
-        </div>
-    }
-</div>
-
-<style>
-    /* Fixed search bar — sticky fails due to MudBlazor overflow-x:hidden on parent */
-    .ph-search-bar {
-        position: fixed;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        background-color: var(--mud-palette-surface);
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--mud-palette-divider);
-    }
-    /* Spacer heights match the fixed bar: 64px collapsed, 208px expanded */
-    .ph-search-spacer          { height: 64px; }
-    .ph-search-spacer--expanded { height: 208px; }
-</style>
+@if (DeviceLayout.IsMobile)
+{
+    <SearchMobileView Loading="_loading"
+                      Results="_results"
+                      HasMore="_hasMore"
+                      SearchTerm="@_searchTerm"
+                      OnSearchTermChanged="HandleSearchTermChanged"
+                      FromDate="_fromDate"
+                      OnFromDateChanged="OnFromDateChanged"
+                      ToDate="_toDate"
+                      OnToDateChanged="OnToDateChanged"
+                      FolderFilter="@_folderFilter"
+                      OnFolderFilterChanged="HandleFolderFilterChanged"
+                      FiltersExpanded="_filtersExpanded"
+                      OnToggleFilters="ToggleFiltersExpanded"
+                      ActiveFilterCount="ActiveFilterCount"
+                      ResultCountLabel="@ResultCountLabel"
+                      HasAnyFilter="HasAnyFilter"
+                      OnOpenAsset="OpenAsset" />
+}
+else
+{
+    <SearchDesktopView Loading="_loading"
+                       Results="_results"
+                       HasMore="_hasMore"
+                       FromDate="_fromDate"
+                       OnFromDateChanged="OnFromDateChanged"
+                       ToDate="_toDate"
+                       OnToDateChanged="OnToDateChanged"
+                       FolderFilter="@_folderFilter"
+                       OnFolderFilterChanged="HandleFolderFilterChanged"
+                       ResultCountLabel="@ResultCountLabel"
+                       HasAnyFilter="HasAnyFilter"
+                       OnOpenAsset="OpenAsset" />
+}
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? SearchTerm { get; set; }
@@ -185,6 +72,16 @@
         _toDate.HasValue ||
         !string.IsNullOrWhiteSpace(_folderFilter);
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await DeviceLayout.InitializeAsync();
+            DeviceLayout.OnChanged += OnDeviceLayoutChanged;
+            StateHasChanged();
+        }
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         var newTerm = (SearchTerm ?? string.Empty).Trim();
@@ -195,8 +92,9 @@
         }
     }
 
-    private async Task OnSearchTermChangedByPage()
+    private async Task HandleSearchTermChanged(string term)
     {
+        _searchTerm = term;
         var trimmed = _searchTerm?.Trim() ?? string.Empty;
         var targetUri = string.IsNullOrWhiteSpace(trimmed)
             ? "/search"
@@ -217,9 +115,15 @@
         await SearchAsync();
     }
 
-    private async Task OnFolderFilterChanged()
+    private async Task HandleFolderFilterChanged(string filter)
     {
+        _folderFilter = filter;
         await SearchAsync();
+    }
+
+    private void ToggleFiltersExpanded()
+    {
+        _filtersExpanded = !_filtersExpanded;
     }
 
     private async Task SearchAsync()
@@ -266,5 +170,15 @@
             var encodedPath = System.Net.WebUtility.UrlEncode(asset.FullPath);
             Navigation.NavigateTo($"/asset/{Guid.Empty}?path={encodedPath}&returnTo=search");
         }
+    }
+
+    private void OnDeviceLayoutChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
     }
 }

@@ -5,6 +5,22 @@ html, body {
     height: 100%;
 }
 
+/* ── Timeline page: disable scroll on body/MudBlazor wrappers ── */
+/* Must stay global — targets body and MudBlazor layout ancestors */
+body.timeline-page {
+    overflow: hidden !important;
+    height: 100vh !important;
+}
+body.timeline-page .mud-layout {
+    overflow: hidden !important;
+    height: 100vh !important;
+}
+body.timeline-page .mud-main-content {
+    overflow: hidden !important;
+    height: 100vh !important;
+    position: relative !important;
+}
+
 #app {
     height: 100%;
 }
@@ -197,6 +213,15 @@ html, body {
 @media (min-width: 960px) {
     .page-pad {
         padding: 24px;
+    }
+}
+
+/* ── Section header padding (admin/settings) ─────────── */
+/* Push page content down to clear the mobile section-header bar.
+   This must stay global because it targets elements outside the BottomNavBar component scope. */
+@media (max-width: 959.98px) {
+    body:has(.ph-section-header) .page-content {
+        padding-top: 48px !important;
     }
 }
 

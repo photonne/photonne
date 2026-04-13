@@ -1,0 +1,43 @@
+    .dup-card-clickable {
+        cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .dup-card-clickable:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .dup-admin-thumb {
+        position: relative;
+        height: 120px;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #111;
+    }
+
+    .dup-admin-detail-btn {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s;
+        z-index: 1;
+    }
+
+    .dup-admin-thumb:hover .dup-admin-detail-btn {
+        opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+        .dup-admin-detail-btn {
+            opacity: 1;
+        }
+    }

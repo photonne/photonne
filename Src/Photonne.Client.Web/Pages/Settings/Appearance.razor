@@ -1,5 +1,5 @@
 @page "/settings/appearance"
-@inject LayoutService LayoutService
+@inject LayoutService layoutService
 
 <PageTitle>Apariencia - Photonne</PageTitle>
 
@@ -19,12 +19,12 @@
                     <div class="d-flex align-center">
                         <MudIcon Icon="@Icons.Material.Filled.LightMode" Class="mr-3" />
                         <MudSwitch T="bool"
-                                   Value="LayoutService.IsDarkMode"
-                                   ValueChanged="@(async v => await LayoutService.ToggleDarkModeAsync())"
+                                   Value="layoutService.IsDarkMode"
+                                   ValueChanged="@(async v => await layoutService.ToggleDarkModeAsync())"
                                    Color="Color.Primary" />
                         <MudIcon Icon="@Icons.Material.Filled.DarkMode" Class="ml-1" />
                         <MudText Typo="Typo.body1" Class="ml-4">
-                            @(LayoutService.IsDarkMode ? "Modo oscuro" : "Modo claro")
+                            @(layoutService.IsDarkMode ? "Modo oscuro" : "Modo claro")
                         </MudText>
                     </div>
                 </MudCardContent>

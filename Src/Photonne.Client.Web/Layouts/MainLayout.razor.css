@@ -1,0 +1,271 @@
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.sidebar {
+    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+}
+
+.top-row {
+    background-color: #f7f7f7;
+    border-bottom: 1px solid #d6d5d5;
+    justify-content: flex-end;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+}
+
+    .top-row ::deep a, .top-row ::deep .btn-link {
+        white-space: nowrap;
+        margin-left: 1.5rem;
+        text-decoration: none;
+    }
+
+    .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
+        text-decoration: underline;
+    }
+
+    .top-row ::deep a:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+@media (max-width: 640.98px) {
+    .top-row {
+        justify-content: space-between;
+    }
+
+    .top-row ::deep a, .top-row ::deep .btn-link {
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 641px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+    }
+
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .top-row.auth ::deep a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
+
+    .top-row, article {
+        padding-left: 2rem !important;
+        padding-right: 1.5rem !important;
+    }
+}
+
+/* ── Styles extracted from inline <style> blocks ── */
+
+.border-b {
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+.custom-navbar {
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+.search-container {
+    width: 100%;
+    max-width: 560px;
+}
+::deep .search-box {
+    width: 100%;
+    height: 40px;
+    border-radius: 24px;
+    border: 1.5px solid rgba(128, 128, 128, 0.35);
+    background: rgba(128, 128, 128, 0.06);
+    transition: border-color 0.2s;
+}
+::deep .search-box:hover {
+    border-color: rgba(128, 128, 128, 0.65);
+}
+::deep .search-box:focus-within {
+    border-color: var(--mud-palette-primary);
+}
+::deep .mud-dark .search-box {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+}
+::deep .mud-dark .search-box:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+::deep .search-input .mud-input-control {
+    margin-top: 0;
+}
+::deep .search-input .mud-input::before,
+::deep .search-input .mud-input::after {
+    display: none !important;
+}
+::deep .notification-badge .mud-badge {
+    top: -4px !important;
+}
+/* Mobile: extra bottom padding so content isn't hidden behind bottom nav */
+@media (max-width: 959.98px) {
+    .page-content {
+        padding-bottom: 64px !important;
+    }
+}
+.pwa-update-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-divider);
+    position: sticky;
+    z-index: 1200;
+}
+
+.border-r {
+    border-right: 1px solid var(--mud-palette-divider);
+}
+.page-content {
+    /* Padding managed by each page; bottom padding injected via media query above */
+}
+
+/* Bottom sheet shared styles */
+::deep .ph-bottom-sheet {
+    border-radius: 16px 16px 0 0 !important;
+    overflow: hidden;
+}
+::deep .ph-bottom-sheet .mud-drawer-content {
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
+}
+/* Drag handle pill */
+.ph-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--mud-palette-divider);
+    border-radius: 2px;
+    margin: 10px auto 6px;
+    flex-shrink: 0;
+}
+/* Combined "Mas" overlay — full screen above bottom nav */
+.ph-more-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    background-color: var(--mud-palette-surface);
+    z-index: 1300;
+    overflow-y: auto;
+}
+/* Profile section — centered and prominent */
+.ph-more-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px 24px 32px;
+}
+/* Nav icon tiles grid */
+.ph-more-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+.ph-more-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 8px;
+    background: var(--mud-palette-background-grey);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--mud-palette-text-primary);
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s ease;
+}
+.ph-more-tile:active {
+    opacity: 0.6;
+}
+.ph-more-tile--active {
+    color: var(--mud-palette-primary);
+    background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
+}
+::deep .ph-more-tile__icon {
+    font-size: 26px !important;
+    width: 26px !important;
+    height: 26px !important;
+}
+.ph-more-tile__label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+}
+.ph-more-version {
+    text-align: center;
+    font-size: 11px;
+    color: var(--mud-palette-text-disabled);
+    padding: 10px 0 6px;
+}
+
+/* PWA Install Prompt */
+.pwa-install-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 0 env(safe-area-inset-bottom);
+    animation: pwa-backdrop-in 0.2s ease;
+}
+.pwa-install-card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--mud-palette-surface);
+    border-radius: 20px 20px 0 0;
+    padding: 28px 24px 32px;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.25);
+    animation: pwa-card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pwa-install-icon-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+.pwa-install-logo {
+    width: 240px;
+    height: 72px;
+    border-radius: 16px;
+    object-fit: contain;
+}
+@keyframes pwa-backdrop-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes pwa-card-in {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+}

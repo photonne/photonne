@@ -54,36 +54,6 @@
     }
 </div>
 
-<style>
-    .favorites-container {
-        padding: 4px;
-    }
-    .day-header {
-        font-weight: 600;
-        color: var(--mud-palette-text-secondary);
-        text-transform: capitalize;
-        padding: 0 4px 6px 4px;
-        display: block;
-    }
-
-    @@media (max-width: 599.98px) {
-        .day-header {
-            font-size: 0.78rem !important;
-        }
-    }
-    .masonry-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-    .masonry-item {
-        flex: 1 1 180px;
-        max-width: 300px;
-        min-width: 120px;
-        height: 180px;
-    }
-</style>
-
 @code {
     private List<TimelineItem> _assets = new();
     private Dictionary<string, List<TimelineItem>> _groupedAssets = new();

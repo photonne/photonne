@@ -64,18 +64,6 @@
 </AuthorizeView>
 </div>
 
-<style>
-    .nav-wrapper {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-
-    .nav-spacer {
-        flex: 1;
-    }
-</style>
-
 @code {
     private RenderFragment UserNavLinks => @<text>
         <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhotoLibrary" IconColor="Color.Inherit">

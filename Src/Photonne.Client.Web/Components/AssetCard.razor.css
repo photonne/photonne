@@ -1,0 +1,136 @@
+.asset-card-container {
+    position: relative;
+    cursor: pointer;
+    width: 100%;
+    overflow: hidden;
+    background-color: #333;
+    border-radius: 8px;
+    aspect-ratio: 1 / 1;
+}
+.asset-card-container:hover {
+    opacity: 1;
+}
+.asset-card-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* Shimmer placeholder — visible while thumbnail hasn't loaded yet */
+.asset-placeholder {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: linear-gradient(90deg, #252525 25%, #303030 50%, #252525 75%);
+    background-size: 200% 100%;
+    animation: asset-shimmer 1.6s infinite ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.asset-placeholder[style*="background-color"] {
+    background-image: none;
+    animation: none;
+    background-size: auto;
+}
+@keyframes asset-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.asset-card-container.img-loaded .asset-placeholder {
+    opacity: 0;
+    pointer-events: none;
+}
+.lazy-img {
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+.asset-card-container.img-loaded .lazy-img {
+    opacity: 1;
+}
+.video-preview-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+.preview-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+.asset-card-container:hover .preview-video {
+    opacity: 1;
+}
+.thumbnail {
+    position: relative;
+    z-index: 0;
+}
+/* Bottom overlay: gradient + filename, visible on hover */
+.asset-card-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 6px 8px;
+    padding-right: 40px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 3;
+    pointer-events: none;
+}
+.asset-card-container:hover .asset-card-overlay {
+    opacity: 1;
+}
+.asset-type-icon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    color: white;
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+    z-index: 2;
+}
+.sync-status-icon {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    color: white;
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+    z-index: 2;
+}
+/* Favorite button: always visible */
+.favorite-btn {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    z-index: 5;
+    color: rgba(255,255,255,0.7);
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
+    transition: color 0.2s;
+}
+.favorite-btn:hover {
+    color: white;
+}
+.favorite-btn.is-favorite {
+    color: white;
+}
+.asset-pending {
+    opacity: 0.6;
+}
+.asset-offline-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4;
+    border-radius: 8px;
+}
