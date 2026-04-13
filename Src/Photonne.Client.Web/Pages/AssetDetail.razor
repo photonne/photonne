@@ -18,7 +18,7 @@
 {
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
 }
-else if (_asset != null)
+else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
 {
     @if (DeviceLayout.IsMobile)
     {
@@ -603,6 +603,7 @@ else
 
         _displayContentUrl = contentUrl;
         _displayThumbnailUrl = thumbnailUrl;
+        _imageLoadError = false;
     }
 
     private static string AppendAccessToken(string url, string? token)
