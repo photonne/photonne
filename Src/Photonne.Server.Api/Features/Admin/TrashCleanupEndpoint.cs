@@ -108,13 +108,17 @@ public class TrashCleanupEndpoint : IEndpoint
         {
             ct.ThrowIfCancellationRequested();
 
-            var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-            if (File.Exists(physicalPath))
+            // No borrar archivos físicos de bibliotecas externas — no son propiedad de Photonne
+            if (!asset.ExternalLibraryId.HasValue)
             {
-                try { File.Delete(physicalPath); }
-                catch (Exception ex)
+                var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
+                if (File.Exists(physicalPath))
                 {
-                    Console.WriteLine($"[TRASH CLEANUP] Error deleting {physicalPath}: {ex.Message}");
+                    try { File.Delete(physicalPath); }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[TRASH CLEANUP] Error deleting {physicalPath}: {ex.Message}");
+                    }
                 }
             }
 

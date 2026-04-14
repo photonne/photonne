@@ -1316,11 +1316,14 @@ public class IndexAssetsEndpoint : IEndpoint
         IndexStatistics stats,
         CancellationToken cancellationToken)
     {
+        // Solo considerar assets internos (sin biblioteca externa).
+        // Los assets de bibliotecas externas tienen sus propias rutas físicas
+        // y su ciclo de vida se gestiona en ExternalLibraryScanService.
         var allAssetPaths = await dbContext.Assets
-            .Where(a => a.DeletedAt == null)
+            .Where(a => a.DeletedAt == null && a.ExternalLibraryId == null)
             .Select(a => a.FullPath)
             .ToListAsync(cancellationToken);
-        
+
         // Los huérfanos son los que están en la BD pero NO en el sistema de archivos (no encontrados en el scan)
         var orphanedPaths = allAssetPaths.Except(foundVirtualPaths).ToList();
         if (!orphanedPaths.Any())
@@ -1366,8 +1369,10 @@ public class IndexAssetsEndpoint : IEndpoint
             .Distinct()
             .ToHashSetAsync(cancellationToken);
         
-        // Get all folders that exist in the filesystem (from processedDirectories)
+        // Solo considerar carpetas internas (sin biblioteca externa).
+        // Las carpetas de bibliotecas externas se gestionan en ExternalLibraryScanService.
         var allFolders = await dbContext.Folders
+            .Where(f => f.ExternalLibraryId == null)
             .Include(f => f.Assets)
             .Include(f => f.Permissions)
             .Include(f => f.SubFolders)

@@ -856,18 +856,22 @@ public class FoldersEndpoint : IEndpoint
         cache.Remove($"folders:list:{userId}");
         cache.Remove($"folders:tree:{userId}");
 
-        try
+        // No borrar directorios físicos de bibliotecas externas — no son propiedad de Photonne
+        if (!folder.ExternalLibraryId.HasValue)
         {
-            var physicalPath = await settingsService.ResolvePhysicalPathAsync(folder.Path);
-            if (Directory.Exists(physicalPath))
+            try
             {
-                Directory.Delete(physicalPath, recursive: true);
+                var physicalPath = await settingsService.ResolvePhysicalPathAsync(folder.Path);
+                if (Directory.Exists(physicalPath))
+                {
+                    Directory.Delete(physicalPath, recursive: true);
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            // Log error or handle specifically if needed. 
-            // We continue because DB records are already removed, so the folder is "deleted" from app perspective.
+            catch (Exception ex)
+            {
+                // Log error or handle specifically if needed.
+                // We continue because DB records are already removed, so the folder is "deleted" from app perspective.
+            }
         }
 
         return Results.NoContent();

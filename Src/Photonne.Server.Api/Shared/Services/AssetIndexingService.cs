@@ -222,7 +222,8 @@ public class AssetIndexingService
 
     private static AssetType DetermineAssetType(string extension) => extension switch
     {
-        "jpg" or "jpeg" or "png" or "gif" or "bmp" or "webp" or "tiff" or "tif" or "heic" or "heif" or "raw" or "cr2" or "nef" or "arw" => AssetType.Image,
+        "jpg" or "jpeg" or "png" or "gif" or "bmp" or "webp" or "tiff" or "tif" or "heic" or "heif"
+            or "raw" or "cr2" or "cr3" or "nef" or "arw" or "dng" or "orf" or "rw2" or "pef" or "raf" or "srw" => AssetType.Image,
         "mp4" or "mov" or "avi" or "mkv" or "wmv" or "flv" or "webm" or "m4v" or "3gp" => AssetType.Video,
         _ => AssetType.Image
     };

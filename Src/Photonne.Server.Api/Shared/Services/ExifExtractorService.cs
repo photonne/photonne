@@ -291,7 +291,8 @@ public class ExifExtractorService
     private static bool IsImageFile(string extension)
     {
         var exts = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif",
-                           ".gif", ".webp", ".heic", ".heif" };
+                           ".gif", ".webp", ".heic", ".heif",
+                           ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
         return exts.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 }

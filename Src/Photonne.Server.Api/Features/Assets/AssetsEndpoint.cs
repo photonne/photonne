@@ -324,10 +324,14 @@ public class AssetsEndpoint : IEndpoint
     {
         foreach (var asset in assets)
         {
-            var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-            if (File.Exists(physicalPath))
+            // No borrar archivos físicos de bibliotecas externas — no son propiedad de Photonne
+            if (!asset.ExternalLibraryId.HasValue)
             {
-                File.Delete(physicalPath);
+                var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
+                if (File.Exists(physicalPath))
+                {
+                    File.Delete(physicalPath);
+                }
             }
 
             foreach (var thumbnail in asset.Thumbnails)

@@ -104,8 +104,9 @@ public class ThumbnailGeneratorService
 
             if (IsImageFile(extension))
             {
-                if (extension == ".heic" || extension == ".heif")
+                if (IsRawOrHeicFile(extension))
                 {
+                    // RAW and HEIC/HEIF formats require ImageMagick (not supported by ImageSharp)
                     await GenerateHeicThumbnailsAsync(sourceFilePath, assetId, thumbnails, options, cancellationToken);
                 }
                 else
@@ -583,8 +584,16 @@ public class ThumbnailGeneratorService
     
     private bool IsImageFile(string extension)
     {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
+        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif",
+                                      ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
         return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsRawOrHeicFile(string extension)
+    {
+        var rawExtensions = new[] { ".heic", ".heif",
+                                    ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".pef", ".raf", ".srw" };
+        return rawExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
     
     private bool IsVideoFile(string extension)

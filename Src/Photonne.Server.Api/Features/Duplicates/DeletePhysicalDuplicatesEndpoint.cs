@@ -24,8 +24,17 @@ public class DeletePhysicalDuplicatesEndpoint : IEndpoint
                     var name = Path.GetFileName(file.PhysicalPath);
                     try
                     {
+                        // Check if asset belongs to an external library — never delete external files
+                        bool isExternal = false;
+                        if (file.AssetId.HasValue)
+                        {
+                            isExternal = await dbContext.Assets
+                                .AnyAsync(a => a.Id == file.AssetId.Value && a.ExternalLibraryId != null, cancellationToken);
+                        }
+
                         // 1. Delete physical file FIRST — if this fails the DB record is left intact
-                        if (File.Exists(file.PhysicalPath))
+                        // Skip physical deletion for external library assets
+                        if (!isExternal && File.Exists(file.PhysicalPath))
                         {
                             try
                             {
