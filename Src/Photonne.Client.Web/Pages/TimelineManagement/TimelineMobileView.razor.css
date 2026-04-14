@@ -89,7 +89,7 @@
     font-size: 0.78rem !important;
 }
 
-/* Forzar compact en movil independientemente de la densidad seleccionada */
+/* Altura base (nivel M). Los demás niveles la sobreescriben vía .zoom-* */
 .masonry-item {
     height: 120px !important;
     flex-shrink: 0;
@@ -97,6 +97,84 @@
     page-break-inside: avoid;
     content-visibility: auto;
     contain-intrinsic-block-size: 120px;
+}
+
+/* -- Zoom: Small (Día compacto) -- */
+.zoom-s .masonry-item {
+    height: 85px !important;
+    contain-intrinsic-block-size: 85px;
+}
+
+/* -- Zoom: Large (Día grande) -- */
+.zoom-l .masonry-item {
+    height: 180px !important;
+    contain-intrinsic-block-size: 180px;
+}
+
+/* -- Zoom: Month y Year — grid uniforme cuadrado -- */
+.zoom-month .timeline-flat-grid,
+.zoom-year  .timeline-flat-grid {
+    display: grid;
+    gap: 2px;
+    align-content: flex-start;
+}
+
+/* Mes: ~6 columnas en móvil estándar (≈375–400px útil). */
+.zoom-month .timeline-flat-grid {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+/* Año: ~10 columnas en móvil. */
+.zoom-year .timeline-flat-grid {
+    grid-template-columns: repeat(10, 1fr);
+}
+
+.zoom-month .masonry-item,
+.zoom-year  .masonry-item {
+    height: auto !important;
+    width: auto !important;
+    aspect-ratio: 1 / 1;
+    contain-intrinsic-block-size: auto;
+}
+
+.zoom-month .day-header-row,
+.zoom-year  .day-header-row {
+    grid-column: 1 / -1;
+}
+
+/* Píldora visible que indica el nivel de zoom activo y permite ciclarlo con tap.
+   Complementa al gesto pinch-to-zoom en móviles. */
+/* Aseguramos containing block para el pill con position:relative en el wrapper. */
+.timeline-content-wrapper {
+    position: relative;
+}
+
+.zoom-level-pill {
+    position: absolute;
+    top: 8px;
+    /* 40px del scrubber + 8px de aire */
+    right: 48px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 8px;
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    cursor: pointer;
+    color: var(--mud-palette-text-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+:global(.mud-dark) .zoom-level-pill {
+    background: rgba(30, 30, 30, 0.85);
+    border-color: rgba(255,255,255,0.12);
 }
 
 /* -- Inline asset card -- */

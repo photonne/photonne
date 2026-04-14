@@ -510,6 +510,12 @@ window.masonryHelpers = {
         }
     },
 
+    // Cap aspect ratios so extreme portraits (e.g. 9:16 videos) o landscapes (panorámicas)
+    // no acaparan la fila. Con MAX_AR=2.0 y MIN_AR=0.75, cualquier asset encaja en un
+    // bounding box que permite meter más items por fila. El overflow se recorta vía object-fit.
+    MAX_AR: 2.0,
+    MIN_AR: 0.75,
+
     justifyDayItems: function (items, containerWidth, itemHeight) {
         if (items.length === 0) return;
 
@@ -517,11 +523,16 @@ window.masonryHelpers = {
         // itemHeight viene pre-leído por justifyAllGroups para evitar reflows intercalados
         if (itemHeight === undefined) itemHeight = items[0].offsetHeight || parseInt(getComputedStyle(items[0]).height) || 180;
 
+        const MAX_AR = this.MAX_AR;
+        const MIN_AR = this.MIN_AR;
         const aspectRatios = items.map(item => {
             let ar = parseFloat(item.getAttribute('data-aspect-ratio')) || 1.0;
             const w = parseInt(item.getAttribute('data-width')) || 0;
             const h = parseInt(item.getAttribute('data-height')) || 0;
             if (w > 0 && h > 0) ar = w / h;
+            // Capar el ratio para el cálculo del layout (el render usa object-fit: cover).
+            if (ar > MAX_AR) ar = MAX_AR;
+            if (ar < MIN_AR) ar = MIN_AR;
             return ar;
         });
 
@@ -545,19 +556,36 @@ window.masonryHelpers = {
             }
 
             if (line.length > 0) {
-                this.justifyLine(line, lineRatios, containerWidth, itemHeight, gap);
+                // Última fila huérfana (items restantes insuficientes para llenarla): no estirar.
+                const isLastRow = i >= items.length;
+                this.justifyLine(line, lineRatios, containerWidth, itemHeight, gap, isLastRow);
             }
         }
     },
 
-    justifyLine: function (items, aspectRatios, containerWidth, itemHeight, gap) {
+    justifyLine: function (items, aspectRatios, containerWidth, itemHeight, gap, isLastRow) {
         if (items.length === 0) return;
 
         const availableWidth = containerWidth - (items.length - 1) * gap;
+        const MAX_AR = this.MAX_AR;
 
-        // Un único item siempre ocupa todo el ancho disponible
+        // Última fila huérfana: usar anchos naturales (capados por MAX_AR) sin estirar.
+        // Evita el efecto de "video ocupando toda la fila" cuando solo queda 1 asset al final del día.
+        if (isLastRow) {
+            const naturalWidth = aspectRatios.reduce((sum, ar) => sum + ar * itemHeight, 0)
+                               + (items.length - 1) * gap;
+            if (naturalWidth <= containerWidth) {
+                items.forEach((item, index) => {
+                    item.style.width = (itemHeight * aspectRatios[index]) + 'px';
+                });
+                return;
+            }
+        }
+
+        // Un único item: cap al máximo razonable en vez de estirar a todo el ancho.
         if (items.length === 1) {
-            items[0].style.width = availableWidth + 'px';
+            const maxWidth = Math.min(availableWidth, itemHeight * MAX_AR);
+            items[0].style.width = maxWidth + 'px';
             return;
         }
 
@@ -887,5 +915,105 @@ window.lazyImageHelpers = {
     unobserve: function (imgElement) {
         if (!imgElement || !this._observer) return;
         this._observer.unobserve(imgElement);
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pinch-to-zoom para el timeline en móvil.
+// Mapea el ratio de escala del pinch a un cambio discreto de nivel de zoom en
+// Blazor (invoca CycleZoomLevel). Usa touch events con passive:false para poder
+// prevenir el pinch-zoom nativo del navegador durante el gesto.
+// Umbrales: pinch-out (separar dedos) > 1.35 → zoom-out (granularidad más gruesa);
+// pinch-in (juntar dedos) < 0.75 → zoom-in (granularidad más fina).
+// Se aplica un solo cambio por gesto (evita cascadas) y se resetea al soltar.
+// ─────────────────────────────────────────────────────────────────────────────
+window.timelinePinchZoom = {
+    _dotNetRef: null,
+    _container: null,
+    _initialDistance: 0,
+    _active: false,
+    _handled: false,
+    _touchStartHandler: null,
+    _touchMoveHandler: null,
+    _touchEndHandler: null,
+
+    OUT_THRESHOLD: 1.35,
+    IN_THRESHOLD: 0.75,
+
+    init: function (dotNetRef) {
+        this.cleanup();
+        this._dotNetRef = dotNetRef;
+        var container = document.getElementById('timeline-scroll-container');
+        if (!container) return;
+        this._container = container;
+
+        var self = this;
+        this._touchStartHandler = function (e) { self._onStart(e); };
+        this._touchMoveHandler = function (e) { self._onMove(e); };
+        this._touchEndHandler = function (e) { self._onEnd(e); };
+
+        container.addEventListener('touchstart', this._touchStartHandler, { passive: false });
+        container.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
+        container.addEventListener('touchend', this._touchEndHandler, { passive: true });
+        container.addEventListener('touchcancel', this._touchEndHandler, { passive: true });
+    },
+
+    _distance: function (t1, t2) {
+        var dx = t2.clientX - t1.clientX;
+        var dy = t2.clientY - t1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    },
+
+    _onStart: function (e) {
+        if (e.touches.length !== 2) return;
+        this._active = true;
+        this._handled = false;
+        this._initialDistance = this._distance(e.touches[0], e.touches[1]);
+    },
+
+    _onMove: function (e) {
+        if (!this._active || e.touches.length !== 2 || this._handled) return;
+        // Bloquea el pinch nativo del navegador mientras el gesto está activo.
+        if (e.cancelable) e.preventDefault();
+
+        var currentDistance = this._distance(e.touches[0], e.touches[1]);
+        if (this._initialDistance === 0) return;
+        var ratio = currentDistance / this._initialDistance;
+
+        if (ratio >= this.OUT_THRESHOLD) {
+            this._handled = true;
+            // Zoom out = menos detalle: avanza +1 nivel (más grueso).
+            if (this._dotNetRef) this._dotNetRef.invokeMethodAsync('CycleZoomLevel', 1);
+        } else if (ratio <= this.IN_THRESHOLD) {
+            this._handled = true;
+            // Zoom in = más detalle: retrocede -1 nivel.
+            if (this._dotNetRef) this._dotNetRef.invokeMethodAsync('CycleZoomLevel', -1);
+        }
+    },
+
+    _onEnd: function (e) {
+        if (e.touches.length < 2) {
+            this._active = false;
+            this._handled = false;
+            this._initialDistance = 0;
+        }
+    },
+
+    cleanup: function () {
+        if (this._container) {
+            if (this._touchStartHandler)
+                this._container.removeEventListener('touchstart', this._touchStartHandler);
+            if (this._touchMoveHandler)
+                this._container.removeEventListener('touchmove', this._touchMoveHandler);
+            if (this._touchEndHandler) {
+                this._container.removeEventListener('touchend', this._touchEndHandler);
+                this._container.removeEventListener('touchcancel', this._touchEndHandler);
+            }
+        }
+        this._container = null;
+        this._dotNetRef = null;
+        this._initialDistance = 0;
+        this._active = false;
+        this._handled = false;
     }
 };

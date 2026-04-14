@@ -10,8 +10,14 @@
                 </button>
             </div>
 
+            @* Píldora de nivel de zoom: visible como indicador y atajo. En mobile el pinch también cambia nivel. *@
+            <button class="zoom-level-pill" @onclick="CycleZoomForward">
+                <MudIcon Icon="@GetZoomIcon()" Size="Size.Small" />
+                <span>@GetZoomLabel()</span>
+            </button>
+
             <div class="timeline-container" id="timeline-scroll-container">
-                <div class="timeline-content">
+                <div class="timeline-content @GetZoomClass()">
                     <MemoriesWidget OnThumbClick="OnMemoryThumbClick" Test="false" />
 
                     @if (VisibleGroupedGridItems.Any())
@@ -23,9 +29,8 @@
                         <div class="timeline-flat-grid">
                         @foreach (var group in VisibleGroupedGridItems)
                         {
-                            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
                             <div class="day-header-row" id="@GetGroupId(group.Key)">
-                                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
+                                <MudText Typo="Typo.body2" Class="day-header">@FormatGroupHeader(group.Key)</MudText>
                             </div>
                             @foreach (var item in group.Value)
                             {
@@ -104,7 +109,7 @@
                             var scrubYear = yearGroup.Key.ToString();
                             var yearPos = indexTotal > 0 ? (double)indexCumulative / indexTotal * 100 : 0;
                             var yearPosStr = yearPos.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                            var loadedGroupId = GroupedGridItems.Keys.FirstOrDefault(k => k.StartsWith(scrubYear + "-")) ?? "";
+                            var loadedGroupId = GroupedGridItems.Keys.FirstOrDefault(k => k.StartsWith(scrubYear)) ?? "";
                             <div class="scrubber-year-marker @(IsActiveYear(scrubYear) ? "active" : "")"
                                  data-group-id="@(string.IsNullOrEmpty(loadedGroupId) ? "" : GetGroupId(loadedGroupId))"
                                  style="top: @($"{yearPosStr}%")">
@@ -177,7 +182,7 @@
 
 @code {
     [Parameter] public bool Loading { get; set; }
-    [Parameter] public string Density { get; set; } = "M";
+    [Parameter] public string ZoomLevel { get; set; } = "M";
     [Parameter] public string ActiveFilter { get; set; } = "All";
     [Parameter] public bool SelectionMode { get; set; }
     [Parameter] public bool FilterSheetOpen { get; set; }
@@ -189,6 +194,7 @@
     [Parameter] public HashSet<Guid> SelectedAssetIds { get; set; } = new();
     [Parameter] public string ActiveGroup { get; set; } = "";
 
+    [Parameter] public EventCallback<string> OnSetZoomLevel { get; set; }
     [Parameter] public EventCallback<string> OnSetFilter { get; set; }
     [Parameter] public EventCallback OnOpenFilterSheet { get; set; }
     [Parameter] public EventCallback OnCloseFilterSheet { get; set; }
@@ -198,6 +204,44 @@
     [Parameter] public EventCallback<TouchEventArgs> OnCardTouchEnd { get; set; }
     [Parameter] public EventCallback<(Guid, bool)> OnToggleAssetSelection { get; set; }
     [Parameter] public EventCallback<MemoryClickArgs> OnMemoryThumbClick { get; set; }
+
+    private static readonly string[] ZoomOrder = new[] { "L", "M", "S", "Month", "Year" };
+
+    private async Task CycleZoomForward()
+    {
+        // Tap → siguiente nivel (L → M → S → Mes → Año → L ...). Orden "zoom-out" progresivo.
+        var idx = Array.IndexOf(ZoomOrder, ZoomLevel);
+        if (idx < 0) idx = 1;
+        var next = (idx + 1) % ZoomOrder.Length;
+        await OnSetZoomLevel.InvokeAsync(ZoomOrder[next]);
+    }
+
+    private string GetZoomIcon() => ZoomLevel switch
+    {
+        "S"     => Icons.Material.Outlined.GridOn,
+        "L"     => Icons.Material.Outlined.PhotoSizeSelectLarge,
+        "Month" => Icons.Material.Outlined.CalendarViewMonth,
+        "Year"  => Icons.Material.Outlined.CalendarViewWeek,
+        _       => Icons.Material.Outlined.GridView
+    };
+
+    private string GetZoomLabel() => ZoomLevel switch
+    {
+        "S"     => "Compacto",
+        "L"     => "Grande",
+        "Month" => "Mes",
+        "Year"  => "Año",
+        _       => "Medio"
+    };
+
+    private string GetZoomClass() => ZoomLevel switch
+    {
+        "S"     => "zoom-s",
+        "L"     => "zoom-l",
+        "Month" => "zoom-month",
+        "Year"  => "zoom-year",
+        _       => "zoom-m"
+    };
 
     private string GetFilterLabel() => ActiveFilter switch
     {
@@ -210,19 +254,32 @@
     private string GetGroupId(string groupName) =>
         "group-" + groupName.Replace(" ", "-").ToLower();
 
-    private string FormatDayHeader(DateTime date)
+    private string FormatGroupHeader(string groupKey)
     {
-        var today = DateTime.Today;
-        var yesterday = today.AddDays(-1);
+        var es = new System.Globalization.CultureInfo("es-ES");
 
-        if (date.Date == today)
-            return "Hoy";
-        else if (date.Date == yesterday)
-            return "Ayer";
-        else if (date.Year == today.Year)
-            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
-        else
-            return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+        if (DateTime.TryParseExact(groupKey, "yyyy", null,
+                System.Globalization.DateTimeStyles.None, out var y))
+            return y.Year.ToString();
+
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM", null,
+                System.Globalization.DateTimeStyles.None, out var m))
+        {
+            var label = m.ToString("MMMM yyyy", es);
+            return char.ToUpper(label[0]) + label.Substring(1);
+        }
+
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null,
+                System.Globalization.DateTimeStyles.None, out var d))
+        {
+            var today = DateTime.Today;
+            if (d.Date == today) return "Hoy";
+            if (d.Date == today.AddDays(-1)) return "Ayer";
+            return d.Year == today.Year
+                ? d.ToString("dddd, d 'de' MMMM", es)
+                : d.ToString("dddd, d 'de' MMMM 'de' yyyy", es);
+        }
+        return groupKey;
     }
 
     private bool IsActiveYear(string year)
@@ -231,12 +288,8 @@
         return GetYearFromGroup(ActiveGroup) == year;
     }
 
-    private string GetYearFromGroup(string groupKey)
-    {
-        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
-            return date.Year.ToString();
-        return "";
-    }
+    private string GetYearFromGroup(string groupKey) =>
+        groupKey != null && groupKey.Length >= 4 ? groupKey.Substring(0, 4) : "";
 
     private double GetGroupPosition(string groupName)
     {

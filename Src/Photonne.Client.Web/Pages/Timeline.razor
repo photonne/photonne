@@ -22,7 +22,7 @@
 @if (DeviceLayout.IsMobile)
 {
     <TimelineMobileView Loading="_loading"
-                        Density="@_density"
+                        ZoomLevel="@_zoomLevel"
                         ActiveFilter="@_activeFilter"
                         SelectionMode="_selectionMode"
                         FilterSheetOpen="_filterSheetOpen"
@@ -33,6 +33,7 @@
                         TimelineIndex="_timelineIndex"
                         SelectedAssetIds="_selectedAssetIds"
                         ActiveGroup="@_activeGroup"
+                        OnSetZoomLevel="SetZoomLevel"
                         OnSetFilter="SetFilter"
                         OnOpenFilterSheet="OpenFilterSheet"
                         OnCloseFilterSheet="CloseFilterSheet"
@@ -46,7 +47,7 @@
 else
 {
     <TimelineDesktopView Loading="_loading"
-                         Density="@_density"
+                         ZoomLevel="@_zoomLevel"
                          ActiveFilter="@_activeFilter"
                          SelectionMode="_selectionMode"
                          TopSpacerHeight="_topSpacerHeight"
@@ -56,7 +57,7 @@ else
                          TimelineIndex="_timelineIndex"
                          SelectedAssetIds="_selectedAssetIds"
                          ActiveGroup="@_activeGroup"
-                         OnSetDensity="SetDensity"
+                         OnSetZoomLevel="SetZoomLevel"
                          OnSetFilter="SetFilter"
                          OnGridItemClick="OnGridItemClick"
                          OnGridItemTouchStart="OnGridItemTouchStartFromView"
@@ -186,7 +187,11 @@ else
     private string? _newAlbumDescription = "";
     private bool _deleteDialogVisible = false;
     private string _activeFilter = "All"; // All, Photos, Videos, Favorites
-    private string _density = "M"; // S, M, L
+    // Nivel de zoom unificado: "S"/"M"/"L" (Día con masonry) + "Month" + "Year" (grids uniformes).
+    // Reemplaza al antiguo _density; Month y Year cambian además la granularidad de agrupación.
+    private string _zoomLevel = "M";
+    private static readonly string[] _zoomLevels = new[] { "S", "M", "L", "Month", "Year" };
+    private bool IsMasonryLevel => _zoomLevel is "S" or "M" or "L";
     private bool _filterSheetOpen = false;
 
     private IEnumerable<TimelineGridItem> AllGridItems =>
@@ -211,14 +216,39 @@ else
     private void OpenFilterSheet() => _filterSheetOpen = true;
     private void CloseFilterSheet() => _filterSheetOpen = false;
 
-    private async Task SetDensity(string density)
+    private async Task SetZoomLevel(string level)
     {
-        if (_density == density) return;
-        _density = density;
+        if (!_zoomLevels.Contains(level) || _zoomLevel == level) return;
+        var previousLevel = _zoomLevel;
+        _zoomLevel = level;
         _masonryInitialized = false;
+        // Si cambia la granularidad de agrupación (Día<->Mes<->Año) hay que reagrupar los items.
+        var granularityChanged = GranularityOf(previousLevel) != GranularityOf(level);
+        if (granularityChanged)
+        {
+            RebuildGroupedGridItems();
+        }
         StateHasChanged();
-        await JS.InvokeVoidAsync("localStorage.setItem", "timelineDensity", density);
+        await JS.InvokeVoidAsync("localStorage.setItem", "timelineZoomLevel", level);
     }
+
+    [JSInvokable]
+    public async Task CycleZoomLevel(int direction)
+    {
+        // direction = +1 (zoom out: Día-S → Día-M → ... → Año), -1 (zoom in).
+        var idx = Array.IndexOf(_zoomLevels, _zoomLevel);
+        if (idx < 0) idx = 1; // fallback a "M"
+        var next = Math.Clamp(idx + direction, 0, _zoomLevels.Length - 1);
+        if (next == idx) return;
+        await SetZoomLevel(_zoomLevels[next]);
+    }
+
+    private static string GranularityOf(string level) => level switch
+    {
+        "Year" => "Year",
+        "Month" => "Month",
+        _ => "Day"
+    };
 
     private async Task SetFilter(string filter)
     {
@@ -234,8 +264,17 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var savedDensity = await JS.InvokeAsync<string?>("localStorage.getItem", "timelineDensity");
-        if (savedDensity is "S" or "M" or "L") _density = savedDensity;
+        var savedZoom = await JS.InvokeAsync<string?>("localStorage.getItem", "timelineZoomLevel");
+        if (!string.IsNullOrEmpty(savedZoom) && _zoomLevels.Contains(savedZoom))
+        {
+            _zoomLevel = savedZoom;
+        }
+        else
+        {
+            // Migración suave desde el antiguo timelineDensity → zoom level.
+            var legacy = await JS.InvokeAsync<string?>("localStorage.getItem", "timelineDensity");
+            if (legacy is "S" or "M" or "L") _zoomLevel = legacy;
+        }
         await InitializeTimelineAsync();
     }
 
@@ -401,6 +440,8 @@ else
             // Initialise the scroll-aware image loader and register all images
             await JS.InvokeVoidAsync("imageLoadManager.init");
             await JS.InvokeVoidAsync("timelineVirtualScroll.init", _objRef);
+            // Gesto pinch-to-zoom (solo mobile): mapea pellizcos a cambios de nivel discretos.
+            await JS.InvokeVoidAsync("timelinePinchZoom.init", _objRef);
 
             if (_isDisposed) return;
             var dateParam = GetDateFromQuery();
@@ -417,11 +458,12 @@ else
 
         if (_isDisposed) return;
 
-        // Single masonry pass: run once after grid renders, re-run on density/filter change
+        // Masonry solo para vistas Día (S/M/L). En Mes/Año el layout es CSS Grid uniforme.
         if (!_masonryInitialized && _groupedGridItems.Any())
         {
             _masonryInitialized = true;
-            await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
+            if (IsMasonryLevel)
+                await JS.InvokeVoidAsync("masonryHelpers.initializeMasonry");
             if (!_isDisposed)
                 await JS.InvokeVoidAsync("imageLoadManager.observeAll");
         }
@@ -472,9 +514,25 @@ else
 
     private string GetGroupLabel(string groupKey)
     {
-        var date = GetDayDateFromGroup(groupKey);
+        // Soporta keys "yyyy-MM-dd" (Día), "yyyy-MM" (Mes) y "yyyy" (Año).
+        var date = ParseAnyGroupKey(groupKey);
         if (date == DateTime.MinValue) return "";
+        // Scrubber siempre muestra "mes año" para consistencia de navegación.
         return date.ToString("MMM yyyy", new System.Globalization.CultureInfo("es-ES"));
+    }
+
+    // Parser tolerante a las tres granularidades de key. Para "Mes" y "Año"
+    // devuelve día 1 / mes 1 respectivamente.
+    private static DateTime ParseAnyGroupKey(string groupKey)
+    {
+        if (string.IsNullOrEmpty(groupKey)) return DateTime.MinValue;
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null,
+                System.Globalization.DateTimeStyles.None, out var d)) return d;
+        if (DateTime.TryParseExact(groupKey, "yyyy-MM", null,
+                System.Globalization.DateTimeStyles.None, out var m)) return m;
+        if (DateTime.TryParseExact(groupKey, "yyyy", null,
+                System.Globalization.DateTimeStyles.None, out var y)) return y;
+        return DateTime.MinValue;
     }
 
     private string GetThumbLabel()
@@ -488,11 +546,14 @@ else
         {
             if (!_groupedGridItems.Any()) return;
 
-            var targetGroup = _groupedGridItems.Keys.FirstOrDefault(g =>
+            // Match por la granularidad activa (Día: "yyyy-MM-dd", Mes: "yyyy-MM", Año: "yyyy").
+            var targetKey = GranularityOf(_zoomLevel) switch
             {
-                var groupDate = GetDayDateFromGroup(g);
-                return groupDate.Date == targetDate.Date;
-            });
+                "Year"  => targetDate.ToString("yyyy"),
+                "Month" => targetDate.ToString("yyyy-MM"),
+                _       => targetDate.ToString("yyyy-MM-dd")
+            };
+            var targetGroup = _groupedGridItems.Keys.FirstOrDefault(g => g == targetKey);
 
             if (!string.IsNullOrEmpty(targetGroup))
             {
@@ -574,10 +635,24 @@ else
 
     private void RebuildGroupedGridItems()
     {
-        _groupedGridItems = FilteredGridItems
-            .GroupBy(a => a.Date)
-            .OrderByDescending(g => g.Key)
-            .ToDictionary(g => g.Key, g => g.ToList());
+        var granularity = GranularityOf(_zoomLevel);
+        _groupedGridItems = granularity switch
+        {
+            "Year" => FilteredGridItems
+                .GroupBy(a => ExtractYearKey(a.Date))
+                .Where(g => g.Key.Length > 0)
+                .OrderByDescending(g => g.Key)
+                .ToDictionary(g => g.Key, g => g.ToList()),
+            "Month" => FilteredGridItems
+                .GroupBy(a => ExtractMonthKey(a.Date))
+                .Where(g => g.Key.Length > 0)
+                .OrderByDescending(g => g.Key)
+                .ToDictionary(g => g.Key, g => g.ToList()),
+            _ => FilteredGridItems
+                .GroupBy(a => a.Date)
+                .OrderByDescending(g => g.Key)
+                .ToDictionary(g => g.Key, g => g.ToList()),
+        };
         if (_groupedGridItems.Any())
             _activeGroup = _groupedGridItems.Keys.First();
         _windowStart = 0;
@@ -585,6 +660,14 @@ else
         RebuildVisibleItems();
         _groupMapNeedsUpdate = true;
     }
+
+    // "2024-03-15" → "2024"; input puede ser cualquier variante ISO.
+    private static string ExtractYearKey(string date) =>
+        date != null && date.Length >= 4 ? date.Substring(0, 4) : "";
+
+    // "2024-03-15" → "2024-03".
+    private static string ExtractMonthKey(string date) =>
+        date != null && date.Length >= 7 ? date.Substring(0, 7) : "";
 
     private int _topSpacerHeight = 0;
     private int _bottomSpacerHeight = 0;
@@ -670,21 +753,6 @@ else
         _loadingMore = false;
     }
     
-    private string FormatDayHeader(DateTime date)
-    {
-        var today = DateTime.Today;
-        var yesterday = today.AddDays(-1);
-        
-        if (date.Date == today)
-            return "Hoy";
-        else if (date.Date == yesterday)
-            return "Ayer";
-        else if (date.Year == today.Year)
-            return date.ToString("dddd, d 'de' MMMM", new System.Globalization.CultureInfo("es-ES"));
-        else
-            return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
-    }
-
     private void OpenAsset(Guid assetId)
     {
         Navigation.NavigateTo($"/asset/{assetId}");
@@ -1169,15 +1237,6 @@ else
         return "group-" + groupName.Replace(" ", "-").ToLower();
     }
     
-    private DateTime GetDayDateFromGroup(string groupKey)
-    {
-        if (DateTime.TryParseExact(groupKey, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
-        {
-            return date;
-        }
-        return DateTime.MinValue;
-    }
-
     private async Task ScrollToGroup(string groupName)
     {
         // Ensure items up to this group are rendered before scrolling
@@ -1219,8 +1278,8 @@ else
 
     private string GetYearFromGroup(string groupKey)
     {
-        // "2024-01-15" -> "2024"
-        var date = GetDayDateFromGroup(groupKey);
+        // Acepta "2024-01-15", "2024-01" y "2024".
+        var date = ParseAnyGroupKey(groupKey);
         return date != DateTime.MinValue ? date.Year.ToString() : "";
     }
 
@@ -1234,6 +1293,7 @@ else
         JS.InvokeVoidAsync("scrubberHelpers.cleanup");
         JS.InvokeVoidAsync("timelineVirtualScroll.cleanup");
         JS.InvokeVoidAsync("imageLoadManager.cleanup");
+        JS.InvokeVoidAsync("timelinePinchZoom.cleanup");
         LayoutService.ResetNavbar();
     }
 }

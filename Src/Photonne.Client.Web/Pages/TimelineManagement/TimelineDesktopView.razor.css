@@ -33,10 +33,18 @@
     margin-bottom: 4px;
 }
 
-.filter-density-controls {
+.filter-zoom-controls {
     display: flex;
     align-items: center;
     gap: 2px;
+    flex-shrink: 0;
+}
+
+.filter-zoom-separator {
+    width: 1px;
+    height: 18px;
+    background: var(--mud-palette-divider);
+    margin: 0 4px;
     flex-shrink: 0;
 }
 
@@ -137,19 +145,56 @@
     }
 }
 
-/* -- Density: Small -- */
-.density-s .masonry-item { height: 100px !important; contain-intrinsic-block-size: 100px !important; }
-@media (min-width: 600px)  { .density-s .masonry-item { height: 110px !important; contain-intrinsic-block-size: 110px !important; } }
-@media (min-width: 960px)  { .density-s .masonry-item { height: 120px !important; contain-intrinsic-block-size: 120px !important; } }
-@media (min-width: 1280px) { .density-s .masonry-item { height: 130px !important; contain-intrinsic-block-size: 130px !important; } }
-@media (min-width: 1920px) { .density-s .masonry-item { height: 140px !important; contain-intrinsic-block-size: 140px !important; } }
+/* -- Zoom: Small (Día) -- */
+.zoom-s .masonry-item { height: 100px !important; contain-intrinsic-block-size: 100px !important; }
+@media (min-width: 600px)  { .zoom-s .masonry-item { height: 110px !important; contain-intrinsic-block-size: 110px !important; } }
+@media (min-width: 960px)  { .zoom-s .masonry-item { height: 120px !important; contain-intrinsic-block-size: 120px !important; } }
+@media (min-width: 1280px) { .zoom-s .masonry-item { height: 130px !important; contain-intrinsic-block-size: 130px !important; } }
+@media (min-width: 1920px) { .zoom-s .masonry-item { height: 140px !important; contain-intrinsic-block-size: 140px !important; } }
 
-/* -- Density: Large -- */
-.density-l .masonry-item { height: 260px !important; contain-intrinsic-block-size: 260px !important; }
-@media (min-width: 600px)  { .density-l .masonry-item { height: 300px !important; contain-intrinsic-block-size: 300px !important; } }
-@media (min-width: 960px)  { .density-l .masonry-item { height: 340px !important; contain-intrinsic-block-size: 340px !important; } }
-@media (min-width: 1280px) { .density-l .masonry-item { height: 380px !important; contain-intrinsic-block-size: 380px !important; } }
-@media (min-width: 1920px) { .density-l .masonry-item { height: 420px !important; contain-intrinsic-block-size: 420px !important; } }
+/* -- Zoom: Large (Día) -- */
+.zoom-l .masonry-item { height: 260px !important; contain-intrinsic-block-size: 260px !important; }
+@media (min-width: 600px)  { .zoom-l .masonry-item { height: 300px !important; contain-intrinsic-block-size: 300px !important; } }
+@media (min-width: 960px)  { .zoom-l .masonry-item { height: 340px !important; contain-intrinsic-block-size: 340px !important; } }
+@media (min-width: 1280px) { .zoom-l .masonry-item { height: 380px !important; contain-intrinsic-block-size: 380px !important; } }
+@media (min-width: 1920px) { .zoom-l .masonry-item { height: 420px !important; contain-intrinsic-block-size: 420px !important; } }
+
+/* -- Zoom: Month y Year — grid uniforme cuadrado (object-fit: cover) -- */
+/* El masonry JS no corre para estas vistas; el layout es puro CSS Grid. */
+.zoom-month .timeline-flat-grid,
+.zoom-year  .timeline-flat-grid {
+    display: grid;
+    gap: 2px;
+    align-content: flex-start;
+}
+
+.zoom-month .timeline-flat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+}
+@media (min-width: 960px)  { .zoom-month .timeline-flat-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
+@media (min-width: 1280px) { .zoom-month .timeline-flat-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } }
+
+.zoom-year .timeline-flat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+}
+@media (min-width: 960px)  { .zoom-year .timeline-flat-grid { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); } }
+@media (min-width: 1280px) { .zoom-year .timeline-flat-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); } }
+
+/* En modos Mes/Año los items son cuadrados uniformes; reseteamos width inline que pudiera
+   haber dejado el masonry JS y fijamos aspect-ratio para que CSS Grid los dimensione. */
+.zoom-month .masonry-item,
+.zoom-year  .masonry-item {
+    height: auto !important;
+    width: auto !important;
+    aspect-ratio: 1 / 1;
+    contain-intrinsic-block-size: auto;
+}
+
+/* La cabecera de sección debe seguir ocupando toda la fila del grid. */
+.zoom-month .day-header-row,
+.zoom-year  .day-header-row {
+    grid-column: 1 / -1;
+}
 
 /* -- Inline asset card -- */
 .asset-card-container {
