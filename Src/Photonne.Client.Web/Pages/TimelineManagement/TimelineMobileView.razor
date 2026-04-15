@@ -34,7 +34,8 @@
                             </div>
                             @foreach (var item in group.Value)
                             {
-                                <div class="masonry-item"
+                                <div @key="item.Id"
+                                     class="masonry-item"
                                      data-day="@group.Key"
                                      data-aspect-ratio="@item.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
                                      data-width="@item.Width"

@@ -38,6 +38,9 @@
     overflow-x: hidden;
     scrollbar-gutter: auto;
     overflow-anchor: auto;
+    /* Inhibe el pinch-zoom nativo del navegador. Así el gesto lo capta nuestro
+       listener timelinePinchZoom (passive:true) y no degrada el scroll. */
+    touch-action: pan-y;
 }
 
 /* Hide native scrollbar — custom scrubber replaces it */

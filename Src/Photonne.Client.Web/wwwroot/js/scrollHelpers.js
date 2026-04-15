@@ -470,18 +470,29 @@ window.videoHelpers = {
 };
 
 window.masonryHelpers = {
-    initializeMasonry: function () {
-        this.justifyAllGroups();
+    _rafHandle: 0,
+    _resizeHandlerInstalled: false,
 
-        if (!window._masonryResizeHandler) {
-            let resizeTimer = null;
-            window._masonryResizeHandler = () => {
+    initializeMasonry: function () {
+        // Coalesce rapid calls (cambios S↔M↔L consecutivos, load-more, resize)
+        // en un único tick de rAF. Así el trabajo de layout no se encadena
+        // bloqueando el hilo principal en cada click del usuario.
+        var self = this;
+        if (this._rafHandle) cancelAnimationFrame(this._rafHandle);
+        this._rafHandle = requestAnimationFrame(function () {
+            self._rafHandle = 0;
+            self.justifyAllGroups();
+        });
+
+        if (!this._resizeHandlerInstalled) {
+            this._resizeHandlerInstalled = true;
+            var resizeTimer = null;
+            window.addEventListener('resize', function () {
                 clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(() => {
+                resizeTimer = setTimeout(function () {
                     window.masonryHelpers.justifyAllGroups();
                 }, 100);
-            };
-            window.addEventListener('resize', window._masonryResizeHandler, { passive: true });
+            }, { passive: true });
         }
     },
 
@@ -921,8 +932,9 @@ window.lazyImageHelpers = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Pinch-to-zoom para el timeline en móvil.
 // Mapea el ratio de escala del pinch a un cambio discreto de nivel de zoom en
-// Blazor (invoca CycleZoomLevel). Usa touch events con passive:false para poder
-// prevenir el pinch-zoom nativo del navegador durante el gesto.
+// Blazor (invoca CycleZoomLevel). TODOS los listeners son passive:true para no
+// desactivar la optimización nativa de scroll en móvil. El pinch-zoom del
+// navegador se inhibe vía CSS `touch-action: pan-y` en .timeline-container.
 // Umbrales: pinch-out (separar dedos) > 1.35 → zoom-out (granularidad más gruesa);
 // pinch-in (juntar dedos) < 0.75 → zoom-in (granularidad más fina).
 // Se aplica un solo cambio por gesto (evita cascadas) y se resetea al soltar.
@@ -952,8 +964,10 @@ window.timelinePinchZoom = {
         this._touchMoveHandler = function (e) { self._onMove(e); };
         this._touchEndHandler = function (e) { self._onEnd(e); };
 
-        container.addEventListener('touchstart', this._touchStartHandler, { passive: false });
-        container.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
+        // Passive:true en todos los handlers — crítico para no degradar el scroll
+        // en mobile. El bloqueo del pinch nativo se hace vía CSS touch-action.
+        container.addEventListener('touchstart', this._touchStartHandler, { passive: true });
+        container.addEventListener('touchmove', this._touchMoveHandler, { passive: true });
         container.addEventListener('touchend', this._touchEndHandler, { passive: true });
         container.addEventListener('touchcancel', this._touchEndHandler, { passive: true });
     },
@@ -972,9 +986,8 @@ window.timelinePinchZoom = {
     },
 
     _onMove: function (e) {
+        // Early-exit en el 99% de los touchmove (scroll normal con 1 dedo).
         if (!this._active || e.touches.length !== 2 || this._handled) return;
-        // Bloquea el pinch nativo del navegador mientras el gesto está activo.
-        if (e.cancelable) e.preventDefault();
 
         var currentDistance = this._distance(e.touches[0], e.touches[1]);
         if (this._initialDistance === 0) return;

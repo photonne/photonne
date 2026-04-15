@@ -58,6 +58,8 @@
     overflow-x: hidden;
     scrollbar-gutter: stable;
     overflow-anchor: auto;
+    /* Coherencia con mobile: inhibir pinch-zoom nativo en pantallas táctiles. */
+    touch-action: pan-y;
 }
 
 /* Hide native scrollbar — custom scrubber replaces it */
