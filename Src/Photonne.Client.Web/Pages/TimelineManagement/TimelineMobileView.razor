@@ -38,7 +38,7 @@
                                          data-asset-id="@item.Id"
                                          @ontouchstart="@(e => OnGridItemTouchStart.InvokeAsync((e, item)))"
                                          @ontouchmove="@(e => OnCardTouchMove.InvokeAsync(e))"
-                                         @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))">
+                                         @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                                         <div class="asset-card-container" @onclick="@(() => OnGridItemClick.InvokeAsync(item))">
                                             <div class="asset-placeholder"
                                                  style="@(!string.IsNullOrEmpty(item.DominantColor) ? $"background-color:{item.DominantColor};" : "")">

@@ -746,7 +746,7 @@ else
              @onclick="@(() => OnFolderCardClick(folderData))"
              @ontouchstart="@(e => OnFolderItemTouchStart(e, folderData))"
              @ontouchmove="OnCardTouchMove"
-             @ontouchend="OnCardTouchEnd">
+             @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
 
             <div class="folder-thumbnail-wrapper">
                 <div class="folder-select-checkbox" @onclick:stopPropagation="true">
@@ -800,7 +800,7 @@ else
              @onclick="@(() => OnFolderCardClick(folderData))"
              @ontouchstart="@(e => OnFolderItemTouchStart(e, folderData))"
              @ontouchmove="OnCardTouchMove"
-             @ontouchend="OnCardTouchEnd">
+             @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
 
             <div class="folder-list-thumb">
                 <div class="folder-select-checkbox" @onclick:stopPropagation="true">

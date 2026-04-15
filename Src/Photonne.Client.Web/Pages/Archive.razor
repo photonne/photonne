@@ -42,7 +42,7 @@
                                  data-asset-id="@asset.Id"
                                  @ontouchstart="@(e => OnCardTouchStart(e, asset))"
                                  @ontouchmove="OnCardTouchMove"
-                                 @ontouchend="OnCardTouchEnd">
+                                 @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                                 <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
                                 <div class="asset-select-checkbox" @onclick:stopPropagation="true">
                                     <MudCheckBox T="bool"

@@ -184,8 +184,10 @@
                              @onclick="() => OnSheetAssetClick(asset)"
                              @ontouchstart="@(e => OnSheetCellTouchStart(e, asset))"
                              @ontouchmove="OnSheetCellTouchMove"
-                             @ontouchend="OnSheetCellTouchEnd">
-                            <img src="@asset.ThumbnailUrl" alt="memory" loading="lazy" decoding="async" />
+                             @ontouchend="OnSheetCellTouchEnd"
+                             @oncontextmenu:preventDefault="true"
+                             @oncontextmenu:stopPropagation="true">
+                            <img src="@asset.ThumbnailUrl" alt="memory" loading="lazy" decoding="async" draggable="false" />
                             @if (asset.Type == "Video")
                             {
                                 <div class="memories-video-sm">

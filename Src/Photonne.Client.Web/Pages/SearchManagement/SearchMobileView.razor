@@ -82,7 +82,7 @@
                      @onclick="@(() => OnOpenAsset.InvokeAsync(asset))"
                      @ontouchstart="@(e => OnAssetTouchStart.InvokeAsync((e, asset)))"
                      @ontouchmove="OnCardTouchMove"
-                     @ontouchend="OnCardTouchEnd">
+                     @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                     @if (asset.HasThumbnails && !asset.IsFileMissing)
                     {
                         <img src="@asset.ThumbnailUrl"

@@ -78,7 +78,7 @@
                          @onclick="@(() => OnDrawerCellClick(point))"
                          @ontouchstart="@(e => OnDrawerCellTouchStart(e, point))"
                          @ontouchmove="OnDrawerCellTouchMove"
-                         @ontouchend="OnDrawerCellTouchEnd">
+                         @ontouchend="OnDrawerCellTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                         @if (!string.IsNullOrEmpty(point.ThumbnailUrl))
                         {
                             <img src="@point.ThumbnailUrl"
@@ -88,7 +88,7 @@
                         }
                         @if (_drawerSelectionMode)
                         {
-                            <div style="position:absolute; top:2px; left:2px;" @onclick:stopPropagation="true">
+                            <div class="map-select-checkbox" style="position:absolute; top:2px; left:2px;" @onclick:stopPropagation="true">
                                 <MudCheckBox T="bool"
                                              Value="@isSelected"
                                              ValueChanged="@(value => ToggleDrawerAssetSelection(point.Id, value))" />

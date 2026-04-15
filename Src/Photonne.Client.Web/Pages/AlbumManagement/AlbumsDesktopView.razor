@@ -63,7 +63,7 @@
                                  @onclick="@(() => OnAlbumCardClick.InvokeAsync(album.Id))"
                                  @ontouchstart="@(e => OnAlbumItemTouchStart.InvokeAsync((e, album)))"
                                  @ontouchmove="OnCardTouchMove"
-                                 @ontouchend="OnCardTouchEnd">
+                                 @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                                 <div class="album-select-checkbox" @onclick:stopPropagation="true">
                                     <MudCheckBox T="bool"
                                                  Value="@SelectedAlbumIds.Contains(album.Id)"
@@ -128,7 +128,7 @@
                                  @onclick="@(() => OnAlbumCardClick.InvokeAsync(album.Id))"
                                  @ontouchstart="@(e => OnAlbumItemTouchStart.InvokeAsync((e, album)))"
                                  @ontouchmove="OnCardTouchMove"
-                                 @ontouchend="OnCardTouchEnd">
+                                 @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                                 <div class="album-list-thumb">
                                     <div class="album-select-checkbox" @onclick:stopPropagation="true">
                                         <MudCheckBox T="bool"
@@ -318,7 +318,7 @@ else
                          @onclick="@(() => OnAlbumAssetClick.InvokeAsync(asset))"
                          @ontouchstart="@(e => OnAssetTouchStart.InvokeAsync((e, asset)))"
                          @ontouchmove="OnCardTouchMove"
-                         @ontouchend="OnCardTouchEnd">
+                         @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                         @if (asset.HasThumbnails && !asset.IsFileMissing)
                         {
                             <img src="@asset.ThumbnailUrl"

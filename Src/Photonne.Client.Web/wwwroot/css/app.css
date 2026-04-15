@@ -5,6 +5,46 @@ html, body {
     height: 100%;
 }
 
+/* ── Disable native long-press callout / context menu on selectable cells ── */
+.asset-select-container,
+.album-card-container,
+.album-list-item,
+.memories-sheet-cell,
+.folder-card-container,
+.folder-list-item,
+.map-drawer-cell,
+.media-thumb-cell,
+.asset-detail-content {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.asset-select-container img,
+.album-card-container img,
+.album-list-item img,
+.memories-sheet-cell img,
+.folder-card-container img,
+.folder-list-item img,
+.map-drawer-cell img,
+.media-thumb-cell img {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+}
+
+/* ── Force selection checkbox icon to white in both light/dark themes ── */
+.asset-select-checkbox .mud-icon-root,
+.asset-select-checkbox svg,
+.album-select-checkbox .mud-icon-root,
+.album-select-checkbox svg,
+.folder-select-checkbox .mud-icon-root,
+.folder-select-checkbox svg,
+.map-select-checkbox .mud-icon-root,
+.map-select-checkbox svg {
+    color: white !important;
+    fill: white !important;
+}
+
 /* ── Timeline page: disable scroll on body/MudBlazor wrappers ── */
 /* Must stay global — targets body and MudBlazor layout ancestors */
 body.timeline-page {
