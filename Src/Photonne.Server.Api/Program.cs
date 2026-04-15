@@ -1,8 +1,11 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Photonne.Server.Api;
@@ -17,6 +20,57 @@ var builder = WebApplication.CreateBuilder(args);
 // seeder/reset services activate.
 builder.Services.Configure<DemoModeOptions>(
     builder.Configuration.GetSection(DemoModeOptions.SectionName));
+
+var demoEnabled = builder.Configuration
+    .GetSection(DemoModeOptions.SectionName)
+    .GetValue<bool>(nameof(DemoModeOptions.Enabled));
+
+// Cap request body size when running a public demo so a single visitor can't fill
+// the host disk with a giant upload. In normal deployments Kestrel keeps its default.
+if (demoEnabled)
+{
+    builder.WebHost.ConfigureKestrel(o =>
+    {
+        o.Limits.MaxRequestBodySize = 25L * 1024 * 1024;
+    });
+}
+
+// Rate limiter is registered ALWAYS so endpoints can declare policies unconditionally.
+// Outside demo mode every policy is a no-op (NoLimiter) — zero runtime overhead.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("demo-login", http =>
+    {
+        if (!demoEnabled)
+            return RateLimitPartition.GetNoLimiter<string>("noop");
+
+        var key = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    options.AddPolicy("demo-upload", http =>
+    {
+        if (!demoEnabled)
+            return RateLimitPartition.GetNoLimiter<string>("noop");
+
+        var userId = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? http.Connection.RemoteIpAddress?.ToString()
+                     ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(userId, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+});
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -138,6 +192,9 @@ app.UseAuthorization();
 // Demo mode guard — after auth so blocks apply only to authenticated API calls.
 // No-op when DemoMode:Enabled = false.
 app.UseMiddleware<DemoModeGuardMiddleware>();
+
+// Rate limiter — always present but NoLimiter outside demo mode.
+app.UseRateLimiter();
 
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();

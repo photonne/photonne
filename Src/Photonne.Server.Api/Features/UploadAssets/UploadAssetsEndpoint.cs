@@ -17,7 +17,8 @@ public class UploadAssetsEndpoint : IEndpoint
             .WithName("UploadAsset")
             .WithTags("Assets")
             .WithDescription("Uploads an asset to the internal storage and indexes it")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireRateLimiting("demo-upload");
     }
 
     private async Task<IResult> Handle(
