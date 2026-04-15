@@ -42,6 +42,10 @@
     user-select: none;
     transition: color 0.15s ease;
     z-index: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .ph-section-header__back:active {

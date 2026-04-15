@@ -6,10 +6,10 @@
 @if ((IsSettingsSection || IsAdminSection) && !LayoutService.HideBottomNav)
 {
     <div class="ph-section-header">
-        <a href="/" class="ph-section-header__back">
+        <button class="ph-section-header__back" @onclick="@(() => OnBackToMore.InvokeAsync())">
             <MudIcon Icon="@Icons.Material.Outlined.ArrowBack" Class="ph-section-header__back-icon" />
             <span>Volver</span>
-        </a>
+        </button>
         <span class="ph-section-header__title">
             @(IsSettingsSection ? "Configuración" : "Administración")
         </span>
@@ -119,6 +119,7 @@
     }
 
     [Parameter] public EventCallback OnOpenMoreSheet { get; set; }
+    [Parameter] public EventCallback OnBackToMore { get; set; }
     [Parameter] public bool IsMoreSheetOpen { get; set; }
 
     private bool IsActive(string path, bool exact = false)

@@ -176,7 +176,7 @@
     </MudMainContent>
 
     @* Mobile bottom navigation + FAB *@
-    <BottomNavBar OnOpenMoreSheet="@OpenMoreSheet" IsMoreSheetOpen="@_moreSheetOpen" />
+    <BottomNavBar OnOpenMoreSheet="@OpenMoreSheet" IsMoreSheetOpen="@_moreSheetOpen" OnBackToMore="@BackToMore" />
 
     @* ── MOBILE BOTTOM SHEETS ───────────────────────────────────────────────── *@
 
@@ -384,6 +384,7 @@
     private bool _notifSheetOpen;
     private bool _notifSheetEverOpened;
     private bool _moreSheetOpen;
+    private bool _pendingMoreSheet;
     private string _appVersion = string.Empty;
 
     private string GetAppBarClass()
@@ -513,6 +514,12 @@
 
     private void OpenMoreSheet() => _moreSheetOpen = true;
 
+    private void BackToMore()
+    {
+        _pendingMoreSheet = true;
+        Navigation.NavigateTo("/");
+    }
+
     private bool IsNavActive(string path)
     {
         var currentPath = new Uri(Navigation.Uri).AbsolutePath;
@@ -530,7 +537,8 @@
 
     private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        _moreSheetOpen = false;
+        _moreSheetOpen = _pendingMoreSheet;
+        _pendingMoreSheet = false;
         EnsureNavbarMatchesLocation();
         UpdateSearchQueryFromUri();
         _isNavigating = true;
