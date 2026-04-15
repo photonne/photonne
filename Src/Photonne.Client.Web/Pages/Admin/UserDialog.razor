@@ -109,6 +109,7 @@
     [Parameter] public UserDto? User { get; set; }
     [Parameter] public bool IsEdit { get; set; }
     [Inject] public IUserService UserService { get; set; } = null!;
+    [Inject] public ISettingsService SettingsService { get; set; } = null!;
     [Inject] public ISnackbar Snackbar { get; set; } = null!;
 
     private MudForm? _form;
@@ -127,10 +128,33 @@
     private long _quotaPreset = -1L; // -1 = ilimitado, 0 = personalizado, resto = bytes
     private int _quotaCustomGb = 10;
 
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsEdit)
+        {
+            var role = await SettingsService.GetSettingAsync("UserSettings.DefaultRole", "User");
+            _role = role == "Admin" ? "Admin" : "User";
+
+            var activeRaw = await SettingsService.GetSettingAsync("UserSettings.DefaultIsActive", "true");
+            _isActive = !activeRaw.Equals("false", StringComparison.OrdinalIgnoreCase);
+
+            var quotaRaw = await SettingsService.GetSettingAsync("UserSettings.DefaultStorageQuotaGb", "0");
+            if (int.TryParse(quotaRaw, out var gb) && gb > 0)
+            {
+                long bytes = (long)gb * 1024 * 1024 * 1024;
+                InitQuotaFromUser(bytes);
+            }
+            else
+            {
+                _quotaPreset = -1L;
+            }
+        }
+    }
+
     protected override void OnParametersSet()
     {
         _isEdit = IsEdit && User != null;
-        
+
         if (_isEdit && User != null)
         {
             _username = User.Username;
@@ -203,7 +227,8 @@
                     FirstName = _firstName,
                     LastName = _lastName,
                     Role = _role,
-                    IsActive = _isActive
+                    IsActive = _isActive,
+                    StorageQuotaBytes = GetQuotaBytes()
                 };
                 await UserService.CreateUserAsync(createRequest);
                 Snackbar.Add("Usuario creado correctamente", Severity.Success);

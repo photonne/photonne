@@ -44,6 +44,7 @@ public class CreateUserRequest
     public string? LastName { get; set; }
     public string? Role { get; set; }
     public bool? IsActive { get; set; }
+    public long? StorageQuotaBytes { get; set; }
 }
 
 public class UpdateUserRequest
