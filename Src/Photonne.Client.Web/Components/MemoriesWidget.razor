@@ -1,3 +1,5 @@
+@implements IDisposable
+
 @if (_yearGroups.Any())
 {
     <div class="memories-widget">
@@ -34,8 +36,14 @@
                             <span class="memories-card-year">@group.Key</span>
                         </div>
 
-                        <div class="memories-card-pill">
-                            @group.Value.Count @(group.Value.Count == 1 ? "foto" : "fotos")
+                        @{
+                            var groupForPill = group.Value;
+                        }
+                        <div class="memories-card-pill"
+                             role="button"
+                             @onclick="() => OpenGroupSheet(groupForPill)"
+                             @onclick:stopPropagation="true">
+                            @groupForPill.Count @(groupForPill.Count == 1 ? "foto" : "fotos")
                         </div>
                     </div>
 
@@ -62,15 +70,652 @@
             }
         </div>
     </div>
+
+    @* Bottom sheet — listado completo de assets del bloque de recuerdo *@
+    @if (_sheetOpen && _sheetAssets != null)
+    {
+        var sheetAssets = _sheetAssets;
+        var hasReadOnlyInSelection = _selectedSheetIds.Any(id =>
+            sheetAssets.Any(a => a.Id == id && a.IsReadOnly));
+        var allSelected = sheetAssets.Any() && _selectedSheetIds.Count == sheetAssets.Count;
+
+        <div class="memories-sheet-backdrop" @onclick="CloseGroupSheet"></div>
+        <div class="memories-sheet">
+            <div class="memories-sheet-header">
+                @if (_sheetSelectionMode)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                   OnClick="ExitSheetSelectionMode" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;" Class="ml-2">
+                        @_selectedSheetIds.Count seleccionada@(_selectedSheetIds.Count == 1 ? "" : "s")
+                    </MudText>
+                    <MudSpacer />
+
+                    <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                        <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small"
+                                       Disabled="@(!sheetAssets.Any())"
+                                       OnClick="ToggleSelectAllSheet" />
+                    </MudTooltip>
+
+                    @* Desktop: botones individuales *@
+                    <span class="d-none d-md-flex">
+                        <MudTooltip Text="Compartir selección">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Share" Size="Size.Small"
+                                           Disabled="@(!_selectedSheetIds.Any())"
+                                           OnClick="OpenShareSelectionDialog" />
+                        </MudTooltip>
+                        <MudTooltip Text="Añadir a álbum">
+                            <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Size="Size.Small"
+                                           Disabled="@(!_selectedSheetIds.Any())"
+                                           OnClick="OpenAddToAlbumDialog" />
+                        </MudTooltip>
+                        <MudTooltip Text="Descargar">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
+                                           Disabled="@(!_selectedSheetIds.Any() || _downloadingZip)"
+                                           OnClick="DownloadSelectedSheetAsync" />
+                        </MudTooltip>
+                        @if (!hasReadOnlyInSelection)
+                        {
+                            <MudTooltip Text="Archivar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Archive" Size="Size.Small"
+                                               Disabled="@(!_selectedSheetIds.Any())"
+                                               OnClick="ArchiveSelectedSheetAsync" />
+                            </MudTooltip>
+                            <MudTooltip Text="Eliminar">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                                               Disabled="@(!_selectedSheetIds.Any())"
+                                               OnClick="OpenDeleteAssetsDialog" />
+                            </MudTooltip>
+                        }
+                    </span>
+
+                    @* Mobile: menú de desbordamiento *@
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             Class="d-flex d-md-none">
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Share"
+                                     Disabled="@(!_selectedSheetIds.Any())"
+                                     OnClick="OpenShareSelectionDialog">
+                            Compartir
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.AddToPhotos"
+                                     Disabled="@(!_selectedSheetIds.Any())"
+                                     OnClick="OpenAddToAlbumDialog">
+                            Añadir a álbum
+                        </MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Download"
+                                     Disabled="@(!_selectedSheetIds.Any() || _downloadingZip)"
+                                     OnClick="DownloadSelectedSheetAsync">
+                            Descargar
+                        </MudMenuItem>
+                        @if (!hasReadOnlyInSelection)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Archive"
+                                         Disabled="@(!_selectedSheetIds.Any())"
+                                         OnClick="ArchiveSelectedSheetAsync">
+                                Archivar
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete"
+                                         IconColor="Color.Error"
+                                         Disabled="@(!_selectedSheetIds.Any())"
+                                         OnClick="OpenDeleteAssetsDialog">
+                                <MudText Color="Color.Error">Eliminar</MudText>
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                        @sheetAssets.Count foto@(sheetAssets.Count == 1 ? "" : "s")
+                    </MudText>
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                   OnClick="CloseGroupSheet" />
+                }
+            </div>
+            <div class="memories-sheet-scroll" @onclick:stopPropagation="true">
+                <div class="memories-sheet-grid">
+                    @foreach (var asset in sheetAssets)
+                    {
+                        var isSelected = _selectedSheetIds.Contains(asset.Id);
+                        <div class="memories-sheet-cell @(_sheetSelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
+                             @key="asset.Id"
+                             @onclick="() => OnSheetAssetClick(asset)"
+                             @ontouchstart="@(e => OnSheetCellTouchStart(e, asset))"
+                             @ontouchmove="OnSheetCellTouchMove"
+                             @ontouchend="OnSheetCellTouchEnd">
+                            <img src="@asset.ThumbnailUrl" alt="memory" loading="lazy" decoding="async" />
+                            @if (asset.Type == "Video")
+                            {
+                                <div class="memories-video-sm">
+                                    <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                                </div>
+                            }
+                            @if (_sheetSelectionMode)
+                            {
+                                <div class="memories-sheet-cell-check" @onclick:stopPropagation="true">
+                                    <MudCheckBox T="bool"
+                                                 Value="@isSelected"
+                                                 ValueChanged="@(v => ToggleSheetAssetSelection(asset.Id, v))" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <MudDialog @bind-Visible="_addToAlbumDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Añadir a álbum</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudText Typo="Typo.body2" Class="mb-3">@($"{_selectedSheetIds.Count} elementos seleccionados")</MudText>
+            @if (!_showCreateAlbum)
+            {
+                @if (_loadingAlbums)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (_availableAlbums.Any())
+                {
+                    <MudRadioGroup T="Guid?" @bind-Value="_selectedAlbumId">
+                        @foreach (var album in _availableAlbums)
+                        {
+                            <MudRadio T="Guid?" Value="@album.Id">
+                                <div class="d-flex flex-column">
+                                    <MudText Typo="Typo.subtitle2">@album.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@album.AssetCount fotos</MudText>
+                                </div>
+                            </MudRadio>
+                        }
+                    </MudRadioGroup>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No hay álbumes disponibles.</MudAlert>
+                }
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           Class="mt-3"
+                           OnClick="@(() => _showCreateAlbum = true)">
+                    Crear nuevo álbum
+                </MudButton>
+            }
+            else
+            {
+                <MudTextField @bind-Value="_newAlbumName"
+                              Label="Nombre del álbum"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Class="mb-3" />
+                <MudTextField @bind-Value="_newAlbumDescription"
+                              Label="Descripción (opcional)"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Lines="3" />
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.ArrowBack"
+                           Class="mt-3"
+                           OnClick="@(() => _showCreateAlbum = false)">
+                    Volver a selección
+                </MudButton>
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@CloseAddToAlbumDialog">Cancelar</MudButton>
+            @if (_showCreateAlbum)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAlbumAndAddAsync">
+                    Crear y añadir
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           OnClick="AddSelectionToAlbumAsync"
+                           Disabled="@(!_selectedAlbumId.HasValue)">
+                    Añadir
+                </MudButton>
+            }
+        </DialogActions>
+    </MudDialog>
+
+    <MudDialog @bind-Visible="_deleteAssetsDialogVisible" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Eliminar archivos</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudText>¿Quieres mover @_selectedSheetIds.Count archivos a la papelera?</MudText>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseDeleteAssetsDialog">Cancelar</MudButton>
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteSelectedSheetAsync">Eliminar</MudButton>
+        </DialogActions>
+    </MudDialog>
 }
 
 @code {
     [Parameter] public EventCallback<MemoryClickArgs> OnThumbClick { get; set; }
     [Parameter] public bool Test { get; set; }
     [Inject] private IAssetService AssetService { get; set; } = null!;
+    [Inject] private IAlbumService AlbumService { get; set; } = null!;
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; set; } = null!;
 
     private Dictionary<int, List<TimelineItem>> _yearGroups = new();
     private string _dateLabel = string.Empty;
+
+    // Bottom sheet state
+    private bool _sheetOpen;
+    private List<TimelineItem>? _sheetAssets;
+
+    // Selection state (dentro de la bottom sheet)
+    private bool _sheetSelectionMode;
+    private HashSet<Guid> _selectedSheetIds = new();
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+
+    // Dialog state
+    private bool _addToAlbumDialogVisible;
+    private bool _deleteAssetsDialogVisible;
+    private bool _downloadingZip;
+    private List<AlbumItem> _availableAlbums = new();
+    private bool _loadingAlbums;
+    private Guid? _selectedAlbumId;
+    private bool _showCreateAlbum;
+    private string _newAlbumName = string.Empty;
+    private string? _newAlbumDescription = string.Empty;
+
+    private void OpenGroupSheet(List<TimelineItem> assets)
+    {
+        _sheetAssets = assets;
+        _sheetOpen = true;
+        _sheetSelectionMode = false;
+        _selectedSheetIds.Clear();
+    }
+
+    private void CloseGroupSheet()
+    {
+        _sheetOpen = false;
+        _sheetAssets = null;
+        _sheetSelectionMode = false;
+        _selectedSheetIds.Clear();
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    private async Task OnSheetAssetClick(TimelineItem asset)
+    {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_sheetSelectionMode)
+        {
+            ToggleSheetAssetSelection(asset.Id, !_selectedSheetIds.Contains(asset.Id));
+            return;
+        }
+
+        var groupAssets = _sheetAssets ?? new List<TimelineItem> { asset };
+        CloseGroupSheet();
+        await OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = asset, GroupAssets = groupAssets });
+    }
+
+    private void OnSheetCellTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_sheetSelectionMode)
+        {
+            var select = !_selectedSheetIds.Contains(asset.Id);
+            _longPressHandled = true;
+            ToggleSheetAssetSelection(asset.Id, select);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                _longPressHandled = true;
+                ToggleSheetAssetSelection(asset.Id, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnSheetCellTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnSheetCellTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    private void ToggleSheetAssetSelection(Guid assetId, bool selected)
+    {
+        if (!_sheetSelectionMode) _sheetSelectionMode = true;
+
+        if (selected)
+        {
+            _selectedSheetIds.Add(assetId);
+        }
+        else
+        {
+            _selectedSheetIds.Remove(assetId);
+            if (_selectedSheetIds.Count == 0)
+            {
+                ExitSheetSelectionMode();
+                return;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void ExitSheetSelectionMode()
+    {
+        _sheetSelectionMode = false;
+        _selectedSheetIds.Clear();
+        StateHasChanged();
+    }
+
+    private void ToggleSelectAllSheet()
+    {
+        if (_sheetAssets == null) return;
+
+        if (_selectedSheetIds.Count == _sheetAssets.Count && _sheetAssets.Any())
+        {
+            _selectedSheetIds.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        _selectedSheetIds = _sheetAssets.Select(a => a.Id).ToHashSet();
+        if (_selectedSheetIds.Any())
+        {
+            _sheetSelectionMode = true;
+        }
+        StateHasChanged();
+    }
+
+    // ── Share ─────────────────────────────────────────────────────────────
+    private async Task OpenShareSelectionDialog()
+    {
+        if (!_selectedSheetIds.Any()) return;
+
+        var parameters = new DialogParameters<ShareSelectionDialog>
+        {
+            { x => x.AssetIds, new HashSet<Guid>(_selectedSheetIds) }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            CloseButton = true,
+            CloseOnEscapeKey = true
+        };
+        var dialogRef = await DialogService.ShowAsync<ShareSelectionDialog>("Compartir selección", parameters, options);
+        var result = await dialogRef.Result;
+
+        if (result is { Canceled: false, Data: AlbumItem album })
+        {
+            ExitSheetSelectionMode();
+            var shareParams = new DialogParameters<ShareDialog>
+            {
+                { x => x.AlbumId, album.Id },
+                { x => x.AlbumName, album.Name }
+            };
+            var shareOptions = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+            await DialogService.ShowAsync<ShareDialog>("Compartir álbum", shareParams, shareOptions);
+        }
+    }
+
+    // ── Add to album ─────────────────────────────────────────────────────
+    private void OpenAddToAlbumDialog()
+    {
+        if (!_selectedSheetIds.Any()) return;
+
+        _addToAlbumDialogVisible = true;
+        _loadingAlbums = true;
+        _ = LoadAlbumsForSelectionAsync();
+    }
+
+    private async Task LoadAlbumsForSelectionAsync()
+    {
+        try
+        {
+            _availableAlbums = await AlbumService.GetAlbumsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar álbumes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingAlbums = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseAddToAlbumDialog()
+    {
+        _addToAlbumDialogVisible = false;
+        _showCreateAlbum = false;
+        _selectedAlbumId = null;
+    }
+
+    private async Task AddSelectionToAlbumAsync()
+    {
+        if (!_selectedAlbumId.HasValue || !_selectedSheetIds.Any()) return;
+
+        var failed = 0;
+        var alreadyInAlbum = 0;
+        var permissionDenied = false;
+        foreach (var assetId in _selectedSheetIds.ToList())
+        {
+            try
+            {
+                var success = await AlbumService.AddAssetToAlbumAsync(_selectedAlbumId.Value, assetId);
+                if (!success) failed++;
+            }
+            catch (InvalidOperationException)
+            {
+                alreadyInAlbum++;
+                failed++;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                permissionDenied = true;
+                failed++;
+                break;
+            }
+            catch
+            {
+                failed++;
+            }
+        }
+
+        CloseAddToAlbumDialog();
+        ExitSheetSelectionMode();
+
+        if (permissionDenied)
+        {
+            Snackbar.Add("No tienes permisos suficientes para añadir elementos a este álbum.", Severity.Error);
+            return;
+        }
+
+        if (failed == 0)
+        {
+            Snackbar.Add("Elementos añadidos al álbum", Severity.Success);
+        }
+        else
+        {
+            if (alreadyInAlbum > 0)
+            {
+                var message = alreadyInAlbum == 1
+                    ? "El elemento ya está en el álbum."
+                    : $"{alreadyInAlbum} elementos ya estaban en el álbum.";
+                Snackbar.Add(message, Severity.Warning);
+            }
+
+            if (failed > alreadyInAlbum)
+            {
+                Snackbar.Add("Algunos elementos no se pudieron añadir", Severity.Warning);
+            }
+        }
+    }
+
+    private async Task CreateAlbumAndAddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newAlbumName))
+        {
+            Snackbar.Add("El nombre del álbum es obligatorio", Severity.Warning);
+            return;
+        }
+
+        var album = await AlbumService.CreateAlbumAsync(_newAlbumName, _newAlbumDescription);
+        if (album == null)
+        {
+            Snackbar.Add("Error al crear el álbum", Severity.Error);
+            return;
+        }
+
+        _selectedAlbumId = album.Id;
+        await AddSelectionToAlbumAsync();
+    }
+
+    // ── Download ─────────────────────────────────────────────────────────
+    private async Task DownloadSelectedSheetAsync()
+    {
+        if (!_selectedSheetIds.Any()) return;
+
+        _downloadingZip = true;
+        StateHasChanged();
+        try
+        {
+            var bytes = await AssetService.DownloadZipAsync(_selectedSheetIds.ToList());
+            if (bytes != null)
+                await JS.InvokeVoidAsync("downloadFileFromBytes", "photonne_selection.zip", "application/zip", bytes);
+            else
+                Snackbar.Add("Error al generar el ZIP", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _downloadingZip = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Archive ──────────────────────────────────────────────────────────
+    private async Task ArchiveSelectedSheetAsync()
+    {
+        if (!_selectedSheetIds.Any() || _sheetAssets == null) return;
+        try
+        {
+            await AssetService.ArchiveAssetsAsync(new ArchiveAssetsRequest
+            {
+                AssetIds = _selectedSheetIds.ToList()
+            });
+            RemoveAssetsFromSheet(_selectedSheetIds);
+            ExitSheetSelectionMode();
+            Snackbar.Add("Assets archivados correctamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al archivar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────
+    private void OpenDeleteAssetsDialog()
+    {
+        _deleteAssetsDialogVisible = true;
+    }
+
+    private void CloseDeleteAssetsDialog()
+    {
+        _deleteAssetsDialogVisible = false;
+    }
+
+    private async Task DeleteSelectedSheetAsync()
+    {
+        if (!_selectedSheetIds.Any() || _sheetAssets == null) return;
+
+        try
+        {
+            var count = _selectedSheetIds.Count;
+            await AssetService.DeleteAssetsAsync(new DeleteAssetsRequest
+            {
+                AssetIds = _selectedSheetIds.ToList()
+            });
+            RemoveAssetsFromSheet(_selectedSheetIds);
+            _deleteAssetsDialogVisible = false;
+            ExitSheetSelectionMode();
+            Snackbar.Add($"{count} elementos movidos a la papelera", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar archivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    private void RemoveAssetsFromSheet(IEnumerable<Guid> ids)
+    {
+        if (_sheetAssets == null) return;
+        var idSet = ids.ToHashSet();
+        _sheetAssets.RemoveAll(a => idSet.Contains(a.Id));
+
+        // También limpiar de los grupos de la vista principal
+        foreach (var kv in _yearGroups)
+        {
+            kv.Value.RemoveAll(a => idSet.Contains(a.Id));
+        }
+        // Quitar grupos que se hayan quedado sin elementos
+        var emptyKeys = _yearGroups.Where(g => g.Value.Count == 0).Select(g => g.Key).ToList();
+        foreach (var k in emptyKeys) _yearGroups.Remove(k);
+
+        if (_sheetAssets.Count == 0)
+        {
+            CloseGroupSheet();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,5 +727,10 @@
             .GroupBy(a => a.FileCreatedAt.Year)
             .OrderByDescending(g => g.Key)
             .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    public void Dispose()
+    {
+        _longPressTimer?.Dispose();
     }
 }

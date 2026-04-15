@@ -101,6 +101,7 @@ public class MemoriesEndpoint : IEndpoint
         Width = a.Exif?.Width,
         Height = a.Exif?.Height,
         IsFavorite = a.IsFavorite,
+        IsReadOnly = a.ExternalLibraryId.HasValue,
         Tags = BuildTagList(a)
     };
 

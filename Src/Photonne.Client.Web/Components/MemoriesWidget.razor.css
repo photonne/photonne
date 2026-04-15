@@ -124,6 +124,17 @@
     border-radius: 20px;
     border: 1px solid rgba(255,255,255,0.12);
     z-index: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.memories-card-pill:hover {
+    background: rgba(0,0,0,0.7);
+}
+
+.memories-card-pill:active {
+    transform: scale(0.95);
 }
 
 /* Video badge hero */
@@ -174,4 +185,87 @@
     color: #fff;
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
     z-index: 1;
+}
+
+/* ── Bottom sheet con todos los assets del bloque ── */
+.memories-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1999;
+    background: rgba(0,0,0,0.5);
+}
+
+.memories-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2000;
+    background: var(--mud-palette-surface);
+    border-radius: 16px 16px 0 0;
+    max-height: 65vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.35);
+}
+
+.memories-sheet-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px 8px;
+    flex-shrink: 0;
+}
+
+.memories-sheet-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 16px;
+}
+
+.memories-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 3px;
+    padding: 0 8px 8px;
+}
+
+.memories-sheet-cell {
+    position: relative;
+    aspect-ratio: 1;
+    cursor: pointer;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #333;
+    content-visibility: auto;
+    contain-intrinsic-size: 110px 110px;
+    transition: transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.memories-sheet-cell:active {
+    transform: scale(0.95);
+}
+
+.memories-sheet-cell.selected {
+    transform: scale(0.90);
+}
+
+.memories-sheet-cell.selection-mode:active {
+    transform: scale(0.90);
+    transition-duration: 0.06s;
+}
+
+.memories-sheet-cell-check {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    z-index: 2;
+}
+
+.memories-sheet-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
