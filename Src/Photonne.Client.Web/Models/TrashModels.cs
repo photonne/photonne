@@ -6,6 +6,9 @@ public class TrashStatsResponse
     public long TotalBytes { get; set; }
     public int ExpiredItems { get; set; }
     public int RetentionDays { get; set; }
+    public int MaxQuotaMb { get; set; }
+    public int OverQuotaUsers { get; set; }
+    public long OverQuotaBytes { get; set; }
 }
 
 public class TrashCleanupResult

@@ -175,8 +175,12 @@ public class NightlySchedulerService : BackgroundService
 
         using var scope = _scopeFactory.CreateScope();
         var dbContext       = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var exifService     = scope.ServiceProvider.GetRequiredService<ExifExtractorService>();
         var settingsService = scope.ServiceProvider.GetRequiredService<SettingsService>();
+
+        // Worker count (TaskSettings.MetadataWorkers, default 2, clamped to [1..32])
+        var workersRaw = await settingsService.GetSettingAsync(
+            "TaskSettings.MetadataWorkers", Guid.Empty, "2");
+        var metadataWorkers = Math.Clamp(int.TryParse(workersRaw, out var w) ? w : 2, 1, 32);
 
         var assets = await dbContext.Assets
             .Include(a => a.Exif)
@@ -185,47 +189,55 @@ public class NightlySchedulerService : BackgroundService
             .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
             .ToListAsync(ct);
 
-        foreach (var asset in assets)
-        {
-            if (ct.IsCancellationRequested) break;
-            try
+        await Parallel.ForEachAsync(
+            assets,
+            new ParallelOptions { MaxDegreeOfParallelism = metadataWorkers, CancellationToken = ct },
+            async (asset, innerCt) =>
             {
-                if (!overwriteAll && asset.HasExif)
-                {
-                    skipped++;
-                    continue;
-                }
+                using var innerScope = _scopeFactory.CreateScope();
+                var innerDb       = innerScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var innerExif     = innerScope.ServiceProvider.GetRequiredService<ExifExtractorService>();
+                var innerSettings = innerScope.ServiceProvider.GetRequiredService<SettingsService>();
 
-                var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-                if (!File.Exists(physicalPath))
+                try
                 {
-                    failed++;
-                    continue;
-                }
+                    if (!overwriteAll && asset.HasExif)
+                    {
+                        Interlocked.Increment(ref skipped);
+                        return;
+                    }
 
-                var result = await exifService.ExtractExifAsync(physicalPath, ct);
-                if (result != null)
-                {
-                    result.AssetId = asset.Id;
-                    var existing = await dbContext.AssetExifs
-                        .FirstOrDefaultAsync(e => e.AssetId == asset.Id, ct);
-                    if (existing != null)
-                        dbContext.AssetExifs.Remove(existing);
-                    dbContext.AssetExifs.Add(result);
-                    await dbContext.SaveChangesAsync(ct);
-                    extracted++;
+                    var physicalPath = await innerSettings.ResolvePhysicalPathAsync(asset.FullPath);
+                    if (!File.Exists(physicalPath))
+                    {
+                        Interlocked.Increment(ref failed);
+                        return;
+                    }
+
+                    var result = await innerExif.ExtractExifAsync(physicalPath, innerCt);
+                    if (result != null)
+                    {
+                        result.AssetId = asset.Id;
+                        var existing = await innerDb.AssetExifs
+                            .FirstOrDefaultAsync(e => e.AssetId == asset.Id, innerCt);
+                        if (existing != null)
+                            innerDb.AssetExifs.Remove(existing);
+                        innerDb.AssetExifs.Add(result);
+                        await innerDb.SaveChangesAsync(innerCt);
+                        Interlocked.Increment(ref extracted);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref failed);
+                    }
                 }
-                else
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
                 {
-                    failed++;
+                    Console.WriteLine($"[NIGHTLY] Metadata error for asset {asset.Id}: {ex.Message}");
+                    Interlocked.Increment(ref failed);
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[NIGHTLY] Metadata error for asset {asset.Id}: {ex.Message}");
-                failed++;
-            }
-        }
+            });
 
         Console.WriteLine($"[NIGHTLY] Metadata done — extracted:{extracted} skipped:{skipped} failed:{failed}.");
     }

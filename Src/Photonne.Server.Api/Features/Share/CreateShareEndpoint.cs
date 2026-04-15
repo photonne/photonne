@@ -21,8 +21,10 @@ public class CreateShareEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] SettingsService settingsService,
         [FromBody] CreateShareRequest request,
         ClaimsPrincipal user,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -61,10 +63,28 @@ public class CreateShareEndpoint : IEndpoint
         dbContext.SharedLinks.Add(link);
         await dbContext.SaveChangesAsync(ct);
 
-        return Results.Ok(ToResponse(link));
+        var publicBase = await ResolvePublicBaseUrlAsync(settingsService, httpContext);
+        return Results.Ok(ToResponse(link, publicBase));
     }
 
-    internal static ShareLinkResponse ToResponse(SharedLink link) => new()
+    /// <summary>
+    /// Resolves the public base URL for share links. Prefers the admin-configured
+    /// <c>ServerSettings.PublicUrl</c>; falls back to the current request's base URL.
+    /// </summary>
+    internal static async Task<string> ResolvePublicBaseUrlAsync(
+        SettingsService settingsService, HttpContext httpContext)
+    {
+        var configured = await settingsService.GetSettingAsync(
+            "ServerSettings.PublicUrl", Guid.Empty, "");
+
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured.TrimEnd('/');
+
+        var request = httpContext.Request;
+        return $"{request.Scheme}://{request.Host.Value}".TrimEnd('/');
+    }
+
+    internal static ShareLinkResponse ToResponse(SharedLink link, string publicBaseUrl = "") => new()
     {
         Token = link.Token,
         AlbumId = link.AlbumId,
@@ -73,7 +93,10 @@ public class CreateShareEndpoint : IEndpoint
         HasPassword = link.PasswordHash != null,
         AllowDownload = link.AllowDownload,
         MaxViews = link.MaxViews,
-        ViewCount = link.ViewCount
+        ViewCount = link.ViewCount,
+        ShareUrl = !string.IsNullOrEmpty(publicBaseUrl)
+            ? $"{publicBaseUrl}/share/{link.Token}"
+            : $"/share/{link.Token}"
     };
 }
 
@@ -96,4 +119,9 @@ public class ShareLinkResponse
     public bool AllowDownload { get; set; } = true;
     public int? MaxViews { get; set; }
     public int ViewCount { get; set; }
+    /// <summary>
+    /// Absolute URL (based on <c>ServerSettings.PublicUrl</c> when configured, otherwise
+    /// the current request's base URL) that end users can open to view the shared content.
+    /// </summary>
+    public string ShareUrl { get; set; } = string.Empty;
 }

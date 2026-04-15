@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Share;
 
@@ -20,8 +21,10 @@ public class ListSharesEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] SettingsService settingsService,
         [FromQuery] Guid? albumId,
         ClaimsPrincipal user,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -42,6 +45,7 @@ public class ListSharesEndpoint : IEndpoint
         var now = DateTime.UtcNow;
         var links = allLinks.Where(l => l.ExpiresAt == null || l.ExpiresAt > now).ToList();
 
-        return Results.Ok(links.Select(CreateShareEndpoint.ToResponse));
+        var publicBase = await CreateShareEndpoint.ResolvePublicBaseUrlAsync(settingsService, httpContext);
+        return Results.Ok(links.Select(l => CreateShareEndpoint.ToResponse(l, publicBase)));
     }
 }

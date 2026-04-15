@@ -49,6 +49,40 @@ public class NotificationService : INotificationService
             ActionUrl = actionUrl
         });
         await _db.SaveChangesAsync();
+
+        // Respect per-user cap — trim oldest notifications if over the limit
+        await EnforcePerUserCapAsync(userId);
+    }
+
+    /// <summary>
+    /// Enforces <c>NotificationSettings.MaxPerUser</c>. When the user has more
+    /// notifications than the configured cap, the oldest ones are deleted.
+    /// A value of 0 (or any non-positive / unparseable value) disables the cap.
+    /// </summary>
+    private async Task EnforcePerUserCapAsync(Guid userId)
+    {
+        var raw = await _settings.GetSettingAsync("NotificationSettings.MaxPerUser", Guid.Empty, "0");
+        if (!int.TryParse(raw, out var maxPerUser) || maxPerUser <= 0)
+            return;
+
+        var total = await _db.Notifications.CountAsync(n => n.UserId == userId);
+        if (total <= maxPerUser)
+            return;
+
+        var excess = total - maxPerUser;
+        var toDelete = await _db.Notifications
+            .Where(n => n.UserId == userId)
+            .OrderBy(n => n.CreatedAt)
+            .Take(excess)
+            .Select(n => n.Id)
+            .ToListAsync();
+
+        if (toDelete.Count == 0)
+            return;
+
+        await _db.Notifications
+            .Where(n => toDelete.Contains(n.Id))
+            .ExecuteDeleteAsync();
     }
 
     public async Task<(List<Notification> Items, int TotalCount)> GetPagedAsync(Guid userId, int page, int pageSize, bool unreadOnly)

@@ -57,9 +57,13 @@ public class ExtractMetadataEndpoint : IEndpoint
             {
                 using var scope = serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var exifService = scope.ServiceProvider.GetRequiredService<ExifExtractorService>();
                 var settingsService = scope.ServiceProvider.GetRequiredService<SettingsService>();
                 var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+                // Worker count (TaskSettings.MetadataWorkers, default 2, clamped to [1..32])
+                var workersRaw = await settingsService.GetSettingAsync(
+                    "TaskSettings.MetadataWorkers", Guid.Empty, "2");
+                var metadataWorkers = Math.Clamp(int.TryParse(workersRaw, out var w) ? w : 2, 1, 32);
 
                 var assets = await dbContext.Assets
                     .Include(a => a.Exif)
@@ -68,91 +72,107 @@ public class ExtractMetadataEndpoint : IEndpoint
                     .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
                     .ToListAsync(taskCt);
 
-                var stats = new MetadataJobStatistics { TotalAssets = assets.Count };
+                var totalAssets = assets.Count;
+                int processed = 0, extracted = 0, skipped = 0, failed = 0;
+
+                MetadataJobStatistics Snapshot() => new()
+                {
+                    TotalAssets = totalAssets,
+                    Processed   = Volatile.Read(ref processed),
+                    Extracted   = Volatile.Read(ref extracted),
+                    Skipped     = Volatile.Read(ref skipped),
+                    Failed      = Volatile.Read(ref failed)
+                };
 
                 Send(new MetadataProgressUpdate
                 {
-                    Message = $"Encontrados {assets.Count} assets con soporte de metadatos. Iniciando...",
+                    Message = $"Encontrados {totalAssets} assets con soporte de metadatos. Iniciando con {metadataWorkers} worker(s)...",
                     Percentage = 0,
-                    Statistics = Clone(stats)
+                    Statistics = Snapshot()
                 });
 
-                foreach (var asset in assets)
-                {
-                    if (taskCt.IsCancellationRequested) break;
-
-                    try
+                await Parallel.ForEachAsync(
+                    assets,
+                    new ParallelOptions { MaxDegreeOfParallelism = metadataWorkers, CancellationToken = taskCt },
+                    async (asset, ct) =>
                     {
-                        if (!overwrite && asset.HasExif)
-                        {
-                            stats.Skipped++;
-                        }
-                        else
-                        {
-                            Send(new MetadataProgressUpdate
-                            {
-                                Message = $"Extrayendo: {asset.FileName}",
-                                Percentage = stats.TotalAssets > 0 ? (double)stats.Processed / stats.TotalAssets * 100 : 0,
-                                Statistics = Clone(stats)
-                            });
+                        // Each parallel task gets its own DI scope so DbContext / services
+                        // are not shared across threads.
+                        using var innerScope = serviceProvider.CreateScope();
+                        var innerDb       = innerScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                        var innerExif     = innerScope.ServiceProvider.GetRequiredService<ExifExtractorService>();
+                        var innerSettings = innerScope.ServiceProvider.GetRequiredService<SettingsService>();
 
-                            var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-
-                            if (!File.Exists(physicalPath))
+                        try
+                        {
+                            if (!overwrite && asset.HasExif)
                             {
-                                stats.Failed++;
+                                Interlocked.Increment(ref skipped);
                             }
                             else
                             {
-                                var extracted = await exifService.ExtractExifAsync(physicalPath, taskCt);
-
-                                if (extracted != null)
+                                Send(new MetadataProgressUpdate
                                 {
-                                    extracted.AssetId = asset.Id;
+                                    Message = $"Extrayendo: {asset.FileName}",
+                                    Percentage = totalAssets > 0 ? (double)Volatile.Read(ref processed) / totalAssets * 100 : 0,
+                                    Statistics = Snapshot()
+                                });
 
-                                    // Remove stale record and replace with fresh extraction
-                                    var existing = await dbContext.AssetExifs
-                                        .FirstOrDefaultAsync(e => e.AssetId == asset.Id, taskCt);
-                                    if (existing != null)
-                                        dbContext.AssetExifs.Remove(existing);
+                                var physicalPath = await innerSettings.ResolvePhysicalPathAsync(asset.FullPath);
 
-                                    dbContext.AssetExifs.Add(extracted);
-                                    await dbContext.SaveChangesAsync(taskCt);
-
-                                    stats.Extracted++;
+                                if (!File.Exists(physicalPath))
+                                {
+                                    Interlocked.Increment(ref failed);
                                 }
                                 else
                                 {
-                                    stats.Failed++;
+                                    var result = await innerExif.ExtractExifAsync(physicalPath, ct);
+                                    if (result != null)
+                                    {
+                                        result.AssetId = asset.Id;
+
+                                        var existing = await innerDb.AssetExifs
+                                            .FirstOrDefaultAsync(e => e.AssetId == asset.Id, ct);
+                                        if (existing != null)
+                                            innerDb.AssetExifs.Remove(existing);
+
+                                        innerDb.AssetExifs.Add(result);
+                                        await innerDb.SaveChangesAsync(ct);
+
+                                        Interlocked.Increment(ref extracted);
+                                    }
+                                    else
+                                    {
+                                        Interlocked.Increment(ref failed);
+                                    }
                                 }
                             }
                         }
-                    }
-                    catch (OperationCanceledException) { throw; }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[METADATA] Error procesando asset {asset.Id}: {ex.Message}");
-                        stats.Failed++;
-                    }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[METADATA] Error procesando asset {asset.Id}: {ex.Message}");
+                            Interlocked.Increment(ref failed);
+                        }
 
-                    stats.Processed++;
-
-                    Send(new MetadataProgressUpdate
-                    {
-                        Message = stats.Failed > 0
-                            ? $"Procesado {stats.Processed}/{stats.TotalAssets} — {stats.Failed} errores"
-                            : $"Procesado {stats.Processed}/{stats.TotalAssets}",
-                        Percentage = stats.TotalAssets > 0 ? (double)stats.Processed / stats.TotalAssets * 100 : 100,
-                        Statistics = Clone(stats)
+                        var done = Interlocked.Increment(ref processed);
+                        Send(new MetadataProgressUpdate
+                        {
+                            Message = Volatile.Read(ref failed) > 0
+                                ? $"Procesado {done}/{totalAssets} — {Volatile.Read(ref failed)} errores"
+                                : $"Procesado {done}/{totalAssets}",
+                            Percentage = totalAssets > 0 ? (double)done / totalAssets * 100 : 100,
+                            Statistics = Snapshot()
+                        });
                     });
-                }
 
-                var completionMsg = BuildCompletionMessage(stats);
+                var finalStats = Snapshot();
+                var completionMsg = BuildCompletionMessage(finalStats);
                 Send(new MetadataProgressUpdate
                 {
                     Message = completionMsg,
                     Percentage = 100,
-                    Statistics = Clone(stats),
+                    Statistics = finalStats,
                     IsCompleted = true
                 });
 
@@ -198,12 +218,4 @@ public class ExtractMetadataEndpoint : IEndpoint
         return $"Completado — {summary}.";
     }
 
-    private static MetadataJobStatistics Clone(MetadataJobStatistics s) => new()
-    {
-        TotalAssets = s.TotalAssets,
-        Processed = s.Processed,
-        Extracted = s.Extracted,
-        Skipped = s.Skipped,
-        Failed = s.Failed
-    };
 }

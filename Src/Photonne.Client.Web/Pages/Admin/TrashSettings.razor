@@ -212,8 +212,8 @@
                                    Color="Color.Warning"
                                    StartIcon="@Icons.Material.Filled.AutoDelete"
                                    OnClick="RunCleanup"
-                                   Disabled="@(_cleanupRunning || _stats == null || (_stats.RetentionDays > 0 && _stats.ExpiredItems == 0))"
-                                   Title="@(_retentionDays == 0 ? "La retención está configurada como indefinida" : "")">
+                                   Disabled="@(_cleanupRunning || _stats == null || (_stats.RetentionDays > 0 && _stats.ExpiredItems == 0 && _stats.OverQuotaUsers == 0))"
+                                   Title="@(_retentionDays == 0 && _maxQuotaMb == 0 ? "No hay retención ni cuota configuradas" : "")">
                             @if (_cleanupRunning)
                             {
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />

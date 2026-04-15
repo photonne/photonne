@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Admin;
@@ -12,6 +13,9 @@ public class TrashStatsResponse
     public long TotalBytes { get; set; }
     public int ExpiredItems { get; set; }   // older than retention days
     public int RetentionDays { get; set; }  // 0 = keep forever
+    public int MaxQuotaMb { get; set; }     // per-user quota (0 = unlimited)
+    public int OverQuotaUsers { get; set; } // users whose trash exceeds the quota
+    public long OverQuotaBytes { get; set; } // total excess bytes across all users over quota
 }
 
 public class TrashCleanupResult
@@ -46,16 +50,33 @@ public class TrashCleanupEndpoint : IEndpoint
         CancellationToken ct)
     {
         var retentionDays = await GetRetentionDaysAsync(settingsService);
+        var maxQuotaMb    = await GetMaxQuotaMbAsync(settingsService);
 
         var trashedAssets = await dbContext.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt != null)
-            .Select(a => new { a.DeletedAt, a.FileSize })
+            .Select(a => new { a.OwnerId, a.DeletedAt, a.FileSize })
             .ToListAsync(ct);
 
         var cutoff = retentionDays > 0
             ? DateTime.UtcNow.AddDays(-retentionDays)
             : (DateTime?)null;
+
+        var overQuotaUsers = 0;
+        var overQuotaBytes = 0L;
+        if (maxQuotaMb > 0)
+        {
+            var quotaBytes = (long)maxQuotaMb * 1024L * 1024L;
+            foreach (var group in trashedAssets.GroupBy(a => a.OwnerId))
+            {
+                var used = group.Sum(a => a.FileSize);
+                if (used > quotaBytes)
+                {
+                    overQuotaUsers++;
+                    overQuotaBytes += used - quotaBytes;
+                }
+            }
+        }
 
         return Results.Ok(new TrashStatsResponse
         {
@@ -64,7 +85,10 @@ public class TrashCleanupEndpoint : IEndpoint
             ExpiredItems = cutoff.HasValue
                 ? trashedAssets.Count(a => a.DeletedAt < cutoff)
                 : 0,
-            RetentionDays = retentionDays
+            RetentionDays  = retentionDays,
+            MaxQuotaMb     = maxQuotaMb,
+            OverQuotaUsers = overQuotaUsers,
+            OverQuotaBytes = overQuotaBytes
         });
     }
 
@@ -76,35 +100,60 @@ public class TrashCleanupEndpoint : IEndpoint
         CancellationToken ct)
     {
         var retentionDays = await GetRetentionDaysAsync(settingsService);
+        var maxQuotaMb    = await GetMaxQuotaMbAsync(settingsService);
 
-        if (retentionDays <= 0)
+        var toDelete = new List<Asset>();
+
+        // ── 1. Elementos expirados por retención ─────────────────────────────
+        if (retentionDays > 0)
         {
-            return Results.Ok(new TrashCleanupResult
-            {
-                Success = true,
-                Message = "La retención está configurada como indefinida. No se eliminó ningún elemento.",
-                Deleted = 0
-            });
+            var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
+            var expired = await dbContext.Assets
+                .Include(a => a.Thumbnails)
+                .Where(a => a.DeletedAt != null && a.DeletedAt < cutoff)
+                .ToListAsync(ct);
+            toDelete.AddRange(expired);
         }
 
-        var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
+        var expiredCount = toDelete.Count;
 
-        var expired = await dbContext.Assets
-            .Include(a => a.Thumbnails)
-            .Where(a => a.DeletedAt != null && a.DeletedAt < cutoff)
-            .ToListAsync(ct);
-
-        if (!expired.Any())
+        // ── 2. Elementos que superan la cuota por usuario ───────────────────
+        var quotaEvicted = 0;
+        if (maxQuotaMb > 0)
         {
-            return Results.Ok(new TrashCleanupResult
+            var quotaBytes = (long)maxQuotaMb * 1024L * 1024L;
+            var alreadyMarked = toDelete.Select(a => a.Id).ToHashSet();
+
+            var remainingTrash = await dbContext.Assets
+                .Include(a => a.Thumbnails)
+                .Where(a => a.DeletedAt != null && !alreadyMarked.Contains(a.Id))
+                .ToListAsync(ct);
+
+            foreach (var userGroup in remainingTrash.GroupBy(a => a.OwnerId))
             {
-                Success = true,
-                Message = $"No hay elementos con más de {retentionDays} días en la papelera.",
-                Deleted = 0
-            });
+                var used = userGroup.Sum(a => a.FileSize);
+                if (used <= quotaBytes) continue;
+
+                // Eliminar los más antiguos hasta bajar de la cuota
+                foreach (var asset in userGroup.OrderBy(a => a.DeletedAt))
+                {
+                    if (used <= quotaBytes) break;
+                    toDelete.Add(asset);
+                    used -= asset.FileSize;
+                    quotaEvicted++;
+                }
+            }
         }
 
-        foreach (var asset in expired)
+        if (toDelete.Count == 0)
+        {
+            var msg = retentionDays <= 0 && maxQuotaMb <= 0
+                ? "La retención está configurada como indefinida y no hay cuota. No se eliminó ningún elemento."
+                : $"No hay elementos que eliminar (retención: {(retentionDays > 0 ? retentionDays + " días" : "indefinida")}, cuota: {(maxQuotaMb > 0 ? maxQuotaMb + " MB" : "sin límite")}).";
+            return Results.Ok(new TrashCleanupResult { Success = true, Message = msg, Deleted = 0 });
+        }
+
+        foreach (var asset in toDelete)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -132,14 +181,19 @@ public class TrashCleanupEndpoint : IEndpoint
             }
         }
 
-        dbContext.Assets.RemoveRange(expired);
+        dbContext.Assets.RemoveRange(toDelete);
         await dbContext.SaveChangesAsync(ct);
+
+        var parts = new List<string>();
+        if (expiredCount > 0) parts.Add($"{expiredCount} por retención");
+        if (quotaEvicted > 0) parts.Add($"{quotaEvicted} por cuota");
+        var detail = parts.Count > 0 ? $" ({string.Join(", ", parts)})" : "";
 
         return Results.Ok(new TrashCleanupResult
         {
             Success = true,
-            Message = $"Limpieza completada. {expired.Count} elemento(s) eliminado(s) permanentemente.",
-            Deleted = expired.Count
+            Message = $"Limpieza completada. {toDelete.Count} elemento(s) eliminado(s) permanentemente{detail}.",
+            Deleted = toDelete.Count
         });
     }
 
@@ -149,5 +203,11 @@ public class TrashCleanupEndpoint : IEndpoint
     {
         var raw = await settingsService.GetSettingAsync("TrashSettings.RetentionDays", Guid.Empty, "30");
         return int.TryParse(raw, out var days) ? Math.Max(0, days) : 30;
+    }
+
+    private static async Task<int> GetMaxQuotaMbAsync(SettingsService settingsService)
+    {
+        var raw = await settingsService.GetSettingAsync("TrashSettings.MaxQuotaMb", Guid.Empty, "0");
+        return int.TryParse(raw, out var mb) ? Math.Max(0, mb) : 0;
     }
 }

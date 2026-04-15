@@ -10,10 +10,18 @@ namespace Photonne.Server.Api.Shared.Services;
 public class AuthService : IAuthService
 {
     private readonly IConfiguration _configuration;
+    private readonly SettingsService _settingsService;
 
-    public AuthService(IConfiguration configuration)
+    // Default: 24 h (1440 min) — used when the admin setting is missing or invalid.
+    private const int DefaultSessionMinutes = 1440;
+    // Clamp to a sane range [5 min .. 30 days] regardless of what is stored.
+    private const int MinSessionMinutes = 5;
+    private const int MaxSessionMinutes = 60 * 24 * 30;
+
+    public AuthService(IConfiguration configuration, SettingsService settingsService)
     {
         _configuration = configuration;
+        _settingsService = settingsService;
     }
 
     public async Task<string> GenerateTokenAsync(User user)
@@ -28,18 +36,31 @@ public class AuthService : IAuthService
 
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured")));
-        
+
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        
+
+        var sessionMinutes = await GetSessionTimeoutMinutesAsync();
+
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
+            expires: DateTime.UtcNow.AddMinutes(sessionMinutes),
             signingCredentials: creds
         );
 
-        return await Task.FromResult(new JwtSecurityTokenHandler().WriteToken(token));
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private async Task<int> GetSessionTimeoutMinutesAsync()
+    {
+        var raw = await _settingsService.GetSettingAsync(
+            "ServerSettings.SessionTimeoutMinutes", Guid.Empty, DefaultSessionMinutes.ToString());
+
+        if (!int.TryParse(raw, out var minutes) || minutes <= 0)
+            return DefaultSessionMinutes;
+
+        return Math.Clamp(minutes, MinSessionMinutes, MaxSessionMinutes);
     }
 
     public string HashPassword(string password)

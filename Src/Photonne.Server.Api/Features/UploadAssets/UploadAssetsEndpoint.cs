@@ -41,6 +41,20 @@ public class UploadAssetsEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
+        // Validar tamaño máximo global (ServerSettings.MaxUploadSizeMb). 0 = sin límite.
+        var maxUploadRaw = await settingsService.GetSettingAsync(
+            "ServerSettings.MaxUploadSizeMb", Guid.Empty, "0");
+        if (int.TryParse(maxUploadRaw, out var maxUploadMb) && maxUploadMb > 0)
+        {
+            var maxBytes = (long)maxUploadMb * 1024L * 1024L;
+            if (file.Length > maxBytes)
+            {
+                return Results.Problem(
+                    detail: $"El archivo supera el tamaño máximo permitido ({maxUploadMb} MB).",
+                    statusCode: StatusCodes.Status413PayloadTooLarge);
+            }
+        }
+
         // Validar cuota de almacenamiento
         var dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
         if (dbUser?.StorageQuotaBytes.HasValue == true)

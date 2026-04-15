@@ -60,6 +60,11 @@ public class CreateShareLinkResponse
     public bool AllowDownload { get; set; } = true;
     public int? MaxViews { get; set; }
     public int ViewCount { get; set; }
+    /// <summary>
+    /// Absolute URL to open the shared content. Built from <c>ServerSettings.PublicUrl</c>
+    /// when configured, otherwise from the current request's base URL.
+    /// </summary>
+    public string ShareUrl { get; set; } = string.Empty;
 }
 
 // ── Update share link ─────────────────────────────────────────────────────────
