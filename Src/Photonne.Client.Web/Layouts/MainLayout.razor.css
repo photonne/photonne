@@ -136,6 +136,22 @@ main {
     z-index: 1200;
 }
 
+.demo-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 16px;
+    background: var(--mud-palette-warning);
+    color: var(--mud-palette-warning-text);
+    border-bottom: 1px solid var(--mud-palette-divider);
+    position: sticky;
+    z-index: 1200;
+}
+.demo-banner .mud-link {
+    color: inherit !important;
+    font-weight: 600;
+}
+
 .border-r {
     border-right: 1px solid var(--mud-palette-divider);
 }

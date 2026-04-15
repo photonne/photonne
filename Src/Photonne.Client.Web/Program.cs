@@ -132,6 +132,7 @@ builder.Services.AddScoped<IMaintenanceService>(sp =>
     var authService = sp.GetRequiredService<AuthService>();
     return new MaintenanceService(httpClient, async () => await authService.GetTokenAsync());
 });
+builder.Services.AddScoped<IDemoInfoService, DemoInfoService>();
 builder.Services.AddScoped<DeviceLayoutService>();
 builder.Services.AddSingleton<TimelineCache>();
 builder.Services.AddScoped<TimelinePersistenceService>();
