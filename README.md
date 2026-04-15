@@ -270,6 +270,52 @@ docker compose up --build
 
 El `docker-compose.override.yml` se aplica automáticamente y compila desde el `Dockerfile` en `Src/Photonne.Server.Api/Dockerfile`.
 
+## Demo pública
+
+Photonne incluye un **modo demo** pensado para desplegar una instancia pública enlazable desde una landing. Cuando se activa mediante `DemoMode:Enabled=true`:
+
+- No se crea el usuario administrador — la demo queda sin cuenta admin accesible.
+- Un `BackgroundService` crea un usuario `demo/demo` y siembra la biblioteca copiando todos los archivos desde `DemoMode:SeedPath` (directorio del host montado en el contenedor). El pipeline de indexación estándar genera miniaturas, EXIF y tags para cada archivo.
+- Se crean álbumes y favoritos de ejemplo.
+- Cada `DemoMode:ResetIntervalHours` (6 h por defecto) un `DemoResetService` vacía la base de datos, elimina los assets y miniaturas generados y vuelve a sembrar.
+- Un middleware bloquea endpoints destructivos: gestión de usuarios (`POST/PUT/DELETE /api/users`, reset de contraseña), backup/restore (`GET /api/admin/database/backup`, `POST /api/admin/database/restore`) y bibliotecas externas (`POST/PUT/DELETE /api/libraries`, permisos, scan).
+- Rate limiting: 5 req/min por IP en login, 10 req/min por usuario en upload. Kestrel limita cada request a 25 MB.
+- El endpoint anónimo `GET /api/admin/demo-info` expone `enabled`, credenciales visibles, intervalo y próximo reset. El cliente Blazor muestra un banner persistente con cuenta atrás y un botón "Entrar como demo" en el login.
+
+### Despliegue de la demo
+
+1. Crea un directorio en el host con las imágenes semilla (formato libre — JPG, PNG, MP4…). EXIF y metadata se extraen tal cual vengan en los archivos originales.
+
+2. Crea `.env.demo` con al menos:
+   ```env
+   JWT_KEY=<clave-aleatoria-segura>
+   POSTGRES_PASSWORD=<password>
+   DEMO_SEED_HOST_PATH=/ruta/host/a/tus/fotos
+   DEMO_RESET_HOURS=6
+   ```
+
+3. Levanta la stack combinando el compose base y el override:
+   ```bash
+   docker compose \
+       -f docker-compose.yml \
+       -f docker-compose.demo.yml \
+       --env-file .env.demo \
+       up -d
+   ```
+
+4. Pon un proxy inverso delante para terminar TLS. Con Caddy:
+   ```
+   demo.photonne.app {
+       reverse_proxy photonne-api:8080
+   }
+   ```
+
+5. Enlaza la demo desde tu landing con `target="_blank"` (se desaconseja `iframe`: el service-worker de la PWA y `localStorage` para JWT sufren dentro de un contexto embebido).
+
+### Volver a una instancia normal
+
+El override no se aplica automáticamente: si ejecutas `docker compose up -d` sin `-f docker-compose.demo.yml`, la app vuelve a comportarse como una instancia normal y el admin se crea a partir de `ADMIN_*`.
+
 ## CI/CD
 
 GitHub Actions publica automáticamente la imagen Docker en cada push a `main`:

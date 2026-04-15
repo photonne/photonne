@@ -1,0 +1,68 @@
+# Override for the PUBLIC DEMO deployment.
+#
+# Usage on the demo server:
+#
+#   docker compose \
+#       -f docker-compose.yml \
+#       -f docker-compose.demo.yml \
+#       --env-file .env.demo \
+#       up -d
+#
+# Prerequisites:
+#   1. Populate DEMO_SEED_HOST_PATH with media files (photos/videos). They will
+#      be copied into the demo user's library on first boot and on every reset.
+#   2. Put a reverse proxy (e.g. Caddy, Traefik) in front for TLS termination.
+#      Caddyfile example:
+#
+#          demo.photonne.app {
+#              reverse_proxy photonne-api:8080
+#          }
+#
+#   3. .env.demo should at minimum contain a strong JWT_KEY and POSTGRES_PASSWORD.
+#      No ADMIN_* variables are needed — demo mode disables admin creation on purpose.
+#
+# Behaviour:
+#   * DemoModeGuardMiddleware blocks destructive endpoints (users, backup, libraries).
+#   * DemoSeederService copies /data/demo-seed into the demo user's space and indexes.
+#   * DemoResetService wipes DB + assets and re-seeds every DEMO_RESET_HOURS hours.
+#   * Kestrel body limit is 25 MB, login/upload rate-limited.
+#   * pgAdmin is disabled on the demo server so it's not publicly reachable.
+
+services:
+  photonne-api:
+    environment:
+      - DemoMode__Enabled=true
+      - DemoMode__ResetIntervalHours=${DEMO_RESET_HOURS:-6}
+      - DemoMode__SeedPath=/data/demo-seed
+      - DemoMode__DemoUsername=${DEMO_USERNAME:-demo}
+      - DemoMode__DemoEmail=${DEMO_EMAIL:-demo@photonne.local}
+      - DemoMode__DemoPassword=${DEMO_PASSWORD:-demo}
+      - HTTPS_REDIRECT=true
+    volumes:
+      # Seed images — mounted read-only so the seeder can't accidentally mutate them.
+      - ${DEMO_SEED_HOST_PATH:-./demo-seed}:/data/demo-seed:ro
+    # Expose only to the reverse-proxy network, not the public host interface.
+    ports: !reset []
+    expose:
+      - "8080"
+    # Keep resource usage predictable on a small VPS.
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+          cpus: "1.5"
+
+  postgresql:
+    # Keep internal — no host port exposed.
+    ports: !reset []
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+
+  # pgAdmin is part of the base compose for local development. On the public
+  # demo we don't want it reachable at all — remove it from the override.
+  pgadmin:
+    profiles:
+      - disabled
