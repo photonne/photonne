@@ -184,8 +184,13 @@ public class ExifExtractorService
         {
             if (gpsDir.TryGetGeoLocation(out var location))
             {
-                exif.Latitude  = location.Latitude;
-                exif.Longitude = location.Longitude;
+                // Descartar coordenadas (0,0) — "Null Island": cámaras/exportadores
+                // a veces escriben el tag GPS a cero cuando no hay fix real.
+                if (Math.Abs(location.Latitude) > 0.0001 || Math.Abs(location.Longitude) > 0.0001)
+                {
+                    exif.Latitude  = location.Latitude;
+                    exif.Longitude = location.Longitude;
+                }
             }
 
             var altitude = gpsDir.GetDescription(GpsDirectory.TagAltitude);

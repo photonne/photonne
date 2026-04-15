@@ -58,7 +58,10 @@ public class MapAssetsEndpoint : IEndpoint
                     .Where(a => a.DeletedAt == null &&
                                a.Exif != null &&
                                a.Exif.Latitude.HasValue &&
-                               a.Exif.Longitude.HasValue);
+                               a.Exif.Longitude.HasValue &&
+                               // Excluir (0,0) — GPS vacío/corrupto en EXIF
+                               (a.Exif.Latitude.Value > 0.0001 || a.Exif.Latitude.Value < -0.0001 ||
+                                a.Exif.Longitude.Value > 0.0001 || a.Exif.Longitude.Value < -0.0001));
 
                 if (!isAdmin)
                 {
