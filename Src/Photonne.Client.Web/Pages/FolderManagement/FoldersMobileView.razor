@@ -78,7 +78,7 @@ else if (ActiveTab == 2 && SelectedFolder == null)
                     Title="Sin bibliotecas"
                     Description="No tienes acceso a ninguna biblioteca externa." />
     }
-    else
+    else if (FolderViewMode == FolderViewModeEnum.Grid)
     {
         <div class="folder-card-grid">
             @foreach (var lib in Libraries)
@@ -94,6 +94,27 @@ else if (ActiveTab == 2 && SelectedFolder == null)
                                 @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
                             </MudText>
                         </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="folder-list">
+            @foreach (var lib in Libraries)
+            {
+                <div class="folder-list-item" @onclick="@(() => OnNavigateToLibrary.InvokeAsync(lib))">
+                    <div class="folder-list-thumb">
+                        <div class="folder-card-icon" style="border-radius: 8px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Medium" Color="Color.Primary" />
+                        </div>
+                    </div>
+                    <div class="folder-list-info">
+                        <MudText Typo="Typo.subtitle1" Class="folder-list-name">@lib.Name</MudText>
+                        <MudText Typo="Typo.body2" Class="folder-list-meta">
+                            @lib.AssetCount @(lib.AssetCount == 1 ? "archivo" : "archivos")
+                        </MudText>
                     </div>
                 </div>
             }

@@ -422,3 +422,18 @@ body.timeline-page .mud-main-content {
         pointer-events: none;
     }
 }
+
+.folder-view-toggle {
+    gap: 8px;
+    border: none !important;
+    box-shadow: none !important;
+}
+.folder-view-toggle .mud-toggle-item {
+    border-radius: 20px !important;
+    background: var(--mud-palette-action-default-hover);
+    flex: 1;
+}
+.folder-view-toggle .mud-toggle-item-selected {
+    background: var(--mud-palette-primary) !important;
+    color: var(--mud-palette-primary-text) !important;
+}

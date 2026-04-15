@@ -43,7 +43,7 @@
                        SelectedAssetIds="_selectedAssetIds"
                        SelectedFolderIds="_selectedFolderIds"
                        Breadcrumbs="_breadcrumbs"
-                       Libraries="_libraries"
+                       Libraries="GetFilteredLibraries()"
                        OnNavigateUp="NavigateUp"
                        OnNavigateToPermissions="NavigateToPermissionsView"
                        OnCreateFolder="OpenCreateFolderDialogFromView"
@@ -82,7 +82,7 @@ else
                         SelectedAssetIds="_selectedAssetIds"
                         SelectedFolderIds="_selectedFolderIds"
                         Breadcrumbs="_breadcrumbs"
-                        Libraries="_libraries"
+                        Libraries="GetFilteredLibraries()"
                         OnNavigateUp="NavigateUp"
                         OnNavigateToPermissions="NavigateToPermissionsView"
                         OnCreateFolder="OpenCreateFolderDialogFromView"
@@ -134,6 +134,7 @@ else
 
 @* ── Opciones de vista — bottom sheet ── *@
 <MudDrawer @bind-Open="_filterSheetOpen"
+           @key="_filterSheetKey"
            Anchor="Anchor.Bottom"
            Elevation="4"
            Variant="DrawerVariant.Temporary"
@@ -146,24 +147,51 @@ else
     </div>
     <MudDivider />
     <div class="px-4 pt-3 pb-6">
-        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Ordenar por</MudText>
-        <MudSelect T="FolderSort"
-                   Value="_folderSort"
-                   ValueChanged="OnFolderSortChanged"
-                   Variant="Variant.Outlined"
-                   Margin="Margin.Dense"
-                   FullWidth="true"
-                   Class="mb-4">
-            <MudSelectItem Value="FolderSort.Name">Nombre</MudSelectItem>
-            <MudSelectItem Value="FolderSort.AssetCount">Cantidad de archivos</MudSelectItem>
-        </MudSelect>
-        <MudDivider Class="mb-3" />
-        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Vista</MudText>
-        <MudToggleGroup T="FolderViewMode" Value="_folderViewMode" ValueChanged="OnViewModeChanged"
-                        Color="Color.Primary" Outline="false" Delimiters="false" Size="Size.Small" Class="w-100 folder-view-toggle">
-            <MudToggleItem Value="FolderViewMode.Grid" Icon="@Icons.Material.Filled.ViewModule" Text="Cuadrícula" />
-            <MudToggleItem Value="FolderViewMode.List" Icon="@Icons.Material.Filled.ViewList" Text="Lista" />
-        </MudToggleGroup>
+        @{
+            var showFolderSection = _selectedFolder == null || GetFilteredSubFolders().Any();
+            var showAssetSection = _selectedFolder != null && _assets.Any();
+        }
+        @if (showFolderSection)
+        {
+            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;" Class="mb-2 d-block">Carpetas</MudText>
+            <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Ordenar por</MudText>
+            <MudSelect T="FolderSort"
+                       Value="_folderSort"
+                       ValueChanged="OnFolderSortChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       FullWidth="true"
+                       Class="mb-4">
+                <MudSelectItem Value="FolderSort.Name">Nombre</MudSelectItem>
+                <MudSelectItem Value="FolderSort.AssetCount">Cantidad de archivos</MudSelectItem>
+            </MudSelect>
+            <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Vista</MudText>
+            <MudToggleGroup T="FolderViewMode" Value="_folderViewMode" ValueChanged="OnViewModeChanged"
+                            Color="Color.Primary" Outline="false" Delimiters="false" Size="Size.Small" Class="w-100 folder-view-toggle">
+                <MudToggleItem Value="FolderViewMode.Grid" Icon="@Icons.Material.Filled.ViewModule" Text="Cuadrícula" />
+                <MudToggleItem Value="FolderViewMode.List" Icon="@Icons.Material.Filled.ViewList" Text="Lista" />
+            </MudToggleGroup>
+        }
+        @if (showAssetSection)
+        {
+            @if (showFolderSection)
+            {
+                <MudDivider Class="my-4" />
+            }
+            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;" Class="mb-2 d-block">Archivos</MudText>
+            <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Ordenar por</MudText>
+            <MudSelect T="AssetSort"
+                       Value="_assetSort"
+                       ValueChanged="OnAssetSortChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       FullWidth="true">
+                <MudSelectItem Value="AssetSort.Newest">Más recientes</MudSelectItem>
+                <MudSelectItem Value="AssetSort.Oldest">Más antiguos</MudSelectItem>
+                <MudSelectItem Value="AssetSort.Name">Nombre</MudSelectItem>
+                <MudSelectItem Value="AssetSort.Size">Tamaño</MudSelectItem>
+            </MudSelect>
+        }
     </div>
 </MudDrawer>
 
@@ -417,6 +445,7 @@ else
 
     private bool _createFolderSheetOpen = false;
     private bool _filterSheetOpen = false;
+    private int _filterSheetKey = 0;
     private bool _isSharedSpaceCreation = false;
     private bool _editFolderDialogVisible = false;
     private bool _editFolderSheetEverOpened = false;
@@ -427,6 +456,7 @@ else
     private string _folderNameInput = string.Empty;
     private string _searchQuery = string.Empty;
     private FolderSort _folderSort = FolderSort.Name;
+    private AssetSort _assetSort = AssetSort.Newest;
     private Guid? _editParentFolderId;
     private FolderItem? _editTargetFolder;
     private Guid? _moveTargetFolderId;
@@ -464,6 +494,14 @@ else
         Grid,
         List
     }
+
+    private enum AssetSort
+    {
+        Newest,
+        Oldest,
+        Name,
+        Size
+    }
     
     private int _activeTab;
     private FolderViewMode _folderViewMode = FolderViewMode.Grid;
@@ -478,6 +516,35 @@ else
     {
         _folderSort = sort;
         await JS.InvokeVoidAsync("localStorage.setItem", "photonne:folders:sort", sort.ToString());
+    }
+
+    private async Task OnAssetSortChanged(AssetSort sort)
+    {
+        _assetSort = sort;
+        await JS.InvokeVoidAsync("localStorage.setItem", "photonne:folders:assetSort", sort.ToString());
+        ApplyAssetSort();
+    }
+
+    private void ApplyAssetSort()
+    {
+        _assets = _assetSort switch
+        {
+            AssetSort.Newest => _assets.OrderByDescending(a => a.FileCreatedAt).ToList(),
+            AssetSort.Oldest => _assets.OrderBy(a => a.FileCreatedAt).ToList(),
+            AssetSort.Name => _assets.OrderBy(a => a.FileName, StringComparer.OrdinalIgnoreCase).ToList(),
+            AssetSort.Size => _assets.OrderByDescending(a => a.FileSize).ToList(),
+            _ => _assets
+        };
+    }
+
+    private List<ExternalLibraryDto> GetFilteredLibraries()
+    {
+        return _folderSort switch
+        {
+            FolderSort.Name => _libraries.OrderBy(l => l.Name).ToList(),
+            FolderSort.AssetCount => _libraries.OrderByDescending(l => l.AssetCount).ToList(),
+            _ => _libraries
+        };
     }
 
     private List<FolderItem> GetFilteredFolders(List<FolderItem> source)
@@ -789,6 +856,9 @@ else
 
             var viewMode = await JS.InvokeAsync<string?>("localStorage.getItem", "photonne:folders:viewMode");
             if (Enum.TryParse<FolderViewMode>(viewMode, out var viewModeValue)) _folderViewMode = viewModeValue;
+
+            var assetSort = await JS.InvokeAsync<string?>("localStorage.getItem", "photonne:folders:assetSort");
+            if (Enum.TryParse<AssetSort>(assetSort, out var assetSortValue)) _assetSort = assetSortValue;
         }
         catch { }
     }
@@ -796,9 +866,11 @@ else
     protected override async Task OnParametersSetAsync()
     {
         if (_isNavigating) return;
-        try 
+        try
         {
             _isNavigating = true;
+            _filterSheetOpen = false;
+            _filterSheetKey++;
             await HandleFolderNavigation();
         }
         finally
@@ -1235,6 +1307,7 @@ else
             }
             // Atomic swap: new data + paging reset in one batch, no intermediate empty state.
             _assets = assets ?? new List<TimelineItem>();
+            ApplyAssetSort();
             _folderAssetVisibleCount = Math.Min(FOLDER_ASSETS_INITIAL_BATCH, _assets.Count);
             _folderAssetsLoadingMore = false;
             if (_folderAssetsSentinelAttached)
