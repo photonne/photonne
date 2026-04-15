@@ -6,10 +6,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Photonne.Server.Api;
+using Photonne.Server.Api.Shared.Services;
 using Scalar.AspNetCore;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Demo mode: bind DemoMode section so DemoModeOptions is available via IOptions<>.
+// When Enabled=false the app runs normally; when true, the guard middleware and
+// seeder/reset services activate.
+builder.Services.Configure<DemoModeOptions>(
+    builder.Configuration.GetSection(DemoModeOptions.SectionName));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -127,6 +134,10 @@ if (builder.Configuration.GetValue<bool>("HTTPS_REDIRECT"))
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Demo mode guard — after auth so blocks apply only to authenticated API calls.
+// No-op when DemoMode:Enabled = false.
+app.UseMiddleware<DemoModeGuardMiddleware>();
 
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
