@@ -24,10 +24,11 @@ public class VersionEndpoint : IEndpoint
     private static async Task<IResult> GetVersion(
         [FromServices] IMemoryCache cache,
         [FromServices] IHttpClientFactory httpClientFactory,
+        [FromQuery] bool? refresh,
         CancellationToken ct)
     {
         const string cacheKey = "admin:version";
-        if (cache.TryGetValue(cacheKey, out VersionInfoResponse? cached))
+        if (refresh != true && cache.TryGetValue(cacheKey, out VersionInfoResponse? cached))
             return Results.Ok(cached);
 
         var currentVersion = Assembly.GetExecutingAssembly()
@@ -52,7 +53,7 @@ public class VersionEndpoint : IEndpoint
         {
             var client = httpClientFactory.CreateClient("github");
             using var response = await client.GetAsync(
-                "https://api.github.com/repos/marccafo/Photonne/releases/latest", ct);
+                "https://api.github.com/repos/photonne/photonne/releases/latest", ct);
 
             if (response.IsSuccessStatusCode)
             {

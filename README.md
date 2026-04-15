@@ -85,7 +85,7 @@ Photonne.sln
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/marccafo/photonne.git
+git clone https://github.com/photonne/photonne.git
 cd photonne
 ```
 

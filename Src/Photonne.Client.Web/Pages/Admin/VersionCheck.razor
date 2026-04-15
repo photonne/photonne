@@ -175,13 +175,14 @@
             await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(bool refresh = false)
     {
         _loading = true;
         _errorMessage = null;
         try
         {
-            _info = await Http.GetFromJsonAsync<VersionInfoResponse>("/api/admin/version");
+            var url = refresh ? "/api/admin/version?refresh=true" : "/api/admin/version";
+            _info = await Http.GetFromJsonAsync<VersionInfoResponse>(url);
         }
         catch (Exception ex)
         {
@@ -196,7 +197,7 @@
     private async Task RefreshAsync()
     {
         _info = null;
-        await LoadAsync();
+        await LoadAsync(refresh: true);
     }
 
     private sealed record VersionInfoResponse(
