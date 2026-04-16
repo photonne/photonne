@@ -284,17 +284,42 @@ Photonne incluye un **modo demo** pensado para desplegar una instancia pública 
 
 ### Despliegue de la demo
 
+La demo está pensada para coexistir en el mismo host que tu instancia normal de Photonne. **Reutiliza el contenedor Postgres existente** (con una base de datos separada) y todos los contenedores se llaman `photonne-demo-*` para evitar colisiones.
+
 1. Crea un directorio en el host con las imágenes semilla (formato libre — JPG, PNG, MP4…). EXIF y metadata se extraen tal cual vengan en los archivos originales.
 
 2. Crea `.env.demo` con al menos:
    ```env
+   # OBLIGATORIO — clave nueva, NO reutilices la de producción
    JWT_KEY=<clave-aleatoria-segura>
-   POSTGRES_PASSWORD=<password>
-   DEMO_SEED_HOST_PATH=/ruta/host/a/tus/fotos
+
+   # OBLIGATORIO — la misma password de tu Postgres existente
+   POSTGRES_PASSWORD=<password-postgres-existente>
+
+   # OBLIGATORIO — directorio del host con las fotos semilla
+   DEMO_SEED_HOST_PATH=/opt/photonne/demo-seed
+
+   # Opcionales (defaults razonables)
    DEMO_RESET_HOURS=6
+   POSTGRES_DB=photonne_demo
+   POSTGRES_USER=photonne_user
+   ```
+   No hace falta definir `ADMIN_*`: el modo demo no crea usuario admin a propósito.
+
+3. Crea **una sola vez** la red Docker compartida y conecta tu Postgres existente:
+   ```bash
+   docker network create photonne-shared
+   docker network connect photonne-shared photonne-db
    ```
 
-3. Levanta la stack combinando el compose base y el override:
+4. Crea **una sola vez** la base de datos `photonne_demo` en tu Postgres existente:
+   ```bash
+   docker exec -it photonne-db psql -U photonne_user -d postgres \
+       -c "CREATE DATABASE photonne_demo OWNER photonne_user;"
+   ```
+   Las migraciones de EF Core poblarán el esquema en el primer arranque.
+
+5. Levanta la stack combinando el compose base y el override:
    ```bash
    docker compose \
        -f docker-compose.yml \
@@ -303,14 +328,14 @@ Photonne incluye un **modo demo** pensado para desplegar una instancia pública 
        up -d
    ```
 
-4. Pon un proxy inverso delante para terminar TLS. Con Caddy:
+6. Pon un proxy inverso delante para terminar TLS. Con Caddy:
    ```
    demo.photonne.app {
-       reverse_proxy photonne-api:8080
+       reverse_proxy photonne-demo-api:8080
    }
    ```
 
-5. Enlaza la demo desde tu landing con `target="_blank"` (se desaconseja `iframe`: el service-worker de la PWA y `localStorage` para JWT sufren dentro de un contexto embebido).
+7. Enlaza la demo desde tu landing con `target="_blank"` (se desaconseja `iframe`: el service-worker de la PWA y `localStorage` para JWT sufren dentro de un contexto embebido).
 
 ### Volver a una instancia normal
 

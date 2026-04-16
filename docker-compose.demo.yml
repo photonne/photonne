@@ -1,36 +1,65 @@
-# Override for the PUBLIC DEMO deployment.
+# Override for the PUBLIC DEMO deployment, designed to coexist on the same host
+# as a regular Photonne instance.
+#
+# Postgres reuse:
+#   The demo connects to the EXISTING photonne-db container of the regular
+#   instance through a shared external Docker network. A separate database
+#   (POSTGRES_DB=photonne_demo by default) keeps demo data isolated, so the
+#   periodic reset never touches your real data.
+#
+# Container naming:
+#   Every demo container is renamed to photonne-demo-* so there is no collision
+#   with the regular instance's photonne-* containers on the same Docker daemon.
 #
 # Usage on the demo server:
 #
-#   docker compose \
-#       -f docker-compose.yml \
-#       -f docker-compose.demo.yml \
-#       --env-file .env.demo \
-#       up -d
+#   1. Create the shared network ONCE on the host:
 #
-# Prerequisites:
-#   1. Populate DEMO_SEED_HOST_PATH with media files (photos/videos). They will
-#      be copied into the demo user's library on first boot and on every reset.
-#   2. Put a reverse proxy (e.g. Caddy, Traefik) in front for TLS termination.
-#      Caddyfile example:
+#          docker network create photonne-shared
+#
+#   2. Connect the existing Postgres container to that network ONCE:
+#
+#          docker network connect photonne-shared photonne-db
+#
+#      (Or add `networks: [photonne-shared]` to the postgresql service of your
+#      regular docker-compose.yml and `docker compose up -d` to apply it.)
+#
+#   3. Create the demo database once. From any psql client:
+#
+#          CREATE DATABASE photonne_demo OWNER photonne_user;
+#
+#      EF Core migrations will populate the schema on first boot.
+#
+#   4. Bring the demo up:
+#
+#          docker compose \
+#              -f docker-compose.yml \
+#              -f docker-compose.demo.yml \
+#              --env-file .env.demo \
+#              up -d
+#
+#   5. Reverse-proxy in front (Caddyfile example):
 #
 #          demo.photonne.app {
-#              reverse_proxy photonne-api:8080
+#              reverse_proxy photonne-demo-api:8080
 #          }
 #
-#   3. .env.demo should at minimum contain a strong JWT_KEY and POSTGRES_PASSWORD.
-#      No ADMIN_* variables are needed — demo mode disables admin creation on purpose.
+# Required env vars (.env.demo):
+#   - JWT_KEY                  strong random secret (NEVER reuse the prod one)
+#   - POSTGRES_PASSWORD        same password as your existing Postgres user
+#   - DEMO_SEED_HOST_PATH      host directory with the seed media files
+#   - DEMO_RESET_HOURS         optional, defaults to 6
 #
-# Behaviour:
-#   * DemoModeGuardMiddleware blocks destructive endpoints (users, backup, libraries).
-#   * DemoSeederService copies /data/demo-seed into the demo user's space and indexes.
-#   * DemoResetService wipes DB + assets and re-seeds every DEMO_RESET_HOURS hours.
-#   * Kestrel body limit is 25 MB, login/upload rate-limited.
-#   * pgAdmin is disabled on the demo server so it's not publicly reachable.
+# NOT needed (demo mode disables admin creation):
+#   - ADMIN_USERNAME / ADMIN_PASSWORD / ADMIN_EMAIL / ...
 
 services:
   photonne-api:
+    container_name: photonne-demo-api
     environment:
+      # Reuse the existing Postgres container (host name matches the regular
+      # instance's container_name) but use a separate database.
+      - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne_demo};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
       - DemoMode__Enabled=true
       - DemoMode__ResetIntervalHours=${DEMO_RESET_HOURS:-6}
       - DemoMode__SeedPath=/data/demo-seed
@@ -39,12 +68,19 @@ services:
       - DemoMode__DemoPassword=${DEMO_PASSWORD:-demo}
       - HTTPS_REDIRECT=true
     volumes:
-      # Seed images — mounted read-only so the seeder can't accidentally mutate them.
+      # Seed images — mounted read-only so the seeder can't mutate them.
       - ${DEMO_SEED_HOST_PATH:-./demo-seed}:/data/demo-seed:ro
+    # The base compose declares depends_on: postgresql. We don't start a local
+    # Postgres in the demo, so reset that dependency.
+    depends_on: !reset []
     # Expose only to the reverse-proxy network, not the public host interface.
     ports: !reset []
     expose:
       - "8080"
+    # Join the shared network so we can reach the regular instance's Postgres.
+    networks:
+      - default
+      - photonne-shared
     # Keep resource usage predictable on a small VPS.
     deploy:
       resources:
@@ -52,17 +88,20 @@ services:
           memory: 1.5g
           cpus: "1.5"
 
+  # The base compose ships its own Postgres for standalone deployments. On the
+  # demo we reuse the regular instance's Postgres, so disable this service.
   postgresql:
-    # Keep internal — no host port exposed.
-    ports: !reset []
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: "0.5"
+    profiles:
+      - disabled
 
-  # pgAdmin is part of the base compose for local development. On the public
-  # demo we don't want it reachable at all — remove it from the override.
+  # pgAdmin is for local development only. Never exposed in the public demo.
   pgadmin:
     profiles:
       - disabled
+
+networks:
+  # Shared bridge network created once with `docker network create photonne-shared`.
+  # The regular instance's Postgres must also be attached to it.
+  photonne-shared:
+    external: true
+    name: photonne-shared
