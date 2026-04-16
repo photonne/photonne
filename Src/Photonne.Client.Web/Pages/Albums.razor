@@ -50,6 +50,7 @@
                       OnAlbumAssetClick="OnAlbumAssetClick"
                       OnAssetTouchStart="OnAssetTouchStartFromView"
                       OnToggleAlbumAssetSelection="OnToggleAlbumAssetSelectionFromView"
+                      OnToggleAlbumAssetFavorite="ToggleAlbumAssetFavoriteAsync"
                       OnNavigateBack="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
                       OnOpenAlbumShareDialog="OpenAlbumShareDialog"
                       OnDownloadAlbum="DownloadAlbumAsync"
@@ -88,6 +89,7 @@ else
                        OnAlbumAssetClick="OnAlbumAssetClick"
                        OnAssetTouchStart="OnAssetTouchStartFromView"
                        OnToggleAlbumAssetSelection="OnToggleAlbumAssetSelectionFromView"
+                       OnToggleAlbumAssetFavorite="ToggleAlbumAssetFavoriteAsync"
                        OnNavigateBack="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
                        OnOpenAlbumShareDialog="OpenAlbumShareDialog"
                        OnDownloadAlbum="DownloadAlbumAsync"
@@ -1057,6 +1059,19 @@ else
 
     private void OnToggleAlbumAssetSelectionFromView((Guid id, bool selected) args)
         => ToggleAlbumAssetSelection(args.id, args.selected);
+
+    private async Task ToggleAlbumAssetFavoriteAsync(TimelineItem asset)
+    {
+        try
+        {
+            asset.IsFavorite = await AssetService.ToggleFavoriteAsync(asset.Id);
+            StateHasChanged();
+        }
+        catch
+        {
+            Snackbar.Add("Error al actualizar favorito", Severity.Error);
+        }
+    }
 
     private async Task OnViewModeChanged(AlbumViewMode mode)
     {

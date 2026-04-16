@@ -52,6 +52,7 @@
                        OnOpenAsset="OpenAsset"
                        OnNavigateToLibrary="NavigateToLibrary"
                        OnToggleAssetSelection="ToggleAssetSelectionFromView"
+                       OnToggleAssetFavorite="ToggleAssetFavoriteAsync"
                        OnToggleFolderSelection="ToggleFolderSelectionFromView"
                        OnCardTouchStart="OnCardTouchStartFromView"
                        OnCardTouchMove="OnCardTouchMove"
@@ -91,6 +92,7 @@ else
                         OnOpenAsset="OpenAsset"
                         OnNavigateToLibrary="NavigateToLibrary"
                         OnToggleAssetSelection="ToggleAssetSelectionFromView"
+                        OnToggleAssetFavorite="ToggleAssetFavoriteAsync"
                         OnToggleFolderSelection="ToggleFolderSelectionFromView"
                         OnCardTouchStart="OnCardTouchStartFromView"
                         OnCardTouchMove="OnCardTouchMove"
@@ -2825,6 +2827,18 @@ else
     private void OnDeviceLayoutChanged() => InvokeAsync(StateHasChanged);
 
     private void ToggleAssetSelectionFromView((Guid id, bool value) args) => ToggleAssetSelection(args.id, args.value);
+    private async Task ToggleAssetFavoriteAsync(TimelineItem asset)
+    {
+        try
+        {
+            asset.IsFavorite = await AssetService.ToggleFavoriteAsync(asset.Id);
+            StateHasChanged();
+        }
+        catch
+        {
+            Snackbar.Add("Error al actualizar favorito", Severity.Error);
+        }
+    }
     private void ToggleFolderSelectionFromView((Guid id, bool value) args) => ToggleFolderSelection(args.id, args.value);
     private async Task OnCardTouchStartFromView((TouchEventArgs e, TimelineItem asset) args) => await OnCardTouchStart(args.e, args.asset);
     private async Task OnFolderItemTouchStartFromView((TouchEventArgs e, FolderItem folder) args) => await OnFolderItemTouchStart(args.e, args.folder);

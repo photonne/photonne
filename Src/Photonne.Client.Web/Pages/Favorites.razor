@@ -1,5 +1,6 @@
 @page "/favorites"
 @inject IAssetService AssetService
+@inject LayoutService LayoutService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -13,27 +14,67 @@
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
 }
 
-<div class="favorites-container">
-    @if (_assets.Any())
+<div class="px-3 pt-3">
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">Favoritos</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                       Size="Size.Small"
+                       Title="Opciones de vista"
+                       OnClick="@(() => _filterSheetOpen = true)" />
+    </div>
+</div>
+
+@* ── Opciones de vista — bottom sheet ── *@
+<MudDrawer @bind-Open="_filterSheetOpen"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Opciones de vista</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="@(() => _filterSheetOpen = false)" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6">
+        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">Ordenar por</MudText>
+        <MudSelect T="AssetSort"
+                   Value="_assetSort"
+                   ValueChanged="OnAssetSortChanged"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   FullWidth="true">
+            <MudSelectItem Value="AssetSort.Newest">Más recientes</MudSelectItem>
+            <MudSelectItem Value="AssetSort.Oldest">Más antiguos</MudSelectItem>
+            <MudSelectItem Value="AssetSort.Name">Nombre</MudSelectItem>
+            <MudSelectItem Value="AssetSort.Size">Tamaño</MudSelectItem>
+        </MudSelect>
+    </div>
+</MudDrawer>
+
+<div class="assets-grid-content">
+    @if (_sortedAssets.Any())
     {
-        @foreach (var group in _groupedAssets)
-        {
-            var dayDate = DateTime.ParseExact(group.Key, "yyyy-MM-dd", null);
-            <div class="day-group">
-                <MudText Typo="Typo.body2" Class="day-header">@FormatDayHeader(dayDate)</MudText>
-                <div class="masonry-grid">
-                    @foreach (var asset in group.Value)
-                    {
-                        <div class="masonry-item"
-                             data-aspect-ratio="@asset.AspectRatio.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)"
-                             data-width="@(asset.Width?.ToString() ?? "0")"
-                             data-height="@(asset.Height?.ToString() ?? "0")">
-                            <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+        <MudGrid Spacing="1">
+            @foreach (var asset in _sortedAssets)
+            {
+                <MudItem xs="4" sm="3" md="2">
+                    <div class="asset-select-container @(_selectionMode ? "selection-mode" : "") @(IsAssetSelected(asset.Id) ? "selected" : "")"
+                         data-asset-id="@asset.Id"
+                         @ontouchstart="@(e => OnCardTouchStart(e, asset))"
+                         @ontouchmove="OnCardTouchMove"
+                         @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                        <AssetCard Asset="@asset" OnAssetClick="OpenAsset" />
+                        <div class="asset-select-checkbox" @onclick:stopPropagation="true">
+                            <MudCheckBox T="bool"
+                                         Value="@IsAssetSelected(asset.Id)"
+                                         ValueChanged="@(EventCallback.Factory.Create<bool>(this, value => ToggleAssetSelection(asset.Id, value)))" />
                         </div>
-                    }
-                </div>
-            </div>
-        }
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
 
         @if (_hasMore)
         {
@@ -55,14 +96,33 @@
 </div>
 
 @code {
+    private enum AssetSort
+    {
+        Newest,
+        Oldest,
+        Name,
+        Size
+    }
+
     private List<TimelineItem> _assets = new();
-    private Dictionary<string, List<TimelineItem>> _groupedAssets = new();
+    private List<TimelineItem> _sortedAssets = new();
     private bool _loading = true;
-    private bool _loadingMore = false;
-    private bool _hasMore = false;
-    private DateTime? _nextCursor = null;
+    private bool _loadingMore;
+    private bool _hasMore;
+    private DateTime? _nextCursor;
+    private bool _selectionMode;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _filterSheetOpen;
+    private AssetSort _assetSort = AssetSort.Newest;
+    private bool _sortPrefLoaded;
+
+    // Touch / long-press / drag-select
     private DotNetObjectReference<Favorites>? _objRef;
-    private bool _isDisposed = false;
+    private System.Threading.Timer? _longPressTimer;
+    private bool _longPressHandled;
+    private double _touchStartX;
+    private double _touchStartY;
+    private bool _isDisposed;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,6 +133,23 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_isDisposed) return;
+
+        if (firstRender && !_sortPrefLoaded)
+        {
+            _sortPrefLoaded = true;
+            try
+            {
+                var stored = await JS.InvokeAsync<string?>("localStorage.getItem", "photonne:favorites:assetSort");
+                if (Enum.TryParse<AssetSort>(stored, out var parsed) && parsed != _assetSort)
+                {
+                    _assetSort = parsed;
+                    SortAssets();
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+
         if (_hasMore && _objRef != null)
             await JS.InvokeVoidAsync("setupLoadMoreObserver", "favorites-load-more-sentinel", _objRef, nameof(LoadMoreFromJs));
         else
@@ -86,12 +163,6 @@
         await LoadMoreAsync();
     }
 
-    public void Dispose()
-    {
-        _isDisposed = true;
-        _objRef?.Dispose();
-    }
-
     private async Task LoadAsync()
     {
         _loading = true;
@@ -101,7 +172,7 @@
             _assets = page.Items;
             _hasMore = page.HasMore;
             _nextCursor = page.NextCursor;
-            RebuildGroups();
+            SortAssets();
             AssetListNavigationState.SetList(_assets, "favorites");
         }
         catch (Exception ex)
@@ -125,7 +196,7 @@
             _assets.AddRange(page.Items);
             _hasMore = page.HasMore;
             _nextCursor = page.NextCursor;
-            RebuildGroups();
+            SortAssets();
             AssetListNavigationState.SetList(_assets, "favorites");
         }
         catch (Exception ex)
@@ -139,25 +210,193 @@
         }
     }
 
-    private void RebuildGroups()
+    private void SortAssets()
     {
-        _groupedAssets = _assets
-            .GroupBy(a => a.FileCreatedAt.ToString("yyyy-MM-dd"))
-            .OrderByDescending(g => g.Key)
-            .ToDictionary(g => g.Key, g => g.ToList());
+        _sortedAssets = _assetSort switch
+        {
+            AssetSort.Newest => _assets.OrderByDescending(a => a.FileCreatedAt).ToList(),
+            AssetSort.Oldest => _assets.OrderBy(a => a.FileCreatedAt).ToList(),
+            AssetSort.Name => _assets.OrderBy(a => a.FileName, StringComparer.OrdinalIgnoreCase).ToList(),
+            AssetSort.Size => _assets.OrderByDescending(a => a.FileSize).ToList(),
+            _ => _assets.ToList()
+        };
+    }
+
+    private async Task OnAssetSortChanged(AssetSort sort)
+    {
+        _assetSort = sort;
+        SortAssets();
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "photonne:favorites:assetSort", sort.ToString());
+        }
+        catch { }
+    }
+
+    private async Task OnCardTouchStart(TouchEventArgs e, TimelineItem asset)
+    {
+        if (e.Touches.Length == 0) return;
+        _touchStartX = e.Touches[0].ClientX;
+        _touchStartY = e.Touches[0].ClientY;
+        _longPressHandled = false;
+
+        if (_selectionMode)
+        {
+            var selectMode = !IsAssetSelected(asset.Id);
+            _longPressHandled = true;
+            ToggleAssetSelection(asset.Id, selectMode);
+            await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+            if (_objRef != null)
+                await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, selectMode);
+            return;
+        }
+
+        _longPressTimer?.Dispose();
+        _longPressTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _longPressHandled = true;
+                ToggleAssetSelection(asset.Id, true);
+                await JS.InvokeVoidAsync("assetGridHelpers.suppressNextClick");
+                if (_objRef != null)
+                    await JS.InvokeVoidAsync("assetGridHelpers.startDragSelect", _objRef, true);
+                StateHasChanged();
+            });
+        }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
+    }
+
+    [JSInvokable]
+    public void OnDragSelectAsset(string assetIdStr, bool select)
+    {
+        if (!Guid.TryParse(assetIdStr, out var assetId)) return;
+        if (select == IsAssetSelected(assetId)) return;
+        ToggleAssetSelection(assetId, select);
+        StateHasChanged();
     }
 
     private void OpenAsset(TimelineItem asset)
     {
+        if (_longPressHandled)
+        {
+            _longPressHandled = false;
+            return;
+        }
+
+        if (_selectionMode)
+        {
+            ToggleAssetSelection(asset.Id, !IsAssetSelected(asset.Id));
+            return;
+        }
+
         AssetListNavigationState.SetList(_assets, "favorites");
         Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=favorites");
     }
 
-    private static string FormatDayHeader(DateTime date)
+    private void ToggleAssetSelection(Guid assetId, bool selected)
     {
-        var today = DateTime.Today;
-        if (date.Date == today) return "Hoy";
-        if (date.Date == today.AddDays(-1)) return "Ayer";
-        return date.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+        if (!_selectionMode) _selectionMode = true;
+
+        if (selected)
+            _selectedAssetIds.Add(assetId);
+        else
+        {
+            _selectedAssetIds.Remove(assetId);
+            if (_selectedAssetIds.Count == 0) ExitSelectionMode();
+            else UpdateSelectionNavbar();
+            return;
+        }
+        UpdateSelectionNavbar();
+    }
+
+    private bool IsAssetSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds.Clear();
+        LayoutService.ResetNavbar();
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (_selectedAssetIds.Count == _assets.Count && _assets.Any())
+        {
+            _selectedAssetIds.Clear();
+            UpdateSelectionNavbar();
+            return;
+        }
+        _selectedAssetIds = _assets.Select(a => a.Id).ToHashSet();
+        UpdateSelectionNavbar();
+    }
+
+    private void UpdateSelectionNavbar()
+    {
+        if (!_selectionMode)
+        {
+            LayoutService.ResetNavbar();
+            return;
+        }
+
+        var selectedCount = _selectedAssetIds.Count;
+        var allSelected = _assets.Any() && selectedCount == _assets.Count;
+
+        LayoutService.SetCustomNavbar(
+            @<text>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
+                <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
+                <MudSpacer />
+                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
+                </MudTooltip>
+                <MudTooltip Text="Quitar de favoritos">
+                    <MudIconButton Icon="@Icons.Material.Filled.HeartBroken" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="UnfavoriteSelectedAsync" />
+                </MudTooltip>
+            </text>
+        , keepDrawerVisible: true);
+    }
+
+    private async Task UnfavoriteSelectedAsync()
+    {
+        if (!_selectedAssetIds.Any()) return;
+        try
+        {
+            foreach (var id in _selectedAssetIds.ToList())
+            {
+                await AssetService.ToggleFavoriteAsync(id);
+            }
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al quitar favoritos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        _longPressTimer?.Dispose();
+        _objRef?.Dispose();
+        LayoutService.ResetNavbar();
     }
 }

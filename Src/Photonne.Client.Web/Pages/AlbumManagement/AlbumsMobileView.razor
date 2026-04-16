@@ -328,6 +328,15 @@ else
                                          Value="@isSelected"
                                          ValueChanged="@(value => OnToggleAlbumAssetSelection.InvokeAsync((asset.Id, value)))" />
                         </div>
+                        @if (asset.SyncStatus == AssetSyncStatus.Synced && asset.Id != Guid.Empty && !asset.IsFileMissing)
+                        {
+                            <span @onclick:stopPropagation="true" class="media-thumb-favorite @(asset.IsFavorite ? "is-favorite" : "")">
+                                <MudIconButton Icon="@(asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                                               Size="Size.Small"
+                                               Color="Color.Inherit"
+                                               OnClick="@(() => OnToggleAlbumAssetFavorite.InvokeAsync(asset))" />
+                            </span>
+                        }
                     </div>
                 }
             </div>
@@ -383,6 +392,7 @@ else
     [Parameter] public EventCallback<TimelineItem> OnAlbumAssetClick { get; set; }
     [Parameter] public EventCallback<(TouchEventArgs e, TimelineItem asset)> OnAssetTouchStart { get; set; }
     [Parameter] public EventCallback<(Guid id, bool selected)> OnToggleAlbumAssetSelection { get; set; }
+    [Parameter] public EventCallback<TimelineItem> OnToggleAlbumAssetFavorite { get; set; }
     [Parameter] public EventCallback OnNavigateBack { get; set; }
     [Parameter] public EventCallback OnOpenAlbumShareDialog { get; set; }
     [Parameter] public EventCallback OnDownloadAlbum { get; set; }

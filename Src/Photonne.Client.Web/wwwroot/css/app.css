@@ -442,6 +442,22 @@ body.timeline-page .mud-main-content {
     pointer-events: auto;
 }
 
+/* Favorite toggle button: always visible bottom-right */
+.media-thumb-favorite {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    z-index: 5;
+    color: rgba(255, 255, 255, 0.7);
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+    transition: color 0.2s;
+}
+
+.media-thumb-favorite:hover,
+.media-thumb-favorite.is-favorite {
+    color: white;
+}
+
 /* Broken image indicator (when the file is missing on disk) */
 .media-thumb-broken {
     position: absolute;
