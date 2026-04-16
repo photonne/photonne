@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    @* ── Section tabs ── *@
+    @* $1$ ── Section tabs ── #1# *@
     <div class="ph-section-tabs">
         <a href="/albums/own"    class="ph-section-tab @(Filter?.ToLower() == "own"    || Filter == null ? "ph-section-tab--active" : "")">Míos</a>
         <a href="/albums/shared" class="ph-section-tab @(Filter?.ToLower() == "shared" ? "ph-section-tab--active" : "")">Compartidos</a>
@@ -201,169 +201,162 @@
 else
 {
     <div class="album-detail-scroll">
-    <div class="page-pad">
-    @* ── Section tabs (desktop) ── *@
-    <div class="ph-section-tabs">
-        <a href="/albums/own"    class="ph-section-tab @(SelectedAlbum.IsOwner == true ? "ph-section-tab--active" : "")">Míos</a>
-        <a href="/albums/shared" class="ph-section-tab @(SelectedAlbum.IsOwner == true ? "" : "ph-section-tab--active")">Compartidos</a>
-        <a href="/my-shares"     class="ph-section-tab">Links</a>
-    </div>
+        <div class="page-pad">
+            <div class="album-hero">
+                <div class="album-hero-bg" style="background-image: url('@(SelectedAlbum.CoverThumbnailUrl ?? "")'); background-color: var(--mud-palette-primary);"></div>
 
-    <div class="album-hero">
-        <div class="album-hero-bg" style="background-image: url('@(SelectedAlbum.CoverThumbnailUrl ?? "")'); background-color: var(--mud-palette-primary);"></div>
-
-        <div class="album-hero-back">
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => OnNavigateBack.InvokeAsync())" Title="Volver a álbumes" />
-        </div>
-
-        <div class="album-hero-actions">
-            @if (SelectedAlbum.IsOwner == true)
-            {
-                <MudTooltip Text="Compartir">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Share"
-                                   Color="Color.Inherit"
-                                   OnClick="OnOpenAlbumShareDialog" />
-                </MudTooltip>
-            }
-
-            @if (AlbumAssets.Any())
-            {
-                <MudTooltip Text="Descargar álbum">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Download"
-                                   Color="Color.Inherit"
-                                   Disabled="@DownloadingZip"
-                                   OnClick="OnDownloadAlbum" />
-                </MudTooltip>
-            }
-
-            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" >
-                @if (SelectedAlbum.CanWrite == true || SelectedAlbum.IsOwner == true)
-                {
-                    <MudMenuItem Icon="@Icons.Material.Outlined.AddPhotoAlternate" OnClick="@(() => OnNavigateToAddPhotos.InvokeAsync())">Añadir fotos</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="OnOpenEditDialog">Editar nombre/descripción</MudMenuItem>
-                }
-                @if (SelectedAlbum.CanManagePermissions == true || SelectedAlbum.IsOwner == true)
-                {
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Group"
-                                 OnClick="@(() => OnNavigateToPermissions.InvokeAsync())">
-                        Colaboradores
-                    </MudMenuItem>
-                }
-                @if (SelectedAlbum.IsOwner != true)
-                {
-                    <MudMenuItem Icon="@Icons.Material.Outlined.ExitToApp" OnClick="OnLeaveAlbum">Salir del álbum</MudMenuItem>
-                }
-                @if (SelectedAlbum.CanDelete == true || SelectedAlbum.IsOwner == true)
-                {
-                    <MudDivider />
-                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="OnOpenDeleteDialog" Class="red-text">Eliminar álbum</MudMenuItem>
-                }
-            </MudMenu>
-        </div>
-
-        <div class="album-hero-content">
-            <MudBreadcrumbs Items="@Breadcrumbs" Class="pa-0 mb-2" Style="color: rgba(255,255,255,0.7);" />
-
-            <div class="d-flex align-center gap-2 mb-1">
-                <MudText Typo="Typo.h3" Style="font-weight: 700;">@SelectedAlbum.Name</MudText>
-                @if (SelectedAlbum.IsShared)
-                {
-                    <MudTooltip Text="Álbum compartido">
-                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Medium" Style="color: rgba(255,255,255,0.8);" />
-                    </MudTooltip>
-                }
-            </div>
-
-            <div class="d-flex align-center gap-4 mb-3">
-                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
-                    <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
-                    @SelectedAlbum.AssetCount @(SelectedAlbum.AssetCount == 1 ? "foto" : "fotos")
-                </MudText>
-                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
-                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
-                    @SelectedAlbum.CreatedAt.ToString("MMMM yyyy")
-                </MudText>
-            </div>
-
-            @if (!string.IsNullOrEmpty(SelectedAlbum.Description))
-            {
-                <div class="album-description-text">
-                    <MudText Typo="Typo.body1">@SelectedAlbum.Description</MudText>
+                <div class="album-hero-back">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => OnNavigateBack.InvokeAsync())" Title="Volver a álbumes" />
                 </div>
-            }
-        </div>
-    </div>
 
-    @if (LoadingAssets)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
-    }
-    else if (AlbumAssets.Any())
-    {
-        <div class="pb-4">
-            <div class="mb-3">
-                <MudText Typo="Typo.h6">Archivos</MudText>
-            </div>
-            @{
-                var visibleAssets = Math.Min(AlbumAssetVisibleCount, AlbumAssets.Count);
-            }
-            <div class="media-thumb-grid">
-                @for (var i = 0; i < visibleAssets; i++)
-                {
-                    var asset = AlbumAssets[i];
-                    var isSelected = SelectedAlbumAssetIds.Contains(asset.Id);
-                    <div class="media-thumb-cell @(AssetSelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
-                         data-asset-id="@asset.Id"
-                         @key="asset.Id"
-                         @onclick="@(() => OnAlbumAssetClick.InvokeAsync(asset))"
-                         @ontouchstart="@(e => OnAssetTouchStart.InvokeAsync((e, asset)))"
-                         @ontouchmove="OnCardTouchMove"
-                         @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
-                        @if (asset.HasThumbnails && !asset.IsFileMissing)
+                <div class="album-hero-actions">
+                    @if (SelectedAlbum.IsOwner == true)
+                    {
+                        <MudTooltip Text="Compartir">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Share"
+                                           Color="Color.Inherit"
+                                           OnClick="OnOpenAlbumShareDialog" />
+                        </MudTooltip>
+                    }
+
+                    @if (AlbumAssets.Any())
+                    {
+                        <MudTooltip Text="Descargar álbum">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Download"
+                                           Color="Color.Inherit"
+                                           Disabled="@DownloadingZip"
+                                           OnClick="OnDownloadAlbum" />
+                        </MudTooltip>
+                    }
+
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" >
+                        @if (SelectedAlbum.CanWrite == true || SelectedAlbum.IsOwner == true)
                         {
-                            <img src="@asset.ThumbnailUrl"
-                                 alt="@asset.FileName"
-                                 loading="lazy"
-                                 decoding="async" />
+                            <MudMenuItem Icon="@Icons.Material.Outlined.AddPhotoAlternate" OnClick="@(() => OnNavigateToAddPhotos.InvokeAsync())">Añadir fotos</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="OnOpenEditDialog">Editar nombre/descripción</MudMenuItem>
                         }
-                        @if (asset.IsFileMissing)
+                        @if (SelectedAlbum.CanManagePermissions == true || SelectedAlbum.IsOwner == true)
                         {
-                            <div class="media-thumb-broken">
-                                <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
-                            </div>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Group"
+                                         OnClick="@(() => OnNavigateToPermissions.InvokeAsync())">
+                                Colaboradores
+                            </MudMenuItem>
                         }
-                        @if (asset.Type == "Video")
+                        @if (SelectedAlbum.IsOwner != true)
                         {
-                            <div class="media-thumb-video-icon">
-                                <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
-                            </div>
+                            <MudMenuItem Icon="@Icons.Material.Outlined.ExitToApp" OnClick="OnLeaveAlbum">Salir del álbum</MudMenuItem>
                         }
-                        <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
-                            <MudCheckBox T="bool"
-                                         Value="@isSelected"
-                                         ValueChanged="@(value => OnToggleAlbumAssetSelection.InvokeAsync((asset.Id, value)))" />
-                        </div>
+                        @if (SelectedAlbum.CanDelete == true || SelectedAlbum.IsOwner == true)
+                        {
+                            <MudDivider />
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="OnOpenDeleteDialog" Class="red-text">Eliminar álbum</MudMenuItem>
+                        }
+                    </MudMenu>
+                </div>
+
+                <div class="album-hero-content">
+                    <MudBreadcrumbs Items="@Breadcrumbs" Class="pa-0 mb-2" Style="color: rgba(255,255,255,0.7);" />
+
+                    <div class="d-flex align-center gap-2 mb-1">
+                        <MudText Typo="Typo.h3" Style="font-weight: 700;">@SelectedAlbum.Name</MudText>
+                        @if (SelectedAlbum.IsShared)
+                        {
+                            <MudTooltip Text="Álbum compartido">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Medium" Style="color: rgba(255,255,255,0.8);" />
+                            </MudTooltip>
+                        }
                     </div>
-                }
+
+                    <div class="d-flex align-center gap-4 mb-3">
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                            <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
+                            @SelectedAlbum.AssetCount @(SelectedAlbum.AssetCount == 1 ? "foto" : "fotos")
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
+                            @SelectedAlbum.CreatedAt.ToString("MMMM yyyy")
+                        </MudText>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(SelectedAlbum.Description))
+                    {
+                        <div class="album-description-text">
+                            <MudText Typo="Typo.body1">@SelectedAlbum.Description</MudText>
+                        </div>
+                    }
+                </div>
             </div>
-            @if (AlbumAssetVisibleCount < AlbumAssets.Count)
+
+            @if (LoadingAssets)
             {
-                <div id="album-assets-load-more-sentinel" style="height:4px;"></div>
-                <div class="d-flex justify-center py-4">
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+            }
+            else if (AlbumAssets.Any())
+            {
+                <div class="pb-4">
+                    <div class="mb-3">
+                        <MudText Typo="Typo.h6">Archivos</MudText>
+                    </div>
+                    @{
+                        var visibleAssets = Math.Min(AlbumAssetVisibleCount, AlbumAssets.Count);
+                    }
+                    <div class="media-thumb-grid">
+                        @for (var i = 0; i < visibleAssets; i++)
+                        {
+                            var asset = AlbumAssets[i];
+                            var isSelected = SelectedAlbumAssetIds.Contains(asset.Id);
+                            <div class="media-thumb-cell @(AssetSelectionMode ? "selection-mode" : "") @(isSelected ? "selected" : "")"
+                                 data-asset-id="@asset.Id"
+                                 @key="asset.Id"
+                                 @onclick="@(() => OnAlbumAssetClick.InvokeAsync(asset))"
+                                 @ontouchstart="@(e => OnAssetTouchStart.InvokeAsync((e, asset)))"
+                                 @ontouchmove="OnCardTouchMove"
+                                 @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                                @if (asset.HasThumbnails && !asset.IsFileMissing)
+                                {
+                                    <img src="@asset.ThumbnailUrl"
+                                         alt="@asset.FileName"
+                                         loading="lazy"
+                                         decoding="async" />
+                                }
+                                @if (asset.IsFileMissing)
+                                {
+                                    <div class="media-thumb-broken">
+                                        <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Medium" />
+                                    </div>
+                                }
+                                @if (asset.Type == "Video")
+                                {
+                                    <div class="media-thumb-video-icon">
+                                        <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
+                                    </div>
+                                }
+                                <div class="media-thumb-checkbox" @onclick:stopPropagation="true">
+                                    <MudCheckBox T="bool"
+                                                 Value="@isSelected"
+                                                 ValueChanged="@(value => OnToggleAlbumAssetSelection.InvokeAsync((asset.Id, value)))" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (AlbumAssetVisibleCount < AlbumAssets.Count)
+                    {
+                        <div id="album-assets-load-more-sentinel" style="height:4px;"></div>
+                        <div class="d-flex justify-center py-4">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="pb-4">
+                    <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
+                                Title="Este álbum está vacío"
+                                Description="Añade fotos desde el detalle de cualquier foto." />
                 </div>
             }
         </div>
-    }
-    else
-    {
-        <div class="pb-4">
-            <EmptyState Icon="@Icons.Material.Filled.PhotoLibrary"
-                        Title="Este álbum está vacío"
-                        Description="Añade fotos desde el detalle de cualquier foto." />
-        </div>
-    }
-    </div>
     </div>
 }
 

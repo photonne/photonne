@@ -100,8 +100,9 @@
     {
         _username = _demoInfo.DemoUsername ?? "demo";
         _password = _demoInfo.DemoPassword ?? "demo";
-        // Submit straight away so the user doesn't have to click "Iniciar Sesión".
-        await HandleLogin();
+        // MudForm validation lags behind programmatic value updates, so submit
+        // directly instead of going through HandleLogin's Validate() gate.
+        await SubmitLoginAsync();
     }
 
     private async Task HandleLogin()
@@ -109,6 +110,11 @@
         await _form!.Validate();
         if (!_isValid) return;
 
+        await SubmitLoginAsync();
+    }
+
+    private async Task SubmitLoginAsync()
+    {
         try
         {
             _loggingIn = true;
