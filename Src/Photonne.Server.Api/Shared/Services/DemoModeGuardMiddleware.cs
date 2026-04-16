@@ -34,6 +34,13 @@ public sealed class DemoModeGuardMiddleware
         new Rule("GET",    @"^/api/admin/database/backup/?$"),
         new Rule("POST",   @"^/api/admin/database/restore/?$"),
 
+        // ── Global settings ────────────────────────────────────────────────
+        // The demo user has Admin role so the admin panel renders, but global
+        // settings (workers, paths, retention, ML, scheduler...) must stay
+        // immutable so visitors don't break the demo for everyone else.
+        // GET /api/settings stays open so the admin pages can render values.
+        new Rule("POST",   @"^/api/settings/?$"),
+
         // ── External libraries ─────────────────────────────────────────────
         new Rule("POST",   @"^/api/libraries/?$"),
         new Rule("PUT",    @"^/api/libraries/[0-9a-fA-F\-]{36}/?$"),

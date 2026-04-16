@@ -90,15 +90,21 @@ public sealed class DemoSeederService : IHostedService
                 PasswordHash = authService.HashPassword(opts.DemoPassword),
                 FirstName = "Demo",
                 LastName = "User",
-                Role = "User",
+                // Admin so visitors can browse the admin panel and see what
+                // Photonne offers. Destructive endpoints stay blocked by
+                // DemoModeGuardMiddleware regardless of role.
+                Role = "Admin",
                 IsActive = true,
                 IsEmailVerified = true,
+                // NOT primary admin: we don't want the demo user to inherit
+                // protections (cannot delete self / cannot demote) reserved for
+                // the real admin. Demo mode skips primary admin creation entirely.
                 IsPrimaryAdmin = false,
                 CreatedAt = DateTime.UtcNow
             };
             dbContext.Users.Add(demoUser);
             await dbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("[DEMO] Created shared demo user '{User}' (id={Id})",
+            _logger.LogInformation("[DEMO] Created shared demo user '{User}' (id={Id}) with Admin role",
                 demoUser.Username, demoUser.Id);
         }
 
