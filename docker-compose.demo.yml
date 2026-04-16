@@ -62,13 +62,13 @@ services:
       - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne_demo};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
       - DemoMode__Enabled=true
       - DemoMode__ResetIntervalHours=${DEMO_RESET_HOURS:-6}
-      - DemoMode__SeedPath=/data/demo-seed
       - DemoMode__DemoUsername=${DEMO_USERNAME:-demo}
       - DemoMode__DemoEmail=${DEMO_EMAIL:-demo@photonne.local}
       - DemoMode__DemoPassword=${DEMO_PASSWORD:-demo}
       - HTTPS_REDIRECT=true
     volumes:
-      # Seed images — mounted read-only so the seeder can't mutate them.
+      # Seed images — host dir set by DEMO_SEED_HOST_PATH, mounted at the fixed
+      # in-container path /data/demo-seed. Read-only so the seeder can't mutate.
       - ${DEMO_SEED_HOST_PATH:-./demo-seed}:/data/demo-seed:ro
     # The base compose declares depends_on: postgresql. We don't start a local
     # Postgres in the demo, so reset that dependency.

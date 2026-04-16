@@ -275,7 +275,7 @@ El `docker-compose.override.yml` se aplica automáticamente y compila desde el `
 Photonne incluye un **modo demo** pensado para desplegar una instancia pública enlazable desde una landing. Cuando se activa mediante `DemoMode:Enabled=true`:
 
 - No se crea el usuario administrador — la demo queda sin cuenta admin accesible.
-- Un `BackgroundService` crea un usuario `demo/demo` y siembra la biblioteca copiando todos los archivos desde `DemoMode:SeedPath` (directorio del host montado en el contenedor). El pipeline de indexación estándar genera miniaturas, EXIF y tags para cada archivo.
+- Un `BackgroundService` crea un usuario `demo/demo` (con rol `Admin` para que visitantes puedan ver el panel de administración) y siembra la biblioteca copiando todos los archivos desde `DEMO_SEED_HOST_PATH` (directorio del host montado dentro del contenedor en `/data/demo-seed`, ruta fija). El pipeline de indexación estándar genera miniaturas, EXIF y tags para cada archivo.
 - Se crean álbumes y favoritos de ejemplo.
 - Cada `DemoMode:ResetIntervalHours` (6 h por defecto) un `DemoResetService` vacía la base de datos, elimina los assets y miniaturas generados y vuelve a sembrar.
 - Un middleware bloquea endpoints destructivos: gestión de usuarios (`POST/PUT/DELETE /api/users`, reset de contraseña), backup/restore (`GET /api/admin/database/backup`, `POST /api/admin/database/restore`) y bibliotecas externas (`POST/PUT/DELETE /api/libraries`, permisos, scan).

@@ -11,6 +11,14 @@ public class DemoModeOptions
     public const string SectionName = "DemoMode";
 
     /// <summary>
+    /// Fixed in-container path where the host's seed directory must be mounted.
+    /// Matches the convention used for <c>/data/assets</c> and
+    /// <c>/data/thumbnails</c> — only the host side is configurable (via the
+    /// volume binding in <c>docker-compose.demo.yml</c>).
+    /// </summary>
+    public const string SeedPath = "/data/demo-seed";
+
+    /// <summary>
     /// Master switch. When false, demo behaviours are dormant and the app runs normally.
     /// </summary>
     public bool Enabled { get; set; } = false;
@@ -19,12 +27,6 @@ public class DemoModeOptions
     /// Hours between automatic resets of the demo database and assets.
     /// </summary>
     public int ResetIntervalHours { get; set; } = 6;
-
-    /// <summary>
-    /// Host-side directory containing the seed images used to populate the demo.
-    /// Must be readable by the app. Files are copied (not moved) into the assets volume.
-    /// </summary>
-    public string SeedPath { get; set; } = "/data/demo-seed";
 
     /// <summary>
     /// Username for the shared demo account created at seed time.

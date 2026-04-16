@@ -10,8 +10,8 @@ namespace Photonne.Server.Api.Shared.Services;
 ///
 /// Flow when <see cref="DemoModeOptions.Enabled"/> is true and no demo user exists yet:
 ///   1. Create the shared `demo` user.
-///   2. Copy every media file from <see cref="DemoModeOptions.SeedPath"/> on the host into
-///      <c>/data/assets/users/{demoUserId}/demo-seed/</c>.
+///   2. Copy every media file from <see cref="DemoModeOptions.SeedPath"/> (host dir mounted
+///      at <c>/data/demo-seed</c>) into <c>/data/assets/users/{demoUserId}/demo-seed/</c>.
 ///   3. Walk the copied files through <see cref="AssetIndexingService"/> so EXIF, thumbnails,
 ///      folders and ML jobs are all created.
 ///   4. Create a handful of sample albums + mark some assets as favourites so the UI
@@ -118,12 +118,12 @@ public sealed class DemoSeederService : IHostedService
         }
 
         // 2) Copy seed files into the user's space
-        if (!Directory.Exists(opts.SeedPath))
+        if (!Directory.Exists(DemoModeOptions.SeedPath))
         {
             _logger.LogWarning(
                 "[DEMO] Seed directory not found at '{Path}' — skipping asset seed. " +
-                "Mount your seed images there (see docker-compose.demo.yml).",
-                opts.SeedPath);
+                "Mount your host seed directory there (see docker-compose.demo.yml).",
+                DemoModeOptions.SeedPath);
             return;
         }
 
@@ -132,15 +132,15 @@ public sealed class DemoSeederService : IHostedService
             internalAssetsRoot, "users", demoUser.Id.ToString(), DemoFolderName);
         Directory.CreateDirectory(userAssetsRoot);
 
-        var copied = CopyDirectoryContents(opts.SeedPath, userAssetsRoot, cancellationToken);
+        var copied = CopyDirectoryContents(DemoModeOptions.SeedPath, userAssetsRoot, cancellationToken);
         if (copied.Count == 0)
         {
-            _logger.LogWarning("[DEMO] No files copied from '{Path}'. Seed skipped.", opts.SeedPath);
+            _logger.LogWarning("[DEMO] No files copied from '{Path}'. Seed skipped.", DemoModeOptions.SeedPath);
             return;
         }
 
         _logger.LogInformation("[DEMO] Copied {Count} files from '{Src}' to '{Dst}'",
-            copied.Count, opts.SeedPath, userAssetsRoot);
+            copied.Count, DemoModeOptions.SeedPath, userAssetsRoot);
 
         // 3) Index every copied file. Uses the existing pipeline so EXIF, thumbnails
         //    and tag detection all run the same as a normal upload.
