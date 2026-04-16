@@ -9,6 +9,7 @@
 @inject INotificationService NotificationService
 @inject PwaUpdateService PwaUpdateService
 @inject PwaInstallService PwaInstallService
+@inject IDemoInfoService DemoInfoService
 @inject IJSRuntime JS
 
 <MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
@@ -145,6 +146,27 @@
     </MudDrawer>
 
     <MudMainContent Style="flex-grow: 1; display: flex; flex-direction: column;">
+        @if (_demoInfo.Enabled)
+        {
+            <div class="demo-banner">
+                <MudIcon Icon="@Icons.Material.Filled.Science" Size="Size.Small" Class="flex-shrink-0" />
+                <MudText Typo="Typo.body2" Class="flex-grow-1">
+                    Demo pública de Photonne · Los datos se reinician
+                    @if (_demoInfo.NextResetAt.HasValue)
+                    {
+                        <span> @FormatNextReset(_demoInfo.NextResetAt.Value)</span>
+                    }
+                    else if (_demoInfo.ResetIntervalHours.HasValue)
+                    {
+                        <span> cada @_demoInfo.ResetIntervalHours h</span>
+                    }
+                </MudText>
+                <MudLink Href="https://github.com/photonne/photonne" Target="_blank"
+                         Typo="Typo.body2" Underline="Underline.Always">
+                    Ver en GitHub
+                </MudLink>
+            </div>
+        }
         @if (PwaUpdateService.UpdateAvailable)
         {
             <div class="pwa-update-banner">
@@ -386,6 +408,7 @@
     private bool _moreSheetOpen;
     private bool _pendingMoreSheet;
     private string _appVersion = string.Empty;
+    private DemoInfo _demoInfo = DemoInfo.Disabled;
 
     private string GetAppBarClass()
     {
@@ -434,7 +457,17 @@
         await LayoutService.InitializeAsync();
         await LoadCurrentUserAsync();
         await LoadUnreadCountAsync();
+        _demoInfo = await DemoInfoService.GetAsync();
         StartNotificationPolling();
+    }
+
+    private static string FormatNextReset(DateTimeOffset next)
+    {
+        var delta = next - DateTimeOffset.UtcNow;
+        if (delta.TotalMinutes < 1) return "en menos de un minuto";
+        if (delta.TotalHours < 1)   return $"en {(int)delta.TotalMinutes} min";
+        if (delta.TotalDays < 1)    return $"en {(int)delta.TotalHours} h";
+        return $"el {next.ToLocalTime():dd/MM HH:mm}";
     }
 
     private void EnsureNavbarMatchesLocation()

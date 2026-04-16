@@ -43,6 +43,13 @@ public static class DependencyInjection
         builder.Services.AddScoped<INotificationService, NotificationService>();
         builder.Services.AddSingleton<BackgroundTaskManager>();
 
+        // Demo mode — registered unconditionally; the services are inert when
+        // DemoMode:Enabled = false (see DemoSeederService.StartAsync).
+        builder.Services.AddSingleton<DemoSeederService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<DemoSeederService>());
+        builder.Services.AddSingleton<DemoResetService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<DemoResetService>());
+
         // Configure FFmpeg
         ConfigureFFmpeg(builder.Configuration);
     }

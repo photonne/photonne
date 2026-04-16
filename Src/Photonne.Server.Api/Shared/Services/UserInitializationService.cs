@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 
@@ -9,19 +10,31 @@ public class UserInitializationService
     private readonly ApplicationDbContext _dbContext;
     private readonly IAuthService _authService;
     private readonly IConfiguration _configuration;
+    private readonly IOptions<DemoModeOptions> _demoOptions;
 
     public UserInitializationService(
         ApplicationDbContext dbContext,
         IAuthService authService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IOptions<DemoModeOptions> demoOptions)
     {
         _dbContext = dbContext;
         _authService = authService;
         _configuration = configuration;
+        _demoOptions = demoOptions;
     }
 
     public async Task InitializeAdminUserAsync(CancellationToken cancellationToken = default)
     {
+        // In demo mode the whole admin account is skipped on purpose: the demo is public,
+        // so leaving an admin password around (even a long one) widens the attack surface.
+        // The DemoSeederService creates the shared `demo` user instead.
+        if (_demoOptions.Value.Enabled)
+        {
+            Console.WriteLine("[DEMO] Modo demo activo — omitiendo creación de usuario administrador.");
+            return;
+        }
+
         var adminUsername = _configuration["AdminUser:Username"];
         var adminEmail = _configuration["AdminUser:Email"];
         var adminPassword = _configuration["AdminUser:Password"];

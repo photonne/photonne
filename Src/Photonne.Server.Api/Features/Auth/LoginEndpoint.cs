@@ -11,11 +11,15 @@ public class LoginEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/auth/login", Handle)
+        var login = app.MapPost("/api/auth/login", Handle)
             .WithName("Login")
             .WithTags("Authentication")
             .AllowAnonymous()
             .WithDescription("Authenticates a user and returns a JWT token");
+
+        // Rate limiter policy only exists when demo mode is on; guard with an
+        // attribute metadata so the endpoint still maps correctly in prod.
+        login.RequireRateLimiting("demo-login");
     }
 
     private async Task<IResult> Handle(

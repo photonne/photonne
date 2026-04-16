@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject LayoutService LayoutService
+@inject IDemoInfoService DemoInfoService
 
 <PageTitle>Iniciar Sesión - Photonne</PageTitle>
 
@@ -51,6 +52,23 @@
                     Iniciar Sesión
                 </MudButton>
             </MudForm>
+
+            @if (_demoInfo.Enabled)
+            {
+                <MudDivider Class="my-6" />
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    <MudText Typo="Typo.body2">
+                        Estás en la <strong>demo pública</strong>. Los datos se reinician periódicamente.
+                    </MudText>
+                </MudAlert>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Science"
+                           OnClick="FillDemoCredentials">
+                    Entrar como demo
+                </MudButton>
+            }
         </MudPaper>
     </MudContainer>
 </div>
@@ -65,10 +83,12 @@
     private string _password = string.Empty;
     private bool _showPassword;
     private string? _returnUrl;
+    private DemoInfo _demoInfo = DemoInfo.Disabled;
 
     protected override async Task OnInitializedAsync()
     {
         _returnUrl = GetReturnUrl();
+        _demoInfo = await DemoInfoService.GetAsync();
 
         if (await AuthService.IsAuthenticatedAsync())
         {
@@ -76,11 +96,25 @@
         }
     }
 
+    private async Task FillDemoCredentials()
+    {
+        _username = _demoInfo.DemoUsername ?? "demo";
+        _password = _demoInfo.DemoPassword ?? "demo";
+        // MudForm validation lags behind programmatic value updates, so submit
+        // directly instead of going through HandleLogin's Validate() gate.
+        await SubmitLoginAsync();
+    }
+
     private async Task HandleLogin()
     {
         await _form!.Validate();
         if (!_isValid) return;
 
+        await SubmitLoginAsync();
+    }
+
+    private async Task SubmitLoginAsync()
+    {
         try
         {
             _loggingIn = true;
