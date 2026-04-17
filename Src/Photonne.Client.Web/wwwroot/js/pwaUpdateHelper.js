@@ -1,7 +1,7 @@
 window.pwaInstall = {
     _dotNetHelper: null,
     _deferredPrompt: null,
-    _available: false,
+    _mode: 'none',
 
     _isStandalone: function () {
         return window.matchMedia('(display-mode: standalone)').matches
@@ -9,38 +9,63 @@ window.pwaInstall = {
             || window.navigator.standalone === true;
     },
 
+    _isIosSafari: function () {
+        const ua = window.navigator.userAgent;
+        const isIos = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+        // iPadOS 13+ masquerades as Mac; disambiguate via touch points.
+        const isIpadOs = window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1;
+        if (!isIos && !isIpadOs) return false;
+        // In-app browsers and Chrome/Firefox on iOS can't add to home screen from their own UI.
+        return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA/.test(ua);
+    },
+
+    _isDismissed: function () {
+        try { return localStorage.getItem('pwaInstallDismissed') === '1'; }
+        catch { return false; }
+    },
+
+    _setDismissed: function () {
+        try { localStorage.setItem('pwaInstallDismissed', '1'); } catch { }
+    },
+
     init: function (dotNetHelper) {
         this._dotNetHelper = dotNetHelper;
 
         // Already installed — nothing to show
         if (this._isStandalone()) return;
+        if (this._isDismissed()) return;
 
         // Pick up the event captured early in index.html (before Blazor loaded)
         if (window.__pwaInstallPrompt) {
             this._deferredPrompt = window.__pwaInstallPrompt;
             window.__pwaInstallPrompt = null;
-            this._notifyAvailability(true);
+            this._notifyAvailability('native');
         }
 
         // Also listen for future firings (e.g. after dismissal criteria reset)
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this._deferredPrompt = e;
-            this._notifyAvailability(true);
+            this._notifyAvailability('native');
         });
 
         window.addEventListener('appinstalled', () => {
             this._deferredPrompt = null;
             window.__pwaInstallPrompt = null;
-            this._notifyAvailability(false);
+            this._notifyAvailability('none');
         });
+
+        // iOS Safari never fires beforeinstallprompt — surface manual instructions instead.
+        if (!this._deferredPrompt && this._isIosSafari()) {
+            this._notifyAvailability('ios');
+        }
     },
 
-    _notifyAvailability: function (available) {
-        if (this._available === available) return;
-        this._available = available;
+    _notifyAvailability: function (mode) {
+        if (this._mode === mode) return;
+        this._mode = mode;
         if (this._dotNetHelper) {
-            this._dotNetHelper.invokeMethodAsync('SetInstallAvailability', available);
+            this._dotNetHelper.invokeMethodAsync('SetInstallAvailability', mode !== 'none', mode);
         }
     },
 
@@ -50,13 +75,14 @@ window.pwaInstall = {
         const { outcome } = await this._deferredPrompt.userChoice;
         this._deferredPrompt = null;
         if (outcome === 'accepted') {
-            this._notifyAvailability(false);
+            this._notifyAvailability('none');
         }
         return outcome === 'accepted';
     },
 
     dismiss: function () {
-        this._notifyAvailability(false);
+        this._setDismissed();
+        this._notifyAvailability('none');
     }
 };
 

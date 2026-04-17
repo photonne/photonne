@@ -370,25 +370,57 @@
                     <img src="@(LayoutService.IsDarkMode ? "dark/logo.png" : "light/logo.png")" alt="Photonne" class="pwa-install-logo" />
                 </div>
                 <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-1">Instala Photonne</MudText>
-                <MudText Typo="Typo.body2" Align="Align.Center" Class="mud-text-secondary mb-4">
-                    Añade la app a tu pantalla de inicio para acceder más rápido y disfrutar de una experiencia completa sin navegador.
-                </MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.GetApp"
-                           FullWidth="true"
-                           Size="Size.Large"
-                           Class="mb-2"
-                           OnClick="@HandleInstallClickAsync">
-                    Instalar ahora
-                </MudButton>
-                <MudButton Variant="Variant.Text"
-                           Color="Color.Default"
-                           FullWidth="true"
-                           Size="Size.Medium"
-                           OnClick="@(() => _ = PwaInstallService.DismissAsync())">
-                    Ahora no
-                </MudButton>
+
+                @if (PwaInstallService.Mode == PwaInstallMode.IosManual)
+                {
+                    <MudText Typo="Typo.body2" Align="Align.Center" Class="mud-text-secondary mb-4">
+                        Añade la app a tu pantalla de inicio para acceder más rápido y abrirla a pantalla completa.
+                    </MudText>
+                    <ol class="pwa-install-ios-steps">
+                        <li>
+                            Pulsa el botón <strong>Compartir</strong>
+                            <MudIcon Icon="@Icons.Material.Filled.IosShare" Size="Size.Small" Class="mx-1" />
+                            en la barra de Safari.
+                        </li>
+                        <li>
+                            Desplázate y selecciona <strong>Añadir a pantalla de inicio</strong>
+                            <MudIcon Icon="@Icons.Material.Filled.AddBox" Size="Size.Small" Class="mx-1" />.
+                        </li>
+                        <li>
+                            Pulsa <strong>Añadir</strong> en la esquina superior derecha.
+                        </li>
+                    </ol>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               FullWidth="true"
+                               Size="Size.Medium"
+                               Class="mt-2"
+                               OnClick="@(() => _ = PwaInstallService.DismissAsync())">
+                        Entendido
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Align="Align.Center" Class="mud-text-secondary mb-4">
+                        Añade la app a tu pantalla de inicio para acceder más rápido y disfrutar de una experiencia completa sin navegador.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.GetApp"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               Class="mb-2"
+                               OnClick="@HandleInstallClickAsync">
+                        Instalar ahora
+                    </MudButton>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               FullWidth="true"
+                               Size="Size.Medium"
+                               OnClick="@(() => _ = PwaInstallService.DismissAsync())">
+                        Ahora no
+                    </MudButton>
+                }
             </div>
         </div>
     }

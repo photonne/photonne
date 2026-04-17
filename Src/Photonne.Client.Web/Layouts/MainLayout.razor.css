@@ -277,6 +277,20 @@ main {
     border-radius: 16px;
     object-fit: contain;
 }
+.pwa-install-ios-steps {
+    list-style: decimal;
+    padding: 0 0 0 20px;
+    margin: 0 0 8px;
+    color: var(--mud-palette-text-primary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.pwa-install-ios-steps li {
+    margin-bottom: 10px;
+}
+.pwa-install-ios-steps li:last-child {
+    margin-bottom: 0;
+}
 @keyframes pwa-backdrop-in {
     from { opacity: 0; }
     to   { opacity: 1; }

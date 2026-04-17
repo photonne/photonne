@@ -2,6 +2,13 @@ using Microsoft.JSInterop;
 
 namespace Photonne.Client.Web.Services;
 
+public enum PwaInstallMode
+{
+    None,
+    Native,
+    IosManual
+}
+
 public sealed class PwaInstallService : IAsyncDisposable
 {
     private IJSRuntime? _js;
@@ -9,6 +16,7 @@ public sealed class PwaInstallService : IAsyncDisposable
     private bool _initialized;
 
     public bool IsInstallAvailable { get; private set; }
+    public PwaInstallMode Mode { get; private set; } = PwaInstallMode.None;
     public event Action? OnInstallAvailabilityChanged;
 
     public async Task InitAsync(IJSRuntime js)
@@ -21,10 +29,18 @@ public sealed class PwaInstallService : IAsyncDisposable
     }
 
     [JSInvokable]
-    public void SetInstallAvailability(bool available)
+    public void SetInstallAvailability(bool available, string mode)
     {
-        if (IsInstallAvailable == available) return;
+        var parsed = mode switch
+        {
+            "native" => PwaInstallMode.Native,
+            "ios" => PwaInstallMode.IosManual,
+            _ => PwaInstallMode.None
+        };
+
+        if (IsInstallAvailable == available && Mode == parsed) return;
         IsInstallAvailable = available;
+        Mode = parsed;
         OnInstallAvailabilityChanged?.Invoke();
     }
 
@@ -38,6 +54,7 @@ public sealed class PwaInstallService : IAsyncDisposable
     {
         if (_js is null) return;
         IsInstallAvailable = false;
+        Mode = PwaInstallMode.None;
         OnInstallAvailabilityChanged?.Invoke();
         await _js.InvokeVoidAsync("pwaInstall.dismiss");
     }
