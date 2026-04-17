@@ -65,11 +65,13 @@ public class ExternalLibraryScanService
             }
             catch (OperationCanceledException)
             {
+                await MarkLibraryFailedAsync(libraryId, "Cancelled");
                 Send(new ScanProgressUpdate("Escaneo cancelado.", 0, 0, 0, 0, true));
                 entry.Finish("Cancelled");
             }
             catch (Exception ex)
             {
+                await MarkLibraryFailedAsync(libraryId, ex.Message);
                 Send(new ScanProgressUpdate($"Unexpected error: {ex.Message}", 100, 0, 0, 0, true, ex.Message));
                 entry.Finish("Failed");
             }
@@ -99,6 +101,9 @@ public class ExternalLibraryScanService
 
         if (!Directory.Exists(library.Path))
         {
+            library.LastScanStatus = ExternalLibraryScanStatus.Failed;
+            library.LastScannedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync(ct);
             send(new ScanProgressUpdate(
                 $"Directory not found: {library.Path}", 0, 0, 0, 0, true,
                 $"Directory does not exist: {library.Path}"));
@@ -208,5 +213,30 @@ public class ExternalLibraryScanService
         send(new ScanProgressUpdate(
             $"Scan complete. {indexed} indexed, {markedOffline} marked offline.",
             100, total, indexed, markedOffline, true));
+    }
+
+    // Persists Failed status in a fresh scope so it works even if the main DbContext
+    // is in a broken state after an exception or the HTTP scope has been disposed.
+    // LastScannedAt is advanced so the scheduler respects the cron interval before
+    // retrying — otherwise a fast-failing library (e.g. missing directory) gets
+    // re-queued on every poll.
+    private async Task MarkLibraryFailedAsync(Guid libraryId, string reason)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var library = await db.ExternalLibraries.FirstOrDefaultAsync(l => l.Id == libraryId);
+            if (library == null) return;
+
+            library.LastScanStatus = ExternalLibraryScanStatus.Failed;
+            library.LastScannedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LIBRARY-SCAN] Failed to persist Failed status for {libraryId} ({reason}): {ex.Message}");
+        }
     }
 }

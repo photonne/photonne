@@ -10,7 +10,7 @@ namespace Photonne.Server.Api.Shared.Services;
 /// </summary>
 public class ExternalLibrarySchedulerService : BackgroundService
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
     private readonly IServiceScopeFactory _scopeFactory;
 
     public ExternalLibrarySchedulerService(IServiceScopeFactory scopeFactory)
@@ -21,6 +21,18 @@ public class ExternalLibrarySchedulerService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         Console.WriteLine("[LIBRARY-SCHEDULER] Started.");
+
+        // Recover from a prior crash/restart: any library left in Running state
+        // will never be picked up again (the scheduler filters those out), so
+        // flip it to Failed on startup.
+        try
+        {
+            await RecoverStuckRunningLibrariesAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LIBRARY-SCHEDULER] Recovery failed: {ex.Message}");
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -41,6 +53,26 @@ public class ExternalLibrarySchedulerService : BackgroundService
         }
 
         Console.WriteLine("[LIBRARY-SCHEDULER] Stopped.");
+    }
+
+    private async Task RecoverStuckRunningLibrariesAsync(CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var stuck = await dbContext.ExternalLibraries
+            .Where(l => l.LastScanStatus == ExternalLibraryScanStatus.Running)
+            .ToListAsync(ct);
+
+        if (stuck.Count == 0) return;
+
+        foreach (var library in stuck)
+        {
+            library.LastScanStatus = ExternalLibraryScanStatus.Failed;
+            Console.WriteLine($"[LIBRARY-SCHEDULER] Recovered stuck Running library '{library.Name}' ({library.Id}) → Failed.");
+        }
+
+        await dbContext.SaveChangesAsync(ct);
     }
 
     private async Task CheckAndScanDueLibrariesAsync(CancellationToken ct)
