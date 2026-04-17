@@ -74,9 +74,9 @@ else
                             }
                         </div>
                     </div>
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary my-shares-url">
+                    <div class="my-shares-url mud-text-secondary" title="@BuildShareUrl(link.Token)">
                         @BuildShareUrl(link.Token)
-                    </MudText>
+                    </div>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
                         Creado @link.CreatedAt.ToString("dd/MM/yyyy")
                         @if (link.ExpiresAt.HasValue)
@@ -137,17 +137,29 @@ else
 }
 </div>
 
-@* ── Edit dialog ──────────────────────────────────────────────────────────── *@
-<MudDialog @bind-Visible="_editDialogOpen" Options="_dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Editar enlace</MudText>
-        @if (_editingLink != null)
-        {
-            <MudText Typo="Typo.caption" Class="mud-text-secondary">@_editingLink.DisplayName</MudText>
-        }
-    </TitleContent>
-    <DialogContent>
-        <MudStack Spacing="4" Class="pt-2">
+@* ── Edit bottom sheet ────────────────────────────────────────────────────── *@
+@if (_editSheetEverOpened)
+{
+<MudDrawer @bind-Open="_editDialogOpen"
+           Anchor="Anchor.Bottom"
+           Elevation="4"
+           Variant="DrawerVariant.Temporary"
+           Class="ph-bottom-sheet">
+    <div class="ph-sheet-handle"></div>
+    <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+        <div>
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Editar enlace</MudText>
+            @if (_editingLink != null)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@_editingLink.DisplayName</MudText>
+            }
+        </div>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="CloseEditDialog" />
+    </div>
+    <MudDivider />
+    <div class="px-4 pt-3 pb-6" style="overflow-y:auto;">
+        <MudStack Spacing="4">
 
             <MudDatePicker Label="Fecha de expiración"
                            @bind-Date="_editExpiresAt"
@@ -173,7 +185,7 @@ else
                 <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2">Contraseña</MudText>
                 @if (_editingLink?.HasPassword == true && !_editChangePassword)
                 {
-                    <div class="d-flex align-center gap-2">
+                    <div class="d-flex align-center gap-2 flex-wrap">
                         <MudIcon Icon="@Icons.Material.Outlined.Lock" Size="Size.Small" />
                         <MudText Typo="Typo.body2">Este enlace tiene contraseña</MudText>
                         <MudButton Size="Size.Small" Variant="Variant.Text"
@@ -188,7 +200,7 @@ else
                 }
                 else if (_editRemovePassword)
                 {
-                    <div class="d-flex align-center gap-2">
+                    <div class="d-flex align-center gap-2 flex-wrap">
                         <MudIcon Icon="@Icons.Material.Outlined.LockOpen" Size="Size.Small" Color="Color.Warning" />
                         <MudText Typo="Typo.body2">Se eliminará la contraseña</MudText>
                         <MudButton Size="Size.Small" Variant="Variant.Text"
@@ -214,20 +226,22 @@ else
                 }
             </div>
 
+            <div class="d-flex justify-end gap-2 mt-2">
+                <MudButton OnClick="CloseEditDialog" Variant="Variant.Text">Cancelar</MudButton>
+                <MudButton OnClick="SaveEdit" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="_editSaving">
+                    @if (_editSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Guardar
+                </MudButton>
+            </div>
+
         </MudStack>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseEditDialog" Variant="Variant.Text">Cancelar</MudButton>
-        <MudButton OnClick="SaveEdit" Variant="Variant.Filled" Color="Color.Primary"
-                   Disabled="_editSaving">
-            @if (_editSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            Guardar
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+    </div>
+</MudDrawer>
+}
 
 @code {
     private List<SentShareLinkDto> _links = new();
@@ -236,6 +250,7 @@ else
 
     // ── Edit dialog state ──────────────────────────────────────────────────────
     private bool _editDialogOpen;
+    private bool _editSheetEverOpened;
     private bool _editSaving;
     private SentShareLinkDto? _editingLink;
     private DateTime? _editExpiresAt;
@@ -244,13 +259,6 @@ else
     private string? _editPassword;        // null = no change, "" = will be handled by _editRemovePassword
     private bool _editChangePassword;
     private bool _editRemovePassword;
-
-    private readonly DialogOptions _dialogOptions = new()
-    {
-        MaxWidth = MaxWidth.Small,
-        FullWidth = true,
-        CloseOnEscapeKey = true
-    };
 
     private void GoToAsset(Guid assetId) => Navigation.NavigateTo($"/asset/{assetId}?returnTo=my-shares");
     private void GoToAlbum(Guid albumId) => Navigation.NavigateTo($"/albums/{albumId}");
@@ -291,13 +299,13 @@ else
         _editPassword = null;
         _editChangePassword = false;
         _editRemovePassword = false;
+        _editSheetEverOpened = true;
         _editDialogOpen = true;
     }
 
     private void CloseEditDialog()
     {
         _editDialogOpen = false;
-        _editingLink = null;
     }
 
     private async Task SaveEdit()
