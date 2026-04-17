@@ -118,21 +118,25 @@
         try
         {
             _loggingIn = true;
-            var success = await AuthService.LoginAsync(_username, _password);
+            var result = await AuthService.LoginAsync(_username, _password);
 
-            if (success)
+            if (result.Success)
             {
                 Snackbar.Add("Inicio de sesión exitoso", Severity.Success);
                 NavigateToReturnUrlOrHome();
+                return;
             }
-            else
+
+            var (message, severity) = result.Error switch
             {
-                Snackbar.Add("Usuario o contraseña incorrectos", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al iniciar sesión: {ex.Message}", Severity.Error);
+                LoginErrorKind.InvalidCredentials => ("Usuario o contraseña incorrectos", Severity.Error),
+                LoginErrorKind.RateLimited => ("Demasiados intentos. Espera unos minutos e inténtalo de nuevo.", Severity.Warning),
+                LoginErrorKind.NetworkError => ("No se pudo conectar con el servidor. Revisa tu conexión.", Severity.Warning),
+                LoginErrorKind.ServerError => ("El servidor no está disponible. Inténtalo más tarde.", Severity.Error),
+                LoginErrorKind.BadRequest => ("Solicitud inválida. Revisa los datos introducidos.", Severity.Error),
+                _ => ("No se pudo iniciar sesión. Inténtalo de nuevo.", Severity.Error)
+            };
+            Snackbar.Add(message, severity);
         }
         finally
         {

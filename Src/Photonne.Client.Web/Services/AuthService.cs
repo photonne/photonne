@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Photonne.Client.Web.Services;
@@ -7,6 +9,7 @@ public class AuthService : IAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly IJSRuntime _jsRuntime;
+    private readonly ILogger<AuthService> _logger;
     private const string TokenKey = "authToken";
     private const string RefreshTokenKey = "refreshToken";
     private const string UserKey = "authUser";
@@ -16,39 +19,73 @@ public class AuthService : IAuthService
 
     public event Action? OnAuthStateChanged;
 
-    public AuthService(HttpClient httpClient, IJSRuntime jsRuntime)
+    public AuthService(HttpClient httpClient, IJSRuntime jsRuntime, ILogger<AuthService> logger)
     {
         _httpClient = httpClient;
         _jsRuntime = jsRuntime;
+        _logger = logger;
     }
 
-    public async Task<bool> LoginAsync(string username, string password)
+    public async Task<LoginResult> LoginAsync(string username, string password)
     {
+        HttpResponseMessage? response;
         try
         {
             var deviceId = await EnsureDeviceIdAsync();
             var request = new LoginRequest { Username = username, Password = password, DeviceId = deviceId };
-            var response = await _httpClient.PostAsJsonAsync("/api/auth/login", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
-                if (loginResponse != null)
-                {
-                    await SaveTokenAsync(loginResponse.Token);
-                    await SaveRefreshTokenAsync(loginResponse.RefreshToken);
-                    await SaveUserAsync(loginResponse.User);
-                    _currentUser = loginResponse.User;
-                    OnAuthStateChanged?.Invoke();
-                    return true;
-                }
-            }
-            return false;
+            response = await _httpClient.PostAsJsonAsync("/api/auth/login", request);
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            return false;
+            _logger.LogWarning(ex, "Login failed: network error");
+            return LoginResult.Fail(LoginErrorKind.NetworkError);
         }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Login failed: request timed out");
+            return LoginResult.Fail(LoginErrorKind.NetworkError);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Login failed: unexpected error");
+            return LoginResult.Fail(LoginErrorKind.Unknown);
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            LoginResponse? loginResponse;
+            try
+            {
+                loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Login response could not be parsed");
+                return LoginResult.Fail(LoginErrorKind.ServerError);
+            }
+
+            if (loginResponse == null)
+            {
+                _logger.LogError("Login response was empty");
+                return LoginResult.Fail(LoginErrorKind.ServerError);
+            }
+
+            await SaveTokenAsync(loginResponse.Token);
+            await SaveRefreshTokenAsync(loginResponse.RefreshToken);
+            await SaveUserAsync(loginResponse.User);
+            _currentUser = loginResponse.User;
+            OnAuthStateChanged?.Invoke();
+            return LoginResult.Ok();
+        }
+
+        return response.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => LoginResult.Fail(LoginErrorKind.InvalidCredentials),
+            HttpStatusCode.BadRequest => LoginResult.Fail(LoginErrorKind.BadRequest),
+            HttpStatusCode.TooManyRequests => LoginResult.Fail(LoginErrorKind.RateLimited),
+            var s when (int)s >= 500 => LoginResult.Fail(LoginErrorKind.ServerError),
+            _ => LoginResult.Fail(LoginErrorKind.Unknown)
+        };
     }
 
     public async Task LogoutAsync()
@@ -73,8 +110,9 @@ public class AuthService : IAuthService
         {
             return await _jsRuntime.InvokeAsync<string>("localStorage.getItem", TokenKey);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to read auth token from localStorage");
             return null;
         }
     }
@@ -120,9 +158,9 @@ public class AuthService : IAuthService
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore
+            _logger.LogWarning(ex, "Failed to fetch current user");
         }
         return null;
     }
@@ -166,8 +204,9 @@ public class AuthService : IAuthService
             await SaveRefreshTokenAsync(refreshResponse.RefreshToken);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Refresh token request failed");
             return false;
         }
     }
@@ -212,8 +251,9 @@ public class AuthService : IAuthService
         {
             return await _jsRuntime.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to read refresh token from localStorage");
             return null;
         }
     }
@@ -228,9 +268,9 @@ public class AuthService : IAuthService
                 return existing;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore, we'll regenerate below.
+            _logger.LogWarning(ex, "Failed to read device id from localStorage, regenerating");
         }
 
         var deviceId = Guid.NewGuid().ToString("N");
