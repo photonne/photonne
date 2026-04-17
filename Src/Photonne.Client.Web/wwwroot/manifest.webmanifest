@@ -1,17 +1,60 @@
 {
+  "id": "/",
   "name": "Photonne",
   "short_name": "Photonne",
   "description": "Gestión de fotos y vídeos",
+  "lang": "es",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
   "background_color": "#1a1a2e",
   "theme_color": "#FFD166",
+  "categories": ["photo", "productivity", "utilities"],
   "prefer_related_applications": false,
   "icons": [
-    { "src": "dark/icon-192.png", "type": "image/png", "sizes": "192x192", "media": "(prefers-color-scheme: dark)" },
-    { "src": "dark/icon-512.png", "type": "image/png", "sizes": "512x512", "media": "(prefers-color-scheme: dark)" },
-    { "src": "light/icon-192.png", "type": "image/png", "sizes": "192x192", "media": "(prefers-color-scheme: light)" },
-    { "src": "light/icon-512.png", "type": "image/png", "sizes": "512x512", "media": "(prefers-color-scheme: light)" }
+    { "src": "dark/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any", "media": "(prefers-color-scheme: dark)" },
+    { "src": "dark/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any", "media": "(prefers-color-scheme: dark)" },
+    { "src": "light/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any", "media": "(prefers-color-scheme: light)" },
+    { "src": "light/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any", "media": "(prefers-color-scheme: light)" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Timeline",
+      "short_name": "Timeline",
+      "description": "Ver todas las fotos y vídeos",
+      "url": "/",
+      "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Buscar",
+      "short_name": "Buscar",
+      "description": "Buscar en tu biblioteca",
+      "url": "/search",
+      "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Álbumes",
+      "short_name": "Álbumes",
+      "description": "Explorar álbumes",
+      "url": "/albums",
+      "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Carpetas",
+      "short_name": "Carpetas",
+      "description": "Explorar por carpetas",
+      "url": "/folders",
+      "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Subir",
+      "short_name": "Subir",
+      "description": "Subir fotos y vídeos",
+      "url": "/upload",
+      "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
   ]
 }
