@@ -13,21 +13,16 @@ async function trimThumbnailCache(cache) {
     }
 }
 
+self.importScripts('./service-worker-assets.js');
+
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache =>
-            fetch('service-worker-assets.js')
-                .then(response => response.text())
-                .then(text => {
-                    // The manifest is a JS file that assigns to self.assetsManifest
-                    const fn = new Function(text);
-                    fn();
-                    const assets = self.assetsManifest.assets
-                        .filter(a => a.url !== 'service-worker.js')
-                        .map(a => new Request(a.url, { integrity: a.hash, cache: 'no-cache' }));
-                    return cache.addAll(assets);
-                })
-        )
+        caches.open(CACHE_NAME).then(cache => {
+            const assets = self.assetsManifest.assets
+                .filter(a => a.url !== 'service-worker.js')
+                .map(a => new Request(a.url, { integrity: a.hash, cache: 'no-cache' }));
+            return cache.addAll(assets);
+        })
     );
     // Do NOT call self.skipWaiting() here — the app will prompt the user
     // and call it explicitly via the SKIP_WAITING message below.

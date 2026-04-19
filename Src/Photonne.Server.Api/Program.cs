@@ -179,6 +179,46 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
+// Security headers (CSP, X-CTO, Referrer-Policy, X-Frame-Options). Skipped for the
+// dev-only Scalar/OpenAPI endpoints, which pull their UI from third-party CDNs.
+// In Development we extend connect-src with ws/wss + unpkg.com so the ASP.NET Core
+// Browser Refresh WebSocket and library source maps (.js.map) work under DevTools.
+var isDev = app.Environment.IsDevelopment();
+var connectSrc = isDev
+    ? "connect-src 'self' ws: wss: https://unpkg.com"
+    : "connect-src 'self'";
+
+var csp = string.Join("; ", new[]
+{
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com",
+    connectSrc,
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+});
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var isDevDocs = path.StartsWithSegments("/scalar") || path.StartsWithSegments("/openapi");
+    if (!isDevDocs)
+    {
+        var headers = context.Response.Headers;
+        headers["Content-Security-Policy"] = csp;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers["X-Frame-Options"] = "DENY";
+    }
+    await next();
+});
+
 if (builder.Configuration.GetValue<bool>("HTTPS_REDIRECT"))
 {
     app.UseHttpsRedirection();
