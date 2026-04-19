@@ -139,7 +139,38 @@ public class ExifExtractorService
         ExtractionOptions options,
         TimeZoneInfo tzInfo)
     {
-        if (directory is ExifSubIfdDirectory exifDir)
+        // GpsDirectory extends ExifDirectoryBase, so it MUST be matched first —
+        // otherwise it falls into the ExifDirectoryBase branch below, which then
+        // overwrites CameraMake/Model with nulls (GPS dir has no TagMake) and
+        // skips GPS extraction entirely. Check type first, options second, so a
+        // GPS directory never falls through to the generic EXIF handler.
+        if (directory is GpsDirectory gpsDir)
+        {
+            if (!options.Gps) return;
+
+            if (gpsDir.TryGetGeoLocation(out var location))
+            {
+                // Descartar coordenadas (0,0) — "Null Island": cámaras/exportadores
+                // a veces escriben el tag GPS a cero cuando no hay fix real.
+                if (Math.Abs(location.Latitude) > 0.0001 || Math.Abs(location.Longitude) > 0.0001)
+                {
+                    exif.Latitude  = location.Latitude;
+                    exif.Longitude = location.Longitude;
+                }
+            }
+
+            var altitude = gpsDir.GetDescription(GpsDirectory.TagAltitude);
+            if (!string.IsNullOrEmpty(altitude) && double.TryParse(altitude, out var altVal))
+                exif.Altitude = altVal;
+
+            return;
+        }
+
+        // ExifDirectoryBase covers both IFD0 (ExifIfd0Directory, where Make/Model
+        // live per EXIF spec) and the Exif SubIFD (ExifSubIfdDirectory, where
+        // DateTimeOriginal and exposure tags live). Matching only SubIFD silently
+        // dropped Make/Model from every photo.
+        if (directory is ExifDirectoryBase exifDir)
         {
             if (options.DateTime)
             {
@@ -156,8 +187,15 @@ public class ExifExtractorService
 
             if (options.CameraInfo)
             {
-                exif.CameraMake  = exifDir.GetDescription(ExifDirectoryBase.TagMake);
-                exif.CameraModel = exifDir.GetDescription(ExifDirectoryBase.TagModel);
+                // Make/Model/Orientation live in IFD0; ISO/exposure/focal live in SubIFD.
+                // Both directories hit this branch (both derive from ExifDirectoryBase),
+                // so we must NOT overwrite an already-populated field with a null read
+                // from the other directory.
+                var make = exifDir.GetDescription(ExifDirectoryBase.TagMake);
+                if (!string.IsNullOrEmpty(make)) exif.CameraMake = make;
+
+                var model = exifDir.GetDescription(ExifDirectoryBase.TagModel);
+                if (!string.IsNullOrEmpty(model)) exif.CameraModel = model;
 
                 var iso = exifDir.GetDescription(ExifDirectoryBase.TagIsoEquivalent);
                 if (!string.IsNullOrEmpty(iso) && int.TryParse(iso, out var isoVal))
@@ -175,27 +213,11 @@ public class ExifExtractorService
                 if (!string.IsNullOrEmpty(focal) && double.TryParse(focal, out var flVal))
                     exif.FocalLength = flVal;
 
-                var orientation = exifDir.GetDescription(ExifDirectoryBase.TagOrientation);
-                if (!string.IsNullOrEmpty(orientation) && int.TryParse(orientation, out var orVal))
+                // GetDescription returns the human label ("Top, left side (Horizontal / normal)"),
+                // not a number. Orientation is a uint16 — read the raw value directly.
+                if (exifDir.TryGetInt32(ExifDirectoryBase.TagOrientation, out var orVal))
                     exif.Orientation = orVal;
             }
-        }
-        else if (directory is GpsDirectory gpsDir && options.Gps)
-        {
-            if (gpsDir.TryGetGeoLocation(out var location))
-            {
-                // Descartar coordenadas (0,0) — "Null Island": cámaras/exportadores
-                // a veces escriben el tag GPS a cero cuando no hay fix real.
-                if (Math.Abs(location.Latitude) > 0.0001 || Math.Abs(location.Longitude) > 0.0001)
-                {
-                    exif.Latitude  = location.Latitude;
-                    exif.Longitude = location.Longitude;
-                }
-            }
-
-            var altitude = gpsDir.GetDescription(GpsDirectory.TagAltitude);
-            if (!string.IsNullOrEmpty(altitude) && double.TryParse(altitude, out var altVal))
-                exif.Altitude = altVal;
         }
         else if (directory is IptcDirectory iptcDir && options.Iptc)
         {

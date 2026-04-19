@@ -268,3 +268,7 @@ static string BuildDbErrorDetail(DbUpdateException exception)
 
     return exception.Message;
 }
+
+// Exposes the implicit Program type so WebApplicationFactory<Program> in the
+// integration test project can spin up the real host.
+public partial class Program;

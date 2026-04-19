@@ -159,18 +159,7 @@
         }
 
         var candidate = values.FirstOrDefault();
-        return IsSafeReturnUrl(candidate) ? candidate : null;
-    }
-
-    private static bool IsSafeReturnUrl(string? returnUrl)
-    {
-        if (string.IsNullOrWhiteSpace(returnUrl))
-        {
-            return false;
-        }
-
-        return Uri.TryCreate(returnUrl, UriKind.Relative, out _)
-            && returnUrl.StartsWith("/", StringComparison.Ordinal);
+        return ReturnUrlValidator.IsSafe(candidate) ? candidate : null;
     }
 
     private static Dictionary<string, List<string>> ParseQuery(string query)

@@ -1,18 +1,12 @@
 {
-  "id": "/",
   "name": "Photonne",
   "short_name": "Photonne",
   "description": "Gestión de fotos y vídeos",
-  "lang": "es",
-  "dir": "ltr",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "orientation": "any",
   "background_color": "#1a1a2e",
   "theme_color": "#FFD166",
-  "categories": ["photo", "productivity", "utilities"],
   "prefer_related_applications": false,
   "icons": [
     { "src": "dark/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any", "media": "(prefers-color-scheme: dark)" },

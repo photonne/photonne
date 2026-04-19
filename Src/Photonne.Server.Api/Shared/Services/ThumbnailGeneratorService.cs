@@ -1,4 +1,5 @@
 using Photonne.Server.Api.Shared.Models;
+using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -56,10 +57,14 @@ public class ThumbnailGeneratorService
         }
     }
 
-    public ThumbnailGeneratorService(SettingsService settingsService)
+    public ThumbnailGeneratorService(SettingsService settingsService, IConfiguration? configuration = null)
     {
         _settingsService = settingsService;
-        _thumbnailsBasePath = DefaultThumbnailsPath;
+        // Constructor only needs a sane default — the per-run thumbnails path
+        // is re-read from the database by RefreshThumbnailsPathAsync() on every
+        // long-running operation. Tests and non-Docker deployments can steer
+        // this via the THUMBNAILS_PATH configuration key.
+        _thumbnailsBasePath = configuration?["THUMBNAILS_PATH"] ?? DefaultThumbnailsPath;
 
         if (!Directory.Exists(_thumbnailsBasePath))
         {

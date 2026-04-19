@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 
@@ -8,13 +9,18 @@ namespace Photonne.Server.Api.Shared.Services;
 public class SettingsService
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly string _internalAssetsPath;
     public const string AssetsPathKey = "AssetsPath";
-    public const string InternalAssetsPath = "/data/assets";
+    public const string DefaultInternalAssetsPath = "/data/assets";
+    // Back-compat alias — existing call sites read SettingsService.InternalAssetsPath
+    // as a literal. Kept as a const so it remains a compile-time constant.
+    public const string InternalAssetsPath = DefaultInternalAssetsPath;
     private static readonly Guid GlobalUserId = Guid.Empty;
 
-    public SettingsService(ApplicationDbContext dbContext)
+    public SettingsService(ApplicationDbContext dbContext, IConfiguration? configuration = null)
     {
         _dbContext = dbContext;
+        _internalAssetsPath = configuration?["InternalAssetsPath"] ?? DefaultInternalAssetsPath;
     }
 
     public async Task<string> GetSettingAsync(string key, Guid userId, string defaultValue = "")
@@ -67,7 +73,7 @@ public class SettingsService
         return path;
     }
 
-    public string GetInternalAssetsPath() => InternalAssetsPath;
+    public string GetInternalAssetsPath() => _internalAssetsPath;
 
     public async Task<string> ResolvePhysicalPathAsync(string dbPath)
     {
