@@ -19,4 +19,38 @@
         <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
     </ItemGroup>
 
+    <!--
+        Replaces the {{APP_VERSION}} token in index.html and service-worker.published.js
+        with the MSBuild $(Version) property (defined once in Src/Directory.Build.props),
+        writing the stamped copies into obj/ and re-routing Content/ServiceWorker items.
+        Runs on every build and publish so dev and prod never disagree on the version.
+    -->
+    <Target Name="StampAppVersion" BeforeTargets="AssignTargetPaths">
+        <PropertyGroup>
+            <_StampDir>$(IntermediateOutputPath)stamped\</_StampDir>
+            <_IndexSource>$(MSBuildThisFileDirectory)wwwroot\index.html</_IndexSource>
+            <_SwSource>$(MSBuildThisFileDirectory)wwwroot\service-worker.published.js</_SwSource>
+            <_IndexStamped>$(_StampDir)index.html</_IndexStamped>
+            <_SwStamped>$(_StampDir)service-worker.published.js</_SwStamped>
+        </PropertyGroup>
+
+        <MakeDir Directories="$(_StampDir)" />
+
+        <PropertyGroup>
+            <_IndexContent>$([System.IO.File]::ReadAllText('$(_IndexSource)').Replace('{{APP_VERSION}}', '$(Version)'))</_IndexContent>
+            <_SwContent>$([System.IO.File]::ReadAllText('$(_SwSource)').Replace('{{APP_VERSION}}', '$(Version)'))</_SwContent>
+        </PropertyGroup>
+
+        <WriteLinesToFile File="$(_IndexStamped)" Lines="$(_IndexContent)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+        <WriteLinesToFile File="$(_SwStamped)" Lines="$(_SwContent)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+
+        <ItemGroup>
+            <Content Remove="wwwroot\index.html" />
+            <Content Include="$(_IndexStamped)" Link="wwwroot\index.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+
+            <ServiceWorker Remove="wwwroot\service-worker.js" />
+            <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="$(_SwStamped)" />
+        </ItemGroup>
+    </Target>
+
 </Project>

@@ -1,6 +1,6 @@
 // Blazor PWA service worker — cache app shell, cache-first for thumbnails
 
-const SW_VERSION = '0.2.0';
+const SW_VERSION = '{{APP_VERSION}}';
 const CACHE_NAME = 'photonne-cache-v1';
 const THUMBNAIL_CACHE = 'photonne-thumbnails-v1';
 const THUMBNAIL_CACHE_MAX_ENTRIES = 1000;
