@@ -37,27 +37,29 @@
     text-transform: capitalize;
 }
 
-/* ── Cards list ── */
+/* ── Cards list (grid responsivo) ── */
 .memories-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    /* Contiene el ancho — nunca desborda el padre */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+    gap: 16px;
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
 }
 
-/* ── Card (full-width con márgenes laterales) ── */
+/* ── Card (ancho limitado, centrado en su celda) ── */
 .memories-card {
     box-sizing: border-box;
     width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
     overflow: hidden;
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.07);
     box-shadow: 0 2px 14px rgba(0,0,0,0.35);
-    /* Evita que el contenido interno empuje el ancho */
     min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── Hero ── */
@@ -110,33 +112,6 @@
     text-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
-/* Pill top-right */
-.memories-card-pill {
-    position: absolute;
-    top: 10px; right: 10px;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: rgba(255,255,255,0.9);
-    font-size: 0.7rem;
-    font-weight: 500;
-    padding: 3px 9px;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.12);
-    z-index: 1;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    transition: background 0.15s ease, transform 0.1s ease;
-}
-
-.memories-card-pill:hover {
-    background: rgba(0,0,0,0.7);
-}
-
-.memories-card-pill:active {
-    transform: scale(0.95);
-}
-
 /* Video badge hero */
 ::deep .memories-video-badge {
     position: absolute;
@@ -185,6 +160,60 @@
     color: #fff;
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
     z-index: 1;
+}
+
+/* Overlay "+N" sobre la última miniatura cuando hay más fotos ocultas */
+.memories-strip-more {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* ── CTA "Ver las N fotos" a ancho completo ── */
+.memories-card-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.03);
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    color: var(--mud-palette-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease;
+}
+
+.memories-card-cta:hover {
+    background: var(--mud-palette-primary-hover);
+}
+
+.memories-card-cta:active {
+    background: var(--mud-palette-action-default-hover);
+}
+
+::deep .memories-card-cta .mud-icon-root {
+    color: var(--mud-palette-primary);
 }
 
 /* ── Bottom sheet con todos los assets del bloque ── */

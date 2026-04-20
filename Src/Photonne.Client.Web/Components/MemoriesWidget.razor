@@ -15,13 +15,19 @@
             @foreach (var group in _yearGroups)
             {
                 var yearsAgo = DateTime.Today.Year - group.Key;
-                var heroAsset = group.Value.First();
-                var stripAssets = group.Value.Skip(1).Take(4).ToList();
+                var groupAssets = group.Value;
+                var heroAsset = groupAssets.First();
+                var stripAssets = groupAssets.Skip(1).Take(4).ToList();
+                var totalCount = groupAssets.Count;
+                var hiddenCount = totalCount - 1 - stripAssets.Count;
+                var ctaLabel = totalCount == 1
+                    ? "Ver la foto"
+                    : $"Ver las {totalCount} fotos";
 
                 <div class="memories-card">
                     <!-- Hero -->
                     <div class="memories-card-hero"
-                         @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = heroAsset, GroupAssets = group.Value })">
+                         @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = heroAsset, GroupAssets = groupAssets })">
                         <img src="@heroAsset.ThumbnailUrl" alt="memory" loading="lazy" />
 
                         @if (heroAsset.Type == "Video")
@@ -35,37 +41,42 @@
                             <span class="memories-card-time">Hace @yearsAgo @(yearsAgo == 1 ? "año" : "años")</span>
                             <span class="memories-card-year">@group.Key</span>
                         </div>
-
-                        @{
-                            var groupForPill = group.Value;
-                        }
-                        <div class="memories-card-pill"
-                             role="button"
-                             @onclick="() => OpenGroupSheet(groupForPill)"
-                             @onclick:stopPropagation="true">
-                            @groupForPill.Count @(groupForPill.Count == 1 ? "foto" : "fotos")
-                        </div>
                     </div>
 
                     <!-- Strip: máximo 4 fotos, sin scroll -->
                     @if (stripAssets.Any())
                     {
                         <div class="memories-strip">
-                            @foreach (var asset in stripAssets)
+                            @for (var i = 0; i < stripAssets.Count; i++)
                             {
+                                var asset = stripAssets[i];
+                                var showMore = i == stripAssets.Count - 1 && hiddenCount > 0;
+
                                 <div class="memories-strip-thumb"
-                                     @onclick="() => OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = asset, GroupAssets = group.Value })">
+                                     @onclick="@(() => OnStripThumbClick(asset, groupAssets, showMore))">
                                     <img src="@asset.ThumbnailUrl" alt="memory" loading="lazy" />
-                                    @if (asset.Type == "Video")
+                                    @if (asset.Type == "Video" && !showMore)
                                     {
                                         <div class="memories-video-sm">
                                             <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" />
                                         </div>
                                     }
+                                    @if (showMore)
+                                    {
+                                        <div class="memories-strip-more">+@hiddenCount</div>
+                                    }
                                 </div>
                             }
                         </div>
                     }
+
+                    <!-- CTA: abre la bottom sheet con todas las fotos del grupo -->
+                    <button type="button"
+                            class="memories-card-cta"
+                            @onclick="() => OpenGroupSheet(groupAssets)">
+                        <span>@ctaLabel</span>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                    </button>
                 </div>
             }
         </div>
@@ -344,6 +355,16 @@
         _sheetOpen = true;
         _sheetSelectionMode = false;
         _selectedSheetIds.Clear();
+    }
+
+    private Task OnStripThumbClick(TimelineItem asset, List<TimelineItem> groupAssets, bool showMore)
+    {
+        if (showMore)
+        {
+            OpenGroupSheet(groupAssets);
+            return Task.CompletedTask;
+        }
+        return OnThumbClick.InvokeAsync(new MemoryClickArgs { Asset = asset, GroupAssets = groupAssets });
     }
 
     private void CloseGroupSheet()
