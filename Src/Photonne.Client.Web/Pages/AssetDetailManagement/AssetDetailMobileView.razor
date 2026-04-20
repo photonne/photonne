@@ -1,3 +1,6 @@
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
 <div class="asset-detail-container" @ref="ContainerRef" @onkeydown="OnKeyDown" @onmousemove="OnSlideshowMouseMove" tabindex="0">
     <div class="asset-detail-content @(Zoomed ? "zoomed-container" : "")" @onclick="OnToggleToolbar" @ontouchstart="OnTouchStart" @ontouchmove="OnTouchMove" @ontouchend="OnTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
         <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
@@ -24,7 +27,8 @@
         }
         else if (Asset.HasThumbnails || Asset.Type == "Image")
         {
-            <img src="@(Asset.Type == "Image" ? DisplayContentUrl : DisplayThumbnailUrl)"
+            <img @ref="_imageRef"
+                 src="@(Asset.Type == "Image" ? DisplayContentUrl : DisplayThumbnailUrl)"
                  alt="@Asset.FileName"
                  class="asset-detail-image @(Zoomed ? "zoomed" : "")"
                  @onerror="OnImageError" />
@@ -429,11 +433,50 @@
     [Parameter] public EventCallback OnAddTag { get; set; }
     [Parameter] public EventCallback<string> OnRemoveTag { get; set; }
 
+    private ElementReference _imageRef;
+    private ElementReference _lastAttachedImageRef;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             await ContainerRefChanged.InvokeAsync(ContainerRef);
+        }
+
+        // Attach pinch-to-zoom on the image element whenever it's rendered.
+        // Idempotent on the JS side; re-runs no-op for the same DOM node.
+        var imageRendered = Asset != null
+                            && !Asset.IsFileMissing
+                            && !ImageLoadError
+                            && Asset.Type != "Video"
+                            && (Asset.Type == "Image" || Asset.HasThumbnails);
+
+        if (imageRendered && _imageRef.Context != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("pinchZoomHelpers.attach", _imageRef);
+                _lastAttachedImageRef = _imageRef;
+            }
+            catch
+            {
+                // Element not ready yet; will retry on next render.
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_lastAttachedImageRef.Context != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("pinchZoomHelpers.detach", _lastAttachedImageRef);
+            }
+            catch
+            {
+                // JS runtime may already be torn down on page navigation.
+            }
         }
     }
 }

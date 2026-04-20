@@ -30,6 +30,11 @@
     max-height: 100%;
     object-fit: contain;
     user-select: none;
+    /* Disable native browser gestures on the image so our JS handles pinch/zoom
+       locally instead of the browser zooming the whole viewport. */
+    touch-action: none;
+    -webkit-user-drag: none;
+    will-change: transform;
 }
 
 video.asset-detail-image {
