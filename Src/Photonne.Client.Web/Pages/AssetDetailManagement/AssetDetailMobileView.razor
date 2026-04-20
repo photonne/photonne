@@ -1,5 +1,5 @@
 <div class="asset-detail-container" @ref="ContainerRef" @onkeydown="OnKeyDown" @onmousemove="OnSlideshowMouseMove" tabindex="0">
-    <div class="asset-detail-content @(Zoomed ? "zoomed-container" : "")" @onclick="OnToggleToolbar" @ontouchstart="OnTouchStart" @ontouchend="OnTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+    <div class="asset-detail-content @(Zoomed ? "zoomed-container" : "")" @onclick="OnToggleToolbar" @ontouchstart="OnTouchStart" @ontouchmove="OnTouchMove" @ontouchend="OnTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
         <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
             <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
                            Class="@NavButtonPrevClass"
@@ -402,6 +402,7 @@
     [Parameter] public EventCallback OnNavigateNext { get; set; }
     [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
     [Parameter] public EventCallback<TouchEventArgs> OnTouchStart { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnTouchMove { get; set; }
     [Parameter] public EventCallback<TouchEventArgs> OnTouchEnd { get; set; }
     [Parameter] public EventCallback OnImageError { get; set; }
     [Parameter] public EventCallback OnSlideshowMouseMove { get; set; }

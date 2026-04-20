@@ -59,6 +59,7 @@ else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
                                OnNavigateNext="NavigateNext"
                                OnKeyDown="HandleKeyDown"
                                OnTouchStart="HandleTouchStart"
+                               OnTouchMove="HandleTouchMove"
                                OnTouchEnd="HandleTouchEnd"
                                OnImageError="OnImageLoadError"
                                OnSlideshowMouseMove="OnSlideshowMouseMove"
@@ -118,6 +119,7 @@ else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
                                 OnNavigateNext="NavigateNext"
                                 OnKeyDown="HandleKeyDown"
                                 OnTouchStart="HandleTouchStart"
+                                OnTouchMove="HandleTouchMove"
                                 OnTouchEnd="HandleTouchEnd"
                                 OnImageError="OnImageLoadError"
                                 OnSlideshowMouseMove="OnSlideshowMouseMove"
@@ -737,20 +739,42 @@ else
     }
 
     private double _touchStartX;
+    private double _touchStartY;
     private bool _swipeHandled;
+    private bool _swipeCancelled;
+    private const double SwipeThreshold = 80;
+    private const double SwipeHorizontalRatio = 1.5;
 
     private void HandleTouchStart(TouchEventArgs e)
     {
-        if (e.Touches.Length > 0)
-            _touchStartX = e.Touches[0].ClientX;
         _swipeHandled = false;
+        // Multi-touch (pinch/zoom) cancels swipe tracking so nav isn't triggered on release.
+        if (e.Touches.Length > 1 || _zoomed)
+        {
+            _swipeCancelled = true;
+            return;
+        }
+        _swipeCancelled = false;
+        if (e.Touches.Length > 0)
+        {
+            _touchStartX = e.Touches[0].ClientX;
+            _touchStartY = e.Touches[0].ClientY;
+        }
+    }
+
+    private void HandleTouchMove(TouchEventArgs e)
+    {
+        if (e.Touches.Length > 1) _swipeCancelled = true;
     }
 
     private void HandleTouchEnd(TouchEventArgs e)
     {
+        if (_swipeCancelled || _zoomed) return;
         if (e.ChangedTouches.Length == 0) return;
         var deltaX = e.ChangedTouches[0].ClientX - _touchStartX;
-        if (Math.Abs(deltaX) < 50) return;
+        var deltaY = e.ChangedTouches[0].ClientY - _touchStartY;
+        if (Math.Abs(deltaX) < SwipeThreshold) return;
+        if (Math.Abs(deltaX) < Math.Abs(deltaY) * SwipeHorizontalRatio) return;
         _swipeHandled = true;
         if (deltaX < 0) NavigateNext();
         else NavigatePrev();

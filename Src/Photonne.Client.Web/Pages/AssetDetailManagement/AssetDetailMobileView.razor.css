@@ -33,7 +33,11 @@
 }
 
 video.asset-detail-image {
-    width: 100%;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
     outline: none;
     background-color: black;
 }
@@ -315,4 +319,15 @@ video.asset-detail-image {
 
 ::deep .asset-detail-menu-popover .mud-list-item:hover {
     background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Landscape: info drawer fills more of the screen since 72vh is cramped at low heights. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .asset-info-drawer {
+        height: 92vh;
+    }
+
+    .add-to-album-drawer {
+        max-height: 92vh;
+    }
 }
