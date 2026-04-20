@@ -1,0 +1,19 @@
+/* Full-screen loading overlay for asset detail.
+   Starts invisible and fades in after 150ms so fast loads don't flash a spinner. */
+.asset-detail-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background-color: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    animation: asset-detail-loading-fade-in 0.2s ease forwards;
+    animation-delay: 150ms;
+}
+
+@keyframes asset-detail-loading-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

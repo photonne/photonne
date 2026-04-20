@@ -16,7 +16,9 @@
 
 @if (_loading && _asset == null)
 {
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+    <div class="asset-detail-loading">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
 }
 else if (_asset != null && !string.IsNullOrEmpty(_displayContentUrl))
 {
