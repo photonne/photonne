@@ -1,0 +1,43 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+      - github-actions
+
+  categories:
+    - title: Security
+      labels:
+        - type: security
+
+    - title: Features
+      labels:
+        - type: feature
+
+    - title: Enhancements
+      labels:
+        - type: performance
+        - type: refactor
+        - type: chore
+
+    - title: Bug Fixes
+      labels:
+        - type: bug
+        - type: fix
+
+    - title: Documentation
+      labels:
+        - type: docs
+
+    - title: Tests
+      labels:
+        - type: tests
+
+    - title: CI
+      labels:
+        - type: ci
+
+    - title: Other Changes
+      labels:
+        - "*"
