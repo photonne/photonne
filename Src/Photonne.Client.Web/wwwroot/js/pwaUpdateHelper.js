@@ -159,16 +159,42 @@ window.pwaUpdate = {
         });
     },
 
-    checkForUpdate: function () {
+    checkForUpdate: async function () {
         const reg = this._registration;
-        if (!reg) return;
-        reg.update()
-            .then(() => this._syncAvailabilityFromRegistration(reg))
-            .catch(() => { });
+        if (!reg) return false;
+        try {
+            await reg.update();
+
+            // If a new SW is installing, wait for it to settle before checking reg.waiting.
+            const installing = reg.installing;
+            if (installing && installing.state !== 'installed' && installing.state !== 'redundant') {
+                await new Promise((resolve) => {
+                    const done = () => {
+                        installing.removeEventListener('statechange', onChange);
+                        clearTimeout(timer);
+                        resolve();
+                    };
+                    const onChange = () => {
+                        if (installing.state === 'installed' || installing.state === 'redundant') done();
+                    };
+                    installing.addEventListener('statechange', onChange);
+                    const timer = setTimeout(done, 10000);
+                });
+            }
+
+            this._syncAvailabilityFromRegistration(reg);
+            return !!reg.waiting;
+        } catch {
+            return false;
+        }
     },
 
     getAppVersion: function () {
         return window.APP_VERSION ?? '';
+    },
+
+    setAppVersion: function (version) {
+        window.APP_VERSION = version || '';
     },
 
     applyUpdate: function () {

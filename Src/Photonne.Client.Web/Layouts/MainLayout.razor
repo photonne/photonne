@@ -5,6 +5,7 @@
 @inject ThemeService ThemeService
 @inject IAuthService AuthService
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inject ApiErrorNotifier ApiErrorNotifier
 @inject INotificationService NotificationService
 @inject PwaUpdateService PwaUpdateService
@@ -334,6 +335,14 @@
                         <MudText Typo="Typo.body1">Configuración cuenta</MudText>
                     </div>
                 </MudListItem>
+                <MudListItem OnClick="@(async () => await CheckForUpdatesAsync())" Disabled="@_checkingForUpdate">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@Icons.Material.Outlined.SystemUpdate" Color="Color.Default" />
+                        <MudText Typo="Typo.body1">
+                            @(_checkingForUpdate ? "Buscando actualizaciones…" : "Buscar actualizaciones")
+                        </MudText>
+                    </div>
+                </MudListItem>
                 @if (IsAdmin)
                 {
                     <MudListItem OnClick="@(() => { _moreSheetOpen = false; Navigation.NavigateTo("/admin/users"); })">
@@ -642,6 +651,30 @@
         await PwaInstallService.PromptInstallAsync();
     }
 
+    private bool _checkingForUpdate;
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_checkingForUpdate) return;
+        _checkingForUpdate = true;
+        _moreSheetOpen = false;
+        try
+        {
+            var hasUpdate = await PwaUpdateService.CheckForUpdateAsync();
+            if (hasUpdate)
+            {
+                await PwaUpdateService.ApplyUpdateAsync();
+                return;
+            }
+            Snackbar.Add("Ya tienes la última versión.", Severity.Success);
+        }
+        finally
+        {
+            _checkingForUpdate = false;
+            StateHasChanged();
+        }
+    }
+
     private void HandleApiError(ApiErrorInfo info)
     {
         _ = InvokeAsync(async () =>
@@ -823,6 +856,12 @@
         </MudButton>
         <MudButton Variant="Variant.Text" FullWidth="true" OnClick="@(() => Navigation.NavigateTo("/settings"))">
             Configuración cuenta
+        </MudButton>
+        <MudButton Variant="Variant.Text" FullWidth="true"
+                   StartIcon="@Icons.Material.Outlined.SystemUpdate"
+                   Disabled="@_checkingForUpdate"
+                   OnClick="@(async () => await CheckForUpdatesAsync())">
+            @(_checkingForUpdate ? "Buscando actualizaciones…" : "Buscar actualizaciones")
         </MudButton>
         @if (IsAdmin)
         {
