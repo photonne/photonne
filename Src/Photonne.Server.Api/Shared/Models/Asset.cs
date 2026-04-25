@@ -71,12 +71,17 @@ public class Asset
     // AI-generated scene description
     [MaxLength(2000)]
     public string? AiDescription { get; set; }
-    
+
+    // Marks the most recent successful face detection run on this asset. Used
+    // by the backfill admin endpoint to skip already-processed assets.
+    public DateTime? FaceDetectionCompletedAt { get; set; }
+
     // Navigation properties
     public AssetExif? Exif { get; set; }
     public ICollection<AssetThumbnail> Thumbnails { get; set; } = new List<AssetThumbnail>();
     public ICollection<AssetTag> Tags { get; set; } = new List<AssetTag>();
     public ICollection<AssetUserTag> UserTags { get; set; } = new List<AssetUserTag>();
     public ICollection<AssetMlJob> MlJobs { get; set; } = new List<AssetMlJob>();
+    public ICollection<Face> Faces { get; set; } = new List<Face>();
 }
 

@@ -1,0 +1,103 @@
+@page "/people"
+@using Photonne.Client.Web.Services
+@inject IPeopleService PeopleService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Personas - Photonne</PageTitle>
+
+<div class="px-3 pt-3">
+    <MudText Typo="Typo.h5" Class="mb-3">Personas</MudText>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+else if (_people.Count == 0)
+{
+    <div class="d-flex flex-column align-center justify-center py-8 px-4">
+        <MudIcon Icon="@Icons.Material.Outlined.GroupOff" Size="Size.Large" Class="mb-3" />
+        <MudText Typo="Typo.h6">Sin personas todavía</MudText>
+        <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary); text-align: center; max-width: 360px;">
+            En cuanto subas más fotos, Photonne agrupará caras automáticamente.
+            También puedes ejecutar el backfill desde Admin para procesar fotos antiguas.
+        </MudText>
+    </div>
+}
+else
+{
+    <div class="px-3">
+        <MudGrid Spacing="2">
+            @foreach (var p in _people)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <MudCard Class="ph-person-card" @onclick="() => OpenPerson(p)">
+                        <div class="ph-person-cover">
+                            @if (p.CoverFaceId.HasValue)
+                            {
+                                <img src="@($"/api/faces/{p.CoverFaceId.Value}/thumbnail")" alt="@(p.Name ?? "Persona")" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
+                            }
+                        </div>
+                        <MudCardContent Class="py-2 px-3">
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                                @p.FaceCount fotos
+                            </MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    </div>
+}
+
+<style>
+    .ph-person-card { cursor: pointer; }
+    .ph-person-cover {
+        aspect-ratio: 1;
+        overflow: hidden;
+        background: var(--mud-palette-background-grey);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .ph-person-cover img { width: 100%; height: 100%; object-fit: cover; }
+</style>
+
+@code {
+    private bool _loading = true;
+    private List<PersonSummary> _people = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var page = await PeopleService.GetPeopleAsync(limit: 200);
+            _people = page.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar personas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenPerson(PersonSummary p)
+    {
+        Navigation.NavigateTo($"/people/{p.Id}");
+    }
+}

@@ -15,16 +15,36 @@ services:
       - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
       - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
       - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
+      - FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
+      - FaceRecognition__ServiceUrl=${FACE_SERVICE_URL:-http://photonne-faces:8000}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
     depends_on:
       postgresql:
         condition: service_healthy
+      photonne-faces:
+        condition: service_healthy
+    restart: unless-stopped
+
+  photonne-faces:
+    build:
+      context: ./Src/Photonne.MlService.Faces
+    container_name: photonne-faces
+    environment:
+      - MODEL_NAME=${FACE_MODEL_NAME:-buffalo_l}
+      - DET_SIZE=${FACE_DET_SIZE:-640}
+      - MIN_FACE_SIZE=${FACE_MIN_SIZE:-40}
+      - MIN_DET_SCORE=${FACE_MIN_DET_SCORE:-0.5}
+      - ONNX_PROVIDERS=${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}
+    volumes:
+      - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets:ro
+      - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails:ro
+      - face_models:/app/models
     restart: unless-stopped
 
   postgresql:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     container_name: photonne-db
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-photonne}
@@ -59,3 +79,4 @@ services:
 volumes:
   postgresql_data:
   pgadmin_data:
+  face_models:

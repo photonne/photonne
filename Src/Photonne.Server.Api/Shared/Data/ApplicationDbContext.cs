@@ -40,9 +40,13 @@ public class ApplicationDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<ExternalLibrary> ExternalLibraries { get; set; }
     public DbSet<ExternalLibraryPermission> ExternalLibraryPermissions { get; set; }
+    public DbSet<Face> Faces { get; set; }
+    public DbSet<Person> People { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("vector");
+
         // Configure User entity
         modelBuilder.Entity<User>(entity =>
         {
@@ -418,6 +422,57 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.ExternalLibraryId, e.UserId }).IsUnique();
             entity.Property(e => e.GrantedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure Person entity (face cluster)
+        modelBuilder.Entity<Person>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200);
+
+            entity.HasOne(e => e.Owner)
+                .WithMany()
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.CoverFace)
+                .WithMany()
+                .HasForeignKey(e => e.CoverFaceId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.OwnerId);
+            entity.HasIndex(e => new { e.OwnerId, e.IsHidden });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure Face entity (detected face with embedding)
+        modelBuilder.Entity<Face>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Embedding).HasColumnType("vector(512)");
+
+            entity.HasOne(e => e.Asset)
+                .WithMany(a => a.Faces)
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Person)
+                .WithMany(p => p.Faces)
+                .HasForeignKey(e => e.PersonId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.AssetId);
+            entity.HasIndex(e => e.PersonId);
+            entity.HasIndex(e => new { e.PersonId, e.IsRejected });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        modelBuilder.Entity<Asset>(entity =>
+        {
+            entity.Property(e => e.FaceDetectionCompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(NullableUtcConverter);
         });
 
         // Configure RefreshToken entity
