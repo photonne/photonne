@@ -107,6 +107,11 @@ public class FaceDetectionService
             // Online assignment: try to attach each new orphan face to an existing
             // Person of the same owner via cosine similarity.
             await _clustering.AssignNewFacesAsync(asset.OwnerId.Value, assetId, cancellationToken);
+
+            // Bootstrap & refresh: faces that didn't match any existing Person
+            // are still orphan. Run a cooldown-guarded batch pass so new clusters
+            // get created without waiting for a manual trigger or nightly job.
+            await _clustering.MaybeRunBatchAsync(asset.OwnerId.Value, cancellationToken);
         }
 
         _logger.LogInformation("Stored {Inserted} faces for asset {AssetId}", inserted, assetId);

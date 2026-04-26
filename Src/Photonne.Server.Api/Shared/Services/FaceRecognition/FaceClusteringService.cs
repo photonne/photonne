@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Shared.Data;
@@ -19,6 +20,11 @@ namespace Photonne.Server.Api.Shared.Services.FaceRecognition;
 /// </summary>
 public class FaceClusteringService
 {
+    // Per-owner cooldown shared across requests/scopes — avoids running the
+    // O(n²) batch clustering on every single face detection.
+    private static readonly ConcurrentDictionary<Guid, DateTime> _lastBatchRunUtc = new();
+    private static readonly TimeSpan BatchCooldown = TimeSpan.FromMinutes(2);
+
     private readonly ApplicationDbContext _dbContext;
     private readonly FaceRecognitionOptions _options;
     private readonly ILogger<FaceClusteringService> _logger;
@@ -47,6 +53,15 @@ public class FaceClusteringService
             .ToListAsync(cancellationToken);
 
         if (newFaces.Count == 0) return;
+
+        var hasAnyPerson = await _dbContext.People.AnyAsync(p => p.OwnerId == ownerId, cancellationToken);
+        if (!hasAnyPerson)
+        {
+            _logger.LogDebug(
+                "Owner {OwnerId} has no Person yet; skipping online assignment for {Count} new faces (batch clustering will create clusters)",
+                ownerId, newFaces.Count);
+            return;
+        }
 
         var threshold = _options.ClusteringThreshold;
 
@@ -78,6 +93,40 @@ public class FaceClusteringService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         await RecomputeFaceCountsAsync(ownerId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Runs <see cref="RunForOwnerAsync"/> for the owner if there are enough
+    /// orphan faces to potentially form clusters AND the per-owner cooldown
+    /// has elapsed. This is the hook called after each face detection to
+    /// keep the People table populated without requiring a manual trigger.
+    /// </summary>
+    public async Task<int> MaybeRunBatchAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        var orphanCount = await _dbContext.Faces
+            .CountAsync(f => f.Asset.OwnerId == ownerId
+                             && f.PersonId == null
+                             && !f.IsManuallyAssigned
+                             && !f.IsRejected, cancellationToken);
+
+        if (orphanCount < _options.MinFacesForCluster)
+        {
+            _logger.LogDebug("Owner {OwnerId}: {Orphans} orphans (< {Min}); skipping batch",
+                ownerId, orphanCount, _options.MinFacesForCluster);
+            return 0;
+        }
+
+        var now = DateTime.UtcNow;
+        var last = _lastBatchRunUtc.TryGetValue(ownerId, out var t) ? t : DateTime.MinValue;
+        if (now - last < BatchCooldown)
+        {
+            _logger.LogDebug("Owner {OwnerId}: batch cooldown active ({Remaining:F0}s left)",
+                ownerId, (BatchCooldown - (now - last)).TotalSeconds);
+            return 0;
+        }
+
+        _lastBatchRunUtc[ownerId] = now;
+        return await RunForOwnerAsync(ownerId, cancellationToken);
     }
 
     /// <summary>
