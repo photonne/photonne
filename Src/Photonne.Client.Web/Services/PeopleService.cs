@@ -65,4 +65,33 @@ public class PeopleService : IPeopleService
         var resp = await _http.PostAsync($"/api/people/{personId}/hide", null, ct);
         resp.EnsureSuccessStatusCode();
     }
+
+    public async Task<List<FaceItem>> GetFacesForAssetAsync(Guid assetId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var faces = await _http.GetFromJsonAsync<List<FaceItem>>($"/api/assets/{assetId}/faces", ct);
+        return faces ?? new List<FaceItem>();
+    }
+
+    public async Task AssignFaceAsync(Guid faceId, Guid? personId, string? newPersonName, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var body = new { personId, newPersonName };
+        var resp = await _http.PostAsJsonAsync($"/api/faces/{faceId}/assign", body, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task UnassignFaceAsync(Guid faceId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync($"/api/faces/{faceId}/unassign", null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task RejectFaceAsync(Guid faceId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.DeleteAsync($"/api/faces/{faceId}", ct);
+        resp.EnsureSuccessStatusCode();
+    }
 }

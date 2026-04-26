@@ -9,6 +9,12 @@ public interface IPeopleService
     Task<PersonAssetsPage> GetPersonAssetsAsync(Guid id, int limit = 100, int offset = 0, CancellationToken ct = default);
     Task RenameAsync(Guid personId, string? name, CancellationToken ct = default);
     Task HideAsync(Guid personId, CancellationToken ct = default);
+
+    // Face operations
+    Task<List<FaceItem>> GetFacesForAssetAsync(Guid assetId, CancellationToken ct = default);
+    Task AssignFaceAsync(Guid faceId, Guid? personId, string? newPersonName, CancellationToken ct = default);
+    Task UnassignFaceAsync(Guid faceId, CancellationToken ct = default);
+    Task RejectFaceAsync(Guid faceId, CancellationToken ct = default);
 }
 
 public sealed record PersonSummary(
@@ -43,3 +49,15 @@ public sealed record PersonAssetItem(
 }
 
 public sealed record PersonAssetsPage(int Total, List<PersonAssetItem> Items);
+
+public sealed record FaceItem(
+    Guid Id,
+    Guid AssetId,
+    Guid? PersonId,
+    float BoundingBoxX,
+    float BoundingBoxY,
+    float BoundingBoxW,
+    float BoundingBoxH,
+    float Confidence,
+    bool IsManuallyAssigned,
+    bool IsRejected);

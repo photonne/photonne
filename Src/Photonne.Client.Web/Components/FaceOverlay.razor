@@ -1,0 +1,210 @@
+@inject IJSRuntime JS
+@inject IPeopleService PeopleService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+@using Photonne.Client.Web.Services
+
+@if (Visible && _rect.HasValue && _faces.Count > 0)
+{
+    <div class="ph-face-overlay"
+         style="@OverlayStyle">
+        @foreach (var f in _faces)
+        {
+            <button type="button"
+                    class="ph-face-overlay__box @(f.PersonId.HasValue ? "linked" : "unlinked") @(f.IsManuallyAssigned ? "manual" : "")"
+                    style="@BoxStyle(f)"
+                    title="@TooltipFor(f)"
+                    @onclick="() => OnFaceClickAsync(f)"
+                    @onclick:stopPropagation="true">
+                <span class="ph-face-overlay__chip">
+                    @ChipFor(f)
+                </span>
+            </button>
+        }
+    </div>
+}
+
+<style>
+    .ph-face-overlay {
+        position: fixed;
+        pointer-events: none;
+        z-index: 50;
+    }
+    .ph-face-overlay__box {
+        position: absolute;
+        pointer-events: auto;
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+        padding: 0;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .ph-face-overlay__box:hover {
+        border-color: var(--mud-palette-primary, #1976d2);
+        transform: scale(1.02);
+    }
+    .ph-face-overlay__box.linked {
+        border-color: rgba(76, 175, 80, 0.95);
+    }
+    .ph-face-overlay__box.linked.manual {
+        border-color: rgba(33, 150, 243, 0.95);
+    }
+    .ph-face-overlay__chip {
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.78);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        line-height: 1.4;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid AssetId { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnFacesChanged { get; set; }
+
+    private List<FaceItem> _faces = new();
+    private Dictionary<Guid, string?> _personNames = new(); // PersonId → Name (for chips)
+    private Rect? _rect;
+    private DotNetObjectReference<FaceOverlay>? _ref;
+    private string _trackerKey = Guid.NewGuid().ToString("N");
+    private Guid _loadedAssetId;
+    private bool _trackerStarted;
+
+    public record struct Rect(double Left, double Top, double Width, double Height);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            if (_loadedAssetId != AssetId)
+            {
+                _loadedAssetId = AssetId;
+                _rect = null;
+                // Different asset → the previous <img> element is being replaced.
+                // Restart the JS tracker so it locates the new one.
+                await StopTrackerAsync();
+                await ReloadFacesAsync();
+            }
+            await EnsureTrackerStartedAsync();
+        }
+        else
+        {
+            await StopTrackerAsync();
+            _rect = null;
+        }
+    }
+
+    private async Task ReloadFacesAsync()
+    {
+        try
+        {
+            var faces = await PeopleService.GetFacesForAssetAsync(AssetId);
+            _faces = faces.Where(f => !f.IsRejected).ToList();
+            await LoadPersonNamesAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar caras: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadPersonNamesAsync()
+    {
+        var ids = _faces.Where(f => f.PersonId.HasValue).Select(f => f.PersonId!.Value).Distinct().ToList();
+        if (ids.Count == 0) { _personNames.Clear(); return; }
+
+        // Pull the user's people once (paginated); avoids one-call-per-person.
+        var page = await PeopleService.GetPeopleAsync(limit: 200, includeHidden: true);
+        _personNames = page.Items.ToDictionary(p => p.Id, p => p.Name);
+    }
+
+    private async Task EnsureTrackerStartedAsync()
+    {
+        if (_trackerStarted) return;
+        _ref ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("faceOverlayHelpers.start", _trackerKey, _ref);
+        _trackerStarted = true;
+    }
+
+    private async Task StopTrackerAsync()
+    {
+        if (!_trackerStarted) return;
+        try { await JS.InvokeVoidAsync("faceOverlayHelpers.stop", _trackerKey); }
+        catch { /* JS unavailable during teardown */ }
+        _trackerStarted = false;
+    }
+
+    [JSInvokable]
+    public void OnRectChanged(double left, double top, double width, double height)
+    {
+        _rect = new Rect(left, top, width, height);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string OverlayStyle => _rect is { } r
+        ? $"left: {r.Left.ToString(System.Globalization.CultureInfo.InvariantCulture)}px; top: {r.Top.ToString(System.Globalization.CultureInfo.InvariantCulture)}px; width: {r.Width.ToString(System.Globalization.CultureInfo.InvariantCulture)}px; height: {r.Height.ToString(System.Globalization.CultureInfo.InvariantCulture)}px;"
+        : string.Empty;
+
+    private static string Pct(float v) =>
+        (v * 100f).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string BoxStyle(FaceItem f) =>
+        $"left: {Pct(f.BoundingBoxX)}%; top: {Pct(f.BoundingBoxY)}%; width: {Pct(f.BoundingBoxW)}%; height: {Pct(f.BoundingBoxH)}%;";
+
+    private string ChipFor(FaceItem f)
+    {
+        if (!f.PersonId.HasValue) return "Sin asignar";
+        return _personNames.TryGetValue(f.PersonId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : "Sin nombre";
+    }
+
+    private string TooltipFor(FaceItem f) => f.IsManuallyAssigned
+        ? "Asignación manual — haz clic para cambiar"
+        : "Asignación automática — haz clic para cambiar";
+
+    private async Task OnFaceClickAsync(FaceItem face)
+    {
+        var parameters = new DialogParameters<FaceAssignDialog>
+        {
+            { x => x.Face, face },
+            { x => x.CurrentPersonName, ChipFor(face) },
+        };
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            BackdropClick = true,
+        };
+
+        var dlg = await DialogService.ShowAsync<FaceAssignDialog>("Asignar cara", parameters, options);
+        var result = await dlg.Result;
+        if (result == null || result.Canceled) return;
+
+        await ReloadFacesAsync();
+        if (OnFacesChanged.HasDelegate)
+            await OnFacesChanged.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopTrackerAsync();
+        _ref?.Dispose();
+    }
+}

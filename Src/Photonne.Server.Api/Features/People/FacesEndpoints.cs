@@ -148,3 +148,39 @@ public class RejectFaceEndpoint : IEndpoint
         return Results.NoContent();
     }
 }
+
+/// <summary>Detaches a face from its current Person without rejecting it. The face
+/// stays valid (not a false positive) but becomes orphan; IsManuallyAssigned is set
+/// so the online clustering won't immediately reattach it. Use this when a face was
+/// auto-assigned to the wrong Person and the user wants to leave it unlabeled.</summary>
+public class UnassignFaceEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/faces/{id:guid}/unassign", Handle)
+            .WithTags("Faces")
+            .RequireAuthorization();
+    }
+
+    private static async Task<IResult> Handle(
+        [FromServices] ApplicationDbContext db,
+        [FromServices] FaceClusteringService clustering,
+        Guid id,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+
+        var face = await db.Faces.Include(f => f.Asset)
+            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
+        if (face == null) return Results.NotFound();
+
+        face.PersonId = null;
+        face.IsManuallyAssigned = true;
+        face.IsRejected = false;
+        await db.SaveChangesAsync(ct);
+
+        await clustering.RecomputeFaceCountsAsync(userId, ct);
+        return Results.NoContent();
+    }
+}

@@ -181,3 +181,98 @@ async function shareOrCopyUrl(url, title) {
         return 'error';
     }
 }
+
+// Tracks the bounding rect of the visible AssetDetail image and pipes it back
+// to a .NET component on every layout change (window resize, image load,
+// scroll), so a face-overlay element can be positioned exactly on top.
+window.faceOverlayHelpers = {
+    _trackers: new Map(),
+
+    _findImage: function () {
+        // The AssetDetail view renders a single .asset-detail-image at a time
+        // (the image, not the placeholder/icon). Skip <video> tags.
+        const candidates = document.querySelectorAll('img.asset-detail-image');
+        for (const c of candidates) {
+            if (c.tagName === 'IMG' && c.complete) return c;
+        }
+        return candidates.length > 0 ? candidates[0] : null;
+    },
+
+    start: function (key, dotnetRef) {
+        this.stop(key);
+
+        const tracker = {
+            ref: dotnetRef,
+            img: null,
+            ro: null,
+            onScroll: null,
+            onResize: null,
+            onLoad: null,
+            rafId: null,
+        };
+
+        const push = () => {
+            if (!tracker.img) return;
+            const r = tracker.img.getBoundingClientRect();
+            // Filter degenerate rects (0×0) so .NET never renders bogus overlays.
+            if (r.width < 4 || r.height < 4) return;
+            tracker.ref.invokeMethodAsync('OnRectChanged', r.left, r.top, r.width, r.height);
+        };
+
+        const schedulePush = () => {
+            if (tracker.rafId) return;
+            tracker.rafId = requestAnimationFrame(() => {
+                tracker.rafId = null;
+                push();
+            });
+        };
+
+        const attach = (img) => {
+            tracker.img = img;
+            tracker.onLoad = () => schedulePush();
+            img.addEventListener('load', tracker.onLoad);
+
+            if ('ResizeObserver' in window) {
+                tracker.ro = new ResizeObserver(() => schedulePush());
+                tracker.ro.observe(img);
+            }
+            schedulePush();
+        };
+
+        // Observe DOM until the image element exists.
+        const findAndAttach = () => {
+            const img = this._findImage();
+            if (img) attach(img);
+            else setTimeout(findAndAttach, 80);
+        };
+        findAndAttach();
+
+        tracker.onResize = () => schedulePush();
+        tracker.onScroll = () => schedulePush();
+        window.addEventListener('resize', tracker.onResize);
+        window.addEventListener('scroll', tracker.onScroll, true);
+
+        this._trackers.set(key, tracker);
+    },
+
+    refresh: function (key) {
+        const t = this._trackers.get(key);
+        if (!t || !t.img) return;
+        const r = t.img.getBoundingClientRect();
+        if (r.width >= 4 && r.height >= 4) {
+            t.ref.invokeMethodAsync('OnRectChanged', r.left, r.top, r.width, r.height);
+        }
+    },
+
+    stop: function (key) {
+        const t = this._trackers.get(key);
+        if (!t) return;
+        if (t.img && t.onLoad) t.img.removeEventListener('load', t.onLoad);
+        if (t.ro && t.img) t.ro.unobserve(t.img);
+        if (t.ro) t.ro.disconnect();
+        if (t.onResize) window.removeEventListener('resize', t.onResize);
+        if (t.onScroll) window.removeEventListener('scroll', t.onScroll, true);
+        if (t.rafId) cancelAnimationFrame(t.rafId);
+        this._trackers.delete(key);
+    },
+};

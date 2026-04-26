@@ -147,6 +147,13 @@ else
     <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" OnClick="GoBack" Class="mt-2">@BackLabel</MudButton>
 }
 
+@* Face overlay: rendered at page root with position:fixed; positions itself
+   over the visible .asset-detail-image via JS getBoundingClientRect tracking. *@
+@if (_asset != null && _asset.Id != Guid.Empty && _asset.Type == "Image" && _asset.SyncStatus == AssetSyncStatus.Synced)
+{
+    <FaceOverlay AssetId="_asset.Id" Visible="_facesOverlayVisible" />
+}
+
 @code {
     [Parameter] public Guid AssetId { get; set; }
     [SupplyParameterFromQuery] public string? Path { get; set; }
@@ -177,6 +184,7 @@ else
     private bool _toolbarVisible = true;
     private bool _syncing = false;
     private bool _zoomed = false;
+    private bool _facesOverlayVisible = false;
     private bool _imageLoadError = false;
     private bool _deleting = false;
     private bool _deleteConfirmOpen = false;
@@ -322,6 +330,16 @@ else
                             <MudIconButton Icon="@(_infoOpen ? Icons.Material.Filled.Info : Icons.Material.Outlined.Info)"
                                            Color="Color.Inherit" OnClick="ToggleInfo" />
                         </MudTooltip>
+
+                        @* Caras — solo para imágenes indexadas *@
+                        @if (_asset != null && _asset.Type == "Image" && _asset.SyncStatus == AssetSyncStatus.Synced)
+                        {
+                            <MudTooltip Text="@(_facesOverlayVisible ? "Ocultar caras" : "Mostrar caras")">
+                                <MudIconButton Icon="@(_facesOverlayVisible ? Icons.Material.Filled.Face : Icons.Material.Outlined.Face)"
+                                               Color="@(_facesOverlayVisible ? Color.Primary : Color.Inherit)"
+                                               OnClick="ToggleFacesOverlay" />
+                            </MudTooltip>
+                        }
 
                         @* Añadir a álbum — siempre visible *@
                         <MudTooltip Text="Añadir a álbum">
@@ -799,6 +817,13 @@ else
     private void ToggleZoom()
     {
         _zoomed = !_zoomed;
+        UpdateNavbar();
+        StateHasChanged();
+    }
+
+    private void ToggleFacesOverlay()
+    {
+        _facesOverlayVisible = !_facesOverlayVisible;
         UpdateNavbar();
         StateHasChanged();
     }
