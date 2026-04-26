@@ -18,7 +18,9 @@ public class FaceRecognitionClient : IFaceRecognitionClient
 
     public async Task<FaceDetectionResponse> DetectAsync(string imagePath, Guid assetId, CancellationToken cancellationToken = default)
     {
-        var req = new DetectRequestDto { ImagePath = imagePath, AssetId = assetId.ToString() };
+        // Normalize separators so the Linux face service container can read the
+        // path even when the API runs on Windows and Path.Combine emitted '\'.
+        var req = new DetectRequestDto { ImagePath = imagePath.Replace('\\', '/'), AssetId = assetId.ToString() };
 
         var attempts = Math.Max(1, _options.MaxRetries + 1);
         Exception? lastException = null;

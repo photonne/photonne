@@ -867,9 +867,8 @@ public class FoldersEndpoint : IEndpoint
                     Directory.Delete(physicalPath, recursive: true);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Log error or handle specifically if needed.
                 // We continue because DB records are already removed, so the folder is "deleted" from app perspective.
             }
         }

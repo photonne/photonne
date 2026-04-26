@@ -1,31 +1,31 @@
 services:
-  photonne-api:
-    image: ghcr.io/photonne/photonne:latest
-    container_name: photonne-api
-    ports:
-      - "${API_PORT:-1107}:8080"
-    environment:
-      - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
-      - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
-      - Jwt__Issuer=Photonne
-      - Jwt__Audience=Photonne
-      - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
-      - AdminUser__Username=${ADMIN_USERNAME:-admin}
-      - AdminUser__Email=${ADMIN_EMAIL:-admin@photonne.local}
-      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
-      - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
-      - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
-      - FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
-      - FaceRecognition__ServiceUrl=${FACE_SERVICE_URL:-http://photonne-faces:8000}
-    volumes:
-      - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
-      - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
-    depends_on:
-      postgresql:
-        condition: service_healthy
-      photonne-faces:
-        condition: service_healthy
-    restart: unless-stopped
+#  photonne-api:
+#    image: ghcr.io/photonne/photonne:latest
+#    container_name: photonne-api
+#    ports:
+#      - "${API_PORT:-1107}:8080"
+#    environment:
+#      - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
+#      - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
+#      - Jwt__Issuer=Photonne
+#      - Jwt__Audience=Photonne
+#      - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
+#      - AdminUser__Username=${ADMIN_USERNAME:-admin}
+#      - AdminUser__Email=${ADMIN_EMAIL:-admin@photonne.local}
+#      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+#      - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
+#      - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
+#      - FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
+#      - FaceRecognition__ServiceUrl=${FACE_SERVICE_URL:-http://photonne-faces:8000}
+#    volumes:
+#      - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
+#      - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
+#    depends_on:
+#      postgresql:
+#        condition: service_healthy
+#      photonne-faces:
+#        condition: service_healthy
+#    restart: unless-stopped
 
   photonne-faces:
     build:
@@ -37,9 +37,11 @@ services:
       - MIN_FACE_SIZE=${FACE_MIN_SIZE:-40}
       - MIN_DET_SCORE=${FACE_MIN_DET_SCORE:-0.5}
       - ONNX_PROVIDERS=${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}
+    ports:
+      - "${FACE_PORT:-8000}:8000"
     volumes:
-      - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets:ro
-      - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails:ro
+      - ${ASSETS_HOST_PATH:-C:\data\assets}:/data/assets:ro
+      - ${THUMBNAILS_HOST_PATH:-C:\data\thumbnails}:/data/thumbnails:ro
       - face_models:/app/models
     restart: unless-stopped
 
@@ -50,6 +52,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-photonne}
       - POSTGRES_USER=${POSTGRES_USER:-photonne_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-photonne_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:
