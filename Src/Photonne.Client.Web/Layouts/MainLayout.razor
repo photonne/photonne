@@ -292,6 +292,11 @@
                     <MudIcon Icon="@(IsNavActive("/favorites") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)" Class="ph-more-tile__icon" />
                     <span class="ph-more-tile__label">Favoritos</span>
                 </button>
+                <button class="ph-more-tile @(IsNavActive("/people") ? "ph-more-tile--active" : "")"
+                        @onclick="@(() => NavigateFromSheet("/people"))">
+                    <MudIcon Icon="@(IsNavActive("/people") ? Icons.Material.Filled.People : Icons.Material.Outlined.People)" Class="ph-more-tile__icon" />
+                    <span class="ph-more-tile__label">Personas</span>
+                </button>
                 <button class="ph-more-tile @(IsNavActive("/map") ? "ph-more-tile--active" : "")"
                         @onclick="@(() => NavigateFromSheet("/map"))">
                     <MudIcon Icon="@(IsNavActive("/map") ? Icons.Material.Filled.Map : Icons.Material.Outlined.Map)" Class="ph-more-tile__icon" />

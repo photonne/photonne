@@ -1,0 +1,190 @@
+@page "/people/{Id:guid}"
+@using Photonne.Client.Web.Services
+@using Photonne.Client.Web.Models
+@inject IPeopleService PeopleService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IAssetListNavigationState AssetListNavigationState
+
+<PageTitle>@(_person?.Name ?? "Persona") - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+@if (_notFound)
+{
+    <div class="d-flex flex-column align-center justify-center py-8 px-4">
+        <MudIcon Icon="@Icons.Material.Outlined.PersonOff" Size="Size.Large" Class="mb-3" />
+        <MudText Typo="Typo.h6">Persona no encontrada</MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-3"
+                   OnClick="@(() => Navigation.NavigateTo("/people"))">
+            Volver a Personas
+        </MudButton>
+    </div>
+}
+else if (_person != null)
+{
+    <div class="ph-person-header">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Navigation.NavigateTo("/people"))"
+                       Class="ph-person-header__back" />
+
+        @if (_person.CoverFaceId.HasValue)
+        {
+            <img class="ph-person-header__cover"
+                 src="@($"/api/faces/{_person.CoverFaceId.Value}/thumbnail")"
+                 alt="@(_person.Name ?? "Persona")" />
+        }
+        else
+        {
+            <div class="ph-person-header__cover ph-person-header__cover--empty">
+                <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
+            </div>
+        }
+
+        <div class="ph-person-header__meta">
+            @if (_editing)
+            {
+                <MudTextField @bind-Value="_editName"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              AutoFocus="true"
+                              Immediate="true"
+                              Placeholder="Nombre" />
+                <div class="d-flex gap-1 mt-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveNameAsync">Guardar</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _editing = false)">Cancelar</MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.h5" Style="font-weight: 600;">
+                        @(string.IsNullOrWhiteSpace(_person.Name) ? "Sin nombre" : _person.Name)
+                    </MudText>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@StartEditing" />
+                </div>
+                <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                    @_total fotos
+                </MudText>
+            }
+        </div>
+    </div>
+
+    <div class="assets-grid-content">
+        @if (_assets.Any())
+        {
+            <MudGrid Spacing="1">
+                @foreach (var item in _assets)
+                {
+                    <MudItem xs="4" sm="3" md="2">
+                        <AssetCard Asset="@item" OnAssetClick="OpenAsset" />
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else if (!_loading)
+        {
+            <EmptyState Icon="@Icons.Material.Outlined.PhotoLibrary"
+                        Title="Sin fotos"
+                        Description="Esta persona no tiene fotos asignadas todavía." />
+        }
+    </div>
+}
+
+<style>
+    .ph-person-header {
+        display: flex; align-items: center; gap: 16px;
+        padding: 12px 16px; position: relative;
+    }
+    .ph-person-header__back { flex: 0 0 auto; }
+    .ph-person-header__cover {
+        width: 96px; height: 96px; border-radius: 50%;
+        object-fit: cover; flex: 0 0 auto;
+        background: var(--mud-palette-background-grey);
+    }
+    .ph-person-header__cover--empty {
+        display: flex; align-items: center; justify-content: center;
+        background: var(--mud-palette-background-grey);
+    }
+    .ph-person-header__meta { flex: 1 1 auto; min-width: 0; }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private bool _notFound;
+    private PersonSummary? _person;
+    private List<TimelineItem> _assets = new();
+    private int _total;
+
+    private bool _editing;
+    private string _editName = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _notFound = false;
+        try
+        {
+            _person = await PeopleService.GetPersonAsync(Id);
+            if (_person == null)
+            {
+                _notFound = true;
+                return;
+            }
+
+            var page = await PeopleService.GetPersonAssetsAsync(Id, limit: 200);
+            _total = page.Total;
+            _assets = page.Items.Select(i => i.ToTimelineItem()).ToList();
+            AssetListNavigationState.SetList(_assets, $"person:{Id}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar la persona: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void StartEditing()
+    {
+        _editName = _person?.Name ?? string.Empty;
+        _editing = true;
+    }
+
+    private async Task SaveNameAsync()
+    {
+        if (_person == null) return;
+        try
+        {
+            var trimmed = string.IsNullOrWhiteSpace(_editName) ? null : _editName.Trim();
+            await PeopleService.RenameAsync(_person.Id, trimmed);
+            _person = _person with { Name = trimmed };
+            _editing = false;
+            Snackbar.Add("Nombre actualizado", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo guardar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        AssetListNavigationState.SetList(_assets, $"person:{Id}");
+        Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=people/{Id}");
+    }
+}

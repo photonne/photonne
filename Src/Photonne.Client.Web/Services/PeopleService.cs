@@ -31,6 +31,27 @@ public class PeopleService : IPeopleService
         return page ?? new PeoplePage(0, new List<PersonSummary>());
     }
 
+    public async Task<PersonSummary?> GetPersonAsync(Guid id, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        try
+        {
+            return await _http.GetFromJsonAsync<PersonSummary>($"/api/people/{id}", ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<PersonAssetsPage> GetPersonAssetsAsync(Guid id, int limit = 100, int offset = 0, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var url = $"/api/search/people/{id}/assets?limit={limit}&offset={offset}";
+        var page = await _http.GetFromJsonAsync<PersonAssetsPage>(url, ct);
+        return page ?? new PersonAssetsPage(0, new List<PersonAssetItem>());
+    }
+
     public async Task RenameAsync(Guid personId, string? name, CancellationToken ct = default)
     {
         await SetAuthAsync();

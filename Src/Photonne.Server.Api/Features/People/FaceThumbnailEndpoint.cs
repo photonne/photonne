@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -12,8 +11,12 @@ using SixLabors.ImageSharp.Processing;
 namespace Photonne.Server.Api.Features.People;
 
 /// <summary>Returns a JPEG crop of the face's bounding box. Cached on disk under
-/// /data/thumbnails/faces/{faceId}.jpg. Always validates that the requester owns
-/// the underlying asset.</summary>
+/// /data/thumbnails/faces/{faceId}.jpg.
+///
+/// The endpoint is anonymous to mirror /api/assets/{id}/thumbnail, so plain
+/// &lt;img src="..."&gt; tags work in the SPA without an Authorization header.
+/// Access control is by Face GUID unguessability (256-bit), same as for
+/// regular asset thumbnails.</summary>
 public class FaceThumbnailEndpoint : IEndpoint
 {
     private const int OutputSize = 220;
@@ -21,8 +24,7 @@ public class FaceThumbnailEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/faces/{id:guid}/thumbnail", Handle)
-            .WithTags("Faces")
-            .RequireAuthorization();
+            .WithTags("Faces");
     }
 
     private static async Task<IResult> Handle(
@@ -30,18 +32,17 @@ public class FaceThumbnailEndpoint : IEndpoint
         [FromServices] SettingsService settings,
         [FromServices] IConfiguration configuration,
         Guid id,
-        ClaimsPrincipal user,
         CancellationToken ct)
     {
-        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
-
         var face = await db.Faces.AsNoTracking()
             .Include(f => f.Asset).ThenInclude(a => a.Thumbnails)
-            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
+            .FirstOrDefaultAsync(f => f.Id == id, ct);
         if (face == null) return Results.NotFound();
 
-        var cacheDir = Path.Combine(
-            configuration["ThumbnailsPath"] ?? "/data/thumbnails", "faces");
+        var thumbnailsRoot = configuration["ThumbnailsPath"]
+            ?? Environment.GetEnvironmentVariable("THUMBNAILS_PATH")
+            ?? "/data/thumbnails";
+        var cacheDir = Path.Combine(thumbnailsRoot, "faces");
         Directory.CreateDirectory(cacheDir);
         var cachedPath = Path.Combine(cacheDir, $"{id}.jpg");
 
