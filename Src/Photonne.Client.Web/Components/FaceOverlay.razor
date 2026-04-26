@@ -1,23 +1,21 @@
 @inject IJSRuntime JS
 @inject IPeopleService PeopleService
-@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @using Photonne.Client.Web.Services
 
 @if (Visible)
 {
-    @* z-index must beat .asset-detail-container (1100), which is the fullscreen
-       fixed black container holding the photo. The image rect comes from
-       getBoundingClientRect (viewport coords) and our wrapper is also
-       position:fixed, so the boxes line up exactly with the visible image. *@
+    @* z-index 1200 sits above .asset-detail-container (1100, the fullscreen
+       fixed black container holding the photo) and below the action sheet
+       (1400) so when the sheet opens it overlays the boxes naturally. *@
     <div class="ph-face-overlay" style="@OverlayStyle">
         @if (_rect.HasValue)
         {
             @foreach (var f in _faces)
             {
                 <button type="button"
-                        class="ph-face-overlay__box @(f.PersonId.HasValue ? "linked" : "unlinked") @(f.IsManuallyAssigned ? "manual" : "")"
+                        class="ph-face-overlay__box @(f.PersonId.HasValue ? "linked" : "unlinked") @(f.IsManuallyAssigned ? "manual" : "") @(_activeFace?.Id == f.Id ? "active" : "")"
                         style="@BoxStyle(f)"
                         title="@TooltipFor(f)"
                         @onclick="() => OnFaceClickAsync(f)"
@@ -52,13 +50,102 @@
             }
         </div>
     </div>
+
+    @* Action sheet — same pattern as the rest of the app (notifications, more, …)
+       Mounted only after first open to avoid render flash. We render our own
+       backdrop because MudDrawer's default overlay z-index is below the
+       asset-detail-container (1100), so it would be hidden behind the photo. *@
+    @if (_sheetEverOpened)
+    {
+        @if (_sheetOpen)
+        {
+            <div class="ph-face-sheet__backdrop" @onclick="CloseSheet"></div>
+        }
+        <MudDrawer @bind-Open="_sheetOpen"
+                   Anchor="Anchor.Bottom"
+                   Elevation="6"
+                   Variant="DrawerVariant.Temporary"
+                   Class="ph-bottom-sheet ph-face-sheet">
+            <div class="ph-sheet-handle"></div>
+
+            @if (_activeFace != null)
+            {
+                <div class="d-flex align-center gap-3 px-4 pt-2 pb-1">
+                    <img src="@($"/api/faces/{_activeFace.Id}/thumbnail")"
+                         alt="Cara"
+                         class="ph-face-sheet__thumb" />
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Asignar cara</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                            Actualmente: @ChipFor(_activeFace)
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseSheet" />
+                </div>
+
+                <MudDivider />
+
+                <div class="px-4 pt-3 pb-2">
+                    <MudAutocomplete T="PersonSummary"
+                                     Label="Buscar persona"
+                                     SearchFunc="SearchPeople"
+                                     Value="_selectedPerson"
+                                     ValueChanged="OnPersonSelected"
+                                     ToStringFunc="@(p => string.IsNullOrWhiteSpace(p?.Name) ? "Sin nombre" : p!.Name)"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Clearable="true"
+                                     CoerceText="false"
+                                     Placeholder="Empieza a escribir un nombre…" />
+
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);" Class="mb-1 mt-3 d-block">
+                        …o crea una persona nueva
+                    </MudText>
+                    <div class="d-flex gap-2 align-center">
+                        <MudTextField @bind-Value="_newName"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Placeholder="Nombre"
+                                      OnKeyDown="OnNewNameKey" />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))"
+                                   OnClick="CreateAndAssignAsync">
+                            Crear
+                        </MudButton>
+                    </div>
+                </div>
+
+                <MudDivider Class="my-1" />
+
+                <div class="d-flex flex-column gap-1 px-2 pb-3 pt-1">
+                    <MudButton FullWidth="true"
+                               StartIcon="@Icons.Material.Outlined.LinkOff"
+                               Color="Color.Warning"
+                               Variant="Variant.Text"
+                               Disabled="@(_busy || !_activeFace.PersonId.HasValue)"
+                               OnClick="UnassignAsync">
+                        Desvincular de la persona actual
+                    </MudButton>
+                    <MudButton FullWidth="true"
+                               StartIcon="@Icons.Material.Outlined.Block"
+                               Color="Color.Default"
+                               Variant="Variant.Text"
+                               Disabled="@_busy"
+                               OnClick="RejectAsync">
+                        No es una cara
+                    </MudButton>
+                </div>
+            }
+        </MudDrawer>
+    }
 }
 
 <style>
     .ph-face-overlay {
         position: fixed;
         pointer-events: none;
-        z-index: 1500;
+        z-index: 1200;
     }
     .ph-face-overlay__box {
         position: absolute;
@@ -69,7 +156,7 @@
         box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
         cursor: pointer;
         padding: 0;
-        transition: border-color 0.15s ease, transform 0.15s ease;
+        transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
     }
     .ph-face-overlay__box:hover {
         border-color: var(--mud-palette-primary, #1976d2);
@@ -80,6 +167,10 @@
     }
     .ph-face-overlay__box.linked.manual {
         border-color: rgba(33, 150, 243, 0.95);
+    }
+    .ph-face-overlay__box.active {
+        border-color: var(--mud-palette-primary, #1976d2);
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.45);
     }
     .ph-face-overlay__chip {
         position: absolute;
@@ -113,6 +204,31 @@
         border-radius: 999px;
         pointer-events: none;
     }
+    /* Sheet must sit above the overlay (1200) and the asset-detail-container
+       (1100). MudDrawer's default z-index isn't high enough on top of the
+       fullscreen photo container, so override it and render our own backdrop. */
+    ::deep .ph-face-sheet {
+        z-index: 1400 !important;
+    }
+    .ph-face-sheet__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-face-sheet-fade-in 0.18s ease;
+    }
+    @@keyframes ph-face-sheet-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ph-face-sheet__thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex: 0 0 auto;
+        background: var(--mud-palette-background-grey);
+    }
 </style>
 
 @code {
@@ -121,13 +237,22 @@
     [Parameter] public EventCallback OnFacesChanged { get; set; }
 
     private List<FaceItem> _faces = new();
-    private Dictionary<Guid, string?> _personNames = new(); // PersonId → Name (for chips)
+    private Dictionary<Guid, string?> _personNames = new();
     private Rect? _rect;
     private bool _loading;
     private DotNetObjectReference<FaceOverlay>? _ref;
     private string _trackerKey = Guid.NewGuid().ToString("N");
     private Guid _loadedAssetId;
     private bool _trackerStarted;
+
+    // Action sheet state
+    private bool _sheetOpen;
+    private bool _sheetEverOpened;
+    private FaceItem? _activeFace;
+    private List<PersonSummary>? _peopleCache;
+    private PersonSummary? _selectedPerson;
+    private string _newName = string.Empty;
+    private bool _busy;
 
     public record struct Rect(double Left, double Top, double Width, double Height);
 
@@ -140,6 +265,7 @@
                 _loadedAssetId = AssetId;
                 _rect = null;
                 _faces = new();
+                CloseSheet();
                 await StopTrackerAsync();
                 await ReloadFacesAsync(toast: true);
             }
@@ -149,6 +275,7 @@
         {
             await StopTrackerAsync();
             _rect = null;
+            CloseSheet();
         }
     }
 
@@ -186,7 +313,6 @@
         var ids = _faces.Where(f => f.PersonId.HasValue).Select(f => f.PersonId!.Value).Distinct().ToList();
         if (ids.Count == 0) { _personNames.Clear(); return; }
 
-        // Pull the user's people once (paginated); avoids one-call-per-person.
         var page = await PeopleService.GetPeopleAsync(limit: 200, includeHidden: true);
         _personNames = page.Items.ToDictionary(p => p.Id, p => p.Name);
     }
@@ -218,8 +344,6 @@
     {
         get
         {
-            // While the image rect isn't known yet, place the wrapper near the top of
-            // the viewport so the status pill (a child of this wrapper) is visible.
             if (_rect is not { } r)
                 return "left: 0; top: 64px; width: 100vw; height: 0;";
             var inv = System.Globalization.CultureInfo.InvariantCulture;
@@ -245,28 +369,118 @@
         ? "Asignación manual — haz clic para cambiar"
         : "Asignación automática — haz clic para cambiar";
 
-    private async Task OnFaceClickAsync(FaceItem face)
+    private void OnFaceClickAsync(FaceItem face)
     {
-        var parameters = new DialogParameters<FaceAssignDialog>
-        {
-            { x => x.Face, face },
-            { x => x.CurrentPersonName, ChipFor(face) },
-        };
-        var options = new DialogOptions
-        {
-            CloseButton = true,
-            MaxWidth = MaxWidth.ExtraSmall,
-            FullWidth = true,
-            BackdropClick = true,
-        };
+        _activeFace = face;
+        _selectedPerson = null;
+        _newName = string.Empty;
+        _busy = false;
+        _sheetEverOpened = true;
+        _sheetOpen = true;
+    }
 
-        var dlg = await DialogService.ShowAsync<FaceAssignDialog>("Asignar cara", parameters, options);
-        var result = await dlg.Result;
-        if (result == null || result.Canceled) return;
+    private void CloseSheet()
+    {
+        _sheetOpen = false;
+        _activeFace = null;
+        _selectedPerson = null;
+        _newName = string.Empty;
+        _busy = false;
+    }
 
-        await ReloadFacesAsync();
-        if (OnFacesChanged.HasDelegate)
-            await OnFacesChanged.InvokeAsync();
+    // ─── Sheet actions ──────────────────────────────────────────────────────
+
+    private async Task<IEnumerable<PersonSummary>> SearchPeople(string? value, CancellationToken ct)
+    {
+        _peopleCache ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: false, ct: ct)).Items;
+
+        var pool = _peopleCache.Where(p => !string.IsNullOrWhiteSpace(p.Name));
+        if (string.IsNullOrWhiteSpace(value))
+            return pool.OrderBy(p => p.Name).Take(20);
+
+        return pool
+            .Where(p => p.Name!.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Name)
+            .Take(20);
+    }
+
+    private async Task OnPersonSelected(PersonSummary? person)
+    {
+        _selectedPerson = person;
+        if (person == null || _busy || _activeFace == null) return;
+        await AssignToAsync(person.Id, null);
+    }
+
+    private async Task CreateAndAssignAsync()
+    {
+        var name = _newName.Trim();
+        if (string.IsNullOrWhiteSpace(name) || _activeFace == null) return;
+        await AssignToAsync(null, name);
+    }
+
+    private async Task OnNewNameKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newName))
+            await CreateAndAssignAsync();
+    }
+
+    private async Task AssignToAsync(Guid? personId, string? newName)
+    {
+        if (_busy || _activeFace == null) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.AssignFaceAsync(_activeFace.Id, personId, newName);
+            Snackbar.Add("Cara asignada", Severity.Success);
+            // Invalidate caches so the sheet's next open sees the new person.
+            _peopleCache = null;
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    private async Task UnassignAsync()
+    {
+        if (_busy || _activeFace == null) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.UnassignFaceAsync(_activeFace.Id);
+            Snackbar.Add("Cara desvinculada", Severity.Success);
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    private async Task RejectAsync()
+    {
+        if (_busy || _activeFace == null) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.RejectFaceAsync(_activeFace.Id);
+            Snackbar.Add("Cara descartada", Severity.Success);
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
     }
 
     public async ValueTask DisposeAsync()
