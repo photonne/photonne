@@ -7,9 +7,13 @@
 
 @if (Visible)
 {
-    @if (_rect.HasValue)
-    {
-        <div class="ph-face-overlay" style="@OverlayStyle">
+    @* z-index must beat .asset-detail-container (1100), which is the fullscreen
+       fixed black container holding the photo. The image rect comes from
+       getBoundingClientRect (viewport coords) and our wrapper is also
+       position:fixed, so the boxes line up exactly with the visible image. *@
+    <div class="ph-face-overlay" style="@OverlayStyle">
+        @if (_rect.HasValue)
+        {
             @foreach (var f in _faces)
             {
                 <button type="button"
@@ -23,41 +27,38 @@
                     </span>
                 </button>
             }
+        }
 
-            <div class="ph-face-overlay__status">
-                @if (_loading)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
-                    <span>Cargando caras…</span>
-                }
-                else if (_faces.Count == 0)
-                {
-                    <MudIcon Icon="@Icons.Material.Outlined.FaceRetouchingOff" Size="Size.Small" Class="me-1" />
-                    <span>Sin caras detectadas</span>
-                }
-                else
-                {
-                    <MudIcon Icon="@Icons.Material.Outlined.Face" Size="Size.Small" Class="me-1" />
-                    <span>@_faces.Count @(_faces.Count == 1 ? "cara" : "caras")</span>
-                }
-            </div>
+        <div class="ph-face-overlay__status">
+            @if (_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
+                <span>Cargando caras…</span>
+            }
+            else if (!_rect.HasValue)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
+                <span>Localizando imagen…</span>
+            }
+            else if (_faces.Count == 0)
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.FaceRetouchingOff" Size="Size.Small" Class="me-1" />
+                <span>Sin caras detectadas</span>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.Face" Size="Size.Small" Class="me-1" />
+                <span>@_faces.Count @(_faces.Count == 1 ? "cara" : "caras")</span>
+            }
         </div>
-    }
-    else
-    {
-        @* Image rect not yet known — show a fixed status pill so the user gets immediate feedback. *@
-        <div class="ph-face-overlay__status ph-face-overlay__status--floating">
-            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
-            <span>Cargando…</span>
-        </div>
-    }
+    </div>
 }
 
 <style>
     .ph-face-overlay {
         position: fixed;
         pointer-events: none;
-        z-index: 50;
+        z-index: 1500;
     }
     .ph-face-overlay__box {
         position: absolute;
@@ -111,13 +112,6 @@
         font-size: 12px;
         border-radius: 999px;
         pointer-events: none;
-    }
-    .ph-face-overlay__status--floating {
-        position: fixed;
-        top: 72px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 51;
     }
 </style>
 
@@ -220,9 +214,18 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private string OverlayStyle => _rect is { } r
-        ? $"left: {r.Left.ToString(System.Globalization.CultureInfo.InvariantCulture)}px; top: {r.Top.ToString(System.Globalization.CultureInfo.InvariantCulture)}px; width: {r.Width.ToString(System.Globalization.CultureInfo.InvariantCulture)}px; height: {r.Height.ToString(System.Globalization.CultureInfo.InvariantCulture)}px;"
-        : string.Empty;
+    private string OverlayStyle
+    {
+        get
+        {
+            // While the image rect isn't known yet, place the wrapper near the top of
+            // the viewport so the status pill (a child of this wrapper) is visible.
+            if (_rect is not { } r)
+                return "left: 0; top: 64px; width: 100vw; height: 0;";
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            return $"left: {r.Left.ToString(inv)}px; top: {r.Top.ToString(inv)}px; width: {r.Width.ToString(inv)}px; height: {r.Height.ToString(inv)}px;";
+        }
+    }
 
     private static string Pct(float v) =>
         (v * 100f).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);

@@ -198,6 +198,28 @@ window.faceOverlayHelpers = {
         return candidates.length > 0 ? candidates[0] : null;
     },
 
+    /**
+     * Moves an element (looked up by id) directly under document.body.
+     * Required because position:fixed becomes broken when any ancestor has
+     * transform / filter / backdrop-filter / will-change set, which is the
+     * case in MudBlazor / AssetDetail layouts. Re-parenting to body sidesteps
+     * the containing-block trap entirely.
+     */
+    portalToBody: function (elementId) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        if (el.parentElement !== document.body) {
+            document.body.appendChild(el);
+        }
+    },
+
+    removePortal: function (elementId) {
+        const el = document.getElementById(elementId);
+        if (el && el.parentElement === document.body) {
+            el.remove();
+        }
+    },
+
     start: function (key, dotnetRef) {
         this.stop(key);
 
@@ -209,6 +231,7 @@ window.faceOverlayHelpers = {
             onResize: null,
             onLoad: null,
             rafId: null,
+            findTimer: null,
         };
 
         const push = () => {
@@ -242,8 +265,11 @@ window.faceOverlayHelpers = {
         // Observe DOM until the image element exists.
         const findAndAttach = () => {
             const img = this._findImage();
-            if (img) attach(img);
-            else setTimeout(findAndAttach, 80);
+            if (img) {
+                attach(img);
+            } else {
+                tracker.findTimer = setTimeout(findAndAttach, 80);
+            }
         };
         findAndAttach();
 
@@ -273,6 +299,7 @@ window.faceOverlayHelpers = {
         if (t.onResize) window.removeEventListener('resize', t.onResize);
         if (t.onScroll) window.removeEventListener('scroll', t.onScroll, true);
         if (t.rafId) cancelAnimationFrame(t.rafId);
+        if (t.findTimer) clearTimeout(t.findTimer);
         this._trackers.delete(key);
     },
 };
