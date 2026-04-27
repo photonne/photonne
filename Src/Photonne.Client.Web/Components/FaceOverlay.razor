@@ -51,17 +51,15 @@
         </div>
     </div>
 
-    @* Action sheet — same pattern as the rest of the app (notifications, more, …)
-       Mounted only after first open to avoid render flash. We render our own
-       backdrop because MudDrawer's default overlay z-index is below the
-       asset-detail-container (1100), so it would be hidden behind the photo. *@
-    @if (_sheetEverOpened)
+    @* Action sheet — mounted only when actually open. Re-mounting on every
+       open guarantees a fresh MudDrawer instance, sidestepping a known issue
+       where the drawer's internal animation flag desyncs after rapid
+       open/close cycles and stops responding to subsequent Open=true. *@
+    @if (_sheetOpen && _activeFace != null)
     {
-        @if (_sheetOpen)
-        {
-            <div class="ph-face-sheet__backdrop" @onclick="CloseSheet"></div>
-        }
-        <MudDrawer @bind-Open="_sheetOpen"
+        <div class="ph-face-sheet__backdrop" @onclick="CloseSheet"></div>
+        <MudDrawer @key="_sheetVersion"
+                   Open="true"
                    Anchor="Anchor.Bottom"
                    Elevation="6"
                    Variant="DrawerVariant.Temporary"
@@ -250,7 +248,7 @@
 
     // Action sheet state
     private bool _sheetOpen;
-    private bool _sheetEverOpened;
+    private int _sheetVersion; // bumped per open; used as @key to force remount
     private FaceItem? _activeFace;
     private List<PersonSummary>? _peopleCache;
     private PersonSummary? _selectedPerson;
@@ -378,7 +376,7 @@
         _selectedPerson = null;
         _newName = string.Empty;
         _busy = false;
-        _sheetEverOpened = true;
+        _sheetVersion++;
         _sheetOpen = true;
     }
 
