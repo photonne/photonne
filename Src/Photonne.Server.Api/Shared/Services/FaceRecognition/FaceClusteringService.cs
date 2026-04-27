@@ -273,6 +273,36 @@ public class FaceClusteringService
         await RecomputeFaceCountsAsync(ownerId, cancellationToken);
     }
 
+    /// <summary>
+    /// Removes Persons whose FaceCount has dropped to 0 (e.g., the user
+    /// rejected or unassigned every face that was clustered into them).
+    /// Safe to call after any face mutation. Does not touch Persons that
+    /// the user is still actively populating, because callers always run
+    /// <see cref="RecomputeFaceCountsAsync"/> first to settle counts.
+    /// </summary>
+    public async Task<int> CleanupEmptyPersonsAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        var empty = await _dbContext.People
+            .Where(p => p.OwnerId == ownerId && p.FaceCount == 0)
+            .ToListAsync(cancellationToken);
+
+        if (empty.Count == 0) return 0;
+
+        // CoverFaceId may still point at a rejected/now-orphan face — break the
+        // FK before delete to keep the SetNull cascade simple.
+        foreach (var p in empty)
+        {
+            p.CoverFaceId = null;
+        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _dbContext.People.RemoveRange(empty);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Removed {Count} empty Person(s) for owner {OwnerId}", empty.Count, ownerId);
+        return empty.Count;
+    }
+
     private static float CosineDistance(float[] a, float[] b)
     {
         // ArcFace embeddings come L2-normalized from InsightFace, but defend against

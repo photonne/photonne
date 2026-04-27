@@ -145,6 +145,7 @@ public class RejectFaceEndpoint : IEndpoint
         await db.SaveChangesAsync(ct);
 
         await clustering.RecomputeFaceCountsAsync(userId, ct);
+        await clustering.CleanupEmptyPersonsAsync(userId, ct);
         return Results.NoContent();
     }
 }
@@ -181,6 +182,7 @@ public class UnassignFaceEndpoint : IEndpoint
         await db.SaveChangesAsync(ct);
 
         await clustering.RecomputeFaceCountsAsync(userId, ct);
+        await clustering.CleanupEmptyPersonsAsync(userId, ct);
         return Results.NoContent();
     }
 }

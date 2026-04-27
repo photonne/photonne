@@ -60,7 +60,7 @@ else if (_person != null)
             }
             else
             {
-                <div class="d-flex align-center gap-2">
+                <div class="d-flex align-center gap-1">
                     <MudText Typo="Typo.h5" Style="font-weight: 600;">
                         @(string.IsNullOrWhiteSpace(_person.Name) ? "Sin nombre" : _person.Name)
                     </MudText>
@@ -73,6 +73,21 @@ else if (_person != null)
                 </MudText>
             }
         </div>
+
+        @if (!_editing)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Dense="true">
+                <MudMenuItem OnClick="OpenMergeSheet" Icon="@Icons.Material.Outlined.MergeType">
+                    Fusionar con otra persona…
+                </MudMenuItem>
+                <MudMenuItem OnClick="HideAsync" Icon="@Icons.Material.Outlined.VisibilityOff">
+                    Ocultar persona
+                </MudMenuItem>
+            </MudMenu>
+        }
     </div>
 
     <div class="assets-grid-content">
@@ -94,6 +109,98 @@ else if (_person != null)
                         Description="Esta persona no tiene fotos asignadas todavía." />
         }
     </div>
+
+    @* ── Merge bottom sheet ── *@
+    @if (_mergeOpen)
+    {
+        <div class="ph-merge-sheet__backdrop" @onclick="CloseMergeSheet"></div>
+        <MudDrawer @key="_mergeVersion"
+                   Open="true"
+                   Anchor="Anchor.Bottom"
+                   Elevation="6"
+                   Variant="DrawerVariant.Temporary"
+                   Class="ph-bottom-sheet ph-merge-sheet">
+            <div class="ph-sheet-handle"></div>
+            <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
+                <MudText Typo="Typo.h6">Fusionar personas</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseMergeSheet" />
+            </div>
+            <MudDivider />
+
+            <div class="px-4 pt-3 pb-2">
+                <MudText Typo="Typo.body2" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
+                    Combina <b>@(_person.Name ?? "Sin nombre")</b> con otra persona. Sus fotos se moverán a la conservada y la otra se borrará.
+                </MudText>
+                <MudAutocomplete T="PersonSummary"
+                                 Label="Otra persona"
+                                 SearchFunc="SearchPeople"
+                                 Value="_mergePartner"
+                                 ValueChanged="OnMergePartnerSelected"
+                                 ToStringFunc="@(p => string.IsNullOrWhiteSpace(p?.Name) ? "Sin nombre" : p!.Name)"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Clearable="true"
+                                 CoerceText="false"
+                                 Placeholder="Empieza a escribir un nombre…" />
+            </div>
+
+            @if (_mergePartner != null)
+            {
+                <MudDivider Class="my-1" />
+                <div class="px-4 pt-2 pb-2">
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">
+                        ¿Qué nombre y portada conservar?
+                    </MudText>
+                    <div class="ph-merge-keep">
+                        <button type="button"
+                                class="ph-merge-keep__option @(_keepCurrent ? "ph-merge-keep__option--active" : "")"
+                                @onclick="@(() => _keepCurrent = true)">
+                            <div class="ph-merge-keep__avatar">
+                                @if (_person.CoverFaceId.HasValue)
+                                {
+                                    <img src="@($"/api/faces/{_person.CoverFaceId.Value}/thumbnail")" alt="" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.Person" />
+                                }
+                            </div>
+                            <div class="ph-merge-keep__name">@(_person.Name ?? "Sin nombre")</div>
+                            <div class="ph-merge-keep__count">@_person.FaceCount caras</div>
+                        </button>
+
+                        <button type="button"
+                                class="ph-merge-keep__option @(!_keepCurrent ? "ph-merge-keep__option--active" : "")"
+                                @onclick="@(() => _keepCurrent = false)">
+                            <div class="ph-merge-keep__avatar">
+                                @if (_mergePartner.CoverFaceId.HasValue)
+                                {
+                                    <img src="@($"/api/faces/{_mergePartner.CoverFaceId.Value}/thumbnail")" alt="" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.Person" />
+                                }
+                            </div>
+                            <div class="ph-merge-keep__name">@(_mergePartner.Name ?? "Sin nombre")</div>
+                            <div class="ph-merge-keep__count">@_mergePartner.FaceCount caras</div>
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <MudDivider Class="my-1" />
+
+            <div class="d-flex gap-2 justify-end px-3 pb-3 pt-1">
+                <MudButton Variant="Variant.Text" OnClick="CloseMergeSheet" Disabled="@_mergeBusy">Cancelar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(_mergePartner == null || _mergeBusy)"
+                           OnClick="ConfirmMergeAsync">
+                    @(_mergeBusy ? "Fusionando…" : "Fusionar")
+                </MudButton>
+            </div>
+        </MudDrawer>
+    }
 }
 
 <style>
@@ -112,6 +219,63 @@ else if (_person != null)
         background: var(--mud-palette-background-grey);
     }
     .ph-person-header__meta { flex: 1 1 auto; min-width: 0; }
+
+    /* Merge bottom sheet — same z-index strategy as the face sheet */
+    .ph-merge-sheet.mud-drawer,
+    aside.ph-merge-sheet,
+    .ph-merge-sheet {
+        z-index: 1400 !important;
+    }
+    .ph-merge-sheet__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-merge-sheet-fade-in 0.18s ease;
+    }
+    @@keyframes ph-merge-sheet-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ph-merge-keep {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .ph-merge-keep__option {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 4px;
+        padding: 8px 6px;
+        border: 2px solid var(--mud-palette-divider);
+        border-radius: 12px;
+        background: transparent;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+        min-width: 0;
+    }
+    .ph-merge-keep__option:hover {
+        background: var(--mud-palette-action-default-hover);
+    }
+    .ph-merge-keep__option--active {
+        border-color: var(--mud-palette-primary);
+        background: rgba(25, 118, 210, 0.08);
+    }
+    .ph-merge-keep__avatar {
+        width: 56px; height: 56px; border-radius: 50%;
+        background: var(--mud-palette-background-grey);
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .ph-merge-keep__avatar img {
+        width: 100%; height: 100%; object-fit: cover;
+    }
+    .ph-merge-keep__name {
+        font-size: 13px; font-weight: 600;
+        max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ph-merge-keep__count {
+        font-size: 11px; color: var(--mud-palette-text-secondary);
+    }
 </style>
 
 @code {
@@ -125,6 +289,14 @@ else if (_person != null)
 
     private bool _editing;
     private string _editName = string.Empty;
+
+    // Merge sheet state
+    private bool _mergeOpen;
+    private int _mergeVersion;
+    private PersonSummary? _mergePartner;
+    private bool _keepCurrent = true;
+    private List<PersonSummary>? _peopleCache;
+    private bool _mergeBusy;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -182,9 +354,99 @@ else if (_person != null)
         }
     }
 
+    private async Task HideAsync()
+    {
+        if (_person == null) return;
+        try
+        {
+            await PeopleService.HideAsync(_person.Id);
+            Snackbar.Add("Persona ocultada", Severity.Success);
+            Navigation.NavigateTo("/people");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo ocultar: {ex.Message}", Severity.Error);
+        }
+    }
+
     private void OpenAsset(TimelineItem asset)
     {
         AssetListNavigationState.SetList(_assets, $"person:{Id}");
         Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=people/{Id}");
+    }
+
+    // ── Merge sheet ────────────────────────────────────────────────────────
+
+    private void OpenMergeSheet()
+    {
+        _mergePartner = null;
+        _keepCurrent = true;
+        _mergeBusy = false;
+        _peopleCache = null;
+        _mergeVersion++;
+        _mergeOpen = true;
+    }
+
+    private void CloseMergeSheet()
+    {
+        _mergeOpen = false;
+        _mergePartner = null;
+        _keepCurrent = true;
+        _mergeBusy = false;
+    }
+
+    private async Task<IEnumerable<PersonSummary>> SearchPeople(string? value, CancellationToken ct)
+    {
+        // Pull all owned persons once per sheet open, then filter locally —
+        // matches the assignment-sheet pattern in FaceOverlay.
+        _peopleCache ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: true, ct: ct)).Items;
+
+        var pool = _peopleCache.Where(p => p.Id != Id);
+        if (string.IsNullOrWhiteSpace(value))
+            return pool.OrderByDescending(p => p.FaceCount).Take(20);
+
+        return pool
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name)
+                        && p.Name!.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.FaceCount)
+            .Take(20);
+    }
+
+    private void OnMergePartnerSelected(PersonSummary? person)
+    {
+        _mergePartner = person;
+    }
+
+    private async Task ConfirmMergeAsync()
+    {
+        if (_person == null || _mergePartner == null || _mergeBusy) return;
+        _mergeBusy = true;
+        try
+        {
+            // Endpoint contract: target = kept, source = deleted.
+            var target = _keepCurrent ? _person.Id : _mergePartner.Id;
+            var source = _keepCurrent ? _mergePartner.Id : _person.Id;
+
+            await PeopleService.MergeAsync(target, source);
+            Snackbar.Add("Personas fusionadas", Severity.Success);
+
+            CloseMergeSheet();
+
+            // Navigate to whichever person was kept; if it's the current one,
+            // just reload, otherwise route to the new id.
+            if (target == Id)
+            {
+                await LoadAsync();
+            }
+            else
+            {
+                Navigation.NavigateTo($"/people/{target}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo fusionar: {ex.Message}", Severity.Error);
+            _mergeBusy = false;
+        }
     }
 }
