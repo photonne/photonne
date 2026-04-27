@@ -39,7 +39,7 @@ public class FaceDetectionService
 
     public async Task<int> DetectAndStoreAsync(Guid assetId, CancellationToken cancellationToken)
     {
-        if (!_options.Enabled)
+        if (!_options.Enabled || !await IsRuntimeEnabledAsync())
         {
             _logger.LogDebug("Face recognition disabled; skipping asset {AssetId}", assetId);
             return 0;
@@ -116,6 +116,17 @@ public class FaceDetectionService
 
         _logger.LogInformation("Stored {Inserted} faces for asset {AssetId}", inserted, assetId);
         return inserted;
+    }
+
+    /// <summary>
+    /// Runtime override read from the Settings table. Lets an admin disable
+    /// face recognition without restarting the API (the appsettings.json
+    /// FaceRecognition:Enabled is the static fallback / default).
+    /// </summary>
+    private async Task<bool> IsRuntimeEnabledAsync()
+    {
+        var v = await _settings.GetSettingAsync("FaceRecognition.Enabled", Guid.Empty, "true");
+        return !v.Equals("false", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ResolveImagePathAsync(Asset asset)

@@ -11,6 +11,13 @@ public interface IPeopleService
     Task HideAsync(Guid personId, CancellationToken ct = default);
     Task UnhideAsync(Guid personId, CancellationToken ct = default);
 
+    /// <summary>Forces a batch face-clustering pass for the current user.</summary>
+    Task<int> ReclusterAsync(CancellationToken ct = default);
+
+    /// <summary>Detaches all of <paramref name="assetId"/>'s faces that are currently
+    /// linked to <paramref name="personId"/>. Returns the number of faces detached.</summary>
+    Task<int> UnlinkAssetFromPersonAsync(Guid personId, Guid assetId, CancellationToken ct = default);
+
     /// <summary>Merges <paramref name="sourceId"/> INTO <paramref name="targetId"/>:
     /// all faces are reattached to target, source is deleted.</summary>
     Task MergeAsync(Guid targetId, Guid sourceId, CancellationToken ct = default);

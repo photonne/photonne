@@ -88,6 +88,12 @@ else if (_person != null)
                      AnchorOrigin="Origin.BottomRight"
                      TransformOrigin="Origin.TopRight"
                      Dense="true">
+                <MudMenuItem OnClick="@(() => Navigation.NavigateTo($"/search?personId={Id}"))" Icon="@Icons.Material.Outlined.Search">
+                    Buscar combinando filtros
+                </MudMenuItem>
+                <MudMenuItem OnClick="EnterSelectionMode" Icon="@Icons.Material.Outlined.Checklist">
+                    Seleccionar fotos…
+                </MudMenuItem>
                 <MudMenuItem OnClick="OpenCoverSheet" Icon="@Icons.Material.Outlined.PhotoCamera">
                     Cambiar foto de portada
                 </MudMenuItem>
@@ -110,6 +116,26 @@ else if (_person != null)
         }
     </div>
 
+    @if (_selectionMode)
+    {
+        <div class="ph-person-selection-bar">
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ExitSelectionMode" />
+            <MudText Typo="Typo.body2" Class="ml-2">@_selectedAssetIds.Count seleccionadas</MudText>
+            <MudSpacer />
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="ToggleSelectAll">
+                @(AllSelected ? "Deseleccionar todo" : "Seleccionar todo")
+            </MudButton>
+            <MudButton Size="Size.Small"
+                       Variant="Variant.Filled"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Outlined.LinkOff"
+                       Disabled="@(_selectedAssetIds.Count == 0 || _bulkBusy)"
+                       OnClick="BulkUnlinkAsync">
+                Quitar
+            </MudButton>
+        </div>
+    }
+
     <div class="assets-grid-content">
         @if (_assets.Any())
         {
@@ -117,7 +143,19 @@ else if (_person != null)
                 @foreach (var item in _assets)
                 {
                     <MudItem xs="4" sm="3" md="2">
-                        <AssetCard Asset="@item" OnAssetClick="OpenAsset" />
+                        <div class="ph-person-tile @(IsSelected(item.Id) ? "ph-person-tile--selected" : "") @(_selectionMode ? "ph-person-tile--selectable" : "")"
+                             @oncontextmenu="@(e => OnTileContextMenu(item))" @oncontextmenu:preventDefault="true">
+                            <AssetCard Asset="@item" OnAssetClick="@(a => OnTileClick(a))" />
+                            @if (_selectionMode)
+                            {
+                                <button type="button" class="ph-person-tile__check"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="@(() => ToggleSelected(item.Id))">
+                                    <MudIcon Icon="@(IsSelected(item.Id) ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.RadioButtonUnchecked)"
+                                             Size="Size.Small" />
+                                </button>
+                            }
+                        </div>
                     </MudItem>
                 }
             </MudGrid>
@@ -455,6 +493,38 @@ else if (_person != null)
         font-size: 10px; padding: 1px 6px; border-radius: 999px;
         pointer-events: none;
     }
+
+    /* Selection bar + per-tile selection check */
+    .ph-person-selection-bar {
+        position: sticky; top: 0;
+        display: flex; align-items: center;
+        gap: 4px; padding: 8px 12px;
+        background: var(--mud-palette-surface);
+        border-bottom: 1px solid var(--mud-palette-divider);
+        z-index: 4;
+    }
+    .ph-person-tile { position: relative; }
+    .ph-person-tile--selectable { cursor: pointer; }
+    .ph-person-tile--selected::after {
+        content: "";
+        position: absolute; inset: 0;
+        border: 3px solid var(--mud-palette-primary);
+        border-radius: 4px;
+        pointer-events: none;
+    }
+    .ph-person-tile__check {
+        position: absolute; top: 4px; left: 4px;
+        width: 28px; height: 28px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border: 0; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+    }
+    .ph-person-tile--selected .ph-person-tile__check {
+        background: var(--mud-palette-primary);
+    }
 </style>
 
 @code {
@@ -476,6 +546,11 @@ else if (_person != null)
     private bool _keepCurrent = true;
     private List<PersonSummary>? _peopleCache;
     private bool _mergeBusy;
+
+    // Selection mode (bulk operations)
+    private bool _selectionMode;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _bulkBusy;
 
     // Cover-picker sheet state
     private bool _coverOpen;
@@ -577,6 +652,82 @@ else if (_person != null)
     {
         AssetListNavigationState.SetList(_assets, $"person:{Id}");
         Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=people/{Id}");
+    }
+
+    // ── Bulk selection ────────────────────────────────────────────────────
+
+    private bool IsSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private bool AllSelected => _assets.Count > 0 && _selectedAssetIds.Count == _assets.Count;
+
+    private void EnterSelectionMode()
+    {
+        _selectionMode = true;
+        _selectedAssetIds = new();
+    }
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds = new();
+    }
+
+    private void ToggleSelected(Guid assetId)
+    {
+        if (!_selectedAssetIds.Add(assetId)) _selectedAssetIds.Remove(assetId);
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (AllSelected) _selectedAssetIds = new();
+        else _selectedAssetIds = _assets.Select(a => a.Id).ToHashSet();
+    }
+
+    private void OnTileClick(TimelineItem asset)
+    {
+        if (_selectionMode)
+        {
+            ToggleSelected(asset.Id);
+        }
+        else
+        {
+            OpenAsset(asset);
+        }
+    }
+
+    private void OnTileContextMenu(TimelineItem asset)
+    {
+        // Right-click / long-press on a tile starts selection mode and
+        // marks that tile selected — same affordance as Favoritos.
+        if (!_selectionMode) EnterSelectionMode();
+        _selectedAssetIds.Add(asset.Id);
+    }
+
+    private async Task BulkUnlinkAsync()
+    {
+        if (_person == null || _selectedAssetIds.Count == 0 || _bulkBusy) return;
+        _bulkBusy = true;
+        var personId = _person.Id;
+        var ids = _selectedAssetIds.ToList();
+        try
+        {
+            var detached = 0;
+            foreach (var aid in ids)
+            {
+                detached += await PeopleService.UnlinkAssetFromPersonAsync(personId, aid);
+            }
+            Snackbar.Add($"Quitadas {ids.Count} fotos ({detached} caras)", Severity.Success);
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al quitar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _bulkBusy = false;
+        }
     }
 
     // ── Merge sheet ────────────────────────────────────────────────────────

@@ -8,12 +8,20 @@
 
 <div class="px-3 pt-3 d-flex align-center justify-space-between">
     <MudText Typo="Typo.h5">Personas</MudText>
-    <MudTooltip Text="@(_includeHidden ? "Ocultar las ocultas" : "Mostrar ocultas")">
-        <MudIconButton Icon="@(_includeHidden ? Icons.Material.Filled.VisibilityOff : Icons.Material.Outlined.VisibilityOff)"
-                       Color="@(_includeHidden ? Color.Primary : Color.Default)"
-                       Size="Size.Small"
-                       OnClick="ToggleIncludeHiddenAsync" />
-    </MudTooltip>
+    <div class="d-flex align-center gap-1">
+        <MudTooltip Text="Reagrupar caras">
+            <MudIconButton Icon="@Icons.Material.Outlined.GroupWork"
+                           Size="Size.Small"
+                           Disabled="@_reclustering"
+                           OnClick="ReclusterAsync" />
+        </MudTooltip>
+        <MudTooltip Text="@(_includeHidden ? "Ocultar las ocultas" : "Mostrar ocultas")">
+            <MudIconButton Icon="@(_includeHidden ? Icons.Material.Filled.VisibilityOff : Icons.Material.Outlined.VisibilityOff)"
+                           Color="@(_includeHidden ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           OnClick="ToggleIncludeHiddenAsync" />
+        </MudTooltip>
+    </div>
 </div>
 
 @if (_loading)
@@ -103,6 +111,7 @@ else
 @code {
     private bool _loading = true;
     private bool _includeHidden;
+    private bool _reclustering;
     private List<PersonSummary> _people = new();
 
     protected override async Task OnInitializedAsync()
@@ -132,6 +141,28 @@ else
     {
         _includeHidden = !_includeHidden;
         await LoadAsync();
+    }
+
+    private async Task ReclusterAsync()
+    {
+        _reclustering = true;
+        try
+        {
+            var created = await PeopleService.ReclusterAsync();
+            Snackbar.Add(created == 0
+                ? "No hay caras nuevas que agrupar"
+                : $"Reagrupado: {created} {(created == 1 ? "persona nueva" : "personas nuevas")}",
+                Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al reagrupar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _reclustering = false;
+        }
     }
 
     private async Task UnhideAsync(PersonSummary p)

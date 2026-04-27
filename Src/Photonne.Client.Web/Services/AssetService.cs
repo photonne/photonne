@@ -353,7 +353,7 @@ public class AssetService : IAssetService
     }
 
     public async Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(
-        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100)
+        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null)
     {
         await SetAuthHeaderAsync();
         var url = $"/api/assets/search?pageSize={pageSize}";
@@ -365,6 +365,11 @@ public class AssetService : IAssetService
             url += $"&to={Uri.EscapeDataString(to.Value.ToString("o"))}";
         if (!string.IsNullOrWhiteSpace(folder))
             url += $"&folder={Uri.EscapeDataString(folder)}";
+        if (personIds != null)
+        {
+            foreach (var pid in personIds)
+                url += $"&personId={pid}";
+        }
 
         var response = await _httpClient.GetFromJsonAsync<SearchResult>(url);
         return (response?.Items ?? new(), response?.HasMore ?? false);

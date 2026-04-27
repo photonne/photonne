@@ -98,12 +98,54 @@ public class NightlySchedulerService : BackgroundService
         var thumbMode    = await settings.GetSettingAsync("NightlyTaskSettings.Thumbnails.Mode",    Guid.Empty, "missing");
         var metaEnabled  = await settings.GetSettingAsync("NightlyTaskSettings.Metadata.Enabled",  Guid.Empty, "false");
         var metaMode     = await settings.GetSettingAsync("NightlyTaskSettings.Metadata.Mode",     Guid.Empty, "missing");
+        // Face clustering — defaults to true so newly indexed faces consolidate
+        // into Persons overnight without admin intervention. Cheap when nothing
+        // changed (orphan count is the gate inside the clustering service).
+        var faceClusterEnabled = await settings.GetSettingAsync("NightlyTaskSettings.FaceClustering.Enabled", Guid.Empty, "true");
 
         if (thumbEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunThumbnailsAsync(serviceProvider, thumbMode == "all", ct);
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
+
+        if (faceClusterEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunFaceClusteringAsync(ct);
+    }
+
+    private async Task RunFaceClusteringAsync(CancellationToken ct)
+    {
+        Console.WriteLine("[NIGHTLY] Face clustering started.");
+        int totalCreated = 0, ownersProcessed = 0;
+
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext  = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var clustering = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceClusteringService>();
+
+        // One pass per owner who has at least one orphan face.
+        var ownerIds = await dbContext.Faces
+            .Where(f => f.PersonId == null && !f.IsRejected && !f.IsManuallyAssigned)
+            .Select(f => f.Asset.OwnerId)
+            .Where(id => id != null)
+            .Distinct()
+            .ToListAsync(ct);
+
+        foreach (var oid in ownerIds.OfType<Guid>())
+        {
+            if (ct.IsCancellationRequested) break;
+            try
+            {
+                var created = await clustering.RunForOwnerAsync(oid, ct);
+                totalCreated += created;
+                ownersProcessed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NIGHTLY] Face clustering error for owner {oid}: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[NIGHTLY] Face clustering done — owners:{ownersProcessed} new persons:{totalCreated}.");
     }
 
     private async Task RunThumbnailsAsync(IServiceProvider rootProvider, bool regenerateAll, CancellationToken ct)

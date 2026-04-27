@@ -11,7 +11,11 @@ public class MlJobProcessorService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MlJobProcessorService> _logger;
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(30);
-    
+    // Jobs in Processing whose StartedAt is older than this are assumed crashed
+    // (the worker died, the process was restarted, etc.) and bumped back to
+    // Pending so they get a second chance instead of staying wedged forever.
+    private static readonly TimeSpan StaleProcessingTimeout = TimeSpan.FromMinutes(15);
+
     public MlJobProcessorService(
         IServiceProvider serviceProvider,
         ILogger<MlJobProcessorService> logger)
@@ -19,28 +23,56 @@ public class MlJobProcessorService : BackgroundService
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
-    
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("ML Job Processor Service started");
-        
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
+                await RecoverStaleProcessingJobsAsync(stoppingToken);
                 await ProcessPendingJobsAsync(stoppingToken);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing ML jobs");
             }
-            
+
             await Task.Delay(_pollInterval, stoppingToken);
         }
-        
+
         _logger.LogInformation("ML Job Processor Service stopped");
     }
-    
+
+    private async Task RecoverStaleProcessingJobsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var threshold = DateTime.UtcNow - StaleProcessingTimeout;
+        // Materialize first so the WHERE on a UTC-converted column doesn't trip
+        // on Npgsql's strict timestamp-without-timezone enforcement.
+        var stale = await dbContext.AssetMlJobs
+            .Where(j => j.Status == MlJobStatus.Processing && j.StartedAt != null)
+            .ToListAsync(cancellationToken);
+
+        var toReset = stale.Where(j => j.StartedAt!.Value < threshold).ToList();
+        if (toReset.Count == 0) return;
+
+        foreach (var j in toReset)
+        {
+            j.Status = MlJobStatus.Pending;
+            j.StartedAt = null;
+            j.ErrorMessage = $"Recovered: was stuck in Processing since {j.StartedAt:o}";
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogWarning("Recovered {Count} stale ML job(s) back to Pending (timeout={Timeout})",
+            toReset.Count, StaleProcessingTimeout);
+    }
+
     private async Task ProcessPendingJobsAsync(CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();

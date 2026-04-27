@@ -73,6 +73,28 @@ public class PeopleService : IPeopleService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<int> ReclusterAsync(CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync("/api/people/recluster", null, ct);
+        resp.EnsureSuccessStatusCode();
+        var dto = await resp.Content.ReadFromJsonAsync<ReclusterDto>(cancellationToken: ct);
+        return dto?.PersonsCreated ?? 0;
+    }
+
+    private sealed record ReclusterDto(int PersonsCreated);
+
+    public async Task<int> UnlinkAssetFromPersonAsync(Guid personId, Guid assetId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync($"/api/people/{personId}/assets/{assetId}/unlink", null, ct);
+        resp.EnsureSuccessStatusCode();
+        var dto = await resp.Content.ReadFromJsonAsync<UnlinkDto>(cancellationToken: ct);
+        return dto?.FacesDetached ?? 0;
+    }
+
+    private sealed record UnlinkDto(int FacesDetached);
+
     public async Task MergeAsync(Guid targetId, Guid sourceId, CancellationToken ct = default)
     {
         await SetAuthAsync();
