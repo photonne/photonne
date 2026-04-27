@@ -73,6 +73,21 @@ public class PeopleService : IPeopleService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task<PersonFacesPage> GetPersonFacesAsync(Guid personId, int limit = 60, int offset = 0, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var url = $"/api/people/{personId}/faces?limit={limit}&offset={offset}";
+        var page = await _http.GetFromJsonAsync<PersonFacesPage>(url, ct);
+        return page ?? new PersonFacesPage(0, new List<PersonFaceItem>());
+    }
+
+    public async Task SetCoverFaceAsync(Guid personId, Guid faceId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync($"/api/people/{personId}/cover/{faceId}", null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<List<FaceItem>> GetFacesForAssetAsync(Guid assetId, CancellationToken ct = default)
     {
         await SetAuthAsync();

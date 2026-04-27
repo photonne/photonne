@@ -14,6 +14,12 @@ public interface IPeopleService
     /// all faces are reattached to target, source is deleted.</summary>
     Task MergeAsync(Guid targetId, Guid sourceId, CancellationToken ct = default);
 
+    /// <summary>Faces attached to a person, ordered by confidence desc — for the cover picker.</summary>
+    Task<PersonFacesPage> GetPersonFacesAsync(Guid personId, int limit = 60, int offset = 0, CancellationToken ct = default);
+
+    /// <summary>Sets a face as the person's cover image. The face must already be linked to the person.</summary>
+    Task SetCoverFaceAsync(Guid personId, Guid faceId, CancellationToken ct = default);
+
     // Face operations
     Task<List<FaceItem>> GetFacesForAssetAsync(Guid assetId, CancellationToken ct = default);
     Task AssignFaceAsync(Guid faceId, Guid? personId, string? newPersonName, CancellationToken ct = default);
@@ -53,6 +59,14 @@ public sealed record PersonAssetItem(
 }
 
 public sealed record PersonAssetsPage(int Total, List<PersonAssetItem> Items);
+
+public sealed record PersonFaceItem(
+    Guid Id,
+    Guid AssetId,
+    float Confidence,
+    bool IsManuallyAssigned);
+
+public sealed record PersonFacesPage(int Total, List<PersonFaceItem> Items);
 
 public sealed record FaceItem(
     Guid Id,

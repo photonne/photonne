@@ -31,18 +31,26 @@ else if (_person != null)
                        OnClick="@(() => Navigation.NavigateTo("/people"))"
                        Class="ph-person-header__back" />
 
-        @if (_person.CoverFaceId.HasValue)
-        {
-            <img class="ph-person-header__cover"
-                 src="@($"/api/faces/{_person.CoverFaceId.Value}/thumbnail")"
-                 alt="@(_person.Name ?? "Persona")" />
-        }
-        else
-        {
-            <div class="ph-person-header__cover ph-person-header__cover--empty">
-                <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
-            </div>
-        }
+        <button type="button"
+                class="ph-person-header__cover-btn"
+                title="Cambiar foto de portada"
+                @onclick="OpenCoverSheet">
+            @if (_person.CoverFaceId.HasValue)
+            {
+                <img class="ph-person-header__cover"
+                     src="@($"/api/faces/{_person.CoverFaceId.Value}/thumbnail")"
+                     alt="@(_person.Name ?? "Persona")" />
+            }
+            else
+            {
+                <div class="ph-person-header__cover ph-person-header__cover--empty">
+                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
+                </div>
+            }
+            <span class="ph-person-header__cover-edit">
+                <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Small" />
+            </span>
+        </button>
 
         <div class="ph-person-header__meta">
             @if (_editing)
@@ -80,6 +88,9 @@ else if (_person != null)
                      AnchorOrigin="Origin.BottomRight"
                      TransformOrigin="Origin.TopRight"
                      Dense="true">
+                <MudMenuItem OnClick="OpenCoverSheet" Icon="@Icons.Material.Outlined.PhotoCamera">
+                    Cambiar foto de portada
+                </MudMenuItem>
                 <MudMenuItem OnClick="OpenMergeSheet" Icon="@Icons.Material.Outlined.MergeType">
                     Fusionar con otra persona…
                 </MudMenuItem>
@@ -201,6 +212,78 @@ else if (_person != null)
             </div>
         </MudDrawer>
     }
+
+    @* ── Cover face picker sheet ── *@
+    @if (_coverOpen)
+    {
+        <div class="ph-cover-sheet__backdrop" @onclick="CloseCoverSheet"></div>
+        <MudDrawer @key="_coverVersion"
+                   Open="true"
+                   Anchor="Anchor.Bottom"
+                   Elevation="6"
+                   Variant="DrawerVariant.Temporary"
+                   Class="ph-bottom-sheet ph-cover-sheet">
+            <div class="ph-sheet-handle"></div>
+            <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
+                <MudText Typo="Typo.h6">Foto de portada</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseCoverSheet" />
+            </div>
+            <MudDivider />
+
+            <div class="ph-cover-sheet__body">
+                @if (_coverLoading && _coverFaces.Count == 0)
+                {
+                    <div class="d-flex justify-center py-6">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+                    </div>
+                }
+                else if (_coverFaces.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="px-4 py-4" Style="color: var(--mud-palette-text-secondary);">
+                        Esta persona no tiene caras disponibles.
+                    </MudText>
+                }
+                else
+                {
+                    <div class="ph-cover-grid">
+                        @foreach (var f in _coverFaces)
+                        {
+                            <button type="button"
+                                    class="ph-cover-tile @(_coverSelectedId == f.Id ? "ph-cover-tile--active" : "") @(_person.CoverFaceId == f.Id ? "ph-cover-tile--current" : "")"
+                                    @onclick="@(() => _coverSelectedId = f.Id)">
+                                <img src="@($"/api/faces/{f.Id}/thumbnail")" alt="" />
+                                @if (_person.CoverFaceId == f.Id)
+                                {
+                                    <span class="ph-cover-tile__badge">Actual</span>
+                                }
+                            </button>
+                        }
+                    </div>
+
+                    @if (_coverFaces.Count < _coverTotal)
+                    {
+                        <div class="d-flex justify-center py-2">
+                            <MudButton Variant="Variant.Text"
+                                       Disabled="@_coverLoading"
+                                       OnClick="LoadMoreCoverFacesAsync">
+                                @(_coverLoading ? "Cargando…" : $"Cargar más ({_coverTotal - _coverFaces.Count} restantes)")
+                            </MudButton>
+                        </div>
+                    }
+                }
+            </div>
+
+            <MudDivider Class="my-1" />
+            <div class="d-flex gap-2 justify-end px-3 pb-3 pt-1">
+                <MudButton Variant="Variant.Text" OnClick="CloseCoverSheet" Disabled="@_coverBusy">Cancelar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(_coverSelectedId == null || _coverSelectedId == _person.CoverFaceId || _coverBusy)"
+                           OnClick="ConfirmCoverAsync">
+                    @(_coverBusy ? "Guardando…" : "Establecer como portada")
+                </MudButton>
+            </div>
+        </MudDrawer>
+    }
 }
 
 <style>
@@ -209,14 +292,41 @@ else if (_person != null)
         padding: 12px 16px; position: relative;
     }
     .ph-person-header__back { flex: 0 0 auto; }
+    .ph-person-header__cover-btn {
+        position: relative;
+        width: 96px; height: 96px;
+        padding: 0; border: 0; background: transparent;
+        flex: 0 0 auto; cursor: pointer;
+        border-radius: 50%;
+    }
     .ph-person-header__cover {
         width: 96px; height: 96px; border-radius: 50%;
-        object-fit: cover; flex: 0 0 auto;
+        object-fit: cover;
         background: var(--mud-palette-background-grey);
+        display: block;
     }
     .ph-person-header__cover--empty {
         display: flex; align-items: center; justify-content: center;
         background: var(--mud-palette-background-grey);
+    }
+    .ph-person-header__cover-edit {
+        position: absolute;
+        right: 0; bottom: 0;
+        width: 28px; height: 28px;
+        background: var(--mud-palette-primary);
+        color: #fff;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+        opacity: 0; transition: opacity 0.15s ease;
+    }
+    .ph-person-header__cover-btn:hover .ph-person-header__cover-edit,
+    .ph-person-header__cover-btn:focus-visible .ph-person-header__cover-edit {
+        opacity: 1;
+    }
+    /* Touch devices: keep the badge visible since :hover doesn't fire reliably. */
+    @@media (hover: none) {
+        .ph-person-header__cover-edit { opacity: 1; }
     }
     .ph-person-header__meta { flex: 1 1 auto; min-width: 0; }
 
@@ -276,6 +386,66 @@ else if (_person != null)
     .ph-merge-keep__count {
         font-size: 11px; color: var(--mud-palette-text-secondary);
     }
+
+    /* Cover-face picker sheet — same z-index strategy as the others */
+    .ph-cover-sheet.mud-drawer,
+    aside.ph-cover-sheet,
+    .ph-cover-sheet {
+        z-index: 1400 !important;
+    }
+    .ph-cover-sheet__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-cover-sheet-fade-in 0.18s ease;
+    }
+    @@keyframes ph-cover-sheet-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ph-cover-sheet__body {
+        max-height: 55svh;
+        overflow-y: auto;
+        padding: 12px 12px 4px;
+    }
+    .ph-cover-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+    }
+    .ph-cover-tile {
+        position: relative;
+        padding: 0;
+        border: 3px solid transparent;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        aspect-ratio: 1;
+        overflow: hidden;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .ph-cover-tile img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        display: block;
+    }
+    .ph-cover-tile:hover { transform: scale(1.03); }
+    .ph-cover-tile--active {
+        border-color: var(--mud-palette-primary);
+    }
+    .ph-cover-tile--current {
+        outline: 1px dashed var(--mud-palette-text-secondary);
+        outline-offset: 2px;
+    }
+    .ph-cover-tile__badge {
+        position: absolute;
+        bottom: 4px; left: 50%; transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.78); color: #fff;
+        font-size: 10px; padding: 1px 6px; border-radius: 999px;
+        pointer-events: none;
+    }
 </style>
 
 @code {
@@ -297,6 +467,16 @@ else if (_person != null)
     private bool _keepCurrent = true;
     private List<PersonSummary>? _peopleCache;
     private bool _mergeBusy;
+
+    // Cover-picker sheet state
+    private bool _coverOpen;
+    private int _coverVersion;
+    private bool _coverLoading;
+    private bool _coverBusy;
+    private List<PersonFaceItem> _coverFaces = new();
+    private int _coverTotal;
+    private Guid? _coverSelectedId;
+    private const int CoverPageSize = 60;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -416,6 +596,76 @@ else if (_person != null)
     {
         _mergePartner = person;
     }
+
+    // ── Cover-picker sheet ────────────────────────────────────────────────
+
+    private async Task OpenCoverSheet()
+    {
+        _coverFaces = new();
+        _coverTotal = 0;
+        _coverSelectedId = _person?.CoverFaceId;
+        _coverBusy = false;
+        _coverVersion++;
+        _coverOpen = true;
+        await LoadCoverFacesAsync(reset: true);
+    }
+
+    private void CloseCoverSheet()
+    {
+        _coverOpen = false;
+        _coverFaces = new();
+        _coverSelectedId = null;
+        _coverBusy = false;
+    }
+
+    private async Task LoadCoverFacesAsync(bool reset)
+    {
+        if (_person == null || _coverLoading) return;
+        _coverLoading = true;
+        StateHasChanged();
+        try
+        {
+            var page = await PeopleService.GetPersonFacesAsync(
+                _person.Id,
+                limit: CoverPageSize,
+                offset: reset ? 0 : _coverFaces.Count);
+            _coverTotal = page.Total;
+            if (reset) _coverFaces = page.Items;
+            else _coverFaces.AddRange(page.Items);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudieron cargar las caras: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _coverLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task LoadMoreCoverFacesAsync() => LoadCoverFacesAsync(reset: false);
+
+    private async Task ConfirmCoverAsync()
+    {
+        if (_person == null || _coverSelectedId == null || _coverBusy) return;
+        if (_coverSelectedId == _person.CoverFaceId) { CloseCoverSheet(); return; }
+        _coverBusy = true;
+        try
+        {
+            await PeopleService.SetCoverFaceAsync(_person.Id, _coverSelectedId.Value);
+            _person = _person with { CoverFaceId = _coverSelectedId, UpdatedAt = DateTime.UtcNow };
+            Snackbar.Add("Foto de portada actualizada", Severity.Success);
+            CloseCoverSheet();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo actualizar la portada: {ex.Message}", Severity.Error);
+            _coverBusy = false;
+        }
+    }
+
+    // ── Merge sheet ───────────────────────────────────────────────────────
 
     private async Task ConfirmMergeAsync()
     {
