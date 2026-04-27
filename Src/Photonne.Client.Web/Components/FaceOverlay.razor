@@ -1,0 +1,605 @@
+@inject IJSRuntime JS
+@inject IPeopleService PeopleService
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+@using Photonne.Client.Web.Services
+
+@if (Visible)
+{
+    @* z-index 1200 sits above .asset-detail-container (1100, the fullscreen
+       fixed black container holding the photo) and below the action sheet
+       (1400) so when the sheet opens it overlays the boxes naturally. *@
+    <div class="ph-face-overlay" style="@OverlayStyle">
+        @if (_rect.HasValue)
+        {
+            @foreach (var f in _faces)
+            {
+                <button type="button"
+                        class="ph-face-overlay__box @(f.PersonId.HasValue ? "linked" : "unlinked") @(f.IsManuallyAssigned ? "manual" : "") @(IsSuggested(f) ? "suggested" : "") @(_activeFace?.Id == f.Id ? "active" : "")"
+                        style="@BoxStyle(f)"
+                        title="@TooltipFor(f)"
+                        @onclick="() => OnFaceClickAsync(f)"
+                        @onclick:stopPropagation="true">
+                    <span class="ph-face-overlay__chip @(IsSuggested(f) ? "ph-face-overlay__chip--suggested" : "")">
+                        @ChipFor(f)
+                    </span>
+                </button>
+            }
+        }
+
+        <div class="ph-face-overlay__status">
+            @if (_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
+                <span>Cargando caras…</span>
+            }
+            else if (!_rect.HasValue)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
+                <span>Localizando imagen…</span>
+            }
+            else if (_faces.Count == 0)
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.FaceRetouchingOff" Size="Size.Small" Class="me-1" />
+                <span>Sin caras detectadas</span>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.Face" Size="Size.Small" Class="me-1" />
+                <span>@_faces.Count @(_faces.Count == 1 ? "cara" : "caras")</span>
+            }
+        </div>
+    </div>
+
+    @* Action sheet — mounted only when actually open. Re-mounting on every
+       open guarantees a fresh MudDrawer instance, sidestepping a known issue
+       where the drawer's internal animation flag desyncs after rapid
+       open/close cycles and stops responding to subsequent Open=true. *@
+    @if (_sheetOpen && _activeFace != null)
+    {
+        <div class="ph-face-sheet__backdrop" @onclick="CloseSheet"></div>
+        <MudDrawer @key="_sheetVersion"
+                   Open="true"
+                   Anchor="Anchor.Bottom"
+                   Elevation="6"
+                   Variant="DrawerVariant.Temporary"
+                   Class="ph-bottom-sheet ph-face-sheet">
+            <div class="ph-sheet-handle"></div>
+
+            @if (_activeFace != null)
+            {
+                <div class="d-flex align-center gap-3 px-4 pt-2 pb-1">
+                    <img src="@($"/api/faces/{_activeFace.Id}/thumbnail")"
+                         alt="Cara"
+                         class="ph-face-sheet__thumb" />
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Asignar cara</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                            Actualmente: @ChipFor(_activeFace)
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseSheet" />
+                </div>
+
+                @if (IsSuggested(_activeFace))
+                {
+                    <MudDivider />
+                    <div class="ph-face-sheet__suggestion px-4 py-2">
+                        <MudIcon Icon="@Icons.Material.Outlined.Lightbulb" Size="Size.Small" Class="me-1" />
+                        <MudText Typo="Typo.body2" Class="flex-grow-1">
+                            ¿Es <b>@SuggestedNameFor(_activeFace)</b>?
+                        </MudText>
+                        <div class="d-flex gap-1">
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Disabled="@_busy"
+                                       OnClick="AcceptSuggestionAsync">
+                                Sí
+                            </MudButton>
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Disabled="@_busy"
+                                       OnClick="DismissSuggestionAsync">
+                                No
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+
+                <MudDivider />
+
+                <div class="px-4 pt-3 pb-2">
+                    <MudAutocomplete T="PersonSummary"
+                                     Label="Buscar persona"
+                                     SearchFunc="SearchPeople"
+                                     Value="_selectedPerson"
+                                     ValueChanged="OnPersonSelected"
+                                     ToStringFunc="@(p => string.IsNullOrWhiteSpace(p?.Name) ? "Sin nombre" : p!.Name)"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Clearable="true"
+                                     CoerceText="false"
+                                     Placeholder="Empieza a escribir un nombre…" />
+
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);" Class="mb-1 mt-3 d-block">
+                        …o crea una persona nueva
+                    </MudText>
+                    <div class="d-flex gap-2 align-center">
+                        <MudTextField @bind-Value="_newName"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Placeholder="Nombre"
+                                      OnKeyDown="OnNewNameKey" />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))"
+                                   OnClick="CreateAndAssignAsync">
+                            Crear
+                        </MudButton>
+                    </div>
+                </div>
+
+                <MudDivider Class="my-1" />
+
+                <div class="d-flex flex-column gap-1 px-2 pb-3 pt-1">
+                    <MudButton FullWidth="true"
+                               StartIcon="@Icons.Material.Outlined.LinkOff"
+                               Color="Color.Warning"
+                               Variant="Variant.Text"
+                               Disabled="@(_busy || !_activeFace.PersonId.HasValue)"
+                               OnClick="UnassignAsync">
+                        Desvincular de la persona actual
+                    </MudButton>
+                    <MudButton FullWidth="true"
+                               StartIcon="@Icons.Material.Outlined.Block"
+                               Color="Color.Default"
+                               Variant="Variant.Text"
+                               Disabled="@_busy"
+                               OnClick="RejectAsync">
+                        No es una cara
+                    </MudButton>
+                </div>
+            }
+        </MudDrawer>
+    }
+}
+
+<style>
+    .ph-face-overlay {
+        position: fixed;
+        pointer-events: none;
+        z-index: 1200;
+    }
+    .ph-face-overlay__box {
+        position: absolute;
+        pointer-events: auto;
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: 6px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+        padding: 0;
+        transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ph-face-overlay__box:hover {
+        border-color: var(--mud-palette-primary, #1976d2);
+        transform: scale(1.02);
+    }
+    .ph-face-overlay__box.linked {
+        border-color: rgba(76, 175, 80, 0.95);
+    }
+    .ph-face-overlay__box.linked.manual {
+        border-color: rgba(33, 150, 243, 0.95);
+    }
+    /* Soft-match suggestion: dashed amber to read as "tentative".
+       Wins over linked/manual styling because a face with .suggested is
+       always orphan (PersonId is null while SuggestedPersonId is set). */
+    .ph-face-overlay__box.suggested {
+        border-style: dashed;
+        border-color: rgba(255, 179, 0, 0.95);
+    }
+    .ph-face-overlay__box.active {
+        border-color: var(--mud-palette-primary, #1976d2);
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.45);
+    }
+    .ph-face-overlay__chip {
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.78);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        line-height: 1.4;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+    .ph-face-overlay__chip--suggested {
+        background: rgba(255, 179, 0, 0.92);
+        color: #000;
+        font-weight: 600;
+    }
+    .ph-face-sheet__suggestion {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 179, 0, 0.10);
+        border-left: 3px solid rgba(255, 179, 0, 0.85);
+    }
+    .ph-face-overlay__status {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: rgba(0, 0, 0, 0.72);
+        color: #fff;
+        font-size: 12px;
+        border-radius: 999px;
+        pointer-events: none;
+    }
+    /* Sheet must sit above the overlay (1200) and the asset-detail-container
+       (1100). MudDrawer's default z-index isn't high enough on top of the
+       fullscreen photo container, so override it and render our own backdrop.
+       NOTE: this style block is global CSS (not scoped) — no ::deep needed. */
+    .ph-face-sheet.mud-drawer,
+    aside.ph-face-sheet,
+    .ph-face-sheet {
+        z-index: 1400 !important;
+    }
+    .ph-face-sheet__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-face-sheet-fade-in 0.18s ease;
+    }
+    @@keyframes ph-face-sheet-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ph-face-sheet__thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex: 0 0 auto;
+        background: var(--mud-palette-background-grey);
+    }
+</style>
+
+@code {
+    [Parameter] public Guid AssetId { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnFacesChanged { get; set; }
+
+    private List<FaceItem> _faces = new();
+    private Dictionary<Guid, string?> _personNames = new();
+    private Rect? _rect;
+    private bool _loading;
+    private DotNetObjectReference<FaceOverlay>? _ref;
+    private string _trackerKey = Guid.NewGuid().ToString("N");
+    private Guid _loadedAssetId;
+    private bool _trackerStarted;
+
+    // Action sheet state
+    private bool _sheetOpen;
+    private int _sheetVersion; // bumped per open; used as @key to force remount
+    private FaceItem? _activeFace;
+    private List<PersonSummary>? _peopleCache;
+    private PersonSummary? _selectedPerson;
+    private string _newName = string.Empty;
+    private bool _busy;
+
+    public record struct Rect(double Left, double Top, double Width, double Height);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            if (_loadedAssetId != AssetId)
+            {
+                _loadedAssetId = AssetId;
+                _rect = null;
+                _faces = new();
+                CloseSheet();
+                await StopTrackerAsync();
+                await ReloadFacesAsync(toast: true);
+            }
+            await EnsureTrackerStartedAsync();
+        }
+        else
+        {
+            await StopTrackerAsync();
+            _rect = null;
+            CloseSheet();
+        }
+    }
+
+    private async Task ReloadFacesAsync(bool toast = false)
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            var faces = await PeopleService.GetFacesForAssetAsync(AssetId);
+            _faces = faces.Where(f => !f.IsRejected).ToList();
+            await LoadPersonNamesAsync();
+
+            if (toast)
+            {
+                if (_faces.Count == 0)
+                    Snackbar.Add("Sin caras detectadas en esta foto", Severity.Info);
+                else
+                    Snackbar.Add($"{_faces.Count} {(_faces.Count == 1 ? "cara detectada" : "caras detectadas")}", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar caras: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPersonNamesAsync()
+    {
+        // Names cover both confirmed and suggested links so the chip and the
+        // sheet's "¿Es X?" prompt can resolve the Person without re-fetching.
+        var ids = _faces
+            .SelectMany(f => new[] { f.PersonId, f.SuggestedPersonId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        if (ids.Count == 0) { _personNames.Clear(); return; }
+
+        var page = await PeopleService.GetPeopleAsync(limit: 200, includeHidden: true);
+        _personNames = page.Items.ToDictionary(p => p.Id, p => p.Name);
+    }
+
+    private async Task EnsureTrackerStartedAsync()
+    {
+        if (_trackerStarted) return;
+        _ref ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("faceOverlayHelpers.start", _trackerKey, _ref);
+        _trackerStarted = true;
+    }
+
+    private async Task StopTrackerAsync()
+    {
+        if (!_trackerStarted) return;
+        try { await JS.InvokeVoidAsync("faceOverlayHelpers.stop", _trackerKey); }
+        catch { /* JS unavailable during teardown */ }
+        _trackerStarted = false;
+    }
+
+    [JSInvokable]
+    public void OnRectChanged(double left, double top, double width, double height)
+    {
+        _rect = new Rect(left, top, width, height);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string OverlayStyle
+    {
+        get
+        {
+            if (_rect is not { } r)
+                return "left: 0; top: 64px; width: 100vw; height: 0;";
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            return $"left: {r.Left.ToString(inv)}px; top: {r.Top.ToString(inv)}px; width: {r.Width.ToString(inv)}px; height: {r.Height.ToString(inv)}px;";
+        }
+    }
+
+    private static string Pct(float v) =>
+        (v * 100f).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string BoxStyle(FaceItem f) =>
+        $"left: {Pct(f.BoundingBoxX)}%; top: {Pct(f.BoundingBoxY)}%; width: {Pct(f.BoundingBoxW)}%; height: {Pct(f.BoundingBoxH)}%;";
+
+    private string ChipFor(FaceItem f)
+    {
+        if (f.PersonId.HasValue)
+        {
+            return _personNames.TryGetValue(f.PersonId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+                ? name
+                : "Sin nombre";
+        }
+        if (IsSuggested(f))
+        {
+            return $"¿{SuggestedNameFor(f)}?";
+        }
+        return "Sin asignar";
+    }
+
+    private static bool IsSuggested(FaceItem f) =>
+        !f.PersonId.HasValue && f.SuggestedPersonId.HasValue;
+
+    private string SuggestedNameFor(FaceItem f)
+    {
+        if (!f.SuggestedPersonId.HasValue) return "esta persona";
+        return _personNames.TryGetValue(f.SuggestedPersonId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name!
+            : "esta persona";
+    }
+
+    private string TooltipFor(FaceItem f)
+    {
+        if (IsSuggested(f)) return $"Sugerencia: ¿{SuggestedNameFor(f)}? — haz clic para confirmar";
+        return f.IsManuallyAssigned
+            ? "Asignación manual — haz clic para cambiar"
+            : "Asignación automática — haz clic para cambiar";
+    }
+
+    private void OnFaceClickAsync(FaceItem face)
+    {
+        _activeFace = face;
+        _selectedPerson = null;
+        _newName = string.Empty;
+        _busy = false;
+        _sheetVersion++;
+        _sheetOpen = true;
+    }
+
+    private void CloseSheet()
+    {
+        _sheetOpen = false;
+        _activeFace = null;
+        _selectedPerson = null;
+        _newName = string.Empty;
+        _busy = false;
+    }
+
+    // ─── Sheet actions ──────────────────────────────────────────────────────
+
+    private async Task<IEnumerable<PersonSummary>> SearchPeople(string? value, CancellationToken ct)
+    {
+        _peopleCache ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: false, ct: ct)).Items;
+
+        var pool = _peopleCache.Where(p => !string.IsNullOrWhiteSpace(p.Name));
+        if (string.IsNullOrWhiteSpace(value))
+            return pool.OrderBy(p => p.Name).Take(20);
+
+        return pool
+            .Where(p => p.Name!.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Name)
+            .Take(20);
+    }
+
+    private async Task OnPersonSelected(PersonSummary? person)
+    {
+        _selectedPerson = person;
+        if (person == null || _busy || _activeFace == null) return;
+        await AssignToAsync(person.Id, null);
+    }
+
+    private async Task CreateAndAssignAsync()
+    {
+        var name = _newName.Trim();
+        if (string.IsNullOrWhiteSpace(name) || _activeFace == null) return;
+        await AssignToAsync(null, name);
+    }
+
+    private async Task OnNewNameKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newName))
+            await CreateAndAssignAsync();
+    }
+
+    private async Task AssignToAsync(Guid? personId, string? newName)
+    {
+        if (_busy || _activeFace == null) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.AssignFaceAsync(_activeFace.Id, personId, newName);
+            Snackbar.Add("Cara asignada", Severity.Success);
+            // Invalidate caches so the sheet's next open sees the new person.
+            _peopleCache = null;
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    private async Task UnassignAsync()
+    {
+        if (_busy || _activeFace == null) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.UnassignFaceAsync(_activeFace.Id);
+            Snackbar.Add("Cara desvinculada", Severity.Success);
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    private async Task RejectAsync()
+    {
+        if (_busy || _activeFace == null) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.RejectFaceAsync(_activeFace.Id);
+            Snackbar.Add("Cara descartada", Severity.Success);
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    private async Task AcceptSuggestionAsync()
+    {
+        if (_busy || _activeFace == null || !IsSuggested(_activeFace)) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.AcceptFaceSuggestionAsync(_activeFace.Id);
+            Snackbar.Add($"Cara asignada a {SuggestedNameFor(_activeFace)}", Severity.Success);
+            _peopleCache = null;
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    private async Task DismissSuggestionAsync()
+    {
+        if (_busy || _activeFace == null || !IsSuggested(_activeFace)) return;
+        _busy = true;
+        try
+        {
+            await PeopleService.DismissFaceSuggestionAsync(_activeFace.Id);
+            Snackbar.Add("Sugerencia descartada", Severity.Info);
+            CloseSheet();
+            await ReloadFacesAsync();
+            if (OnFacesChanged.HasDelegate) await OnFacesChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _busy = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopTrackerAsync();
+        _ref?.Dispose();
+    }
+}

@@ -3,6 +3,7 @@ using Photonne.Server.Api.Features.DatabaseBackup;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
 
@@ -33,6 +34,18 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             client.Timeout = TimeSpan.FromSeconds(10);
         });
+
+        // Face recognition (Python microservice)
+        builder.Services.Configure<FaceRecognitionOptions>(
+            builder.Configuration.GetSection(FaceRecognitionOptions.SectionName));
+        builder.Services.AddHttpClient<IFaceRecognitionClient, FaceRecognitionClient>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FaceRecognitionOptions>>().Value;
+            client.BaseAddress = new Uri(opts.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+        builder.Services.AddScoped<FaceClusteringService>();
+        builder.Services.AddScoped<FaceDetectionService>();
 
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();
@@ -133,12 +146,12 @@ public static class DependencyInjection
 
     public static void AddPostgres(this WebApplicationBuilder builder)
     {
-        // Configurar Entity Framework Core con PostgreSQL
-        var connectionString = builder.Configuration.GetConnectionString("Postgres") 
+        // Configurar Entity Framework Core con PostgreSQL + pgvector
+        var connectionString = builder.Configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("Connection string 'Postgres' not found.");
 
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString, o => o.UseVector()));
     }
 
     public static void RegisterEndpoints(this IEndpointRouteBuilder app)

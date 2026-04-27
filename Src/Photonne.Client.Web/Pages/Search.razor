@@ -1,6 +1,7 @@
 @page "/search"
 @inject IAssetService AssetService
 @inject IAlbumService AlbumService
+@inject IPeopleService PeopleService
 @inject LayoutService LayoutService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -11,6 +12,63 @@
 @implements IDisposable
 
 <PageTitle>Buscar - Photonne</PageTitle>
+
+@if (_personFilters.Count > 0 || _personPickerOpen)
+{
+    <div class="ph-search-people-bar">
+        <MudIcon Icon="@Icons.Material.Outlined.People" Size="Size.Small" Class="me-1" />
+        <MudText Typo="Typo.caption" Class="me-2">Personas:</MudText>
+        @foreach (var p in _personFilters)
+        {
+            <MudChip T="Guid"
+                     Value="@p.Id"
+                     Size="Size.Small"
+                     Color="Color.Primary"
+                     OnClose="@(() => RemovePersonFilter(p.Id))">
+                @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
+            </MudChip>
+        }
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Variant="Variant.Outlined"
+                 Icon="@Icons.Material.Filled.Add"
+                 OnClick="OpenPersonPicker">
+            Añadir
+        </MudChip>
+    </div>
+}
+
+@* Person-picker bottom sheet — adds another person to the active filter set. *@
+@if (_personPickerOpen)
+{
+    <div class="ph-people-picker__backdrop" @onclick="ClosePersonPicker"></div>
+    <MudDrawer @key="_personPickerVersion"
+               Open="true"
+               Anchor="Anchor.Bottom"
+               Elevation="6"
+               Variant="DrawerVariant.Temporary"
+               Class="ph-bottom-sheet ph-people-picker">
+        <div class="ph-sheet-handle"></div>
+        <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
+            <MudText Typo="Typo.h6">Añadir persona al filtro</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ClosePersonPicker" />
+        </div>
+        <MudDivider />
+        <div class="px-4 pt-3 pb-4">
+            <MudAutocomplete T="PersonSummary"
+                             Label="Buscar persona"
+                             SearchFunc="SearchPeoplePool"
+                             Value="null"
+                             ValueChanged="OnPersonPickerSelected"
+                             ToStringFunc="@(p => string.IsNullOrWhiteSpace(p?.Name) ? "Sin nombre" : p!.Name)"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             Clearable="true"
+                             CoerceText="false"
+                             Placeholder="Empieza a escribir un nombre…" />
+        </div>
+    </MudDrawer>
+}
 
 @if (DeviceLayout.IsMobile)
 {
@@ -149,9 +207,42 @@ else
     </DialogActions>
 </MudDialog>
 
+<style>
+    .ph-search-people-bar {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 4px;
+        padding: 8px 12px;
+        background: var(--mud-palette-surface);
+        border-bottom: 1px solid var(--mud-palette-divider);
+    }
+    /* Same z-index strategy as the face-overlay / merge / cover sheets so the
+       picker sits above the search results layer (and above the chip bar). */
+    .ph-people-picker.mud-drawer,
+    aside.ph-people-picker,
+    .ph-people-picker {
+        z-index: 1400 !important;
+    }
+    .ph-people-picker__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-people-picker-fade-in 0.18s ease;
+    }
+    @@keyframes ph-people-picker-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+</style>
+
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? SearchTerm { get; set; }
+    [SupplyParameterFromQuery(Name = "personId")] public Guid[]? PersonIdsParam { get; set; }
 
+    private List<PersonSummary> _personFilters = new();
+    private bool _personPickerOpen;
+    private int _personPickerVersion;
+    private List<PersonSummary>? _peoplePool;
     private List<TimelineItem> _results = new();
     private bool _loading;
     private bool _hasMore;
@@ -194,7 +285,8 @@ else
         !string.IsNullOrWhiteSpace(_searchTerm) ||
         _fromDate.HasValue ||
         _toDate.HasValue ||
-        !string.IsNullOrWhiteSpace(_folderFilter);
+        !string.IsNullOrWhiteSpace(_folderFilter) ||
+        _personFilters.Count > 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -210,11 +302,37 @@ else
     protected override async Task OnParametersSetAsync()
     {
         var newTerm = (SearchTerm ?? string.Empty).Trim();
-        if (!string.Equals(_searchTerm, newTerm, StringComparison.Ordinal))
+        var termChanged = !string.Equals(_searchTerm, newTerm, StringComparison.Ordinal);
+
+        var paramIds = (PersonIdsParam ?? Array.Empty<Guid>()).Distinct().ToList();
+        var currentIds = _personFilters.Select(p => p.Id).ToHashSet();
+        var personFilterChanged = paramIds.Count != currentIds.Count || paramIds.Any(id => !currentIds.Contains(id));
+
+        if (termChanged) _searchTerm = newTerm;
+
+        if (personFilterChanged)
         {
-            _searchTerm = newTerm;
-            await SearchAsync();
+            // Resolve names for the chips. Cheap because /api/people is paginated;
+            // for large libraries this could fetch by id, but a 200-person cap is fine.
+            if (paramIds.Count == 0)
+            {
+                _personFilters = new();
+            }
+            else
+            {
+                try
+                {
+                    var page = await PeopleService.GetPeopleAsync(limit: 500, includeHidden: true);
+                    _personFilters = page.Items.Where(p => paramIds.Contains(p.Id)).ToList();
+                }
+                catch
+                {
+                    _personFilters = paramIds.Select(id => new PersonSummary(id, null, null, 0, false, DateTime.UtcNow, DateTime.UtcNow)).ToList();
+                }
+            }
         }
+
+        if (termChanged || personFilterChanged) await SearchAsync();
     }
 
     private async Task HandleSearchTermChanged(string term)
@@ -269,7 +387,8 @@ else
                 q: string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm,
                 from: _fromDate,
                 to: _toDate,
-                folder: string.IsNullOrWhiteSpace(_folderFilter) ? null : _folderFilter);
+                folder: string.IsNullOrWhiteSpace(_folderFilter) ? null : _folderFilter,
+                personIds: _personFilters.Count == 0 ? null : _personFilters.Select(p => p.Id).ToList());
 
             _results = items;
             _hasMore = hasMore;
@@ -710,5 +829,56 @@ else
         _objRef?.Dispose();
         LayoutService.ResetNavbar();
         DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
+    }
+
+    private void RemovePersonFilter(Guid personId)
+    {
+        var remaining = _personFilters.Where(p => p.Id != personId).Select(p => p.Id).ToList();
+        Navigation.NavigateTo(BuildSearchUrl(remaining), replace: true);
+    }
+
+    private void OpenPersonPicker()
+    {
+        _peoplePool = null; // refresh on every open so newly created persons show up
+        _personPickerVersion++;
+        _personPickerOpen = true;
+    }
+
+    private void ClosePersonPicker()
+    {
+        _personPickerOpen = false;
+    }
+
+    private async Task<IEnumerable<PersonSummary>> SearchPeoplePool(string? value, CancellationToken ct)
+    {
+        _peoplePool ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: true, ct: ct)).Items;
+
+        var alreadyPicked = _personFilters.Select(p => p.Id).ToHashSet();
+        var pool = _peoplePool.Where(p => !alreadyPicked.Contains(p.Id));
+        if (string.IsNullOrWhiteSpace(value))
+            return pool.OrderByDescending(p => p.FaceCount).Take(20);
+
+        return pool
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name)
+                        && p.Name!.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.FaceCount)
+            .Take(20);
+    }
+
+    private void OnPersonPickerSelected(PersonSummary? person)
+    {
+        if (person == null) return;
+        var ids = _personFilters.Select(p => p.Id).Append(person.Id).Distinct().ToList();
+        ClosePersonPicker();
+        Navigation.NavigateTo(BuildSearchUrl(ids), replace: true);
+    }
+
+    private string BuildSearchUrl(IEnumerable<Guid> personIds)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+            query.Add($"search={Uri.EscapeDataString(_searchTerm)}");
+        foreach (var pid in personIds) query.Add($"personId={pid}");
+        return query.Count == 0 ? "/search" : "/search?" + string.Join("&", query);
     }
 }

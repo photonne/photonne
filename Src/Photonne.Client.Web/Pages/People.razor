@@ -1,0 +1,377 @@
+@page "/people"
+@using Photonne.Client.Web.Services
+@inject IPeopleService PeopleService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Personas - Photonne</PageTitle>
+
+<div class="px-3 pt-3 d-flex align-center justify-space-between">
+    <MudText Typo="Typo.h5">Personas</MudText>
+    <div class="d-flex align-center gap-1">
+        <MudTooltip Text="Reagrupar caras">
+            <MudIconButton Icon="@Icons.Material.Outlined.GroupWork"
+                           Size="Size.Small"
+                           Disabled="@_reclustering"
+                           OnClick="ReclusterAsync" />
+        </MudTooltip>
+        <MudTooltip Text="Buscar persona">
+            <MudIconButton Icon="@Icons.Material.Filled.Search"
+                           Color="@(SearchActive ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           OnClick="ToggleSearchBar" />
+        </MudTooltip>
+        <MudTooltip Text="Opciones de vista">
+            <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                           Color="@(FiltersActive ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           OnClick="OpenFilterSheet" />
+        </MudTooltip>
+    </div>
+</div>
+
+@if (_searchBarOpen)
+{
+    <div class="ph-people-searchbar px-3 pt-2">
+        <MudTextField T="string"
+                      @ref="_searchField"
+                      @bind-Value="_search"
+                      DebounceInterval="250"
+                      OnDebounceIntervalElapsed="OnSearchChangedAsync"
+                      Placeholder="Buscar persona…"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Clearable="true"
+                      Immediate="true" />
+        <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp"
+                       Size="Size.Small"
+                       OnClick="CollapseSearchBar"
+                       Title="Ocultar búsqueda" />
+    </div>
+}
+
+@* ── Filter sheet (sort + visibility toggles) ── *@
+@if (_filterSheetEverOpened)
+{
+    <MudDrawer @bind-Open="_filterSheetOpen"
+               Anchor="Anchor.Bottom"
+               Elevation="4"
+               Variant="DrawerVariant.Temporary"
+               Class="ph-bottom-sheet">
+        <div class="ph-sheet-handle"></div>
+        <div class="d-flex justify-space-between align-center px-4 pt-1 pb-2">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Opciones de vista</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                           OnClick="@(() => _filterSheetOpen = false)" />
+        </div>
+        <MudDivider />
+        <div class="px-4 pt-3 pb-6">
+            <MudText Typo="Typo.caption"
+                     Style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mud-palette-text-secondary);"
+                     Class="mb-2 d-block">
+                Ordenar por
+            </MudText>
+            <MudSelect T="string"
+                       Value="_sortKey"
+                       ValueChanged="OnSortChangedAsync"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       FullWidth="true"
+                       Class="mb-4">
+                <MudSelectItem Value="@("default")">Por relevancia</MudSelectItem>
+                <MudSelectItem Value="@("facecount-desc")">Más fotos</MudSelectItem>
+                <MudSelectItem Value="@("facecount-asc")">Menos fotos</MudSelectItem>
+                <MudSelectItem Value="@("name-asc")">Nombre A-Z</MudSelectItem>
+                <MudSelectItem Value="@("name-desc")">Nombre Z-A</MudSelectItem>
+            </MudSelect>
+            <MudDivider Class="mb-3" />
+            <MudSwitch T="bool"
+                       Value="_unnamedFirst"
+                       ValueChanged="OnUnnamedFirstChanged"
+                       Color="Color.Primary"
+                       Label="Sin nombre primero"
+                       Class="mb-2" />
+            <MudSwitch T="bool"
+                       Value="_includeHidden"
+                       ValueChanged="OnIncludeHiddenChanged"
+                       Color="Color.Primary"
+                       Label="Mostrar personas ocultas" />
+        </div>
+    </MudDrawer>
+}
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+else if (_people.Count == 0)
+{
+    <div class="d-flex flex-column align-center justify-center py-8 px-4">
+        <MudIcon Icon="@Icons.Material.Outlined.GroupOff" Size="Size.Large" Class="mb-3" />
+        <MudText Typo="Typo.h6">Sin personas todavía</MudText>
+        <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary); text-align: center; max-width: 360px;">
+            En cuanto subas más fotos, Photonne agrupará caras automáticamente.
+            También puedes ejecutar el backfill desde Admin para procesar fotos antiguas.
+        </MudText>
+    </div>
+}
+else
+{
+    <div class="px-3 mt-2">
+        <MudGrid Spacing="2">
+            @foreach (var p in _people)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <MudCard Class="@($"ph-person-card{(p.IsHidden ? " ph-person-card--hidden" : "")}")"
+                             @onclick="() => OpenPerson(p)">
+                        <div class="ph-person-cover">
+                            @if (p.CoverFaceId.HasValue)
+                            {
+                                <img src="@($"/api/faces/{p.CoverFaceId.Value}/thumbnail")" alt="@(p.Name ?? "Persona")" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
+                            }
+                            @if (p.PendingSuggestionsCount > 0)
+                            {
+                                <span class="ph-person-cover__suggestion-badge"
+                                      title="@($"{p.PendingSuggestionsCount} sugerencia{(p.PendingSuggestionsCount == 1 ? "" : "s")} pendiente{(p.PendingSuggestionsCount == 1 ? "" : "s")}")">
+                                    <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" />
+                                    <span>@p.PendingSuggestionsCount</span>
+                                </span>
+                            }
+                            @if (p.IsHidden)
+                            {
+                                <span class="ph-person-cover__hidden-badge"
+                                      title="Persona oculta"
+                                      @onclick:stopPropagation="true"
+                                      @onclick="() => UnhideAsync(p)">
+                                    <MudIcon Icon="@Icons.Material.Filled.VisibilityOff" Size="Size.Small" />
+                                </span>
+                            }
+                        </div>
+                        <MudCardContent Class="py-2 px-3">
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                                @p.FaceCount fotos
+                            </MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    </div>
+}
+
+<style>
+    .ph-person-card { cursor: pointer; }
+    .ph-person-card--hidden { opacity: 0.55; }
+    .ph-person-card--hidden:hover { opacity: 0.85; }
+    .ph-person-cover {
+        position: relative;
+        aspect-ratio: 1;
+        overflow: hidden;
+        background: var(--mud-palette-background-grey);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .ph-person-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .ph-person-cover__hidden-badge {
+        position: absolute;
+        top: 6px; right: 6px;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.65);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    .ph-person-cover__hidden-badge:hover { background: var(--mud-palette-primary); }
+    .ph-people-searchbar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .ph-people-searchbar > .mud-input-control {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .ph-person-cover__suggestion-badge {
+        position: absolute;
+        top: 6px; left: 6px;
+        display: inline-flex; align-items: center; gap: 2px;
+        background: rgba(255, 179, 0, 0.92);
+        color: #000;
+        font-size: 11px; font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 999px;
+        line-height: 1;
+        pointer-events: none;
+    }
+</style>
+
+@code {
+    private bool _loading = true;
+    private bool _includeHidden;
+    private bool _unnamedFirst;
+    private bool _reclustering;
+    private string _search = string.Empty;
+    // Compound key "field-direction" so a single MudSelect drives both sort field and direction.
+    private string _sortKey = "default";
+    private List<PersonSummary> _people = new();
+
+    // Mobile-first toolbar: search collapses to an icon, filters open in a sheet.
+    private bool _searchBarOpen;
+    private bool _filterSheetOpen;
+    private bool _filterSheetEverOpened;
+    private MudTextField<string>? _searchField;
+
+    // "Active" flags drive the icon color so users see at a glance that a filter
+    // or a search query is narrowing the list.
+    private bool SearchActive => !string.IsNullOrWhiteSpace(_search);
+    private bool FiltersActive => _includeHidden || _unnamedFirst || _sortKey != "default";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Auto-focus the search input the moment it appears so the user can
+        // start typing without an extra tap. Razor renders the field after
+        // _searchBarOpen flips, so we focus on the next frame.
+        if (_searchBarOpen && _searchField != null)
+        {
+            try { await _searchField.FocusAsync(); }
+            catch { /* Component disposed while focus was queued. */ }
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var (sort, sortDir) = ParseSortKey(_sortKey);
+            var page = await PeopleService.GetPeopleAsync(
+                limit: 200,
+                includeHidden: _includeHidden,
+                search: string.IsNullOrWhiteSpace(_search) ? null : _search,
+                sort: sort,
+                sortDir: sortDir,
+                unnamedFirst: _unnamedFirst);
+            _people = page.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar personas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static (string? sort, string? sortDir) ParseSortKey(string key) => key switch
+    {
+        "facecount-desc" => ("facecount", "desc"),
+        "facecount-asc" => ("facecount", "asc"),
+        "name-asc" => ("name", "asc"),
+        "name-desc" => ("name", "desc"),
+        _ => (null, null), // server default
+    };
+
+    private async Task OnSearchChangedAsync(string value)
+    {
+        _search = value ?? string.Empty;
+        await LoadAsync();
+    }
+
+    private async Task OnSortChangedAsync(string value)
+    {
+        _sortKey = value ?? "default";
+        await LoadAsync();
+    }
+
+    private async Task OnUnnamedFirstChanged(bool value)
+    {
+        _unnamedFirst = value;
+        await LoadAsync();
+    }
+
+    private async Task OnIncludeHiddenChanged(bool value)
+    {
+        _includeHidden = value;
+        await LoadAsync();
+    }
+
+    private void ToggleSearchBar()
+    {
+        // Closing keeps the active query, so the search icon stays in primary color
+        // and the user can re-open the bar to refine without losing context. Tapping
+        // the input's clear (X) is the way to drop the filter entirely.
+        _searchBarOpen = !_searchBarOpen;
+    }
+
+    private void CollapseSearchBar()
+    {
+        // Collapse only — the active query is preserved (the "active" icon
+        // color signals it's still narrowing the list). To drop the query
+        // entirely the user uses the input's clear (X), which fires the
+        // debounced change handler and reloads.
+        _searchBarOpen = false;
+    }
+
+    private void OpenFilterSheet()
+    {
+        _filterSheetEverOpened = true;
+        _filterSheetOpen = true;
+    }
+
+    private async Task ReclusterAsync()
+    {
+        _reclustering = true;
+        try
+        {
+            var created = await PeopleService.ReclusterAsync();
+            Snackbar.Add(created == 0
+                ? "No hay caras nuevas que agrupar"
+                : $"Reagrupado: {created} {(created == 1 ? "persona nueva" : "personas nuevas")}",
+                Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al reagrupar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _reclustering = false;
+        }
+    }
+
+    private async Task UnhideAsync(PersonSummary p)
+    {
+        try
+        {
+            await PeopleService.UnhideAsync(p.Id);
+            Snackbar.Add($"\"{p.Name ?? "Sin nombre"}\" vuelve a estar visible", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo mostrar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenPerson(PersonSummary p)
+    {
+        Navigation.NavigateTo($"/people/{p.Id}");
+    }
+}

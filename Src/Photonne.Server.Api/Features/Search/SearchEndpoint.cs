@@ -28,6 +28,7 @@ public class SearchEndpoint : IEndpoint
         [FromQuery] DateTime? to,
         [FromQuery] string? folder,
         [FromQuery] int pageSize,
+        [FromQuery(Name = "personId")] Guid[]? personIds,
         CancellationToken ct)
     {
         if (pageSize <= 0) pageSize = 100;
@@ -36,8 +37,10 @@ public class SearchEndpoint : IEndpoint
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
 
+        var hasPersonFilter = personIds is { Length: > 0 };
+
         // Require at least one filter to avoid returning everything
-        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder))
+        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter)
             return Results.Ok(new SearchResponse());
 
         var isAdmin = user.IsInRole("Admin");
@@ -88,6 +91,27 @@ public class SearchEndpoint : IEndpoint
         // Folder path substring
         if (!string.IsNullOrWhiteSpace(folder))
             query = query.Where(a => a.FullPath.Contains(folder));
+
+        // People filter — asset must have at least one non-rejected face linked
+        // to EVERY requested person (intersection: "fotos donde aparezcan A y B").
+        if (hasPersonFilter)
+        {
+            // Validate ownership of the requested persons up front so a forged
+            // id can't leak which assets exist.
+            var validPersonIds = await dbContext.People.AsNoTracking()
+                .Where(p => p.OwnerId == userId && personIds!.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+
+            if (validPersonIds.Count == 0)
+                return Results.Ok(new SearchResponse());
+
+            foreach (var pid in validPersonIds)
+            {
+                var capturedPid = pid; // EF captures by reference otherwise
+                query = query.Where(a => a.Faces.Any(f => f.PersonId == capturedPid && !f.IsRejected));
+            }
+        }
 
         var dbItems = await query
             .OrderByDescending(a => a.FileCreatedAt)

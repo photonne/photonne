@@ -18,7 +18,8 @@ namespace Photonne.Server.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63)
+                .HasAnnotation("Npgsql:PostgresExtension:vector", ",,");
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
@@ -164,6 +165,9 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Property<Guid?>("ExternalLibraryId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("FaceDetectionCompletedAt")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("FileCreatedAt")
                         .HasColumnType("timestamp without time zone");
@@ -511,6 +515,65 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("ExternalLibraryPermissions");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Face", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<float>("BoundingBoxH")
+                        .HasColumnType("real");
+
+                    b.Property<float>("BoundingBoxW")
+                        .HasColumnType("real");
+
+                    b.Property<float>("BoundingBoxX")
+                        .HasColumnType("real");
+
+                    b.Property<float>("BoundingBoxY")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Confidence")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Pgvector.Vector>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("vector(512)");
+
+                    b.Property<bool>("IsManuallyAssigned")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRejected")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("PersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<float?>("SuggestedDistance")
+                        .HasColumnType("real");
+
+                    b.Property<Guid?>("SuggestedPersonId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("SuggestedPersonId");
+
+                    b.HasIndex("PersonId", "IsRejected");
+
+                    b.ToTable("Faces");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Folder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -631,6 +694,45 @@ namespace Photonne.Server.Api.Migrations
                     b.HasIndex("UserId", "IsRead");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Person", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CoverFaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("FaceCount")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoverFaceId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("OwnerId", "IsHidden");
+
+                    b.ToTable("People");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.RefreshToken", b =>
@@ -1011,6 +1113,31 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Face", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithMany("Faces")
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Person", "Person")
+                        .WithMany("Faces")
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Person", "SuggestedPerson")
+                        .WithMany()
+                        .HasForeignKey("SuggestedPersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("Person");
+
+                    b.Navigation("SuggestedPerson");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibraryPermission", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.ExternalLibrary", "ExternalLibrary")
@@ -1091,6 +1218,24 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Person", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Face", "CoverFace")
+                        .WithMany()
+                        .HasForeignKey("CoverFaceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CoverFace");
+
+                    b.Navigation("Owner");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.RefreshToken", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.User", "User")
@@ -1149,6 +1294,8 @@ namespace Photonne.Server.Api.Migrations
                 {
                     b.Navigation("Exif");
 
+                    b.Navigation("Faces");
+
                     b.Navigation("MlJobs");
 
                     b.Navigation("Tags");
@@ -1156,6 +1303,11 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Thumbnails");
 
                     b.Navigation("UserTags");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Person", b =>
+                {
+                    b.Navigation("Faces");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibrary", b =>

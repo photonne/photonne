@@ -1,0 +1,1133 @@
+@page "/people/{Id:guid}"
+@using Photonne.Client.Web.Services
+@using Photonne.Client.Web.Models
+@inject IPeopleService PeopleService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IAssetListNavigationState AssetListNavigationState
+
+<PageTitle>@(_person?.Name ?? "Persona") - Photonne</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loading-bar" />
+}
+
+@if (_notFound)
+{
+    <div class="d-flex flex-column align-center justify-center py-8 px-4">
+        <MudIcon Icon="@Icons.Material.Outlined.PersonOff" Size="Size.Large" Class="mb-3" />
+        <MudText Typo="Typo.h6">Persona no encontrada</MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-3"
+                   OnClick="@(() => Navigation.NavigateTo("/people"))">
+            Volver a Personas
+        </MudButton>
+    </div>
+}
+else if (_person != null)
+{
+    <div class="ph-person-header">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Navigation.NavigateTo("/people"))"
+                       Class="ph-person-header__back" />
+
+        <button type="button"
+                class="ph-person-header__cover-btn"
+                title="Cambiar foto de portada"
+                @onclick="OpenCoverSheet">
+            @if (_person.CoverFaceId.HasValue)
+            {
+                <img class="ph-person-header__cover"
+                     src="@($"/api/faces/{_person.CoverFaceId.Value}/thumbnail")"
+                     alt="@(_person.Name ?? "Persona")" />
+            }
+            else
+            {
+                <div class="ph-person-header__cover ph-person-header__cover--empty">
+                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
+                </div>
+            }
+            <span class="ph-person-header__cover-edit">
+                <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Small" />
+            </span>
+        </button>
+
+        <div class="ph-person-header__meta">
+            @if (_editing)
+            {
+                <MudTextField @bind-Value="_editName"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              AutoFocus="true"
+                              Immediate="true"
+                              Placeholder="Nombre" />
+                <div class="d-flex gap-1 mt-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveNameAsync">Guardar</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _editing = false)">Cancelar</MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex align-center gap-1">
+                    <MudText Typo="Typo.h5" Style="font-weight: 600;">
+                        @(string.IsNullOrWhiteSpace(_person.Name) ? "Sin nombre" : _person.Name)
+                    </MudText>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@StartEditing" />
+                </div>
+                <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                    @_total fotos
+                </MudText>
+            }
+        </div>
+
+        @if (!_editing)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Dense="true">
+                <MudMenuItem OnClick="@(() => Navigation.NavigateTo($"/search?personId={Id}"))" Icon="@Icons.Material.Outlined.Search">
+                    Buscar combinando filtros
+                </MudMenuItem>
+                <MudMenuItem OnClick="EnterSelectionMode" Icon="@Icons.Material.Outlined.Checklist">
+                    Seleccionar fotos…
+                </MudMenuItem>
+                <MudMenuItem OnClick="OpenCoverSheet" Icon="@Icons.Material.Outlined.PhotoCamera">
+                    Cambiar foto de portada
+                </MudMenuItem>
+                <MudMenuItem OnClick="OpenMergeSheet" Icon="@Icons.Material.Outlined.MergeType">
+                    Fusionar con otra persona…
+                </MudMenuItem>
+                @if (_person.IsHidden)
+                {
+                    <MudMenuItem OnClick="UnhideAsync" Icon="@Icons.Material.Outlined.Visibility">
+                        Volver a mostrar
+                    </MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem OnClick="HideAsync" Icon="@Icons.Material.Outlined.VisibilityOff">
+                        Ocultar persona
+                    </MudMenuItem>
+                }
+            </MudMenu>
+        }
+    </div>
+
+    @if (_selectionMode)
+    {
+        <div class="ph-person-selection-bar">
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ExitSelectionMode" />
+            <MudText Typo="Typo.body2" Class="ml-2">@_selectedAssetIds.Count seleccionadas</MudText>
+            <MudSpacer />
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="ToggleSelectAll">
+                @(AllSelected ? "Deseleccionar todo" : "Seleccionar todo")
+            </MudButton>
+            <MudButton Size="Size.Small"
+                       Variant="Variant.Filled"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Outlined.LinkOff"
+                       Disabled="@(_selectedAssetIds.Count == 0 || _bulkBusy)"
+                       OnClick="BulkUnlinkAsync">
+                Quitar
+            </MudButton>
+        </div>
+    }
+
+    @if (_suggestions.Count > 0)
+    {
+        <div class="ph-suggestions">
+            <div class="ph-suggestions__header">
+                <MudIcon Icon="@Icons.Material.Outlined.Lightbulb" Size="Size.Small" />
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                    Sugerencias (@_suggestionsTotal)
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary); flex-grow: 1;">
+                    ¿Estas caras son @(string.IsNullOrWhiteSpace(_person.Name) ? "esta persona" : _person.Name)?
+                </MudText>
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Text"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.DoneAll"
+                           Disabled="@_bulkSuggestionsBusy"
+                           OnClick="AcceptAllSuggestionsAsync">
+                    Aceptar todo
+                </MudButton>
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Outlined.ClearAll"
+                           Disabled="@_bulkSuggestionsBusy"
+                           OnClick="DismissAllSuggestionsAsync">
+                    Descartar todo
+                </MudButton>
+            </div>
+            <div class="ph-suggestions__row">
+                @foreach (var s in _suggestions)
+                {
+                    <div class="ph-suggestion-card" @key="s.Id">
+                        <button type="button"
+                                class="ph-suggestion-card__thumb"
+                                title="Ver la foto original"
+                                @onclick="@(() => OpenSuggestedAsset(s))">
+                            <img src="@($"/api/faces/{s.Id}/thumbnail")" alt="" />
+                        </button>
+                        <div class="ph-suggestion-card__actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                           Size="Size.Small"
+                                           Color="Color.Success"
+                                           Disabled="@_busySuggestions.Contains(s.Id)"
+                                           OnClick="@(() => AcceptSuggestionAsync(s))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Size="Size.Small"
+                                           Disabled="@_busySuggestions.Contains(s.Id)"
+                                           OnClick="@(() => DismissSuggestionAsync(s))" />
+                        </div>
+                    </div>
+                }
+                @if (_suggestions.Count < _suggestionsTotal)
+                {
+                    <button type="button"
+                            class="ph-suggestion-card ph-suggestion-card--more"
+                            @onclick="LoadMoreSuggestionsAsync"
+                            disabled="@_suggestionsLoading">
+                        <MudIcon Icon="@Icons.Material.Filled.MoreHoriz" />
+                        <span>+@(_suggestionsTotal - _suggestions.Count)</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="assets-grid-content">
+        @if (_assets.Any())
+        {
+            <MudGrid Spacing="1">
+                @foreach (var item in _assets)
+                {
+                    <MudItem xs="4" sm="3" md="2">
+                        <div class="ph-person-tile @(IsSelected(item.Id) ? "ph-person-tile--selected" : "") @(_selectionMode ? "ph-person-tile--selectable" : "")"
+                             @oncontextmenu="@(e => OnTileContextMenu(item))" @oncontextmenu:preventDefault="true">
+                            <AssetCard Asset="@item" OnAssetClick="@(a => OnTileClick(a))" />
+                            @if (_selectionMode)
+                            {
+                                <button type="button" class="ph-person-tile__check"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="@(() => ToggleSelected(item.Id))">
+                                    <MudIcon Icon="@(IsSelected(item.Id) ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.RadioButtonUnchecked)"
+                                             Size="Size.Small" />
+                                </button>
+                            }
+                        </div>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else if (!_loading)
+        {
+            <EmptyState Icon="@Icons.Material.Outlined.PhotoLibrary"
+                        Title="Sin fotos"
+                        Description="Esta persona no tiene fotos asignadas todavía." />
+        }
+    </div>
+
+    @* ── Merge bottom sheet ── *@
+    @if (_mergeOpen)
+    {
+        <div class="ph-merge-sheet__backdrop" @onclick="CloseMergeSheet"></div>
+        <MudDrawer @key="_mergeVersion"
+                   Open="true"
+                   Anchor="Anchor.Bottom"
+                   Elevation="6"
+                   Variant="DrawerVariant.Temporary"
+                   Class="ph-bottom-sheet ph-merge-sheet">
+            <div class="ph-sheet-handle"></div>
+            <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
+                <MudText Typo="Typo.h6">Fusionar personas</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseMergeSheet" />
+            </div>
+            <MudDivider />
+
+            <div class="px-4 pt-3 pb-2">
+                <MudText Typo="Typo.body2" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
+                    Combina <b>@(_person.Name ?? "Sin nombre")</b> con otra persona. Sus fotos se moverán a la conservada y la otra se borrará.
+                </MudText>
+                <MudAutocomplete T="PersonSummary"
+                                 Label="Otra persona"
+                                 SearchFunc="SearchPeople"
+                                 Value="_mergePartner"
+                                 ValueChanged="OnMergePartnerSelected"
+                                 ToStringFunc="@(p => string.IsNullOrWhiteSpace(p?.Name) ? "Sin nombre" : p!.Name)"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Clearable="true"
+                                 CoerceText="false"
+                                 Placeholder="Empieza a escribir un nombre…" />
+            </div>
+
+            @if (_mergePartner != null)
+            {
+                <MudDivider Class="my-1" />
+                <div class="px-4 pt-2 pb-2">
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);" Class="mb-2 d-block">
+                        ¿Qué nombre y portada conservar?
+                    </MudText>
+                    <div class="ph-merge-keep">
+                        <button type="button"
+                                class="ph-merge-keep__option @(_keepCurrent ? "ph-merge-keep__option--active" : "")"
+                                @onclick="@(() => _keepCurrent = true)">
+                            <div class="ph-merge-keep__avatar">
+                                @if (_person.CoverFaceId.HasValue)
+                                {
+                                    <img src="@($"/api/faces/{_person.CoverFaceId.Value}/thumbnail")" alt="" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.Person" />
+                                }
+                            </div>
+                            <div class="ph-merge-keep__name">@(_person.Name ?? "Sin nombre")</div>
+                            <div class="ph-merge-keep__count">@_person.FaceCount caras</div>
+                        </button>
+
+                        <button type="button"
+                                class="ph-merge-keep__option @(!_keepCurrent ? "ph-merge-keep__option--active" : "")"
+                                @onclick="@(() => _keepCurrent = false)">
+                            <div class="ph-merge-keep__avatar">
+                                @if (_mergePartner.CoverFaceId.HasValue)
+                                {
+                                    <img src="@($"/api/faces/{_mergePartner.CoverFaceId.Value}/thumbnail")" alt="" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.Person" />
+                                }
+                            </div>
+                            <div class="ph-merge-keep__name">@(_mergePartner.Name ?? "Sin nombre")</div>
+                            <div class="ph-merge-keep__count">@_mergePartner.FaceCount caras</div>
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <MudDivider Class="my-1" />
+
+            <div class="d-flex gap-2 justify-end px-3 pb-3 pt-1">
+                <MudButton Variant="Variant.Text" OnClick="CloseMergeSheet" Disabled="@_mergeBusy">Cancelar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(_mergePartner == null || _mergeBusy)"
+                           OnClick="ConfirmMergeAsync">
+                    @(_mergeBusy ? "Fusionando…" : "Fusionar")
+                </MudButton>
+            </div>
+        </MudDrawer>
+    }
+
+    @* ── Cover face picker sheet ── *@
+    @if (_coverOpen)
+    {
+        <div class="ph-cover-sheet__backdrop" @onclick="CloseCoverSheet"></div>
+        <MudDrawer @key="_coverVersion"
+                   Open="true"
+                   Anchor="Anchor.Bottom"
+                   Elevation="6"
+                   Variant="DrawerVariant.Temporary"
+                   Class="ph-bottom-sheet ph-cover-sheet">
+            <div class="ph-sheet-handle"></div>
+            <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
+                <MudText Typo="Typo.h6">Foto de portada</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseCoverSheet" />
+            </div>
+            <MudDivider />
+
+            <div class="ph-cover-sheet__body">
+                @if (_coverLoading && _coverFaces.Count == 0)
+                {
+                    <div class="d-flex justify-center py-6">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+                    </div>
+                }
+                else if (_coverFaces.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="px-4 py-4" Style="color: var(--mud-palette-text-secondary);">
+                        Esta persona no tiene caras disponibles.
+                    </MudText>
+                }
+                else
+                {
+                    <div class="ph-cover-grid">
+                        @foreach (var f in _coverFaces)
+                        {
+                            <button type="button"
+                                    class="ph-cover-tile @(_coverSelectedId == f.Id ? "ph-cover-tile--active" : "") @(_person.CoverFaceId == f.Id ? "ph-cover-tile--current" : "")"
+                                    @onclick="@(() => _coverSelectedId = f.Id)">
+                                <img src="@($"/api/faces/{f.Id}/thumbnail")" alt="" />
+                                @if (_person.CoverFaceId == f.Id)
+                                {
+                                    <span class="ph-cover-tile__badge">Actual</span>
+                                }
+                            </button>
+                        }
+                    </div>
+
+                    @if (_coverFaces.Count < _coverTotal)
+                    {
+                        <div class="d-flex justify-center py-2">
+                            <MudButton Variant="Variant.Text"
+                                       Disabled="@_coverLoading"
+                                       OnClick="LoadMoreCoverFacesAsync">
+                                @(_coverLoading ? "Cargando…" : $"Cargar más ({_coverTotal - _coverFaces.Count} restantes)")
+                            </MudButton>
+                        </div>
+                    }
+                }
+            </div>
+
+            <MudDivider Class="my-1" />
+            <div class="d-flex gap-2 justify-end px-3 pb-3 pt-1">
+                <MudButton Variant="Variant.Text" OnClick="CloseCoverSheet" Disabled="@_coverBusy">Cancelar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(_coverSelectedId == null || _coverSelectedId == _person.CoverFaceId || _coverBusy)"
+                           OnClick="ConfirmCoverAsync">
+                    @(_coverBusy ? "Guardando…" : "Establecer como portada")
+                </MudButton>
+            </div>
+        </MudDrawer>
+    }
+}
+
+<style>
+    .ph-person-header {
+        display: flex; align-items: center; gap: 16px;
+        padding: 12px 16px; position: relative;
+    }
+    .ph-person-header__back { flex: 0 0 auto; }
+    .ph-person-header__cover-btn {
+        position: relative;
+        width: 96px; height: 96px;
+        padding: 0; border: 0; background: transparent;
+        flex: 0 0 auto; cursor: pointer;
+        border-radius: 50%;
+    }
+    .ph-person-header__cover {
+        width: 96px; height: 96px; border-radius: 50%;
+        object-fit: cover;
+        background: var(--mud-palette-background-grey);
+        display: block;
+    }
+    .ph-person-header__cover--empty {
+        display: flex; align-items: center; justify-content: center;
+        background: var(--mud-palette-background-grey);
+    }
+    .ph-person-header__cover-edit {
+        position: absolute;
+        right: 0; bottom: 0;
+        width: 28px; height: 28px;
+        background: var(--mud-palette-primary);
+        color: #fff;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+        opacity: 0; transition: opacity 0.15s ease;
+    }
+    .ph-person-header__cover-btn:hover .ph-person-header__cover-edit,
+    .ph-person-header__cover-btn:focus-visible .ph-person-header__cover-edit {
+        opacity: 1;
+    }
+    /* Touch devices: keep the badge visible since :hover doesn't fire reliably. */
+    @@media (hover: none) {
+        .ph-person-header__cover-edit { opacity: 1; }
+    }
+    .ph-person-header__meta { flex: 1 1 auto; min-width: 0; }
+
+    /* Merge bottom sheet — same z-index strategy as the face sheet */
+    .ph-merge-sheet.mud-drawer,
+    aside.ph-merge-sheet,
+    .ph-merge-sheet {
+        z-index: 1400 !important;
+    }
+    .ph-merge-sheet__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-merge-sheet-fade-in 0.18s ease;
+    }
+    @@keyframes ph-merge-sheet-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ph-merge-keep {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .ph-merge-keep__option {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 4px;
+        padding: 8px 6px;
+        border: 2px solid var(--mud-palette-divider);
+        border-radius: 12px;
+        background: transparent;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+        min-width: 0;
+    }
+    .ph-merge-keep__option:hover {
+        background: var(--mud-palette-action-default-hover);
+    }
+    .ph-merge-keep__option--active {
+        border-color: var(--mud-palette-primary);
+        background: rgba(25, 118, 210, 0.08);
+    }
+    .ph-merge-keep__avatar {
+        width: 56px; height: 56px; border-radius: 50%;
+        background: var(--mud-palette-background-grey);
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .ph-merge-keep__avatar img {
+        width: 100%; height: 100%; object-fit: cover;
+    }
+    .ph-merge-keep__name {
+        font-size: 13px; font-weight: 600;
+        max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ph-merge-keep__count {
+        font-size: 11px; color: var(--mud-palette-text-secondary);
+    }
+
+    /* Cover-face picker sheet — same z-index strategy as the others */
+    .ph-cover-sheet.mud-drawer,
+    aside.ph-cover-sheet,
+    .ph-cover-sheet {
+        z-index: 1400 !important;
+    }
+    .ph-cover-sheet__backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1390;
+        animation: ph-cover-sheet-fade-in 0.18s ease;
+    }
+    @@keyframes ph-cover-sheet-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ph-cover-sheet__body {
+        max-height: 55svh;
+        overflow-y: auto;
+        padding: 12px 12px 4px;
+    }
+    .ph-cover-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+    }
+    .ph-cover-tile {
+        position: relative;
+        padding: 0;
+        border: 3px solid transparent;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        aspect-ratio: 1;
+        overflow: hidden;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .ph-cover-tile img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        display: block;
+    }
+    .ph-cover-tile:hover { transform: scale(1.03); }
+    .ph-cover-tile--active {
+        border-color: var(--mud-palette-primary);
+    }
+    .ph-cover-tile--current {
+        outline: 1px dashed var(--mud-palette-text-secondary);
+        outline-offset: 2px;
+    }
+    .ph-cover-tile__badge {
+        position: absolute;
+        bottom: 4px; left: 50%; transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.78); color: #fff;
+        font-size: 10px; padding: 1px 6px; border-radius: 999px;
+        pointer-events: none;
+    }
+
+    /* Selection bar + per-tile selection check */
+    .ph-person-selection-bar {
+        position: sticky; top: 0;
+        display: flex; align-items: center;
+        gap: 4px; padding: 8px 12px;
+        background: var(--mud-palette-surface);
+        border-bottom: 1px solid var(--mud-palette-divider);
+        z-index: 4;
+    }
+    .ph-person-tile { position: relative; }
+    .ph-person-tile--selectable { cursor: pointer; }
+    .ph-person-tile--selected::after {
+        content: "";
+        position: absolute; inset: 0;
+        border: 3px solid var(--mud-palette-primary);
+        border-radius: 4px;
+        pointer-events: none;
+    }
+    .ph-person-tile__check {
+        position: absolute; top: 4px; left: 4px;
+        width: 28px; height: 28px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border: 0; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+    }
+    .ph-person-tile--selected .ph-person-tile__check {
+        background: var(--mud-palette-primary);
+    }
+
+    /* Suggestions strip — horizontal scroll of "could this be X?" face tiles. */
+    .ph-suggestions {
+        margin: 4px 12px 12px;
+        padding: 10px 12px;
+        background: rgba(255, 179, 0, 0.08);
+        border: 1px solid rgba(255, 179, 0, 0.35);
+        border-radius: 12px;
+    }
+    .ph-suggestions__header {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+    .ph-suggestions__row {
+        display: flex; gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+    }
+    .ph-suggestion-card {
+        flex: 0 0 auto;
+        display: flex; flex-direction: column; align-items: center;
+        gap: 4px;
+        background: var(--mud-palette-surface);
+        border-radius: 10px;
+        padding: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        border: 0;
+        cursor: default;
+    }
+    .ph-suggestion-card__thumb {
+        width: 72px; height: 72px;
+        padding: 0; border: 0; background: transparent;
+        cursor: pointer; border-radius: 50%;
+        overflow: hidden;
+    }
+    .ph-suggestion-card__thumb img {
+        width: 100%; height: 100%;
+        object-fit: cover; display: block;
+    }
+    .ph-suggestion-card__actions {
+        display: flex; gap: 0;
+    }
+    .ph-suggestion-card--more {
+        cursor: pointer;
+        justify-content: center;
+        width: 88px; min-height: 110px;
+        color: var(--mud-palette-text-secondary);
+        font-size: 12px;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private bool _notFound;
+    private PersonSummary? _person;
+    private List<TimelineItem> _assets = new();
+    private int _total;
+
+    private bool _editing;
+    private string _editName = string.Empty;
+
+    // Merge sheet state
+    private bool _mergeOpen;
+    private int _mergeVersion;
+    private PersonSummary? _mergePartner;
+    private bool _keepCurrent = true;
+    private List<PersonSummary>? _peopleCache;
+    private bool _mergeBusy;
+
+    // Selection mode (bulk operations)
+    private bool _selectionMode;
+    private HashSet<Guid> _selectedAssetIds = new();
+    private bool _bulkBusy;
+
+    // Cover-picker sheet state
+    private bool _coverOpen;
+    private int _coverVersion;
+    private bool _coverLoading;
+    private bool _coverBusy;
+    private List<PersonFaceItem> _coverFaces = new();
+    private int _coverTotal;
+    private Guid? _coverSelectedId;
+    private const int CoverPageSize = 60;
+
+    // Proactive suggestions strip
+    private List<PersonSuggestionItem> _suggestions = new();
+    private int _suggestionsTotal;
+    private bool _suggestionsLoading;
+    private bool _bulkSuggestionsBusy;
+    private readonly HashSet<Guid> _busySuggestions = new();
+    private const int SuggestionsPageSize = 12;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _notFound = false;
+        try
+        {
+            _person = await PeopleService.GetPersonAsync(Id);
+            if (_person == null)
+            {
+                _notFound = true;
+                return;
+            }
+
+            var page = await PeopleService.GetPersonAssetsAsync(Id, limit: 200);
+            _total = page.Total;
+            _assets = page.Items.Select(i => i.ToTimelineItem()).ToList();
+            AssetListNavigationState.SetList(_assets, $"person:{Id}");
+
+            await LoadSuggestionsAsync(reset: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar la persona: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void StartEditing()
+    {
+        _editName = _person?.Name ?? string.Empty;
+        _editing = true;
+    }
+
+    private async Task SaveNameAsync()
+    {
+        if (_person == null) return;
+        try
+        {
+            var trimmed = string.IsNullOrWhiteSpace(_editName) ? null : _editName.Trim();
+            await PeopleService.RenameAsync(_person.Id, trimmed);
+            _person = _person with { Name = trimmed };
+            _editing = false;
+            Snackbar.Add("Nombre actualizado", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo guardar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HideAsync()
+    {
+        if (_person == null) return;
+        try
+        {
+            await PeopleService.HideAsync(_person.Id);
+            Snackbar.Add("Persona ocultada", Severity.Success);
+            Navigation.NavigateTo("/people");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo ocultar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UnhideAsync()
+    {
+        if (_person == null) return;
+        try
+        {
+            await PeopleService.UnhideAsync(_person.Id);
+            _person = _person with { IsHidden = false, UpdatedAt = DateTime.UtcNow };
+            Snackbar.Add("Persona visible de nuevo", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo mostrar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenAsset(TimelineItem asset)
+    {
+        AssetListNavigationState.SetList(_assets, $"person:{Id}");
+        Navigation.NavigateTo($"/asset/{asset.Id}?returnTo=people/{Id}");
+    }
+
+    // ── Bulk selection ────────────────────────────────────────────────────
+
+    private bool IsSelected(Guid assetId) => _selectedAssetIds.Contains(assetId);
+
+    private bool AllSelected => _assets.Count > 0 && _selectedAssetIds.Count == _assets.Count;
+
+    private void EnterSelectionMode()
+    {
+        _selectionMode = true;
+        _selectedAssetIds = new();
+    }
+
+    private void ExitSelectionMode()
+    {
+        _selectionMode = false;
+        _selectedAssetIds = new();
+    }
+
+    private void ToggleSelected(Guid assetId)
+    {
+        if (!_selectedAssetIds.Add(assetId)) _selectedAssetIds.Remove(assetId);
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (AllSelected) _selectedAssetIds = new();
+        else _selectedAssetIds = _assets.Select(a => a.Id).ToHashSet();
+    }
+
+    private void OnTileClick(TimelineItem asset)
+    {
+        if (_selectionMode)
+        {
+            ToggleSelected(asset.Id);
+        }
+        else
+        {
+            OpenAsset(asset);
+        }
+    }
+
+    private void OnTileContextMenu(TimelineItem asset)
+    {
+        // Right-click / long-press on a tile starts selection mode and
+        // marks that tile selected — same affordance as Favoritos.
+        if (!_selectionMode) EnterSelectionMode();
+        _selectedAssetIds.Add(asset.Id);
+    }
+
+    private async Task BulkUnlinkAsync()
+    {
+        if (_person == null || _selectedAssetIds.Count == 0 || _bulkBusy) return;
+        _bulkBusy = true;
+        var personId = _person.Id;
+        var ids = _selectedAssetIds.ToList();
+        try
+        {
+            var detached = 0;
+            foreach (var aid in ids)
+            {
+                detached += await PeopleService.UnlinkAssetFromPersonAsync(personId, aid);
+            }
+            Snackbar.Add($"Quitadas {ids.Count} fotos ({detached} caras)", Severity.Success);
+            ExitSelectionMode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al quitar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _bulkBusy = false;
+        }
+    }
+
+    // ── Merge sheet ────────────────────────────────────────────────────────
+
+    private void OpenMergeSheet()
+    {
+        _mergePartner = null;
+        _keepCurrent = true;
+        _mergeBusy = false;
+        _peopleCache = null;
+        _mergeVersion++;
+        _mergeOpen = true;
+    }
+
+    private void CloseMergeSheet()
+    {
+        _mergeOpen = false;
+        _mergePartner = null;
+        _keepCurrent = true;
+        _mergeBusy = false;
+    }
+
+    private async Task<IEnumerable<PersonSummary>> SearchPeople(string? value, CancellationToken ct)
+    {
+        // Pull all owned persons once per sheet open, then filter locally —
+        // matches the assignment-sheet pattern in FaceOverlay.
+        _peopleCache ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: true, ct: ct)).Items;
+
+        var pool = _peopleCache.Where(p => p.Id != Id);
+        if (string.IsNullOrWhiteSpace(value))
+            return pool.OrderByDescending(p => p.FaceCount).Take(20);
+
+        return pool
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name)
+                        && p.Name!.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(p => p.FaceCount)
+            .Take(20);
+    }
+
+    private void OnMergePartnerSelected(PersonSummary? person)
+    {
+        _mergePartner = person;
+    }
+
+    // ── Cover-picker sheet ────────────────────────────────────────────────
+
+    private async Task OpenCoverSheet()
+    {
+        _coverFaces = new();
+        _coverTotal = 0;
+        _coverSelectedId = _person?.CoverFaceId;
+        _coverBusy = false;
+        _coverVersion++;
+        _coverOpen = true;
+        await LoadCoverFacesAsync(reset: true);
+    }
+
+    private void CloseCoverSheet()
+    {
+        _coverOpen = false;
+        _coverFaces = new();
+        _coverSelectedId = null;
+        _coverBusy = false;
+    }
+
+    private async Task LoadCoverFacesAsync(bool reset)
+    {
+        if (_person == null || _coverLoading) return;
+        _coverLoading = true;
+        StateHasChanged();
+        try
+        {
+            var page = await PeopleService.GetPersonFacesAsync(
+                _person.Id,
+                limit: CoverPageSize,
+                offset: reset ? 0 : _coverFaces.Count);
+            _coverTotal = page.Total;
+            if (reset) _coverFaces = page.Items;
+            else _coverFaces.AddRange(page.Items);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudieron cargar las caras: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _coverLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task LoadMoreCoverFacesAsync() => LoadCoverFacesAsync(reset: false);
+
+    private async Task ConfirmCoverAsync()
+    {
+        if (_person == null || _coverSelectedId == null || _coverBusy) return;
+        if (_coverSelectedId == _person.CoverFaceId) { CloseCoverSheet(); return; }
+        _coverBusy = true;
+        try
+        {
+            await PeopleService.SetCoverFaceAsync(_person.Id, _coverSelectedId.Value);
+            _person = _person with { CoverFaceId = _coverSelectedId, UpdatedAt = DateTime.UtcNow };
+            Snackbar.Add("Foto de portada actualizada", Severity.Success);
+            CloseCoverSheet();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo actualizar la portada: {ex.Message}", Severity.Error);
+            _coverBusy = false;
+        }
+    }
+
+    // ── Suggestions ──────────────────────────────────────────────────────
+
+    private async Task LoadSuggestionsAsync(bool reset)
+    {
+        if (_person == null || _suggestionsLoading) return;
+        _suggestionsLoading = true;
+        try
+        {
+            var page = await PeopleService.GetPersonSuggestionsAsync(
+                _person.Id,
+                limit: SuggestionsPageSize,
+                offset: reset ? 0 : _suggestions.Count);
+            _suggestionsTotal = page.Total;
+            if (reset) _suggestions = page.Items;
+            else _suggestions.AddRange(page.Items);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudieron cargar las sugerencias: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _suggestionsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task LoadMoreSuggestionsAsync() => LoadSuggestionsAsync(reset: false);
+
+    private async Task AcceptSuggestionAsync(PersonSuggestionItem s)
+    {
+        if (!_busySuggestions.Add(s.Id)) return;
+        try
+        {
+            await PeopleService.AcceptFaceSuggestionAsync(s.Id);
+            // Remove locally; the asset list isn't reloaded because the new face
+            // counts as a new asset link only if the asset wasn't already linked
+            // — keeping the strip responsive matters more than perfect accuracy
+            // until the next full reload.
+            _suggestions.RemoveAll(x => x.Id == s.Id);
+            _suggestionsTotal = Math.Max(0, _suggestionsTotal - 1);
+            Snackbar.Add("Cara confirmada", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busySuggestions.Remove(s.Id);
+            StateHasChanged();
+        }
+    }
+
+    private async Task DismissSuggestionAsync(PersonSuggestionItem s)
+    {
+        if (!_busySuggestions.Add(s.Id)) return;
+        try
+        {
+            await PeopleService.DismissFaceSuggestionAsync(s.Id);
+            _suggestions.RemoveAll(x => x.Id == s.Id);
+            _suggestionsTotal = Math.Max(0, _suggestionsTotal - 1);
+            Snackbar.Add("Sugerencia descartada", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busySuggestions.Remove(s.Id);
+            StateHasChanged();
+        }
+    }
+
+    private void OpenSuggestedAsset(PersonSuggestionItem s)
+    {
+        // Send the user to the asset so they can verify the face in context;
+        // returnTo brings them back here when they close the asset detail.
+        Navigation.NavigateTo($"/asset/{s.AssetId}?returnTo=people/{Id}");
+    }
+
+    private async Task AcceptAllSuggestionsAsync()
+    {
+        if (_person == null || _bulkSuggestionsBusy) return;
+        _bulkSuggestionsBusy = true;
+        try
+        {
+            var n = await PeopleService.AcceptAllSuggestionsAsync(_person.Id);
+            _suggestions.Clear();
+            _suggestionsTotal = 0;
+            Snackbar.Add(n == 0 ? "Sin sugerencias que aceptar"
+                                : $"Aceptadas {n} {(n == 1 ? "cara" : "caras")}",
+                         Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _bulkSuggestionsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DismissAllSuggestionsAsync()
+    {
+        if (_person == null || _bulkSuggestionsBusy) return;
+        _bulkSuggestionsBusy = true;
+        try
+        {
+            var n = await PeopleService.DismissAllSuggestionsAsync(_person.Id);
+            _suggestions.Clear();
+            _suggestionsTotal = 0;
+            Snackbar.Add(n == 0 ? "Sin sugerencias que descartar"
+                                : $"Descartadas {n} {(n == 1 ? "sugerencia" : "sugerencias")}",
+                         Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _bulkSuggestionsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Merge sheet ───────────────────────────────────────────────────────
+
+    private async Task ConfirmMergeAsync()
+    {
+        if (_person == null || _mergePartner == null || _mergeBusy) return;
+        _mergeBusy = true;
+        try
+        {
+            // Endpoint contract: target = kept, source = deleted.
+            var target = _keepCurrent ? _person.Id : _mergePartner.Id;
+            var source = _keepCurrent ? _mergePartner.Id : _person.Id;
+
+            await PeopleService.MergeAsync(target, source);
+            Snackbar.Add("Personas fusionadas", Severity.Success);
+
+            CloseMergeSheet();
+
+            // Navigate to whichever person was kept; if it's the current one,
+            // just reload, otherwise route to the new id.
+            if (target == Id)
+            {
+                await LoadAsync();
+            }
+            else
+            {
+                Navigation.NavigateTo($"/people/{target}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo fusionar: {ex.Message}", Severity.Error);
+            _mergeBusy = false;
+        }
+    }
+}

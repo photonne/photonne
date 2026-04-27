@@ -1,0 +1,299 @@
+@page "/admin/settings/face-recognition"
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Reconocimiento facial - Photonne</PageTitle>
+
+<div class="page-pad">
+@if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Volver al inicio
+        </MudButton>
+    </div>
+}
+else
+{
+    <div class="mt-4">
+        <MudText Typo="Typo.h5" Class="mb-2">Reconocimiento facial</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Detección de caras, agrupación en personas y mantenimiento de los clústeres.
+        </MudText>
+    </div>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Activación</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSwitch T="bool"
+                               Label="Detectar caras al subir o indexar fotos"
+                               Color="Color.Primary"
+                               Value="_enabled"
+                               ValueChanged="OnEnabledChanged" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Si lo desactivas, las nuevas fotos no se procesarán hasta que vuelvas a activarlo.
+                        Las personas y caras ya detectadas se mantienen.
+                    </MudText>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudSwitch T="bool"
+                               Label="Reagrupar caras automáticamente cada noche"
+                               Color="Color.Primary"
+                               Value="_nightlyClusterEnabled"
+                               ValueChanged="OnNightlyChanged" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Consolida las caras nuevas en personas existentes. Requiere que la
+                        <MudLink Href="/admin/settings/nightly">programación nocturna</MudLink>
+                        esté activa.
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+En 
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Sensibilidad</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-1">Umbral de agrupación</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2 d-block">
+                        Distancia coseno bajo la cual dos caras se consideran la misma persona automáticamente.
+                        Más bajo = más estricto (menos falsos positivos, más personas separadas).
+                    </MudText>
+                    <MudNumericField T="double"
+                                     @bind-Value="_clusteringThreshold"
+                                     Min="0.30" Max="0.70" Step="0.01"
+                                     Format="F2"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Disabled="@_thresholdsBusy" />
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.body2" Class="mb-1">Umbral de sugerencia</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2 d-block">
+                        Banda blanda: las caras entre el umbral de agrupación y este valor se ofrecen como sugerencias
+                        ("¿podría ser X?") en lugar de asignarse en automático.
+                    </MudText>
+                    <MudNumericField T="double"
+                                     @bind-Value="_suggestionThreshold"
+                                     Min="0.30" Max="0.80" Step="0.01"
+                                     Format="F2"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Disabled="@_thresholdsBusy" />
+
+                    <div class="mt-3 d-flex gap-2">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="@(_thresholdsBusy || !ThresholdsValid)"
+                                   OnClick="SaveThresholdsAsync">
+                            Guardar
+                        </MudButton>
+                        <MudButton Variant="Variant.Text"
+                                   Disabled="@_thresholdsBusy"
+                                   OnClick="ResetThresholdsAsync">
+                            Restablecer
+                        </MudButton>
+                    </div>
+                    @if (!ThresholdsValid)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1 d-block">
+                            El umbral de sugerencia debe ser mayor que el de agrupación.
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Mantenimiento</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-2">Detectar caras en fotos antiguas</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
+                        Encola jobs de detección facial para fotos sin procesar. Las cogerá el procesador en su siguiente pase.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="@_busy"
+                               OnClick="BackfillAsync"
+                               StartIcon="@Icons.Material.Outlined.Replay">
+                        Procesar fotos pendientes
+                    </MudButton>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.body2" Class="mb-2">Reagrupar caras ahora</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
+                        Lanza el clustering por lotes para todos los usuarios con caras huérfanas.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Disabled="@_busy"
+                               OnClick="ReclusterAllAsync"
+                               StartIcon="@Icons.Material.Outlined.GroupWork">
+                        Reagrupar todo
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+</div>
+
+@code {
+    private const string KeyEnabled = "FaceRecognition.Enabled";
+    private const string KeyNightlyCluster = "NightlyTaskSettings.FaceClustering.Enabled";
+    private const string KeyClusteringThreshold = "FaceRecognition.ClusteringThreshold";
+    private const string KeySuggestionThreshold = "FaceRecognition.SuggestionThreshold";
+    // Defaults match FaceRecognitionOptions; used as fallback when no override is stored.
+    private const double DefaultClusteringThreshold = 0.42;
+    private const double DefaultSuggestionThreshold = 0.55;
+
+    private bool _isAuthorized;
+    private bool _enabled = true;
+    private bool _nightlyClusterEnabled = true;
+    private bool _busy;
+    private double _clusteringThreshold = DefaultClusteringThreshold;
+    private double _suggestionThreshold = DefaultSuggestionThreshold;
+    private bool _thresholdsBusy;
+
+    private bool ThresholdsValid => _suggestionThreshold > _clusteringThreshold;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+        if (!_isAuthorized) return;
+
+        _enabled = !"false".Equals(await SettingsService.GetSettingAsync(KeyEnabled, "true"), StringComparison.OrdinalIgnoreCase);
+        _nightlyClusterEnabled = !"false".Equals(await SettingsService.GetSettingAsync(KeyNightlyCluster, "true"), StringComparison.OrdinalIgnoreCase);
+        _clusteringThreshold = ParseThreshold(
+            await SettingsService.GetSettingAsync(KeyClusteringThreshold, ""), DefaultClusteringThreshold);
+        _suggestionThreshold = ParseThreshold(
+            await SettingsService.GetSettingAsync(KeySuggestionThreshold, ""), DefaultSuggestionThreshold);
+    }
+
+    private static double ParseThreshold(string raw, double fallback) =>
+        double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v : fallback;
+
+    private async Task OnEnabledChanged(bool v)
+    {
+        _enabled = v;
+        var ok = await SettingsService.SaveSettingAsync(KeyEnabled, v ? "true" : "false");
+        Snackbar.Add(ok ? (v ? "Detección facial activada" : "Detección facial desactivada") : "No se pudo guardar",
+            ok ? Severity.Success : Severity.Error);
+    }
+
+    private async Task OnNightlyChanged(bool v)
+    {
+        _nightlyClusterEnabled = v;
+        var ok = await SettingsService.SaveSettingAsync(KeyNightlyCluster, v ? "true" : "false");
+        Snackbar.Add(ok ? "Programación nocturna actualizada" : "No se pudo guardar",
+            ok ? Severity.Success : Severity.Error);
+    }
+
+    private async Task BackfillAsync()
+    {
+        _busy = true;
+        try
+        {
+            await AttachAuthAsync();
+            var resp = await Http.PostAsJsonAsync("/api/admin/maintenance/face-detection/backfill", new { });
+            resp.EnsureSuccessStatusCode();
+            var result = await resp.Content.ReadFromJsonAsync<BackfillResult>();
+            if (result != null)
+                Snackbar.Add($"Encoladas {result.Enqueued} fotos (de {result.Total} pendientes).", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Error: {ex.Message}", Severity.Error); }
+        finally { _busy = false; }
+    }
+
+    private async Task SaveThresholdsAsync()
+    {
+        if (!ThresholdsValid) return;
+        _thresholdsBusy = true;
+        try
+        {
+            // Persist as invariant-culture so the server parses the same string back.
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var ok1 = await SettingsService.SaveSettingAsync(KeyClusteringThreshold, _clusteringThreshold.ToString("F2", inv));
+            var ok2 = await SettingsService.SaveSettingAsync(KeySuggestionThreshold, _suggestionThreshold.ToString("F2", inv));
+            Snackbar.Add(ok1 && ok2 ? "Umbrales actualizados" : "No se pudieron guardar todos los valores",
+                ok1 && ok2 ? Severity.Success : Severity.Error);
+        }
+        finally { _thresholdsBusy = false; }
+    }
+
+    private async Task ResetThresholdsAsync()
+    {
+        _thresholdsBusy = true;
+        try
+        {
+            // Saving an empty string makes the server fall back to FaceRecognitionOptions.
+            var ok1 = await SettingsService.SaveSettingAsync(KeyClusteringThreshold, "");
+            var ok2 = await SettingsService.SaveSettingAsync(KeySuggestionThreshold, "");
+            _clusteringThreshold = DefaultClusteringThreshold;
+            _suggestionThreshold = DefaultSuggestionThreshold;
+            Snackbar.Add(ok1 && ok2 ? "Umbrales restablecidos" : "No se pudieron restablecer todos",
+                ok1 && ok2 ? Severity.Success : Severity.Error);
+        }
+        finally { _thresholdsBusy = false; }
+    }
+
+    private async Task ReclusterAllAsync()
+    {
+        _busy = true;
+        try
+        {
+            await AttachAuthAsync();
+            var resp = await Http.PostAsync("/api/admin/maintenance/face-clustering/run", null);
+            resp.EnsureSuccessStatusCode();
+            var result = await resp.Content.ReadFromJsonAsync<ReclusterResult>();
+            if (result != null)
+                Snackbar.Add($"Reagrupados {result.OwnersProcessed} usuarios. {result.PersonsCreated} nuevas personas creadas.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Error: {ex.Message}", Severity.Error); }
+        finally { _busy = false; }
+    }
+
+    private async Task AttachAuthAsync()
+    {
+        var token = await AuthService.GetTokenAsync();
+        Http.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
+            ? null : new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private sealed record BackfillResult(int Enqueued, int Total);
+    private sealed record ReclusterResult(int OwnersProcessed, int PersonsCreated);
+}
