@@ -33,6 +33,11 @@ public interface IPeopleService
     Task AssignFaceAsync(Guid faceId, Guid? personId, string? newPersonName, CancellationToken ct = default);
     Task UnassignFaceAsync(Guid faceId, CancellationToken ct = default);
     Task RejectFaceAsync(Guid faceId, CancellationToken ct = default);
+
+    // Proactive suggestions
+    Task<PersonSuggestionsPage> GetPersonSuggestionsAsync(Guid personId, int limit = 30, int offset = 0, CancellationToken ct = default);
+    Task AcceptFaceSuggestionAsync(Guid faceId, CancellationToken ct = default);
+    Task DismissFaceSuggestionAsync(Guid faceId, CancellationToken ct = default);
 }
 
 public sealed record PersonSummary(
@@ -86,4 +91,14 @@ public sealed record FaceItem(
     float BoundingBoxH,
     float Confidence,
     bool IsManuallyAssigned,
-    bool IsRejected);
+    bool IsRejected,
+    Guid? SuggestedPersonId,
+    float? SuggestedDistance);
+
+public sealed record PersonSuggestionItem(
+    Guid Id,
+    Guid AssetId,
+    float Confidence,
+    float? SuggestedDistance);
+
+public sealed record PersonSuggestionsPage(int Total, List<PersonSuggestionItem> Items);

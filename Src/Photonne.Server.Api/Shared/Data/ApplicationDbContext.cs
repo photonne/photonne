@@ -462,9 +462,18 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.PersonId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Optional suggested cluster — separate FK so disambiguation matches the
+            // confirmed Person FK and the SetNull cascade keeps suggestions clean
+            // when a Person is deleted.
+            entity.HasOne(e => e.SuggestedPerson)
+                .WithMany()
+                .HasForeignKey(e => e.SuggestedPersonId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasIndex(e => e.AssetId);
             entity.HasIndex(e => e.PersonId);
             entity.HasIndex(e => new { e.PersonId, e.IsRejected });
+            entity.HasIndex(e => e.SuggestedPersonId);
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 

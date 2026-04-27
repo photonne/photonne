@@ -555,11 +555,19 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<Guid?>("PersonId")
                         .HasColumnType("uuid");
 
+                    b.Property<float?>("SuggestedDistance")
+                        .HasColumnType("real");
+
+                    b.Property<Guid?>("SuggestedPersonId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssetId");
 
                     b.HasIndex("PersonId");
+
+                    b.HasIndex("SuggestedPersonId");
 
                     b.HasIndex("PersonId", "IsRejected");
 
@@ -1118,9 +1126,16 @@ namespace Photonne.Server.Api.Migrations
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Person", "SuggestedPerson")
+                        .WithMany()
+                        .HasForeignKey("SuggestedPersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Asset");
 
                     b.Navigation("Person");
+
+                    b.Navigation("SuggestedPerson");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExternalLibraryPermission", b =>

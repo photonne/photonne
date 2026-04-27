@@ -29,5 +29,13 @@ public class Face
     // Soft-deleted false positive. Excluded from clustering and counted as rejected.
     public bool IsRejected { get; set; }
 
+    // Proactive suggestion: the closest Person within [ClusteringThreshold, SuggestionThreshold).
+    // Always null when the face is assigned, manual, or rejected — set by the clustering service
+    // and cleared by any user action that resolves the face. The hint is non-binding: the user
+    // confirms or dismisses it from the FaceOverlay or the PersonDetail suggestions list.
+    public Guid? SuggestedPersonId { get; set; }
+    public Person? SuggestedPerson { get; set; }
+    public float? SuggestedDistance { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

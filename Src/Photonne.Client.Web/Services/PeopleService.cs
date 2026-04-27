@@ -145,4 +145,26 @@ public class PeopleService : IPeopleService
         var resp = await _http.DeleteAsync($"/api/faces/{faceId}", ct);
         resp.EnsureSuccessStatusCode();
     }
+
+    public async Task<PersonSuggestionsPage> GetPersonSuggestionsAsync(Guid personId, int limit = 30, int offset = 0, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var url = $"/api/people/{personId}/suggestions?limit={limit}&offset={offset}";
+        var page = await _http.GetFromJsonAsync<PersonSuggestionsPage>(url, ct);
+        return page ?? new PersonSuggestionsPage(0, new List<PersonSuggestionItem>());
+    }
+
+    public async Task AcceptFaceSuggestionAsync(Guid faceId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync($"/api/faces/{faceId}/accept-suggestion", null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    public async Task DismissFaceSuggestionAsync(Guid faceId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync($"/api/faces/{faceId}/dismiss-suggestion", null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
 }

@@ -136,6 +136,55 @@ else if (_person != null)
         </div>
     }
 
+    @if (_suggestions.Count > 0)
+    {
+        <div class="ph-suggestions">
+            <div class="ph-suggestions__header">
+                <MudIcon Icon="@Icons.Material.Outlined.Lightbulb" Size="Size.Small" />
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                    Sugerencias (@_suggestionsTotal)
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                    ¿Estas caras son @(string.IsNullOrWhiteSpace(_person.Name) ? "esta persona" : _person.Name)?
+                </MudText>
+            </div>
+            <div class="ph-suggestions__row">
+                @foreach (var s in _suggestions)
+                {
+                    <div class="ph-suggestion-card" @key="s.Id">
+                        <button type="button"
+                                class="ph-suggestion-card__thumb"
+                                title="Ver la foto original"
+                                @onclick="@(() => OpenSuggestedAsset(s))">
+                            <img src="@($"/api/faces/{s.Id}/thumbnail")" alt="" />
+                        </button>
+                        <div class="ph-suggestion-card__actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                           Size="Size.Small"
+                                           Color="Color.Success"
+                                           Disabled="@_busySuggestions.Contains(s.Id)"
+                                           OnClick="@(() => AcceptSuggestionAsync(s))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Size="Size.Small"
+                                           Disabled="@_busySuggestions.Contains(s.Id)"
+                                           OnClick="@(() => DismissSuggestionAsync(s))" />
+                        </div>
+                    </div>
+                }
+                @if (_suggestions.Count < _suggestionsTotal)
+                {
+                    <button type="button"
+                            class="ph-suggestion-card ph-suggestion-card--more"
+                            @onclick="LoadMoreSuggestionsAsync"
+                            disabled="@_suggestionsLoading">
+                        <MudIcon Icon="@Icons.Material.Filled.MoreHoriz" />
+                        <span>+@(_suggestionsTotal - _suggestions.Count)</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+
     <div class="assets-grid-content">
         @if (_assets.Any())
         {
@@ -525,6 +574,56 @@ else if (_person != null)
     .ph-person-tile--selected .ph-person-tile__check {
         background: var(--mud-palette-primary);
     }
+
+    /* Suggestions strip — horizontal scroll of "could this be X?" face tiles. */
+    .ph-suggestions {
+        margin: 4px 12px 12px;
+        padding: 10px 12px;
+        background: rgba(255, 179, 0, 0.08);
+        border: 1px solid rgba(255, 179, 0, 0.35);
+        border-radius: 12px;
+    }
+    .ph-suggestions__header {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+    .ph-suggestions__row {
+        display: flex; gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+    }
+    .ph-suggestion-card {
+        flex: 0 0 auto;
+        display: flex; flex-direction: column; align-items: center;
+        gap: 4px;
+        background: var(--mud-palette-surface);
+        border-radius: 10px;
+        padding: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        border: 0;
+        cursor: default;
+    }
+    .ph-suggestion-card__thumb {
+        width: 72px; height: 72px;
+        padding: 0; border: 0; background: transparent;
+        cursor: pointer; border-radius: 50%;
+        overflow: hidden;
+    }
+    .ph-suggestion-card__thumb img {
+        width: 100%; height: 100%;
+        object-fit: cover; display: block;
+    }
+    .ph-suggestion-card__actions {
+        display: flex; gap: 0;
+    }
+    .ph-suggestion-card--more {
+        cursor: pointer;
+        justify-content: center;
+        width: 88px; min-height: 110px;
+        color: var(--mud-palette-text-secondary);
+        font-size: 12px;
+    }
 </style>
 
 @code {
@@ -562,6 +661,13 @@ else if (_person != null)
     private Guid? _coverSelectedId;
     private const int CoverPageSize = 60;
 
+    // Proactive suggestions strip
+    private List<PersonSuggestionItem> _suggestions = new();
+    private int _suggestionsTotal;
+    private bool _suggestionsLoading;
+    private readonly HashSet<Guid> _busySuggestions = new();
+    private const int SuggestionsPageSize = 12;
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadAsync();
@@ -584,6 +690,8 @@ else if (_person != null)
             _total = page.Total;
             _assets = page.Items.Select(i => i.ToTimelineItem()).ToList();
             AssetListNavigationState.SetList(_assets, $"person:{Id}");
+
+            await LoadSuggestionsAsync(reset: true);
         }
         catch (Exception ex)
         {
@@ -838,6 +946,89 @@ else if (_person != null)
             Snackbar.Add($"No se pudo actualizar la portada: {ex.Message}", Severity.Error);
             _coverBusy = false;
         }
+    }
+
+    // ── Suggestions ──────────────────────────────────────────────────────
+
+    private async Task LoadSuggestionsAsync(bool reset)
+    {
+        if (_person == null || _suggestionsLoading) return;
+        _suggestionsLoading = true;
+        try
+        {
+            var page = await PeopleService.GetPersonSuggestionsAsync(
+                _person.Id,
+                limit: SuggestionsPageSize,
+                offset: reset ? 0 : _suggestions.Count);
+            _suggestionsTotal = page.Total;
+            if (reset) _suggestions = page.Items;
+            else _suggestions.AddRange(page.Items);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudieron cargar las sugerencias: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _suggestionsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task LoadMoreSuggestionsAsync() => LoadSuggestionsAsync(reset: false);
+
+    private async Task AcceptSuggestionAsync(PersonSuggestionItem s)
+    {
+        if (!_busySuggestions.Add(s.Id)) return;
+        try
+        {
+            await PeopleService.AcceptFaceSuggestionAsync(s.Id);
+            // Remove locally; the asset list isn't reloaded because the new face
+            // counts as a new asset link only if the asset wasn't already linked
+            // — keeping the strip responsive matters more than perfect accuracy
+            // until the next full reload.
+            _suggestions.RemoveAll(x => x.Id == s.Id);
+            _suggestionsTotal = Math.Max(0, _suggestionsTotal - 1);
+            Snackbar.Add("Cara confirmada", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busySuggestions.Remove(s.Id);
+            StateHasChanged();
+        }
+    }
+
+    private async Task DismissSuggestionAsync(PersonSuggestionItem s)
+    {
+        if (!_busySuggestions.Add(s.Id)) return;
+        try
+        {
+            await PeopleService.DismissFaceSuggestionAsync(s.Id);
+            _suggestions.RemoveAll(x => x.Id == s.Id);
+            _suggestionsTotal = Math.Max(0, _suggestionsTotal - 1);
+            Snackbar.Add("Sugerencia descartada", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busySuggestions.Remove(s.Id);
+            StateHasChanged();
+        }
+    }
+
+    private void OpenSuggestedAsset(PersonSuggestionItem s)
+    {
+        // Send the user to the asset so they can verify the face in context;
+        // returnTo brings them back here when they close the asset detail.
+        Navigation.NavigateTo($"/asset/{s.AssetId}?returnTo=people/{Id}");
     }
 
     // ── Merge sheet ───────────────────────────────────────────────────────

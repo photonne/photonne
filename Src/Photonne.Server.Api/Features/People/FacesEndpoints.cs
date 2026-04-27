@@ -18,7 +18,9 @@ public record FaceDto(
     float BoundingBoxH,
     float Confidence,
     bool IsManuallyAssigned,
-    bool IsRejected);
+    bool IsRejected,
+    Guid? SuggestedPersonId,
+    float? SuggestedDistance);
 
 /// <summary>Returns all detected faces for an asset (current user must own it).</summary>
 public class ListFacesForAssetEndpoint : IEndpoint
@@ -47,7 +49,8 @@ public class ListFacesForAssetEndpoint : IEndpoint
             .Select(f => new FaceDto(
                 f.Id, f.AssetId, f.PersonId,
                 f.BoundingBoxX, f.BoundingBoxY, f.BoundingBoxW, f.BoundingBoxH,
-                f.Confidence, f.IsManuallyAssigned, f.IsRejected))
+                f.Confidence, f.IsManuallyAssigned, f.IsRejected,
+                f.SuggestedPersonId, f.SuggestedDistance))
             .ToListAsync(ct);
 
         return Results.Ok(faces);
@@ -108,6 +111,9 @@ public class AssignFaceEndpoint : IEndpoint
         face.PersonId = targetPersonId;
         face.IsManuallyAssigned = true;
         face.IsRejected = false;
+        // Manual decision overrides any pending hint.
+        face.SuggestedPersonId = null;
+        face.SuggestedDistance = null;
         await db.SaveChangesAsync(ct);
 
         await clustering.RecomputeFaceCountsAsync(userId, ct);
@@ -142,6 +148,8 @@ public class RejectFaceEndpoint : IEndpoint
         face.IsRejected = true;
         face.PersonId = null;
         face.IsManuallyAssigned = true; // prevents reassignment by clustering
+        face.SuggestedPersonId = null;
+        face.SuggestedDistance = null;
         await db.SaveChangesAsync(ct);
 
         await clustering.RecomputeFaceCountsAsync(userId, ct);
@@ -179,10 +187,88 @@ public class UnassignFaceEndpoint : IEndpoint
         face.PersonId = null;
         face.IsManuallyAssigned = true;
         face.IsRejected = false;
+        face.SuggestedPersonId = null;
+        face.SuggestedDistance = null;
         await db.SaveChangesAsync(ct);
 
         await clustering.RecomputeFaceCountsAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
+        return Results.NoContent();
+    }
+}
+
+/// <summary>Confirms the proactive suggestion stored on the face: equivalent to
+/// manually assigning the face to <see cref="Face.SuggestedPersonId"/>. 404 if the
+/// face has no pending suggestion (e.g. user dismissed it concurrently).</summary>
+public class AcceptFaceSuggestionEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/faces/{id:guid}/accept-suggestion", Handle)
+            .WithTags("Faces")
+            .RequireAuthorization();
+    }
+
+    private static async Task<IResult> Handle(
+        [FromServices] ApplicationDbContext db,
+        [FromServices] FaceClusteringService clustering,
+        Guid id,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+
+        var face = await db.Faces.Include(f => f.Asset)
+            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
+        if (face == null) return Results.NotFound();
+        if (face.SuggestedPersonId == null) return Results.NotFound();
+
+        // Defensive: ensure the suggested Person still belongs to the user (it may
+        // have been deleted between suggestion time and acceptance).
+        var personOk = await db.People
+            .AnyAsync(p => p.Id == face.SuggestedPersonId && p.OwnerId == userId, ct);
+        if (!personOk) return Results.NotFound();
+
+        var personId = face.SuggestedPersonId.Value;
+        face.PersonId = personId;
+        face.IsManuallyAssigned = true;
+        face.IsRejected = false;
+        face.SuggestedPersonId = null;
+        face.SuggestedDistance = null;
+        await db.SaveChangesAsync(ct);
+
+        await clustering.RecomputeFaceCountsAsync(userId, ct);
+        return Results.Ok(new { face.Id, face.PersonId });
+    }
+}
+
+/// <summary>Removes the suggestion hint from the face without rejecting it or
+/// blocking future re-suggestion. The face stays orphan; the next clustering
+/// pass may surface the same suggestion again — by design (dismiss is non-sticky).</summary>
+public class DismissFaceSuggestionEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/faces/{id:guid}/dismiss-suggestion", Handle)
+            .WithTags("Faces")
+            .RequireAuthorization();
+    }
+
+    private static async Task<IResult> Handle(
+        [FromServices] ApplicationDbContext db,
+        Guid id,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+
+        var face = await db.Faces.Include(f => f.Asset)
+            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
+        if (face == null) return Results.NotFound();
+
+        face.SuggestedPersonId = null;
+        face.SuggestedDistance = null;
+        await db.SaveChangesAsync(ct);
         return Results.NoContent();
     }
 }

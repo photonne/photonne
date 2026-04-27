@@ -41,8 +41,11 @@ public class FaceClusteringService
     }
 
     /// <summary>
-    /// Online-assigns the orphan faces of a single asset (just detected) to the
-    /// nearest existing Person within ClusteringThreshold.
+    /// Online-assigns the orphan faces of a single asset (just detected): if the
+    /// nearest existing Person sits within <see cref="FaceRecognitionOptions.ClusteringThreshold"/>
+    /// the face is attached automatically; if it sits in the soft-match band
+    /// [ClusteringThreshold, SuggestionThreshold) the face stays orphan but gets a
+    /// non-binding <see cref="Face.SuggestedPersonId"/> hint for the UI to surface.
     /// </summary>
     public async Task AssignNewFacesAsync(Guid ownerId, Guid assetId, CancellationToken cancellationToken)
     {
@@ -64,7 +67,8 @@ public class FaceClusteringService
             return;
         }
 
-        var threshold = _options.ClusteringThreshold;
+        var assignThreshold = _options.ClusteringThreshold;
+        var suggestThreshold = _options.SuggestionThreshold;
 
         foreach (var face in newFaces)
         {
@@ -81,14 +85,30 @@ public class FaceClusteringService
                 .Select(f => new { f.PersonId, f.Embedding })
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (nearest?.PersonId == null) continue;
+            if (nearest?.PersonId == null)
+            {
+                ClearSuggestion(face);
+                continue;
+            }
 
             var distance = CosineDistance(nearest.Embedding.ToArray(), face.Embedding.ToArray());
-            if (distance < threshold)
+            if (distance < assignThreshold)
             {
                 face.PersonId = nearest.PersonId.Value;
+                ClearSuggestion(face);
                 _logger.LogDebug("Face {FaceId} → Person {PersonId} (dist={Dist:F3})",
                     face.Id, nearest.PersonId.Value, distance);
+            }
+            else if (distance < suggestThreshold)
+            {
+                face.SuggestedPersonId = nearest.PersonId.Value;
+                face.SuggestedDistance = distance;
+                _logger.LogDebug("Face {FaceId} ~? Person {PersonId} (dist={Dist:F3}) — suggestion",
+                    face.Id, nearest.PersonId.Value, distance);
+            }
+            else
+            {
+                ClearSuggestion(face);
             }
         }
 
@@ -165,16 +185,58 @@ public class FaceClusteringService
             if (ra != rb) parent[ra] = rb;
         }
 
-        // O(n²) is fine for moderate face counts per owner. For >5000 faces per
-        // owner we should switch to pgvector kNN-based neighbor lookup.
-        for (int i = 0; i < orphans.Count; i++)
+        if (orphans.Count > _options.KnnSwitchoverThreshold)
         {
-            var ai = orphans[i].Embedding.ToArray();
-            for (int j = i + 1; j < orphans.Count; j++)
+            // pgvector kNN path: for each orphan, ask Postgres for its top-k
+            // nearest orphan neighbors using the HNSW index on Faces.Embedding,
+            // and add edges below the cosine threshold to the union-find. This
+            // turns the O(n²) pairwise loop into O(n · k · log n) plus n round
+            // trips, which keeps batch runtime bounded on large catalogs.
+            var idToIndex = new Dictionary<Guid, int>(orphans.Count);
+            for (int i = 0; i < orphans.Count; i++) idToIndex[orphans[i].Id] = i;
+
+            var k = _options.KnnNeighbors;
+            for (int i = 0; i < orphans.Count; i++)
             {
-                var aj = orphans[j].Embedding.ToArray();
-                var d = CosineDistance(ai, aj);
-                if (d < threshold) Union(i, j);
+                var face = orphans[i];
+                var embedding = face.Embedding;
+
+                // Filter by orphan-ness so the candidate set matches the
+                // pairwise path; pgvector ≥0.8 will iterate the HNSW graph
+                // until k candidates pass the WHERE filter.
+                var neighbors = await _dbContext.Faces
+                    .AsNoTracking()
+                    .Where(f => f.Asset.OwnerId == ownerId
+                                && f.PersonId == null
+                                && !f.IsManuallyAssigned
+                                && !f.IsRejected
+                                && f.Id != face.Id)
+                    .OrderBy(f => f.Embedding.CosineDistance(embedding))
+                    .Take(k)
+                    .Select(f => new { f.Id, Distance = f.Embedding.CosineDistance(embedding) })
+                    .ToListAsync(cancellationToken);
+
+                foreach (var n in neighbors)
+                {
+                    // Neighbors come back ordered by ascending distance, so
+                    // once we cross the threshold the rest are out too.
+                    if (n.Distance >= threshold) break;
+                    if (idToIndex.TryGetValue(n.Id, out var j)) Union(i, j);
+                }
+            }
+        }
+        else
+        {
+            // O(n²) is fine for moderate face counts per owner.
+            for (int i = 0; i < orphans.Count; i++)
+            {
+                var ai = orphans[i].Embedding.ToArray();
+                for (int j = i + 1; j < orphans.Count; j++)
+                {
+                    var aj = orphans[j].Embedding.ToArray();
+                    var d = CosineDistance(ai, aj);
+                    if (d < threshold) Union(i, j);
+                }
             }
         }
 
@@ -219,7 +281,78 @@ public class FaceClusteringService
         _logger.LogInformation("Clustering for owner {OwnerId}: {Created} new persons from {Orphans} orphans",
             ownerId, personsCreated, orphans.Count);
 
+        // After cluster creation any face still without a Person is a "true" orphan
+        // for this owner — refresh its proactive suggestion so the UI can offer
+        // "could this be X?" against existing Persons. Re-suggesting is intentional:
+        // dismiss is non-sticky, the user just confirms or ignores again next time.
+        var stillOrphan = orphans.Where(f => f.PersonId == null).ToList();
+        if (stillOrphan.Count > 0)
+        {
+            await RecomputeSuggestionsForAsync(ownerId, stillOrphan, cancellationToken);
+        }
+
         return personsCreated;
+    }
+
+    /// <summary>
+    /// For each provided orphan face, queries pgvector for the nearest assigned face
+    /// of the same owner and updates <see cref="Face.SuggestedPersonId"/>/<see cref="Face.SuggestedDistance"/>:
+    ///   * inside [ClusteringThreshold, SuggestionThreshold)  → set as suggestion
+    ///   * outside → clear (orphan, no hint)
+    /// Faces that should auto-assign instead (distance &lt; ClusteringThreshold) are
+    /// left untouched: a stale orphan in that band is rare here because RunForOwnerAsync
+    /// already grouped near-duplicates, and AssignNewFacesAsync handles the online path.
+    /// </summary>
+    private async Task RecomputeSuggestionsForAsync(Guid ownerId, IReadOnlyList<Face> orphans, CancellationToken cancellationToken)
+    {
+        var assignThreshold = _options.ClusteringThreshold;
+        var suggestThreshold = _options.SuggestionThreshold;
+        if (suggestThreshold <= assignThreshold) return; // suggestions disabled
+
+        var changed = 0;
+        foreach (var face in orphans)
+        {
+            var nearest = await _dbContext.Faces
+                .Where(f => f.PersonId != null
+                            && !f.IsRejected
+                            && f.Person!.OwnerId == ownerId
+                            && f.Id != face.Id)
+                .OrderBy(f => f.Embedding.CosineDistance(face.Embedding))
+                .Select(f => new { f.PersonId, f.Embedding })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            Guid? newSuggestion = null;
+            float? newDistance = null;
+            if (nearest?.PersonId != null)
+            {
+                var distance = CosineDistance(nearest.Embedding.ToArray(), face.Embedding.ToArray());
+                if (distance >= assignThreshold && distance < suggestThreshold)
+                {
+                    newSuggestion = nearest.PersonId.Value;
+                    newDistance = distance;
+                }
+            }
+
+            if (face.SuggestedPersonId != newSuggestion || face.SuggestedDistance != newDistance)
+            {
+                face.SuggestedPersonId = newSuggestion;
+                face.SuggestedDistance = newDistance;
+                changed++;
+            }
+        }
+
+        if (changed > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Recomputed suggestions for owner {OwnerId}: {Changed}/{Total} orphans updated",
+                ownerId, changed, orphans.Count);
+        }
+    }
+
+    private static void ClearSuggestion(Face face)
+    {
+        face.SuggestedPersonId = null;
+        face.SuggestedDistance = null;
     }
 
     public async Task RecomputeFaceCountsAsync(Guid ownerId, CancellationToken cancellationToken)
@@ -262,6 +395,14 @@ public class FaceClusteringService
         await _dbContext.Faces
             .Where(f => f.PersonId == sourcePersonId)
             .ExecuteUpdateAsync(s => s.SetProperty(f => f.PersonId, target.Id), cancellationToken);
+
+        // Redirect any pending "could this be source?" suggestions to the merged
+        // target so the user doesn't see hints pointing at a Person that's about
+        // to disappear. The SetNull FK cascade would also clear them, but redirect
+        // preserves the hint for the consolidated cluster.
+        await _dbContext.Faces
+            .Where(f => f.SuggestedPersonId == sourcePersonId)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.SuggestedPersonId, (Guid?)target.Id), cancellationToken);
 
         // Clear source's CoverFace FK to avoid blocking the delete via SetNull cascade.
         source.CoverFaceId = null;
