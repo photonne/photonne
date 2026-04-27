@@ -94,9 +94,18 @@ else if (_person != null)
                 <MudMenuItem OnClick="OpenMergeSheet" Icon="@Icons.Material.Outlined.MergeType">
                     Fusionar con otra persona…
                 </MudMenuItem>
-                <MudMenuItem OnClick="HideAsync" Icon="@Icons.Material.Outlined.VisibilityOff">
-                    Ocultar persona
-                </MudMenuItem>
+                @if (_person.IsHidden)
+                {
+                    <MudMenuItem OnClick="UnhideAsync" Icon="@Icons.Material.Outlined.Visibility">
+                        Volver a mostrar
+                    </MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem OnClick="HideAsync" Icon="@Icons.Material.Outlined.VisibilityOff">
+                        Ocultar persona
+                    </MudMenuItem>
+                }
             </MudMenu>
         }
     </div>
@@ -546,6 +555,21 @@ else if (_person != null)
         catch (Exception ex)
         {
             Snackbar.Add($"No se pudo ocultar: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UnhideAsync()
+    {
+        if (_person == null) return;
+        try
+        {
+            await PeopleService.UnhideAsync(_person.Id);
+            _person = _person with { IsHidden = false, UpdatedAt = DateTime.UtcNow };
+            Snackbar.Add("Persona visible de nuevo", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo mostrar: {ex.Message}", Severity.Error);
         }
     }
 

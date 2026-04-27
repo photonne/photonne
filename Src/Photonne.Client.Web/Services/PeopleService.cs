@@ -66,6 +66,13 @@ public class PeopleService : IPeopleService
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task UnhideAsync(Guid personId, CancellationToken ct = default)
+    {
+        await SetAuthAsync();
+        var resp = await _http.PostAsync($"/api/people/{personId}/unhide", null, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task MergeAsync(Guid targetId, Guid sourceId, CancellationToken ct = default)
     {
         await SetAuthAsync();

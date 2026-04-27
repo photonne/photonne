@@ -6,8 +6,14 @@
 
 <PageTitle>Personas - Photonne</PageTitle>
 
-<div class="px-3 pt-3">
-    <MudText Typo="Typo.h5" Class="mb-3">Personas</MudText>
+<div class="px-3 pt-3 d-flex align-center justify-space-between">
+    <MudText Typo="Typo.h5">Personas</MudText>
+    <MudTooltip Text="@(_includeHidden ? "Ocultar las ocultas" : "Mostrar ocultas")">
+        <MudIconButton Icon="@(_includeHidden ? Icons.Material.Filled.VisibilityOff : Icons.Material.Outlined.VisibilityOff)"
+                       Color="@(_includeHidden ? Color.Primary : Color.Default)"
+                       Size="Size.Small"
+                       OnClick="ToggleIncludeHiddenAsync" />
+    </MudTooltip>
 </div>
 
 @if (_loading)
@@ -27,12 +33,13 @@ else if (_people.Count == 0)
 }
 else
 {
-    <div class="px-3">
+    <div class="px-3 mt-2">
         <MudGrid Spacing="2">
             @foreach (var p in _people)
             {
                 <MudItem xs="6" sm="4" md="3" lg="2">
-                    <MudCard Class="ph-person-card" @onclick="() => OpenPerson(p)">
+                    <MudCard Class="@($"ph-person-card{(p.IsHidden ? " ph-person-card--hidden" : "")}")"
+                             @onclick="() => OpenPerson(p)">
                         <div class="ph-person-cover">
                             @if (p.CoverFaceId.HasValue)
                             {
@@ -41,6 +48,15 @@ else
                             else
                             {
                                 <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Large" />
+                            }
+                            @if (p.IsHidden)
+                            {
+                                <span class="ph-person-cover__hidden-badge"
+                                      title="Persona oculta"
+                                      @onclick:stopPropagation="true"
+                                      @onclick="() => UnhideAsync(p)">
+                                    <MudIcon Icon="@Icons.Material.Filled.VisibilityOff" Size="Size.Small" />
+                                </span>
                             }
                         </div>
                         <MudCardContent Class="py-2 px-3">
@@ -60,17 +76,33 @@ else
 
 <style>
     .ph-person-card { cursor: pointer; }
+    .ph-person-card--hidden { opacity: 0.55; }
+    .ph-person-card--hidden:hover { opacity: 0.85; }
     .ph-person-cover {
+        position: relative;
         aspect-ratio: 1;
         overflow: hidden;
         background: var(--mud-palette-background-grey);
         display: flex; align-items: center; justify-content: center;
     }
     .ph-person-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .ph-person-cover__hidden-badge {
+        position: absolute;
+        top: 6px; right: 6px;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.65);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    .ph-person-cover__hidden-badge:hover { background: var(--mud-palette-primary); }
 </style>
 
 @code {
     private bool _loading = true;
+    private bool _includeHidden;
     private List<PersonSummary> _people = new();
 
     protected override async Task OnInitializedAsync()
@@ -83,7 +115,7 @@ else
         _loading = true;
         try
         {
-            var page = await PeopleService.GetPeopleAsync(limit: 200);
+            var page = await PeopleService.GetPeopleAsync(limit: 200, includeHidden: _includeHidden);
             _people = page.Items;
         }
         catch (Exception ex)
@@ -93,6 +125,26 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task ToggleIncludeHiddenAsync()
+    {
+        _includeHidden = !_includeHidden;
+        await LoadAsync();
+    }
+
+    private async Task UnhideAsync(PersonSummary p)
+    {
+        try
+        {
+            await PeopleService.UnhideAsync(p.Id);
+            Snackbar.Add($"\"{p.Name ?? "Sin nombre"}\" vuelve a estar visible", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo mostrar: {ex.Message}", Severity.Error);
         }
     }
 

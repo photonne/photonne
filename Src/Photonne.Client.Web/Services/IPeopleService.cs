@@ -9,6 +9,7 @@ public interface IPeopleService
     Task<PersonAssetsPage> GetPersonAssetsAsync(Guid id, int limit = 100, int offset = 0, CancellationToken ct = default);
     Task RenameAsync(Guid personId, string? name, CancellationToken ct = default);
     Task HideAsync(Guid personId, CancellationToken ct = default);
+    Task UnhideAsync(Guid personId, CancellationToken ct = default);
 
     /// <summary>Merges <paramref name="sourceId"/> INTO <paramref name="targetId"/>:
     /// all faces are reattached to target, source is deleted.</summary>

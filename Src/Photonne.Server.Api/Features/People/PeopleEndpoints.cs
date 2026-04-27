@@ -143,6 +143,31 @@ public class HidePersonEndpoint : IEndpoint
     }
 }
 
+public class UnhidePersonEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/people/{id:guid}/unhide", Handle)
+            .WithTags("People")
+            .RequireAuthorization();
+    }
+
+    private static async Task<IResult> Handle(
+        [FromServices] ApplicationDbContext db,
+        Guid id,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        var p = await db.People.FirstOrDefaultAsync(x => x.Id == id && x.OwnerId == userId, ct);
+        if (p == null) return Results.NotFound();
+        p.IsHidden = false;
+        p.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+}
+
 public class MergePeopleEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
