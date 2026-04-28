@@ -15,34 +15,40 @@ services:
       - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
       - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
       - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
-      - FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
-      - FaceRecognition__ServiceUrl=${FACE_SERVICE_URL:-http://photonne-faces:8000}
+      - Ml__ServiceUrl=${ML_SERVICE_URL:-${FACE_SERVICE_URL:-http://photonne-ml:8000}}
+      - Ml__FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
+      - Ml__ObjectRecognition__Enabled=${OBJECT_RECOGNITION_ENABLED:-true}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
     depends_on:
       postgresql:
         condition: service_healthy
-      photonne-faces:
+      photonne-ml:
         condition: service_healthy
     restart: unless-stopped
 
-  photonne-faces:
+  photonne-ml:
     build:
-      context: ./Src/Photonne.MlService.Faces
-    container_name: photonne-faces
+      context: ./Src/Photonne.MlService
+    container_name: photonne-ml
     environment:
-      - MODEL_NAME=${FACE_MODEL_NAME:-buffalo_l}
-      - DET_SIZE=${FACE_DET_SIZE:-640}
-      - MIN_FACE_SIZE=${FACE_MIN_SIZE:-40}
-      - MIN_DET_SCORE=${FACE_MIN_DET_SCORE:-0.5}
-      - ONNX_PROVIDERS=${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}
+      - FACE_ENABLED=${FACE_RECOGNITION_ENABLED:-true}
+      - FACE_MODEL_NAME=${FACE_MODEL_NAME:-buffalo_l}
+      - FACE_DET_SIZE=${FACE_DET_SIZE:-640}
+      - FACE_MIN_SIZE=${FACE_MIN_SIZE:-40}
+      - FACE_MIN_DET_SCORE=${FACE_MIN_DET_SCORE:-0.5}
+      - OBJECT_ENABLED=${OBJECT_RECOGNITION_ENABLED:-true}
+      - OBJECT_MODEL_PATH=${OBJECT_MODEL_PATH:-/app/models/yolov8n.onnx}
+      - OBJECT_MIN_SCORE=${OBJECT_MIN_SCORE:-0.25}
+      - OBJECT_IOU=${OBJECT_IOU:-0.45}
+      - ONNX_PROVIDERS=${ML_ONNX_PROVIDERS:-${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}}
     ports:
-      - "${FACE_PORT:-8000}:8000"
+      - "${ML_PORT:-${FACE_PORT:-8000}}:8000"
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets:ro
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails:ro
-      - face_models:/app/models
+      - ml_models:/app/models
     restart: unless-stopped
 
   postgresql:
@@ -83,4 +89,4 @@ services:
 volumes:
   postgresql_data:
   pgadmin_data:
-  face_models:
+  ml_models:

@@ -1,0 +1,241 @@
+@inject IJSRuntime JS
+@inject IObjectsService ObjectsService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+@using Photonne.Client.Web.Services
+
+@if (Visible)
+{
+    @* Sits above the asset-detail-container (z-index 1100) and below the
+       face overlay (1200) so face boxes always win when they overlap, and
+       below the action sheet / drawers (1400). *@
+    <div class="ph-object-overlay" style="@OverlayStyle">
+        @if (_rect.HasValue)
+        {
+            @foreach (var o in _objects)
+            {
+                <button type="button"
+                        class="ph-object-overlay__box"
+                        style="@BoxStyle(o)"
+                        title="@($"{Capitalize(o.Label)} — {Pct(o.Confidence)}%")"
+                        @onclick="() => OnObjectClick(o)"
+                        @onclick:stopPropagation="true">
+                    <span class="ph-object-overlay__chip">
+                        @Capitalize(o.Label)
+                        <span class="ph-object-overlay__score">@Pct(o.Confidence)%</span>
+                    </span>
+                </button>
+            }
+        }
+
+        <div class="ph-object-overlay__status">
+            @if (_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
+                <span>Cargando objetos…</span>
+            }
+            else if (!_rect.HasValue)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" Class="me-1" />
+                <span>Localizando imagen…</span>
+            }
+            else if (_objects.Count == 0)
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.HideImage" Size="Size.Small" Class="me-1" />
+                <span>Sin objetos detectados</span>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.Category" Size="Size.Small" Class="me-1" />
+                <span>@_objects.Count @(_objects.Count == 1 ? "objeto" : "objetos")</span>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .ph-object-overlay {
+        position: fixed;
+        pointer-events: none;
+        z-index: 1150;
+    }
+    .ph-object-overlay__box {
+        position: absolute;
+        pointer-events: auto;
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: 4px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+        padding: 0;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .ph-object-overlay__box:hover {
+        border-color: var(--mud-palette-secondary, #ff4081);
+        transform: scale(1.01);
+    }
+    .ph-object-overlay__chip {
+        position: absolute;
+        top: -10px;
+        left: 4px;
+        background: rgba(0, 0, 0, 0.78);
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        line-height: 1.4;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
+        display: inline-flex;
+        gap: 6px;
+        align-items: baseline;
+    }
+    .ph-object-overlay__score {
+        opacity: 0.7;
+        font-variant-numeric: tabular-nums;
+    }
+    .ph-object-overlay__status {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: rgba(0, 0, 0, 0.72);
+        color: #fff;
+        font-size: 12px;
+        border-radius: 999px;
+        pointer-events: none;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid AssetId { get; set; }
+    [Parameter] public bool Visible { get; set; }
+
+    private List<DetectedObjectItem> _objects = new();
+    private Rect? _rect;
+    private bool _loading;
+    private DotNetObjectReference<ObjectOverlay>? _ref;
+    private string _trackerKey = "obj-" + Guid.NewGuid().ToString("N");
+    private Guid _loadedAssetId;
+    private bool _trackerStarted;
+
+    public record struct Rect(double Left, double Top, double Width, double Height);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible)
+        {
+            if (_loadedAssetId != AssetId)
+            {
+                _loadedAssetId = AssetId;
+                _rect = null;
+                _objects = new();
+                await StopTrackerAsync();
+                await ReloadObjectsAsync(toast: true);
+            }
+            await EnsureTrackerStartedAsync();
+        }
+        else
+        {
+            await StopTrackerAsync();
+            _rect = null;
+        }
+    }
+
+    private async Task ReloadObjectsAsync(bool toast = false)
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _objects = await ObjectsService.GetObjectsForAssetAsync(AssetId);
+            if (toast)
+            {
+                if (_objects.Count == 0)
+                    Snackbar.Add("Sin objetos detectados en esta foto", Severity.Info);
+                else
+                    Snackbar.Add($"{_objects.Count} {(_objects.Count == 1 ? "objeto detectado" : "objetos detectados")}", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar objetos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task EnsureTrackerStartedAsync()
+    {
+        if (_trackerStarted) return;
+        // Reuses the same JS helper as FaceOverlay: tracks the visible
+        // .asset-detail-image rect via getBoundingClientRect on resize/scroll.
+        _ref ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("faceOverlayHelpers.start", _trackerKey, _ref);
+        _trackerStarted = true;
+    }
+
+    private async Task StopTrackerAsync()
+    {
+        if (!_trackerStarted) return;
+        try { await JS.InvokeVoidAsync("faceOverlayHelpers.stop", _trackerKey); }
+        catch { /* JS unavailable during teardown */ }
+        _trackerStarted = false;
+    }
+
+    [JSInvokable]
+    public void OnRectChanged(double left, double top, double width, double height)
+    {
+        _rect = new Rect(left, top, width, height);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string OverlayStyle
+    {
+        get
+        {
+            if (_rect is not { } r)
+                return "left: 0; top: 64px; width: 100vw; height: 0;";
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            return $"left: {r.Left.ToString(inv)}px; top: {r.Top.ToString(inv)}px; width: {r.Width.ToString(inv)}px; height: {r.Height.ToString(inv)}px;";
+        }
+    }
+
+    private static string PctRaw(float v) =>
+        (v * 100f).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static int Pct(float v) => (int)Math.Round(v * 100f);
+
+    private static string BoxStyle(DetectedObjectItem o) =>
+        $"left: {PctRaw(o.BoundingBoxX)}%; top: {PctRaw(o.BoundingBoxY)}%; width: {PctRaw(o.BoundingBoxW)}%; height: {PctRaw(o.BoundingBoxH)}%;";
+
+    private static string Capitalize(string label)
+    {
+        if (string.IsNullOrEmpty(label)) return label;
+        return char.ToUpperInvariant(label[0]) + label[1..];
+    }
+
+    private void OnObjectClick(DetectedObjectItem o)
+    {
+        // Clicking a label jumps to a search filtered by it. Quick way for the
+        // user to pivot from "what's in this photo" to "where else does this
+        // object appear".
+        Navigation.NavigateTo($"/search?objectLabel={Uri.EscapeDataString(o.Label)}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopTrackerAsync();
+        _ref?.Dispose();
+    }
+}

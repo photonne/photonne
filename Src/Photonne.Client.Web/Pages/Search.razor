@@ -2,6 +2,7 @@
 @inject IAssetService AssetService
 @inject IAlbumService AlbumService
 @inject IPeopleService PeopleService
+@inject IObjectsService ObjectsService
 @inject LayoutService LayoutService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -13,59 +14,148 @@
 
 <PageTitle>Buscar - Photonne</PageTitle>
 
-@if (_personFilters.Count > 0 || _personPickerOpen)
-{
-    <div class="ph-search-people-bar">
-        <MudIcon Icon="@Icons.Material.Outlined.People" Size="Size.Small" Class="me-1" />
-        <MudText Typo="Typo.caption" Class="me-2">Personas:</MudText>
-        @foreach (var p in _personFilters)
+@* Single horizontal-scroll rail. Mobile-first: collapses sugerencias +
+   personas + objetos into one row regardless of how many filters are
+   active. Order: suggestion chips (when typing) → people chips → object
+   chips → "+ Filtrar" entry point. *@
+<div class="ph-search-rail">
+    @if (HasTermSuggestions)
+    {
+        @foreach (var person in _suggestedPeople)
         {
-            <MudChip T="Guid"
-                     Value="@p.Id"
+            <MudChip T="string"
                      Size="Size.Small"
                      Color="Color.Primary"
-                     OnClose="@(() => RemovePersonFilter(p.Id))">
-                @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
+                     Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Outlined.Person"
+                     OnClick="@(() => ApplyPersonSuggestion(person.Id))">
+                @(string.IsNullOrWhiteSpace(person.Name) ? "Sin nombre" : person.Name)
             </MudChip>
         }
-        <MudChip T="string"
-                 Size="Size.Small"
-                 Variant="Variant.Outlined"
-                 Icon="@Icons.Material.Filled.Add"
-                 OnClick="OpenPersonPicker">
-            Añadir
-        </MudChip>
-    </div>
-}
+        @foreach (var label in _suggestedLabels)
+        {
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="Color.Secondary"
+                     Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Outlined.Category"
+                     OnClick="@(() => ApplyObjectSuggestion(label.Label))">
+                @Capitalize(label.Label) <span class="ph-rail__count">@label.AssetCount</span>
+            </MudChip>
+        }
+        @if (_personFilters.Count > 0 || _objectLabels.Count > 0)
+        {
+            <span class="ph-rail__divider" aria-hidden="true"></span>
+        }
+    }
 
-@* Person-picker bottom sheet — adds another person to the active filter set. *@
-@if (_personPickerOpen)
+    @foreach (var p in _personFilters)
+    {
+        <MudChip T="Guid"
+                 Value="@p.Id"
+                 Size="Size.Small"
+                 Color="Color.Primary"
+                 Icon="@Icons.Material.Filled.Person"
+                 OnClose="@(() => RemovePersonFilter(p.Id))">
+            @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
+        </MudChip>
+    }
+    @foreach (var label in _objectLabels)
+    {
+        <MudChip T="string"
+                 Value="@label"
+                 Size="Size.Small"
+                 Color="Color.Secondary"
+                 Icon="@Icons.Material.Filled.Category"
+                 OnClose="@(() => RemoveObjectLabel(label))">
+            @Capitalize(label)
+        </MudChip>
+    }
+
+    <MudChip T="string"
+             Size="Size.Small"
+             Variant="Variant.Outlined"
+             Icon="@Icons.Material.Filled.Add"
+             OnClick="OpenFilterPicker">
+        Filtrar
+    </MudChip>
+</div>
+
+@* Unified filter picker — one search field, two result sections (Personas
+   and Objetos). Replaces the previous people-only and objects-only sheets. *@
+@if (_filterPickerOpen)
 {
-    <div class="ph-people-picker__backdrop" @onclick="ClosePersonPicker"></div>
-    <MudDrawer @key="_personPickerVersion"
+    <div class="ph-people-picker__backdrop" @onclick="CloseFilterPicker"></div>
+    <MudDrawer @key="_filterPickerVersion"
                Open="true"
                Anchor="Anchor.Bottom"
                Elevation="6"
                Variant="DrawerVariant.Temporary"
-               Class="ph-bottom-sheet ph-people-picker">
+               Class="ph-bottom-sheet ph-people-picker ph-filter-picker">
         <div class="ph-sheet-handle"></div>
         <div class="d-flex justify-space-between align-center px-4 pt-2 pb-1">
-            <MudText Typo="Typo.h6">Añadir persona al filtro</MudText>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ClosePersonPicker" />
+            <MudText Typo="Typo.h6">Añadir filtro</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseFilterPicker" />
         </div>
         <MudDivider />
-        <div class="px-4 pt-3 pb-4">
-            <MudAutocomplete T="PersonSummary"
-                             Label="Buscar persona"
-                             SearchFunc="SearchPeoplePool"
-                             Value="null"
-                             ValueChanged="OnPersonPickerSelected"
-                             ToStringFunc="@(p => string.IsNullOrWhiteSpace(p?.Name) ? "Sin nombre" : p!.Name)"
-                             Variant="Variant.Outlined"
-                             Margin="Margin.Dense"
-                             Clearable="true"
-                             CoerceText="false"
-                             Placeholder="Empieza a escribir un nombre…" />
+        <div class="px-4 pt-3 pb-2">
+            <MudTextField @bind-Value="_filterPickerQuery"
+                          @bind-Value:after="OnFilterPickerQueryChanged"
+                          Placeholder="Persona u objeto…"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          DebounceInterval="200"
+                          Clearable="true"
+                          AutoFocus="true" />
+        </div>
+
+        <div class="ph-filter-picker__results">
+            @if (_filterPickerLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+            }
+
+            @if (_filterPickerPeople.Count > 0)
+            {
+                <MudText Typo="Typo.overline" Class="ph-filter-picker__section-title">Personas</MudText>
+                @foreach (var p in _filterPickerPeople)
+                {
+                    <button type="button"
+                            class="ph-filter-picker__row"
+                            @onclick="@(() => PickPerson(p))">
+                        <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" Class="me-2" Color="Color.Primary" />
+                        <span class="flex-grow-1">@(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)</span>
+                        <span class="ph-filter-picker__row-count">@p.FaceCount</span>
+                    </button>
+                }
+            }
+
+            @if (_filterPickerLabels.Count > 0)
+            {
+                <MudText Typo="Typo.overline" Class="ph-filter-picker__section-title">Objetos</MudText>
+                @foreach (var l in _filterPickerLabels)
+                {
+                    <button type="button"
+                            class="ph-filter-picker__row"
+                            @onclick="@(() => PickObject(l.Label))">
+                        <MudIcon Icon="@Icons.Material.Outlined.Category" Size="Size.Small" Class="me-2" Color="Color.Secondary" />
+                        <span class="flex-grow-1">@Capitalize(l.Label)</span>
+                        <span class="ph-filter-picker__row-count">@l.AssetCount</span>
+                    </button>
+                }
+            }
+
+            @if (!_filterPickerLoading && _filterPickerPeople.Count == 0 && _filterPickerLabels.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="ph-filter-picker__empty">
+                    @(string.IsNullOrWhiteSpace(_filterPickerQuery)
+                        ? "Empieza a escribir un nombre o un objeto…"
+                        : $"Sin resultados para «{_filterPickerQuery}».")
+                </MudText>
+            }
         </div>
     </MudDrawer>
 }
@@ -208,13 +298,49 @@ else
 </MudDialog>
 
 <style>
-    .ph-search-people-bar {
-        display: flex; align-items: center; flex-wrap: wrap;
-        gap: 4px;
-        padding: 8px 12px;
+    /* Single horizontal-scroll rail. flex-wrap:nowrap keeps it to one row even
+       with many chips; users swipe to access the rest. Mobile-first: trades
+       wrapping (which on a 360px screen makes 3 chips eat 3 rows) for a
+       horizontal swipe that costs zero vertical space. */
+    .ph-search-rail {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
         background: var(--mud-palette-surface);
         border-bottom: 1px solid var(--mud-palette-divider);
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
     }
+    .ph-search-rail > * {
+        flex: 0 0 auto;
+    }
+    .ph-search-rail::-webkit-scrollbar {
+        height: 4px;
+    }
+    .ph-search-rail::-webkit-scrollbar-thumb {
+        background: var(--mud-palette-action-disabled);
+        border-radius: 2px;
+    }
+    /* Vertical bar between the suggestion segment and the active-filter
+       segment so the rail still reads as two semantic groups even without
+       row labels. */
+    .ph-rail__divider {
+        width: 1px;
+        align-self: stretch;
+        margin: 4px 2px;
+        background: var(--mud-palette-divider);
+    }
+    .ph-rail__count {
+        opacity: 0.7;
+        font-size: 0.85em;
+        margin-left: 4px;
+        font-variant-numeric: tabular-nums;
+    }
+
     /* Same z-index strategy as the face-overlay / merge / cover sheets so the
        picker sits above the search results layer (and above the chip bar). */
     .ph-people-picker.mud-drawer,
@@ -233,16 +359,81 @@ else
         from { opacity: 0; }
         to   { opacity: 1; }
     }
+
+    /* Filter picker: scrollable result list under a sticky search field. Cap
+       the height so it never eats the entire viewport on tall mobiles. */
+    .ph-filter-picker__results {
+        max-height: 50vh;
+        overflow-y: auto;
+        padding: 0 8px 16px 8px;
+    }
+    .ph-filter-picker__section-title {
+        display: block;
+        padding: 8px 8px 2px 8px;
+        color: var(--mud-palette-text-secondary);
+        letter-spacing: 0.04em;
+    }
+    .ph-filter-picker__row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 10px 8px;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+        font-size: 0.95rem;
+        color: inherit;
+    }
+    .ph-filter-picker__row:hover,
+    .ph-filter-picker__row:focus-visible {
+        background: var(--mud-palette-action-default-hover);
+        outline: none;
+    }
+    .ph-filter-picker__row-count {
+        opacity: 0.65;
+        font-size: 0.85em;
+        font-variant-numeric: tabular-nums;
+        margin-left: 8px;
+    }
+    .ph-filter-picker__empty {
+        text-align: center;
+        padding: 24px 16px;
+        color: var(--mud-palette-text-secondary);
+    }
 </style>
 
 @code {
     [SupplyParameterFromQuery(Name = "search")] public string? SearchTerm { get; set; }
     [SupplyParameterFromQuery(Name = "personId")] public Guid[]? PersonIdsParam { get; set; }
+    [SupplyParameterFromQuery(Name = "objectLabel")] public string[]? ObjectLabelsParam { get; set; }
 
     private List<PersonSummary> _personFilters = new();
-    private bool _personPickerOpen;
-    private int _personPickerVersion;
+    private List<string> _objectLabels = new();
+    // Cached pool used by the inline suggestion fetcher. Populated lazily on
+    // first match attempt; nulled out whenever a new chip is added so the
+    // next typing pass sees fresh data.
     private List<PersonSummary>? _peoplePool;
+
+    // Unified filter picker (personas + objetos in one bottom sheet).
+    private bool _filterPickerOpen;
+    private int _filterPickerVersion;
+    private string _filterPickerQuery = string.Empty;
+    private bool _filterPickerLoading;
+    private List<PersonSummary> _filterPickerPeople = new();
+    private List<ObjectLabelItem> _filterPickerLabels = new();
+    private CancellationTokenSource? _filterPickerCts;
+
+    // Inline term-to-filter suggestions: ranked matches of the current free-text
+    // query against persons and object labels. Refreshed (debounced) every time
+    // _searchTerm changes; cleared once the term is empty.
+    private List<PersonSummary> _suggestedPeople = new();
+    private List<ObjectLabelItem> _suggestedLabels = new();
+    private CancellationTokenSource? _suggestCts;
+    private bool HasTermSuggestions =>
+        !string.IsNullOrWhiteSpace(_searchTerm)
+        && (_suggestedPeople.Count > 0 || _suggestedLabels.Count > 0);
     private List<TimelineItem> _results = new();
     private bool _loading;
     private bool _hasMore;
@@ -286,7 +477,8 @@ else
         _fromDate.HasValue ||
         _toDate.HasValue ||
         !string.IsNullOrWhiteSpace(_folderFilter) ||
-        _personFilters.Count > 0;
+        _personFilters.Count > 0 ||
+        _objectLabels.Count > 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -332,7 +524,97 @@ else
             }
         }
 
-        if (termChanged || personFilterChanged) await SearchAsync();
+        var paramLabels = (ObjectLabelsParam ?? Array.Empty<string>())
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Select(l => l.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        var currentLabels = _objectLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var objectFilterChanged = paramLabels.Count != currentLabels.Count
+            || paramLabels.Any(l => !currentLabels.Contains(l));
+        if (objectFilterChanged) _objectLabels = paramLabels;
+
+        if (termChanged) _ = RefreshSuggestionsAsync(_searchTerm);
+
+        if (termChanged || personFilterChanged || objectFilterChanged) await SearchAsync();
+    }
+
+    private async Task RefreshSuggestionsAsync(string? term)
+    {
+        // Cancel any in-flight call; the navbar debounces at 250 ms but the
+        // user may also paste / clear text faster than that.
+        _suggestCts?.Cancel();
+        _suggestCts?.Dispose();
+        _suggestCts = null;
+
+        var trimmed = (term ?? string.Empty).Trim();
+        if (trimmed.Length < 2)
+        {
+            // Single-letter or empty — too noisy to be useful.
+            _suggestedPeople = new();
+            _suggestedLabels = new();
+            return;
+        }
+
+        _suggestCts = new CancellationTokenSource();
+        var ct = _suggestCts.Token;
+
+        try
+        {
+            // Two parallel fetches: people pool (loaded once, filtered locally
+            // because we already cache it elsewhere) and the labels endpoint
+            // which supports a server-side ILIKE.
+            _peoplePool ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: false, ct: ct)).Items;
+            var labelsTask = ObjectsService.GetLabelsAsync(search: trimmed, limit: 5, ct);
+
+            var alreadyPickedPeople = _personFilters.Select(p => p.Id).ToHashSet();
+            var people = _peoplePool
+                .Where(p => !string.IsNullOrWhiteSpace(p.Name)
+                            && !alreadyPickedPeople.Contains(p.Id)
+                            && p.Name!.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(p => p.FaceCount)
+                .Take(3)
+                .ToList();
+
+            var labels = await labelsTask;
+            var alreadyPickedLabels = _objectLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var filteredLabels = labels
+                .Where(l => !alreadyPickedLabels.Contains(l.Label))
+                .Take(3)
+                .ToList();
+
+            if (ct.IsCancellationRequested) return;
+
+            _suggestedPeople = people;
+            _suggestedLabels = filteredLabels;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) { /* superseded — ignore */ }
+        catch
+        {
+            // Suggestions are a best-effort affordance; never let them break
+            // the core search flow.
+            _suggestedPeople = new();
+            _suggestedLabels = new();
+        }
+    }
+
+    private void ApplyPersonSuggestion(Guid personId)
+    {
+        var ids = _personFilters.Select(p => p.Id).Append(personId).Distinct().ToList();
+        // Drop the free-text term so the chip doesn't compete with q for the
+        // same intent. The new URL has no `search=` segment.
+        _searchTerm = string.Empty;
+        Navigation.NavigateTo(BuildSearchUrl(ids, _objectLabels), replace: true);
+    }
+
+    private void ApplyObjectSuggestion(string label)
+    {
+        var labels = _objectLabels.Append(label)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _searchTerm = string.Empty;
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), labels), replace: true);
     }
 
     private async Task HandleSearchTermChanged(string term)
@@ -343,6 +625,10 @@ else
             ? "/search"
             : $"/search?search={Uri.EscapeDataString(trimmed)}";
         Navigation.NavigateTo(targetUri, replace: true);
+        // Kick off the suggestion refresh ourselves: OnParametersSetAsync
+        // would see _searchTerm already in sync with the new SearchTerm
+        // parameter (we just set it above) and short-circuit termChanged.
+        _ = RefreshSuggestionsAsync(_searchTerm);
         await SearchAsync();
     }
 
@@ -388,7 +674,8 @@ else
                 from: _fromDate,
                 to: _toDate,
                 folder: string.IsNullOrWhiteSpace(_folderFilter) ? null : _folderFilter,
-                personIds: _personFilters.Count == 0 ? null : _personFilters.Select(p => p.Id).ToList());
+                personIds: _personFilters.Count == 0 ? null : _personFilters.Select(p => p.Id).ToList(),
+                objectLabels: _objectLabels.Count == 0 ? null : _objectLabels);
 
             _results = items;
             _hasMore = hasMore;
@@ -827,6 +1114,10 @@ else
     {
         _longPressTimer?.Dispose();
         _objRef?.Dispose();
+        _suggestCts?.Cancel();
+        _suggestCts?.Dispose();
+        _filterPickerCts?.Cancel();
+        _filterPickerCts?.Dispose();
         LayoutService.ResetNavbar();
         DeviceLayout.OnChanged -= OnDeviceLayoutChanged;
     }
@@ -837,48 +1128,135 @@ else
         Navigation.NavigateTo(BuildSearchUrl(remaining), replace: true);
     }
 
-    private void OpenPersonPicker()
+    private void RemoveObjectLabel(string label)
     {
-        _peoplePool = null; // refresh on every open so newly created persons show up
-        _personPickerVersion++;
-        _personPickerOpen = true;
+        var remaining = _objectLabels
+            .Where(l => !string.Equals(l, label, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), remaining), replace: true);
     }
 
-    private void ClosePersonPicker()
-    {
-        _personPickerOpen = false;
-    }
+    private string BuildSearchUrl(IEnumerable<Guid> personIds) =>
+        BuildSearchUrl(personIds, _objectLabels);
 
-    private async Task<IEnumerable<PersonSummary>> SearchPeoplePool(string? value, CancellationToken ct)
-    {
-        _peoplePool ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: true, ct: ct)).Items;
-
-        var alreadyPicked = _personFilters.Select(p => p.Id).ToHashSet();
-        var pool = _peoplePool.Where(p => !alreadyPicked.Contains(p.Id));
-        if (string.IsNullOrWhiteSpace(value))
-            return pool.OrderByDescending(p => p.FaceCount).Take(20);
-
-        return pool
-            .Where(p => !string.IsNullOrWhiteSpace(p.Name)
-                        && p.Name!.Contains(value, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(p => p.FaceCount)
-            .Take(20);
-    }
-
-    private void OnPersonPickerSelected(PersonSummary? person)
-    {
-        if (person == null) return;
-        var ids = _personFilters.Select(p => p.Id).Append(person.Id).Distinct().ToList();
-        ClosePersonPicker();
-        Navigation.NavigateTo(BuildSearchUrl(ids), replace: true);
-    }
-
-    private string BuildSearchUrl(IEnumerable<Guid> personIds)
+    private string BuildSearchUrl(IEnumerable<Guid> personIds, IEnumerable<string> objectLabels)
     {
         var query = new List<string>();
         if (!string.IsNullOrWhiteSpace(_searchTerm))
             query.Add($"search={Uri.EscapeDataString(_searchTerm)}");
         foreach (var pid in personIds) query.Add($"personId={pid}");
+        foreach (var label in objectLabels)
+        {
+            if (string.IsNullOrWhiteSpace(label)) continue;
+            query.Add($"objectLabel={Uri.EscapeDataString(label)}");
+        }
         return query.Count == 0 ? "/search" : "/search?" + string.Join("&", query);
+    }
+
+    // ─── Unified filter picker ────────────────────────────────────────────
+
+    private void OpenFilterPicker()
+    {
+        // Refresh pools on every open so newly created persons / freshly
+        // detected labels show up without a page reload.
+        _peoplePool = null;
+        _filterPickerVersion++;
+        _filterPickerQuery = string.Empty;
+        _filterPickerPeople = new();
+        _filterPickerLabels = new();
+        _filterPickerOpen = true;
+        // Kick off the initial "empty query" load so the user sees the top
+        // people + labels immediately, no typing required.
+        _ = RefreshFilterPickerAsync();
+    }
+
+    private void CloseFilterPicker()
+    {
+        _filterPickerOpen = false;
+        _filterPickerCts?.Cancel();
+        _filterPickerCts?.Dispose();
+        _filterPickerCts = null;
+    }
+
+    private void OnFilterPickerQueryChanged()
+    {
+        _ = RefreshFilterPickerAsync();
+    }
+
+    private async Task RefreshFilterPickerAsync()
+    {
+        _filterPickerCts?.Cancel();
+        _filterPickerCts?.Dispose();
+        _filterPickerCts = new CancellationTokenSource();
+        var ct = _filterPickerCts.Token;
+
+        var query = (_filterPickerQuery ?? string.Empty).Trim();
+
+        try
+        {
+            _filterPickerLoading = true;
+            StateHasChanged();
+
+            // People are loaded once and filtered locally because the people
+            // endpoint is paginated (no ILIKE) and 500 rows fit comfortably.
+            // Labels use the server-side ILIKE so we don't pull the full
+            // catalog when the user is typing.
+            _peoplePool ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: false, ct: ct)).Items;
+            var labelsTask = string.IsNullOrEmpty(query)
+                ? ObjectsService.GetLabelsAsync(limit: 12, ct: ct)
+                : ObjectsService.GetLabelsAsync(search: query, limit: 12, ct: ct);
+
+            var alreadyPickedPeople = _personFilters.Select(p => p.Id).ToHashSet();
+            var people = _peoplePool
+                .Where(p => !string.IsNullOrWhiteSpace(p.Name) && !alreadyPickedPeople.Contains(p.Id));
+            if (!string.IsNullOrEmpty(query))
+            {
+                people = people.Where(p => p.Name!.Contains(query, StringComparison.OrdinalIgnoreCase));
+            }
+            var topPeople = people.OrderByDescending(p => p.FaceCount).Take(8).ToList();
+
+            var labels = await labelsTask;
+            var alreadyPickedLabels = _objectLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var topLabels = labels.Where(l => !alreadyPickedLabels.Contains(l.Label)).Take(12).ToList();
+
+            if (ct.IsCancellationRequested) return;
+
+            _filterPickerPeople = topPeople;
+            _filterPickerLabels = topLabels;
+        }
+        catch (OperationCanceledException) { /* superseded — ignore */ }
+        catch
+        {
+            _filterPickerPeople = new();
+            _filterPickerLabels = new();
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+            {
+                _filterPickerLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void PickPerson(PersonSummary person)
+    {
+        var ids = _personFilters.Select(p => p.Id).Append(person.Id).Distinct().ToList();
+        CloseFilterPicker();
+        Navigation.NavigateTo(BuildSearchUrl(ids, _objectLabels), replace: true);
+    }
+
+    private void PickObject(string label)
+    {
+        var labels = _objectLabels.Append(label).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        CloseFilterPicker();
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), labels), replace: true);
+    }
+
+    private static string Capitalize(string label)
+    {
+        if (string.IsNullOrEmpty(label)) return label;
+        return char.ToUpperInvariant(label[0]) + label[1..];
     }
 }

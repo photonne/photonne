@@ -1,0 +1,25 @@
+# Default: let Git auto-detect text/binary and normalize line endings to LF
+# in the repo, with platform-native checkout for editors that need it.
+* text=auto
+
+# Shell scripts and Dockerfiles are executed by Linux containers regardless
+# of the developer's host. Always check them out with LF so the shebang
+# resolves and `RUN` lines don't choke on \r.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.dockerfile text eol=lf
+.dockerignore text eol=lf
+docker-compose*.yml text eol=lf
+entrypoint.sh text eol=lf
+
+# Common binary types — never normalize.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.onnx binary
+*.pt   binary
+*.zip  binary

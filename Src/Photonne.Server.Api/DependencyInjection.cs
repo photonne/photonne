@@ -4,6 +4,8 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
+using Photonne.Server.Api.Shared.Services.Ml;
+using Photonne.Server.Api.Shared.Services.ObjectRecognition;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
 
@@ -35,17 +37,31 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(10);
         });
 
-        // Face recognition (Python microservice)
+        // ML microservice (Python). Transport-level settings (URL, timeout,
+        // retries) are shared; per-capability tunables live in nested sections.
+        builder.Services.Configure<MlOptions>(
+            builder.Configuration.GetSection(MlOptions.SectionName));
         builder.Services.Configure<FaceRecognitionOptions>(
             builder.Configuration.GetSection(FaceRecognitionOptions.SectionName));
+        builder.Services.Configure<ObjectRecognitionOptions>(
+            builder.Configuration.GetSection(ObjectRecognitionOptions.SectionName));
+
         builder.Services.AddHttpClient<IFaceRecognitionClient, FaceRecognitionClient>((sp, client) =>
         {
-            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FaceRecognitionOptions>>().Value;
-            client.BaseAddress = new Uri(opts.ServiceUrl);
-            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
         });
         builder.Services.AddScoped<FaceClusteringService>();
         builder.Services.AddScoped<FaceDetectionService>();
+
+        builder.Services.AddHttpClient<IObjectRecognitionClient, ObjectRecognitionClient>((sp, client) =>
+        {
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
+        });
+        builder.Services.AddScoped<ObjectDetectionService>();
 
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();

@@ -50,6 +50,12 @@ builder.Services.AddScoped<IPeopleService>(sp =>
     var authService = sp.GetRequiredService<AuthService>();
     return new PeopleService(httpClient, async () => await authService.GetTokenAsync());
 });
+builder.Services.AddScoped<IObjectsService>(sp =>
+{
+    var httpClient = sp.GetRequiredService<HttpClient>();
+    var authService = sp.GetRequiredService<AuthService>();
+    return new ObjectsService(httpClient, async () => await authService.GetTokenAsync());
+});
 builder.Services.AddScoped<IIndexService, IndexService>();
 builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
 builder.Services.AddScoped<IMetadataQueueService, MetadataQueueService>();

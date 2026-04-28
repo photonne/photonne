@@ -2,15 +2,12 @@ namespace Photonne.Server.Api.Shared.Services.FaceRecognition;
 
 public class FaceRecognitionOptions
 {
-    public const string SectionName = "FaceRecognition";
+    // Nested under the shared "Ml" section. Transport settings (ServiceUrl,
+    // TimeoutSeconds, MaxRetries) live on MlOptions and are reused across
+    // every ML capability.
+    public const string SectionName = "Ml:FaceRecognition";
 
     public bool Enabled { get; set; } = true;
-
-    public string ServiceUrl { get; set; } = "http://photonne-faces:8000";
-
-    public int TimeoutSeconds { get; set; } = 120;
-
-    public int MaxRetries { get; set; } = 3;
 
     // Faces below this side length (in pixels of the source image) are dropped.
     // Re-applied API-side because Python-side filtering uses thumbnail dims.

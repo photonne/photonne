@@ -1,0 +1,49 @@
+import os
+from dataclasses import dataclass, field
+
+
+def _bool_env(name: str, default: str) -> bool:
+    return os.getenv(name, default).lower() not in {"false", "0", "no"}
+
+
+@dataclass(frozen=True)
+class FaceSettings:
+    # Legacy env var names (MODEL_NAME, DET_SIZE, ...) still work so existing
+    # docker-compose / .env files keep operating after the service rename.
+    enabled: bool = _bool_env("FACE_ENABLED", "true")
+    model_name: str = os.getenv("FACE_MODEL_NAME", os.getenv("MODEL_NAME", "buffalo_l"))
+    model_root: str = os.getenv("INSIGHTFACE_HOME", "/app/models")
+    det_size: int = int(os.getenv("FACE_DET_SIZE", os.getenv("DET_SIZE", "640")))
+    min_face_size: int = int(os.getenv("FACE_MIN_SIZE", os.getenv("MIN_FACE_SIZE", "40")))
+    min_det_score: float = float(os.getenv("FACE_MIN_DET_SCORE", os.getenv("MIN_DET_SCORE", "0.5")))
+    max_faces: int = int(os.getenv("FACE_MAX", os.getenv("MAX_FACES", "50")))
+
+
+@dataclass(frozen=True)
+class ObjectSettings:
+    enabled: bool = _bool_env("OBJECT_ENABLED", "true")
+    # YOLOv8-format ONNX model. The default yolov8n.onnx (~12 MB, COCO-80) is
+    # auto-downloaded into model_dir on first launch when missing.
+    model_path: str = os.getenv("OBJECT_MODEL_PATH", "/app/models/yolov8n.onnx")
+    model_dir: str = os.getenv("OBJECT_MODEL_DIR", "/app/models")
+    # Optional fallback when the model file is missing from the persisted
+    # volume (e.g. someone wiped it). The Docker image already bakes
+    # yolov8n.onnx and seeds it on first launch, so by default we don't fetch
+    # anything at runtime. Set to one or more comma-separated URLs to enable
+    # auto-download.
+    model_url: str = os.getenv("OBJECT_MODEL_URL", "")
+    det_size: int = int(os.getenv("OBJECT_DET_SIZE", "640"))
+    min_score: float = float(os.getenv("OBJECT_MIN_SCORE", "0.25"))
+    iou_threshold: float = float(os.getenv("OBJECT_IOU", "0.45"))
+    max_objects: int = int(os.getenv("OBJECT_MAX", "100"))
+
+
+@dataclass(frozen=True)
+class Settings:
+    # Comma-separated list of ONNX execution providers in priority order.
+    providers: str = os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")
+    face: FaceSettings = field(default_factory=FaceSettings)
+    obj: ObjectSettings = field(default_factory=ObjectSettings)
+
+
+settings = Settings()

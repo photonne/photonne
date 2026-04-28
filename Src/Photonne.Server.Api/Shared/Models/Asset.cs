@@ -83,5 +83,10 @@ public class Asset
     public ICollection<AssetUserTag> UserTags { get; set; } = new List<AssetUserTag>();
     public ICollection<AssetMlJob> MlJobs { get; set; } = new List<AssetMlJob>();
     public ICollection<Face> Faces { get; set; } = new List<Face>();
+    public ICollection<ObjectDetection> ObjectDetections { get; set; } = new List<ObjectDetection>();
+
+    // Marks the most recent successful object recognition run. Used by the
+    // backfill admin endpoint to skip already-processed assets.
+    public DateTime? ObjectRecognitionCompletedAt { get; set; }
 }
 

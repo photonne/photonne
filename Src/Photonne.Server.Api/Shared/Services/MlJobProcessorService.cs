@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
+using Photonne.Server.Api.Shared.Services.ObjectRecognition;
 
 namespace Photonne.Server.Api.Shared.Services;
 
@@ -80,6 +81,7 @@ public class MlJobProcessorService : BackgroundService
         var mlJobService = scope.ServiceProvider.GetRequiredService<IMlJobService>();
         var settingsService = scope.ServiceProvider.GetRequiredService<SettingsService>();
         var faceDetection = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceDetectionService>();
+        var objectDetection = scope.ServiceProvider.GetRequiredService<ObjectRecognition.ObjectDetectionService>();
 
         var pendingJobs = await mlJobService.GetPendingJobsAsync(cancellationToken);
 
@@ -95,7 +97,7 @@ public class MlJobProcessorService : BackgroundService
         {
             try
             {
-                await ProcessJobAsync(job, dbContext, settingsService, faceDetection, cancellationToken);
+                await ProcessJobAsync(job, dbContext, settingsService, faceDetection, objectDetection, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -113,6 +115,7 @@ public class MlJobProcessorService : BackgroundService
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         FaceRecognition.FaceDetectionService faceDetection,
+        ObjectRecognition.ObjectDetectionService objectDetection,
         CancellationToken cancellationToken)
     {
         job.Status = MlJobStatus.Processing;
@@ -145,7 +148,7 @@ public class MlJobProcessorService : BackgroundService
                 resultJson = await ProcessFaceDetectionAsync(asset, faceDetection, cancellationToken);
                 break;
             case MlJobType.ObjectRecognition:
-                resultJson = await ProcessObjectRecognitionAsync(asset, cancellationToken);
+                resultJson = await ProcessObjectRecognitionAsync(asset, objectDetection, cancellationToken);
                 break;
             case MlJobType.SceneClassification:
                 resultJson = await ProcessSceneClassificationAsync(asset, cancellationToken);
@@ -173,12 +176,13 @@ public class MlJobProcessorService : BackgroundService
         return JsonSerializer.Serialize(new { faceCount = count, model = "buffalo_l" });
     }
     
-    private async Task<string> ProcessObjectRecognitionAsync(Asset asset, CancellationToken cancellationToken)
+    private async Task<string> ProcessObjectRecognitionAsync(
+        Asset asset,
+        ObjectRecognition.ObjectDetectionService objectDetection,
+        CancellationToken cancellationToken)
     {
-        // TODO: Integrate with ML library
-        await Task.CompletedTask;
-        _logger.LogInformation("Object recognition processing for asset {AssetId} - placeholder implementation", asset.Id);
-        return "{}";
+        var count = await objectDetection.DetectAndStoreAsync(asset.Id, cancellationToken);
+        return JsonSerializer.Serialize(new { objectCount = count, model = "yolov8n" });
     }
     
     private async Task<string> ProcessSceneClassificationAsync(Asset asset, CancellationToken cancellationToken)

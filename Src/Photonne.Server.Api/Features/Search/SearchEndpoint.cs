@@ -29,6 +29,7 @@ public class SearchEndpoint : IEndpoint
         [FromQuery] string? folder,
         [FromQuery] int pageSize,
         [FromQuery(Name = "personId")] Guid[]? personIds,
+        [FromQuery(Name = "objectLabel")] string[]? objectLabels,
         CancellationToken ct)
     {
         if (pageSize <= 0) pageSize = 100;
@@ -38,9 +39,10 @@ public class SearchEndpoint : IEndpoint
             return Results.Unauthorized();
 
         var hasPersonFilter = personIds is { Length: > 0 };
+        var hasObjectFilter = objectLabels is { Length: > 0 };
 
         // Require at least one filter to avoid returning everything
-        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter)
+        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter)
             return Results.Ok(new SearchResponse());
 
         var isAdmin = user.IsInRole("Admin");
@@ -91,6 +93,24 @@ public class SearchEndpoint : IEndpoint
         // Folder path substring
         if (!string.IsNullOrWhiteSpace(folder))
             query = query.Where(a => a.FullPath.Contains(folder));
+
+        // Objects filter — asset must have at least one detection for EVERY
+        // requested label (intersection: "fotos con perro Y coche"). Match is
+        // case-insensitive and trimmed so the UI can pass labels verbatim.
+        if (hasObjectFilter)
+        {
+            var labels = objectLabels!
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Select(l => l.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+
+            foreach (var label in labels)
+            {
+                var captured = label;
+                query = query.Where(a => a.ObjectDetections.Any(o => o.Label.ToLower() == captured));
+            }
+        }
 
         // People filter — asset must have at least one non-rejected face linked
         // to EVERY requested person (intersection: "fotos donde aparezcan A y B").

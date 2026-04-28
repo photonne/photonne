@@ -152,6 +152,7 @@ else
 @if (_asset != null && _asset.Id != Guid.Empty && _asset.Type == "Image" && _asset.SyncStatus == AssetSyncStatus.Synced)
 {
     <FaceOverlay AssetId="_asset.Id" Visible="_facesOverlayVisible" />
+    <ObjectOverlay AssetId="_asset.Id" Visible="_objectsOverlayVisible" />
 }
 
 @code {
@@ -185,6 +186,7 @@ else
     private bool _syncing = false;
     private bool _zoomed = false;
     private bool _facesOverlayVisible = false;
+    private bool _objectsOverlayVisible = false;
     private bool _imageLoadError = false;
     private bool _deleting = false;
     private bool _deleteConfirmOpen = false;
@@ -338,6 +340,11 @@ else
                                 <MudIconButton Icon="@(_facesOverlayVisible ? Icons.Material.Filled.Face : Icons.Material.Outlined.Face)"
                                                Color="@(_facesOverlayVisible ? Color.Primary : Color.Inherit)"
                                                OnClick="ToggleFacesOverlay" />
+                            </MudTooltip>
+                            <MudTooltip Text="@(_objectsOverlayVisible ? "Ocultar objetos" : "Mostrar objetos")">
+                                <MudIconButton Icon="@(_objectsOverlayVisible ? Icons.Material.Filled.Category : Icons.Material.Outlined.Category)"
+                                               Color="@(_objectsOverlayVisible ? Color.Secondary : Color.Inherit)"
+                                               OnClick="ToggleObjectsOverlay" />
                             </MudTooltip>
                         }
 
@@ -824,6 +831,13 @@ else
     private void ToggleFacesOverlay()
     {
         _facesOverlayVisible = !_facesOverlayVisible;
+        UpdateNavbar();
+        StateHasChanged();
+    }
+
+    private void ToggleObjectsOverlay()
+    {
+        _objectsOverlayVisible = !_objectsOverlayVisible;
         UpdateNavbar();
         StateHasChanged();
     }

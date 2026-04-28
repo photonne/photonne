@@ -42,6 +42,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ExternalLibraryPermission> ExternalLibraryPermissions { get; set; }
     public DbSet<Face> Faces { get; set; }
     public DbSet<Person> People { get; set; }
+    public DbSet<ObjectDetection> ObjectDetections { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -482,6 +483,26 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FaceDetectionCompletedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(NullableUtcConverter);
+            entity.Property(e => e.ObjectRecognitionCompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(NullableUtcConverter);
+        });
+
+        // Configure ObjectDetection entity (detected object with bbox + class)
+        modelBuilder.Entity<ObjectDetection>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Label).IsRequired().HasMaxLength(100);
+
+            entity.HasOne(e => e.Asset)
+                .WithMany(a => a.ObjectDetections)
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.AssetId);
+            entity.HasIndex(e => e.Label);
+            entity.HasIndex(e => new { e.AssetId, e.Label });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure RefreshToken entity
