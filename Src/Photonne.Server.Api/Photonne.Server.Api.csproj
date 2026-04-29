@@ -31,10 +31,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Migrations\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Remove="thumbnails\979\medium.jpg" />
       <None Remove="thumbnails\28\large.jpg" />
       <None Remove="thumbnails\276\small.jpg" />

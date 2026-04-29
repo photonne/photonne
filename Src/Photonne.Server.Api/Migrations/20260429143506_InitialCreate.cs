@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Pgvector;
 
 #nullable disable
 
@@ -11,6 +12,9 @@ namespace Photonne.Server.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:vector", ",,");
+
             migrationBuilder.CreateTable(
                 name: "Settings",
                 columns: table => new
@@ -231,7 +235,11 @@ namespace Photonne.Server.Api.Migrations
                     DeletedFromFolderId = table.Column<Guid>(type: "uuid", nullable: true),
                     Duration = table.Column<TimeSpan>(type: "interval", nullable: true),
                     Caption = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    AiDescription = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true)
+                    AiDescription = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    FaceRecognitionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ObjectDetectionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    SceneClassificationCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    TextRecognitionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -323,6 +331,55 @@ namespace Photonne.Server.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AssetClassifiedScenes",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AssetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Label = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ClassId = table.Column<int>(type: "integer", nullable: false),
+                    Confidence = table.Column<float>(type: "real", nullable: false),
+                    Rank = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetClassifiedScenes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AssetClassifiedScenes_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetDetectedObjects",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AssetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Label = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    ClassId = table.Column<int>(type: "integer", nullable: false),
+                    Confidence = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxX = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxY = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxW = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxH = table.Column<float>(type: "real", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetDetectedObjects", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AssetDetectedObjects_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AssetExifs",
                 columns: table => new
                 {
@@ -375,6 +432,32 @@ namespace Photonne.Server.Api.Migrations
                     table.PrimaryKey("PK_AssetMlJobs", x => x.Id);
                     table.ForeignKey(
                         name: "FK_AssetMlJobs_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetRecognizedTextLines",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AssetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Text = table.Column<string>(type: "text", nullable: false),
+                    Confidence = table.Column<float>(type: "real", nullable: false),
+                    BBoxX = table.Column<float>(type: "real", nullable: false),
+                    BBoxY = table.Column<float>(type: "real", nullable: false),
+                    BBoxWidth = table.Column<float>(type: "real", nullable: false),
+                    BBoxHeight = table.Column<float>(type: "real", nullable: false),
+                    LineIndex = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetRecognizedTextLines", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AssetRecognizedTextLines_Assets_AssetId",
                         column: x => x.AssetId,
                         principalTable: "Assets",
                         principalColumn: "Id",
@@ -554,6 +637,66 @@ namespace Photonne.Server.Api.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Faces",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AssetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    BoundingBoxX = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxY = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxW = table.Column<float>(type: "real", nullable: false),
+                    BoundingBoxH = table.Column<float>(type: "real", nullable: false),
+                    Confidence = table.Column<float>(type: "real", nullable: false),
+                    Embedding = table.Column<Vector>(type: "vector(512)", nullable: false),
+                    PersonId = table.Column<Guid>(type: "uuid", nullable: true),
+                    IsManuallyAssigned = table.Column<bool>(type: "boolean", nullable: false),
+                    IsRejected = table.Column<bool>(type: "boolean", nullable: false),
+                    SuggestedPersonId = table.Column<Guid>(type: "uuid", nullable: true),
+                    SuggestedDistance = table.Column<float>(type: "real", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Faces", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Faces_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "People",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OwnerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    CoverFaceId = table.Column<Guid>(type: "uuid", nullable: true),
+                    FaceCount = table.Column<int>(type: "integer", nullable: false),
+                    IsHidden = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_People", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_People_Faces_CoverFaceId",
+                        column: x => x.CoverFaceId,
+                        principalTable: "Faces",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_People_Users_OwnerId",
+                        column: x => x.OwnerId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AlbumAssets_AlbumId",
                 table: "AlbumAssets",
@@ -596,6 +739,36 @@ namespace Photonne.Server.Api.Migrations
                 column: "OwnerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AssetClassifiedScenes_AssetId",
+                table: "AssetClassifiedScenes",
+                column: "AssetId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetClassifiedScenes_AssetId_Label",
+                table: "AssetClassifiedScenes",
+                columns: new[] { "AssetId", "Label" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetClassifiedScenes_Label",
+                table: "AssetClassifiedScenes",
+                column: "Label");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetDetectedObjects_AssetId",
+                table: "AssetDetectedObjects",
+                column: "AssetId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetDetectedObjects_AssetId_Label",
+                table: "AssetDetectedObjects",
+                columns: new[] { "AssetId", "Label" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetDetectedObjects_Label",
+                table: "AssetDetectedObjects",
+                column: "Label");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AssetExifs_AssetId",
                 table: "AssetExifs",
                 column: "AssetId",
@@ -610,6 +783,16 @@ namespace Photonne.Server.Api.Migrations
                 name: "IX_AssetMlJobs_AssetId_JobType_Status",
                 table: "AssetMlJobs",
                 columns: new[] { "AssetId", "JobType", "Status" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetRecognizedTextLines_AssetId",
+                table: "AssetRecognizedTextLines",
+                column: "AssetId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetRecognizedTextLines_AssetId_LineIndex",
+                table: "AssetRecognizedTextLines",
+                columns: new[] { "AssetId", "LineIndex" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_Checksum",
@@ -701,6 +884,26 @@ namespace Photonne.Server.Api.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Faces_AssetId",
+                table: "Faces",
+                column: "AssetId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Faces_PersonId",
+                table: "Faces",
+                column: "PersonId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Faces_PersonId_IsRejected",
+                table: "Faces",
+                columns: new[] { "PersonId", "IsRejected" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Faces_SuggestedPersonId",
+                table: "Faces",
+                column: "SuggestedPersonId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FolderPermissions_FolderId",
                 table: "FolderPermissions",
                 column: "FolderId");
@@ -741,6 +944,21 @@ namespace Photonne.Server.Api.Migrations
                 name: "IX_Notifications_UserId_IsRead",
                 table: "Notifications",
                 columns: new[] { "UserId", "IsRead" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_People_CoverFaceId",
+                table: "People",
+                column: "CoverFaceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_People_OwnerId",
+                table: "People",
+                column: "OwnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_People_OwnerId_IsHidden",
+                table: "People",
+                columns: new[] { "OwnerId", "IsHidden" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_TokenHash",
@@ -801,11 +1019,43 @@ namespace Photonne.Server.Api.Migrations
                 table: "UserTags",
                 columns: new[] { "OwnerId", "NormalizedName" },
                 unique: true);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Faces_People_PersonId",
+                table: "Faces",
+                column: "PersonId",
+                principalTable: "People",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Faces_People_SuggestedPersonId",
+                table: "Faces",
+                column: "SuggestedPersonId",
+                principalTable: "People",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_Faces_Assets_AssetId",
+                table: "Faces");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_People_Users_OwnerId",
+                table: "People");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Faces_People_PersonId",
+                table: "Faces");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Faces_People_SuggestedPersonId",
+                table: "Faces");
+
             migrationBuilder.DropTable(
                 name: "AlbumAssets");
 
@@ -813,10 +1063,19 @@ namespace Photonne.Server.Api.Migrations
                 name: "AlbumPermissions");
 
             migrationBuilder.DropTable(
+                name: "AssetClassifiedScenes");
+
+            migrationBuilder.DropTable(
+                name: "AssetDetectedObjects");
+
+            migrationBuilder.DropTable(
                 name: "AssetExifs");
 
             migrationBuilder.DropTable(
                 name: "AssetMlJobs");
+
+            migrationBuilder.DropTable(
+                name: "AssetRecognizedTextLines");
 
             migrationBuilder.DropTable(
                 name: "AssetTags");
@@ -862,6 +1121,12 @@ namespace Photonne.Server.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "People");
+
+            migrationBuilder.DropTable(
+                name: "Faces");
         }
     }
 }
