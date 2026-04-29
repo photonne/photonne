@@ -62,12 +62,12 @@ public class TextRecognitionService
         // Idempotency: replace all prior extracted text rows for this asset.
         // OCR output is not user-curated so a full refresh is the simplest
         // correct semantics — and matches Scene/Object behavior.
-        var existing = await _dbContext.ExtractedTexts
+        var existing = await _dbContext.AssetRecognizedTextLines
             .Where(t => t.AssetId == assetId)
             .ToListAsync(cancellationToken);
         if (existing.Count > 0)
         {
-            _dbContext.ExtractedTexts.RemoveRange(existing);
+            _dbContext.AssetRecognizedTextLines.RemoveRange(existing);
         }
 
         var inserted = 0;
@@ -86,7 +86,7 @@ public class TextRecognitionService
             float bw = bbox.Length > 2 ? bbox[2] : 0f;
             float bh = bbox.Length > 3 ? bbox[3] : 0f;
 
-            _dbContext.ExtractedTexts.Add(new ExtractedText
+            _dbContext.AssetRecognizedTextLines.Add(new AssetRecognizedTextLine
             {
                 AssetId = assetId,
                 Text = text,

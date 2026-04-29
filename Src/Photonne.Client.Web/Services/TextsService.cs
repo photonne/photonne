@@ -23,10 +23,10 @@ public class TextsService : ITextsService
             : new AuthenticationHeaderValue("Bearer", token);
     }
 
-    public async Task<List<ExtractedTextLineItem>> GetTextForAssetAsync(Guid assetId, CancellationToken ct = default)
+    public async Task<List<RecognizedTextLineItem>> GetTextForAssetAsync(Guid assetId, CancellationToken ct = default)
     {
         await SetAuthAsync();
-        var items = await _http.GetFromJsonAsync<List<ExtractedTextLineItem>>(
+        var items = await _http.GetFromJsonAsync<List<RecognizedTextLineItem>>(
             $"/api/assets/{assetId}/text", ct);
         return items ?? new();
     }

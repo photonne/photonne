@@ -206,8 +206,8 @@ public class AssetIndexingService
             // ML jobs
             if (asset.Type == AssetType.Image && _mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
             {
-                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceDetection, ct);
-                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectRecognition, ct);
+                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceRecognition, ct);
+                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectDetection, ct);
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, ct);
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, ct);
             }

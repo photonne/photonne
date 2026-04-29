@@ -2,7 +2,7 @@ namespace Photonne.Server.Api.Shared.Services.Ml;
 
 /// <summary>
 /// Shared transport-level settings for the Photonne ML microservice. The
-/// per-capability options (FaceRecognition, ObjectRecognition, ...) live under
+/// per-capability options (FaceRecognition, ObjectDetection, ...) live under
 /// the same "Ml" section and only carry capability-specific tunables.
 /// </summary>
 public class MlOptions

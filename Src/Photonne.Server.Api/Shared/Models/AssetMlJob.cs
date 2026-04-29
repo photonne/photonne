@@ -4,8 +4,8 @@ namespace Photonne.Server.Api.Shared.Models;
 
 public enum MlJobType
 {
-    FaceDetection,
-    ObjectRecognition,
+    FaceRecognition,
+    ObjectDetection,
     SceneClassification,
     TextRecognition
 }

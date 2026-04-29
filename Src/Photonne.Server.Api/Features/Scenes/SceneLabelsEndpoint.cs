@@ -45,7 +45,7 @@ public class SceneLabelsEndpoint : IEndpoint
                 """
                 SELECT s."Label" AS "Label",
                        COUNT(DISTINCT s."AssetId")::int AS "AssetCount"
-                FROM "SceneClassifications" s
+                FROM "AssetClassifiedScenes" s
                 JOIN "Assets" a ON a."Id" = s."AssetId"
                 WHERE a."OwnerId" = {0}
                   AND a."DeletedAt" IS NULL

@@ -3,10 +3,10 @@ namespace Photonne.Client.Web.Services;
 public interface ITextsService
 {
     /// <summary>Lists every OCR-extracted text line on a single asset, in reading order.</summary>
-    Task<List<ExtractedTextLineItem>> GetTextForAssetAsync(Guid assetId, CancellationToken ct = default);
+    Task<List<RecognizedTextLineItem>> GetTextForAssetAsync(Guid assetId, CancellationToken ct = default);
 }
 
-public sealed record ExtractedTextLineItem(
+public sealed record RecognizedTextLineItem(
     Guid Id,
     string Text,
     float Confidence,

@@ -48,7 +48,7 @@ public class ObjectLabelsEndpoint : IEndpoint
                 """
                 SELECT o."Label" AS "Label",
                        COUNT(DISTINCT o."AssetId")::int AS "AssetCount"
-                FROM "ObjectDetections" o
+                FROM "AssetDetectedObjects" o
                 JOIN "Assets" a ON a."Id" = o."AssetId"
                 WHERE a."OwnerId" = {0}
                   AND a."DeletedAt" IS NULL

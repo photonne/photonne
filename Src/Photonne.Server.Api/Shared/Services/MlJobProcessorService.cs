@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
-using Photonne.Server.Api.Shared.Services.ObjectRecognition;
-using Photonne.Server.Api.Shared.Services.SceneRecognition;
+using Photonne.Server.Api.Shared.Services.ObjectDetection;
+using Photonne.Server.Api.Shared.Services.SceneClassification;
 using Photonne.Server.Api.Shared.Services.TextRecognition;
 
 namespace Photonne.Server.Api.Shared.Services;
@@ -82,9 +82,9 @@ public class MlJobProcessorService : BackgroundService
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var mlJobService = scope.ServiceProvider.GetRequiredService<IMlJobService>();
         var settingsService = scope.ServiceProvider.GetRequiredService<SettingsService>();
-        var faceDetection = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceDetectionService>();
-        var objectDetection = scope.ServiceProvider.GetRequiredService<ObjectRecognition.ObjectDetectionService>();
-        var sceneClassification = scope.ServiceProvider.GetRequiredService<SceneRecognition.SceneClassificationService>();
+        var faceRecognition = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceRecognitionService>();
+        var objectDetection = scope.ServiceProvider.GetRequiredService<ObjectDetection.ObjectDetectionService>();
+        var sceneClassification = scope.ServiceProvider.GetRequiredService<SceneClassification.SceneClassificationService>();
         var textRecognition = scope.ServiceProvider.GetRequiredService<TextRecognition.TextRecognitionService>();
 
         var pendingJobs = await mlJobService.GetPendingJobsAsync(cancellationToken);
@@ -92,6 +92,9 @@ public class MlJobProcessorService : BackgroundService
         if (!pendingJobs.Any())
             return;
 
+        // The legacy "FaceDetectionWorkers" setting key is preserved on disk so
+        // existing user values still take effect after the FaceDetection→FaceRecognition
+        // pipeline rename. The TaskSettings UI label was already "Detección de caras".
         var faceWorkersSetting = await settingsService.GetSettingAsync("TaskSettings.FaceDetectionWorkers", Guid.Empty, "1");
         var faceWorkers = Math.Clamp(int.TryParse(faceWorkersSetting, out var n) ? n : 1, 1, 32);
 
@@ -101,7 +104,7 @@ public class MlJobProcessorService : BackgroundService
         {
             try
             {
-                await ProcessJobAsync(job, dbContext, settingsService, faceDetection, objectDetection, sceneClassification, textRecognition, cancellationToken);
+                await ProcessJobAsync(job, dbContext, settingsService, faceRecognition, objectDetection, sceneClassification, textRecognition, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -118,9 +121,9 @@ public class MlJobProcessorService : BackgroundService
         AssetMlJob job,
         ApplicationDbContext dbContext,
         SettingsService settingsService,
-        FaceRecognition.FaceDetectionService faceDetection,
-        ObjectRecognition.ObjectDetectionService objectDetection,
-        SceneRecognition.SceneClassificationService sceneClassification,
+        FaceRecognition.FaceRecognitionService faceRecognition,
+        ObjectDetection.ObjectDetectionService objectDetection,
+        SceneClassification.SceneClassificationService sceneClassification,
         TextRecognition.TextRecognitionService textRecognition,
         CancellationToken cancellationToken)
     {
@@ -150,11 +153,11 @@ public class MlJobProcessorService : BackgroundService
 
         switch (job.JobType)
         {
-            case MlJobType.FaceDetection:
-                resultJson = await ProcessFaceDetectionAsync(asset, faceDetection, cancellationToken);
+            case MlJobType.FaceRecognition:
+                resultJson = await ProcessFaceRecognitionAsync(asset, faceRecognition, cancellationToken);
                 break;
-            case MlJobType.ObjectRecognition:
-                resultJson = await ProcessObjectRecognitionAsync(asset, objectDetection, cancellationToken);
+            case MlJobType.ObjectDetection:
+                resultJson = await ProcessObjectDetectionAsync(asset, objectDetection, cancellationToken);
                 break;
             case MlJobType.SceneClassification:
                 resultJson = await ProcessSceneClassificationAsync(asset, sceneClassification, cancellationToken);
@@ -173,18 +176,18 @@ public class MlJobProcessorService : BackgroundService
             job.Id, job.AssetId, job.JobType);
     }
 
-    private async Task<string> ProcessFaceDetectionAsync(
+    private async Task<string> ProcessFaceRecognitionAsync(
         Asset asset,
-        FaceRecognition.FaceDetectionService faceDetection,
+        FaceRecognition.FaceRecognitionService faceRecognition,
         CancellationToken cancellationToken)
     {
-        var count = await faceDetection.DetectAndStoreAsync(asset.Id, cancellationToken);
+        var count = await faceRecognition.DetectAndStoreAsync(asset.Id, cancellationToken);
         return JsonSerializer.Serialize(new { faceCount = count, model = "buffalo_l" });
     }
-    
-    private async Task<string> ProcessObjectRecognitionAsync(
+
+    private async Task<string> ProcessObjectDetectionAsync(
         Asset asset,
-        ObjectRecognition.ObjectDetectionService objectDetection,
+        ObjectDetection.ObjectDetectionService objectDetection,
         CancellationToken cancellationToken)
     {
         var count = await objectDetection.DetectAndStoreAsync(asset.Id, cancellationToken);
@@ -193,7 +196,7 @@ public class MlJobProcessorService : BackgroundService
     
     private async Task<string> ProcessSceneClassificationAsync(
         Asset asset,
-        SceneRecognition.SceneClassificationService sceneClassification,
+        SceneClassification.SceneClassificationService sceneClassification,
         CancellationToken cancellationToken)
     {
         var count = await sceneClassification.ClassifyAndStoreAsync(asset.Id, cancellationToken);

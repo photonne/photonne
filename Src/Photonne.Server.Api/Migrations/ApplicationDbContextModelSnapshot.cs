@@ -166,7 +166,7 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<Guid?>("ExternalLibraryId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("FaceDetectionCompletedAt")
+                    b.Property<DateTime?>("FaceRecognitionCompletedAt")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("FileCreatedAt")
@@ -200,7 +200,7 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<bool>("IsFileMissing")
                         .HasColumnType("boolean");
 
-                    b.Property<DateTime?>("ObjectRecognitionCompletedAt")
+                    b.Property<DateTime?>("ObjectDetectionCompletedAt")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("OwnerId")
@@ -705,7 +705,7 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ObjectDetection", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetDetectedObject", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -748,10 +748,10 @@ namespace Photonne.Server.Api.Migrations
 
                     b.HasIndex("AssetId", "Label");
 
-                    b.ToTable("ObjectDetections");
+                    b.ToTable("AssetDetectedObjects");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.SceneClassification", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetClassifiedScene", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -785,10 +785,10 @@ namespace Photonne.Server.Api.Migrations
 
                     b.HasIndex("AssetId", "Label");
 
-                    b.ToTable("SceneClassifications");
+                    b.ToTable("AssetClassifiedScenes");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExtractedText", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetRecognizedTextLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -828,7 +828,7 @@ namespace Photonne.Server.Api.Migrations
 
                     b.HasIndex("AssetId", "LineIndex");
 
-                    b.ToTable("ExtractedTexts");
+                    b.ToTable("AssetRecognizedTextLines");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Person", b =>
@@ -1353,10 +1353,10 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ObjectDetection", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetDetectedObject", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
-                        .WithMany("ObjectDetections")
+                        .WithMany("DetectedObjects")
                         .HasForeignKey("AssetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1382,10 +1382,10 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.SceneClassification", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetClassifiedScene", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
-                        .WithMany("SceneClassifications")
+                        .WithMany("ClassifiedScenes")
                         .HasForeignKey("AssetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1393,10 +1393,10 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Asset");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.ExtractedText", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetRecognizedTextLine", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
-                        .WithMany("ExtractedTexts")
+                        .WithMany("RecognizedTextLines")
                         .HasForeignKey("AssetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1462,15 +1462,15 @@ namespace Photonne.Server.Api.Migrations
                 {
                     b.Navigation("Exif");
 
-                    b.Navigation("ExtractedTexts");
+                    b.Navigation("RecognizedTextLines");
 
                     b.Navigation("Faces");
 
                     b.Navigation("MlJobs");
 
-                    b.Navigation("ObjectDetections");
+                    b.Navigation("DetectedObjects");
 
-                    b.Navigation("SceneClassifications");
+                    b.Navigation("ClassifiedScenes");
 
                     b.Navigation("Tags");
 

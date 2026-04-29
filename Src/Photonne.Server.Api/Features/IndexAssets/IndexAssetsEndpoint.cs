@@ -1035,8 +1035,8 @@ public class IndexAssetsEndpoint : IEndpoint
             
             if (mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
             {
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceDetection, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectRecognition, cancellationToken);
+                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceRecognition, cancellationToken);
+                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectDetection, cancellationToken);
                 await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, cancellationToken);
                 await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, cancellationToken);
                 stats.MlJobsQueued += 4;

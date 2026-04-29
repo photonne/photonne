@@ -41,7 +41,7 @@ public class AssetObjectsEndpoint : IEndpoint
             .AnyAsync(a => a.Id == assetId && a.OwnerId == userId, ct);
         if (!owns) return Results.NotFound();
 
-        var objects = await db.ObjectDetections.AsNoTracking()
+        var objects = await db.AssetDetectedObjects.AsNoTracking()
             .Where(o => o.AssetId == assetId)
             .OrderByDescending(o => o.Confidence)
             .Select(o => new DetectedObjectDto(

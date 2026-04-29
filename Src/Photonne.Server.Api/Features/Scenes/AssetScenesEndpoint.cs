@@ -38,7 +38,7 @@ public class AssetScenesEndpoint : IEndpoint
             .AnyAsync(a => a.Id == assetId && a.OwnerId == userId, ct);
         if (!owns) return Results.NotFound();
 
-        var scenes = await db.SceneClassifications.AsNoTracking()
+        var scenes = await db.AssetClassifiedScenes.AsNoTracking()
             .Where(s => s.AssetId == assetId)
             .OrderBy(s => s.Rank)
             .Select(s => new ClassifiedSceneDto(

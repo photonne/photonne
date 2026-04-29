@@ -10,7 +10,7 @@ namespace Photonne.Server.Api.Tests.Assets;
 /// Exercises the OCR feature surface end-to-end against a real Postgres:
 ///  - GET /api/assets/{id}/text returns persisted lines in reading order
 ///    and enforces ownership.
-///  - GET /api/assets/search?q=... matches inside ExtractedTexts so the
+///  - GET /api/assets/search?q=... matches inside AssetRecognizedTextLines so the
 ///    existing search bar finds the photo of a receipt or a screenshot.
 /// The Python ML service is not invoked here; rows are seeded directly via
 /// the DbContext so the test is hermetic.
@@ -19,7 +19,7 @@ public sealed class TextRecognitionTests : IntegrationTestBase
 {
     public TextRecognitionTests(PhotonneApiFactory factory) : base(factory) { }
 
-    private sealed record ExtractedTextLineDto(
+    private sealed record RecognizedTextLineDto(
         Guid Id,
         string Text,
         float Confidence,
@@ -60,7 +60,7 @@ public sealed class TextRecognitionTests : IntegrationTestBase
         {
             for (var i = 0; i < lines.Length; i++)
             {
-                db.ExtractedTexts.Add(new ExtractedText
+                db.AssetRecognizedTextLines.Add(new AssetRecognizedTextLine
                 {
                     AssetId = assetId,
                     Text = lines[i],
@@ -86,7 +86,7 @@ public sealed class TextRecognitionTests : IntegrationTestBase
         var response = await aliceClient.GetAsync($"/api/assets/{assetId}/text");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = await response.Content.ReadFromJsonAsync<List<ExtractedTextLineDto>>();
+        var body = await response.Content.ReadFromJsonAsync<List<RecognizedTextLineDto>>();
         Assert.NotNull(body);
         Assert.Equal(3, body!.Count);
         Assert.Equal("CAFÉ CENTRAL", body[0].Text);

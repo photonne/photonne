@@ -77,7 +77,7 @@ public class SearchEndpoint : IEndpoint
                 a.FullPath.Contains(q) ||
                 (a.Caption != null && a.Caption.Contains(q)) ||
                 a.UserTags.Any(ut => ut.UserTag.Name.Contains(q)) ||
-                a.ExtractedTexts.Any(t => EF.Functions.ILike(t.Text, "%" + q + "%")) ||
+                a.RecognizedTextLines.Any(t => EF.Functions.ILike(t.Text, "%" + q + "%")) ||
                 (tagTypeFilter.HasValue && a.Tags.Any(t => t.TagType == tagTypeFilter.Value)));
         }
 
@@ -113,7 +113,7 @@ public class SearchEndpoint : IEndpoint
             foreach (var label in labels)
             {
                 var captured = label;
-                query = query.Where(a => a.ObjectDetections.Any(o => o.Label.ToLower() == captured));
+                query = query.Where(a => a.DetectedObjects.Any(o => o.Label.ToLower() == captured));
             }
         }
 
@@ -131,7 +131,7 @@ public class SearchEndpoint : IEndpoint
             foreach (var label in labels)
             {
                 var captured = label;
-                query = query.Where(a => a.SceneClassifications.Any(s => s.Label.ToLower() == captured));
+                query = query.Where(a => a.ClassifiedScenes.Any(s => s.Label.ToLower() == captured));
             }
         }
 
@@ -143,7 +143,7 @@ public class SearchEndpoint : IEndpoint
         if (hasTextFilter)
         {
             var raw = textQuery!.Trim();
-            query = query.Where(a => a.ExtractedTexts.Any(t =>
+            query = query.Where(a => a.RecognizedTextLines.Any(t =>
                 EF.Functions.ToTsVector("simple", t.Text)
                     .Matches(EF.Functions.WebSearchToTsQuery("simple", raw))));
         }

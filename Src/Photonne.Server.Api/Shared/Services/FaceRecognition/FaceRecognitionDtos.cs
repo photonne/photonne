@@ -27,7 +27,7 @@ public sealed class DetectedFaceDto
     public float[][]? Landmarks5 { get; set; }
 }
 
-public sealed class FaceDetectionResponse
+public sealed class FaceRecognitionResponse
 {
     [JsonPropertyName("asset_id")]
     public string? AssetId { get; set; }

@@ -13,7 +13,7 @@ class RecognizedTextLine(BaseModel):
     confidence: float = Field(..., description="Recognition confidence in [0,1]")
     # Axis-aligned bounding box of the line in normalized [0,1] coordinates
     # (x, y, w, h). The underlying detector returns a quad polygon; we collapse
-    # it to the enclosing rectangle so the storage shape matches ObjectDetections.
+    # it to the enclosing rectangle so the storage shape matches DetectedObjects.
     bbox: List[float] = Field(..., description="[x, y, w, h] normalized to [0,1] over image dimensions")
     line_index: int = Field(..., description="0-based reading order (top-to-bottom, left-to-right)")
 

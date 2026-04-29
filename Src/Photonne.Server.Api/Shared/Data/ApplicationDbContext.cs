@@ -40,11 +40,21 @@ public class ApplicationDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<ExternalLibrary> ExternalLibraries { get; set; }
     public DbSet<ExternalLibraryPermission> ExternalLibraryPermissions { get; set; }
+    // ML output entities. Two naming rules at play:
+    //  1) Asset* prefix when the entity is exclusively asset-scoped (only an
+    //     AssetId FK, no user-curated state) — same convention as AssetExif,
+    //     AssetThumbnail, AssetTag, AssetMlJob. The DbSet/table use the prefix;
+    //     the nav property on Asset drops it (e.g. Asset.DetectedObjects).
+    //  2) Participle prefix (Detected*, Classified*, Recognized*) on the entity
+    //     to mark "pure model output, replaced on every re-run".
+    // Faces are the exception to rule 1: they FK Person, accept user decisions
+    // (IsManuallyAssigned, IsRejected, SuggestedPersonId), and persist across
+    // re-recognitions, so they earn an unprefixed name as a first-class entity.
     public DbSet<Face> Faces { get; set; }
     public DbSet<Person> People { get; set; }
-    public DbSet<ObjectDetection> ObjectDetections { get; set; }
-    public DbSet<SceneClassification> SceneClassifications { get; set; }
-    public DbSet<ExtractedText> ExtractedTexts { get; set; }
+    public DbSet<AssetDetectedObject> AssetDetectedObjects { get; set; }
+    public DbSet<AssetClassifiedScene> AssetClassifiedScenes { get; set; }
+    public DbSet<AssetRecognizedTextLine> AssetRecognizedTextLines { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -482,10 +492,10 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Asset>(entity =>
         {
-            entity.Property(e => e.FaceDetectionCompletedAt)
+            entity.Property(e => e.FaceRecognitionCompletedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(NullableUtcConverter);
-            entity.Property(e => e.ObjectRecognitionCompletedAt)
+            entity.Property(e => e.ObjectDetectionCompletedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(NullableUtcConverter);
             entity.Property(e => e.SceneClassificationCompletedAt)
@@ -496,14 +506,15 @@ public class ApplicationDbContext : DbContext
                 .HasConversion(NullableUtcConverter);
         });
 
-        // Configure ObjectDetection entity (detected object with bbox + class)
-        modelBuilder.Entity<ObjectDetection>(entity =>
+        // Configure AssetDetectedObject entity (detected object with bbox + class).
+        // Stored in the "AssetDetectedObjects" table — pure ML output, no user state.
+        modelBuilder.Entity<AssetDetectedObject>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Label).IsRequired().HasMaxLength(100);
 
             entity.HasOne(e => e.Asset)
-                .WithMany(a => a.ObjectDetections)
+                .WithMany(a => a.DetectedObjects)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -513,17 +524,17 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
-        // Configure SceneClassification entity (top-K scene labels per asset).
+        // Configure AssetClassifiedScene entity (top-K scene labels per asset).
         // Top-K means the same asset has multiple rows (rank 1..N) so the index
-        // shape mirrors ObjectDetections — by AssetId for "give me everything
+        // shape mirrors AssetDetectedObjects — by AssetId for "give me everything
         // for this photo" and by Label for "give me every photo of a beach".
-        modelBuilder.Entity<SceneClassification>(entity =>
+        modelBuilder.Entity<AssetClassifiedScene>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Label).IsRequired().HasMaxLength(100);
 
             entity.HasOne(e => e.Asset)
-                .WithMany(a => a.SceneClassifications)
+                .WithMany(a => a.ClassifiedScenes)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -533,16 +544,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
-        // Configure ExtractedText entity (one row per OCR'd line). The full-text
+        // Configure AssetRecognizedTextLine entity (one row per OCR'd line). The full-text
         // GIN index over to_tsvector('simple', "Text") is created in the
         // migration directly — EF Core can't model GIN expression indexes.
-        modelBuilder.Entity<ExtractedText>(entity =>
+        modelBuilder.Entity<AssetRecognizedTextLine>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Text).IsRequired().HasColumnType("text");
 
             entity.HasOne(e => e.Asset)
-                .WithMany(a => a.ExtractedTexts)
+                .WithMany(a => a.RecognizedTextLines)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
 

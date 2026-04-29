@@ -72,9 +72,9 @@ public class Asset
     [MaxLength(2000)]
     public string? AiDescription { get; set; }
 
-    // Marks the most recent successful face detection run on this asset. Used
+    // Marks the most recent successful face recognition run on this asset. Used
     // by the backfill admin endpoint to skip already-processed assets.
-    public DateTime? FaceDetectionCompletedAt { get; set; }
+    public DateTime? FaceRecognitionCompletedAt { get; set; }
 
     // Navigation properties
     public AssetExif? Exif { get; set; }
@@ -83,13 +83,13 @@ public class Asset
     public ICollection<AssetUserTag> UserTags { get; set; } = new List<AssetUserTag>();
     public ICollection<AssetMlJob> MlJobs { get; set; } = new List<AssetMlJob>();
     public ICollection<Face> Faces { get; set; } = new List<Face>();
-    public ICollection<ObjectDetection> ObjectDetections { get; set; } = new List<ObjectDetection>();
-    public ICollection<SceneClassification> SceneClassifications { get; set; } = new List<SceneClassification>();
-    public ICollection<ExtractedText> ExtractedTexts { get; set; } = new List<ExtractedText>();
+    public ICollection<AssetDetectedObject> DetectedObjects { get; set; } = new List<AssetDetectedObject>();
+    public ICollection<AssetClassifiedScene> ClassifiedScenes { get; set; } = new List<AssetClassifiedScene>();
+    public ICollection<AssetRecognizedTextLine> RecognizedTextLines { get; set; } = new List<AssetRecognizedTextLine>();
 
-    // Marks the most recent successful object recognition run. Used by the
+    // Marks the most recent successful object detection run. Used by the
     // backfill admin endpoint to skip already-processed assets.
-    public DateTime? ObjectRecognitionCompletedAt { get; set; }
+    public DateTime? ObjectDetectionCompletedAt { get; set; }
 
     // Marks the most recent successful scene classification run. Used by the
     // backfill admin endpoint to skip already-processed assets.

@@ -6,7 +6,7 @@ using Photonne.Server.Api.Shared.Interfaces;
 
 namespace Photonne.Server.Api.Features.Texts;
 
-public record ExtractedTextLineDto(
+public record RecognizedTextLineDto(
     Guid Id,
     string Text,
     float Confidence,
@@ -41,10 +41,10 @@ public class AssetTextEndpoint : IEndpoint
             .AnyAsync(a => a.Id == assetId && a.OwnerId == userId, ct);
         if (!owns) return Results.NotFound();
 
-        var lines = await db.ExtractedTexts.AsNoTracking()
+        var lines = await db.AssetRecognizedTextLines.AsNoTracking()
             .Where(t => t.AssetId == assetId)
             .OrderBy(t => t.LineIndex)
-            .Select(t => new ExtractedTextLineDto(
+            .Select(t => new RecognizedTextLineDto(
                 t.Id,
                 t.Text,
                 t.Confidence,

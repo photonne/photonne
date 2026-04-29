@@ -2,26 +2,26 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Options;
 using Photonne.Server.Api.Shared.Services.Ml;
 
-namespace Photonne.Server.Api.Shared.Services.FaceRecognition;
+namespace Photonne.Server.Api.Shared.Services.ObjectDetection;
 
-public class FaceRecognitionClient : IFaceRecognitionClient
+public class ObjectDetectionClient : IObjectDetectionClient
 {
     private readonly HttpClient _http;
     private readonly MlOptions _options;
-    private readonly ILogger<FaceRecognitionClient> _logger;
+    private readonly ILogger<ObjectDetectionClient> _logger;
 
-    public FaceRecognitionClient(HttpClient http, IOptions<MlOptions> options, ILogger<FaceRecognitionClient> logger)
+    public ObjectDetectionClient(HttpClient http, IOptions<MlOptions> options, ILogger<ObjectDetectionClient> logger)
     {
         _http = http;
         _options = options.Value;
         _logger = logger;
     }
 
-    public async Task<FaceRecognitionResponse> DetectAsync(string imagePath, Guid assetId, CancellationToken cancellationToken = default)
+    public async Task<ObjectDetectionResponse> DetectAsync(string imagePath, Guid assetId, CancellationToken cancellationToken = default)
     {
-        // Normalize separators so the Linux face service container can read the
+        // Normalize separators so the Linux ML service container can read the
         // path even when the API runs on Windows and Path.Combine emitted '\'.
-        var req = new DetectRequestDto { ImagePath = imagePath.Replace('\\', '/'), AssetId = assetId.ToString() };
+        var req = new ObjectDetectRequestDto { ImagePath = imagePath.Replace('\\', '/'), AssetId = assetId.ToString() };
 
         var attempts = Math.Max(1, _options.MaxRetries + 1);
         Exception? lastException = null;
@@ -30,7 +30,7 @@ public class FaceRecognitionClient : IFaceRecognitionClient
         {
             try
             {
-                using var response = await _http.PostAsJsonAsync("/v1/faces/detect", req, cancellationToken);
+                using var response = await _http.PostAsJsonAsync("/v1/objects/detect", req, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -40,18 +40,18 @@ public class FaceRecognitionClient : IFaceRecognitionClient
                     if (status is >= 400 and < 500 && status is not 408 and not 429)
                     {
                         throw new HttpRequestException(
-                            $"Face service returned {status} for asset {assetId}: {body}");
+                            $"Object service returned {status} for asset {assetId}: {body}");
                     }
                     throw new HttpRequestException(
-                        $"Face service returned transient {status} for asset {assetId}: {body}");
+                        $"Object service returned transient {status} for asset {assetId}: {body}");
                 }
 
-                var dto = await response.Content.ReadFromJsonAsync<FaceRecognitionResponse>(cancellationToken: cancellationToken)
-                    ?? throw new InvalidOperationException($"Empty response from face service for asset {assetId}");
+                var dto = await response.Content.ReadFromJsonAsync<ObjectDetectionResponse>(cancellationToken: cancellationToken)
+                    ?? throw new InvalidOperationException($"Empty response from object service for asset {assetId}");
 
                 _logger.LogInformation(
-                    "Face service detected {Count} faces for asset {AssetId} in {Elapsed} ms (attempt {Attempt})",
-                    dto.Faces.Count, assetId, dto.ElapsedMs, attempt);
+                    "Object service detected {Count} objects for asset {AssetId} in {Elapsed} ms (attempt {Attempt})",
+                    dto.Objects.Count, assetId, dto.ElapsedMs, attempt);
 
                 return dto;
             }
@@ -65,13 +65,13 @@ public class FaceRecognitionClient : IFaceRecognitionClient
                 if (attempt >= attempts) break;
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                 _logger.LogWarning(ex,
-                    "Face service call failed for asset {AssetId} (attempt {Attempt}/{Total}); retrying in {Delay}s",
+                    "Object service call failed for asset {AssetId} (attempt {Attempt}/{Total}); retrying in {Delay}s",
                     assetId, attempt, attempts, delay.TotalSeconds);
                 await Task.Delay(delay, cancellationToken);
             }
         }
 
         throw new InvalidOperationException(
-            $"Face service call failed after {attempts} attempts for asset {assetId}", lastException);
+            $"Object service call failed after {attempts} attempts for asset {assetId}", lastException);
     }
 }

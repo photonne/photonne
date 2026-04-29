@@ -229,7 +229,7 @@ else
         try
         {
             await AttachAuthAsync();
-            var resp = await Http.PostAsJsonAsync("/api/admin/maintenance/face-detection/backfill", new { });
+            var resp = await Http.PostAsJsonAsync("/api/admin/maintenance/face-recognition/backfill", new { });
             resp.EnsureSuccessStatusCode();
             var result = await resp.Content.ReadFromJsonAsync<BackfillResult>();
             if (result != null)

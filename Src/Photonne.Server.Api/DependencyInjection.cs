@@ -5,8 +5,8 @@ using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Photonne.Server.Api.Shared.Services.Ml;
-using Photonne.Server.Api.Shared.Services.ObjectRecognition;
-using Photonne.Server.Api.Shared.Services.SceneRecognition;
+using Photonne.Server.Api.Shared.Services.ObjectDetection;
+using Photonne.Server.Api.Shared.Services.SceneClassification;
 using Photonne.Server.Api.Shared.Services.TextRecognition;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
@@ -45,10 +45,10 @@ public static class DependencyInjection
             builder.Configuration.GetSection(MlOptions.SectionName));
         builder.Services.Configure<FaceRecognitionOptions>(
             builder.Configuration.GetSection(FaceRecognitionOptions.SectionName));
-        builder.Services.Configure<ObjectRecognitionOptions>(
-            builder.Configuration.GetSection(ObjectRecognitionOptions.SectionName));
-        builder.Services.Configure<SceneRecognitionOptions>(
-            builder.Configuration.GetSection(SceneRecognitionOptions.SectionName));
+        builder.Services.Configure<ObjectDetectionOptions>(
+            builder.Configuration.GetSection(ObjectDetectionOptions.SectionName));
+        builder.Services.Configure<SceneClassificationOptions>(
+            builder.Configuration.GetSection(SceneClassificationOptions.SectionName));
         builder.Services.Configure<TextRecognitionOptions>(
             builder.Configuration.GetSection(TextRecognitionOptions.SectionName));
 
@@ -59,9 +59,9 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
         });
         builder.Services.AddScoped<FaceClusteringService>();
-        builder.Services.AddScoped<FaceDetectionService>();
+        builder.Services.AddScoped<FaceRecognitionService>();
 
-        builder.Services.AddHttpClient<IObjectRecognitionClient, ObjectRecognitionClient>((sp, client) =>
+        builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {
             var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
             client.BaseAddress = new Uri(ml.ServiceUrl);
@@ -69,7 +69,7 @@ public static class DependencyInjection
         });
         builder.Services.AddScoped<ObjectDetectionService>();
 
-        builder.Services.AddHttpClient<ISceneRecognitionClient, SceneRecognitionClient>((sp, client) =>
+        builder.Services.AddHttpClient<ISceneClassificationClient, SceneClassificationClient>((sp, client) =>
         {
             var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
             client.BaseAddress = new Uri(ml.ServiceUrl);
