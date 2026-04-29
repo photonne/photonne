@@ -13,6 +13,8 @@ from .object_detector import detector as object_detector
 from .object_models import ObjectDetectRequest, ObjectDetectResponse
 from .scene_classifier import classifier as scene_classifier
 from .scene_models import SceneClassifyRequest, SceneClassifyResponse
+from .text_models import TextDetectRequest, TextDetectResponse
+from .text_recognizer import recognizer as text_recognizer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("photonne.ml")
@@ -52,6 +54,18 @@ async def lifespan(app: FastAPI):
     else:
         log.info("Scene classifier disabled by config")
 
+    if settings.text.enabled:
+        log.info("Loading text recognizer providers=%s", settings.providers)
+        try:
+            text_recognizer.load()
+            log.info("Text recognizer loaded")
+        except Exception:
+            # Same isolation: a missing rapidocr dependency or model file
+            # must not take the rest of the service down.
+            log.exception("Text recognizer failed to load; the endpoint will return 503")
+    else:
+        log.info("Text recognizer disabled by config")
+
     yield
 
 
@@ -77,11 +91,18 @@ def health() -> Dict[str, Any]:
             "loaded": scene_classifier.is_loaded,
             "model": settings.scene.model_path,
         },
+        "text": {
+            "enabled": settings.text.enabled,
+            "loaded": text_recognizer.is_loaded,
+            "model": "rapidocr",
+        },
     }
     if object_detector.load_error:
         components["objects"]["error"] = object_detector.load_error
     if scene_classifier.load_error:
         components["scenes"]["error"] = scene_classifier.load_error
+    if text_recognizer.load_error:
+        components["text"]["error"] = text_recognizer.load_error
     enabled = [c for c, v in components.items() if v["enabled"]]
     all_loaded = all(components[c]["loaded"] for c in enabled) if enabled else True
     return {
@@ -160,6 +181,34 @@ def classify_scenes(req: SceneClassifyRequest) -> SceneClassifyResponse:
     return SceneClassifyResponse(
         asset_id=req.asset_id,
         scenes=scenes,
+        image_size=[w, h],
+        elapsed_ms=elapsed_ms,
+    )
+
+
+@app.post("/v1/text/detect", response_model=TextDetectResponse)
+def detect_text(req: TextDetectRequest) -> TextDetectResponse:
+    if not settings.text.enabled:
+        raise HTTPException(status_code=503, detail="text recognition disabled")
+    if not text_recognizer.is_loaded:
+        detail = (
+            f"text recognizer not loaded: {text_recognizer.load_error}"
+            if text_recognizer.load_error
+            else "text recognizer not loaded"
+        )
+        raise HTTPException(status_code=503, detail=detail)
+
+    try:
+        img = load_bgr(req.image_path)
+    except ImageLoadError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    lines, full_text, elapsed_ms = text_recognizer.recognize(img)
+    h, w = img.shape[:2]
+    return TextDetectResponse(
+        asset_id=req.asset_id,
+        lines=lines,
+        full_text=full_text,
         image_size=[w, h],
         elapsed_ms=elapsed_ms,
     )

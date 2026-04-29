@@ -353,12 +353,14 @@ public class AssetService : IAssetService
     }
 
     public async Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(
-        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null)
+        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null)
     {
         await SetAuthHeaderAsync();
         var url = $"/api/assets/search?pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(q))
             url += $"&q={Uri.EscapeDataString(q)}";
+        if (!string.IsNullOrWhiteSpace(textQuery))
+            url += $"&textQuery={Uri.EscapeDataString(textQuery)}";
         if (from.HasValue)
             url += $"&from={Uri.EscapeDataString(from.Value.ToString("o"))}";
         if (to.HasValue)

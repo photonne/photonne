@@ -8,6 +8,7 @@ API. Each capability is opt-in and runs on the same ONNX Runtime stack.
 | Face detection + embeddings | `POST /v1/faces/detect` | InsightFace `buffalo_l` (RetinaFace + ArcFace) | Bounding boxes and 512-d embeddings used for face clustering. |
 | Object detection | `POST /v1/objects/detect` | YOLOv8 ONNX (`yolov8n` by default, COCO-80) | Bounding boxes and class labels for tagging and search. |
 | Scene classification | `POST /v1/scenes/classify` | Places365 ResNet18 ONNX | Top-K scene labels (e.g. "beach", "kitchen", "forest path") used as search facets. |
+| Text recognition (OCR) | `POST /v1/text/detect` | RapidOCR (PaddleOCR DBNet + CRNN, ONNX) | Per-line transcription with bbox + confidence; full-text indexed for search. |
 
 Both endpoints accept `{"image_path": "/data/assets/...", "asset_id": "<guid>"}`
 and the API process reads images directly from the shared volume — pixel bytes
@@ -70,3 +71,13 @@ Environment variables (see `app/config.py`):
 | `SCENE_DET_SIZE` | `224` | Network input size (square) |
 | `SCENE_TOP_K` | `3` | Number of top predictions returned per image |
 | `SCENE_MIN_SCORE` | `0.15` | Drop predictions below this softmax probability (rank ≥ 2 only — rank 1 is always emitted). |
+
+### Text recognition (OCR)
+| Var | Default | Notes |
+|---|---|---|
+| `TEXT_ENABLED` | `true` | Disable to skip loading RapidOCR |
+| `TEXT_DET_MODEL_PATH` | _(empty)_ | Optional override for the DBNet detection ONNX. Empty = use the model bundled with the rapidocr_onnxruntime wheel. |
+| `TEXT_REC_MODEL_PATH` | _(empty)_ | Optional override for the CRNN recognition ONNX (swap to a different language bundle here). |
+| `TEXT_CLS_MODEL_PATH` | _(empty)_ | Optional override for the orientation-classifier ONNX. |
+| `TEXT_MIN_SCORE` | `0.5` | Drop recognized lines below this confidence so noisy textures don't pollute search. |
+| `TEXT_MAX_LINES` | `200` | Hard cap of stored lines per image. |

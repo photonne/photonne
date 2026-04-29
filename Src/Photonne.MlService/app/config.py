@@ -60,12 +60,30 @@ class SceneSettings:
 
 
 @dataclass(frozen=True)
+class TextSettings:
+    enabled: bool = _bool_env("TEXT_ENABLED", "true")
+    # Optional overrides for the three ONNX models RapidOCR loads. When empty
+    # the engine falls back to the weights bundled with the rapidocr_onnxruntime
+    # wheel (~10 MB det + ~10 MB rec + ~1 MB cls), which is the default path.
+    det_model_path: str = os.getenv("TEXT_DET_MODEL_PATH", "")
+    rec_model_path: str = os.getenv("TEXT_REC_MODEL_PATH", "")
+    cls_model_path: str = os.getenv("TEXT_CLS_MODEL_PATH", "")
+    # Drop recognized lines below this confidence so noisy detections on
+    # textures (bark, foliage, brick) don't pollute the search index.
+    min_score: float = float(os.getenv("TEXT_MIN_SCORE", "0.5"))
+    # Hard cap of recognized lines per image. Long documents are rare in a
+    # photo library and indexing 500+ lines per asset would balloon the table.
+    max_lines: int = int(os.getenv("TEXT_MAX_LINES", "200"))
+
+
+@dataclass(frozen=True)
 class Settings:
     # Comma-separated list of ONNX execution providers in priority order.
     providers: str = os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")
     face: FaceSettings = field(default_factory=FaceSettings)
     obj: ObjectSettings = field(default_factory=ObjectSettings)
     scene: SceneSettings = field(default_factory=SceneSettings)
+    text: TextSettings = field(default_factory=TextSettings)
 
 
 settings = Settings()

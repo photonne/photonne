@@ -85,6 +85,7 @@ public class Asset
     public ICollection<Face> Faces { get; set; } = new List<Face>();
     public ICollection<ObjectDetection> ObjectDetections { get; set; } = new List<ObjectDetection>();
     public ICollection<SceneClassification> SceneClassifications { get; set; } = new List<SceneClassification>();
+    public ICollection<ExtractedText> ExtractedTexts { get; set; } = new List<ExtractedText>();
 
     // Marks the most recent successful object recognition run. Used by the
     // backfill admin endpoint to skip already-processed assets.
@@ -93,5 +94,9 @@ public class Asset
     // Marks the most recent successful scene classification run. Used by the
     // backfill admin endpoint to skip already-processed assets.
     public DateTime? SceneClassificationCompletedAt { get; set; }
+
+    // Marks the most recent successful OCR run. Used by the backfill admin
+    // endpoint to skip already-processed assets.
+    public DateTime? TextRecognitionCompletedAt { get; set; }
 }
 

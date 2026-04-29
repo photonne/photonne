@@ -209,6 +209,7 @@ public class AssetIndexingService
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceDetection, ct);
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectRecognition, ct);
                 await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, ct);
+                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, ct);
             }
 
             Console.WriteLine($"[INDEX-FILE] Indexed successfully: {storedPath} (id={asset.Id})");

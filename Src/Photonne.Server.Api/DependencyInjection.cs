@@ -7,6 +7,7 @@ using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Photonne.Server.Api.Shared.Services.Ml;
 using Photonne.Server.Api.Shared.Services.ObjectRecognition;
 using Photonne.Server.Api.Shared.Services.SceneRecognition;
+using Photonne.Server.Api.Shared.Services.TextRecognition;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
 
@@ -48,6 +49,8 @@ public static class DependencyInjection
             builder.Configuration.GetSection(ObjectRecognitionOptions.SectionName));
         builder.Services.Configure<SceneRecognitionOptions>(
             builder.Configuration.GetSection(SceneRecognitionOptions.SectionName));
+        builder.Services.Configure<TextRecognitionOptions>(
+            builder.Configuration.GetSection(TextRecognitionOptions.SectionName));
 
         builder.Services.AddHttpClient<IFaceRecognitionClient, FaceRecognitionClient>((sp, client) =>
         {
@@ -73,6 +76,14 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
         });
         builder.Services.AddScoped<SceneClassificationService>();
+
+        builder.Services.AddHttpClient<ITextRecognitionClient, TextRecognitionClient>((sp, client) =>
+        {
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
+        });
+        builder.Services.AddScoped<TextRecognitionService>();
 
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();

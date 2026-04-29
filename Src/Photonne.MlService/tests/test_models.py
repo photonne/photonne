@@ -1,6 +1,7 @@
 from app.face_models import DetectRequest, DetectedFace, DetectResponse
 from app.object_models import DetectedObject, ObjectDetectRequest, ObjectDetectResponse
 from app.scene_models import ClassifiedScene, SceneClassifyRequest, SceneClassifyResponse
+from app.text_models import RecognizedTextLine, TextDetectRequest, TextDetectResponse
 
 
 def test_detect_request_minimum_payload():
@@ -74,3 +75,38 @@ def test_classified_scene_roundtrip():
 def test_places365_label_count_matches_classifier():
     from app.places365_labels import PLACES365_CLASSES
     assert len(PLACES365_CLASSES) == 365
+
+
+def test_text_detect_request_minimum_payload():
+    req = TextDetectRequest(image_path="/data/assets/x.jpg")
+    assert req.image_path == "/data/assets/x.jpg"
+    assert req.asset_id is None
+
+
+def test_recognized_text_line_roundtrip():
+    line1 = RecognizedTextLine(
+        text="CAFÉ CENTRAL",
+        confidence=0.97,
+        bbox=[0.1, 0.1, 0.4, 0.05],
+        line_index=0,
+    )
+    line2 = RecognizedTextLine(
+        text="Abierto 8-22h",
+        confidence=0.91,
+        bbox=[0.1, 0.18, 0.35, 0.04],
+        line_index=1,
+    )
+    payload = TextDetectResponse(
+        asset_id="abc",
+        lines=[line1, line2],
+        full_text="CAFÉ CENTRAL\nAbierto 8-22h",
+        image_size=[800, 600],
+        elapsed_ms=180,
+    )
+    j = payload.model_dump()
+    assert j["asset_id"] == "abc"
+    assert len(j["lines"]) == 2
+    assert j["lines"][0]["text"] == "CAFÉ CENTRAL"
+    assert j["lines"][1]["line_index"] == 1
+    assert j["full_text"].endswith("8-22h")
+    assert j["image_size"] == [800, 600]

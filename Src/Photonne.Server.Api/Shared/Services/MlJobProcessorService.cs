@@ -5,6 +5,7 @@ using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Photonne.Server.Api.Shared.Services.ObjectRecognition;
 using Photonne.Server.Api.Shared.Services.SceneRecognition;
+using Photonne.Server.Api.Shared.Services.TextRecognition;
 
 namespace Photonne.Server.Api.Shared.Services;
 
@@ -84,6 +85,7 @@ public class MlJobProcessorService : BackgroundService
         var faceDetection = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceDetectionService>();
         var objectDetection = scope.ServiceProvider.GetRequiredService<ObjectRecognition.ObjectDetectionService>();
         var sceneClassification = scope.ServiceProvider.GetRequiredService<SceneRecognition.SceneClassificationService>();
+        var textRecognition = scope.ServiceProvider.GetRequiredService<TextRecognition.TextRecognitionService>();
 
         var pendingJobs = await mlJobService.GetPendingJobsAsync(cancellationToken);
 
@@ -99,7 +101,7 @@ public class MlJobProcessorService : BackgroundService
         {
             try
             {
-                await ProcessJobAsync(job, dbContext, settingsService, faceDetection, objectDetection, sceneClassification, cancellationToken);
+                await ProcessJobAsync(job, dbContext, settingsService, faceDetection, objectDetection, sceneClassification, textRecognition, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -119,6 +121,7 @@ public class MlJobProcessorService : BackgroundService
         FaceRecognition.FaceDetectionService faceDetection,
         ObjectRecognition.ObjectDetectionService objectDetection,
         SceneRecognition.SceneClassificationService sceneClassification,
+        TextRecognition.TextRecognitionService textRecognition,
         CancellationToken cancellationToken)
     {
         job.Status = MlJobStatus.Processing;
@@ -157,7 +160,7 @@ public class MlJobProcessorService : BackgroundService
                 resultJson = await ProcessSceneClassificationAsync(asset, sceneClassification, cancellationToken);
                 break;
             case MlJobType.TextRecognition:
-                resultJson = await ProcessTextRecognitionAsync(asset, cancellationToken);
+                resultJson = await ProcessTextRecognitionAsync(asset, textRecognition, cancellationToken);
                 break;
         }
 
@@ -197,11 +200,12 @@ public class MlJobProcessorService : BackgroundService
         return JsonSerializer.Serialize(new { sceneCount = count, model = "places365_resnet18" });
     }
     
-    private async Task<string> ProcessTextRecognitionAsync(Asset asset, CancellationToken cancellationToken)
+    private async Task<string> ProcessTextRecognitionAsync(
+        Asset asset,
+        TextRecognition.TextRecognitionService textRecognition,
+        CancellationToken cancellationToken)
     {
-        // TODO: Integrate with ML library
-        await Task.CompletedTask;
-        _logger.LogInformation("Text recognition processing for asset {AssetId} - placeholder implementation", asset.Id);
-        return "{}";
+        var count = await textRecognition.RecognizeAndStoreAsync(asset.Id, cancellationToken);
+        return JsonSerializer.Serialize(new { lineCount = count, model = "rapidocr" });
     }
 }

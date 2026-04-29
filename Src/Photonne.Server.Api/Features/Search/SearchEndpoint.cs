@@ -31,6 +31,7 @@ public class SearchEndpoint : IEndpoint
         [FromQuery(Name = "personId")] Guid[]? personIds,
         [FromQuery(Name = "objectLabel")] string[]? objectLabels,
         [FromQuery(Name = "sceneLabel")] string[]? sceneLabels,
+        [FromQuery] string? textQuery,
         CancellationToken ct)
     {
         if (pageSize <= 0) pageSize = 100;
@@ -42,9 +43,10 @@ public class SearchEndpoint : IEndpoint
         var hasPersonFilter = personIds is { Length: > 0 };
         var hasObjectFilter = objectLabels is { Length: > 0 };
         var hasSceneFilter = sceneLabels is { Length: > 0 };
+        var hasTextFilter = !string.IsNullOrWhiteSpace(textQuery);
 
         // Require at least one filter to avoid returning everything
-        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter)
+        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter)
             return Results.Ok(new SearchResponse());
 
         var isAdmin = user.IsInRole("Admin");
@@ -75,6 +77,7 @@ public class SearchEndpoint : IEndpoint
                 a.FullPath.Contains(q) ||
                 (a.Caption != null && a.Caption.Contains(q)) ||
                 a.UserTags.Any(ut => ut.UserTag.Name.Contains(q)) ||
+                a.ExtractedTexts.Any(t => EF.Functions.ILike(t.Text, "%" + q + "%")) ||
                 (tagTypeFilter.HasValue && a.Tags.Any(t => t.TagType == tagTypeFilter.Value)));
         }
 
@@ -130,6 +133,19 @@ public class SearchEndpoint : IEndpoint
                 var captured = label;
                 query = query.Where(a => a.SceneClassifications.Any(s => s.Label.ToLower() == captured));
             }
+        }
+
+        // OCR text filter — match assets whose extracted text matches the
+        // websearch tsquery (supports phrases in quotes and the "or"/"-" ops).
+        // 'simple' is used for the index, so we use the same configuration on
+        // the query side; that keeps numeric tokens (ticket numbers, serials)
+        // searchable verbatim and stays language-agnostic.
+        if (hasTextFilter)
+        {
+            var raw = textQuery!.Trim();
+            query = query.Where(a => a.ExtractedTexts.Any(t =>
+                EF.Functions.ToTsVector("simple", t.Text)
+                    .Matches(EF.Functions.WebSearchToTsQuery("simple", raw))));
         }
 
         // People filter — asset must have at least one non-rejected face linked

@@ -44,6 +44,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Person> People { get; set; }
     public DbSet<ObjectDetection> ObjectDetections { get; set; }
     public DbSet<SceneClassification> SceneClassifications { get; set; }
+    public DbSet<ExtractedText> ExtractedTexts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -490,6 +491,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.SceneClassificationCompletedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(NullableUtcConverter);
+            entity.Property(e => e.TextRecognitionCompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(NullableUtcConverter);
         });
 
         // Configure ObjectDetection entity (detected object with bbox + class)
@@ -526,6 +530,24 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.AssetId);
             entity.HasIndex(e => e.Label);
             entity.HasIndex(e => new { e.AssetId, e.Label });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure ExtractedText entity (one row per OCR'd line). The full-text
+        // GIN index over to_tsvector('simple', "Text") is created in the
+        // migration directly — EF Core can't model GIN expression indexes.
+        modelBuilder.Entity<ExtractedText>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Text).IsRequired().HasColumnType("text");
+
+            entity.HasOne(e => e.Asset)
+                .WithMany(a => a.ExtractedTexts)
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.AssetId);
+            entity.HasIndex(e => new { e.AssetId, e.LineIndex });
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 

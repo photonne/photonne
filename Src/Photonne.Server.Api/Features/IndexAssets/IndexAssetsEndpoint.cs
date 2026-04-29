@@ -1037,7 +1037,9 @@ public class IndexAssetsEndpoint : IEndpoint
             {
                 await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceDetection, cancellationToken);
                 await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectRecognition, cancellationToken);
-                stats.MlJobsQueued += 2;
+                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, cancellationToken);
+                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, cancellationToken);
+                stats.MlJobsQueued += 4;
             }
         }
     }
