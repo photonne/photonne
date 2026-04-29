@@ -19,6 +19,7 @@ services:
       - Ml__FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
       - Ml__ObjectDetection__Enabled=${OBJECT_DETECTION_ENABLED:-${OBJECT_RECOGNITION_ENABLED:-true}}
       - Ml__SceneClassification__Enabled=${SCENE_CLASSIFICATION_ENABLED:-${SCENE_RECOGNITION_ENABLED:-true}}
+      - Ml__TextRecognition__Enabled=${TEXT_RECOGNITION_ENABLED:-true}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
@@ -48,6 +49,9 @@ services:
       - SCENE_MODEL_PATH=${SCENE_MODEL_PATH:-/app/models/scene_classifier.onnx}
       - SCENE_TOP_K=${SCENE_TOP_K:-3}
       - SCENE_MIN_SCORE=${SCENE_MIN_SCORE:-0.15}
+      - TEXT_ENABLED=${TEXT_RECOGNITION_ENABLED:-true}
+      - TEXT_MIN_SCORE=${TEXT_MIN_SCORE:-0.5}
+      - TEXT_MAX_LINES=${TEXT_MAX_LINES:-200}
       - ONNX_PROVIDERS=${ML_ONNX_PROVIDERS:-${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets:ro

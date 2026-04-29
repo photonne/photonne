@@ -89,6 +89,10 @@ public class SettingsEndpoint : IEndpoint
     /// MetadataSettings.*      — EXIF/IPTC extraction behaviour
     /// NightlyTaskSettings.*      — nightly scheduled tasks (schedule, enabled tasks, last run)
     /// NotificationSettings.*     — notification system (enabled types, retention, per-user cap)
+    /// FaceRecognition.*          — face recognition runtime overrides (enable, thresholds)
+    /// ObjectDetection.*          — object detection runtime overrides (enable)
+    /// SceneClassification.*      — scene classification runtime overrides (enable)
+    /// TextRecognition.*          — text recognition runtime overrides (enable)
     /// AssetsPath                 — legacy global key for the managed assets directory
     /// </summary>
     private static bool IsGlobalKey(string key) =>
@@ -99,6 +103,10 @@ public class SettingsEndpoint : IEndpoint
         key.StartsWith("MetadataSettings.", StringComparison.Ordinal) ||
         key.StartsWith("NightlyTaskSettings.", StringComparison.Ordinal) ||
         key.StartsWith("NotificationSettings.", StringComparison.Ordinal) ||
+        key.StartsWith("FaceRecognition.", StringComparison.Ordinal) ||
+        key.StartsWith("ObjectDetection.", StringComparison.Ordinal) ||
+        key.StartsWith("SceneClassification.", StringComparison.Ordinal) ||
+        key.StartsWith("TextRecognition.", StringComparison.Ordinal) ||
         key.Equals("AssetsPath", StringComparison.Ordinal);
 
     private static IResult GetServerInfo() =>

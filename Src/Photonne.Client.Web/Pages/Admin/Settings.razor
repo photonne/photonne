@@ -61,6 +61,54 @@ else
             <MudCard>
                 <MudCardHeader>
                     <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Reconocimiento de objetos</MudText>
+                        <MudText Typo="Typo.body2">Detección de objetos (YOLOv8) para etiquetar y buscar fotos.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/object-detection"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Clasificación de escenas</MudText>
+                        <MudText Typo="Typo.body2">Reconocimiento de escenas (Places365) para enriquecer la búsqueda.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/scene-classification"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Reconocimiento de texto (OCR)</MudText>
+                        <MudText Typo="Typo.body2">Extracción de texto en imágenes para búsqueda por contenido.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/text-recognition"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
                         <MudText Typo="Typo.h6">Ajustes de imagen</MudText>
                         <MudText Typo="Typo.body2">Parámetros de calidad, formatos y miniaturas.</MudText>
                     </CardHeaderContent>
