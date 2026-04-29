@@ -30,9 +30,10 @@ services:
     restart: unless-stopped
 
   photonne-ml:
-    build:
-      context: ./Src/Photonne.MlService
+    image: ghcr.io/photonne/photonne-ml:latest
     container_name: photonne-ml
+    ports:
+      - "${ML_PORT:-8000}:8000"
     environment:
       - FACE_ENABLED=${FACE_RECOGNITION_ENABLED:-true}
       - FACE_MODEL_NAME=${FACE_MODEL_NAME:-buffalo_l}
@@ -48,8 +49,6 @@ services:
       - SCENE_TOP_K=${SCENE_TOP_K:-3}
       - SCENE_MIN_SCORE=${SCENE_MIN_SCORE:-0.15}
       - ONNX_PROVIDERS=${ML_ONNX_PROVIDERS:-${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}}
-    ports:
-      - "${ML_PORT:-${FACE_PORT:-8000}}:8000"
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets:ro
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails:ro
