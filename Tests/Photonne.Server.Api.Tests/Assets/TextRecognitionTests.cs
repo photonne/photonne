@@ -36,17 +36,30 @@ public sealed class TextRecognitionTests : IntegrationTestBase
     {
         return await WithDbContextAsync(async db =>
         {
+            // /api/assets/search filters by folder permissions; assets without
+            // a FolderId under the user's auto-allowed root path (/assets/users/{userId})
+            // are invisible. Reuse a single root folder per user across calls.
+            var rootPath = $"/assets/users/{userId}";
+            var folder = await db.Folders.FirstOrDefaultAsync(f => f.Path == rootPath);
+            if (folder == null)
+            {
+                folder = new Folder { Path = rootPath, Name = userId.ToString() };
+                db.Folders.Add(folder);
+                await db.SaveChangesAsync();
+            }
+
             var asset = new Asset
             {
                 FileName = fileName,
-                FullPath = $"/assets/users/{userId}/{fileName}",
+                FullPath = $"{rootPath}/{fileName}",
                 FileSize = 1024,
                 Checksum = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
                 Type = AssetType.Image,
                 Extension = Path.GetExtension(fileName).TrimStart('.'),
                 FileCreatedAt = DateTime.UtcNow,
                 FileModifiedAt = DateTime.UtcNow,
-                OwnerId = userId
+                OwnerId = userId,
+                FolderId = folder.Id
             };
             db.Assets.Add(asset);
             await db.SaveChangesAsync();

@@ -21,8 +21,10 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
     public const string AdminEmail = "admin@photonne.test";
     public const string AdminPassword = "Admin-Test-1234!";
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    // Match the production image (docker-compose.yml). The migrations register
+    // the pgvector extension and the Faces table uses vector(512), so the bare
+    // `postgres:*-alpine` image fails with `extension "vector" is not available`.
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg17")
         .WithDatabase("photonne_test")
         .WithUsername("photonne")
         .WithPassword("photonne")

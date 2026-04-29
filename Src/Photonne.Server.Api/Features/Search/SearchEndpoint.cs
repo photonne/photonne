@@ -27,15 +27,14 @@ public class SearchEndpoint : IEndpoint
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] string? folder,
-        [FromQuery] int pageSize,
+        [FromQuery] int? pageSize,
         [FromQuery(Name = "personId")] Guid[]? personIds,
         [FromQuery(Name = "objectLabel")] string[]? objectLabels,
         [FromQuery(Name = "sceneLabel")] string[]? sceneLabels,
         [FromQuery] string? textQuery,
         CancellationToken ct)
     {
-        if (pageSize <= 0) pageSize = 100;
-        if (pageSize > 200) pageSize = 200;
+        var effectivePageSize = pageSize is > 0 ? Math.Min(pageSize.Value, 200) : 100;
 
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
@@ -172,11 +171,11 @@ public class SearchEndpoint : IEndpoint
         var dbItems = await query
             .OrderByDescending(a => a.FileCreatedAt)
             .ThenByDescending(a => a.FileModifiedAt)
-            .Take(pageSize + 1)
+            .Take(effectivePageSize + 1)
             .ToListAsync(ct);
 
-        var hasMore = dbItems.Count > pageSize;
-        var assets = hasMore ? dbItems.Take(pageSize).ToList() : dbItems;
+        var hasMore = dbItems.Count > effectivePageSize;
+        var assets = hasMore ? dbItems.Take(effectivePageSize).ToList() : dbItems;
 
         var items = assets.Select(a => new TimelineResponse
         {
