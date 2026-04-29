@@ -30,6 +30,7 @@ public class SearchEndpoint : IEndpoint
         [FromQuery] int pageSize,
         [FromQuery(Name = "personId")] Guid[]? personIds,
         [FromQuery(Name = "objectLabel")] string[]? objectLabels,
+        [FromQuery(Name = "sceneLabel")] string[]? sceneLabels,
         CancellationToken ct)
     {
         if (pageSize <= 0) pageSize = 100;
@@ -40,9 +41,10 @@ public class SearchEndpoint : IEndpoint
 
         var hasPersonFilter = personIds is { Length: > 0 };
         var hasObjectFilter = objectLabels is { Length: > 0 };
+        var hasSceneFilter = sceneLabels is { Length: > 0 };
 
         // Require at least one filter to avoid returning everything
-        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter)
+        if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter)
             return Results.Ok(new SearchResponse());
 
         var isAdmin = user.IsInRole("Admin");
@@ -109,6 +111,24 @@ public class SearchEndpoint : IEndpoint
             {
                 var captured = label;
                 query = query.Where(a => a.ObjectDetections.Any(o => o.Label.ToLower() == captured));
+            }
+        }
+
+        // Scenes filter — same intersection semantics as objects: asset must
+        // match EVERY requested scene label. Useful for "fotos en la playa Y
+        // al atardecer" when combined with other criteria.
+        if (hasSceneFilter)
+        {
+            var labels = sceneLabels!
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Select(l => l.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+
+            foreach (var label in labels)
+            {
+                var captured = label;
+                query = query.Where(a => a.SceneClassifications.Any(s => s.Label.ToLower() == captured));
             }
         }
 

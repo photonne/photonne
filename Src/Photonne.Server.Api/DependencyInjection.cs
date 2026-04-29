@@ -6,6 +6,7 @@ using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Photonne.Server.Api.Shared.Services.Ml;
 using Photonne.Server.Api.Shared.Services.ObjectRecognition;
+using Photonne.Server.Api.Shared.Services.SceneRecognition;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
 
@@ -45,6 +46,8 @@ public static class DependencyInjection
             builder.Configuration.GetSection(FaceRecognitionOptions.SectionName));
         builder.Services.Configure<ObjectRecognitionOptions>(
             builder.Configuration.GetSection(ObjectRecognitionOptions.SectionName));
+        builder.Services.Configure<SceneRecognitionOptions>(
+            builder.Configuration.GetSection(SceneRecognitionOptions.SectionName));
 
         builder.Services.AddHttpClient<IFaceRecognitionClient, FaceRecognitionClient>((sp, client) =>
         {
@@ -62,6 +65,14 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
         });
         builder.Services.AddScoped<ObjectDetectionService>();
+
+        builder.Services.AddHttpClient<ISceneRecognitionClient, SceneRecognitionClient>((sp, client) =>
+        {
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
+        });
+        builder.Services.AddScoped<SceneClassificationService>();
 
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();

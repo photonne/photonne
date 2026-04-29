@@ -39,11 +39,33 @@ class ObjectSettings:
 
 
 @dataclass(frozen=True)
+class SceneSettings:
+    enabled: bool = _bool_env("SCENE_ENABLED", "true")
+    # Places365 ResNet18 ONNX. The default ~45 MB file is built and baked into
+    # the image at Dockerfile time and seeded into model_dir on first launch.
+    model_path: str = os.getenv("SCENE_MODEL_PATH", "/app/models/scene_classifier.onnx")
+    model_dir: str = os.getenv("SCENE_MODEL_DIR", "/app/models")
+    # Optional fallback when the model file is missing from the volume. Empty
+    # by default because the entrypoint already seeds the baked copy.
+    model_url: str = os.getenv("SCENE_MODEL_URL", "")
+    det_size: int = int(os.getenv("SCENE_DET_SIZE", "224"))
+    # Number of top predictions to return / persist. The Places365 taxonomy is
+    # fine-grained, so the rank-1 prediction is often a sibling of the "right"
+    # answer (e.g. "ocean" vs "beach" vs "coast"); keeping the top 3 lets the
+    # search facet recover most assets without flooding the database.
+    top_k: int = int(os.getenv("SCENE_TOP_K", "3"))
+    # Drop predictions below this softmax probability (rank ≥ 2 only — rank 1
+    # is always emitted so the model's best guess is always visible).
+    min_score: float = float(os.getenv("SCENE_MIN_SCORE", "0.15"))
+
+
+@dataclass(frozen=True)
 class Settings:
     # Comma-separated list of ONNX execution providers in priority order.
     providers: str = os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")
     face: FaceSettings = field(default_factory=FaceSettings)
     obj: ObjectSettings = field(default_factory=ObjectSettings)
+    scene: SceneSettings = field(default_factory=SceneSettings)
 
 
 settings = Settings()

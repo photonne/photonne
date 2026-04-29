@@ -3,6 +3,7 @@
 @inject IAlbumService AlbumService
 @inject IPeopleService PeopleService
 @inject IObjectsService ObjectsService
+@inject IScenesService ScenesService
 @inject LayoutService LayoutService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -43,7 +44,18 @@
                 @Capitalize(label.Label) <span class="ph-rail__count">@label.AssetCount</span>
             </MudChip>
         }
-        @if (_personFilters.Count > 0 || _objectLabels.Count > 0)
+        @foreach (var scene in _suggestedScenes)
+        {
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="Color.Tertiary"
+                     Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Outlined.Landscape"
+                     OnClick="@(() => ApplySceneSuggestion(scene.Label))">
+                @Capitalize(scene.Label) <span class="ph-rail__count">@scene.AssetCount</span>
+            </MudChip>
+        }
+        @if (_personFilters.Count > 0 || _objectLabels.Count > 0 || _sceneLabels.Count > 0)
         {
             <span class="ph-rail__divider" aria-hidden="true"></span>
         }
@@ -68,6 +80,17 @@
                  Color="Color.Secondary"
                  Icon="@Icons.Material.Filled.Category"
                  OnClose="@(() => RemoveObjectLabel(label))">
+            @Capitalize(label)
+        </MudChip>
+    }
+    @foreach (var label in _sceneLabels)
+    {
+        <MudChip T="string"
+                 Value="@label"
+                 Size="Size.Small"
+                 Color="Color.Tertiary"
+                 Icon="@Icons.Material.Filled.Landscape"
+                 OnClose="@(() => RemoveSceneLabel(label))">
             @Capitalize(label)
         </MudChip>
     }
@@ -101,7 +124,7 @@
         <div class="px-4 pt-3 pb-2">
             <MudTextField @bind-Value="_filterPickerQuery"
                           @bind-Value:after="OnFilterPickerQueryChanged"
-                          Placeholder="Persona u objeto…"
+                          Placeholder="Persona, objeto o escena…"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           Variant="Variant.Outlined"
@@ -148,11 +171,26 @@
                 }
             }
 
-            @if (!_filterPickerLoading && _filterPickerPeople.Count == 0 && _filterPickerLabels.Count == 0)
+            @if (_filterPickerScenes.Count > 0)
+            {
+                <MudText Typo="Typo.overline" Class="ph-filter-picker__section-title">Escenas</MudText>
+                @foreach (var s in _filterPickerScenes)
+                {
+                    <button type="button"
+                            class="ph-filter-picker__row"
+                            @onclick="@(() => PickScene(s.Label))">
+                        <MudIcon Icon="@Icons.Material.Outlined.Landscape" Size="Size.Small" Class="me-2" Color="Color.Tertiary" />
+                        <span class="flex-grow-1">@Capitalize(s.Label)</span>
+                        <span class="ph-filter-picker__row-count">@s.AssetCount</span>
+                    </button>
+                }
+            }
+
+            @if (!_filterPickerLoading && _filterPickerPeople.Count == 0 && _filterPickerLabels.Count == 0 && _filterPickerScenes.Count == 0)
             {
                 <MudText Typo="Typo.body2" Class="ph-filter-picker__empty">
                     @(string.IsNullOrWhiteSpace(_filterPickerQuery)
-                        ? "Empieza a escribir un nombre o un objeto…"
+                        ? "Empieza a escribir un nombre, objeto o escena…"
                         : $"Sin resultados para «{_filterPickerQuery}».")
                 </MudText>
             }
@@ -408,9 +446,11 @@ else
     [SupplyParameterFromQuery(Name = "search")] public string? SearchTerm { get; set; }
     [SupplyParameterFromQuery(Name = "personId")] public Guid[]? PersonIdsParam { get; set; }
     [SupplyParameterFromQuery(Name = "objectLabel")] public string[]? ObjectLabelsParam { get; set; }
+    [SupplyParameterFromQuery(Name = "sceneLabel")] public string[]? SceneLabelsParam { get; set; }
 
     private List<PersonSummary> _personFilters = new();
     private List<string> _objectLabels = new();
+    private List<string> _sceneLabels = new();
     // Cached pool used by the inline suggestion fetcher. Populated lazily on
     // first match attempt; nulled out whenever a new chip is added so the
     // next typing pass sees fresh data.
@@ -423,6 +463,7 @@ else
     private bool _filterPickerLoading;
     private List<PersonSummary> _filterPickerPeople = new();
     private List<ObjectLabelItem> _filterPickerLabels = new();
+    private List<SceneLabelItem> _filterPickerScenes = new();
     private CancellationTokenSource? _filterPickerCts;
 
     // Inline term-to-filter suggestions: ranked matches of the current free-text
@@ -430,10 +471,11 @@ else
     // _searchTerm changes; cleared once the term is empty.
     private List<PersonSummary> _suggestedPeople = new();
     private List<ObjectLabelItem> _suggestedLabels = new();
+    private List<SceneLabelItem> _suggestedScenes = new();
     private CancellationTokenSource? _suggestCts;
     private bool HasTermSuggestions =>
         !string.IsNullOrWhiteSpace(_searchTerm)
-        && (_suggestedPeople.Count > 0 || _suggestedLabels.Count > 0);
+        && (_suggestedPeople.Count > 0 || _suggestedLabels.Count > 0 || _suggestedScenes.Count > 0);
     private List<TimelineItem> _results = new();
     private bool _loading;
     private bool _hasMore;
@@ -478,7 +520,8 @@ else
         _toDate.HasValue ||
         !string.IsNullOrWhiteSpace(_folderFilter) ||
         _personFilters.Count > 0 ||
-        _objectLabels.Count > 0;
+        _objectLabels.Count > 0 ||
+        _sceneLabels.Count > 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -534,9 +577,19 @@ else
             || paramLabels.Any(l => !currentLabels.Contains(l));
         if (objectFilterChanged) _objectLabels = paramLabels;
 
+        var paramScenes = (SceneLabelsParam ?? Array.Empty<string>())
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Select(l => l.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        var currentScenes = _sceneLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var sceneFilterChanged = paramScenes.Count != currentScenes.Count
+            || paramScenes.Any(l => !currentScenes.Contains(l));
+        if (sceneFilterChanged) _sceneLabels = paramScenes;
+
         if (termChanged) _ = RefreshSuggestionsAsync(_searchTerm);
 
-        if (termChanged || personFilterChanged || objectFilterChanged) await SearchAsync();
+        if (termChanged || personFilterChanged || objectFilterChanged || sceneFilterChanged) await SearchAsync();
     }
 
     private async Task RefreshSuggestionsAsync(string? term)
@@ -561,11 +614,12 @@ else
 
         try
         {
-            // Two parallel fetches: people pool (loaded once, filtered locally
-            // because we already cache it elsewhere) and the labels endpoint
-            // which supports a server-side ILIKE.
+            // Three parallel fetches: people pool (loaded once, filtered
+            // locally because we already cache it elsewhere) and the labels +
+            // scenes endpoints which support a server-side ILIKE.
             _peoplePool ??= (await PeopleService.GetPeopleAsync(limit: 500, includeHidden: false, ct: ct)).Items;
             var labelsTask = ObjectsService.GetLabelsAsync(search: trimmed, limit: 5, ct);
+            var scenesTask = ScenesService.GetLabelsAsync(search: trimmed, limit: 5, ct);
 
             var alreadyPickedPeople = _personFilters.Select(p => p.Id).ToHashSet();
             var people = _peoplePool
@@ -583,10 +637,18 @@ else
                 .Take(3)
                 .ToList();
 
+            var scenes = await scenesTask;
+            var alreadyPickedScenes = _sceneLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var filteredScenes = scenes
+                .Where(s => !alreadyPickedScenes.Contains(s.Label))
+                .Take(3)
+                .ToList();
+
             if (ct.IsCancellationRequested) return;
 
             _suggestedPeople = people;
             _suggestedLabels = filteredLabels;
+            _suggestedScenes = filteredScenes;
             StateHasChanged();
         }
         catch (OperationCanceledException) { /* superseded — ignore */ }
@@ -596,6 +658,7 @@ else
             // the core search flow.
             _suggestedPeople = new();
             _suggestedLabels = new();
+            _suggestedScenes = new();
         }
     }
 
@@ -614,7 +677,16 @@ else
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         _searchTerm = string.Empty;
-        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), labels), replace: true);
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), labels, _sceneLabels), replace: true);
+    }
+
+    private void ApplySceneSuggestion(string label)
+    {
+        var scenes = _sceneLabels.Append(label)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _searchTerm = string.Empty;
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), _objectLabels, scenes), replace: true);
     }
 
     private async Task HandleSearchTermChanged(string term)
@@ -675,7 +747,8 @@ else
                 to: _toDate,
                 folder: string.IsNullOrWhiteSpace(_folderFilter) ? null : _folderFilter,
                 personIds: _personFilters.Count == 0 ? null : _personFilters.Select(p => p.Id).ToList(),
-                objectLabels: _objectLabels.Count == 0 ? null : _objectLabels);
+                objectLabels: _objectLabels.Count == 0 ? null : _objectLabels,
+                sceneLabels: _sceneLabels.Count == 0 ? null : _sceneLabels);
 
             _results = items;
             _hasMore = hasMore;
@@ -1133,13 +1206,24 @@ else
         var remaining = _objectLabels
             .Where(l => !string.Equals(l, label, StringComparison.OrdinalIgnoreCase))
             .ToList();
-        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), remaining), replace: true);
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), remaining, _sceneLabels), replace: true);
+    }
+
+    private void RemoveSceneLabel(string label)
+    {
+        var remaining = _sceneLabels
+            .Where(l => !string.Equals(l, label, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), _objectLabels, remaining), replace: true);
     }
 
     private string BuildSearchUrl(IEnumerable<Guid> personIds) =>
-        BuildSearchUrl(personIds, _objectLabels);
+        BuildSearchUrl(personIds, _objectLabels, _sceneLabels);
 
-    private string BuildSearchUrl(IEnumerable<Guid> personIds, IEnumerable<string> objectLabels)
+    private string BuildSearchUrl(IEnumerable<Guid> personIds, IEnumerable<string> objectLabels) =>
+        BuildSearchUrl(personIds, objectLabels, _sceneLabels);
+
+    private string BuildSearchUrl(IEnumerable<Guid> personIds, IEnumerable<string> objectLabels, IEnumerable<string> sceneLabels)
     {
         var query = new List<string>();
         if (!string.IsNullOrWhiteSpace(_searchTerm))
@@ -1149,6 +1233,11 @@ else
         {
             if (string.IsNullOrWhiteSpace(label)) continue;
             query.Add($"objectLabel={Uri.EscapeDataString(label)}");
+        }
+        foreach (var label in sceneLabels)
+        {
+            if (string.IsNullOrWhiteSpace(label)) continue;
+            query.Add($"sceneLabel={Uri.EscapeDataString(label)}");
         }
         return query.Count == 0 ? "/search" : "/search?" + string.Join("&", query);
     }
@@ -1164,6 +1253,7 @@ else
         _filterPickerQuery = string.Empty;
         _filterPickerPeople = new();
         _filterPickerLabels = new();
+        _filterPickerScenes = new();
         _filterPickerOpen = true;
         // Kick off the initial "empty query" load so the user sees the top
         // people + labels immediately, no typing required.
@@ -1205,6 +1295,9 @@ else
             var labelsTask = string.IsNullOrEmpty(query)
                 ? ObjectsService.GetLabelsAsync(limit: 12, ct: ct)
                 : ObjectsService.GetLabelsAsync(search: query, limit: 12, ct: ct);
+            var scenesTask = string.IsNullOrEmpty(query)
+                ? ScenesService.GetLabelsAsync(limit: 12, ct: ct)
+                : ScenesService.GetLabelsAsync(search: query, limit: 12, ct: ct);
 
             var alreadyPickedPeople = _personFilters.Select(p => p.Id).ToHashSet();
             var people = _peoplePool
@@ -1219,16 +1312,22 @@ else
             var alreadyPickedLabels = _objectLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var topLabels = labels.Where(l => !alreadyPickedLabels.Contains(l.Label)).Take(12).ToList();
 
+            var scenes = await scenesTask;
+            var alreadyPickedScenes = _sceneLabels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var topScenes = scenes.Where(s => !alreadyPickedScenes.Contains(s.Label)).Take(12).ToList();
+
             if (ct.IsCancellationRequested) return;
 
             _filterPickerPeople = topPeople;
             _filterPickerLabels = topLabels;
+            _filterPickerScenes = topScenes;
         }
         catch (OperationCanceledException) { /* superseded — ignore */ }
         catch
         {
             _filterPickerPeople = new();
             _filterPickerLabels = new();
+            _filterPickerScenes = new();
         }
         finally
         {
@@ -1244,14 +1343,21 @@ else
     {
         var ids = _personFilters.Select(p => p.Id).Append(person.Id).Distinct().ToList();
         CloseFilterPicker();
-        Navigation.NavigateTo(BuildSearchUrl(ids, _objectLabels), replace: true);
+        Navigation.NavigateTo(BuildSearchUrl(ids, _objectLabels, _sceneLabels), replace: true);
     }
 
     private void PickObject(string label)
     {
         var labels = _objectLabels.Append(label).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         CloseFilterPicker();
-        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), labels), replace: true);
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), labels, _sceneLabels), replace: true);
+    }
+
+    private void PickScene(string label)
+    {
+        var scenes = _sceneLabels.Append(label).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        CloseFilterPicker();
+        Navigation.NavigateTo(BuildSearchUrl(_personFilters.Select(p => p.Id), _objectLabels, scenes), replace: true);
     }
 
     private static string Capitalize(string label)

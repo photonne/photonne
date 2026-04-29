@@ -1,7 +1,8 @@
-# ─── Stage 1: export yolov8n.pt -> yolov8n.onnx ───────────────────────────────
-# Ultralytics distributes only .pt weights via their CDN; the .onnx file we
-# actually consume at runtime is generated here at build time. Doing the export
-# in a dedicated stage means torch + ultralytics never reach the runtime image.
+# ─── Stage 1: export yolov8n.pt -> yolov8n.onnx + Places365 ResNet18 -> ONNX ──
+# Ultralytics distributes only .pt weights via their CDN; the .onnx files we
+# actually consume at runtime are generated here at build time. Doing the
+# export in a dedicated stage means torch + ultralytics never reach the
+# runtime image.
 FROM python:3.11-slim AS yolo-export
 
 ENV PIP_NO_CACHE_DIR=1 \
@@ -30,6 +31,17 @@ WORKDIR /export
 RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', dynamic=False, simplify=True, opset=12)"
 # Result: /export/yolov8n.pt (auto-downloaded) + /export/yolov8n.onnx (exported).
 
+# Places365 ResNet18: download the official .pth.tar checkpoint from CSAIL
+# Vision and export to ONNX. Two mirrors are tried because the primary host
+# (places2.csail.mit.edu) occasionally rate-limits build runners. If both
+# fail the build still succeeds (with no scene_classifier.onnx baked in) and
+# the runtime endpoint returns 503 until SCENE_MODEL_URL is set.
+COPY scripts/export_scene.py /export/export_scene.py
+# `|| true` keeps the build green if every mirror is unreachable; the runtime
+# container then serves 503 on /v1/scenes/classify until SCENE_MODEL_URL is
+# pointed at a working file or one is mounted at /app/models/scene_classifier.onnx.
+RUN python /export/export_scene.py || echo "[build] WARNING: scene_classifier.onnx export failed; runtime endpoint will be unavailable"
+
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -38,6 +50,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     INSIGHTFACE_HOME=/app/models \
     OBJECT_MODEL_PATH=/app/models/yolov8n.onnx \
+    SCENE_MODEL_PATH=/app/models/scene_classifier.onnx \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
@@ -64,6 +77,10 @@ RUN apt-get update \
 # only when the volume doesn't already contain a model — preserving any
 # user-supplied override.
 COPY --from=yolo-export /export/yolov8n.onnx /opt/ml-models/yolov8n.onnx
+# Same approach for the Places365 scene classifier. Wildcard so the COPY
+# silently no-ops when the export step in stage 1 was unable to fetch the
+# upstream weights — letting the rest of the runtime image build cleanly.
+COPY --from=yolo-export /export/scene_classifier.onn[x] /opt/ml-models/scene_classifier.onnx
 
 COPY app /app/app
 COPY entrypoint.sh /usr/local/bin/photonne-ml-entrypoint.sh

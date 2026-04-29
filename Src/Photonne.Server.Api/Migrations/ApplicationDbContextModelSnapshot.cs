@@ -209,6 +209,9 @@ namespace Photonne.Server.Api.Migrations
                     b.Property<DateTime>("ScannedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("SceneClassificationCompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -743,6 +746,43 @@ namespace Photonne.Server.Api.Migrations
                     b.HasIndex("AssetId", "Label");
 
                     b.ToTable("ObjectDetections");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.SceneClassification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ClassId")
+                        .HasColumnType("integer");
+
+                    b.Property<float>("Confidence")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("Label");
+
+                    b.HasIndex("AssetId", "Label");
+
+                    b.ToTable("SceneClassifications");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Person", b =>
@@ -1296,6 +1336,17 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.SceneClassification", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithMany("SceneClassifications")
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.RefreshToken", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.User", "User")
@@ -1359,6 +1410,8 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("MlJobs");
 
                     b.Navigation("ObjectDetections");
+
+                    b.Navigation("SceneClassifications");
 
                     b.Navigation("Tags");
 

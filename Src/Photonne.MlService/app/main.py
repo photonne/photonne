@@ -11,6 +11,8 @@ from .face_models import DetectResponse as FaceDetectResponse
 from .image_loader import ImageLoadError, load_bgr
 from .object_detector import detector as object_detector
 from .object_models import ObjectDetectRequest, ObjectDetectResponse
+from .scene_classifier import classifier as scene_classifier
+from .scene_models import SceneClassifyRequest, SceneClassifyResponse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("photonne.ml")
@@ -38,6 +40,18 @@ async def lifespan(app: FastAPI):
     else:
         log.info("Object detector disabled by config")
 
+    if settings.scene.enabled:
+        log.info("Loading scene classifier model=%s providers=%s", settings.scene.model_path, settings.providers)
+        try:
+            scene_classifier.load()
+            log.info("Scene classifier loaded")
+        except Exception:
+            # Same isolation rationale as object detection: a missing/broken
+            # Places365 model must not take faces or objects down with it.
+            log.exception("Scene classifier failed to load; the endpoint will return 503")
+    else:
+        log.info("Scene classifier disabled by config")
+
     yield
 
 
@@ -58,9 +72,16 @@ def health() -> Dict[str, Any]:
             "loaded": object_detector.is_loaded,
             "model": settings.obj.model_path,
         },
+        "scenes": {
+            "enabled": settings.scene.enabled,
+            "loaded": scene_classifier.is_loaded,
+            "model": settings.scene.model_path,
+        },
     }
     if object_detector.load_error:
         components["objects"]["error"] = object_detector.load_error
+    if scene_classifier.load_error:
+        components["scenes"]["error"] = scene_classifier.load_error
     enabled = [c for c, v in components.items() if v["enabled"]]
     all_loaded = all(components[c]["loaded"] for c in enabled) if enabled else True
     return {
@@ -112,6 +133,33 @@ def detect_objects(req: ObjectDetectRequest) -> ObjectDetectResponse:
     return ObjectDetectResponse(
         asset_id=req.asset_id,
         objects=objects,
+        image_size=[w, h],
+        elapsed_ms=elapsed_ms,
+    )
+
+
+@app.post("/v1/scenes/classify", response_model=SceneClassifyResponse)
+def classify_scenes(req: SceneClassifyRequest) -> SceneClassifyResponse:
+    if not settings.scene.enabled:
+        raise HTTPException(status_code=503, detail="scene classification disabled")
+    if not scene_classifier.is_loaded:
+        detail = (
+            f"scene classifier not loaded: {scene_classifier.load_error}"
+            if scene_classifier.load_error
+            else "scene classifier not loaded"
+        )
+        raise HTTPException(status_code=503, detail=detail)
+
+    try:
+        img = load_bgr(req.image_path)
+    except ImageLoadError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    scenes, elapsed_ms = scene_classifier.classify(img)
+    h, w = img.shape[:2]
+    return SceneClassifyResponse(
+        asset_id=req.asset_id,
+        scenes=scenes,
         image_size=[w, h],
         elapsed_ms=elapsed_ms,
     )

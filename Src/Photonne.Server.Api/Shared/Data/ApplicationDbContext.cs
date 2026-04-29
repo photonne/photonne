@@ -43,6 +43,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Face> Faces { get; set; }
     public DbSet<Person> People { get; set; }
     public DbSet<ObjectDetection> ObjectDetections { get; set; }
+    public DbSet<SceneClassification> SceneClassifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -486,6 +487,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ObjectRecognitionCompletedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(NullableUtcConverter);
+            entity.Property(e => e.SceneClassificationCompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(NullableUtcConverter);
         });
 
         // Configure ObjectDetection entity (detected object with bbox + class)
@@ -496,6 +500,26 @@ public class ApplicationDbContext : DbContext
 
             entity.HasOne(e => e.Asset)
                 .WithMany(a => a.ObjectDetections)
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.AssetId);
+            entity.HasIndex(e => e.Label);
+            entity.HasIndex(e => new { e.AssetId, e.Label });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure SceneClassification entity (top-K scene labels per asset).
+        // Top-K means the same asset has multiple rows (rank 1..N) so the index
+        // shape mirrors ObjectDetections — by AssetId for "give me everything
+        // for this photo" and by Label for "give me every photo of a beach".
+        modelBuilder.Entity<SceneClassification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Label).IsRequired().HasMaxLength(100);
+
+            entity.HasOne(e => e.Asset)
+                .WithMany(a => a.SceneClassifications)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
 

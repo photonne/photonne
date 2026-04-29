@@ -353,7 +353,7 @@ public class AssetService : IAssetService
     }
 
     public async Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(
-        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null)
+        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null)
     {
         await SetAuthHeaderAsync();
         var url = $"/api/assets/search?pageSize={pageSize}";
@@ -376,6 +376,14 @@ public class AssetService : IAssetService
             {
                 if (string.IsNullOrWhiteSpace(label)) continue;
                 url += $"&objectLabel={Uri.EscapeDataString(label)}";
+            }
+        }
+        if (sceneLabels != null)
+        {
+            foreach (var label in sceneLabels)
+            {
+                if (string.IsNullOrWhiteSpace(label)) continue;
+                url += $"&sceneLabel={Uri.EscapeDataString(label)}";
             }
         }
 

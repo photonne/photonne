@@ -18,6 +18,7 @@ services:
       - Ml__ServiceUrl=${ML_SERVICE_URL:-${FACE_SERVICE_URL:-http://photonne-ml:8000}}
       - Ml__FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
       - Ml__ObjectRecognition__Enabled=${OBJECT_RECOGNITION_ENABLED:-true}
+      - Ml__SceneRecognition__Enabled=${SCENE_RECOGNITION_ENABLED:-true}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails
@@ -42,6 +43,10 @@ services:
       - OBJECT_MODEL_PATH=${OBJECT_MODEL_PATH:-/app/models/yolov8n.onnx}
       - OBJECT_MIN_SCORE=${OBJECT_MIN_SCORE:-0.25}
       - OBJECT_IOU=${OBJECT_IOU:-0.45}
+      - SCENE_ENABLED=${SCENE_RECOGNITION_ENABLED:-true}
+      - SCENE_MODEL_PATH=${SCENE_MODEL_PATH:-/app/models/scene_classifier.onnx}
+      - SCENE_TOP_K=${SCENE_TOP_K:-3}
+      - SCENE_MIN_SCORE=${SCENE_MIN_SCORE:-0.15}
       - ONNX_PROVIDERS=${ML_ONNX_PROVIDERS:-${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}}
     ports:
       - "${ML_PORT:-${FACE_PORT:-8000}}:8000"

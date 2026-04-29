@@ -178,6 +178,7 @@ public class UploadAssetsEndpoint : IEndpoint
             {
                 await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceDetection, cancellationToken);
                 await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectRecognition, cancellationToken);
+                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, cancellationToken);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
