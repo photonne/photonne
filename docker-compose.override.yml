@@ -5,12 +5,18 @@ services:
     build:
       context: .
       dockerfile: Src/Photonne.Server.Api/Dockerfile
+    pull_policy: build
     ports:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Jwt__Key=${JWT_KEY:-dev-secret-key-change-in-production-min-32-chars}
       - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+
+  photonne-ml:
+    build:
+      context: ./Src/Photonne.MlService
+    pull_policy: build
 
   postgresql:
     ports:
