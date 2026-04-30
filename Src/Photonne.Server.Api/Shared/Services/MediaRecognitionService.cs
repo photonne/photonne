@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Photonne.Server.Api.Shared.Models;
 
 namespace Photonne.Server.Api.Shared.Services;
@@ -114,10 +115,51 @@ public class MediaRecognitionService
         // - Asset type (only images)
         // - Size (large images)
         // - Should not have pending jobs already
-        return asset.Type == AssetType.Image && 
+        return asset.Type == AssetType.Image &&
                exif != null &&
-               exif.Width.HasValue && 
+               exif.Width.HasValue &&
                exif.Height.HasValue &&
                (exif.Width.Value * exif.Height.Value) > 500000; // > 500K pixels
     }
+
+    public static readonly IReadOnlyList<MlJobType> AllJobTypes = new[]
+    {
+        MlJobType.FaceRecognition,
+        MlJobType.ObjectDetection,
+        MlJobType.SceneClassification,
+        MlJobType.TextRecognition,
+    };
+
+    /// <summary>
+    /// Returns the ML job types that should be enqueued for an asset: gated by
+    /// <see cref="ShouldTriggerMlJob"/>, and excluding types whose corresponding
+    /// *CompletedAt timestamp is already set (i.e. previously processed
+    /// successfully). Pending/Processing duplicates are filtered later by
+    /// <see cref="IMlJobService.EnqueueMlJobAsync"/>.
+    /// </summary>
+    public IReadOnlyList<MlJobType> GetMissingMlJobTypes(Asset asset, AssetExif? exif)
+    {
+        if (!ShouldTriggerMlJob(asset, exif))
+            return Array.Empty<MlJobType>();
+
+        var missing = new List<MlJobType>(AllJobTypes.Count);
+        if (asset.FaceRecognitionCompletedAt == null) missing.Add(MlJobType.FaceRecognition);
+        if (asset.ObjectDetectionCompletedAt == null) missing.Add(MlJobType.ObjectDetection);
+        if (asset.SceneClassificationCompletedAt == null) missing.Add(MlJobType.SceneClassification);
+        if (asset.TextRecognitionCompletedAt == null) missing.Add(MlJobType.TextRecognition);
+        return missing;
+    }
+
+    /// <summary>
+    /// EF-translatable predicate matching assets that have not yet completed
+    /// the given ML job type. Shared by the admin backfill endpoints.
+    /// </summary>
+    public static Expression<Func<Asset, bool>> MissingCompletionFilter(MlJobType jobType) => jobType switch
+    {
+        MlJobType.FaceRecognition => a => a.FaceRecognitionCompletedAt == null,
+        MlJobType.ObjectDetection => a => a.ObjectDetectionCompletedAt == null,
+        MlJobType.SceneClassification => a => a.SceneClassificationCompletedAt == null,
+        MlJobType.TextRecognition => a => a.TextRecognitionCompletedAt == null,
+        _ => throw new ArgumentOutOfRangeException(nameof(jobType), jobType, null),
+    };
 }

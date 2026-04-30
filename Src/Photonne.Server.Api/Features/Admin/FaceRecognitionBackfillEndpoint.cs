@@ -26,42 +26,11 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
             .WithTags("Admin")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
-        group.MapPost("/face-recognition/backfill", Handle);
-    }
-
-    private static async Task<IResult> Handle(
-        [FromServices] ApplicationDbContext db,
-        [FromServices] IMlJobService mlJobs,
-        [FromBody] BackfillRequest? body,
-        CancellationToken ct)
-    {
-        var batchSize = Math.Clamp(body?.BatchSize ?? 500, 1, 5000);
-        var onlyMissing = body?.OnlyMissing ?? true;
-
-        var query = db.Assets.AsNoTracking()
-            .Where(a => a.Type == AssetType.Image && a.DeletedAt == null && !a.IsFileMissing);
-
-        if (onlyMissing)
-        {
-            query = query.Where(a => a.FaceRecognitionCompletedAt == null);
-        }
-
-        var total = await query.CountAsync(ct);
-
-        var ids = await query
-            .OrderBy(a => a.ScannedAt)
-            .Take(batchSize)
-            .Select(a => a.Id)
-            .ToListAsync(ct);
-
-        var enqueued = 0;
-        foreach (var assetId in ids)
-        {
-            await mlJobs.EnqueueMlJobAsync(assetId, MlJobType.FaceRecognition, ct);
-            enqueued++;
-        }
-
-        return Results.Ok(new BackfillResponse(enqueued, total));
+        group.MapPost("/face-recognition/backfill", (
+            [FromServices] ApplicationDbContext db,
+            [FromServices] IMlJobService mlJobs,
+            [FromBody] BackfillRequest? body,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, MlJobType.FaceRecognition, body, ct));
     }
 }
 

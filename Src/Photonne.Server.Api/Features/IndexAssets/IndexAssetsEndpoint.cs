@@ -332,7 +332,6 @@ public class IndexAssetsEndpoint : IEndpoint
                     dbContext.AssetThumbnails.AddRange(thumbnails);
             }
             await dbContext.SaveChangesAsync(cancellationToken);
-            await QueueMlJobsForNewAssetsAsync(context.AssetsToCreate, dbContext, mediaRecognitionService, mlJobService, apiStats, cancellationToken);
         }
         send(new IndexProgressUpdate { Message = "Nuevos archivos procesados.", Percentage = 75, Statistics = MapToBlazorStats(apiStats) });
 
@@ -443,6 +442,18 @@ public class IndexAssetsEndpoint : IEndpoint
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
         }
+
+        // STEP 4g: Queue missing ML jobs for every scanned asset (new, updated
+        // and unchanged). The helper skips types whose *CompletedAt is already
+        // set, so re-runs only enqueue what's actually missing.
+        await QueueMissingMlJobsAsync(
+            context.AllScannedAssets,
+            dbContext,
+            mediaRecognitionService,
+            mlJobService,
+            apiStats,
+            cancellationToken);
+        send(new IndexProgressUpdate { Message = "Trabajos de IA encolados.", Percentage = 96, Statistics = MapToBlazorStats(apiStats) });
 
         await RemoveOrphanedFoldersAsync(context.ProcessedDirectories, dbContext, apiStats, cancellationToken);
         send(new IndexProgressUpdate { Message = "Limpieza de carpetas completada.", Percentage = 98, Statistics = MapToBlazorStats(apiStats) });
@@ -856,8 +867,6 @@ public class IndexAssetsEndpoint : IEndpoint
                 context.AssetsToCreate,
                 dbContext,
                 thumbnailService,
-                mediaRecognitionService,
-                mlJobService,
                 settingsService,
                 stats,
                 thumbnailWorkers,
@@ -906,7 +915,17 @@ public class IndexAssetsEndpoint : IEndpoint
                 dbContext,
                 stats,
                 cancellationToken);
-            
+
+            // STEP 5d: Queue missing ML jobs for every scanned asset (new,
+            // updated and unchanged). The helper skips types already completed.
+            await QueueMissingMlJobsAsync(
+                context.AllScannedAssets,
+                dbContext,
+                mediaRecognitionService,
+                mlJobService,
+                stats,
+                cancellationToken);
+
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
@@ -921,8 +940,6 @@ public class IndexAssetsEndpoint : IEndpoint
         List<Asset> assetsToCreate,
         ApplicationDbContext dbContext,
         ThumbnailGeneratorService thumbnailService,
-        MediaRecognitionService mediaRecognitionService,
-        IMlJobService mlJobService,
         SettingsService settingsService,
         IndexStatistics stats,
         int thumbnailWorkers,
@@ -955,14 +972,9 @@ public class IndexAssetsEndpoint : IEndpoint
             thumbnailWorkers,
             cancellationToken);
         
-        // STEP 4c: Queue ML jobs for new assets
-        await QueueMlJobsForNewAssetsAsync(
-            assetsToCreate,
-            dbContext,
-            mediaRecognitionService,
-            mlJobService,
-            stats,
-            cancellationToken);
+        // ML jobs are queued in a single pass at the end of
+        // ProcessDatabaseOperationsAsync, covering new + updated + unchanged
+        // assets so previously-indexed items also get their missing AI tasks.
     }
 
     private async Task GenerateThumbnailsForNewAssetsAsync(
@@ -1015,8 +1027,12 @@ public class IndexAssetsEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task QueueMlJobsForNewAssetsAsync(
-        List<Asset> assets,
+    // Enqueues every ML job type whose *CompletedAt is null for any image asset
+    // in the given list. Safe for re-indexing flows: completed types are
+    // skipped via the helper, and Pending/Processing duplicates are filtered
+    // by IMlJobService.EnqueueMlJobAsync.
+    private async Task QueueMissingMlJobsAsync(
+        IEnumerable<Asset> assets,
         ApplicationDbContext dbContext,
         MediaRecognitionService mediaRecognitionService,
         IMlJobService mlJobService,
@@ -1026,21 +1042,19 @@ public class IndexAssetsEndpoint : IEndpoint
         var imageAssets = assets.Where(a => a.Type == AssetType.Image).ToList();
         if (!imageAssets.Any())
             return;
-        
+
         foreach (var asset in imageAssets)
         {
-            await dbContext.Entry(asset)
-                .Reference(a => a.Exif)
-                .LoadAsync(cancellationToken);
-            
-            if (mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
+            var exifRef = dbContext.Entry(asset).Reference(a => a.Exif);
+            if (!exifRef.IsLoaded)
+                await exifRef.LoadAsync(cancellationToken);
+
+            var missing = mediaRecognitionService.GetMissingMlJobTypes(asset, asset.Exif);
+            foreach (var jobType in missing)
             {
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceRecognition, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectDetection, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, cancellationToken);
-                stats.MlJobsQueued += 4;
+                await mlJobService.EnqueueMlJobAsync(asset.Id, jobType, cancellationToken);
             }
+            stats.MlJobsQueued += missing.Count;
         }
     }
 

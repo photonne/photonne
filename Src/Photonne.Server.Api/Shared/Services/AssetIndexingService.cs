@@ -69,6 +69,7 @@ public class AssetIndexingService
             if (existingByPath != null && existingByPath.Thumbnails.Any())
             {
                 Console.WriteLine($"[INDEX-FILE] Already indexed: {storedPath}");
+                await EnqueueMissingMlJobsAsync(existingByPath, ct);
                 return existingByPath;
             }
 
@@ -85,6 +86,7 @@ public class AssetIndexingService
                 if (existingByChecksum != null && existingByChecksum.Thumbnails.Any())
                 {
                     Console.WriteLine($"[INDEX-FILE] Already indexed by checksum: {storedPath}");
+                    await EnqueueMissingMlJobsAsync(existingByChecksum, ct);
                     return existingByChecksum;
                 }
             }
@@ -203,14 +205,8 @@ public class AssetIndexingService
                 await _dbContext.SaveChangesAsync(ct);
             }
 
-            // ML jobs
-            if (asset.Type == AssetType.Image && _mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
-            {
-                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceRecognition, ct);
-                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectDetection, ct);
-                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, ct);
-                await _mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, ct);
-            }
+            // ML jobs (also covers re-scans of existing assets via the early-return paths above)
+            await EnqueueMissingMlJobsAsync(asset, ct);
 
             Console.WriteLine($"[INDEX-FILE] Indexed successfully: {storedPath} (id={asset.Id})");
             return asset;
@@ -219,6 +215,18 @@ public class AssetIndexingService
         {
             Console.WriteLine($"[INDEX-FILE] Error indexing {physicalPath}: {ex.Message}");
             return null;
+        }
+    }
+
+    // Enqueues only the ML job types whose *CompletedAt is null. Safe to call on
+    // re-scans: a previously-failed job will be re-queued (the scan is a manual
+    // admin action and reintents are desirable), while completed types are skipped.
+    private async Task EnqueueMissingMlJobsAsync(Asset asset, CancellationToken ct)
+    {
+        var missing = _mediaRecognitionService.GetMissingMlJobTypes(asset, asset.Exif);
+        foreach (var jobType in missing)
+        {
+            await _mlJobService.EnqueueMlJobAsync(asset.Id, jobType, ct);
         }
     }
 

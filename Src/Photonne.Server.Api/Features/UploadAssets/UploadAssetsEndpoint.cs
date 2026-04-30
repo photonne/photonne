@@ -174,12 +174,9 @@ public class UploadAssetsEndpoint : IEndpoint
             }
 
             // 9. Queue ML Jobs
-            if (mediaRecognitionService.ShouldTriggerMlJob(asset, asset.Exif))
+            foreach (var jobType in mediaRecognitionService.GetMissingMlJobTypes(asset, asset.Exif))
             {
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.FaceRecognition, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.ObjectDetection, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.SceneClassification, cancellationToken);
-                await mlJobService.EnqueueMlJobAsync(asset.Id, MlJobType.TextRecognition, cancellationToken);
+                await mlJobService.EnqueueMlJobAsync(asset.Id, jobType, cancellationToken);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
