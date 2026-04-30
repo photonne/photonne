@@ -1,0 +1,237 @@
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IAuthService AuthService
+@inject ISettingsService SettingsService
+@inject ISnackbar Snackbar
+
+@*
+    Reusable admin card that drives a manual ML backfill ("encolar pendientes").
+    It fetches pending count, lets the admin tune the batch size for this run
+    (prefilled from TaskSettings.BackfillBatchSize), and loops POSTs to the
+    backfill endpoint until pending hits zero or the user cancels.
+
+    Cancel only stops further enqueuing — already-enqueued jobs are processed by
+    MlJobProcessorService independently.
+*@
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">@Title</MudText>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <MudText Typo="Typo.body2">@Description</MudText>
+            }
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_loading)
+        {
+            <div class="d-flex justify-center my-4">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <MudText Typo="Typo.body1">
+                    Pendientes:
+                    <strong>@_pending.ToString("N0")</strong>
+                    @if (_running)
+                    {
+                        <span class="mud-text-secondary">— encolados en esta sesión: <strong>@_enqueuedThisSession.ToString("N0")</strong></span>
+                    }
+                </MudText>
+            </div>
+
+            <MudNumericField T="int"
+                             Label="Tamaño de lote (esta ejecución)"
+                             HelperText="@($"Por defecto se usa el global ({_globalBatchSize}). Editable solo para esta tirada.")"
+                             @bind-Value="_batchSize"
+                             Min="1" Max="5000"
+                             Variant="Variant.Outlined"
+                             Disabled="_running"
+                             Class="mb-3" />
+
+            @if (_running)
+            {
+                <MudProgressLinear Color="Color.Primary"
+                                   Value="@ProgressPercent"
+                                   Class="mb-3"
+                                   Rounded="true"
+                                   Size="Size.Medium" />
+                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-3">@_status</MudText>
+            }
+            else if (_lastSummary != null)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">@_lastSummary</MudAlert>
+            }
+
+            <div class="d-flex gap-2">
+                @if (!_running)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Replay"
+                               Disabled="@(_pending == 0)"
+                               OnClick="StartAsync">
+                        Iniciar
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Stop"
+                               OnClick="Cancel">
+                        Detener
+                    </MudButton>
+                }
+                <MudButton Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Outlined.Refresh"
+                           Disabled="_running"
+                           OnClick="RefreshPendingAsync">
+                    Actualizar
+                </MudButton>
+            </div>
+
+            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-3 d-block">
+                Detener solo deja de encolar más; los jobs ya encolados se procesan en segundo plano.
+            </MudText>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    /// <summary>Display title (e.g., "Reconocimiento facial").</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    /// <summary>Optional secondary line under the title.</summary>
+    [Parameter] public string? Description { get; set; }
+
+    /// <summary>URL slug — face-recognition / object-detection / scene-classification / text-recognition.</summary>
+    [Parameter, EditorRequired] public string EndpointKey { get; set; } = "";
+
+    private const string KeyBackfillBatchSize = "TaskSettings.BackfillBatchSize";
+
+    private bool _loading = true;
+    private bool _running;
+    private int _pending;
+    private int _enqueuedThisSession;
+    private int _batchSize = 500;
+    private int _globalBatchSize = 500;
+    private int _initialPending;
+    private string? _lastSummary;
+    private string _status = "";
+    private CancellationTokenSource? _cts;
+
+    private double ProgressPercent =>
+        _initialPending > 0
+            ? Math.Min(100, _enqueuedThisSession * 100.0 / _initialPending)
+            : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var raw = await SettingsService.GetSettingAsync(KeyBackfillBatchSize, "500");
+        _globalBatchSize = ParseClamped(raw, 1, 5000, 500);
+        _batchSize = _globalBatchSize;
+
+        await AttachAuthAsync();
+        await RefreshPendingAsync();
+
+        _loading = false;
+    }
+
+    private async Task RefreshPendingAsync()
+    {
+        try
+        {
+            await AttachAuthAsync();
+            var resp = await Http.GetFromJsonAsync<PendingCountDto>(
+                $"/api/admin/maintenance/{EndpointKey}/pending-count");
+            _pending = resp?.Pending ?? 0;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"No se pudo leer pendientes: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        if (_pending == 0) return;
+
+        _cts = new CancellationTokenSource();
+        _running = true;
+        _enqueuedThisSession = 0;
+        _initialPending = _pending;
+        _lastSummary = null;
+        _status = "Encolando…";
+
+        try
+        {
+            while (!_cts.IsCancellationRequested && _pending > 0)
+            {
+                await AttachAuthAsync();
+                var resp = await Http.PostAsJsonAsync(
+                    $"/api/admin/maintenance/{EndpointKey}/backfill",
+                    new { BatchSize = _batchSize, OnlyMissing = true },
+                    _cts.Token);
+                resp.EnsureSuccessStatusCode();
+                var result = await resp.Content.ReadFromJsonAsync<BackfillResultDto>(cancellationToken: _cts.Token);
+                if (result == null) break;
+
+                _enqueuedThisSession += result.Enqueued;
+                _pending = Math.Max(0, result.Total - result.Enqueued);
+                _status = $"Encolados {_enqueuedThisSession:N0} de {_initialPending:N0}…";
+                StateHasChanged();
+
+                // Si la respuesta no encoló nada pero todavía hay pendientes,
+                // significa que algo bloquea el avance — salimos para no
+                // entrar en un bucle infinito.
+                if (result.Enqueued == 0) break;
+            }
+
+            _lastSummary = _cts.IsCancellationRequested
+                ? $"Detenido. Encolados {_enqueuedThisSession:N0}; quedan {_pending:N0} pendientes."
+                : $"Encolados {_enqueuedThisSession:N0}. Los procesará el motor de ML en segundo plano.";
+
+            Snackbar.Add(_lastSummary, _cts.IsCancellationRequested ? Severity.Info : Severity.Success);
+        }
+        catch (OperationCanceledException)
+        {
+            _lastSummary = $"Detenido. Encolados {_enqueuedThisSession:N0}; quedan {_pending:N0} pendientes.";
+            Snackbar.Add(_lastSummary, Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _running = false;
+            _cts?.Dispose();
+            _cts = null;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => _cts?.Cancel();
+
+    private async Task AttachAuthAsync()
+    {
+        var token = await AuthService.GetTokenAsync();
+        Http.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
+            ? null : new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private static int ParseClamped(string raw, int min, int max, int fallback)
+    {
+        if (!int.TryParse(raw, out var v)) return fallback;
+        return Math.Clamp(v, min, max);
+    }
+
+    private sealed record PendingCountDto(int Pending);
+    private sealed record BackfillResultDto(int Enqueued, int Total);
+}

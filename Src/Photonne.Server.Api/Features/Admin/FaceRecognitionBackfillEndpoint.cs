@@ -29,8 +29,13 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
         group.MapPost("/face-recognition/backfill", (
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
+            [FromServices] SettingsService settings,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, MlJobType.FaceRecognition, body, ct));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.FaceRecognition, body, ct));
+
+        group.MapGet("/face-recognition/pending-count", (
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.FaceRecognition, ct));
     }
 }
 

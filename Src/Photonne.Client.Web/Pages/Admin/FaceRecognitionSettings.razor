@@ -131,16 +131,15 @@ else
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudText Typo="Typo.body2" Class="mb-2">Detectar caras en fotos antiguas</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2">Procesar fotos pendientes</MudText>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
-                        Encola jobs de detección facial para fotos sin procesar. Las cogerá el procesador en su siguiente pase.
+                        Para encolar la detección facial sobre fotos antiguas, ve a la pantalla dedicada.
                     </MudText>
-                    <MudButton Variant="Variant.Filled"
+                    <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
-                               Disabled="@_busy"
-                               OnClick="BackfillAsync"
-                               StartIcon="@Icons.Material.Outlined.Replay">
-                        Procesar fotos pendientes
+                               Href="/admin/tasks/face-recognition"
+                               EndIcon="@Icons.Material.Filled.ArrowForward">
+                        Ir a procesado manual
                     </MudButton>
 
                     <MudDivider Class="my-3" />
@@ -223,22 +222,6 @@ else
             ok ? Severity.Success : Severity.Error);
     }
 
-    private async Task BackfillAsync()
-    {
-        _busy = true;
-        try
-        {
-            await AttachAuthAsync();
-            var resp = await Http.PostAsJsonAsync("/api/admin/maintenance/face-recognition/backfill", new { });
-            resp.EnsureSuccessStatusCode();
-            var result = await resp.Content.ReadFromJsonAsync<BackfillResult>();
-            if (result != null)
-                Snackbar.Add($"Encoladas {result.Enqueued} fotos (de {result.Total} pendientes).", Severity.Success);
-        }
-        catch (Exception ex) { Snackbar.Add($"Error: {ex.Message}", Severity.Error); }
-        finally { _busy = false; }
-    }
-
     private async Task SaveThresholdsAsync()
     {
         if (!ThresholdsValid) return;
@@ -294,6 +277,5 @@ else
             ? null : new AuthenticationHeaderValue("Bearer", token);
     }
 
-    private sealed record BackfillResult(int Enqueued, int Total);
     private sealed record ReclusterResult(int OwnersProcessed, int PersonsCreated);
 }

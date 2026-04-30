@@ -7,6 +7,8 @@ using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Admin;
 
+public record PendingCountResponse(int Pending);
+
 /// <summary>Shared implementation for the per-job-type backfill endpoints.
 /// Selects image assets whose <c>*CompletedAt</c> is null (when
 /// <see cref="BackfillRequest.OnlyMissing"/> is true, the default) and enqueues
@@ -14,23 +16,26 @@ namespace Photonne.Server.Api.Features.Admin;
 /// <see cref="IMlJobService.EnqueueMlJobAsync"/>.</summary>
 internal static class MlBackfillRunner
 {
+    public const string BackfillBatchSizeSettingKey = "TaskSettings.BackfillBatchSize";
+    public const int DefaultBackfillBatchSize = 500;
+    public const int MinBackfillBatchSize = 1;
+    public const int MaxBackfillBatchSize = 5000;
+
     public static async Task<IResult> RunAsync(
         ApplicationDbContext db,
         IMlJobService mlJobs,
+        SettingsService settings,
         MlJobType jobType,
         BackfillRequest? body,
         CancellationToken ct)
     {
-        var batchSize = Math.Clamp(body?.BatchSize ?? 500, 1, 5000);
+        var batchSize = Math.Clamp(
+            body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
+            MinBackfillBatchSize,
+            MaxBackfillBatchSize);
         var onlyMissing = body?.OnlyMissing ?? true;
 
-        var query = db.Assets.AsNoTracking()
-            .Where(a => a.Type == AssetType.Image && a.DeletedAt == null && !a.IsFileMissing);
-
-        if (onlyMissing)
-        {
-            query = query.Where(MediaRecognitionService.MissingCompletionFilter(jobType));
-        }
+        var query = BuildQuery(db, jobType, onlyMissing);
 
         var total = await query.CountAsync(ct);
 
@@ -49,6 +54,45 @@ internal static class MlBackfillRunner
 
         return Results.Ok(new BackfillResponse(enqueued, total));
     }
+
+    /// <summary>Returns how many image assets are still missing the given ML job
+    /// completion. Used by the admin UI to display "X pending" before enqueuing.</summary>
+    public static async Task<IResult> GetPendingCountAsync(
+        ApplicationDbContext db,
+        MlJobType jobType,
+        CancellationToken ct)
+    {
+        var pending = await BuildQuery(db, jobType, onlyMissing: true).CountAsync(ct);
+        return Results.Ok(new PendingCountResponse(pending));
+    }
+
+    private static IQueryable<Asset> BuildQuery(ApplicationDbContext db, MlJobType jobType, bool onlyMissing)
+    {
+        var query = db.Assets.AsNoTracking()
+            .Where(a => a.Type == AssetType.Image && a.DeletedAt == null && !a.IsFileMissing);
+
+        if (onlyMissing)
+        {
+            query = query.Where(MediaRecognitionService.MissingCompletionFilter(jobType));
+            // Exclude assets that already have a Pending/Processing job of the same
+            // type. Otherwise iterating the backfill in a loop would keep re-fetching
+            // the same first N IDs (their *CompletedAt is still null until the
+            // processor finishes them) and EnqueueMlJobAsync would dedup them all,
+            // making the loop terminate after one batch.
+            query = query.Where(a => !db.AssetMlJobs.Any(j =>
+                j.AssetId == a.Id &&
+                j.JobType == jobType &&
+                (j.Status == MlJobStatus.Pending || j.Status == MlJobStatus.Processing)));
+        }
+
+        return query;
+    }
+
+    private static async Task<int> ReadGlobalBatchSizeAsync(SettingsService settings)
+    {
+        var raw = await settings.GetSettingAsync(BackfillBatchSizeSettingKey, Guid.Empty, DefaultBackfillBatchSize.ToString());
+        return int.TryParse(raw, out var v) ? v : DefaultBackfillBatchSize;
+    }
 }
 
 /// <summary>Admin-only: enqueues ObjectDetection ML jobs for image assets that
@@ -65,8 +109,13 @@ public class ObjectDetectionBackfillEndpoint : IEndpoint
         group.MapPost("/object-detection/backfill", (
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
+            [FromServices] SettingsService settings,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, MlJobType.ObjectDetection, body, ct));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.ObjectDetection, body, ct));
+
+        group.MapGet("/object-detection/pending-count", (
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.ObjectDetection, ct));
     }
 }
 
@@ -83,8 +132,13 @@ public class SceneClassificationBackfillEndpoint : IEndpoint
         group.MapPost("/scene-classification/backfill", (
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
+            [FromServices] SettingsService settings,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, MlJobType.SceneClassification, body, ct));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.SceneClassification, body, ct));
+
+        group.MapGet("/scene-classification/pending-count", (
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.SceneClassification, ct));
     }
 }
 
@@ -101,7 +155,12 @@ public class TextRecognitionBackfillEndpoint : IEndpoint
         group.MapPost("/text-recognition/backfill", (
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
+            [FromServices] SettingsService settings,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, MlJobType.TextRecognition, body, ct));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.TextRecognition, body, ct));
+
+        group.MapGet("/text-recognition/pending-count", (
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.TextRecognition, ct));
     }
 }

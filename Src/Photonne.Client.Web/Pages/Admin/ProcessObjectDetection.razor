@@ -1,0 +1,46 @@
+@page "/admin/tasks/object-detection"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Reconocimiento de objetos - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-4">Reconocimiento de objetos</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MlBackfillCard Title="Procesar fotos pendientes"
+                                Description="Encola jobs de detección de objetos (YOLOv8) para fotos sin procesar."
+                                EndpointKey="object-detection" />
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+}

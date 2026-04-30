@@ -1,10 +1,7 @@
 @page "/admin/settings/text-recognition"
-@using System.Net.Http.Headers
-@using System.Net.Http.Json
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject ISettingsService SettingsService
-@inject HttpClient Http
 @inject ISnackbar Snackbar
 
 <PageTitle>Administración - Reconocimiento de texto - Photonne</PageTitle>
@@ -47,28 +44,18 @@ else
                         Si lo desactivas, las nuevas fotos no se procesarán hasta que vuelvas a activarlo.
                         Los textos ya reconocidos se mantienen.
                     </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
 
-        <MudItem xs="12" md="6">
-            <MudCard>
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Mantenimiento</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body2" Class="mb-2">Reconocer texto en fotos antiguas</MudText>
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.body2" Class="mb-2">Procesar fotos pendientes</MudText>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
-                        Encola jobs de OCR para fotos sin procesar. Las cogerá el procesador en su siguiente pase.
+                        Para encolar el OCR sobre fotos antiguas, ve a la pantalla dedicada.
                     </MudText>
-                    <MudButton Variant="Variant.Filled"
+                    <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
-                               Disabled="@_busy"
-                               OnClick="BackfillAsync"
-                               StartIcon="@Icons.Material.Outlined.Replay">
-                        Procesar fotos pendientes
+                               Href="/admin/tasks/text-recognition"
+                               EndIcon="@Icons.Material.Filled.ArrowForward">
+                        Ir a procesado manual
                     </MudButton>
                 </MudCardContent>
             </MudCard>
@@ -82,7 +69,6 @@ else
 
     private bool _isAuthorized;
     private bool _enabled = true;
-    private bool _busy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,29 +93,4 @@ else
         Snackbar.Add(ok ? (v ? "Reconocimiento de texto activado" : "Reconocimiento de texto desactivado") : "No se pudo guardar",
             ok ? Severity.Success : Severity.Error);
     }
-
-    private async Task BackfillAsync()
-    {
-        _busy = true;
-        try
-        {
-            await AttachAuthAsync();
-            var resp = await Http.PostAsJsonAsync("/api/admin/maintenance/text-recognition/backfill", new { });
-            resp.EnsureSuccessStatusCode();
-            var result = await resp.Content.ReadFromJsonAsync<BackfillResult>();
-            if (result != null)
-                Snackbar.Add($"Encoladas {result.Enqueued} fotos (de {result.Total} pendientes).", Severity.Success);
-        }
-        catch (Exception ex) { Snackbar.Add($"Error: {ex.Message}", Severity.Error); }
-        finally { _busy = false; }
-    }
-
-    private async Task AttachAuthAsync()
-    {
-        var token = await AuthService.GetTokenAsync();
-        Http.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
-            ? null : new AuthenticationHeaderValue("Bearer", token);
-    }
-
-    private sealed record BackfillResult(int Enqueued, int Total);
 }

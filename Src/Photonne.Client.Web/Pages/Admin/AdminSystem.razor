@@ -95,13 +95,13 @@
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Detección de caras</MudText>
-                            <MudText Typo="Typo.body2">Detecta rostros en las fotos.</MudText>
+                            <MudText Typo="Typo.h6">Reconocimiento facial</MudText>
+                            <MudText Typo="Typo.body2">Detecta caras y extrae embeddings para identificar personas.</MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="true">
-                            Próximamente
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/face-recognition"))">
+                            Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
@@ -111,13 +111,45 @@
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Reconocimiento facial</MudText>
-                            <MudText Typo="Typo.body2">Identifica personas conocidas.</MudText>
+                            <MudText Typo="Typo.h6">Reconocimiento de objetos</MudText>
+                            <MudText Typo="Typo.body2">Detecta objetos (YOLOv8) para etiquetar y buscar fotos.</MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="true">
-                            Próximamente
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/object-detection"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Clasificación de escenas</MudText>
+                            <MudText Typo="Typo.body2">Reconoce escenas (Places365) para enriquecer la búsqueda.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/scene-classification"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Reconocimiento de texto (OCR)</MudText>
+                            <MudText Typo="Typo.body2">Extrae texto de imágenes para búsqueda por contenido.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/text-recognition"))">
+                            Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
