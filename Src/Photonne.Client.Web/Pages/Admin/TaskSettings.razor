@@ -30,69 +30,118 @@ else
         Un valor más alto puede acelerar el procesado, pero consume más recursos del servidor (CPU y memoria).
         @if (_processorCount > 0)
         {
-            <span>Este servidor tiene <strong>@_processorCount núcleos de CPU</strong> — se recomienda no superar ese valor, especialmente para detección y reconocimiento facial.</span>
+            <span>Este servidor tiene <strong>@_processorCount núcleos de CPU</strong> — se recomienda no superar ese valor, especialmente para los modelos ML.</span>
         }
         else
         {
-            <span>Se recomienda no superar el número de núcleos de CPU del servidor, especialmente para detección y reconocimiento facial.</span>
+            <span>Se recomienda no superar el número de núcleos de CPU del servidor, especialmente para los modelos ML.</span>
         }
+    </MudAlert>
+
+    <MudAlert Severity="Severity.Warning" Class="mt-2" Dense="true">
+        Los workers de tareas ML (caras, objetos, escenas, OCR) se cargan al arrancar el servidor.
+        Si cambias estos valores, reinicia el servidor para que se apliquen.
     </MudAlert>
 
     <MudGrid Class="mt-4">
         <MudItem xs="12" md="6">
             <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Indexado y miniaturas</MudText>
+                        <MudText Typo="Typo.body2">Procesos paralelos durante el escaneo y la extracción inicial.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
                 <MudCardContent>
                     <MudNumericField T="int" Label="Miniaturas"
                         HelperText="@($"Fotos procesadas a la vez al generar miniaturas. Recomendado: {RecommendedIoWorkers}.")"
                         @bind-Value="_thumbnailWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
                     <MudNumericField T="int" Label="Extracción de metadatos"
                         HelperText="@($"Fotos analizadas a la vez al leer metadatos EXIF. Recomendado: {RecommendedIoWorkers}.")"
-                        @bind-Value="_metadataWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
-                    <MudNumericField T="int" Label="Detección de caras"
-                        HelperText="@($"Fotos analizadas a la vez para detectar caras. Cada proceso ocupa un núcleo completo. Recomendado: {RecommendedMlWorkers}.")"
-                        @bind-Value="_faceDetectionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
-                    <MudNumericField T="int" Label="Reconocimiento facial"
-                        HelperText="@($"Fotos analizadas a la vez para identificar personas. Cada proceso ocupa un núcleo completo. Recomendado: {RecommendedMlWorkers}.")"
-                        @bind-Value="_faceRecognitionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" />
+                        @bind-Value="_metadataWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
 
-                    <MudDivider Class="my-4" />
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Reprocesado manual</MudText>
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Workers ML</MudText>
+                        <MudText Typo="Typo.body2">Concurrencia por tipo de modelo. Cada worker mantiene una conexión activa al servicio Python.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudNumericField T="int" Label="Reconocimiento facial"
+                        HelperText="@($"Fotos analizadas a la vez para detectar caras + identificar personas. Recomendado: {RecommendedMlWorkers}.")"
+                        @bind-Value="_faceRecognitionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                    <MudNumericField T="int" Label="Detección de objetos"
+                        HelperText="@($"Fotos analizadas a la vez con YOLOv8. Recomendado: {RecommendedMlWorkers}.")"
+                        @bind-Value="_objectDetectionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                    <MudNumericField T="int" Label="Clasificación de escenas"
+                        HelperText="@($"Fotos analizadas a la vez con Places365. Recomendado: {RecommendedMlWorkers}.")"
+                        @bind-Value="_sceneClassificationWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                    <MudNumericField T="int" Label="Reconocimiento de texto (OCR)"
+                        HelperText="@($"Fotos analizadas a la vez con RapidOCR. Recomendado: {RecommendedMlWorkers}.")"
+                        @bind-Value="_textRecognitionWorkers" Min="1" Max="32" Variant="Variant.Outlined" FullWidth="true" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Reprocesado manual</MudText>
+                        <MudText Typo="Typo.body2">Tamaño de cada lote del bucle de "Procesar fotos pendientes".</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
                     <MudNumericField T="int" Label="Tamaño de lote"
                         HelperText="Cuántos jobs encola cada iteración del bucle al procesar fotos pendientes (caras, objetos, escenas, OCR). Editable también en la pantalla de cada reproceso."
                         @bind-Value="_backfillBatchSize" Min="1" Max="5000" Variant="Variant.Outlined" FullWidth="true" />
                 </MudCardContent>
-                <MudCardActions Class="px-4 pb-4">
-                    <MudButton Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               OnClick="SaveTaskSettings"
-                               Disabled="_saving"
-                               StartIcon="@Icons.Material.Filled.Save">
-                        @if (_saving)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" />
-                        }
-                        Guardar
-                    </MudButton>
-                </MudCardActions>
             </MudCard>
         </MudItem>
     </MudGrid>
+
+    <div class="mt-4">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveTaskSettings"
+                   Disabled="_saving"
+                   StartIcon="@Icons.Material.Filled.Save">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" />
+            }
+            Guardar
+        </MudButton>
+    </div>
 }
 </div>
 
 @code {
     private const string KeyThumbnailWorkers = "TaskSettings.ThumbnailWorkers";
     private const string KeyMetadataWorkers = "TaskSettings.MetadataWorkers";
-    private const string KeyFaceDetectionWorkers = "TaskSettings.FaceDetectionWorkers";
     private const string KeyFaceRecognitionWorkers = "TaskSettings.FaceRecognitionWorkers";
+    // Read-only legacy fallback so users keep their tuned value across the rename.
+    // The server-side processor migrates this on startup; we just consume it here
+    // when the new key has never been written.
+    private const string KeyLegacyFaceWorkers = "TaskSettings.FaceDetectionWorkers";
+    private const string KeyObjectDetectionWorkers = "TaskSettings.ObjectDetectionWorkers";
+    private const string KeySceneClassificationWorkers = "TaskSettings.SceneClassificationWorkers";
+    private const string KeyTextRecognitionWorkers = "TaskSettings.TextRecognitionWorkers";
     private const string KeyBackfillBatchSize = "TaskSettings.BackfillBatchSize";
 
     private bool _isAuthorized = false;
     private bool _saving = false;
     private int _thumbnailWorkers = 2;
     private int _metadataWorkers = 2;
-    private int _faceDetectionWorkers = 1;
     private int _faceRecognitionWorkers = 1;
+    private int _objectDetectionWorkers = 1;
+    private int _sceneClassificationWorkers = 1;
+    private int _textRecognitionWorkers = 1;
     private int _backfillBatchSize = 500;
     private int _processorCount = 0;
 
@@ -115,8 +164,15 @@ else
         {
             _thumbnailWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyThumbnailWorkers, "2"), 1, 32, 2);
             _metadataWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyMetadataWorkers, "2"), 1, 32, 2);
-            _faceDetectionWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyFaceDetectionWorkers, "1"), 1, 32, 1);
-            _faceRecognitionWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyFaceRecognitionWorkers, "1"), 1, 32, 1);
+
+            var faceRaw = await SettingsService.GetSettingAsync(KeyFaceRecognitionWorkers, "");
+            if (string.IsNullOrEmpty(faceRaw))
+                faceRaw = await SettingsService.GetSettingAsync(KeyLegacyFaceWorkers, "1");
+            _faceRecognitionWorkers = ParseInt(faceRaw, 1, 32, 1);
+
+            _objectDetectionWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyObjectDetectionWorkers, "1"), 1, 32, 1);
+            _sceneClassificationWorkers = ParseInt(await SettingsService.GetSettingAsync(KeySceneClassificationWorkers, "1"), 1, 32, 1);
+            _textRecognitionWorkers = ParseInt(await SettingsService.GetSettingAsync(KeyTextRecognitionWorkers, "1"), 1, 32, 1);
             _backfillBatchSize = ParseInt(await SettingsService.GetSettingAsync(KeyBackfillBatchSize, "500"), 1, 5000, 500);
             _processorCount = await SettingsService.GetProcessorCountAsync();
         }
@@ -135,12 +191,14 @@ else
         {
             var ok = await SettingsService.SaveSettingAsync(KeyThumbnailWorkers, _thumbnailWorkers.ToString())
                 && await SettingsService.SaveSettingAsync(KeyMetadataWorkers, _metadataWorkers.ToString())
-                && await SettingsService.SaveSettingAsync(KeyFaceDetectionWorkers, _faceDetectionWorkers.ToString())
                 && await SettingsService.SaveSettingAsync(KeyFaceRecognitionWorkers, _faceRecognitionWorkers.ToString())
+                && await SettingsService.SaveSettingAsync(KeyObjectDetectionWorkers, _objectDetectionWorkers.ToString())
+                && await SettingsService.SaveSettingAsync(KeySceneClassificationWorkers, _sceneClassificationWorkers.ToString())
+                && await SettingsService.SaveSettingAsync(KeyTextRecognitionWorkers, _textRecognitionWorkers.ToString())
                 && await SettingsService.SaveSettingAsync(KeyBackfillBatchSize, _backfillBatchSize.ToString());
 
             if (ok)
-                Snackbar.Add("Configuración de tareas guardada correctamente", Severity.Success);
+                Snackbar.Add("Configuración de tareas guardada. Reinicia el servidor para aplicar los workers ML.", Severity.Success);
             else
                 Snackbar.Add("Error al guardar la configuración", Severity.Error);
         }
