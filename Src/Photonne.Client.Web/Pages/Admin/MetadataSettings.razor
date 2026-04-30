@@ -174,6 +174,16 @@
                 </MudCard>
             </MudItem>
 
+            @* ── Tarea nocturna ── *@
+            <MudItem xs="12" md="6">
+                <NightlyTaskCard Title="Tarea nocturna: metadatos"
+                                 Description="Extrae EXIF/IPTC de assets sin metadatos (o de todos) durante el ciclo nocturno."
+                                 EnabledKey="NightlyTaskSettings.Metadata.Enabled"
+                                 ModeKey="NightlyTaskSettings.Metadata.Mode"
+                                 MissingLabel="Solo los que faltan"
+                                 AllLabel="Sobreescribir todos" />
+            </MudItem>
+
         </MudGrid>
     }
 </div>

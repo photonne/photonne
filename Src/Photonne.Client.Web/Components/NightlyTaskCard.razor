@@ -1,0 +1,120 @@
+@inject ISettingsService SettingsService
+@inject ISnackbar Snackbar
+
+@*
+    Reusable admin card to configure whether a maintenance task runs as part
+    of the nightly cycle, and in which mode ("missing" vs "all"). The actual
+    schedule (time, timezone, master enable) lives in /admin/settings/nightly;
+    this card just owns the "is X part of tonight's run?" toggle for a single
+    feature.
+
+    Keys are passed in so the card can be reused for thumbnails, metadata, or
+    any future feature that has its own NightlyTaskSettings.* pair.
+*@
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">@Title</MudText>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <MudText Typo="Typo.body2">@Description</MudText>
+            }
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_loading)
+        {
+            <div class="d-flex justify-center my-4">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
+        else
+        {
+            <MudSwitch T="bool"
+                       @bind-Value="_enabled"
+                       Color="Color.Primary"
+                       Label="@(_enabled ? "Activado" : "Desactivado")"
+                       Class="mb-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Modo</MudText>
+            <MudRadioGroup @bind-Value="_mode">
+                <MudRadio Value='"missing"' Color="Color.Primary" Disabled="!_enabled">
+                    @MissingLabel
+                </MudRadio>
+                <MudRadio Value='"all"' Color="Color.Warning" Disabled="!_enabled">
+                    @AllLabel
+                </MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-3 d-block">
+                Requiere que la
+                <MudLink Href="/admin/settings/nightly">programación nocturna</MudLink>
+                esté activa.
+            </MudText>
+        }
+    </MudCardContent>
+    <MudCardActions Class="px-4 pb-4">
+        <MudButton OnClick="SaveAsync"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(_loading || _saving)"
+                   StartIcon="@Icons.Material.Filled.Save">
+            @(_saving ? "Guardando…" : "Guardar")
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    /// <summary>Header title — e.g., "Tarea nocturna: miniaturas".</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    /// <summary>Optional secondary line under the title.</summary>
+    [Parameter] public string? Description { get; set; }
+
+    /// <summary>Settings key for the boolean enable flag (e.g., "NightlyTaskSettings.Thumbnails.Enabled").</summary>
+    [Parameter, EditorRequired] public string EnabledKey { get; set; } = "";
+
+    /// <summary>Settings key for the mode string ("missing"|"all"; e.g., "NightlyTaskSettings.Thumbnails.Mode").</summary>
+    [Parameter, EditorRequired] public string ModeKey { get; set; } = "";
+
+    /// <summary>Label for the "missing" radio option (e.g., "Solo las que faltan").</summary>
+    [Parameter] public string MissingLabel { get; set; } = "Solo los que faltan";
+
+    /// <summary>Label for the "all" radio option (e.g., "Regenerar todas").</summary>
+    [Parameter] public string AllLabel { get; set; } = "Sobreescribir todos";
+
+    private bool _loading = true;
+    private bool _saving;
+    private bool _enabled;
+    private string _mode = "missing";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var enabledRaw = await SettingsService.GetSettingAsync(EnabledKey, "false");
+        _enabled = "true".Equals(enabledRaw, StringComparison.OrdinalIgnoreCase);
+        var modeRaw = await SettingsService.GetSettingAsync(ModeKey, "missing");
+        _mode = modeRaw == "all" ? "all" : "missing";
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var ok1 = await SettingsService.SaveSettingAsync(EnabledKey, _enabled ? "true" : "false");
+            var ok2 = await SettingsService.SaveSettingAsync(ModeKey, _mode);
+            Snackbar.Add(ok1 && ok2 ? "Tarea nocturna guardada." : "No se pudo guardar.",
+                ok1 && ok2 ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

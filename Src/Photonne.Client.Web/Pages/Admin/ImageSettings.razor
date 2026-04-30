@@ -73,6 +73,15 @@
                     </MudCardActions>
                 </MudCard>
             </MudItem>
+
+            <MudItem xs="12" md="6">
+                <NightlyTaskCard Title="Tarea nocturna: miniaturas"
+                                 Description="Genera miniaturas faltantes (o todas) durante el ciclo nocturno."
+                                 EnabledKey="NightlyTaskSettings.Thumbnails.Enabled"
+                                 ModeKey="NightlyTaskSettings.Thumbnails.Mode"
+                                 MissingLabel="Solo las que faltan"
+                                 AllLabel="Regenerar todas" />
+            </MudItem>
         </MudGrid>
     }
 </div>

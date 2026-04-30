@@ -7,9 +7,10 @@
 
 @*
     Reusable admin card that drives a manual ML backfill ("encolar pendientes").
-    It fetches pending count, lets the admin tune the batch size for this run
-    (prefilled from TaskSettings.BackfillBatchSize), and loops POSTs to the
-    backfill endpoint until pending hits zero or the user cancels.
+    It fetches pending counts (unprocessed vs already in queue), lets the admin
+    tune the batch size for this run (prefilled from TaskSettings.BackfillBatchSize),
+    and loops POSTs to the backfill endpoint until unprocessed hits zero or the
+    user cancels.
 
     Cancel only stops further enqueuing — already-enqueued jobs are processed by
     MlJobProcessorService independently.
@@ -32,18 +33,59 @@
                 <MudProgressCircular Indeterminate="true" Size="Size.Small" />
             </div>
         }
+        else if (_loadError != null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">
+                No se pudo leer el estado: @_loadError
+            </MudAlert>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="RefreshPendingAsync">
+                Reintentar
+            </MudButton>
+        }
         else
         {
-            <div class="mb-3">
-                <MudText Typo="Typo.body1">
-                    Pendientes:
-                    <strong>@_pending.ToString("N0")</strong>
-                    @if (_running)
-                    {
-                        <span class="mud-text-secondary">— encolados en esta sesión: <strong>@_enqueuedThisSession.ToString("N0")</strong></span>
-                    }
+            <MudGrid Class="mb-3">
+                <MudItem xs="6">
+                    <MudPaper Elevation="0" Class="pa-3" Style="border:1px solid var(--mud-palette-lines-default); border-radius: 8px;">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Sin encolar</MudText>
+                        <MudText Typo="Typo.h5" Color="@(_unprocessed > 0 ? Color.Primary : Color.Default)">
+                            @_unprocessed.ToString("N0")
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudPaper Elevation="0" Class="pa-3" Style="border:1px solid var(--mud-palette-lines-default); border-radius: 8px;">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">En cola</MudText>
+                        <MudText Typo="Typo.h5" Color="@(_inQueue > 0 ? Color.Info : Color.Default)">
+                            @_inQueue.ToString("N0")
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            @if (_running)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-1">
+                    Encolados en esta sesión: <strong>@_enqueuedThisSession.ToString("N0")</strong> de @_initialUnprocessed.ToString("N0")
                 </MudText>
-            </div>
+            }
+
+            @if (_unprocessed == 0 && _inQueue == 0 && !_running)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">
+                    No hay fotos pendientes — todo está procesado.
+                </MudAlert>
+            }
+            else if (_unprocessed == 0 && _inQueue > 0 && !_running)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    Todo lo pendiente está ya en cola. El motor de ML lo irá procesando en segundo plano;
+                    no hay nada nuevo que encolar.
+                </MudAlert>
+            }
 
             <MudNumericField T="int"
                              Label="Tamaño de lote (esta ejecución)"
@@ -74,7 +116,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Outlined.Replay"
-                               Disabled="@(_pending == 0)"
+                               Disabled="@(_unprocessed == 0)"
                                OnClick="StartAsync">
                         Iniciar
                     </MudButton>
@@ -117,18 +159,20 @@
 
     private bool _loading = true;
     private bool _running;
-    private int _pending;
+    private string? _loadError;
+    private int _unprocessed;
+    private int _inQueue;
     private int _enqueuedThisSession;
+    private int _initialUnprocessed;
     private int _batchSize = 500;
     private int _globalBatchSize = 500;
-    private int _initialPending;
     private string? _lastSummary;
     private string _status = "";
     private CancellationTokenSource? _cts;
 
     private double ProgressPercent =>
-        _initialPending > 0
-            ? Math.Min(100, _enqueuedThisSession * 100.0 / _initialPending)
+        _initialUnprocessed > 0
+            ? Math.Min(100, _enqueuedThisSession * 100.0 / _initialUnprocessed)
             : 0;
 
     protected override async Task OnInitializedAsync()
@@ -137,41 +181,45 @@
         _globalBatchSize = ParseClamped(raw, 1, 5000, 500);
         _batchSize = _globalBatchSize;
 
-        await AttachAuthAsync();
         await RefreshPendingAsync();
-
-        _loading = false;
     }
 
     private async Task RefreshPendingAsync()
     {
+        _loadError = null;
         try
         {
             await AttachAuthAsync();
             var resp = await Http.GetFromJsonAsync<PendingCountDto>(
                 $"/api/admin/maintenance/{EndpointKey}/pending-count");
-            _pending = resp?.Pending ?? 0;
+            _unprocessed = resp?.Unprocessed ?? 0;
+            _inQueue = resp?.InQueue ?? 0;
         }
         catch (Exception ex)
         {
+            _loadError = ex.Message;
             Snackbar.Add($"No se pudo leer pendientes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
         }
     }
 
     private async Task StartAsync()
     {
-        if (_pending == 0) return;
+        if (_unprocessed == 0) return;
 
         _cts = new CancellationTokenSource();
         _running = true;
         _enqueuedThisSession = 0;
-        _initialPending = _pending;
+        _initialUnprocessed = _unprocessed;
         _lastSummary = null;
         _status = "Encolando…";
 
         try
         {
-            while (!_cts.IsCancellationRequested && _pending > 0)
+            while (!_cts.IsCancellationRequested && _unprocessed > 0)
             {
                 await AttachAuthAsync();
                 var resp = await Http.PostAsJsonAsync(
@@ -183,8 +231,11 @@
                 if (result == null) break;
 
                 _enqueuedThisSession += result.Enqueued;
-                _pending = Math.Max(0, result.Total - result.Enqueued);
-                _status = $"Encolados {_enqueuedThisSession:N0} de {_initialPending:N0}…";
+                // result.Total is the count BEFORE this enqueue — what's left to encode
+                // is total minus what we just enqueued.
+                _unprocessed = Math.Max(0, result.Total - result.Enqueued);
+                _inQueue += result.Enqueued;
+                _status = $"Encolados {_enqueuedThisSession:N0} de {_initialUnprocessed:N0}…";
                 StateHasChanged();
 
                 // Si la respuesta no encoló nada pero todavía hay pendientes,
@@ -194,14 +245,14 @@
             }
 
             _lastSummary = _cts.IsCancellationRequested
-                ? $"Detenido. Encolados {_enqueuedThisSession:N0}; quedan {_pending:N0} pendientes."
+                ? $"Detenido. Encolados {_enqueuedThisSession:N0}; quedan {_unprocessed:N0} sin encolar."
                 : $"Encolados {_enqueuedThisSession:N0}. Los procesará el motor de ML en segundo plano.";
 
             Snackbar.Add(_lastSummary, _cts.IsCancellationRequested ? Severity.Info : Severity.Success);
         }
         catch (OperationCanceledException)
         {
-            _lastSummary = $"Detenido. Encolados {_enqueuedThisSession:N0}; quedan {_pending:N0} pendientes.";
+            _lastSummary = $"Detenido. Encolados {_enqueuedThisSession:N0}; quedan {_unprocessed:N0} sin encolar.";
             Snackbar.Add(_lastSummary, Severity.Info);
         }
         catch (Exception ex)
@@ -232,6 +283,6 @@
         return Math.Clamp(v, min, max);
     }
 
-    private sealed record PendingCountDto(int Pending);
+    private sealed record PendingCountDto(int Unprocessed, int InQueue);
     private sealed record BackfillResultDto(int Enqueued, int Total);
 }

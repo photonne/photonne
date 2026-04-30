@@ -7,7 +7,11 @@ using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Admin;
 
-public record PendingCountResponse(int Pending);
+/// <summary>Snapshot of how many assets remain for a given ML job type.
+/// <c>Unprocessed</c> = images with no completion AND no Pending/Processing job
+/// (the count the backfill loop will encode). <c>InQueue</c> = assets that
+/// already have a Pending/Processing job waiting on the ML processor.</summary>
+public record PendingCountResponse(int Unprocessed, int InQueue);
 
 /// <summary>Shared implementation for the per-job-type backfill endpoints.
 /// Selects image assets whose <c>*CompletedAt</c> is null (when
@@ -56,14 +60,21 @@ internal static class MlBackfillRunner
     }
 
     /// <summary>Returns how many image assets are still missing the given ML job
-    /// completion. Used by the admin UI to display "X pending" before enqueuing.</summary>
+    /// completion (split by whether they're already enqueued or not). Used by
+    /// the admin UI so the operator can tell "all done" from "all in queue".</summary>
     public static async Task<IResult> GetPendingCountAsync(
         ApplicationDbContext db,
         MlJobType jobType,
         CancellationToken ct)
     {
-        var pending = await BuildQuery(db, jobType, onlyMissing: true).CountAsync(ct);
-        return Results.Ok(new PendingCountResponse(pending));
+        var unprocessed = await BuildQuery(db, jobType, onlyMissing: true).CountAsync(ct);
+
+        var inQueue = await db.AssetMlJobs.AsNoTracking()
+            .Where(j => j.JobType == jobType
+                && (j.Status == MlJobStatus.Pending || j.Status == MlJobStatus.Processing))
+            .CountAsync(ct);
+
+        return Results.Ok(new PendingCountResponse(unprocessed, inQueue));
     }
 
     private static IQueryable<Asset> BuildQuery(ApplicationDbContext db, MlJobType jobType, bool onlyMissing)

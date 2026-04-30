@@ -25,7 +25,8 @@
         <div class="mt-4">
             <MudText Typo="Typo.h5" Class="mb-2">Configuración de tareas nocturnas</MudText>
             <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                Ejecuta automáticamente las tareas de mantenimiento seleccionadas una vez al día a la hora configurada.
+                Define cuándo se ejecuta el ciclo nocturno. Cada feature decide si participa en el ciclo
+                desde su propia página de ajustes.
             </MudText>
         </div>
 
@@ -118,79 +119,37 @@
                 </MudCard>
             </MudItem>
 
-            <!-- Generación de miniaturas -->
-            <MudItem xs="12" md="6">
+            <!-- Qué corre cada noche -->
+            <MudItem xs="12">
                 <MudCard>
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Generación de miniaturas</MudText>
-                            <MudText Typo="Typo.body2">Genera miniaturas de assets que no las tengan (o todas).</MudText>
+                            <MudText Typo="Typo.h6">Qué corre cada noche</MudText>
+                            <MudText Typo="Typo.body2">
+                                Cada feature decide si participa en el ciclo desde su propia página
+                                de ajustes. Toca el enlace para configurarla.
+                            </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent>
-                        <MudSwitch @bind-Value="_thumbEnabled"
-                                   Color="Color.Primary"
-                                   Label="@(_thumbEnabled ? "Activado" : "Desactivado")"
-                                   Disabled="!_enabled"
-                                   Class="mb-4" />
-
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Modo</MudText>
-                        <MudRadioGroup @bind-Value="_thumbMode">
-                            <MudRadio Value='"missing"' Color="Color.Primary" Disabled="!_enabled || !_thumbEnabled">
-                                Solo las que faltan
-                            </MudRadio>
-                            <MudRadio Value='"all"' Color="Color.Warning" Disabled="!_enabled || !_thumbEnabled">
-                                Regenerar todas
-                            </MudRadio>
-                        </MudRadioGroup>
+                        <MudList T="string" Dense="true">
+                            @foreach (var entry in _entries)
+                            {
+                                <MudListItem T="string"
+                                             Icon="@(entry.Enabled ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)"
+                                             IconColor="@(entry.Enabled ? Color.Success : Color.Default)"
+                                             Href="@entry.Href">
+                                    <div class="d-flex justify-space-between align-center" style="width:100%">
+                                        <div>
+                                            <MudText Typo="Typo.body1">@entry.Title</MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@entry.Detail</MudText>
+                                        </div>
+                                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
                     </MudCardContent>
-                    <MudCardActions Class="px-4 pb-4">
-                        <MudButton OnClick="SaveThumbnailsAsync"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="_savingThumbnails"
-                                   StartIcon="@Icons.Material.Filled.Save">
-                            @(_savingThumbnails ? "Guardando…" : "Guardar")
-                        </MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-
-            <!-- Extracción de metadatos -->
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Extracción de metadatos</MudText>
-                            <MudText Typo="Typo.body2">Extrae EXIF/IPTC de assets sin metadatos (o de todos).</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudSwitch @bind-Value="_metaEnabled"
-                                   Color="Color.Primary"
-                                   Label="@(_metaEnabled ? "Activado" : "Desactivado")"
-                                   Disabled="!_enabled"
-                                   Class="mb-4" />
-
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Modo</MudText>
-                        <MudRadioGroup @bind-Value="_metaMode">
-                            <MudRadio Value='"missing"' Color="Color.Primary" Disabled="!_enabled || !_metaEnabled">
-                                Solo los que faltan
-                            </MudRadio>
-                            <MudRadio Value='"all"' Color="Color.Warning" Disabled="!_enabled || !_metaEnabled">
-                                Sobreescribir todos
-                            </MudRadio>
-                        </MudRadioGroup>
-                    </MudCardContent>
-                    <MudCardActions Class="px-4 pb-4">
-                        <MudButton OnClick="SaveMetadataAsync"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="_savingMetadata"
-                                   StartIcon="@Icons.Material.Filled.Save">
-                            @(_savingMetadata ? "Guardando…" : "Guardar")
-                        </MudButton>
-                    </MudCardActions>
                 </MudCard>
             </MudItem>
 
@@ -210,15 +169,8 @@
     private bool   _savingSchedule;
     private bool   _resettingLastRun;
 
-    // Thumbnails
-    private bool   _thumbEnabled  = false;
-    private string _thumbMode     = "missing";
-    private bool   _savingThumbnails;
-
-    // Metadata
-    private bool   _metaEnabled  = false;
-    private string _metaMode     = "missing";
-    private bool   _savingMetadata;
+    // Read-only summary of which features participate in the nightly run.
+    private List<NightlyEntry> _entries = new();
 
     private readonly record struct TzOption(string Id, string Label);
     private static readonly TzOption[] _timezones =
@@ -285,20 +237,51 @@
             _timezone     =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Timezone")     ?? "UTC";
             _lastRunDate  =  await SettingsService.GetSettingAsync("NightlyTaskSettings.LastRunDate")  ?? "";
 
-            _thumbEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Thumbnails.Enabled")) == "true";
-            _thumbMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Thumbnails.Mode") ?? "missing";
-
-            _metaEnabled  = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Enabled")) == "true";
-            _metaMode     =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Mode") ?? "missing";
-
             if (!_timezones.Any(t => t.Id == _timezone))
                 _timezone = "UTC";
+
+            _entries = await BuildEntriesAsync();
         }
         finally
         {
             _loading = false;
         }
     }
+
+    private async Task<List<NightlyEntry>> BuildEntriesAsync()
+    {
+        var thumbEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Thumbnails.Enabled")) == "true";
+        var thumbMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Thumbnails.Mode") ?? "missing";
+
+        var metaEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Enabled")) == "true";
+        var metaMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Mode") ?? "missing";
+
+        // FaceClustering defaults to true if the setting has never been written.
+        var faceRaw = await SettingsService.GetSettingAsync("NightlyTaskSettings.FaceClustering.Enabled", "true");
+        var faceClusterEnabled = !"false".Equals(faceRaw, StringComparison.OrdinalIgnoreCase);
+
+        return new()
+        {
+            new NightlyEntry(
+                "Generación de miniaturas",
+                thumbEnabled ? $"Activa — modo: {ModeLabel(thumbMode, "regenerar todas", "solo las que faltan")}" : "Desactivada",
+                thumbEnabled,
+                "/admin/settings/images"),
+            new NightlyEntry(
+                "Extracción de metadatos",
+                metaEnabled ? $"Activa — modo: {ModeLabel(metaMode, "sobreescribir todos", "solo los que faltan")}" : "Desactivada",
+                metaEnabled,
+                "/admin/settings/metadata"),
+            new NightlyEntry(
+                "Reagrupación facial",
+                faceClusterEnabled ? "Activa" : "Desactivada",
+                faceClusterEnabled,
+                "/admin/settings/face-recognition"),
+        };
+    }
+
+    private static string ModeLabel(string mode, string allLabel, string missingLabel) =>
+        mode == "all" ? allLabel : missingLabel;
 
     private async Task SaveScheduleAsync()
     {
@@ -345,41 +328,5 @@
         }
     }
 
-    private async Task SaveThumbnailsAsync()
-    {
-        _savingThumbnails = true;
-        try
-        {
-            await SettingsService.SaveSettingAsync("NightlyTaskSettings.Thumbnails.Enabled", _thumbEnabled.ToString().ToLower());
-            await SettingsService.SaveSettingAsync("NightlyTaskSettings.Thumbnails.Mode",    _thumbMode);
-            Snackbar.Add("Configuración de miniaturas guardada.", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _savingThumbnails = false;
-        }
-    }
-
-    private async Task SaveMetadataAsync()
-    {
-        _savingMetadata = true;
-        try
-        {
-            await SettingsService.SaveSettingAsync("NightlyTaskSettings.Metadata.Enabled", _metaEnabled.ToString().ToLower());
-            await SettingsService.SaveSettingAsync("NightlyTaskSettings.Metadata.Mode",    _metaMode);
-            Snackbar.Add("Configuración de metadatos guardada.", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _savingMetadata = false;
-        }
-    }
+    private sealed record NightlyEntry(string Title, string Detail, bool Enabled, string Href);
 }
