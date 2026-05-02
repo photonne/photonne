@@ -3,6 +3,6 @@
     <!-- Versión única de la aplicación. Es la fuente de verdad y se inyecta
          en wwwroot/index.html (APP_VERSION) y wwwroot/service-worker.published.js
          (SW_VERSION) en build mediante el target StampAppVersion del cliente. -->
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
 </Project>
