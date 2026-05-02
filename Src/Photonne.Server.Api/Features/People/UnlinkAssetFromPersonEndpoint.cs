@@ -36,23 +36,29 @@ public class UnlinkAssetFromPersonEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.Id == personId && p.OwnerId == userId, ct);
         if (person == null) return Results.NotFound();
 
-        var faces = await db.Faces.Include(f => f.Asset)
-            .Where(f => f.PersonId == personId && f.AssetId == assetId && f.Asset.OwnerId == userId)
+        // Operate on the user's per-face assignments, not the shared Face row.
+        // Other users keep their identity for the same face.
+        var assignments = await db.UserFaceAssignments
+            .Where(uf => uf.UserId == userId
+                         && uf.PersonId == personId
+                         && uf.Face.AssetId == assetId)
             .ToListAsync(ct);
 
-        if (faces.Count == 0) return Results.Ok(new UnlinkAssetResponse(0));
+        if (assignments.Count == 0) return Results.Ok(new UnlinkAssetResponse(0));
 
-        foreach (var f in faces)
+        var now = DateTime.UtcNow;
+        foreach (var uf in assignments)
         {
-            f.PersonId = null;
-            f.IsManuallyAssigned = true; // prevents the online clusterer from re-attaching
-            f.IsRejected = false;
+            uf.PersonId = null;
+            uf.IsManuallyAssigned = true; // prevents the online clusterer from re-attaching
+            uf.IsRejected = false;
+            uf.UpdatedAt = now;
         }
         await db.SaveChangesAsync(ct);
 
-        await clustering.RecomputeFaceCountsAsync(userId, ct);
+        await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
 
-        return Results.Ok(new UnlinkAssetResponse(faces.Count));
+        return Results.Ok(new UnlinkAssetResponse(assignments.Count));
     }
 }

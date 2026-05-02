@@ -64,10 +64,17 @@ public class FaceRecognitionService
 
         var response = await _client.DetectAsync(imagePath, assetId, cancellationToken);
 
-        // Idempotency: replace previously auto-detected faces but preserve any face
-        // the user has manually assigned or rejected.
+        // Idempotency: replace previously auto-detected faces but preserve any
+        // face that any user has manually assigned or rejected. Identity now
+        // lives in UserFaceAssignment (per-user opinion); a face is "preserved"
+        // if any user has a non-rejected/non-manual record on it. Cascade FK
+        // on UserFaceAssignment.FaceId means dropping a Face also drops every
+        // user's opinion of it, so we filter that out here.
         var existing = await _dbContext.Faces
-            .Where(f => f.AssetId == assetId && !f.IsManuallyAssigned && !f.IsRejected)
+            .Where(f => f.AssetId == assetId
+                        && !_dbContext.UserFaceAssignments.Any(uf =>
+                            uf.FaceId == f.Id
+                            && (uf.IsManuallyAssigned || uf.IsRejected || uf.PersonId != null)))
             .ToListAsync(cancellationToken);
         if (existing.Count > 0)
         {
@@ -104,14 +111,17 @@ public class FaceRecognitionService
 
         if (inserted > 0 && asset.OwnerId.HasValue)
         {
-            // Online assignment: try to attach each new orphan face to an existing
-            // Person of the same owner via cosine similarity.
-            await _clustering.AssignNewFacesAsync(asset.OwnerId.Value, assetId, cancellationToken);
+            // Online assignment for the owner only — they're guaranteed to see
+            // this asset. Other users with read access through a shared album/
+            // folder/external library run their own clustering lazily when
+            // they next open /people (see FaceClusteringService.EnsureUpToDateForUserAsync).
+            await _clustering.AssignNewFacesForUserAsync(asset.OwnerId.Value, assetId, cancellationToken);
 
-            // Bootstrap & refresh: faces that didn't match any existing Person
-            // are still orphan. Run a cooldown-guarded batch pass so new clusters
-            // get created without waiting for a manual trigger or nightly job.
-            await _clustering.MaybeRunBatchAsync(asset.OwnerId.Value, cancellationToken);
+            // Bootstrap & refresh for the owner: faces that didn't match an
+            // existing Person remain orphans. Run a cooldown-guarded batch
+            // pass so new clusters get created without waiting for a manual
+            // trigger or nightly job.
+            await _clustering.MaybeRunBatchForUserAsync(asset.OwnerId.Value, cancellationToken);
         }
 
         _logger.LogInformation("Stored {Inserted} faces for asset {AssetId}", inserted, assetId);

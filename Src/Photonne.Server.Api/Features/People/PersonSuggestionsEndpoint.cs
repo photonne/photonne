@@ -40,22 +40,26 @@ public class ListPersonSuggestionsEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
         if (person == null) return Results.NotFound();
 
-        var q = db.Faces.AsNoTracking()
-            .Where(f => f.SuggestedPersonId == id
-                        && f.PersonId == null
-                        && !f.IsRejected
-                        && f.Asset.OwnerId == userId
-                        && f.Asset.DeletedAt == null
-                        && !f.Asset.IsFileMissing);
+        // Suggestions are per-user (UserFaceAssignment.SuggestedPersonId).
+        // Underlying asset must be live; visibility is implicit because the
+        // user only got an assignment row when they had read access at the
+        // time clustering ran.
+        var q = db.UserFaceAssignments.AsNoTracking()
+            .Where(uf => uf.UserId == userId
+                        && uf.SuggestedPersonId == id
+                        && uf.PersonId == null
+                        && !uf.IsRejected
+                        && uf.Face.Asset.DeletedAt == null
+                        && !uf.Face.Asset.IsFileMissing);
 
         var total = await q.CountAsync(ct);
 
         var items = await q
-            .OrderBy(f => f.SuggestedDistance)
-            .ThenByDescending(f => f.Confidence)
+            .OrderBy(uf => uf.SuggestedDistance)
+            .ThenByDescending(uf => uf.Face.Confidence)
             .Skip(offset ?? 0)
             .Take(Math.Clamp(limit ?? 30, 1, 100))
-            .Select(f => new PersonSuggestionItem(f.Id, f.AssetId, f.Confidence, f.SuggestedDistance))
+            .Select(uf => new PersonSuggestionItem(uf.FaceId, uf.Face.AssetId, uf.Face.Confidence, uf.SuggestedDistance))
             .ToListAsync(ct);
 
         return Results.Ok(new { total, items });
@@ -87,23 +91,25 @@ public class AcceptAllSuggestionsEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
         if (person == null) return Results.NotFound();
 
-        // Accept = manual assignment. ExecuteUpdate runs in one round trip and
-        // sidesteps EF tracking — appropriate for a bulk operation that may
-        // touch hundreds of faces.
-        var affected = await db.Faces
-            .Where(f => f.SuggestedPersonId == id
-                        && f.PersonId == null
-                        && !f.IsRejected
-                        && f.Asset.OwnerId == userId
-                        && f.Asset.DeletedAt == null
-                        && !f.Asset.IsFileMissing)
+        // Accept = manual assignment, scoped to this user's UserFaceAssignment
+        // rows. ExecuteUpdate runs in one round trip and sidesteps EF tracking —
+        // appropriate for a bulk operation that may touch hundreds of faces.
+        var now = DateTime.UtcNow;
+        var affected = await db.UserFaceAssignments
+            .Where(uf => uf.UserId == userId
+                        && uf.SuggestedPersonId == id
+                        && uf.PersonId == null
+                        && !uf.IsRejected
+                        && uf.Face.Asset.DeletedAt == null
+                        && !uf.Face.Asset.IsFileMissing)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(f => f.PersonId, (Guid?)id)
-                .SetProperty(f => f.IsManuallyAssigned, true)
-                .SetProperty(f => f.SuggestedPersonId, (Guid?)null)
-                .SetProperty(f => f.SuggestedDistance, (float?)null), ct);
+                .SetProperty(uf => uf.PersonId, (Guid?)id)
+                .SetProperty(uf => uf.IsManuallyAssigned, true)
+                .SetProperty(uf => uf.SuggestedPersonId, (Guid?)null)
+                .SetProperty(uf => uf.SuggestedDistance, (float?)null)
+                .SetProperty(uf => uf.UpdatedAt, now), ct);
 
-        if (affected > 0) await clustering.RecomputeFaceCountsAsync(userId, ct);
+        if (affected > 0) await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         return Results.Ok(new BulkSuggestionResult(affected));
     }
 }
@@ -132,14 +138,16 @@ public class DismissAllSuggestionsEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
         if (person == null) return Results.NotFound();
 
-        var affected = await db.Faces
-            .Where(f => f.SuggestedPersonId == id
-                        && f.PersonId == null
-                        && !f.IsRejected
-                        && f.Asset.OwnerId == userId)
+        var now = DateTime.UtcNow;
+        var affected = await db.UserFaceAssignments
+            .Where(uf => uf.UserId == userId
+                        && uf.SuggestedPersonId == id
+                        && uf.PersonId == null
+                        && !uf.IsRejected)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(f => f.SuggestedPersonId, (Guid?)null)
-                .SetProperty(f => f.SuggestedDistance, (float?)null), ct);
+                .SetProperty(uf => uf.SuggestedPersonId, (Guid?)null)
+                .SetProperty(uf => uf.SuggestedDistance, (float?)null)
+                .SetProperty(uf => uf.UpdatedAt, now), ct);
 
         return Results.Ok(new BulkSuggestionResult(affected));
     }

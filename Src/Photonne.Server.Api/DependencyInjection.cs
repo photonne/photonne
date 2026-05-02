@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.DatabaseBackup;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
@@ -61,6 +62,7 @@ public static class DependencyInjection
         });
         builder.Services.AddScoped<FaceClusteringService>();
         builder.Services.AddScoped<FaceRecognitionService>();
+        builder.Services.AddScoped<AssetVisibilityService>();
 
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {

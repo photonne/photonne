@@ -40,14 +40,17 @@ public class PersonAssetsSearchEndpoint : IEndpoint
             .FirstOrDefaultAsync(p => p.Id == personId && p.OwnerId == userId, ct);
         if (person == null) return Results.NotFound();
 
-        // Distinct asset ids that have at least one non-rejected face for this person.
-        var assetIdsQuery = db.Faces.AsNoTracking()
-            .Where(f => f.PersonId == personId
-                        && !f.IsRejected
-                        && f.Asset.OwnerId == userId
-                        && f.Asset.DeletedAt == null
-                        && !f.Asset.IsFileMissing)
-            .Select(f => f.AssetId)
+        // Distinct asset ids that contain at least one face the current user
+        // has confirmed for this Person. Identity is per-user (UserFaceAssignment);
+        // visibility is implicit: a confirmed assignment requires the user
+        // had read access at assignment time.
+        var assetIdsQuery = db.UserFaceAssignments.AsNoTracking()
+            .Where(uf => uf.UserId == userId
+                        && uf.PersonId == personId
+                        && !uf.IsRejected
+                        && uf.Face.Asset.DeletedAt == null
+                        && !uf.Face.Asset.IsFileMissing)
+            .Select(uf => uf.Face.AssetId)
             .Distinct();
 
         var total = await assetIdsQuery.CountAsync(ct);

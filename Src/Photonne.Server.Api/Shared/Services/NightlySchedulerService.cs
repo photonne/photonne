@@ -122,9 +122,11 @@ public class NightlySchedulerService : BackgroundService
         var dbContext  = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var clustering = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceClusteringService>();
 
-        // One pass per owner who has at least one orphan face.
+        // One pass per asset-owning user. Identity moved to UserFaceAssignment;
+        // we no longer have a single global "orphan" notion, so we cluster for
+        // every user that owns at least one detected face. Users with shared-
+        // only access cluster lazily on /people via EnsureUpToDateForUserAsync.
         var ownerIds = await dbContext.Faces
-            .Where(f => f.PersonId == null && !f.IsRejected && !f.IsManuallyAssigned)
             .Select(f => f.Asset.OwnerId)
             .Where(id => id != null)
             .Distinct()
@@ -135,7 +137,7 @@ public class NightlySchedulerService : BackgroundService
             if (ct.IsCancellationRequested) break;
             try
             {
-                var created = await clustering.RunForOwnerAsync(oid, ct);
+                var created = await clustering.RunForUserAsync(oid, ct);
                 totalCreated += created;
                 ownersProcessed++;
             }

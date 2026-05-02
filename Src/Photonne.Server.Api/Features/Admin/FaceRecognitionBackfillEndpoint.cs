@@ -58,8 +58,13 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
         [FromServices] FaceClusteringService clustering,
         CancellationToken ct)
     {
+        // Identity is per-user (UserFaceAssignment) since the split. The
+        // legacy "global recluster" passes face filtering had no per-user
+        // notion; we now interpret it as "for every user that owns assets
+        // with detections, run their clustering once". Users with shared-
+        // only access cluster lazily on /people via EnsureUpToDateForUserAsync,
+        // so they don't need a global pass.
         var ownerIds = await db.Faces.AsNoTracking()
-            .Where(f => f.PersonId == null && !f.IsRejected && !f.IsManuallyAssigned)
             .Select(f => f.Asset.OwnerId)
             .Where(id => id != null)
             .Distinct()
@@ -69,7 +74,7 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
         var personsCreated = 0;
         foreach (var oid in ownerIds.OfType<Guid>())
         {
-            var created = await clustering.RunForOwnerAsync(oid, ct);
+            var created = await clustering.RunForUserAsync(oid, ct);
             personsCreated += created;
             ownersProcessed++;
         }

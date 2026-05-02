@@ -86,12 +86,12 @@ public class ListPeopleEndpoint : IEndpoint
             .Take(Math.Clamp(limit ?? 50, 1, 200))
             .Select(p => new PersonDto(
                 p.Id, p.Name, p.CoverFaceId, p.FaceCount, p.IsHidden, p.CreatedAt, p.UpdatedAt,
-                db.Faces.Count(f => f.SuggestedPersonId == p.Id
-                                    && f.PersonId == null
-                                    && !f.IsRejected
-                                    && f.Asset.OwnerId == userId
-                                    && f.Asset.DeletedAt == null
-                                    && !f.Asset.IsFileMissing)))
+                db.UserFaceAssignments.Count(uf => uf.UserId == userId
+                                    && uf.SuggestedPersonId == p.Id
+                                    && uf.PersonId == null
+                                    && !uf.IsRejected
+                                    && uf.Face.Asset.DeletedAt == null
+                                    && !uf.Face.Asset.IsFileMissing)))
             .ToListAsync(ct);
 
         return Results.Ok(new { total, items = page });
@@ -126,12 +126,12 @@ public class GetPersonEndpoint : IEndpoint
             .Where(x => x.Id == id && x.OwnerId == userId)
             .Select(x => new PersonDto(
                 x.Id, x.Name, x.CoverFaceId, x.FaceCount, x.IsHidden, x.CreatedAt, x.UpdatedAt,
-                db.Faces.Count(f => f.SuggestedPersonId == x.Id
-                                    && f.PersonId == null
-                                    && !f.IsRejected
-                                    && f.Asset.OwnerId == userId
-                                    && f.Asset.DeletedAt == null
-                                    && !f.Asset.IsFileMissing)))
+                db.UserFaceAssignments.Count(uf => uf.UserId == userId
+                                    && uf.SuggestedPersonId == x.Id
+                                    && uf.PersonId == null
+                                    && !uf.IsRejected
+                                    && uf.Face.Asset.DeletedAt == null
+                                    && !uf.Face.Asset.IsFileMissing)))
             .FirstOrDefaultAsync(ct);
 
         return p == null ? Results.NotFound() : Results.Ok(p);
@@ -265,9 +265,15 @@ public class SetCoverFaceEndpoint : IEndpoint
         var person = await db.People.FirstOrDefaultAsync(p => p.Id == id && p.OwnerId == userId, ct);
         if (person == null) return Results.NotFound();
 
-        var face = await db.Faces.Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.Id == faceId && f.PersonId == id && f.Asset.OwnerId == userId, ct);
-        if (face == null) return Results.NotFound();
+        // The cover must be a face the current user has confirmed for this
+        // Person — UserFaceAssignment rather than Face.PersonId is the source
+        // of truth for "this user thinks face F is person P".
+        var assignment = await db.UserFaceAssignments
+            .FirstOrDefaultAsync(uf => uf.FaceId == faceId
+                                       && uf.UserId == userId
+                                       && uf.PersonId == id
+                                       && !uf.IsRejected, ct);
+        if (assignment == null) return Results.NotFound();
 
         person.CoverFaceId = faceId;
         person.UpdatedAt = DateTime.UtcNow;

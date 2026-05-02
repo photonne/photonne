@@ -7,9 +7,12 @@ namespace Photonne.Server.Api.Features.People;
 
 public record ReclusterResponse(int PersonsCreated);
 
-/// <summary>Forces a batch clustering pass over the current user's orphan faces.
-/// Useful right after enabling face recognition for the first time, or after a
-/// backfill, when no Persons exist yet so online assignment can't kick in.</summary>
+/// <summary>Forces an "ensure up to date" pass over faces visible to the user:
+/// online-attaches any face the user does not yet have an assignment for to
+/// their existing Persons, then runs a batch cluster pass over the remaining
+/// orphans. Used right after enabling face recognition, after a backfill, or
+/// when a user has just gained read access to a shared album/folder/external
+/// library and wants to see the faces detected on those assets.</summary>
 public class ReclusterPeopleEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -26,7 +29,10 @@ public class ReclusterPeopleEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
-        var created = await clustering.RunForOwnerAsync(userId, ct);
+        // Force a full pass: online attach + batch (ignoring the per-user
+        // cooldown). The user explicitly asked us to do work, so the cooldown
+        // — meant for the implicit per-detection trigger — shouldn't gate it.
+        var created = await clustering.ForceRunForUserAsync(userId, ct);
         return Results.Ok(new ReclusterResponse(created));
     }
 }

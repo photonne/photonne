@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -22,7 +23,56 @@ public record FaceDto(
     Guid? SuggestedPersonId,
     float? SuggestedDistance);
 
-/// <summary>Returns all detected faces for an asset (current user must own it).</summary>
+internal static class FaceEndpointHelpers
+{
+    /// <summary>
+    /// Loads (or creates) the current user's UserFaceAssignment for a face.
+    /// The face must exist and the current user must have read access to its
+    /// asset; otherwise returns <c>null</c> and the caller should 404.
+    /// </summary>
+    public static async Task<UserFaceAssignment?> LoadOrCreateAssignmentAsync(
+        ApplicationDbContext db,
+        AssetVisibilityService visibility,
+        Guid faceId,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var face = await db.Faces.AsNoTracking()
+            .Include(f => f.Asset)
+            .FirstOrDefaultAsync(f => f.Id == faceId, ct);
+        if (face == null) return null;
+
+        // Visibility check — owner shortcut is the common case.
+        if (face.Asset.OwnerId != userId)
+        {
+            var scope = await visibility.GetScopeAsync(userId, ct);
+            var folderOk = face.Asset.FolderId.HasValue && scope.AllowedFolderIds.Contains(face.Asset.FolderId.Value);
+            var libOk = face.Asset.ExternalLibraryId.HasValue && scope.AllowedExternalLibraryIds.Contains(face.Asset.ExternalLibraryId.Value);
+            var albumOk = scope.AlbumVisibleAssetIds.Contains(face.Asset.Id);
+            if (!folderOk && !libOk && !albumOk) return null;
+        }
+
+        var assignment = await db.UserFaceAssignments
+            .FirstOrDefaultAsync(uf => uf.FaceId == faceId && uf.UserId == userId, ct);
+        if (assignment == null)
+        {
+            assignment = new UserFaceAssignment
+            {
+                FaceId = faceId,
+                UserId = userId,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            db.UserFaceAssignments.Add(assignment);
+        }
+        return assignment;
+    }
+}
+
+/// <summary>Returns all detected faces for an asset visible to the current
+/// user. The returned identity fields (PersonId, IsManuallyAssigned, IsRejected,
+/// suggestion) come from the user's <see cref="UserFaceAssignment"/> for that
+/// face, not from the shared Face row — so two users seeing the same shared
+/// asset get different identities, names, and suggestions.</summary>
 public class ListFacesForAssetEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -34,6 +84,7 @@ public class ListFacesForAssetEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] AssetVisibilityService visibility,
         Guid id,
         ClaimsPrincipal user,
         CancellationToken ct)
@@ -41,23 +92,47 @@ public class ListFacesForAssetEndpoint : IEndpoint
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
         var asset = await db.Assets.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == userId && a.DeletedAt == null && !a.IsFileMissing, ct);
+            .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt == null && !a.IsFileMissing, ct);
         if (asset == null) return Results.NotFound();
 
-        var faces = await db.Faces.AsNoTracking()
-            .Where(f => f.AssetId == id && !f.IsRejected)
-            .Select(f => new FaceDto(
-                f.Id, f.AssetId, f.PersonId,
+        // Visibility short-circuit: owner skips the lookup.
+        if (asset.OwnerId != userId)
+        {
+            var scope = await visibility.GetScopeAsync(userId, ct);
+            var folderOk = asset.FolderId.HasValue && scope.AllowedFolderIds.Contains(asset.FolderId.Value);
+            var libOk = asset.ExternalLibraryId.HasValue && scope.AllowedExternalLibraryIds.Contains(asset.ExternalLibraryId.Value);
+            var albumOk = scope.AlbumVisibleAssetIds.Contains(asset.Id);
+            if (!folderOk && !libOk && !albumOk) return Results.NotFound();
+        }
+
+        // LEFT JOIN Face with the user's assignment row (if any). Faces with
+        // no assignment yet show up as orphans; faces the user has rejected
+        // are filtered out so the overlay doesn't keep painting them.
+        var faces = await (
+            from f in db.Faces.AsNoTracking()
+            where f.AssetId == id
+            join ufRaw in db.UserFaceAssignments.AsNoTracking().Where(x => x.UserId == userId)
+                on f.Id equals ufRaw.FaceId into ufGroup
+            from uf in ufGroup.DefaultIfEmpty()
+            where uf == null || !uf.IsRejected
+            select new FaceDto(
+                f.Id, f.AssetId,
+                uf == null ? null : uf.PersonId,
                 f.BoundingBoxX, f.BoundingBoxY, f.BoundingBoxW, f.BoundingBoxH,
-                f.Confidence, f.IsManuallyAssigned, f.IsRejected,
-                f.SuggestedPersonId, f.SuggestedDistance))
+                f.Confidence,
+                uf != null && uf.IsManuallyAssigned,
+                uf != null && uf.IsRejected,
+                uf == null ? null : uf.SuggestedPersonId,
+                uf == null ? null : uf.SuggestedDistance))
             .ToListAsync(ct);
 
         return Results.Ok(faces);
     }
 }
 
-/// <summary>Manually assigns a face to a person (existing or new). Marks the face as manual so clustering ignores it.</summary>
+/// <summary>Manually assigns a face to a person (existing or new) for the
+/// current user. Marks the assignment as manual so per-user clustering
+/// ignores it on subsequent runs.</summary>
 public class AssignFaceEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -69,6 +144,7 @@ public class AssignFaceEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] AssetVisibilityService visibility,
         [FromServices] FaceClusteringService clustering,
         Guid id,
         [FromBody] AssignFaceRequest body,
@@ -77,9 +153,8 @@ public class AssignFaceEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
-        var face = await db.Faces.Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
-        if (face == null) return Results.NotFound();
+        var assignment = await FaceEndpointHelpers.LoadOrCreateAssignmentAsync(db, visibility, id, userId, ct);
+        if (assignment == null) return Results.NotFound();
 
         Guid? targetPersonId = body.PersonId;
 
@@ -89,7 +164,7 @@ public class AssignFaceEndpoint : IEndpoint
             {
                 OwnerId = userId,
                 Name = body.NewPersonName.Trim(),
-                CoverFaceId = face.Id,
+                CoverFaceId = id,
                 FaceCount = 0,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -108,21 +183,24 @@ public class AssignFaceEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Provide PersonId or NewPersonName" });
         }
 
-        face.PersonId = targetPersonId;
-        face.IsManuallyAssigned = true;
-        face.IsRejected = false;
-        // Manual decision overrides any pending hint.
-        face.SuggestedPersonId = null;
-        face.SuggestedDistance = null;
+        assignment.PersonId = targetPersonId;
+        assignment.IsManuallyAssigned = true;
+        assignment.IsRejected = false;
+        assignment.SuggestedPersonId = null;
+        assignment.SuggestedDistance = null;
+        assignment.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        await clustering.RecomputeFaceCountsAsync(userId, ct);
+        await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
 
-        return Results.Ok(new { face.Id, face.PersonId });
+        return Results.Ok(new { Id = id, PersonId = targetPersonId });
     }
 }
 
-/// <summary>Rejects a face (false positive). Soft-delete: kept in DB to avoid re-detection on rerun.</summary>
+/// <summary>Marks a face as a false positive **for the current user**. Other
+/// users still see it. The flag persists across re-detection (we soft-reject
+/// rather than delete the Face row, so the next ML pass doesn't re-create
+/// it).</summary>
 public class RejectFaceEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -134,6 +212,7 @@ public class RejectFaceEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] AssetVisibilityService visibility,
         [FromServices] FaceClusteringService clustering,
         Guid id,
         ClaimsPrincipal user,
@@ -141,27 +220,28 @@ public class RejectFaceEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
-        var face = await db.Faces.Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
-        if (face == null) return Results.NotFound();
+        var assignment = await FaceEndpointHelpers.LoadOrCreateAssignmentAsync(db, visibility, id, userId, ct);
+        if (assignment == null) return Results.NotFound();
 
-        face.IsRejected = true;
-        face.PersonId = null;
-        face.IsManuallyAssigned = true; // prevents reassignment by clustering
-        face.SuggestedPersonId = null;
-        face.SuggestedDistance = null;
+        assignment.IsRejected = true;
+        assignment.PersonId = null;
+        assignment.IsManuallyAssigned = true; // prevents reassignment by clustering
+        assignment.SuggestedPersonId = null;
+        assignment.SuggestedDistance = null;
+        assignment.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        await clustering.RecomputeFaceCountsAsync(userId, ct);
+        await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
         return Results.NoContent();
     }
 }
 
-/// <summary>Detaches a face from its current Person without rejecting it. The face
-/// stays valid (not a false positive) but becomes orphan; IsManuallyAssigned is set
-/// so the online clustering won't immediately reattach it. Use this when a face was
-/// auto-assigned to the wrong Person and the user wants to leave it unlabeled.</summary>
+/// <summary>Detaches a face from its current Person without rejecting it. The
+/// face stays valid (not a false positive) but becomes orphan for the current
+/// user; the manual flag prevents online clustering from reattaching it
+/// immediately. Use this when a face was auto-assigned to the wrong Person
+/// and the user wants to leave it unlabeled.</summary>
 public class UnassignFaceEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -173,6 +253,7 @@ public class UnassignFaceEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] AssetVisibilityService visibility,
         [FromServices] FaceClusteringService clustering,
         Guid id,
         ClaimsPrincipal user,
@@ -180,26 +261,27 @@ public class UnassignFaceEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
-        var face = await db.Faces.Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
-        if (face == null) return Results.NotFound();
+        var assignment = await FaceEndpointHelpers.LoadOrCreateAssignmentAsync(db, visibility, id, userId, ct);
+        if (assignment == null) return Results.NotFound();
 
-        face.PersonId = null;
-        face.IsManuallyAssigned = true;
-        face.IsRejected = false;
-        face.SuggestedPersonId = null;
-        face.SuggestedDistance = null;
+        assignment.PersonId = null;
+        assignment.IsManuallyAssigned = true;
+        assignment.IsRejected = false;
+        assignment.SuggestedPersonId = null;
+        assignment.SuggestedDistance = null;
+        assignment.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        await clustering.RecomputeFaceCountsAsync(userId, ct);
+        await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
         await clustering.CleanupEmptyPersonsAsync(userId, ct);
         return Results.NoContent();
     }
 }
 
-/// <summary>Confirms the proactive suggestion stored on the face: equivalent to
-/// manually assigning the face to <see cref="Face.SuggestedPersonId"/>. 404 if the
-/// face has no pending suggestion (e.g. user dismissed it concurrently).</summary>
+/// <summary>Confirms the proactive suggestion stored on the user's
+/// assignment: equivalent to manually assigning the face to the suggested
+/// Person. 404 if the user has no pending suggestion (e.g. they dismissed it
+/// concurrently).</summary>
 public class AcceptFaceSuggestionEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -218,33 +300,32 @@ public class AcceptFaceSuggestionEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
-        var face = await db.Faces.Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
-        if (face == null) return Results.NotFound();
-        if (face.SuggestedPersonId == null) return Results.NotFound();
+        var assignment = await db.UserFaceAssignments
+            .FirstOrDefaultAsync(uf => uf.FaceId == id && uf.UserId == userId, ct);
+        if (assignment == null || assignment.SuggestedPersonId == null) return Results.NotFound();
 
-        // Defensive: ensure the suggested Person still belongs to the user (it may
-        // have been deleted between suggestion time and acceptance).
         var personOk = await db.People
-            .AnyAsync(p => p.Id == face.SuggestedPersonId && p.OwnerId == userId, ct);
+            .AnyAsync(p => p.Id == assignment.SuggestedPersonId && p.OwnerId == userId, ct);
         if (!personOk) return Results.NotFound();
 
-        var personId = face.SuggestedPersonId.Value;
-        face.PersonId = personId;
-        face.IsManuallyAssigned = true;
-        face.IsRejected = false;
-        face.SuggestedPersonId = null;
-        face.SuggestedDistance = null;
+        var personId = assignment.SuggestedPersonId.Value;
+        assignment.PersonId = personId;
+        assignment.IsManuallyAssigned = true;
+        assignment.IsRejected = false;
+        assignment.SuggestedPersonId = null;
+        assignment.SuggestedDistance = null;
+        assignment.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        await clustering.RecomputeFaceCountsAsync(userId, ct);
-        return Results.Ok(new { face.Id, face.PersonId });
+        await clustering.RecomputeFaceCountsForUserAsync(userId, ct);
+        return Results.Ok(new { Id = id, PersonId = personId });
     }
 }
 
-/// <summary>Removes the suggestion hint from the face without rejecting it or
-/// blocking future re-suggestion. The face stays orphan; the next clustering
-/// pass may surface the same suggestion again — by design (dismiss is non-sticky).</summary>
+/// <summary>Removes the suggestion hint from the user's assignment without
+/// rejecting the face or blocking future re-suggestion. The face stays
+/// orphan for the user; the next clustering pass may surface the same
+/// suggestion again — by design (dismiss is non-sticky).</summary>
 public class DismissFaceSuggestionEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -262,12 +343,13 @@ public class DismissFaceSuggestionEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return Results.Unauthorized();
 
-        var face = await db.Faces.Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.Id == id && f.Asset.OwnerId == userId, ct);
-        if (face == null) return Results.NotFound();
+        var assignment = await db.UserFaceAssignments
+            .FirstOrDefaultAsync(uf => uf.FaceId == id && uf.UserId == userId, ct);
+        if (assignment == null) return Results.NoContent();
 
-        face.SuggestedPersonId = null;
-        face.SuggestedDistance = null;
+        assignment.SuggestedPersonId = null;
+        assignment.SuggestedDistance = null;
+        assignment.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         return Results.NoContent();
     }

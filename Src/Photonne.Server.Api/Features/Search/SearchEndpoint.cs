@@ -164,7 +164,14 @@ public class SearchEndpoint : IEndpoint
             foreach (var pid in validPersonIds)
             {
                 var capturedPid = pid; // EF captures by reference otherwise
-                query = query.Where(a => a.Faces.Any(f => f.PersonId == capturedPid && !f.IsRejected));
+                // Identity is per-user (UserFaceAssignment); the legacy Face
+                // identity columns linger but are no longer authoritative.
+                query = query.Where(a => a.Faces.Any(f =>
+                    dbContext.UserFaceAssignments.Any(uf =>
+                        uf.FaceId == f.Id
+                        && uf.UserId == userId
+                        && uf.PersonId == capturedPid
+                        && !uf.IsRejected)));
             }
         }
 
