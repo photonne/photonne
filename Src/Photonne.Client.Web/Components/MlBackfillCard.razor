@@ -155,6 +155,11 @@
     /// <summary>URL slug — face-recognition / object-detection / scene-classification / text-recognition.</summary>
     [Parameter, EditorRequired] public string EndpointKey { get; set; } = "";
 
+    /// <summary>Base path the slug hangs off. Defaults to the admin maintenance
+    /// group; user-scoped variants pass e.g. "/api/people/face-recognition" so
+    /// the same component drives both a global and a per-user backfill.</summary>
+    [Parameter] public string EndpointBase { get; set; } = "/api/admin/maintenance";
+
     private const string KeyBackfillBatchSize = "TaskSettings.BackfillBatchSize";
 
     private bool _loading = true;
@@ -191,7 +196,7 @@
         {
             await AttachAuthAsync();
             var resp = await Http.GetFromJsonAsync<PendingCountDto>(
-                $"/api/admin/maintenance/{EndpointKey}/pending-count");
+                $"{EndpointBase}/{EndpointKey}/pending-count");
             _unprocessed = resp?.Unprocessed ?? 0;
             _inQueue = resp?.InQueue ?? 0;
         }
@@ -223,7 +228,7 @@
             {
                 await AttachAuthAsync();
                 var resp = await Http.PostAsJsonAsync(
-                    $"/api/admin/maintenance/{EndpointKey}/backfill",
+                    $"{EndpointBase}/{EndpointKey}/backfill",
                     new { BatchSize = _batchSize, OnlyMissing = true },
                     _cts.Token);
                 resp.EnsureSuccessStatusCode();

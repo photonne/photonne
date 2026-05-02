@@ -31,7 +31,8 @@ internal static class MlBackfillRunner
         SettingsService settings,
         MlJobType jobType,
         BackfillRequest? body,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? ownerScope = null)
     {
         var batchSize = Math.Clamp(
             body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
@@ -39,7 +40,7 @@ internal static class MlBackfillRunner
             MaxBackfillBatchSize);
         var onlyMissing = body?.OnlyMissing ?? true;
 
-        var query = BuildQuery(db, jobType, onlyMissing);
+        var query = BuildQuery(db, jobType, onlyMissing, ownerScope);
 
         var total = await query.CountAsync(ct);
 
@@ -61,26 +62,42 @@ internal static class MlBackfillRunner
 
     /// <summary>Returns how many image assets are still missing the given ML job
     /// completion (split by whether they're already enqueued or not). Used by
-    /// the admin UI so the operator can tell "all done" from "all in queue".</summary>
+    /// the admin UI so the operator can tell "all done" from "all in queue".
+    /// When <paramref name="ownerScope"/> is set, both numbers are restricted to
+    /// assets owned by that user.</summary>
     public static async Task<IResult> GetPendingCountAsync(
         ApplicationDbContext db,
         MlJobType jobType,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? ownerScope = null)
     {
-        var unprocessed = await BuildQuery(db, jobType, onlyMissing: true).CountAsync(ct);
+        var unprocessed = await BuildQuery(db, jobType, onlyMissing: true, ownerScope).CountAsync(ct);
 
-        var inQueue = await db.AssetMlJobs.AsNoTracking()
+        var inQueueQuery = db.AssetMlJobs.AsNoTracking()
             .Where(j => j.JobType == jobType
-                && (j.Status == MlJobStatus.Pending || j.Status == MlJobStatus.Processing))
-            .CountAsync(ct);
+                && (j.Status == MlJobStatus.Pending || j.Status == MlJobStatus.Processing));
+        if (ownerScope.HasValue)
+        {
+            inQueueQuery = inQueueQuery.Where(j => j.Asset.OwnerId == ownerScope.Value);
+        }
+        var inQueue = await inQueueQuery.CountAsync(ct);
 
         return Results.Ok(new PendingCountResponse(unprocessed, inQueue));
     }
 
-    private static IQueryable<Asset> BuildQuery(ApplicationDbContext db, MlJobType jobType, bool onlyMissing)
+    private static IQueryable<Asset> BuildQuery(
+        ApplicationDbContext db,
+        MlJobType jobType,
+        bool onlyMissing,
+        Guid? ownerScope = null)
     {
         var query = db.Assets.AsNoTracking()
             .Where(a => a.Type == AssetType.Image && a.DeletedAt == null && !a.IsFileMissing);
+
+        if (ownerScope.HasValue)
+        {
+            query = query.Where(a => a.OwnerId == ownerScope.Value);
+        }
 
         if (onlyMissing)
         {
