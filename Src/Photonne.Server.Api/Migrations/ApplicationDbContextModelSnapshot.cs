@@ -1056,6 +1056,54 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.UserFaceAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsManuallyAssigned")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRejected")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("PersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<float?>("SuggestedDistance")
+                        .HasColumnType("real");
+
+                    b.Property<Guid?>("SuggestedPersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("SuggestedPersonId");
+
+                    b.HasIndex("FaceId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "PersonId");
+
+                    b.HasIndex("UserId", "SuggestedPersonId");
+
+                    b.HasIndex("UserId", "PersonId", "IsRejected");
+
+                    b.ToTable("UserFaceAssignments");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.UserTag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1439,6 +1487,39 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Asset");
 
                     b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.UserFaceAssignment", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Face", "Face")
+                        .WithMany()
+                        .HasForeignKey("FaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Person", "SuggestedPerson")
+                        .WithMany()
+                        .HasForeignKey("SuggestedPersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Photonne.Server.Api.Shared.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Face");
+
+                    b.Navigation("Person");
+
+                    b.Navigation("SuggestedPerson");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.UserTag", b =>

@@ -697,6 +697,49 @@ namespace Photonne.Server.Api.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UserFaceAssignments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FaceId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PersonId = table.Column<Guid>(type: "uuid", nullable: true),
+                    IsManuallyAssigned = table.Column<bool>(type: "boolean", nullable: false),
+                    IsRejected = table.Column<bool>(type: "boolean", nullable: false),
+                    SuggestedPersonId = table.Column<Guid>(type: "uuid", nullable: true),
+                    SuggestedDistance = table.Column<float>(type: "real", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserFaceAssignments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserFaceAssignments_Faces_FaceId",
+                        column: x => x.FaceId,
+                        principalTable: "Faces",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserFaceAssignments_People_PersonId",
+                        column: x => x.PersonId,
+                        principalTable: "People",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_UserFaceAssignments_People_SuggestedPersonId",
+                        column: x => x.SuggestedPersonId,
+                        principalTable: "People",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_UserFaceAssignments_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AlbumAssets_AlbumId",
                 table: "AlbumAssets",
@@ -998,6 +1041,37 @@ namespace Photonne.Server.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserFaceAssignments_FaceId_UserId",
+                table: "UserFaceAssignments",
+                columns: new[] { "FaceId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserFaceAssignments_PersonId",
+                table: "UserFaceAssignments",
+                column: "PersonId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserFaceAssignments_SuggestedPersonId",
+                table: "UserFaceAssignments",
+                column: "SuggestedPersonId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserFaceAssignments_UserId_PersonId",
+                table: "UserFaceAssignments",
+                columns: new[] { "UserId", "PersonId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserFaceAssignments_UserId_PersonId_IsRejected",
+                table: "UserFaceAssignments",
+                columns: new[] { "UserId", "PersonId", "IsRejected" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserFaceAssignments_UserId_SuggestedPersonId",
+                table: "UserFaceAssignments",
+                columns: new[] { "UserId", "SuggestedPersonId" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
                 table: "Users",
                 column: "Email",
@@ -1103,6 +1177,9 @@ namespace Photonne.Server.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "SharedLinks");
+
+            migrationBuilder.DropTable(
+                name: "UserFaceAssignments");
 
             migrationBuilder.DropTable(
                 name: "UserTags");

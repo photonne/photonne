@@ -52,6 +52,10 @@ public class ApplicationDbContext : DbContext
     // re-recognitions, so they earn an unprefixed name as a first-class entity.
     public DbSet<Face> Faces { get; set; }
     public DbSet<Person> People { get; set; }
+    /// <summary>Per-user opinion about a Face. Detection is shared across every
+    /// user who can see the asset; identity (Person + manual/rejected/suggestion)
+    /// is private to each user via this row. See <see cref="UserFaceAssignment"/>.</summary>
+    public DbSet<UserFaceAssignment> UserFaceAssignments { get; set; }
     public DbSet<AssetDetectedObject> AssetDetectedObjects { get; set; }
     public DbSet<AssetClassifiedScene> AssetClassifiedScenes { get; set; }
     public DbSet<AssetRecognizedTextLine> AssetRecognizedTextLines { get; set; }
@@ -459,7 +463,15 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
-        // Configure Face entity (detected face with embedding)
+        // Configure Face entity (detected face with embedding).
+        //
+        // The legacy identity fields (PersonId, IsManuallyAssigned, IsRejected,
+        // SuggestedPersonId, SuggestedDistance) live in the schema for safety
+        // during the rollout but are no longer read or written by code — see
+        // UserFaceAssignment for the canonical per-user identity store. The
+        // existing FKs / indexes on those columns remain configured here so EF
+        // matches the on-disk schema; a future migration will drop them once
+        // the rollout is complete.
         modelBuilder.Entity<Face>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -475,9 +487,6 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.PersonId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // Optional suggested cluster — separate FK so disambiguation matches the
-            // confirmed Person FK and the SetNull cascade keeps suggestions clean
-            // when a Person is deleted.
             entity.HasOne(e => e.SuggestedPerson)
                 .WithMany()
                 .HasForeignKey(e => e.SuggestedPersonId)
@@ -488,6 +497,46 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.PersonId, e.IsRejected });
             entity.HasIndex(e => e.SuggestedPersonId);
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure UserFaceAssignment entity (per-user identity for a Face).
+        //
+        // One row per (FaceId, UserId) — enforced by the unique index. A user
+        // sees a Face when the underlying asset is visible to them (own asset,
+        // shared album/folder/external library); their assignment to a Person
+        // they own lives here. Cascade on FaceId/UserId so detections cleaned
+        // up server-side don't leak phantom assignments. Person FKs use
+        // SetNull so deleting a Person clears confirmed/suggested assignments
+        // automatically.
+        modelBuilder.Entity<UserFaceAssignment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.Face)
+                .WithMany()
+                .HasForeignKey(e => e.FaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Person)
+                .WithMany()
+                .HasForeignKey(e => e.PersonId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.SuggestedPerson)
+                .WithMany()
+                .HasForeignKey(e => e.SuggestedPersonId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => new { e.FaceId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.PersonId });
+            entity.HasIndex(e => new { e.UserId, e.PersonId, e.IsRejected });
+            entity.HasIndex(e => new { e.UserId, e.SuggestedPersonId });
+            entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         modelBuilder.Entity<Asset>(entity =>

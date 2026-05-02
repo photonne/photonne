@@ -38,4 +38,8 @@
       <None Remove="thumbnails\275\small.jpg" />
       <None Remove="thumbnails\274\small.jpg" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Migrations\" />
+    </ItemGroup>
 </Project>
