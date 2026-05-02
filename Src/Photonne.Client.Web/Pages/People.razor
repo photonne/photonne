@@ -9,6 +9,11 @@
 <div class="px-3 pt-3 d-flex align-center justify-space-between">
     <MudText Typo="Typo.h5">Personas</MudText>
     <div class="d-flex align-center gap-1">
+        <MudTooltip Text="Reconocimiento facial">
+            <MudIconButton Icon="@Icons.Material.Outlined.Face"
+                           Size="Size.Small"
+                           OnClick="OpenBackfillDialog" />
+        </MudTooltip>
         <MudTooltip Text="Reagrupar caras">
             <MudIconButton Icon="@Icons.Material.Outlined.GroupWork"
                            Size="Size.Small"
@@ -113,7 +118,7 @@ else if (_people.Count == 0)
         <MudText Typo="Typo.h6">Sin personas todavía</MudText>
         <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary); text-align: center; max-width: 360px;">
             En cuanto subas más fotos, Photonne agrupará caras automáticamente.
-            También puedes ejecutar el backfill desde Admin para procesar fotos antiguas.
+            También puedes pulsar el icono de Reconocimiento facial arriba para procesar fotos antiguas.
         </MudText>
     </div>
 }
@@ -168,6 +173,22 @@ else
     </div>
 }
 
+<MudDialog @bind-Visible="_backfillDialogVisible"
+           Options="@(new DialogOptions { CloseButton = true, FullScreen = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Reconocimiento facial</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MlBackfillCard Title="Procesar tus fotos pendientes"
+                        Description="Encola jobs de detección + embedding facial para tus fotos sin procesar. El motor ML las irá completando en segundo plano."
+                        EndpointKey="face-recognition"
+                        EndpointBase="/api/people" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseBackfillDialog">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
 <style>
     .ph-person-card { cursor: pointer; }
     .ph-person-card--hidden { opacity: 0.55; }
@@ -220,6 +241,7 @@ else
     private bool _includeHidden;
     private bool _unnamedFirst;
     private bool _reclustering;
+    private bool _backfillDialogVisible;
     private string _search = string.Empty;
     // Compound key "field-direction" so a single MudSelect drives both sort field and direction.
     private string _sortKey = "default";
@@ -373,5 +395,18 @@ else
     private void OpenPerson(PersonSummary p)
     {
         Navigation.NavigateTo($"/people/{p.Id}");
+    }
+
+    private void OpenBackfillDialog()
+    {
+        _backfillDialogVisible = true;
+    }
+
+    private async Task CloseBackfillDialog()
+    {
+        _backfillDialogVisible = false;
+        // Si el motor ML ya completó detecciones nuevas, refrescamos la lista
+        // para reflejar las personas recién agrupadas sin requerir un F5.
+        await LoadAsync();
     }
 }

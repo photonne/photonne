@@ -163,10 +163,16 @@ main {
 ::deep .ph-bottom-sheet {
     border-radius: 16px 16px 0 0 !important;
     overflow: hidden;
+    /* Pin to viewport width so MudBlazor's drawer min-width / scroll-lock
+       compensation can never make the sheet wider than the screen. */
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 ::deep .ph-bottom-sheet .mud-drawer-content {
     border-radius: 16px 16px 0 0;
     overflow: hidden;
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 /* Drag handle pill */
 .ph-sheet-handle {
