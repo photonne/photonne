@@ -34,6 +34,8 @@ public class ListPeopleEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] FaceClusteringService clustering,
+        [FromServices] ILoggerFactory loggerFactory,
         [FromQuery] bool? includeHidden,
         [FromQuery] int? limit,
         [FromQuery] int? offset,
@@ -45,6 +47,26 @@ public class ListPeopleEndpoint : IEndpoint
         CancellationToken ct)
     {
         if (!TryGetUserId(user, out var userId)) return Results.Unauthorized();
+
+        // Lazy per-user clustering: users with shared-only access (e.g. an
+        // external library someone else owns) never get a Person row from
+        // detection-time hooks, which only run for the asset owner. The
+        // documented contract is that opening /people triggers an "ensure up
+        // to date" pass for the requesting user — online-attaching newly
+        // visible faces and running a cooldown-guarded batch when there are
+        // enough orphans. Done here (not in callers) so every consumer of
+        // /api/people benefits without duplicating the call. Failures are
+        // logged and swallowed: the user should still see whatever Persons
+        // already exist rather than getting a 500.
+        try
+        {
+            await clustering.EnsureUpToDateForUserAsync(userId, ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            loggerFactory.CreateLogger<ListPeopleEndpoint>()
+                .LogWarning(ex, "Lazy clustering pass for user {UserId} failed; returning current People snapshot", userId);
+        }
 
         // Nullable bool params: client only sends them when true, so a missing
         // value must be treated as false (Minimal API would otherwise 400/500
