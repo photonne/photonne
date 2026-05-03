@@ -63,6 +63,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<FaceClusteringService>();
         builder.Services.AddScoped<FaceRecognitionService>();
         builder.Services.AddScoped<AssetVisibilityService>();
+        builder.Services.AddSingleton<FaceClusteringQueue>();
+        builder.Services.AddHostedService<FaceClusteringBackgroundService>();
 
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {

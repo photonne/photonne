@@ -34,6 +34,13 @@ public class FaceClusteringService
     private static readonly ConcurrentDictionary<Guid, DateTime> _lastBatchRunUtcByUser = new();
     private static readonly TimeSpan BatchCooldown = TimeSpan.FromMinutes(2);
 
+    // Separate cooldown for the lazy whole-pass trigger (online attach + batch)
+    // invoked from /people. Without it, every page refresh would re-walk all
+    // unassigned faces visible to the user — even though the batch portion is
+    // already cooldown'd, the online-attach portion is not.
+    private static readonly ConcurrentDictionary<Guid, DateTime> _lastEnsurePassUtcByUser = new();
+    private static readonly TimeSpan EnsurePassCooldown = TimeSpan.FromMinutes(2);
+
     public const string ClusteringThresholdKey = "FaceRecognition.ClusteringThreshold";
     public const string SuggestionThresholdKey = "FaceRecognition.SuggestionThreshold";
 
@@ -426,11 +433,26 @@ public class FaceClusteringService
     /// Lazy "ensure up to date" pass invoked when the user opens <c>/people</c>
     /// or pulls People-related data: do online attach against U's existing
     /// Persons, then run a batch if the orphan count crosses the threshold.
-    /// Both operations honor the cooldown so calling this on every request is
-    /// cheap.
+    /// Cooldown-gated as a whole — the online-attach portion alone can be
+    /// thousands of queries for a user with shared-only access, so a single
+    /// gate covers both phases. Intended to be invoked from a background
+    /// worker; the request that enqueues it should not await the result.
     /// </summary>
     public async Task EnsureUpToDateForUserAsync(Guid userId, CancellationToken cancellationToken)
     {
+        var now = DateTime.UtcNow;
+        var last = _lastEnsurePassUtcByUser.TryGetValue(userId, out var t) ? t : DateTime.MinValue;
+        if (now - last < EnsurePassCooldown)
+        {
+            _logger.LogDebug("EnsureUpToDate for user {UserId}: cooldown active ({Remaining:F0}s left)",
+                userId, (EnsurePassCooldown - (now - last)).TotalSeconds);
+            return;
+        }
+        // Stamp at the start so a long-running pass blocks re-entry attempts
+        // for its full duration plus the cooldown afterwards. Concurrent
+        // re-entry is also prevented by the queue's in-flight set.
+        _lastEnsurePassUtcByUser[userId] = now;
+
         // Online attach catches the case where user U gained access to a
         // shared asset whose detection happened earlier — MaybeRunBatch alone
         // would not attach those to U's existing Persons because it only
