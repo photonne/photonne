@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject LayoutService LayoutService
 @inject ThemeService ThemeService
+@inject DeviceLayoutService DeviceLayout
 
 <MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
 <MudPopoverProvider />
@@ -18,3 +20,18 @@
         @Body
     </main>
 </div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await DeviceLayout.InitializeAsync();
+        DeviceLayout.OnChanged += HandleDeviceLayoutChanged;
+    }
+
+    private void HandleDeviceLayoutChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        DeviceLayout.OnChanged -= HandleDeviceLayoutChanged;
+    }
+}

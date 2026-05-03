@@ -289,102 +289,102 @@ else
                         @* Dispositivo: Sync/Copied + Zoom + Info *@
                         @if (_asset != null && _asset.SyncStatus == AssetSyncStatus.Pending)
                         {
-                            <MudTooltip Text="Sincronizar ahora">
+                            <ResponsiveTooltip Text="Sincronizar ahora">
                                 <MudIconButton Icon="@Icons.Material.Filled.CloudUpload"
                                                Color="Color.Inherit"
                                                OnClick="SyncAsset"
                                                Disabled="@_syncing" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                         }
                         else if (_asset != null && _asset.SyncStatus == AssetSyncStatus.Copied)
                         {
-                            <MudTooltip Text="Pendiente de indexar">
+                            <ResponsiveTooltip Text="Pendiente de indexar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Schedule"
                                                Color="Color.Inherit"
                                                OnClick="NavigateToIndex" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                         }
 
-                        <MudTooltip Text="@(_zoomed ? "Ajustar" : "Zoom")">
+                        <ResponsiveTooltip Text="@(_zoomed ? "Ajustar" : "Zoom")">
                             <MudIconButton Icon="@(_zoomed ? Icons.Material.Outlined.ZoomOut : Icons.Material.Outlined.ZoomIn)"
                                            Color="Color.Inherit" OnClick="ToggleZoom" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
 
-                        <MudTooltip Text="Información">
+                        <ResponsiveTooltip Text="Información">
                             <MudIconButton Icon="@(_infoOpen ? Icons.Material.Filled.Info : Icons.Material.Outlined.Info)"
                                            Color="Color.Inherit" OnClick="ToggleInfo" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     }
                     else
                     {
                         @* Indexado: Favorito · Zoom · Info · Descargar · Añadir álbum · Slideshow · Archivar · Eliminar *@
 
                         @* Favorito — siempre visible *@
-                        <MudTooltip Text="@(_asset != null && _asset.IsFavorite ? "Quitar de favoritos" : "Añadir a favoritos")">
+                        <ResponsiveTooltip Text="@(_asset != null && _asset.IsFavorite ? "Quitar de favoritos" : "Añadir a favoritos")">
                             <MudIconButton Icon="@(_asset != null && _asset.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
                                            Color="@(_asset != null && _asset.IsFavorite ? Color.Error : Color.Inherit)"
                                            OnClick="ToggleFavoriteAsync"
                                            Disabled="@_favoriteBusy" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
 
                         @* Info — siempre visible *@
-                        <MudTooltip Text="Información">
+                        <ResponsiveTooltip Text="Información">
                             <MudIconButton Icon="@(_infoOpen ? Icons.Material.Filled.Info : Icons.Material.Outlined.Info)"
                                            Color="Color.Inherit" OnClick="ToggleInfo" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
 
                         @* Caras — solo para imágenes indexadas *@
                         @if (_asset != null && _asset.Type == "Image" && _asset.SyncStatus == AssetSyncStatus.Synced)
                         {
-                            <MudTooltip Text="@(_facesOverlayVisible ? "Ocultar caras" : "Mostrar caras")">
+                            <ResponsiveTooltip Text="@(_facesOverlayVisible ? "Ocultar caras" : "Mostrar caras")">
                                 <MudIconButton Icon="@(_facesOverlayVisible ? Icons.Material.Filled.Face : Icons.Material.Outlined.Face)"
                                                Color="@(_facesOverlayVisible ? Color.Primary : Color.Inherit)"
                                                OnClick="ToggleFacesOverlay" />
-                            </MudTooltip>
-                            <MudTooltip Text="@(_objectsOverlayVisible ? "Ocultar objetos" : "Mostrar objetos")">
+                            </ResponsiveTooltip>
+                            <ResponsiveTooltip Text="@(_objectsOverlayVisible ? "Ocultar objetos" : "Mostrar objetos")">
                                 <MudIconButton Icon="@(_objectsOverlayVisible ? Icons.Material.Filled.Category : Icons.Material.Outlined.Category)"
                                                Color="@(_objectsOverlayVisible ? Color.Secondary : Color.Inherit)"
                                                OnClick="ToggleObjectsOverlay" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                         }
 
                         @* Añadir a álbum — siempre visible *@
-                        <MudTooltip Text="Añadir a álbum">
+                        <ResponsiveTooltip Text="Añadir a álbum">
                             <MudIconButton Icon="@Icons.Material.Outlined.AddPhotoAlternate"
                                            Color="Color.Inherit" OnClick="OpenAddToAlbumDialog" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
 
                         @* Botones secundarios — solo en md+ *@
                         <span class="d-none d-md-flex align-center">
-                            <MudTooltip Text="@(_zoomed ? "Ajustar" : "Zoom")">
+                            <ResponsiveTooltip Text="@(_zoomed ? "Ajustar" : "Zoom")">
                                 <MudIconButton Icon="@(_zoomed ? Icons.Material.Outlined.ZoomOut : Icons.Material.Outlined.ZoomIn)"
                                                Color="Color.Inherit" OnClick="ToggleZoom" />
-                            </MudTooltip>
-                            <MudTooltip Text="Descargar">
+                            </ResponsiveTooltip>
+                            <ResponsiveTooltip Text="Descargar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Download"
                                                Color="Color.Inherit" OnClick="DownloadAsset" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                             @if (_allAssets.Count > 1)
                             {
-                                <MudTooltip Text="Presentación">
+                                <ResponsiveTooltip Text="Presentación">
                                     <MudIconButton Icon="@Icons.Material.Outlined.Slideshow"
                                                    Color="Color.Inherit" OnClick="StartSlideshow" />
-                                </MudTooltip>
+                                </ResponsiveTooltip>
                             }
                             @if (!_isReadOnly)
                             {
-                                <MudTooltip Text="@(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")">
+                                <ResponsiveTooltip Text="@(_asset != null && _asset.IsArchived ? "Quitar del archivo" : "Archivar")">
                                     <MudIconButton Icon="@(_asset != null && _asset.IsArchived ? Icons.Material.Filled.Unarchive : Icons.Material.Outlined.Archive)"
                                                    Color="Color.Inherit"
                                                    OnClick="ToggleArchiveAsync"
                                                    Disabled="@_archiveBusy" />
-                                </MudTooltip>
-                                <MudTooltip Text="Eliminar">
+                                </ResponsiveTooltip>
+                                <ResponsiveTooltip Text="Eliminar">
                                     <MudIconButton Icon="@Icons.Material.Outlined.Delete"
                                                    Color="Color.Error"
                                                    OnClick="@(() => _deleteConfirmOpen = true)"
                                                    Disabled="@_deleting" />
-                                </MudTooltip>
+                                </ResponsiveTooltip>
                             }
                         </span>
 

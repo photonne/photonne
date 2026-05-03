@@ -2012,18 +2012,18 @@ else
 
                     @* Botones individuales — solo desktop *@
                     <span class="d-none d-md-flex">
-                        <MudTooltip Text="Colaboradores">
+                        <ResponsiveTooltip Text="Colaboradores">
                             <MudIconButton Icon="@Icons.Material.Outlined.Group" Color="Color.Inherit" Disabled="@(!CanManagePermissionsSelectedAlbum())" OnClick="OpenPermissionsForSelectedAlbum" />
-                        </MudTooltip>
-                        <MudTooltip Text="Editar">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Editar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Inherit" Disabled="@(!CanEditSelectedAlbum())" OnClick="OpenEditSelectedAlbum" />
-                        </MudTooltip>
-                        <MudTooltip Text="Eliminar">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Eliminar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!CanDeleteSelectedAlbums())" OnClick="OpenDeleteSelectedDialog" />
-                        </MudTooltip>
-                        <MudTooltip Text="Salir del álbum">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Salir del álbum">
                             <MudIconButton Icon="@Icons.Material.Outlined.ExitToApp" Color="Color.Inherit" Disabled="@(!CanLeaveSelectedAlbum())" OnClick="LeaveSelectedAlbumAsync" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     </span>
 
                     @* Menú de desbordamiento — solo móvil *@
@@ -2061,21 +2061,21 @@ else
                     @{
                         var allAlbumAssetsSelected = _albumAssets.Any() && selectedCount == _albumAssets.Count;
                     }
-                    <MudTooltip Text="@(allAlbumAssetsSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <ResponsiveTooltip Text="@(allAlbumAssetsSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                         <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_albumAssets.Any())" OnClick="ToggleSelectAllAlbumAssets" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
 
                     @* Botones individuales — solo desktop *@
                     <span class="d-none d-md-flex">
-                        <MudTooltip Text="Quitar del álbum">
+                        <ResponsiveTooltip Text="Quitar del álbum">
                             <MudIconButton Icon="@Icons.Material.Outlined.RemoveCircleOutline" Color="Color.Inherit" Disabled="@(!canEdit || !_selectedAlbumAssetIds.Any())" OnClick="RemoveSelectedAssetsAsync" />
-                        </MudTooltip>
-                        <MudTooltip Text="Establecer portada">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Establecer portada">
                             <MudIconButton Icon="@Icons.Material.Outlined.Wallpaper" Color="Color.Inherit" Disabled="@(!canEdit || _selectedAlbumAssetIds.Count != 1)" OnClick="SetCoverFromSelectionAsync" />
-                        </MudTooltip>
-                        <MudTooltip Text="Descargar">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Descargar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAlbumAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAssetsAsync" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     </span>
 
                     @* Menú de desbordamiento — solo móvil *@

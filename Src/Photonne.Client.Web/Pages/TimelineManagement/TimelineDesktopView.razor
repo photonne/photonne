@@ -4,24 +4,24 @@
 
             <div class="filter-chips-bar">
                 <div class="filter-density-controls">
-                    <MudTooltip Text="Compacto">
+                    <ResponsiveTooltip Text="Compacto">
                         <MudIconButton Icon="@Icons.Material.Outlined.GridOn"
                                        Size="Size.Small"
                                        Color="@(Density == "S" ? Color.Primary : Color.Inherit)"
                                        OnClick="@(async () => await OnSetDensity.InvokeAsync("S"))" />
-                    </MudTooltip>
-                    <MudTooltip Text="Mediano">
+                    </ResponsiveTooltip>
+                    <ResponsiveTooltip Text="Mediano">
                         <MudIconButton Icon="@Icons.Material.Outlined.GridView"
                                        Size="Size.Small"
                                        Color="@(Density == "M" ? Color.Primary : Color.Inherit)"
                                        OnClick="@(async () => await OnSetDensity.InvokeAsync("M"))" />
-                    </MudTooltip>
-                    <MudTooltip Text="Grande">
+                    </ResponsiveTooltip>
+                    <ResponsiveTooltip Text="Grande">
                         <MudIconButton Icon="@Icons.Material.Outlined.PhotoSizeSelectLarge"
                                        Size="Size.Small"
                                        Color="@(Density == "L" ? Color.Primary : Color.Inherit)"
                                        OnClick="@(async () => await OnSetDensity.InvokeAsync("L"))" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                 </div>
             </div>
 

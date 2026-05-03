@@ -30,32 +30,32 @@
     <div class="sync-status-icon">
         @if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Synced)
         {
-            <MudTooltip Text="Ya sincronizado">
+            <ResponsiveTooltip Text="Ya sincronizado">
                 <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="color: #4caf50;" />
-            </MudTooltip>
+            </ResponsiveTooltip>
         }
         else if (Asset.IsLocalOnly && Asset.SyncStatus == AssetSyncStatus.Pending)
         {
-            <MudTooltip Text="Pendiente de subir">
+            <ResponsiveTooltip Text="Pendiente de subir">
                 <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Small" Color="Color.Inherit" />
-            </MudTooltip>
+            </ResponsiveTooltip>
         }
         else if (Asset.SyncStatus == AssetSyncStatus.Copied)
         {
-            <MudTooltip Text="Pendiente de indexar">
+            <ResponsiveTooltip Text="Pendiente de indexar">
                 <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Inherit" />
-            </MudTooltip>
+            </ResponsiveTooltip>
         }
         else if (Asset.SyncStatus == AssetSyncStatus.Pending && !Asset.IsLocalOnly)
         {
-            <MudTooltip Text="Sincronizar ahora">
+            <ResponsiveTooltip Text="Sincronizar ahora">
                 <span @onclick:stopPropagation="true">
                     <MudIconButton Icon="@Icons.Material.Filled.CloudUpload"
                                    Size="Size.Small"
                                    Color="Color.Inherit"
                                    OnClick="SyncNow" />
                 </span>
-            </MudTooltip>
+            </ResponsiveTooltip>
         }
         else if (Asset.SyncStatus == AssetSyncStatus.Syncing)
         {
@@ -73,9 +73,9 @@
     @if (Asset.IsFileMissing)
     {
         <div class="asset-offline-overlay">
-            <MudTooltip Text="Archivo no encontrado en disco">
+            <ResponsiveTooltip Text="Archivo no encontrado en disco">
                 <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Large" Style="color: rgba(255,255,255,0.8);" />
-            </MudTooltip>
+            </ResponsiveTooltip>
         </div>
     }
 

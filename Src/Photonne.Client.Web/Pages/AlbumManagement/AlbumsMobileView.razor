@@ -165,13 +165,13 @@
                                 @if (album.IsOwner)
                                 {
                                     <div @onclick:stopPropagation="true">
-                                        <MudTooltip Text="@(album.HasActiveShareLink ? "Gestionar enlace" : "Compartir álbum")">
+                                        <ResponsiveTooltip Text="@(album.HasActiveShareLink ? "Gestionar enlace" : "Compartir álbum")">
                                             <MudIconButton Icon="@Icons.Material.Outlined.Share"
                                                            Size="Size.Small"
                                                            Color="@(album.HasActiveShareLink ? Color.Primary : Color.Inherit)"
                                                            Class="album-list-share-btn"
                                                            OnClick="() => OnOpenShareDialog.InvokeAsync((album.Id, album.Name))" />
-                                        </MudTooltip>
+                                        </ResponsiveTooltip>
                                     </div>
                                 }
                             </div>
@@ -204,21 +204,21 @@ else
         <div class="album-hero-actions">
             @if (SelectedAlbum.IsOwner == true)
             {
-                <MudTooltip Text="Compartir">
+                <ResponsiveTooltip Text="Compartir">
                     <MudIconButton Icon="@Icons.Material.Outlined.Share"
                                    Color="Color.Inherit"
                                    OnClick="OnOpenAlbumShareDialog" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             }
 
             @if (AlbumAssets.Any())
             {
-                <MudTooltip Text="Descargar álbum">
+                <ResponsiveTooltip Text="Descargar álbum">
                     <MudIconButton Icon="@Icons.Material.Outlined.Download"
                                    Color="Color.Inherit"
                                    Disabled="@DownloadingZip"
                                    OnClick="OnDownloadAlbum" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             }
 
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" >
@@ -253,9 +253,9 @@ else
                 <MudText Typo="Typo.h3" Style="font-weight: 700;">@SelectedAlbum.Name</MudText>
                 @if (SelectedAlbum.IsShared)
                 {
-                    <MudTooltip Text="Álbum compartido">
+                    <ResponsiveTooltip Text="Álbum compartido">
                         <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Medium" Style="color: rgba(255,255,255,0.8);" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                 }
             </div>
 

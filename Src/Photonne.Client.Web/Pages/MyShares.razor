@@ -99,37 +99,37 @@ else
                 </div>
 
                 <div class="my-shares-actions">
-                    <MudTooltip Text="Copiar enlace">
+                    <ResponsiveTooltip Text="Copiar enlace">
                         <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
                                        Size="Size.Small"
                                        OnClick="() => CopyLink(link.Token)" />
-                    </MudTooltip>
-                    <MudTooltip Text="Editar enlace">
+                    </ResponsiveTooltip>
+                    <ResponsiveTooltip Text="Editar enlace">
                         <MudIconButton Icon="@Icons.Material.Outlined.EditNote"
                                        Size="Size.Small"
                                        OnClick="() => OpenEditDialog(link)" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                     @if (link.AssetId.HasValue)
                     {
-                        <MudTooltip Text="Ver foto">
+                        <ResponsiveTooltip Text="Ver foto">
                             <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
                                            Size="Size.Small"
                                            OnClick="() => GoToAsset(link.AssetId!.Value)" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     }
                     @if (link.AlbumId.HasValue)
                     {
-                        <MudTooltip Text="Ver álbum">
+                        <ResponsiveTooltip Text="Ver álbum">
                             <MudIconButton Icon="@Icons.Material.Outlined.Collections"
                                            Size="Size.Small"
                                            OnClick="() => GoToAlbum(link.AlbumId!.Value)" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     }
-                    <MudTooltip Text="Revocar enlace">
+                    <ResponsiveTooltip Text="Revocar enlace">
                         <MudIconButton Icon="@Icons.Material.Outlined.LinkOff"
                                        Size="Size.Small" Color="Color.Error"
                                        OnClick="() => RevokeLink(link)" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                 </div>
             </div>
         }

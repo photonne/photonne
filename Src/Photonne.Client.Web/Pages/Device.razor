@@ -82,15 +82,15 @@
                 </div>
                 @if (_enumerating)
                 {
-                    <MudTooltip Text="Actualizando lista…">
+                    <ResponsiveTooltip Text="Actualizando lista…">
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Default" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                 }
-                <MudTooltip Text="Re-escanear">
+                <ResponsiveTooltip Text="Re-escanear">
                     <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small"
                                    Disabled="@_enumerating"
                                    OnClick="RefreshAsync" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             </MudPaper>
 
             @* ── Permiso denegado ──────────────────────────────────────── *@

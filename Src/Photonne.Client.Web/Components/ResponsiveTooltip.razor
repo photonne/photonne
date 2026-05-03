@@ -1,0 +1,18 @@
+@inject DeviceLayoutService DeviceLayout
+
+@if (DeviceLayout.IsMobile)
+{
+    @ChildContent
+}
+else
+{
+    <MudTooltip Text="@Text" Arrow="@Arrow" Placement="Placement.Left">
+        @ChildContent
+    </MudTooltip>
+}
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public bool Arrow { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

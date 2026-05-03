@@ -102,41 +102,41 @@
                     </MudText>
                     <MudSpacer />
 
-                    <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <ResponsiveTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                         <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small"
                                        Disabled="@(!sheetAssets.Any())"
                                        OnClick="ToggleSelectAllSheet" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
 
                     @* Desktop: botones individuales *@
                     <span class="d-none d-md-flex">
-                        <MudTooltip Text="Compartir selección">
+                        <ResponsiveTooltip Text="Compartir selección">
                             <MudIconButton Icon="@Icons.Material.Outlined.Share" Size="Size.Small"
                                            Disabled="@(!_selectedSheetIds.Any())"
                                            OnClick="OpenShareSelectionDialog" />
-                        </MudTooltip>
-                        <MudTooltip Text="Añadir a álbum">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Añadir a álbum">
                             <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Size="Size.Small"
                                            Disabled="@(!_selectedSheetIds.Any())"
                                            OnClick="OpenAddToAlbumDialog" />
-                        </MudTooltip>
-                        <MudTooltip Text="Descargar">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Descargar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
                                            Disabled="@(!_selectedSheetIds.Any() || _downloadingZip)"
                                            OnClick="DownloadSelectedSheetAsync" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                         @if (!hasReadOnlyInSelection)
                         {
-                            <MudTooltip Text="Archivar">
+                            <ResponsiveTooltip Text="Archivar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Archive" Size="Size.Small"
                                                Disabled="@(!_selectedSheetIds.Any())"
                                                OnClick="ArchiveSelectedSheetAsync" />
-                            </MudTooltip>
-                            <MudTooltip Text="Eliminar">
+                            </ResponsiveTooltip>
+                            <ResponsiveTooltip Text="Eliminar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
                                                Disabled="@(!_selectedSheetIds.Any())"
                                                OnClick="OpenDeleteAssetsDialog" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                         }
                     </span>
 

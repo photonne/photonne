@@ -9,29 +9,29 @@
 <div class="px-3 pt-3 d-flex align-center justify-space-between">
     <MudText Typo="Typo.h5">Personas</MudText>
     <div class="d-flex align-center gap-1">
-        <MudTooltip Text="Reconocimiento facial">
+        <ResponsiveTooltip Text="Reconocimiento facial">
             <MudIconButton Icon="@Icons.Material.Outlined.Face"
                            Size="Size.Small"
                            OnClick="OpenBackfillDialog" />
-        </MudTooltip>
-        <MudTooltip Text="Reagrupar caras">
+        </ResponsiveTooltip>
+        <ResponsiveTooltip Text="Reagrupar caras">
             <MudIconButton Icon="@Icons.Material.Outlined.GroupWork"
                            Size="Size.Small"
                            Disabled="@_reclustering"
                            OnClick="ReclusterAsync" />
-        </MudTooltip>
-        <MudTooltip Text="Buscar persona">
+        </ResponsiveTooltip>
+        <ResponsiveTooltip Text="Buscar persona">
             <MudIconButton Icon="@Icons.Material.Filled.Search"
                            Color="@(SearchActive ? Color.Primary : Color.Default)"
                            Size="Size.Small"
                            OnClick="ToggleSearchBar" />
-        </MudTooltip>
-        <MudTooltip Text="Opciones de vista">
+        </ResponsiveTooltip>
+        <ResponsiveTooltip Text="Opciones de vista">
             <MudIconButton Icon="@Icons.Material.Filled.Tune"
                            Color="@(FiltersActive ? Color.Primary : Color.Default)"
                            Size="Size.Small"
                            OnClick="OpenFilterSheet" />
-        </MudTooltip>
+        </ResponsiveTooltip>
     </div>
 </div>
 

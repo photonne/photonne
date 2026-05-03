@@ -310,12 +310,12 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
-                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                <ResponsiveTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
-                </MudTooltip>
-                <MudTooltip Text="Desarchivar seleccionadas">
+                </ResponsiveTooltip>
+                <ResponsiveTooltip Text="Desarchivar seleccionadas">
                     <MudIconButton Icon="@Icons.Material.Filled.Unarchive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="UnarchiveSelectedAsync" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             </text>
         , keepDrawerVisible: true);
     }

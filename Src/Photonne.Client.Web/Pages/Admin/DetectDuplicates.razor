@@ -281,11 +281,11 @@ else
                         </div>
                     </CardHeaderContent>
                     <CardHeaderActions>
-                        <MudTooltip Text="Restablecer selección automática para este grupo">
+                        <ResponsiveTooltip Text="Restablecer selección automática para este grupo">
                             <MudIconButton Icon="@Icons.Material.Outlined.AutoAwesome"
                                            Size="Size.Small"
                                            OnClick="@(() => vm.AutoSelect())" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent Class="pt-0">
@@ -358,19 +358,19 @@ else
                                         <div class="flex-shrink-0 mt-1">
                                             @if (isKeep)
                                             {
-                                                <MudTooltip Text="@(isLast ? "Último archivo — no se puede eliminar" : "Conservar (clic para marcar como eliminar)")" Arrow="true">
+                                                <ResponsiveTooltip Text="@(isLast ? "Último archivo — no se puede eliminar" : "Conservar (clic para marcar como eliminar)")" Arrow="true">
                                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
                                                              Color="@(isLast ? Color.Default : Color.Primary)"
                                                              Style="font-size:22px;" />
-                                                </MudTooltip>
+                                                </ResponsiveTooltip>
                                             }
                                             else
                                             {
-                                                <MudTooltip Text="Eliminar (clic para conservar)" Arrow="true">
+                                                <ResponsiveTooltip Text="Eliminar (clic para conservar)" Arrow="true">
                                                     <MudIcon Icon="@Icons.Material.Filled.Cancel"
                                                              Color="Color.Error"
                                                              Style="font-size:22px;" />
-                                                </MudTooltip>
+                                                </ResponsiveTooltip>
                                             }
                                         </div>
                                     </div>

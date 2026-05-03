@@ -50,17 +50,17 @@
     @if (SlideshowActive)
     {
         <div class="slideshow-controls-bar @(SlideshowControlsVisible ? "" : "controls-hidden")">
-            <MudTooltip Text="Anterior">
+            <ResponsiveTooltip Text="Anterior">
                 <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious" Color="Color.Inherit" Size="Size.Medium"
                                OnClick="OnNavigatePrev" Disabled="@(PrevAsset == null)" />
-            </MudTooltip>
+            </ResponsiveTooltip>
             <MudIconButton Icon="@(SlideshowPaused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
                            Color="Color.Inherit" Size="Size.Large"
                            OnClick="OnToggleSlideshowPause" />
-            <MudTooltip Text="Siguiente">
+            <ResponsiveTooltip Text="Siguiente">
                 <MudIconButton Icon="@Icons.Material.Filled.SkipNext" Color="Color.Inherit" Size="Size.Medium"
                                OnClick="OnNavigateNext" Disabled="@(NextAsset == null)" />
-            </MudTooltip>
+            </ResponsiveTooltip>
             <div class="slideshow-divider"></div>
             @foreach (var secs in new[] { 3, 5, 10 })
             {
@@ -68,10 +68,10 @@
                         @onclick="@(() => OnSetSlideshowInterval.InvokeAsync(secs))">@secs s</button>
             }
             <div class="slideshow-divider"></div>
-            <MudTooltip Text="Salir (Esc)">
+            <ResponsiveTooltip Text="Salir (Esc)">
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Medium"
                                OnClick="OnStopSlideshow" />
-            </MudTooltip>
+            </ResponsiveTooltip>
         </div>
         <div class="slideshow-progress">
             <div @key="SlideshowProgressKey"

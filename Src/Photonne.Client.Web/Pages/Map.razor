@@ -45,14 +45,14 @@
                 
                 var allDrawerSelected = _drawerPoints.Any() && _selectedDrawerAssetIds.Count == _drawerPoints.Count;
                 
-                <MudTooltip Text="@(allDrawerSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                <ResponsiveTooltip Text="@(allDrawerSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small"
                                    Disabled="@(!_drawerPoints.Any())" OnClick="ToggleSelectAllDrawer" />
-                </MudTooltip>
-                <MudTooltip Text="Descargar">
+                </ResponsiveTooltip>
+                <ResponsiveTooltip Text="Descargar">
                     <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
                                    Disabled="@(!_selectedDrawerAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedDrawerAsync" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             }
             else
             {

@@ -867,29 +867,29 @@ else
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
-                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                <ResponsiveTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_results.Any())" OnClick="ToggleSelectAll" />
-                </MudTooltip>
+                </ResponsiveTooltip>
 
                 @* Desktop: botones individuales *@
                 <span class="d-none d-md-flex">
-                    <MudTooltip Text="Compartir selección">
+                    <ResponsiveTooltip Text="Compartir selección">
                         <MudIconButton Icon="@Icons.Material.Outlined.Share" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog" />
-                    </MudTooltip>
-                    <MudTooltip Text="Añadir a álbum">
+                    </ResponsiveTooltip>
+                    <ResponsiveTooltip Text="Añadir a álbum">
                         <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
-                    </MudTooltip>
-                    <MudTooltip Text="Descargar">
+                    </ResponsiveTooltip>
+                    <ResponsiveTooltip Text="Descargar">
                         <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                     @if (!hasReadOnly)
                     {
-                        <MudTooltip Text="Archivar">
+                        <ResponsiveTooltip Text="Archivar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Archive" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="ArchiveSelectedAsync" />
-                        </MudTooltip>
-                        <MudTooltip Text="Eliminar">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Eliminar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     }
                 </span>
 

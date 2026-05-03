@@ -2256,38 +2256,38 @@ else
                 @if (_selectionMode)
                 {
                     var allSelected = _assets.Any() && _selectedAssetIds.Count == _assets.Count;
-                    <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                    <ResponsiveTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                         <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAllAssets" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
 
                     @* Botones individuales — solo desktop *@
                     <span class="d-none d-md-flex">
                         @if (!IsTrashFolderSelected)
                         {
-                            <MudTooltip Text="Compartir selección">
+                            <ResponsiveTooltip Text="Compartir selección">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Share" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenShareSelectionDialog" />
-                            </MudTooltip>
-                            <MudTooltip Text="Añadir a álbum">
+                            </ResponsiveTooltip>
+                            <ResponsiveTooltip Text="Añadir a álbum">
                                 <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenAddToAlbumDialog" />
-                            </MudTooltip>
-                            <MudTooltip Text="Descargar">
+                            </ResponsiveTooltip>
+                            <ResponsiveTooltip Text="Descargar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Download" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any() || _downloadingZip)" OnClick="DownloadSelectedAsync" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                             @if (!isReadOnlyContext)
                             {
-                                <MudTooltip Text="Mover">
+                                <ResponsiveTooltip Text="Mover">
                                     <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenMoveAssetsDialog" />
-                                </MudTooltip>
-                                <MudTooltip Text="Eliminar">
+                                </ResponsiveTooltip>
+                                <ResponsiveTooltip Text="Eliminar">
                                     <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenDeleteAssetsDialog" />
-                                </MudTooltip>
+                                </ResponsiveTooltip>
                             }
                         }
                         else
                         {
-                            <MudTooltip Text="Restaurar">
+                            <ResponsiveTooltip Text="Restaurar">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Restore" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenRestoreAssetsDialog" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                         }
                     </span>
 
@@ -2332,16 +2332,16 @@ else
                     <span class="d-none d-md-flex">
                         @if (selectedFolder != null && selectedFolder.IsOwner && selectedFolder.IsShared)
                         {
-                            <MudTooltip Text="Colaboradores">
+                            <ResponsiveTooltip Text="Colaboradores">
                                 <MudIconButton Icon="@Icons.Material.Outlined.Group" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo($"/folders/{selectedFolder.Id}/permissions"))" />
-                            </MudTooltip>
+                            </ResponsiveTooltip>
                         }
-                        <MudTooltip Text="Renombrar">
+                        <ResponsiveTooltip Text="Renombrar">
                             <MudIconButton Icon="@Icons.Material.Outlined.DriveFileRenameOutline" Color="Color.Inherit" Disabled="@(_selectedFolderIds.Count != 1)" OnClick="OpenEditFolderDialogFromSelection" />
-                        </MudTooltip>
-                        <MudTooltip Text="Eliminar">
+                        </ResponsiveTooltip>
+                        <ResponsiveTooltip Text="Eliminar">
                             <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Inherit" Disabled="@(!_selectedFolderIds.Any())" OnClick="OpenDeleteFolderDialogFromSelection" />
-                        </MudTooltip>
+                        </ResponsiveTooltip>
                     </span>
 
                     @* Menú de desbordamiento — solo móvil *@

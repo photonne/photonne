@@ -364,12 +364,12 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionMode" />
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
-                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                <ResponsiveTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
-                </MudTooltip>
-                <MudTooltip Text="Quitar de favoritos">
+                </ResponsiveTooltip>
+                <ResponsiveTooltip Text="Quitar de favoritos">
                     <MudIconButton Icon="@Icons.Material.Filled.HeartBroken" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="UnfavoriteSelectedAsync" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             </text>
         , keepDrawerVisible: true);
     }

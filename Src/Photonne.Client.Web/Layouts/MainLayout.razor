@@ -12,6 +12,7 @@
 @inject PwaInstallService PwaInstallService
 @inject IDemoInfoService DemoInfoService
 @inject IJSRuntime JS
+@inject DeviceLayoutService DeviceLayout
 
 <MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
 <MudPopoverProvider />
@@ -70,11 +71,11 @@
 
                 @* Dark mode toggle — desktop only; avatar sheet handles it on mobile *@
                 <div class="d-none d-md-flex">
-                    <MudTooltip Text="Alternar modo claro/oscuro">
+                    <ResponsiveTooltip Text="Alternar modo claro/oscuro">
                         <MudIconButton Icon="@(LayoutService.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                                        Color="Color.Inherit"
                                        OnClick="@LayoutService.ToggleDarkModeAsync" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                 </div>
 
                 @* NOTIFICATIONS — desktop: dropdown menu *@
@@ -501,11 +502,15 @@
     protected override async Task OnInitializedAsync()
     {
         await LayoutService.InitializeAsync();
+        await DeviceLayout.InitializeAsync();
+        DeviceLayout.OnChanged += HandleDeviceLayoutChanged;
         await LoadCurrentUserAsync();
         await LoadUnreadCountAsync();
         _demoInfo = await DemoInfoService.GetAsync();
         StartNotificationPolling();
     }
+
+    private void HandleDeviceLayoutChanged() => InvokeAsync(StateHasChanged);
 
     private static string FormatNextReset(DateTimeOffset next)
     {
@@ -563,6 +568,7 @@
         ApiErrorNotifier.OnError -= HandleApiError;
         PwaUpdateService.OnUpdateAvailable -= HandlePwaUpdateAvailable;
         PwaInstallService.OnInstallAvailabilityChanged -= HandlePwaInstallAvailabilityChanged;
+        DeviceLayout.OnChanged -= HandleDeviceLayoutChanged;
     }
 
     private UserDto? _currentUser;

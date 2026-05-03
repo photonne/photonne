@@ -8,13 +8,13 @@
     <div class="d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h5">Notificaciones</MudText>
         <MudHidden Breakpoint="Breakpoint.SmAndUp">
-            <MudTooltip Text="Marcar todas como leídas">
+            <ResponsiveTooltip Text="Marcar todas como leídas">
                 <MudIconButton Icon="@Icons.Material.Outlined.DoneAll"
                                Variant="Variant.Outlined"
                                Size="Size.Small"
                                OnClick="MarkAllRead"
                                Disabled="@(_pagedResult == null || _pagedResult.UnreadCount == 0 || _loading)" />
-            </MudTooltip>
+            </ResponsiveTooltip>
         </MudHidden>
         <MudHidden Breakpoint="Breakpoint.Xs">
             <MudButton Variant="Variant.Outlined"

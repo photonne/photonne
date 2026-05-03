@@ -73,11 +73,11 @@ else if (_content.Album != null)
             @if (_content.AllowDownload && assets.Any())
             {
                 <div class="share-album-hero-actions">
-                    <MudTooltip Text="Descargar todo">
+                    <ResponsiveTooltip Text="Descargar todo">
                         <MudIconButton Icon="@Icons.Material.Outlined.Download"
                                        Color="Color.Inherit"
                                        OnClick="DownloadAll" />
-                    </MudTooltip>
+                    </ResponsiveTooltip>
                 </div>
             }
 

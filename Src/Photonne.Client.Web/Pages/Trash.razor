@@ -374,15 +374,15 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Edge="Edge.Start" OnClick="ExitSelectionFromNavbar" />
                 <MudText Typo="Typo.h6" Class="ml-2">@($"{selectedCount} seleccionadas")</MudText>
                 <MudSpacer />
-                <MudTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
+                <ResponsiveTooltip Text="@(allSelected ? "Deseleccionar todo" : "Seleccionar todo")">
                     <MudIconButton Icon="@Icons.Material.Filled.SelectAll" Color="Color.Inherit" Disabled="@(!_assets.Any())" OnClick="ToggleSelectAll" />
-                </MudTooltip>
-                <MudTooltip Text="Restaurar">
+                </ResponsiveTooltip>
+                <ResponsiveTooltip Text="Restaurar">
                     <MudIconButton Icon="@Icons.Material.Filled.Restore" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="RestoreSelectedAsync" />
-                </MudTooltip>
-                <MudTooltip Text="Eliminar permanentemente">
+                </ResponsiveTooltip>
+                <ResponsiveTooltip Text="Eliminar permanentemente">
                     <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Inherit" Disabled="@(!_selectedAssetIds.Any())" OnClick="OpenPurgeSelectedDialog" />
-                </MudTooltip>
+                </ResponsiveTooltip>
             </text>
         , keepDrawerVisible: true);
     }
