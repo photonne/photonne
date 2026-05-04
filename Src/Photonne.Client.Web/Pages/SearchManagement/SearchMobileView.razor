@@ -1,5 +1,5 @@
 <div class="ph-search-bar">
-    <div class="d-flex align-center gap-2">
+    <div class="ph-search-bar__row d-flex align-center gap-2">
         <MudTextField @bind-Value="_localSearchTerm"
                       @bind-Value:after="OnSearchInput"
                       Placeholder="Buscar fotos, vídeos..."
@@ -8,7 +8,7 @@
                       Variant="Variant.Outlined"
                       Margin="Margin.Dense"
                       Immediate="true"
-                      DebounceInterval="300"
+                      DebounceInterval="600"
                       Clearable="true"
                       Class="flex-grow-1" />
         <MudBadge Content="@ActiveFilterCount" Visible="@(ActiveFilterCount > 0)"
@@ -18,9 +18,15 @@
                            OnClick="@(() => OnToggleFilters.InvokeAsync())" />
         </MudBadge>
     </div>
+
+    @* Rail de chips (sugerencias, filtros activos, "+ Filtrar", "Búsqueda
+       inteligente") inyectado desde Search.razor. Forma parte de la cabecera
+       fija para que no desaparezca al hacer scroll. *@
+    @RailContent
+
     @if (FiltersExpanded)
     {
-        <div class="d-flex flex-column gap-2 pt-2 pb-1">
+        <div class="ph-search-bar__filters d-flex flex-column gap-2">
             <MudDatePicker Label="Desde" Date="FromDate" DateChanged="OnFromDateChanged"
                            Variant="Variant.Outlined" Margin="Margin.Dense"
                            MaxDate="ToDate" Clearable="true" />
@@ -36,7 +42,7 @@
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
                           Immediate="true"
-                          DebounceInterval="400"
+                          DebounceInterval="600"
                           Clearable="true" />
         </div>
     }
@@ -135,6 +141,7 @@
     [Parameter] public EventCallback<(Guid id, bool selected)> OnToggleSelection { get; set; }
     [Parameter] public EventCallback<(TouchEventArgs e, TimelineItem asset)> OnAssetTouchStart { get; set; }
     [Parameter] public EventCallback<TimelineItem> OnOpenAsset { get; set; }
+    [Parameter] public RenderFragment? RailContent { get; set; }
 
     private string _localSearchTerm = string.Empty;
     private string _localFolderFilter = string.Empty;

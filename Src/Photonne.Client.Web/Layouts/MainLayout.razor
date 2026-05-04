@@ -40,7 +40,7 @@
                     <MudTextField @bind-Value="_searchQuery"
                                   @bind-Value:after="@(() => OnSearchQueryChanged(_searchQuery))"
                                   Immediate="true"
-                                  DebounceInterval="250"
+                                  DebounceInterval="600"
                                   Placeholder="Buscar fotos, vídeos..."
                                   Variant="Variant.Text"
                                   Margin="Margin.Dense"

@@ -1,3 +1,5 @@
+@RailContent
+
 <div class="page-pad">
 
     <div class="search-filters mb-4" style="gap:12px; flex-wrap:wrap; align-items:flex-end;">
@@ -111,6 +113,7 @@
     [Parameter] public EventCallback<(Guid id, bool selected)> OnToggleSelection { get; set; }
     [Parameter] public EventCallback<(TouchEventArgs e, TimelineItem asset)> OnAssetTouchStart { get; set; }
     [Parameter] public EventCallback<TimelineItem> OnOpenAsset { get; set; }
+    [Parameter] public RenderFragment? RailContent { get; set; }
 
     private string _localFolderFilter = string.Empty;
 

@@ -15,109 +15,6 @@
 
 <PageTitle>Buscar - Photonne</PageTitle>
 
-@* Single horizontal-scroll rail. Mobile-first: collapses sugerencias +
-   personas + objetos into one row regardless of how many filters are
-   active. Order: suggestion chips (when typing) → people chips → object
-   chips → "+ Filtrar" entry point. *@
-<div class="ph-search-rail">
-    @if (HasTermSuggestions)
-    {
-        @foreach (var person in _suggestedPeople)
-        {
-            <MudChip T="string"
-                     Size="Size.Small"
-                     Color="Color.Primary"
-                     Variant="Variant.Outlined"
-                     Icon="@Icons.Material.Outlined.Person"
-                     OnClick="@(() => ApplyPersonSuggestion(person.Id))">
-                @(string.IsNullOrWhiteSpace(person.Name) ? "Sin nombre" : person.Name)
-            </MudChip>
-        }
-        @foreach (var label in _suggestedLabels)
-        {
-            <MudChip T="string"
-                     Size="Size.Small"
-                     Color="Color.Secondary"
-                     Variant="Variant.Outlined"
-                     Icon="@Icons.Material.Outlined.Category"
-                     OnClick="@(() => ApplyObjectSuggestion(label.Label))">
-                @Capitalize(label.Label) <span class="ph-rail__count">@label.AssetCount</span>
-            </MudChip>
-        }
-        @foreach (var scene in _suggestedScenes)
-        {
-            <MudChip T="string"
-                     Size="Size.Small"
-                     Color="Color.Tertiary"
-                     Variant="Variant.Outlined"
-                     Icon="@Icons.Material.Outlined.Landscape"
-                     OnClick="@(() => ApplySceneSuggestion(scene.Label))">
-                @Capitalize(scene.Label) <span class="ph-rail__count">@scene.AssetCount</span>
-            </MudChip>
-        }
-        @if (_personFilters.Count > 0 || _objectLabels.Count > 0 || _sceneLabels.Count > 0)
-        {
-            <span class="ph-rail__divider" aria-hidden="true"></span>
-        }
-    }
-
-    @foreach (var p in _personFilters)
-    {
-        <MudChip T="Guid"
-                 Value="@p.Id"
-                 Size="Size.Small"
-                 Color="Color.Primary"
-                 Icon="@Icons.Material.Filled.Person"
-                 OnClose="@(() => RemovePersonFilter(p.Id))">
-            @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
-        </MudChip>
-    }
-    @foreach (var label in _objectLabels)
-    {
-        <MudChip T="string"
-                 Value="@label"
-                 Size="Size.Small"
-                 Color="Color.Secondary"
-                 Icon="@Icons.Material.Filled.Category"
-                 OnClose="@(() => RemoveObjectLabel(label))">
-            @Capitalize(label)
-        </MudChip>
-    }
-    @foreach (var label in _sceneLabels)
-    {
-        <MudChip T="string"
-                 Value="@label"
-                 Size="Size.Small"
-                 Color="Color.Tertiary"
-                 Icon="@Icons.Material.Filled.Landscape"
-                 OnClose="@(() => RemoveSceneLabel(label))">
-            @Capitalize(label)
-        </MudChip>
-    }
-
-    <MudChip T="string"
-             Size="Size.Small"
-             Variant="Variant.Outlined"
-             Icon="@Icons.Material.Filled.Add"
-             OnClick="OpenFilterPicker">
-        Filtrar
-    </MudChip>
-
-    @* Semantic-search toggle: when on, the free-text term is sent to
-       /api/assets/search/semantic (CLIP) instead of the keyword endpoint.
-       Useful for natural-language queries in any language ("día de playa
-       con bañador rojo"). The other filter chips are ignored in that
-       mode — semantic search is whole-image, not faceted. *@
-    <MudChip T="string"
-             Size="Size.Small"
-             Variant="@(_semanticMode ? Variant.Filled : Variant.Outlined)"
-             Color="@(_semanticMode ? Color.Info : Color.Default)"
-             Icon="@Icons.Material.Filled.AutoAwesome"
-             OnClick="ToggleSemanticMode">
-        Búsqueda inteligente
-    </MudChip>
-</div>
-
 @* Unified filter picker — one search field, two result sections (Personas
    and Objetos). Replaces the previous people-only and objects-only sheets. *@
 @if (_filterPickerOpen)
@@ -234,7 +131,8 @@
                       SelectedAssetIds="_selectedAssetIds"
                       OnToggleSelection="ToggleAssetSelection"
                       OnAssetTouchStart="OnCardTouchStart"
-                      OnOpenAsset="OpenAsset" />
+                      OnOpenAsset="OpenAsset"
+                      RailContent="@RenderRail()" />
 }
 else
 {
@@ -253,7 +151,8 @@ else
                        SelectedAssetIds="_selectedAssetIds"
                        OnToggleSelection="ToggleAssetSelection"
                        OnAssetTouchStart="OnCardTouchStart"
-                       OnOpenAsset="OpenAsset" />
+                       OnOpenAsset="OpenAsset"
+                       RailContent="@RenderRail()" />
 }
 
 <MudDialog @bind-Visible="_addToAlbumDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
@@ -1406,4 +1305,109 @@ else
         if (string.IsNullOrEmpty(label)) return label;
         return char.ToUpperInvariant(label[0]) + label[1..];
     }
+
+    @* Rail horizontal de chips. Se inyecta como RenderFragment dentro de
+       SearchMobileView (cabecera fija) y SearchDesktopView (parte superior
+       de la página). Mobile-first: una sola fila con scroll horizontal —
+       sugerencias mientras escribes, divisor, filtros activos, "+ Filtrar"
+       y "Búsqueda inteligente". *@
+    private RenderFragment RenderRail() => @<text>
+        <div class="ph-search-rail">
+            @if (HasTermSuggestions)
+            {
+                @foreach (var person in _suggestedPeople)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Primary"
+                             Variant="Variant.Outlined"
+                             Icon="@Icons.Material.Outlined.Person"
+                             OnClick="@(() => ApplyPersonSuggestion(person.Id))">
+                        @(string.IsNullOrWhiteSpace(person.Name) ? "Sin nombre" : person.Name)
+                    </MudChip>
+                }
+                @foreach (var label in _suggestedLabels)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Secondary"
+                             Variant="Variant.Outlined"
+                             Icon="@Icons.Material.Outlined.Category"
+                             OnClick="@(() => ApplyObjectSuggestion(label.Label))">
+                        @Capitalize(label.Label) <span class="ph-rail__count">@label.AssetCount</span>
+                    </MudChip>
+                }
+                @foreach (var scene in _suggestedScenes)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Tertiary"
+                             Variant="Variant.Outlined"
+                             Icon="@Icons.Material.Outlined.Landscape"
+                             OnClick="@(() => ApplySceneSuggestion(scene.Label))">
+                        @Capitalize(scene.Label) <span class="ph-rail__count">@scene.AssetCount</span>
+                    </MudChip>
+                }
+                @if (_personFilters.Count > 0 || _objectLabels.Count > 0 || _sceneLabels.Count > 0)
+                {
+                    <span class="ph-rail__divider" aria-hidden="true"></span>
+                }
+            }
+
+            @foreach (var p in _personFilters)
+            {
+                <MudChip T="Guid"
+                         Value="@p.Id"
+                         Size="Size.Small"
+                         Color="Color.Primary"
+                         Icon="@Icons.Material.Filled.Person"
+                         OnClose="@(() => RemovePersonFilter(p.Id))">
+                    @(string.IsNullOrWhiteSpace(p.Name) ? "Sin nombre" : p.Name)
+                </MudChip>
+            }
+            @foreach (var label in _objectLabels)
+            {
+                <MudChip T="string"
+                         Value="@label"
+                         Size="Size.Small"
+                         Color="Color.Secondary"
+                         Icon="@Icons.Material.Filled.Category"
+                         OnClose="@(() => RemoveObjectLabel(label))">
+                    @Capitalize(label)
+                </MudChip>
+            }
+            @foreach (var label in _sceneLabels)
+            {
+                <MudChip T="string"
+                         Value="@label"
+                         Size="Size.Small"
+                         Color="Color.Tertiary"
+                         Icon="@Icons.Material.Filled.Landscape"
+                         OnClose="@(() => RemoveSceneLabel(label))">
+                    @Capitalize(label)
+                </MudChip>
+            }
+
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Filled.Add"
+                     OnClick="OpenFilterPicker">
+                Filtrar
+            </MudChip>
+
+            @* Cuando está activo, el término libre va al endpoint semántico
+               (CLIP) en vez del de keyword. Los demás filtros se ignoran
+               server-side en ese modo — la búsqueda semántica es de imagen
+               completa, no facetada. *@
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="@(_semanticMode ? Variant.Filled : Variant.Outlined)"
+                     Color="@(_semanticMode ? Color.Info : Color.Default)"
+                     Icon="@Icons.Material.Filled.AutoAwesome"
+                     OnClick="ToggleSemanticMode">
+                Búsqueda inteligente
+            </MudChip>
+        </div>
+    </text>;
 }
