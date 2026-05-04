@@ -46,10 +46,27 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent>
-                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-0">
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
                             Los archivos multimedia (fotos y vídeos) no se incluyen en la copia de seguridad.
                             Debes gestionarlos por separado.
                         </MudAlert>
+
+                        <MudRadioGroup T="bool" Value="_includeMl" ValueChanged="OnIncludeMlChanged">
+                            <MudRadio T="bool" Value="false" Color="Color.Primary" Dense="true">
+                                <strong>Esencial</strong>
+                                <MudText Typo="Typo.caption" Class="d-block mud-text-secondary" Style="margin-left: 0;">
+                                    Usuarios, álbumes, carpetas, assets, EXIF, miniaturas, tags, permisos, tokens y notificaciones.
+                                    Más rápido y ligero. Los procesos de ML se reprocesarán al restaurar.
+                                </MudText>
+                            </MudRadio>
+                            <MudRadio T="bool" Value="true" Color="Color.Primary" Dense="true" Class="mt-2">
+                                <strong>Completo (con ML)</strong>
+                                <MudText Typo="Typo.caption" Class="d-block mud-text-secondary" Style="margin-left: 0;">
+                                    Incluye además caras, personas, embeddings CLIP, OCR, objetos y escenas.
+                                    Archivo notablemente mayor.
+                                </MudText>
+                            </MudRadio>
+                        </MudRadioGroup>
                     </MudCardContent>
                     <MudCardActions Class="px-4 pb-4">
                         <MudButton
@@ -65,7 +82,7 @@
                             }
                             else
                             {
-                                <span>Descargar copia</span>
+                                <span>@(_includeMl ? "Descargar copia completa" : "Descargar copia esencial")</span>
                             }
                         </MudButton>
                     </MudCardActions>
@@ -127,6 +144,15 @@
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary">
                                         @_filePreview.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         &nbsp;·&nbsp; v@_filePreview.Version
+                                        &nbsp;·&nbsp;
+                                        @if (_filePreview.IncludesMlData)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Completo (con ML)</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Esencial</MudChip>
+                                        }
                                     </MudText>
                                     <ul class="mt-1 mb-0" style="padding-left:1.2rem; font-size: 0.8rem">
                                         <li>Usuarios: <strong>@_filePreview.Users</strong></li>
@@ -134,7 +160,21 @@
                                         <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
                                         <li>Carpetas: <strong>@_filePreview.Folders</strong></li>
                                         <li>Bibliotecas externas: <strong>@_filePreview.ExternalLibraries</strong></li>
+                                        @if (_filePreview.IncludesMlData)
+                                        {
+                                            <li>Personas: <strong>@_filePreview.People</strong></li>
+                                            <li>Caras: <strong>@_filePreview.Faces</strong></li>
+                                            <li>Embeddings CLIP: <strong>@_filePreview.Embeddings</strong></li>
+                                            <li>Líneas OCR: <strong>@_filePreview.OcrLines</strong></li>
+                                        }
                                     </ul>
+                                    @if (!_filePreview.IncludesMlData)
+                                    {
+                                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                                            Esta copia es <strong>esencial</strong>: el procesamiento de ML
+                                            (caras, OCR, escenas, objetos, embeddings) se ejecutará de nuevo tras restaurar.
+                                        </MudAlert>
+                                    }
                                 </MudPaper>
                             }
                             else if (_previewError)
@@ -189,7 +229,21 @@
                                 <li>Álbumes: <strong>@_restoreResult.Stats.Albums</strong></li>
                                 <li>Carpetas: <strong>@_restoreResult.Stats.Folders</strong></li>
                                 <li>Bibliotecas externas: <strong>@_restoreResult.Stats.ExternalLibraries</strong></li>
+                                @if (_restoreResult.Stats.IncludesMlData)
+                                {
+                                    <li>Personas: <strong>@_restoreResult.Stats.People</strong></li>
+                                    <li>Caras: <strong>@_restoreResult.Stats.Faces</strong></li>
+                                    <li>Embeddings CLIP: <strong>@_restoreResult.Stats.Embeddings</strong></li>
+                                    <li>Líneas OCR: <strong>@_restoreResult.Stats.OcrLines</strong></li>
+                                }
                             </ul>
+                            @if (!_restoreResult.Stats.IncludesMlData)
+                            {
+                                <MudText Typo="Typo.caption" Class="d-block mt-2">
+                                    Backup esencial: los procesos de ML se reejecutarán para regenerar caras,
+                                    embeddings, OCR, escenas y objetos.
+                                </MudText>
+                            }
                         }
                     </MudAlert>
                 </MudItem>
@@ -219,7 +273,20 @@
                 <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
                 <li>Carpetas: <strong>@_filePreview.Folders</strong></li>
                 <li>Bibliotecas externas: <strong>@_filePreview.ExternalLibraries</strong></li>
+                @if (_filePreview.IncludesMlData)
+                {
+                    <li>Personas: <strong>@_filePreview.People</strong></li>
+                    <li>Caras: <strong>@_filePreview.Faces</strong></li>
+                    <li>Embeddings CLIP: <strong>@_filePreview.Embeddings</strong></li>
+                    <li>Líneas OCR: <strong>@_filePreview.OcrLines</strong></li>
+                }
             </ul>
+            @if (!_filePreview.IncludesMlData)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                    Backup <strong>esencial</strong>: tras la restauración los datos de ML se borrarán y se reprocesarán.
+                </MudAlert>
+            }
         }
         <MudText Class="mt-3" Color="Color.Error">
             Esta acción no se puede deshacer. ¿Estás seguro de que deseas continuar?
@@ -237,7 +304,19 @@
 </MudDialog>
 
 @code {
-    private record BackupFilePreview(string Version, DateTime CreatedAt, int Users, int Assets, int Albums, int Folders, int ExternalLibraries);
+    private record BackupFilePreview(
+        string Version,
+        DateTime CreatedAt,
+        bool IncludesMlData,
+        int Users,
+        int Assets,
+        int Albums,
+        int Folders,
+        int ExternalLibraries,
+        int People,
+        int Faces,
+        int Embeddings,
+        int OcrLines);
 
     private MudFileUpload<IBrowserFile>? _fileUpload;
 
@@ -248,9 +327,12 @@
     private bool _previewLoading = false;
     private bool _previewError   = false;
     private bool _confirmDialogOpen = false;
+    private bool _includeMl     = false;
     private IBrowserFile?      _selectedFile;
     private BackupFilePreview? _filePreview;
     private DatabaseRestoreResult? _restoreResult;
+
+    private void OnIncludeMlChanged(bool value) => _includeMl = value;
 
     protected override async Task OnInitializedAsync()
     {
@@ -283,14 +365,26 @@
             using var doc = await JsonDocument.ParseAsync(stream);
             var root = doc.RootElement;
 
+            // v1.0 backup files predate the IncludesMlData flag and have no ML
+            // arrays, so default to false in that case.
+            var version = root.TryGetProperty("version", out var v) ? v.GetString() ?? "?" : "?";
+            var includesMl = version != "1.0"
+                && root.TryGetProperty("includesMlData", out var im)
+                && im.ValueKind == JsonValueKind.True;
+
             _filePreview = new BackupFilePreview(
-                Version:           root.TryGetProperty("version",           out var v)  ? v.GetString() ?? "?" : "?",
-                CreatedAt:         root.TryGetProperty("createdAt",         out var ca) ? ca.GetDateTime()      : DateTime.MinValue,
-                Users:             root.TryGetProperty("users",             out var u)  ? u.GetArrayLength()    : 0,
-                Assets:            root.TryGetProperty("assets",            out var a)  ? a.GetArrayLength()    : 0,
-                Albums:            root.TryGetProperty("albums",            out var al) ? al.GetArrayLength()   : 0,
-                Folders:           root.TryGetProperty("folders",           out var f)  ? f.GetArrayLength()    : 0,
-                ExternalLibraries: root.TryGetProperty("externalLibraries", out var el) ? el.GetArrayLength()   : 0
+                Version:           version,
+                CreatedAt:         root.TryGetProperty("createdAt",                out var ca)  ? ca.GetDateTime()    : DateTime.MinValue,
+                IncludesMlData:    includesMl,
+                Users:             root.TryGetProperty("users",                    out var u)   ? u.GetArrayLength()  : 0,
+                Assets:            root.TryGetProperty("assets",                   out var a)   ? a.GetArrayLength()  : 0,
+                Albums:            root.TryGetProperty("albums",                   out var al)  ? al.GetArrayLength() : 0,
+                Folders:           root.TryGetProperty("folders",                  out var f)   ? f.GetArrayLength()  : 0,
+                ExternalLibraries: root.TryGetProperty("externalLibraries",        out var el)  ? el.GetArrayLength() : 0,
+                People:            root.TryGetProperty("people",                   out var pp)  ? pp.GetArrayLength() : 0,
+                Faces:             root.TryGetProperty("faces",                    out var fc)  ? fc.GetArrayLength() : 0,
+                Embeddings:        root.TryGetProperty("assetEmbeddings",          out var em)  ? em.GetArrayLength() : 0,
+                OcrLines:          root.TryGetProperty("assetRecognizedTextLines", out var ocr) ? ocr.GetArrayLength(): 0
             );
         }
         catch
@@ -324,7 +418,7 @@
         _exportLoading = true;
         try
         {
-            var backup = await BackupService.ExportAsync();
+            var backup = await BackupService.ExportAsync(_includeMl);
             await JS.InvokeVoidAsync("downloadFileFromBytes", backup.FileName, "application/json", backup.Bytes);
             Snackbar.Add("Copia de seguridad descargada correctamente.", Severity.Success);
         }

@@ -23,11 +23,12 @@ public class DatabaseBackupService : IDatabaseBackupService
             : null;
     }
 
-    public async Task<BackupFileResult> ExportAsync()
+    public async Task<BackupFileResult> ExportAsync(bool includeMl)
     {
         await SetAuthHeaderAsync();
 
-        var response = await _httpClient.GetAsync("/api/admin/database/backup");
+        var url      = $"/api/admin/database/backup?includeMl={(includeMl ? "true" : "false")}";
+        var response = await _httpClient.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
         var bytes    = await response.Content.ReadAsByteArrayAsync();
@@ -68,12 +69,24 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         var result = await response.Content.ReadFromJsonAsync<RestoreApiResponse>();
         var stats  = result?.Stats is { } s
-            ? new DatabaseRestoreStats(s.Users, s.Assets, s.Albums, s.Folders, s.ExternalLibraries)
+            ? new DatabaseRestoreStats(
+                s.Users, s.Assets, s.Albums, s.Folders, s.ExternalLibraries,
+                s.People, s.Faces, s.Embeddings, s.OcrLines, s.IncludesMlData)
             : null;
 
         return new DatabaseRestoreResult(true, result?.Message ?? "Restauración completada.", stats);
     }
 
     private record RestoreApiResponse(string Message, RestoreApiStats? Stats);
-    private record RestoreApiStats(int Users, int Assets, int Albums, int Folders, int ExternalLibraries);
+    private record RestoreApiStats(
+        int Users,
+        int Assets,
+        int Albums,
+        int Folders,
+        int ExternalLibraries,
+        int People,
+        int Faces,
+        int Embeddings,
+        int OcrLines,
+        bool IncludesMlData);
 }

@@ -11,7 +11,7 @@ public class DatabaseBackupEndpoint : IEndpoint
     {
         PropertyNamingPolicy    = JsonNamingPolicy.CamelCase,
         WriteIndented           = true,
-        Converters              = { new JsonStringEnumConverter() },
+        Converters              = { new JsonStringEnumConverter(), new VectorJsonConverter() },
         DefaultIgnoreCondition  = JsonIgnoreCondition.WhenWritingNull,
         ReferenceHandler        = ReferenceHandler.IgnoreCycles
     };
@@ -24,7 +24,7 @@ public class DatabaseBackupEndpoint : IEndpoint
 
         group.MapGet("backup", ExportBackup)
             .WithName("ExportDatabaseBackup")
-            .WithDescription("Exports the full database as a JSON backup file");
+            .WithDescription("Exports the full database as a JSON backup file. Pass ?includeMl=false to skip ML output (faces, embeddings, OCR, scenes, objects).");
 
         group.MapPost("restore", RestoreBackup)
             .WithName("RestoreDatabaseBackup")
@@ -36,11 +36,13 @@ public class DatabaseBackupEndpoint : IEndpoint
 
     private static async Task<IResult> ExportBackup(
         [FromServices] DatabaseBackupService backupService,
+        [FromQuery] bool includeMl,
         CancellationToken ct)
     {
-        var document = await backupService.ExportAsync(ct);
+        var document = await backupService.ExportAsync(includeMl, ct);
         var json     = JsonSerializer.SerializeToUtf8Bytes(document, JsonOptions);
-        var fileName = $"photonne_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+        var suffix   = includeMl ? "full" : "essential";
+        var fileName = $"photonne_backup_{suffix}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
 
         return Results.File(json, "application/json", fileName);
     }
@@ -81,7 +83,12 @@ public class DatabaseBackupEndpoint : IEndpoint
                 assets            = document.Assets.Count,
                 albums            = document.Albums.Count,
                 folders           = document.Folders.Count,
-                externalLibraries = document.ExternalLibraries.Count
+                externalLibraries = document.ExternalLibraries.Count,
+                people            = document.People.Count,
+                faces             = document.Faces.Count,
+                embeddings        = document.AssetEmbeddings.Count,
+                ocrLines          = document.AssetRecognizedTextLines.Count,
+                includesMlData    = document.IncludesMlData && document.Version != "1.0",
             }
         });
     }
