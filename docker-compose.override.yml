@@ -16,6 +16,8 @@ services:
   photonne-ml:
     build:
       context: ./Src/Photonne.MlService
+      args:
+        STRICT_CLIP_BAKE: "1"
     pull_policy: build
 
   postgresql:

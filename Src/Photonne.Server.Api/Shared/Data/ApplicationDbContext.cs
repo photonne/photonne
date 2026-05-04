@@ -59,6 +59,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AssetDetectedObject> AssetDetectedObjects { get; set; }
     public DbSet<AssetClassifiedScene> AssetClassifiedScenes { get; set; }
     public DbSet<AssetRecognizedTextLine> AssetRecognizedTextLines { get; set; }
+    public DbSet<AssetEmbedding> AssetEmbeddings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -553,6 +554,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TextRecognitionCompletedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasConversion(NullableUtcConverter);
+            entity.Property(e => e.ImageEmbeddingCompletedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(NullableUtcConverter);
         });
 
         // Configure AssetDetectedObject entity (detected object with bbox + class).
@@ -590,6 +594,23 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.AssetId);
             entity.HasIndex(e => e.Label);
             entity.HasIndex(e => new { e.AssetId, e.Label });
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure AssetEmbedding entity. One row per Asset; AssetId is both PK and FK.
+        // The HNSW vector index for similarity search is created in the migration
+        // directly — EF Core can't model pgvector's HNSW operator-class indexes.
+        modelBuilder.Entity<AssetEmbedding>(entity =>
+        {
+            entity.HasKey(e => e.AssetId);
+            entity.Property(e => e.Embedding).HasColumnType("vector(512)");
+            entity.Property(e => e.ModelVersion).IsRequired().HasMaxLength(64);
+
+            entity.HasOne(e => e.Asset)
+                .WithOne(a => a.Embedding)
+                .HasForeignKey<AssetEmbedding>(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 

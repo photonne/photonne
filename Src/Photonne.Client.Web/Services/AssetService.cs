@@ -393,6 +393,15 @@ public class AssetService : IAssetService
         return (response?.Items ?? new(), response?.HasMore ?? false);
     }
 
+    public async Task<List<TimelineItem>> SemanticSearchAsync(string query, int limit = 50, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return new();
+        await SetAuthHeaderAsync();
+        var url = $"/api/assets/search/semantic?q={Uri.EscapeDataString(query)}&limit={limit}";
+        var response = await _httpClient.GetFromJsonAsync<SemanticSearchResult>(url, ct);
+        return response?.Items.Select(i => i.Asset).ToList() ?? new();
+    }
+
     public async Task<List<TimelineItem>> GetMemoriesAsync(bool test = false)
     {
         try

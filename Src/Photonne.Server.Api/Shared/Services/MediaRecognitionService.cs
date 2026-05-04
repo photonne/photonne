@@ -128,6 +128,7 @@ public class MediaRecognitionService
         MlJobType.ObjectDetection,
         MlJobType.SceneClassification,
         MlJobType.TextRecognition,
+        MlJobType.ImageEmbedding,
     };
 
     /// <summary>
@@ -147,6 +148,7 @@ public class MediaRecognitionService
         if (asset.ObjectDetectionCompletedAt == null) missing.Add(MlJobType.ObjectDetection);
         if (asset.SceneClassificationCompletedAt == null) missing.Add(MlJobType.SceneClassification);
         if (asset.TextRecognitionCompletedAt == null) missing.Add(MlJobType.TextRecognition);
+        if (asset.ImageEmbeddingCompletedAt == null) missing.Add(MlJobType.ImageEmbedding);
         return missing;
     }
 
@@ -160,6 +162,7 @@ public class MediaRecognitionService
         MlJobType.ObjectDetection => a => a.ObjectDetectionCompletedAt == null,
         MlJobType.SceneClassification => a => a.SceneClassificationCompletedAt == null,
         MlJobType.TextRecognition => a => a.TextRecognitionCompletedAt == null,
+        MlJobType.ImageEmbedding => a => a.ImageEmbeddingCompletedAt == null,
         _ => throw new ArgumentOutOfRangeException(nameof(jobType), jobType, null),
     };
 }

@@ -25,7 +25,10 @@ RUN pip install \
         onnx==1.16.2 \
         onnxslim==0.1.34 \
         onnxscript==0.1.0 \
-        onnxruntime==1.19.2
+        onnxruntime==1.19.2 \
+        transformers==4.45.2 \
+        sentence-transformers==3.1.1 \
+        tokenizers==0.20.0
 
 WORKDIR /export
 RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', dynamic=False, simplify=True, opset=12)"
@@ -42,6 +45,28 @@ COPY scripts/export_scene.py /export/export_scene.py
 # pointed at a working file or one is mounted at /app/models/scene_classifier.onnx.
 RUN python /export/export_scene.py || echo "[build] WARNING: scene_classifier.onnx export failed; runtime endpoint will be unavailable"
 
+# M-CLIP (ViT-B/32 multilingual) export. Same pattern as the scene classifier:
+# tolerant of network failures so the image build still succeeds; the runtime
+# returns 503 on /v1/embeddings/* until the operator drops models manually.
+COPY scripts/export_clip.py /export/export_clip.py
+RUN python /export/export_clip.py || echo "[build] WARNING: clip export failed; semantic search endpoint will be unavailable"
+
+# Visibility checkpoint — the wildcard COPYs in stage 2 silently swallow a
+# missing file, so without this echo the operator only finds out at runtime.
+# Logged here so any `docker build` shows the bake status before the build
+# layers are sealed. STRICT_CLIP_BAKE=1 (build arg) flips the warning into a
+# hard failure for CI: any image you push to a registry should always have
+# CLIP baked in.
+ARG STRICT_CLIP_BAKE=0
+RUN echo "[build] /export bake status:" \
+    && ls -la /export/yolov8n.onnx /export/scene_classifier.onnx /export/clip_image.onnx /export/clip_text.onnx /export/clip_tokenizer.json 2>&1 || true \
+    && for f in clip_image.onnx clip_text.onnx clip_tokenizer.json; do \
+         if [ ! -s "/export/$f" ]; then \
+           echo "[build] WARNING: /export/$f is missing or empty"; \
+           if [ "$STRICT_CLIP_BAKE" = "1" ]; then echo "[build] STRICT_CLIP_BAKE=1, failing build"; exit 1; fi; \
+         fi; \
+       done
+
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -51,6 +76,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     INSIGHTFACE_HOME=/app/models \
     OBJECT_MODEL_PATH=/app/models/yolov8n.onnx \
     SCENE_MODEL_PATH=/app/models/scene_classifier.onnx \
+    EMBEDDING_IMAGE_MODEL_PATH=/app/models/clip_image.onnx \
+    EMBEDDING_TEXT_MODEL_PATH=/app/models/clip_text.onnx \
+    EMBEDDING_TEXT_TOKENIZER_PATH=/app/models/clip_tokenizer.json \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
@@ -81,6 +109,11 @@ COPY --from=yolo-export /export/yolov8n.onnx /opt/ml-models/yolov8n.onnx
 # silently no-ops when the export step in stage 1 was unable to fetch the
 # upstream weights — letting the rest of the runtime image build cleanly.
 COPY --from=yolo-export /export/scene_classifier.onn[x] /opt/ml-models/scene_classifier.onnx
+# M-CLIP image + text encoders and tokenizer. Wildcards keep the build green
+# if export_clip.py failed (e.g. HuggingFace unreachable from the build host).
+COPY --from=yolo-export /export/clip_image.onn[x] /opt/ml-models/clip_image.onnx
+COPY --from=yolo-export /export/clip_text.onn[x] /opt/ml-models/clip_text.onnx
+COPY --from=yolo-export /export/clip_tokenizer.jso[n] /opt/ml-models/clip_tokenizer.json
 
 COPY app /app/app
 COPY entrypoint.sh /usr/local/bin/photonne-ml-entrypoint.sh

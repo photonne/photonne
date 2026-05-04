@@ -7,7 +7,8 @@ public enum MlJobType
     FaceRecognition,
     ObjectDetection,
     SceneClassification,
-    TextRecognition
+    TextRecognition,
+    ImageEmbedding
 }
 
 public enum MlJobStatus

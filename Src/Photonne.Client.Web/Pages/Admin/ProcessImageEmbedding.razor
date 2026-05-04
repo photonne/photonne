@@ -1,0 +1,51 @@
+@page "/admin/tasks/image-embedding"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Búsqueda inteligente (CLIP) - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Búsqueda inteligente (CLIP)</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Genera embeddings multimodales con M-CLIP (ViT-B/32 multilingüe) para que la búsqueda libre
+            funcione en cualquier idioma con consultas naturales como «día de playa con bañador rojo».
+            Necesario sobre la librería existente; las fotos nuevas se procesan automáticamente al subirlas.
+        </MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MlBackfillCard Title="Procesar fotos pendientes"
+                                Description="Encola jobs de embedding (CLIP) para fotos sin vector. Reencola también las fotos cuya versión de modelo difiera de la activa."
+                                EndpointKey="image-embedding" />
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+}

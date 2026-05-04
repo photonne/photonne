@@ -27,6 +27,7 @@ public class MlJobQueue
     private readonly Channel<Guid> _objectDetection = Channel.CreateUnbounded<Guid>();
     private readonly Channel<Guid> _sceneClassification = Channel.CreateUnbounded<Guid>();
     private readonly Channel<Guid> _textRecognition = Channel.CreateUnbounded<Guid>();
+    private readonly Channel<Guid> _imageEmbedding = Channel.CreateUnbounded<Guid>();
 
     /// <summary>Push a job id into the channel for its type. The processor's
     /// per-type workers will pick it up. Safe to call from any thread.</summary>
@@ -43,6 +44,7 @@ public class MlJobQueue
         MlJobType.ObjectDetection     => _objectDetection,
         MlJobType.SceneClassification => _sceneClassification,
         MlJobType.TextRecognition     => _textRecognition,
+        MlJobType.ImageEmbedding      => _imageEmbedding,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown ML job type"),
     };
 }

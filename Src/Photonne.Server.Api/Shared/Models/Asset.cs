@@ -98,5 +98,11 @@ public class Asset
     // Marks the most recent successful OCR run. Used by the backfill admin
     // endpoint to skip already-processed assets.
     public DateTime? TextRecognitionCompletedAt { get; set; }
+
+    // Marks the most recent successful CLIP image embedding run. Used by the
+    // backfill admin endpoint to skip already-processed assets.
+    public DateTime? ImageEmbeddingCompletedAt { get; set; }
+
+    public AssetEmbedding? Embedding { get; set; }
 }
 

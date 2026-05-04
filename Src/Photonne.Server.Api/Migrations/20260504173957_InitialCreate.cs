@@ -239,7 +239,8 @@ namespace Photonne.Server.Api.Migrations
                     FaceRecognitionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     ObjectDetectionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     SceneClassificationCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
-                    TextRecognitionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                    TextRecognitionCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ImageEmbeddingCompletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -373,6 +374,26 @@ namespace Photonne.Server.Api.Migrations
                     table.PrimaryKey("PK_AssetDetectedObjects", x => x.Id);
                     table.ForeignKey(
                         name: "FK_AssetDetectedObjects_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetEmbeddings",
+                columns: table => new
+                {
+                    AssetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Embedding = table.Column<Vector>(type: "vector(512)", nullable: false),
+                    ModelVersion = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetEmbeddings", x => x.AssetId);
+                    table.ForeignKey(
+                        name: "FK_AssetEmbeddings_Assets_AssetId",
                         column: x => x.AssetId,
                         principalTable: "Assets",
                         principalColumn: "Id",
@@ -1141,6 +1162,9 @@ namespace Photonne.Server.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "AssetDetectedObjects");
+
+            migrationBuilder.DropTable(
+                name: "AssetEmbeddings");
 
             migrationBuilder.DropTable(
                 name: "AssetExifs");

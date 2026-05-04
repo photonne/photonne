@@ -7,6 +7,7 @@ using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Photonne.Server.Api.Shared.Services.Ml;
 using Photonne.Server.Api.Shared.Services.ObjectDetection;
+using Photonne.Server.Api.Shared.Services.Embeddings;
 using Photonne.Server.Api.Shared.Services.SceneClassification;
 using Photonne.Server.Api.Shared.Services.TextRecognition;
 using Xabe.FFmpeg;
@@ -53,6 +54,8 @@ public static class DependencyInjection
             builder.Configuration.GetSection(SceneClassificationOptions.SectionName));
         builder.Services.Configure<TextRecognitionOptions>(
             builder.Configuration.GetSection(TextRecognitionOptions.SectionName));
+        builder.Services.Configure<EmbeddingOptions>(
+            builder.Configuration.GetSection(EmbeddingOptions.SectionName));
 
         builder.Services.AddHttpClient<IFaceRecognitionClient, FaceRecognitionClient>((sp, client) =>
         {
@@ -89,6 +92,14 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
         });
         builder.Services.AddScoped<TextRecognitionService>();
+
+        builder.Services.AddHttpClient<IEmbeddingClient, EmbeddingClient>((sp, client) =>
+        {
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
+        });
+        builder.Services.AddScoped<ImageEmbeddingService>();
 
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();

@@ -13,7 +13,7 @@ using Photonne.Server.Api.Shared.Data;
 namespace Photonne.Server.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260502185805_InitialCreate")]
+    [Migration("20260504173957_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -195,6 +195,9 @@ namespace Photonne.Server.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<DateTime?>("ImageEmbeddingCompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
@@ -323,6 +326,28 @@ namespace Photonne.Server.Api.Migrations
                     b.HasIndex("AssetId", "Label");
 
                     b.ToTable("AssetDetectedObjects");
+                });
+
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetEmbedding", b =>
+                {
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("vector(512)");
+
+                    b.Property<string>("ModelVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("AssetId");
+
+                    b.ToTable("AssetEmbeddings");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetExif", b =>
@@ -1248,6 +1273,17 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Asset");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetEmbedding", b =>
+                {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
+                        .WithOne("Embedding")
+                        .HasForeignKey("Photonne.Server.Api.Shared.Models.AssetEmbedding", "AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetExif", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
@@ -1548,6 +1584,8 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("ClassifiedScenes");
 
                     b.Navigation("DetectedObjects");
+
+                    b.Navigation("Embedding");
 
                     b.Navigation("Exif");
 

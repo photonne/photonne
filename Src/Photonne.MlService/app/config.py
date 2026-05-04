@@ -77,6 +77,31 @@ class TextSettings:
 
 
 @dataclass(frozen=True)
+class EmbeddingSettings:
+    # Multilingual CLIP (M-CLIP ViT-B/32). Image and text encoders share the
+    # same 512-dim vector space so cosine similarity between query text and
+    # image embeddings is meaningful across the 50+ languages the text tower
+    # was distilled on.
+    enabled: bool = _bool_env("EMBEDDING_ENABLED", "true")
+    image_model_path: str = os.getenv("EMBEDDING_IMAGE_MODEL_PATH", "/app/models/clip_image.onnx")
+    text_model_path: str = os.getenv("EMBEDDING_TEXT_MODEL_PATH", "/app/models/clip_text.onnx")
+    text_tokenizer_path: str = os.getenv("EMBEDDING_TEXT_TOKENIZER_PATH", "/app/models/clip_tokenizer.json")
+    model_dir: str = os.getenv("EMBEDDING_MODEL_DIR", "/app/models")
+    # Optional runtime fallback URLs (one or more comma-separated). Same
+    # pattern as OBJECT_MODEL_URL / SCENE_MODEL_URL: only consulted when the
+    # corresponding file is missing on disk — typically because the build
+    # couldn't reach HuggingFace and never baked the file into the image.
+    image_model_url: str = os.getenv("EMBEDDING_IMAGE_MODEL_URL", "")
+    text_model_url: str = os.getenv("EMBEDDING_TEXT_MODEL_URL", "")
+    text_tokenizer_url: str = os.getenv("EMBEDDING_TEXT_TOKENIZER_URL", "")
+    image_size: int = int(os.getenv("EMBEDDING_IMAGE_SIZE", "224"))
+    text_max_length: int = int(os.getenv("EMBEDDING_TEXT_MAX_LENGTH", "64"))
+    # Stable identifier persisted alongside each embedding row so a future
+    # model swap re-embeds via the backfill instead of mixing vector spaces.
+    model_version: str = os.getenv("EMBEDDING_MODEL_VERSION", "mclip-vit-b32-v1")
+
+
+@dataclass(frozen=True)
 class Settings:
     # Comma-separated list of ONNX execution providers in priority order.
     providers: str = os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")
@@ -84,6 +109,7 @@ class Settings:
     obj: ObjectSettings = field(default_factory=ObjectSettings)
     scene: SceneSettings = field(default_factory=SceneSettings)
     text: TextSettings = field(default_factory=TextSettings)
+    embedding: EmbeddingSettings = field(default_factory=EmbeddingSettings)
 
 
 settings = Settings()

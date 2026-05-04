@@ -192,3 +192,28 @@ public class TextRecognitionBackfillEndpoint : IEndpoint
             CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.TextRecognition, ct));
     }
 }
+
+/// <summary>Admin-only: enqueues ImageEmbedding (CLIP) ML jobs for image assets
+/// that haven't been processed yet. Required after enabling semantic search on
+/// an existing library, and again whenever the embedding model is swapped (the
+/// processor will re-encode rows whose stored ModelVersion no longer matches).</summary>
+public class ImageEmbeddingBackfillEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/admin/maintenance")
+            .WithTags("Admin")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+        group.MapPost("/image-embedding/backfill", (
+            [FromServices] ApplicationDbContext db,
+            [FromServices] IMlJobService mlJobs,
+            [FromServices] SettingsService settings,
+            [FromBody] BackfillRequest? body,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.ImageEmbedding, body, ct));
+
+        group.MapGet("/image-embedding/pending-count", (
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.ImageEmbedding, ct));
+    }
+}

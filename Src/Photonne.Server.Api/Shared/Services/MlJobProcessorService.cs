@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services.Embeddings;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
 using Photonne.Server.Api.Shared.Services.ObjectDetection;
 using Photonne.Server.Api.Shared.Services.SceneClassification;
@@ -67,9 +68,10 @@ public class MlJobProcessorService : BackgroundService
         await BootstrapPendingIntoChannelsAsync(stoppingToken);
 
         _logger.LogInformation(
-            "ML workers — face={Face}, object={Object}, scene={Scene}, text={Text}",
+            "ML workers — face={Face}, object={Object}, scene={Scene}, text={Text}, embedding={Embedding}",
             workerCounts.FaceRecognition, workerCounts.ObjectDetection,
-            workerCounts.SceneClassification, workerCounts.TextRecognition);
+            workerCounts.SceneClassification, workerCounts.TextRecognition,
+            workerCounts.ImageEmbedding);
 
         var workerTasks = new[]
         {
@@ -77,6 +79,7 @@ public class MlJobProcessorService : BackgroundService
             RunWorkersForTypeAsync(MlJobType.ObjectDetection,     workerCounts.ObjectDetection,     stoppingToken),
             RunWorkersForTypeAsync(MlJobType.SceneClassification, workerCounts.SceneClassification, stoppingToken),
             RunWorkersForTypeAsync(MlJobType.TextRecognition,     workerCounts.TextRecognition,     stoppingToken),
+            RunWorkersForTypeAsync(MlJobType.ImageEmbedding,      workerCounts.ImageEmbedding,      stoppingToken),
             RunPeriodicRecoveryAsync(stoppingToken),
         };
 
@@ -217,6 +220,12 @@ public class MlJobProcessorService : BackgroundService
                 var count = await svc.RecognizeAndStoreAsync(asset.Id, ct);
                 return JsonSerializer.Serialize(new { lineCount = count, model = "rapidocr" });
             }
+            case MlJobType.ImageEmbedding:
+            {
+                var svc = sp.GetRequiredService<ImageEmbeddingService>();
+                var stored = await svc.EmbedAndStoreAsync(asset.Id, ct);
+                return JsonSerializer.Serialize(new { stored, model = "mclip-vit-b32" });
+            }
             default:
                 throw new InvalidOperationException($"Unknown ML job type: {job.JobType}");
         }
@@ -324,7 +333,8 @@ public class MlJobProcessorService : BackgroundService
             await ReadAsync(settings, "TaskSettings.FaceRecognitionWorkers", "1"),
             await ReadAsync(settings, "TaskSettings.ObjectDetectionWorkers", "1"),
             await ReadAsync(settings, "TaskSettings.SceneClassificationWorkers", "1"),
-            await ReadAsync(settings, "TaskSettings.TextRecognitionWorkers", "1"));
+            await ReadAsync(settings, "TaskSettings.TextRecognitionWorkers", "1"),
+            await ReadAsync(settings, "TaskSettings.ImageEmbeddingWorkers", "1"));
 
         static async Task<int> ReadAsync(SettingsService settings, string key, string defaultValue)
         {
@@ -337,5 +347,6 @@ public class MlJobProcessorService : BackgroundService
         int FaceRecognition,
         int ObjectDetection,
         int SceneClassification,
-        int TextRecognition);
+        int TextRecognition,
+        int ImageEmbedding);
 }

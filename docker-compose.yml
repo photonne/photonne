@@ -5,20 +5,22 @@ services:
     ports:
       - "${API_PORT:-1107}:8080"
     environment:
-      - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
-      - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
-      - Jwt__Issuer=Photonne
-      - Jwt__Audience=Photonne
-      - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
-      - AdminUser__Username=${ADMIN_USERNAME:-admin}
       - AdminUser__Email=${ADMIN_EMAIL:-admin@photonne.local}
-      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
       - AdminUser__FirstName=${ADMIN_FIRSTNAME:-Administrador}
       - AdminUser__LastName=${ADMIN_LASTNAME:-Sistema}
-      - Ml__ServiceUrl=${ML_SERVICE_URL:-${FACE_SERVICE_URL:-http://photonne-ml:8000}}
+      - AdminUser__Password=${ADMIN_PASSWORD:-admin123}
+      - AdminUser__Username=${ADMIN_USERNAME:-admin}
+      - ConnectionStrings__Postgres=Host=photonne-db;Port=5432;Database=${POSTGRES_DB:-photonne};Username=${POSTGRES_USER:-photonne_user};Password=${POSTGRES_PASSWORD:-photonne_password}
+      - HTTPS_REDIRECT=${HTTPS_REDIRECT:-false}
+      - Jwt__Audience=Photonne
+      - Jwt__Issuer=Photonne
+      - Jwt__Key=${JWT_KEY:-TOKEN_SUPER_SECRET}
+      - Ml__Embedding__Enabled=${IMAGE_EMBEDDING_ENABLED:-true}
+      - Ml__Embedding__ModelVersion=${IMAGE_EMBEDDING_MODEL_VERSION:-mclip-vit-b32-v1}
       - Ml__FaceRecognition__Enabled=${FACE_RECOGNITION_ENABLED:-true}
       - Ml__ObjectDetection__Enabled=${OBJECT_DETECTION_ENABLED:-${OBJECT_RECOGNITION_ENABLED:-true}}
       - Ml__SceneClassification__Enabled=${SCENE_CLASSIFICATION_ENABLED:-${SCENE_RECOGNITION_ENABLED:-true}}
+      - Ml__ServiceUrl=${ML_SERVICE_URL:-${FACE_SERVICE_URL:-http://photonne-ml:8000}}
       - Ml__TextRecognition__Enabled=${TEXT_RECOGNITION_ENABLED:-true}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
@@ -36,6 +38,11 @@ services:
     ports:
       - "${ML_PORT:-8000}:8000"
     environment:
+      - EMBEDDING_ENABLED=${IMAGE_EMBEDDING_ENABLED:-true}
+      - EMBEDDING_IMAGE_MODEL_URL=${IMAGE_EMBEDDING_IMAGE_MODEL_URL:-}
+      - EMBEDDING_MODEL_VERSION=${IMAGE_EMBEDDING_MODEL_VERSION:-mclip-vit-b32-v1}
+      - EMBEDDING_TEXT_MODEL_URL=${IMAGE_EMBEDDING_TEXT_MODEL_URL:-}
+      - EMBEDDING_TEXT_TOKENIZER_URL=${IMAGE_EMBEDDING_TEXT_TOKENIZER_URL:-}
       - FACE_ENABLED=${FACE_RECOGNITION_ENABLED:-true}
       - FACE_MODEL_NAME=${FACE_MODEL_NAME:-buffalo_l}
       - FACE_DET_SIZE=${FACE_DET_SIZE:-640}
@@ -45,6 +52,7 @@ services:
       - OBJECT_MODEL_PATH=${OBJECT_MODEL_PATH:-/app/models/yolov8n.onnx}
       - OBJECT_MIN_SCORE=${OBJECT_MIN_SCORE:-0.25}
       - OBJECT_IOU=${OBJECT_IOU:-0.45}
+      - ONNX_PROVIDERS=${ML_ONNX_PROVIDERS:-${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}}
       - SCENE_ENABLED=${SCENE_CLASSIFICATION_ENABLED:-${SCENE_RECOGNITION_ENABLED:-true}}
       - SCENE_MODEL_PATH=${SCENE_MODEL_PATH:-/app/models/scene_classifier.onnx}
       - SCENE_TOP_K=${SCENE_TOP_K:-3}
@@ -52,7 +60,6 @@ services:
       - TEXT_ENABLED=${TEXT_RECOGNITION_ENABLED:-true}
       - TEXT_MIN_SCORE=${TEXT_MIN_SCORE:-0.5}
       - TEXT_MAX_LINES=${TEXT_MAX_LINES:-200}
-      - ONNX_PROVIDERS=${ML_ONNX_PROVIDERS:-${FACE_ONNX_PROVIDERS:-CPUExecutionProvider}}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets:ro
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails:ro

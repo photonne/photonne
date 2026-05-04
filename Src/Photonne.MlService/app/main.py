@@ -5,6 +5,9 @@ from typing import Any, Dict
 from fastapi import FastAPI, HTTPException
 
 from .config import settings
+from .embedding_image import embedder as image_embedder
+from .embedding_models import EmbedImageRequest, EmbedTextRequest, EmbeddingResponse
+from .embedding_text import embedder as text_embedder
 from .face_detector import detector as face_detector
 from .face_models import DetectRequest as FaceDetectRequest
 from .face_models import DetectResponse as FaceDetectResponse
@@ -66,6 +69,25 @@ async def lifespan(app: FastAPI):
     else:
         log.info("Text recognizer disabled by config")
 
+    if settings.embedding.enabled:
+        log.info(
+            "Loading CLIP embedder image=%s text=%s providers=%s",
+            settings.embedding.image_model_path,
+            settings.embedding.text_model_path,
+            settings.providers,
+        )
+        try:
+            image_embedder.load()
+            text_embedder.load()
+            log.info("CLIP embedders loaded")
+        except Exception:
+            # Same isolation as the other capabilities: a missing CLIP model
+            # only knocks /v1/embeddings/* offline (returns 503) but leaves
+            # face/object/scene/text endpoints usable.
+            log.exception("CLIP embedders failed to load; the endpoint will return 503")
+    else:
+        log.info("CLIP embedders disabled by config")
+
     yield
 
 
@@ -96,6 +118,11 @@ def health() -> Dict[str, Any]:
             "loaded": text_recognizer.is_loaded,
             "model": "rapidocr",
         },
+        "embeddings": {
+            "enabled": settings.embedding.enabled,
+            "loaded": image_embedder.is_loaded and text_embedder.is_loaded,
+            "model": settings.embedding.model_version,
+        },
     }
     if object_detector.load_error:
         components["objects"]["error"] = object_detector.load_error
@@ -103,6 +130,10 @@ def health() -> Dict[str, Any]:
         components["scenes"]["error"] = scene_classifier.load_error
     if text_recognizer.load_error:
         components["text"]["error"] = text_recognizer.load_error
+    if image_embedder.load_error or text_embedder.load_error:
+        components["embeddings"]["error"] = (
+            image_embedder.load_error or text_embedder.load_error
+        )
     enabled = [c for c, v in components.items() if v["enabled"]]
     all_loaded = all(components[c]["loaded"] for c in enabled) if enabled else True
     return {
@@ -210,5 +241,54 @@ def detect_text(req: TextDetectRequest) -> TextDetectResponse:
         lines=lines,
         full_text=full_text,
         image_size=[w, h],
+        elapsed_ms=elapsed_ms,
+    )
+
+
+@app.post("/v1/embeddings/image", response_model=EmbeddingResponse)
+def embed_image(req: EmbedImageRequest) -> EmbeddingResponse:
+    if not settings.embedding.enabled:
+        raise HTTPException(status_code=503, detail="image embedding disabled")
+    if not image_embedder.is_loaded:
+        detail = (
+            f"image embedder not loaded: {image_embedder.load_error}"
+            if image_embedder.load_error
+            else "image embedder not loaded"
+        )
+        raise HTTPException(status_code=503, detail=detail)
+
+    try:
+        img = load_bgr(req.image_path)
+    except ImageLoadError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    vector, elapsed_ms = image_embedder.encode(img)
+    return EmbeddingResponse(
+        asset_id=req.asset_id,
+        embedding=vector,
+        dim=len(vector),
+        model=settings.embedding.model_version,
+        elapsed_ms=elapsed_ms,
+    )
+
+
+@app.post("/v1/embeddings/text", response_model=EmbeddingResponse)
+def embed_text(req: EmbedTextRequest) -> EmbeddingResponse:
+    if not settings.embedding.enabled:
+        raise HTTPException(status_code=503, detail="text embedding disabled")
+    if not text_embedder.is_loaded:
+        detail = (
+            f"text embedder not loaded: {text_embedder.load_error}"
+            if text_embedder.load_error
+            else "text embedder not loaded"
+        )
+        raise HTTPException(status_code=503, detail=detail)
+
+    vector, elapsed_ms = text_embedder.encode(req.text)
+    return EmbeddingResponse(
+        asset_id=None,
+        embedding=vector,
+        dim=len(vector),
+        model=settings.embedding.model_version,
         elapsed_ms=elapsed_ms,
     )

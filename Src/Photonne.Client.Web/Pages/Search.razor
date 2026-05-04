@@ -102,6 +102,20 @@
              OnClick="OpenFilterPicker">
         Filtrar
     </MudChip>
+
+    @* Semantic-search toggle: when on, the free-text term is sent to
+       /api/assets/search/semantic (CLIP) instead of the keyword endpoint.
+       Useful for natural-language queries in any language ("día de playa
+       con bañador rojo"). The other filter chips are ignored in that
+       mode — semantic search is whole-image, not faceted. *@
+    <MudChip T="string"
+             Size="Size.Small"
+             Variant="@(_semanticMode ? Variant.Filled : Variant.Outlined)"
+             Color="@(_semanticMode ? Color.Info : Color.Default)"
+             Icon="@Icons.Material.Filled.AutoAwesome"
+             OnClick="ToggleSemanticMode">
+        Búsqueda inteligente
+    </MudChip>
 </div>
 
 @* Unified filter picker — one search field, two result sections (Personas
@@ -479,6 +493,13 @@ else
     private List<TimelineItem> _results = new();
     private bool _loading;
     private bool _hasMore;
+    // CLIP semantic search is the default path for free-text queries — it
+    // handles natural-language and any language M-CLIP supports. The user can
+    // toggle off via the "Búsqueda inteligente" chip to force the keyword
+    // endpoint (filename / OCR / exact label match). With no free-text query
+    // SearchAsync transparently falls back to keyword regardless of this flag,
+    // so chip-only filtering (person/object/scene) keeps working.
+    private bool _semanticMode = true;
     private string _searchTerm = string.Empty;
     private DateTime? _fromDate;
     private DateTime? _toDate;
@@ -741,17 +762,31 @@ else
             _loading = true;
             StateHasChanged();
 
-            var (items, hasMore) = await AssetService.SearchAssetsAsync(
-                q: string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm,
-                from: _fromDate,
-                to: _toDate,
-                folder: string.IsNullOrWhiteSpace(_folderFilter) ? null : _folderFilter,
-                personIds: _personFilters.Count == 0 ? null : _personFilters.Select(p => p.Id).ToList(),
-                objectLabels: _objectLabels.Count == 0 ? null : _objectLabels,
-                sceneLabels: _sceneLabels.Count == 0 ? null : _sceneLabels);
+            // Semantic mode: CLIP query owns the result list. Other filters
+            // (date, folder, person, object/scene labels) don't compose with
+            // it server-side — semantic search is whole-image, not faceted.
+            // We deliberately don't AND them client-side either; users would
+            // see empty results and not know why.
+            if (_semanticMode && !string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                _results = await AssetService.SemanticSearchAsync(_searchTerm.Trim());
+                _hasMore = false;
+            }
+            else
+            {
+                var (items, hasMore) = await AssetService.SearchAssetsAsync(
+                    q: string.IsNullOrWhiteSpace(_searchTerm) ? null : _searchTerm,
+                    from: _fromDate,
+                    to: _toDate,
+                    folder: string.IsNullOrWhiteSpace(_folderFilter) ? null : _folderFilter,
+                    personIds: _personFilters.Count == 0 ? null : _personFilters.Select(p => p.Id).ToList(),
+                    objectLabels: _objectLabels.Count == 0 ? null : _objectLabels,
+                    sceneLabels: _sceneLabels.Count == 0 ? null : _sceneLabels);
 
-            _results = items;
-            _hasMore = hasMore;
+                _results = items;
+                _hasMore = hasMore;
+            }
+
             if (_selectionMode) ExitSelectionMode();
             AssetListNavigationState.SetList(_results, "search");
         }
@@ -763,6 +798,12 @@ else
         {
             _loading = false;
         }
+    }
+
+    private async Task ToggleSemanticMode()
+    {
+        _semanticMode = !_semanticMode;
+        await SearchAsync();
     }
 
     private async Task OnCardTouchStart((TouchEventArgs e, TimelineItem asset) args)

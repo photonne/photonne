@@ -27,6 +27,10 @@ public interface IAssetService
     Task<List<string>> AddAssetTagsAsync(Guid assetId, List<string> tags);
     Task<List<string>> RemoveAssetTagAsync(Guid assetId, string tag);
     Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null);
+    // CLIP-based natural-language search. Returns assets ordered by semantic
+    // similarity to the free-text query — works in any language M-CLIP was
+    // distilled on (Spanish included).
+    Task<List<TimelineItem>> SemanticSearchAsync(string query, int limit = 50, CancellationToken ct = default);
     Task<bool> ToggleFavoriteAsync(Guid assetId);
     Task<TimelinePageResult> GetFavoritesPageAsync(DateTime? cursor = null, int pageSize = 150);
     Task<List<TimelineItem>> GetMemoriesAsync(bool test = false);
@@ -55,6 +59,17 @@ public class SearchResult
 {
     public List<TimelineItem> Items { get; set; } = new();
     public bool HasMore { get; set; }
+}
+
+public class SemanticSearchResult
+{
+    public List<SemanticSearchItem> Items { get; set; } = new();
+}
+
+public class SemanticSearchItem
+{
+    public float Score { get; set; }
+    public TimelineItem Asset { get; set; } = new();
 }
 
 public class FavoriteToggleResult
