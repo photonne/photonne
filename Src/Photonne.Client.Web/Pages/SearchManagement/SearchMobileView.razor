@@ -87,8 +87,8 @@
                      @key="asset.Id"
                      @onclick="@(() => OnOpenAsset.InvokeAsync(asset))"
                      @ontouchstart="@(e => OnAssetTouchStart.InvokeAsync((e, asset)))"
-                     @ontouchmove="OnCardTouchMove"
-                     @ontouchend="OnCardTouchEnd" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                     @ontouchmove="@(e => OnCardTouchMove.InvokeAsync(e))"
+                     @ontouchend="@(e => OnCardTouchEnd.InvokeAsync(e))" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                     @if (asset.HasThumbnails && !asset.IsFileMissing)
                     {
                         <img src="@asset.ThumbnailUrl"
@@ -140,14 +140,13 @@
     [Parameter] public HashSet<Guid> SelectedAssetIds { get; set; } = new();
     [Parameter] public EventCallback<(Guid id, bool selected)> OnToggleSelection { get; set; }
     [Parameter] public EventCallback<(TouchEventArgs e, TimelineItem asset)> OnAssetTouchStart { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnCardTouchMove { get; set; }
+    [Parameter] public EventCallback<TouchEventArgs> OnCardTouchEnd { get; set; }
     [Parameter] public EventCallback<TimelineItem> OnOpenAsset { get; set; }
     [Parameter] public RenderFragment? RailContent { get; set; }
 
     private string _localSearchTerm = string.Empty;
     private string _localFolderFilter = string.Empty;
-
-    private void OnCardTouchMove(TouchEventArgs e) { }
-    private void OnCardTouchEnd(TouchEventArgs e) { }
 
     protected override void OnParametersSet()
     {
