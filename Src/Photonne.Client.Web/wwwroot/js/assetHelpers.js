@@ -97,7 +97,18 @@ window.assetGridHelpers = {
     suppressNextClick() {
         // Evita el click sintético que genera el navegador tras touchend
         // (long-press o selección táctil) para que no haga doble-toggle en Blazor.
-        document.addEventListener('click', (e) => e.stopPropagation(), { once: true, capture: true });
+        // Si el dedo se desplaza > umbral (drag-select) o el usuario levanta el
+        // dedo fuera del asset, el navegador no emite click — el listener
+        // quedaría colgado y se comería el siguiente tap en cualquier otro
+        // elemento (p. ej. el menú "MoreVert" de la barra de selección),
+        // obligando a clicar dos veces. Auto-limpieza tras 500 ms para cubrir
+        // ese caso. Más que el delay típico touchend→click (~300 ms) y menos
+        // que cualquier interacción humana posterior.
+        const handler = (e) => e.stopPropagation();
+        document.addEventListener('click', handler, { once: true, capture: true });
+        setTimeout(() => {
+            document.removeEventListener('click', handler, { capture: true });
+        }, 500);
     },
 
     startDragSelect(dotNetRef, selectMode) {
