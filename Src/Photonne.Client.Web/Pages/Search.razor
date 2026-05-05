@@ -131,6 +131,8 @@
                       SelectedAssetIds="_selectedAssetIds"
                       OnToggleSelection="ToggleAssetSelection"
                       OnAssetTouchStart="OnCardTouchStart"
+                      OnCardTouchMove="OnCardTouchMove"
+                      OnCardTouchEnd="OnCardTouchEnd"
                       OnOpenAsset="OpenAsset"
                       RailContent="@RenderRail()" />
 }
@@ -151,6 +153,8 @@ else
                        SelectedAssetIds="_selectedAssetIds"
                        OnToggleSelection="ToggleAssetSelection"
                        OnAssetTouchStart="OnCardTouchStart"
+                       OnCardTouchMove="OnCardTouchMove"
+                       OnCardTouchEnd="OnCardTouchEnd"
                        OnOpenAsset="OpenAsset"
                        RailContent="@RenderRail()" />
 }
@@ -737,6 +741,25 @@ else
                 StateHasChanged();
             });
         }, null, 500, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnCardTouchMove(TouchEventArgs e)
+    {
+        // Cancela el long-press si el dedo se desplaza más de 10px (scroll).
+        if (e.Touches.Length == 0 || _longPressTimer == null) return;
+        var dx = e.Touches[0].ClientX - _touchStartX;
+        var dy = e.Touches[0].ClientY - _touchStartY;
+        if (Math.Sqrt(dx * dx + dy * dy) > 10)
+        {
+            _longPressTimer.Dispose();
+            _longPressTimer = null;
+        }
+    }
+
+    private void OnCardTouchEnd(TouchEventArgs e)
+    {
+        _longPressTimer?.Dispose();
+        _longPressTimer = null;
     }
 
     [JSInvokable]
