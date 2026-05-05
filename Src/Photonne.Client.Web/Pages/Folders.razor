@@ -47,7 +47,7 @@
                        OnNavigateUp="NavigateUp"
                        OnNavigateToPermissions="NavigateToPermissionsView"
                        OnCreateFolder="OpenCreateFolderDialogFromView"
-                       OnOpenFilterSheet="@(() => _filterSheetOpen = true)"
+                       OnOpenFilterSheet="@(() => { _filterSheetEverOpened = true; _filterSheetOpen = true; })"
                        OnFolderCardClick="OnFolderCardClick"
                        OnOpenAsset="OpenAsset"
                        OnNavigateToLibrary="NavigateToLibrary"
@@ -87,7 +87,7 @@ else
                         OnNavigateUp="NavigateUp"
                         OnNavigateToPermissions="NavigateToPermissionsView"
                         OnCreateFolder="OpenCreateFolderDialogFromView"
-                        OnOpenFilterSheet="@(() => _filterSheetOpen = true)"
+                        OnOpenFilterSheet="@(() => { _filterSheetEverOpened = true; _filterSheetOpen = true; })"
                         OnFolderCardClick="OnFolderCardClick"
                         OnOpenAsset="OpenAsset"
                         OnNavigateToLibrary="NavigateToLibrary"
@@ -135,8 +135,9 @@ else
 </MudDrawer>
 
 @* ── Opciones de vista — bottom sheet ── *@
+@if (_filterSheetEverOpened)
+{
 <MudDrawer @bind-Open="_filterSheetOpen"
-           @key="_filterSheetKey"
            Anchor="Anchor.Bottom"
            Elevation="4"
            Variant="DrawerVariant.Temporary"
@@ -196,6 +197,7 @@ else
         }
     </div>
 </MudDrawer>
+}
 
 @* ── Editar carpeta — bottom sheet ── *@
 @if (_editFolderSheetEverOpened)
@@ -447,7 +449,7 @@ else
 
     private bool _createFolderSheetOpen = false;
     private bool _filterSheetOpen = false;
-    private int _filterSheetKey = 0;
+    private bool _filterSheetEverOpened = false;
     private bool _isSharedSpaceCreation = false;
     private bool _editFolderDialogVisible = false;
     private bool _editFolderSheetEverOpened = false;
@@ -872,7 +874,6 @@ else
         {
             _isNavigating = true;
             _filterSheetOpen = false;
-            _filterSheetKey++;
             await HandleFolderNavigation();
         }
         finally
