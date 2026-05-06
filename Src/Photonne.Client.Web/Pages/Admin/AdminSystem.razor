@@ -27,6 +27,8 @@
         </div>
 
         <MudGrid>
+
+            @* ── 1. Indexar ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -36,29 +38,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/index"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/index"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Generar miniaturas</MudText>
-                            <MudText Typo="Typo.body2">Crea las miniaturas faltantes o regenera todas.</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/thumbnails"))">
-                            Abrir
-                        </MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-
+            @* ── 2. Extracción de metadatos ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -68,13 +55,31 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/metadata"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/metadata"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 3. Generar miniaturas ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Generar miniaturas</MudText>
+                            <MudText Typo="Typo.body2">Crea las miniaturas faltantes o regenera todas.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/thumbnails"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── 4. Detección de duplicados ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -84,13 +89,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/duplicates"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/duplicates"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 5. Reconocimiento facial ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -100,13 +106,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/face-recognition"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/face-recognition"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 6. Reconocimiento de objetos ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -116,13 +123,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/object-detection"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/object-detection"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 7. Clasificación de escenas ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -132,13 +140,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/scene-classification"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/scene-classification"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 8. Reconocimiento de texto (OCR) ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -148,13 +157,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/text-recognition"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/text-recognition"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 9. Búsqueda inteligente (CLIP) ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -164,13 +174,36 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/tasks/image-embedding"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/image-embedding"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
 
+            @* ── 10. Mantenimiento ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.Build" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Mantenimiento</MudText>
+                            <MudText Typo="Typo.body2">Tareas de limpieza y salud del sistema (miniaturas huérfanas, assets sin archivo, recalcular tamaños, vaciar papelera).</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/maintenance"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
+            @* ── 11. Copia de seguridad ── *@
             <MudItem xs="12" md="6">
                 <MudCard>
                     <MudCardHeader>
@@ -185,12 +218,13 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/backup"))">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/backup"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
+
         </MudGrid>
     }
 </div>

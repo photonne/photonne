@@ -22,7 +22,7 @@ public class LibraryScanProgressUpdate
     public int Percentage { get; set; }
     public int AssetsFound { get; set; }
     public int AssetsIndexed { get; set; }
-    public int AssetsMarkedOffline { get; set; }
+    public int AssetsMarkedMissing { get; set; }
     public bool IsCompleted { get; set; }
     public string? Error { get; set; }
     public Guid? TaskId { get; set; }

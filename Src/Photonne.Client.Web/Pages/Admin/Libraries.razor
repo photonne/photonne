@@ -82,11 +82,11 @@ else
                          Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success">
                     @_scanIndexed indexados
                 </MudChip>
-                @if (_scanOffline > 0)
+                @if (_scanMissing > 0)
                 {
                     <MudChip T="string" Icon="@Icons.Material.Outlined.CloudOff"
                              Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">
-                        @_scanOffline offline
+                        @_scanMissing faltantes
                     </MudChip>
                 }
             </div>
@@ -265,7 +265,7 @@ else
     private int _scanProgress;
     private int _scanFound;
     private int _scanIndexed;
-    private int _scanOffline;
+    private int _scanMissing;
     private CancellationTokenSource? _scanCts;
     private Guid? _scanTaskId;
 
@@ -432,7 +432,7 @@ else
         _scanProgress = 0;
         _scanFound = 0;
         _scanIndexed = 0;
-        _scanOffline = 0;
+        _scanMissing = 0;
         _scanCts = new CancellationTokenSource();
 
         await ConsumeScanStreamAsync(LibraryService.ScanAsync(lib.Id, _scanCts.Token));
@@ -452,7 +452,7 @@ else
                 _scanProgress = update.Percentage;
                 _scanFound = update.AssetsFound;
                 _scanIndexed = update.AssetsIndexed;
-                _scanOffline = update.AssetsMarkedOffline;
+                _scanMissing = update.AssetsMarkedMissing;
                 StateHasChanged();
 
                 if (update.IsCompleted)

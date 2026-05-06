@@ -14,7 +14,7 @@ public record ScanProgressUpdate(
     int Percentage,
     int AssetsFound,
     int AssetsIndexed,
-    int AssetsMarkedOffline,
+    int AssetsMarkedMissing,
     bool IsCompleted,
     string? Error = null)
 {
@@ -178,25 +178,25 @@ public class ExternalLibraryScanService
                 }
             });
 
-        // Mark missing files as offline
+        // Mark assets whose physical file is missing on disk
         var scannedPathsSet = new HashSet<string>(scannedPaths, StringComparer.OrdinalIgnoreCase);
-        var offlinePaths = existingPaths.Except(scannedPathsSet).ToList();
-        int markedOffline = 0;
+        var missingPaths = existingPaths.Except(scannedPathsSet).ToList();
+        int markedMissing = 0;
 
-        if (offlinePaths.Count > 0)
+        if (missingPaths.Count > 0)
         {
             send(new ScanProgressUpdate("Checking for missing files...", 92, total, indexed, 0, false));
 
-            var offlineAssets = await _dbContext.Assets
+            var missingAssets = await _dbContext.Assets
                 .Where(a => a.ExternalLibraryId == libraryId
                          && a.DeletedAt == null
-                         && offlinePaths.Contains(a.FullPath))
+                         && missingPaths.Contains(a.FullPath))
                 .ToListAsync(ct);
 
-            foreach (var asset in offlineAssets)
+            foreach (var asset in missingAssets)
             {
                 asset.IsFileMissing = true;
-                markedOffline++;
+                markedMissing++;
             }
 
             await _dbContext.SaveChangesAsync(ct);
@@ -207,12 +207,12 @@ public class ExternalLibraryScanService
         library.LastScanStatus = ExternalLibraryScanStatus.Completed;
         library.LastScanAssetsFound = total;
         library.LastScanAssetsAdded = scannedPathsSet.Except(existingPaths).Count();
-        library.LastScanAssetsRemoved = markedOffline;
+        library.LastScanAssetsRemoved = markedMissing;
         await _dbContext.SaveChangesAsync(ct);
 
         send(new ScanProgressUpdate(
-            $"Scan complete. {indexed} indexed, {markedOffline} marked offline.",
-            100, total, indexed, markedOffline, true));
+            $"Scan complete. {indexed} indexed, {markedMissing} marked missing.",
+            100, total, indexed, markedMissing, true));
     }
 
     // Persists Failed status in a fresh scope so it works even if the main DbContext

@@ -125,7 +125,7 @@ public class MaintenanceEndpoint : IEndpoint
             .ToListAsync(ct);
 
         int processed = 0;
-        int markedOffline = 0;
+        int markedMissing = 0;
 
         foreach (var asset in assets)
         {
@@ -138,20 +138,20 @@ public class MaintenanceEndpoint : IEndpoint
                 await dbContext.Assets
                     .Where(a => a.Id == asset.Id)
                     .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsFileMissing, true), ct);
-                markedOffline++;
+                markedMissing++;
             }
         }
 
-        var message = markedOffline == 0
+        var message = markedMissing == 0
             ? $"Revisados {processed} activos. Todos los archivos están presentes."
-            : $"Revisados {processed} activos. {markedOffline} marcados como fuera de línea.";
+            : $"Revisados {processed} activos. {markedMissing} marcados como faltantes.";
 
         return Results.Ok(new MaintenanceTaskResult
         {
             Success = true,
             Message = message,
             Processed = processed,
-            Affected = markedOffline
+            Affected = markedMissing
         });
     }
 

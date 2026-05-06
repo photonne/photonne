@@ -1,4 +1,4 @@
-@page "/admin/settings/maintenance"
+@page "/admin/system/maintenance"
 @inject IMaintenanceService MaintenanceService
 @inject IAuthService AuthService
 @inject ISnackbar Snackbar
@@ -89,7 +89,7 @@
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6">Assets sin archivo</MudText>
                             <MudText Typo="Typo.body2">
-                                Detecta assets en la base de datos cuyo archivo físico ya no existe y los marca como fuera de línea.
+                                Detecta assets en la base de datos cuyo archivo físico ya no existe y los marca como faltantes.
                             </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -102,7 +102,7 @@
                                 @if (_missingResult.Affected > 0)
                                 {
                                     <MudText Typo="Typo.caption" Class="d-block mt-1">
-                                        @_missingResult.Processed revisados · @_missingResult.Affected marcados fuera de línea
+                                        @_missingResult.Processed revisados · @_missingResult.Affected marcados como faltantes
                                     </MudText>
                                 }
                             </MudAlert>
