@@ -58,7 +58,8 @@ public class ExternalLibrarySchedulerService : BackgroundService
     private async Task RecoverStuckRunningLibrariesAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var dbContext     = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
         var stuck = await dbContext.ExternalLibraries
             .Where(l => l.LastScanStatus == ExternalLibraryScanStatus.Running)
@@ -70,6 +71,16 @@ public class ExternalLibrarySchedulerService : BackgroundService
         {
             library.LastScanStatus = ExternalLibraryScanStatus.Failed;
             Console.WriteLine($"[LIBRARY-SCHEDULER] Recovered stuck Running library '{library.Name}' ({library.Id}) → Failed.");
+
+            try
+            {
+                await notifications.CreateAsync(
+                    library.OwnerId,
+                    NotificationType.JobFailed,
+                    "Escaneo de biblioteca interrumpido",
+                    $"El escaneo de la biblioteca '{library.Name}' quedó bloqueado tras un reinicio del servidor y se ha marcado como fallido.");
+            }
+            catch { /* best effort */ }
         }
 
         await dbContext.SaveChangesAsync(ct);
@@ -95,19 +106,66 @@ public class ExternalLibrarySchedulerService : BackgroundService
             Console.WriteLine($"[LIBRARY-SCHEDULER] Triggering scheduled scan for library '{library.Name}' ({library.Id}).");
 
             // Run in a new scope so each scan gets its own DbContext
+            var libraryName  = library.Name;
+            var libraryId    = library.Id;
+            var libraryOwner = library.OwnerId;
             _ = Task.Run(async () =>
             {
                 using var scanScope = _scopeFactory.CreateScope();
-                var scanService = scanScope.ServiceProvider.GetRequiredService<ExternalLibraryScanService>();
+                var scanService   = scanScope.ServiceProvider.GetRequiredService<ExternalLibraryScanService>();
+                var notifications = scanScope.ServiceProvider.GetRequiredService<INotificationService>();
 
-                await foreach (var update in scanService.ScanAsync(library.Id, ct))
+                string? lastMessage = null;
+                string? errorMessage = null;
+                var completed = false;
+
+                try
                 {
-                    if (update.IsCompleted || update.Error != null)
-                        Console.WriteLine($"[LIBRARY-SCHEDULER] Library '{library.Name}': {update.Message}");
+                    await foreach (var update in scanService.ScanAsync(libraryId, ct))
+                    {
+                        if (update.IsCompleted || update.Error != null)
+                        {
+                            lastMessage  = update.Message;
+                            errorMessage = update.Error;
+                            completed    = update.IsCompleted;
+                            Console.WriteLine($"[LIBRARY-SCHEDULER] Library '{libraryName}': {update.Message}");
+                        }
+                    }
                 }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                    Console.WriteLine($"[LIBRARY-SCHEDULER] Library '{libraryName}' scan crashed: {ex.Message}");
+                }
+
+                try
+                {
+                    if (errorMessage != null)
+                    {
+                        await notifications.CreateAsync(
+                            libraryOwner,
+                            NotificationType.JobFailed,
+                            $"Escaneo programado fallido: {libraryName}",
+                            $"El escaneo automático de la biblioteca '{libraryName}' falló: {Truncate(errorMessage, 200)}");
+                    }
+                    else if (completed)
+                    {
+                        await notifications.CreateAsync(
+                            libraryOwner,
+                            NotificationType.JobCompleted,
+                            $"Escaneo programado completado: {libraryName}",
+                            string.IsNullOrEmpty(lastMessage)
+                                ? "El escaneo automático de la biblioteca ha terminado correctamente."
+                                : Truncate(lastMessage, 240));
+                    }
+                }
+                catch { /* best effort */ }
             }, ct);
         }
     }
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max] + "…");
 
     /// <summary>
     /// Returns true if the library's scheduled scan is due based on its CronSchedule and LastScannedAt.

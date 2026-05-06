@@ -87,9 +87,22 @@ public class NightlySchedulerService : BackgroundService
         // Persist lastRunDate *before* running to avoid double-execution on error
         await settings.SetSettingAsync("NightlyTaskSettings.LastRunDate", todayStr, Guid.Empty);
 
-        await RunTasksAsync(scope.ServiceProvider, settings, ct);
-
-        Console.WriteLine($"[NIGHTLY] Nightly run for {todayStr} completed.");
+        try
+        {
+            await RunTasksAsync(scope.ServiceProvider, settings, ct);
+            Console.WriteLine($"[NIGHTLY] Nightly run for {todayStr} completed.");
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] Nightly run for {todayStr} failed: {ex.Message}");
+            await NotifyAdminsAsync(
+                NotificationType.JobFailed,
+                "Tarea nocturna abortada",
+                $"La ejecución nocturna del {todayStr} se ha interrumpido por un error: {Truncate(ex.Message, 200)}",
+                ct);
+            throw;
+        }
     }
 
     private async Task RunTasksAsync(IServiceProvider serviceProvider, SettingsService settings, CancellationToken ct)
@@ -113,14 +126,40 @@ public class NightlySchedulerService : BackgroundService
             await RunFaceClusteringAsync(ct);
     }
 
+    /// <summary>Sends the same notification to every active admin user. Used by
+    /// nightly tasks so administrators see a daily summary in the bell menu.</summary>
+    private async Task NotifyAdminsAsync(NotificationType type, string title, string message, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext     = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+            var adminIds = await dbContext.Users
+                .Where(u => u.Role == "Admin" && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+
+            foreach (var adminId in adminIds)
+                await notifications.CreateAsync(adminId, type, title, message);
+        }
+        catch (Exception ex)
+        {
+            // Never let a notification failure mask the underlying task result.
+            Console.WriteLine($"[NIGHTLY] Failed to dispatch admin notification '{title}': {ex.Message}");
+        }
+    }
+
     private async Task RunFaceClusteringAsync(CancellationToken ct)
     {
         Console.WriteLine("[NIGHTLY] Face clustering started.");
-        int totalCreated = 0, ownersProcessed = 0;
+        int totalCreated = 0, ownersProcessed = 0, ownersFailed = 0;
 
         using var scope = _scopeFactory.CreateScope();
-        var dbContext  = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var clustering = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceClusteringService>();
+        var dbContext     = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var clustering    = scope.ServiceProvider.GetRequiredService<FaceRecognition.FaceClusteringService>();
+        var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
         // One pass per asset-owning user. Identity moved to UserFaceAssignment;
         // we no longer have a single global "orphan" notion, so we cluster for
@@ -140,15 +179,46 @@ public class NightlySchedulerService : BackgroundService
                 var created = await clustering.RunForUserAsync(oid, ct);
                 totalCreated += created;
                 ownersProcessed++;
+
+                // Only ping the owner when the pass actually consolidated new
+                // people — otherwise it's a no-op they don't need to hear about.
+                if (created > 0)
+                {
+                    await notifications.CreateAsync(
+                        oid,
+                        NotificationType.JobCompleted,
+                        "Agrupación de rostros completada",
+                        $"Se han creado {created} persona(s) nuevas a partir de los rostros detectados en tus fotos.",
+                        actionUrl: "/people");
+                }
             }
             catch (Exception ex)
             {
+                ownersFailed++;
                 Console.WriteLine($"[NIGHTLY] Face clustering error for owner {oid}: {ex.Message}");
+                try
+                {
+                    await notifications.CreateAsync(
+                        oid,
+                        NotificationType.JobFailed,
+                        "Error en agrupación de rostros",
+                        $"La tarea nocturna de agrupación de rostros falló: {Truncate(ex.Message, 200)}");
+                }
+                catch { /* best effort */ }
             }
         }
 
         Console.WriteLine($"[NIGHTLY] Face clustering done — owners:{ownersProcessed} new persons:{totalCreated}.");
+
+        await NotifyAdminsAsync(
+            ownersFailed > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
+            "Tarea nocturna: agrupación de rostros",
+            $"Procesados {ownersProcessed} usuario(s), {totalCreated} persona(s) nuevas, {ownersFailed} error(es).",
+            ct);
     }
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max] + "…");
 
     private async Task RunThumbnailsAsync(IServiceProvider rootProvider, bool regenerateAll, CancellationToken ct)
     {
@@ -210,6 +280,12 @@ public class NightlySchedulerService : BackgroundService
         }
 
         Console.WriteLine($"[NIGHTLY] Thumbnails done — generated:{generated} skipped:{skipped} failed:{failed}.");
+
+        await NotifyAdminsAsync(
+            failed > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
+            "Tarea nocturna: miniaturas",
+            $"Generadas {generated}, omitidas {skipped}, fallidas {failed}.",
+            ct);
     }
 
     private async Task RunMetadataAsync(IServiceProvider rootProvider, bool overwriteAll, CancellationToken ct)
@@ -284,6 +360,12 @@ public class NightlySchedulerService : BackgroundService
             });
 
         Console.WriteLine($"[NIGHTLY] Metadata done — extracted:{extracted} skipped:{skipped} failed:{failed}.");
+
+        await NotifyAdminsAsync(
+            failed > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
+            "Tarea nocturna: metadatos",
+            $"Extraídos {extracted}, omitidos {skipped}, fallidos {failed}.",
+            ct);
     }
 
     private static TimeZoneInfo ResolveTimezone(string ianaId)

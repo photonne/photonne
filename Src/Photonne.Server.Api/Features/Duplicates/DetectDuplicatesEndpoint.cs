@@ -180,6 +180,20 @@ public class DetectDuplicatesEndpoint : IEndpoint
             {
                 Console.WriteLine($"[DUPLICATES] Error fatal: {ex.Message}");
                 await channel.Writer.WriteAsync(new DuplicatesProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
+
+                if (userId != Guid.Empty)
+                {
+                    try
+                    {
+                        using var notifyScope = serviceProvider.CreateScope();
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                        var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                        await notifySvc.CreateAsync(userId, NotificationType.JobFailed,
+                            "Detección de duplicados fallida",
+                            $"La tarea se ha interrumpido: {reason}");
+                    }
+                    catch { /* best effort */ }
+                }
             }
             finally { channel.Writer.Complete(); }
         }, cancellationToken);
@@ -368,6 +382,20 @@ public class DetectDuplicatesEndpoint : IEndpoint
             {
                 Console.WriteLine($"[DUPLICATES-PHYSICAL] Error fatal: {ex.Message}");
                 await channel.Writer.WriteAsync(new DuplicatesProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
+
+                if (userId != Guid.Empty)
+                {
+                    try
+                    {
+                        using var notifyScope = serviceProvider.CreateScope();
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                        var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                        await notifySvc.CreateAsync(userId, NotificationType.JobFailed,
+                            "Detección de duplicados (físico) fallida",
+                            $"La tarea se ha interrumpido: {reason}");
+                    }
+                    catch { /* best effort */ }
+                }
             }
             finally { channel.Writer.Complete(); }
         }, cancellationToken);

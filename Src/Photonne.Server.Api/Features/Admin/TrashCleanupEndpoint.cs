@@ -4,6 +4,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
+using System.Security.Claims;
 
 namespace Photonne.Server.Api.Features.Admin;
 
@@ -97,6 +98,31 @@ public class TrashCleanupEndpoint : IEndpoint
     private static async Task<IResult> CleanupExpired(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] INotificationService notifications,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var triggeredBy = Guid.TryParse(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty;
+        try
+        {
+            return await DoCleanupAsync(dbContext, settingsService, notifications, triggeredBy, ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            if (triggeredBy != Guid.Empty)
+                await notifications.CreateAsync(triggeredBy, NotificationType.JobFailed,
+                    "Limpieza de papelera fallida",
+                    $"No se pudo completar la limpieza: {(ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message)}");
+            throw;
+        }
+    }
+
+    private static async Task<IResult> DoCleanupAsync(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        INotificationService notifications,
+        Guid triggeredBy,
         CancellationToken ct)
     {
         var retentionDays = await GetRetentionDaysAsync(settingsService);
@@ -150,6 +176,9 @@ public class TrashCleanupEndpoint : IEndpoint
             var msg = retentionDays <= 0 && maxQuotaMb <= 0
                 ? "La retención está configurada como indefinida y no hay cuota. No se eliminó ningún elemento."
                 : $"No hay elementos que eliminar (retención: {(retentionDays > 0 ? retentionDays + " días" : "indefinida")}, cuota: {(maxQuotaMb > 0 ? maxQuotaMb + " MB" : "sin límite")}).";
+            if (triggeredBy != Guid.Empty)
+                await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
+                    "Limpieza de papelera completada", msg);
             return Results.Ok(new TrashCleanupResult { Success = true, Message = msg, Deleted = 0 });
         }
 
@@ -189,10 +218,15 @@ public class TrashCleanupEndpoint : IEndpoint
         if (quotaEvicted > 0) parts.Add($"{quotaEvicted} por cuota");
         var detail = parts.Count > 0 ? $" ({string.Join(", ", parts)})" : "";
 
+        var resultMsg = $"Limpieza completada. {toDelete.Count} elemento(s) eliminado(s) permanentemente{detail}.";
+        if (triggeredBy != Guid.Empty)
+            await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
+                "Limpieza de papelera completada", resultMsg);
+
         return Results.Ok(new TrashCleanupResult
         {
             Success = true,
-            Message = $"Limpieza completada. {toDelete.Count} elemento(s) eliminado(s) permanentemente{detail}.",
+            Message = resultMsg,
             Deleted = toDelete.Count
         });
     }

@@ -192,6 +192,20 @@ public class ExtractMetadataEndpoint : IEndpoint
                 Console.WriteLine($"[METADATA] Error fatal: {ex.Message}");
                 Send(new MetadataProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
                 entry.Finish("Failed");
+
+                if (userId != Guid.Empty)
+                {
+                    try
+                    {
+                        using var notifyScope = serviceProvider.CreateScope();
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                        var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                        await notifySvc.CreateAsync(userId, NotificationType.JobFailed,
+                            "Extracción de metadatos fallida",
+                            $"La tarea se ha interrumpido: {reason}");
+                    }
+                    catch { /* best effort */ }
+                }
             }
             finally
             {
