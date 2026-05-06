@@ -93,6 +93,7 @@ public class SettingsEndpoint : IEndpoint
     /// ObjectDetection.*          — object detection runtime overrides (enable)
     /// SceneClassification.*      — scene classification runtime overrides (enable)
     /// TextRecognition.*          — text recognition runtime overrides (enable)
+    /// Embedding.*                — image embedding runtime overrides (enable)
     /// AssetsPath                 — legacy global key for the managed assets directory
     /// </summary>
     private static bool IsGlobalKey(string key) =>
@@ -107,6 +108,7 @@ public class SettingsEndpoint : IEndpoint
         key.StartsWith("ObjectDetection.", StringComparison.Ordinal) ||
         key.StartsWith("SceneClassification.", StringComparison.Ordinal) ||
         key.StartsWith("TextRecognition.", StringComparison.Ordinal) ||
+        key.StartsWith("Embedding.", StringComparison.Ordinal) ||
         key.Equals("AssetsPath", StringComparison.Ordinal);
 
     private static IResult GetServerInfo() =>

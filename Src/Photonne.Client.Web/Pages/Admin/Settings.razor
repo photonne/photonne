@@ -109,6 +109,22 @@ else
             <MudCard>
                 <MudCardHeader>
                     <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Búsqueda semántica (embeddings)</MudText>
+                        <MudText Typo="Typo.body2">Embeddings multimodales con M-CLIP para búsqueda por contenido en lenguaje natural.</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardActions Class="px-4 pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/settings/image-embedding"))">
+                        Abrir
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
                         <MudText Typo="Typo.h6">Ajustes de imagen</MudText>
                         <MudText Typo="Typo.body2">Parámetros de calidad, formatos y miniaturas.</MudText>
                     </CardHeaderContent>

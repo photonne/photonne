@@ -1,0 +1,97 @@
+@page "/admin/settings/image-embedding"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISettingsService SettingsService
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Búsqueda semántica - Photonne</PageTitle>
+
+<div class="page-pad">
+@if (!_isAuthorized)
+{
+    <div class="mt-8">
+        <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Volver al inicio
+        </MudButton>
+    </div>
+}
+else
+{
+    <div class="mt-4">
+        <MudText Typo="Typo.h5" Class="mb-2">Búsqueda semántica (embeddings)</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Embeddings multimodales con M-CLIP (ViT-B/32 multilingüe) para búsqueda por contenido en lenguaje natural,
+            como «día de playa con bañador rojo», en cualquier idioma.
+        </MudText>
+    </div>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Activación</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSwitch T="bool"
+                               Label="Generar embeddings al subir o indexar fotos"
+                               Color="Color.Primary"
+                               Value="_enabled"
+                               ValueChanged="OnEnabledChanged" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Si lo desactivas, las nuevas fotos no se procesarán hasta que vuelvas a activarlo.
+                        Los embeddings ya generados se mantienen.
+                    </MudText>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.body2" Class="mb-2">Procesar fotos pendientes</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3 d-block">
+                        Para encolar embeddings sobre fotos antiguas, ve a la pantalla dedicada.
+                    </MudText>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Href="/admin/system/tasks/image-embedding"
+                               EndIcon="@Icons.Material.Filled.ArrowForward">
+                        Ir a procesado manual
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+</div>
+
+@code {
+    private const string KeyEnabled = "Embedding.Enabled";
+
+    private bool _isAuthorized;
+    private bool _enabled = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+        if (!_isAuthorized) return;
+
+        _enabled = !"false".Equals(await SettingsService.GetSettingAsync(KeyEnabled, "true"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task OnEnabledChanged(bool v)
+    {
+        _enabled = v;
+        var ok = await SettingsService.SaveSettingAsync(KeyEnabled, v ? "true" : "false");
+        Snackbar.Add(ok ? (v ? "Búsqueda semántica activada" : "Búsqueda semántica desactivada") : "No se pudo guardar",
+            ok ? Severity.Success : Severity.Error);
+    }
+}
