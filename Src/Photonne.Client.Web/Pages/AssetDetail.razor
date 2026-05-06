@@ -11,6 +11,7 @@
 @inject IAssetListNavigationState AssetListNavigationState
 @inject IJSRuntime JSRuntime
 @inject DeviceLayoutService DeviceLayout
+@inject BackNavigationService BackNavigation
 
 <PageTitle>Detalle - Photonne</PageTitle>
 
@@ -709,35 +710,39 @@ else
         {
             if (_slideshowActive) StopSlideshow();
             else if (_zoomed) { _zoomed = false; UpdateNavbar(); }
-            else GoBack();
+            else _ = GoBack();
         }
     }
 
-    private void GoBack()
+    private async Task GoBack()
     {
         _navigatingAway = true;
         // Restaurar navbar y menú lateral antes de navegar para que al llegar a la página destino se vea el drawer
         LayoutService.ResetNavbar();
 
+        // Compute the canonical fallback URL for cold-start cases (no in-app
+        // history). When there IS history, BackNavigation.GoBackAsync calls
+        // history.back() so the previous page restores its scroll position
+        // and ephemeral state — exactly what the user expects on a native app.
+        string fallback;
         if (!string.IsNullOrEmpty(ReturnTo))
         {
-            var path = ReturnTo.TrimStart('/');
-            Navigation.NavigateTo("/" + path);
-            return;
+            fallback = "/" + ReturnTo.TrimStart('/');
         }
-        if (AlbumId.HasValue && AlbumId.Value != Guid.Empty)
+        else if (AlbumId.HasValue && AlbumId.Value != Guid.Empty)
         {
-            Navigation.NavigateTo($"/albums/{AlbumId.Value}");
+            fallback = $"/albums/{AlbumId.Value}";
         }
         else if (!string.IsNullOrEmpty(Path))
         {
-            // Abierto desde Mi Dispositivo (o similar con path local)
-            Navigation.NavigateTo("/device");
+            fallback = "/device";
         }
         else
         {
-            Navigation.NavigateTo("/");
+            fallback = "/";
         }
+
+        await BackNavigation.GoBackAsync(fallback);
     }
 
     private void NavigateToIndex()
@@ -931,7 +936,7 @@ else
             StateHasChanged();
             await AssetService.DeleteAssetsAsync(new DeleteAssetsRequest { AssetIds = [_asset.Id] });
             Snackbar.Add("Archivo enviado a la papelera", Severity.Success);
-            GoBack();
+            await GoBack();
         }
         catch (Exception ex)
         {

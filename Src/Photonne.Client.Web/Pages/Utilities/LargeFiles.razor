@@ -2,6 +2,7 @@
 @inject IAssetService AssetService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject BackNavigationService BackNavigation
 
 <PageTitle>Archivos grandes - Photonne</PageTitle>
 
@@ -9,7 +10,7 @@
 
     <div class="d-flex align-center gap-3 mb-2 flex-wrap">
         <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
-                   OnClick="@(() => Navigation.NavigateTo("/utilities"))">
+                   OnClick="@(() => BackNavigation.GoBackAsync("/utilities"))">
             Utilidades
         </MudButton>
         <MudText Typo="Typo.h5">Archivos grandes</MudText>

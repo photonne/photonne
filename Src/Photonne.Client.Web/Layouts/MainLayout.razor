@@ -13,6 +13,7 @@
 @inject IDemoInfoService DemoInfoService
 @inject IJSRuntime JS
 @inject DeviceLayoutService DeviceLayout
+@inject BackNavigationService BackNavigation
 
 <MudThemeProvider IsDarkMode="LayoutService.IsDarkMode" Theme="ThemeService.Theme" />
 <MudPopoverProvider />
@@ -634,6 +635,7 @@
     {
         if (firstRender)
         {
+            await BackNavigation.EnsureInitializedAsync();
             await PwaUpdateService.InitAsync(JS);
             await PwaInstallService.InitAsync(JS);
             _appVersion = await JS.InvokeAsync<string>("pwaUpdate.getAppVersion");

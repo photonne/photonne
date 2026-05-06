@@ -6,14 +6,15 @@
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
+@inject BackNavigationService BackNavigation
 
 <PageTitle>Permisos de la Carpeta - Photonne</PageTitle>
 
 <div class="page-pad">
     <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudButton Variant="Variant.Text" 
-               StartIcon="@Icons.Material.Filled.ArrowBack" 
-               OnClick="@(() => Navigation.NavigateTo($"/folders/{FolderId}"))"
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => BackNavigation.GoBackAsync($"/folders/{FolderId}"))"
                Class="mb-4">
         Volver a la carpeta
     </MudButton>

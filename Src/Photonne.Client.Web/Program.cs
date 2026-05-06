@@ -33,6 +33,7 @@ builder.Services.AddMudServices();
 
 // Agregar servicios personalizados
 builder.Services.AddScoped<IAssetListNavigationState, AssetListNavigationState>();
+builder.Services.AddScoped<BackNavigationService>();
 builder.Services.AddScoped<LayoutService>();
 builder.Services.AddScoped<ThemeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

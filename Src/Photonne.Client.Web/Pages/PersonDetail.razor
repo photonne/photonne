@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IAssetListNavigationState AssetListNavigationState
+@inject BackNavigationService BackNavigation
 
 <PageTitle>@(_person?.Name ?? "Persona") - Photonne</PageTitle>
 
@@ -19,7 +20,7 @@
         <MudIcon Icon="@Icons.Material.Outlined.PersonOff" Size="Size.Large" Class="mb-3" />
         <MudText Typo="Typo.h6">Persona no encontrada</MudText>
         <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-3"
-                   OnClick="@(() => Navigation.NavigateTo("/people"))">
+                   OnClick="@(() => BackNavigation.GoBackAsync("/people"))">
             Volver a Personas
         </MudButton>
     </div>
@@ -28,7 +29,7 @@ else if (_person != null)
 {
     <div class="ph-person-header">
         <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                       OnClick="@(() => Navigation.NavigateTo("/people"))"
+                       OnClick="@(() => BackNavigation.GoBackAsync("/people"))"
                        Class="ph-person-header__back" />
 
         <button type="button"
@@ -749,7 +750,7 @@ else if (_person != null)
         {
             await PeopleService.HideAsync(_person.Id);
             Snackbar.Add("Persona ocultada", Severity.Success);
-            Navigation.NavigateTo("/people");
+            await BackNavigation.GoBackAsync("/people");
         }
         catch (Exception ex)
         {

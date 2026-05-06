@@ -13,6 +13,7 @@
 @inject IJSRuntime JS
 @inject ISettingsService SettingsService
 @inject DeviceLayoutService DeviceLayout
+@inject BackNavigationService BackNavigation
 @implements IDisposable
 
 <PageTitle>Álbumes - Photonne</PageTitle>
@@ -51,7 +52,7 @@
                       OnAssetTouchStart="OnAssetTouchStartFromView"
                       OnToggleAlbumAssetSelection="OnToggleAlbumAssetSelectionFromView"
                       OnToggleAlbumAssetFavorite="ToggleAlbumAssetFavoriteAsync"
-                      OnNavigateBack="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
+                      OnNavigateBack="@(() => BackNavigation.GoBackAsync($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
                       OnOpenAlbumShareDialog="OpenAlbumShareDialog"
                       OnDownloadAlbum="DownloadAlbumAsync"
                       OnNavigateToAddPhotos="@(() => Navigation.NavigateTo("/"))"
@@ -90,7 +91,7 @@ else
                        OnAssetTouchStart="OnAssetTouchStartFromView"
                        OnToggleAlbumAssetSelection="OnToggleAlbumAssetSelectionFromView"
                        OnToggleAlbumAssetFavorite="ToggleAlbumAssetFavoriteAsync"
-                       OnNavigateBack="@(() => Navigation.NavigateTo($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
+                       OnNavigateBack="@(() => BackNavigation.GoBackAsync($"/albums/{(_selectedAlbum?.IsOwner == true ? "own" : "shared")}"))"
                        OnOpenAlbumShareDialog="OpenAlbumShareDialog"
                        OnDownloadAlbum="DownloadAlbumAsync"
                        OnNavigateToAddPhotos="@(() => Navigation.NavigateTo("/"))"
