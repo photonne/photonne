@@ -304,11 +304,6 @@
                     <MudIcon Icon="@(IsNavActive("/map") ? Icons.Material.Filled.Map : Icons.Material.Outlined.Map)" Class="ph-more-tile__icon" />
                     <span class="ph-more-tile__label">Mapa</span>
                 </button>
-                <button class="ph-more-tile @(IsNavActive("/device") ? "ph-more-tile--active" : "")"
-                        @onclick="@(() => NavigateFromSheet("/device"))">
-                    <MudIcon Icon="@(IsNavActive("/device") ? Icons.Material.Filled.SyncAlt : Icons.Material.Outlined.SyncAlt)" Class="ph-more-tile__icon" />
-                    <span class="ph-more-tile__label">Sincronizar Dispositivo</span>
-                </button>
                 <button class="ph-more-tile @(IsNavActive("/archive") ? "ph-more-tile--active" : "")"
                         @onclick="@(() => NavigateFromSheet("/archive"))">
                     <MudIcon Icon="@(IsNavActive("/archive") ? Icons.Material.Filled.Archive : Icons.Material.Outlined.Archive)" Class="ph-more-tile__icon" />
@@ -319,35 +314,33 @@
                     <MudIcon Icon="@(IsNavActive("/trash") ? Icons.Material.Filled.Delete : Icons.Material.Outlined.Delete)" Class="ph-more-tile__icon" />
                     <span class="ph-more-tile__label">Papelera</span>
                 </button>
+                <button class="ph-more-tile @(IsNavActive("/device") ? "ph-more-tile--active" : "")"
+                        @onclick="@(() => NavigateFromSheet("/device"))">
+                    <MudIcon Icon="@(IsNavActive("/device") ? Icons.Material.Filled.SyncAlt : Icons.Material.Outlined.SyncAlt)" Class="ph-more-tile__icon" />
+                    <span class="ph-more-tile__label">Sincronizar Dispositivo</span>
+                </button>
+                <button class="ph-more-tile" @onclick="@(async () => await LayoutService.ToggleDarkModeAsync())">
+                    <MudIcon Icon="@(LayoutService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Class="ph-more-tile__icon" />
+                    <span class="ph-more-tile__label">@(LayoutService.IsDarkMode ? "Modo claro" : "Modo oscuro")</span>
+                </button>
                 <button class="ph-more-tile @(IsNavActive("/utilities") ? "ph-more-tile--active" : "")"
                         @onclick="@(() => NavigateFromSheet("/utilities"))">
                     <MudIcon Icon="@(IsNavActive("/utilities") ? Icons.Material.Filled.Build : Icons.Material.Outlined.Build)" Class="ph-more-tile__icon" />
                     <span class="ph-more-tile__label">Utilidades</span>
+                </button>
+                <button class="ph-more-tile" @onclick="@(async () => await CheckForUpdatesAsync())" disabled="@_checkingForUpdate">
+                    <MudIcon Icon="@Icons.Material.Outlined.SystemUpdate" Class="ph-more-tile__icon" />
+                    <span class="ph-more-tile__label">@(_checkingForUpdate ? "Buscando actualizaciones…" : "Buscar actualizaciones")</span>
                 </button>
             </div>
             <MudDivider />
 
             @* Account actions *@
             <MudList T="string" Class="py-1">
-                <MudListItem OnClick="@(async () => await LayoutService.ToggleDarkModeAsync())">
-                    <div class="d-flex align-center gap-3">
-                        <MudIcon Icon="@(LayoutService.IsDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
-                                 Color="Color.Default" />
-                        <MudText Typo="Typo.body1">@(LayoutService.IsDarkMode ? "Modo claro" : "Modo oscuro")</MudText>
-                    </div>
-                </MudListItem>
                 <MudListItem OnClick="@(() => { _moreSheetOpen = false; Navigation.NavigateTo("/settings"); })">
                     <div class="d-flex align-center gap-3">
                         <MudIcon Icon="@Icons.Material.Outlined.Settings" Color="Color.Default" />
                         <MudText Typo="Typo.body1">Configuración cuenta</MudText>
-                    </div>
-                </MudListItem>
-                <MudListItem OnClick="@(async () => await CheckForUpdatesAsync())" Disabled="@_checkingForUpdate">
-                    <div class="d-flex align-center gap-3">
-                        <MudIcon Icon="@Icons.Material.Outlined.SystemUpdate" Color="Color.Default" />
-                        <MudText Typo="Typo.body1">
-                            @(_checkingForUpdate ? "Buscando actualizaciones…" : "Buscar actualizaciones")
-                        </MudText>
                     </div>
                 </MudListItem>
                 @if (IsAdmin)
@@ -670,7 +663,6 @@
     {
         if (_checkingForUpdate) return;
         _checkingForUpdate = true;
-        _moreSheetOpen = false;
         try
         {
             var hasUpdate = await PwaUpdateService.CheckForUpdateAsync();
