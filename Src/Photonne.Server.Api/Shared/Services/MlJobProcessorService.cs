@@ -175,8 +175,50 @@ public class MlJobProcessorService : BackgroundService
             job.ErrorMessage = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
             job.CompletedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(ct);
+
+            // Notify the asset owner so they can see something went wrong with
+            // their photo. Per-user MaxPerUser cap (in NotificationService) keeps
+            // a misbehaving model from flooding the inbox.
+            await NotifyOwnerOfFailureAsync(sp, job, ex, ct);
         }
     }
+
+    private async Task NotifyOwnerOfFailureAsync(IServiceProvider sp, AssetMlJob job, Exception ex, CancellationToken ct)
+    {
+        try
+        {
+            var dbContext = sp.GetRequiredService<ApplicationDbContext>();
+            var ownerId = await dbContext.Assets
+                .Where(a => a.Id == job.AssetId)
+                .Select(a => a.OwnerId)
+                .FirstOrDefaultAsync(ct);
+            if (ownerId is null || ownerId == Guid.Empty) return;
+
+            var notifications = sp.GetRequiredService<INotificationService>();
+            var jobLabel = JobTypeLabel(job.JobType);
+            var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+            await notifications.CreateAsync(
+                ownerId.Value,
+                NotificationType.JobFailed,
+                $"Tarea ML fallida: {jobLabel}",
+                $"No se pudo procesar un asset ({jobLabel}). Causa: {reason}");
+        }
+        catch (Exception notifyEx)
+        {
+            // Never let a notification failure mask the original ML failure.
+            _logger.LogWarning(notifyEx, "Failed to send JobFailed notification for ML job {JobId}", job.Id);
+        }
+    }
+
+    private static string JobTypeLabel(MlJobType type) => type switch
+    {
+        MlJobType.FaceRecognition     => "reconocimiento facial",
+        MlJobType.ObjectDetection     => "detección de objetos",
+        MlJobType.SceneClassification => "clasificación de escenas",
+        MlJobType.TextRecognition     => "reconocimiento de texto",
+        MlJobType.ImageEmbedding      => "embeddings de imagen",
+        _                             => type.ToString()
+    };
 
     private async Task<string?> DispatchAsync(AssetMlJob job, IServiceProvider sp, CancellationToken ct)
     {

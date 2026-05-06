@@ -1,3 +1,6 @@
+using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
+
 namespace Photonne.Server.Api.Shared.Services.FaceRecognition;
 
 /// <summary>
@@ -51,6 +54,22 @@ public class FaceClusteringBackgroundService : BackgroundService
                     _logger.LogWarning(ex,
                         "Lazy clustering pass for user {UserId} failed; next /people request will retry",
                         userId);
+
+                    // Surface the failure to the affected user so they don't see
+                    // stale "people" data without any explanation. Best-effort —
+                    // never let a notification failure mask the original error.
+                    try
+                    {
+                        using var notifyScope = _serviceProvider.CreateScope();
+                        var notifications = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                        var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                        await notifications.CreateAsync(
+                            userId,
+                            NotificationType.JobFailed,
+                            "Error en agrupación de rostros",
+                            $"No se pudo agrupar rostros para tu cuenta: {reason}");
+                    }
+                    catch { /* best effort */ }
                 }
                 finally
                 {

@@ -175,6 +175,20 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                 Console.WriteLine($"[THUMBNAILS] Error fatal: {ex.Message}");
                 Send(new ThumbnailProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
                 entry.Finish("Failed");
+
+                if (userId != Guid.Empty)
+                {
+                    try
+                    {
+                        using var notifyScope = serviceProvider.CreateScope();
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                        var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                        await notifySvc.CreateAsync(userId, NotificationType.JobFailed,
+                            "Generación de miniaturas fallida",
+                            $"La tarea se ha interrumpido: {reason}");
+                    }
+                    catch { /* best effort */ }
+                }
             }
             finally
             {

@@ -32,7 +32,9 @@ internal static class MlBackfillRunner
         MlJobType jobType,
         BackfillRequest? body,
         CancellationToken ct,
-        Guid? ownerScope = null)
+        Guid? ownerScope = null,
+        INotificationService? notifications = null,
+        Guid? triggeredBy = null)
     {
         var batchSize = Math.Clamp(
             body?.BatchSize ?? await ReadGlobalBatchSizeAsync(settings),
@@ -40,25 +42,59 @@ internal static class MlBackfillRunner
             MaxBackfillBatchSize);
         var onlyMissing = body?.OnlyMissing ?? true;
 
-        var query = BuildQuery(db, jobType, onlyMissing, ownerScope);
-
-        var total = await query.CountAsync(ct);
-
-        var ids = await query
-            .OrderBy(a => a.ScannedAt)
-            .Take(batchSize)
-            .Select(a => a.Id)
-            .ToListAsync(ct);
-
-        var enqueued = 0;
-        foreach (var assetId in ids)
+        try
         {
-            await mlJobs.EnqueueMlJobAsync(assetId, jobType, ct);
-            enqueued++;
-        }
+            var query = BuildQuery(db, jobType, onlyMissing, ownerScope);
 
-        return Results.Ok(new BackfillResponse(enqueued, total));
+            var total = await query.CountAsync(ct);
+
+            var ids = await query
+                .OrderBy(a => a.ScannedAt)
+                .Take(batchSize)
+                .Select(a => a.Id)
+                .ToListAsync(ct);
+
+            var enqueued = 0;
+            foreach (var assetId in ids)
+            {
+                await mlJobs.EnqueueMlJobAsync(assetId, jobType, ct);
+                enqueued++;
+            }
+
+            if (notifications is not null && triggeredBy is { } uid && uid != Guid.Empty && enqueued > 0)
+            {
+                var label = JobTypeLabel(jobType);
+                await notifications.CreateAsync(uid, NotificationType.JobCompleted,
+                    $"Backfill encolado: {label}",
+                    $"Encolados {enqueued} de {total} asset(s) pendientes para {label}. El procesador ML los irá completando en segundo plano.");
+            }
+
+            return Results.Ok(new BackfillResponse(enqueued, total));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            if (notifications is not null && triggeredBy is { } uid && uid != Guid.Empty)
+            {
+                var label = JobTypeLabel(jobType);
+                var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                await notifications.CreateAsync(uid, NotificationType.JobFailed,
+                    $"Backfill fallido: {label}",
+                    $"No se pudo encolar el backfill de {label}: {reason}");
+            }
+            throw;
+        }
     }
+
+    private static string JobTypeLabel(MlJobType type) => type switch
+    {
+        MlJobType.FaceRecognition     => "reconocimiento facial",
+        MlJobType.ObjectDetection     => "detección de objetos",
+        MlJobType.SceneClassification => "clasificación de escenas",
+        MlJobType.TextRecognition     => "reconocimiento de texto",
+        MlJobType.ImageEmbedding      => "embeddings de imagen",
+        _                             => type.ToString()
+    };
 
     /// <summary>Returns how many image assets are still missing the given ML job
     /// completion (split by whether they're already enqueued or not). Used by
@@ -138,8 +174,10 @@ public class ObjectDetectionBackfillEndpoint : IEndpoint
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
             [FromServices] SettingsService settings,
+            [FromServices] INotificationService notifications,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.ObjectDetection, body, ct));
+            HttpContext http,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.ObjectDetection, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
 
         group.MapGet("/object-detection/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -161,8 +199,10 @@ public class SceneClassificationBackfillEndpoint : IEndpoint
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
             [FromServices] SettingsService settings,
+            [FromServices] INotificationService notifications,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.SceneClassification, body, ct));
+            HttpContext http,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.SceneClassification, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
 
         group.MapGet("/scene-classification/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -184,8 +224,10 @@ public class TextRecognitionBackfillEndpoint : IEndpoint
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
             [FromServices] SettingsService settings,
+            [FromServices] INotificationService notifications,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.TextRecognition, body, ct));
+            HttpContext http,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.TextRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
 
         group.MapGet("/text-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -209,8 +251,10 @@ public class ImageEmbeddingBackfillEndpoint : IEndpoint
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
             [FromServices] SettingsService settings,
+            [FromServices] INotificationService notifications,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.ImageEmbedding, body, ct));
+            HttpContext http,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.ImageEmbedding, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
 
         group.MapGet("/image-embedding/pending-count", (
             [FromServices] ApplicationDbContext db,

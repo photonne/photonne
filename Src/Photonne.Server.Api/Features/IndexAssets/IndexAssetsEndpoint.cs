@@ -243,6 +243,20 @@ public class IndexAssetsEndpoint : IEndpoint
             {
                 Send(new IndexProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
                 entry.Finish("Failed");
+
+                if (userId != Guid.Empty)
+                {
+                    try
+                    {
+                        using var notifyScope = serviceProvider.CreateScope();
+                        var notifySvc = notifyScope.ServiceProvider.GetRequiredService<INotificationService>();
+                        var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
+                        await notifySvc.CreateAsync(userId, NotificationType.JobFailed,
+                            "Indexación fallida",
+                            $"La indexación se ha interrumpido: {reason}");
+                    }
+                    catch { /* best effort */ }
+                }
             }
             finally
             {

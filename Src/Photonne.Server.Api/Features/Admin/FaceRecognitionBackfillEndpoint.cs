@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -30,8 +31,10 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
             [FromServices] ApplicationDbContext db,
             [FromServices] IMlJobService mlJobs,
             [FromServices] SettingsService settings,
+            [FromServices] INotificationService notifications,
             [FromBody] BackfillRequest? body,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.FaceRecognition, body, ct));
+            HttpContext http,
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
 
         group.MapGet("/face-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
@@ -56,29 +59,58 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
         [FromServices] FaceClusteringService clustering,
+        [FromServices] INotificationService notifications,
+        HttpContext http,
         CancellationToken ct)
     {
-        // Identity is per-user (UserFaceAssignment) since the split. The
-        // legacy "global recluster" passes face filtering had no per-user
-        // notion; we now interpret it as "for every user that owns assets
-        // with detections, run their clustering once". Users with shared-
-        // only access cluster lazily on /people via EnsureUpToDateForUserAsync,
-        // so they don't need a global pass.
-        var ownerIds = await db.Faces.AsNoTracking()
-            .Select(f => f.Asset.OwnerId)
-            .Where(id => id != null)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var ownersProcessed = 0;
-        var personsCreated = 0;
-        foreach (var oid in ownerIds.OfType<Guid>())
+        var triggeredBy = AdminEndpointHelpers.GetUserId(http);
+        try
         {
-            var created = await clustering.RunForUserAsync(oid, ct);
-            personsCreated += created;
-            ownersProcessed++;
-        }
+            // Identity is per-user (UserFaceAssignment) since the split. The
+            // legacy "global recluster" passes face filtering had no per-user
+            // notion; we now interpret it as "for every user that owns assets
+            // with detections, run their clustering once". Users with shared-
+            // only access cluster lazily on /people via EnsureUpToDateForUserAsync,
+            // so they don't need a global pass.
+            var ownerIds = await db.Faces.AsNoTracking()
+                .Select(f => f.Asset.OwnerId)
+                .Where(id => id != null)
+                .Distinct()
+                .ToListAsync(ct);
 
-        return Results.Ok(new GlobalReclusterResponse(ownersProcessed, personsCreated));
+            var ownersProcessed = 0;
+            var personsCreated = 0;
+            foreach (var oid in ownerIds.OfType<Guid>())
+            {
+                var created = await clustering.RunForUserAsync(oid, ct);
+                personsCreated += created;
+                ownersProcessed++;
+            }
+
+            if (triggeredBy != Guid.Empty)
+                await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
+                    "Reagrupación global de rostros completada",
+                    $"Procesados {ownersProcessed} usuario(s); {personsCreated} persona(s) nuevas.");
+
+            return Results.Ok(new GlobalReclusterResponse(ownersProcessed, personsCreated));
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            if (triggeredBy != Guid.Empty)
+                await notifications.CreateAsync(triggeredBy, NotificationType.JobFailed,
+                    "Reagrupación global de rostros fallida",
+                    $"Error durante la ejecución: {AdminEndpointHelpers.Truncate(ex.Message, 200)}");
+            throw;
+        }
     }
+}
+
+internal static class AdminEndpointHelpers
+{
+    public static Guid GetUserId(HttpContext http)
+        => Guid.TryParse(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : Guid.Empty;
+
+    public static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max] + "…");
 }
