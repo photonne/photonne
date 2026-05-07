@@ -55,8 +55,10 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 ```
 Photonne.sln
 └── Src/
-    ├── Photonne.Server.Api/    # API REST ASP.NET Core 10
-    └── Photonne.Client.Web/    # Blazor WASM PWA
+    ├── Photonne.Server.Api/      # API REST ASP.NET Core 10
+    ├── Photonne.Client.Web/      # Blazor WASM PWA
+    ├── Photonne.Client.Native/   # Apps nativas (Android, iOS, Desktop) en KMP + Compose
+    └── Photonne.MlService/       # Servicio ML en Python (FastAPI)
 ```
 
 ### Responsabilidades por proyecto
@@ -73,6 +75,12 @@ Photonne.sln
 - Páginas: Albums, Timeline, Folders, Trash, AssetDetail, Login, etc.
 - Servicios: interfaces + implementaciones (AuthService usa `IJSRuntime`/`localStorage`)
 - PWA: `manifest.webmanifest`, `service-worker.js` con cache del app shell
+
+**`Client.Native`** — Apps nativas (scaffold inicial):
+- Kotlin Multiplatform + Compose Multiplatform.
+- Targets Android, iOS y Desktop JVM con UI compartida.
+- Cliente Ktor con refresh-on-401 que replica `AuthRefreshHandler` del web.
+- Decisión técnica documentada en [`Src/Photonne.Client.Native/docs/ADR-001-kotlin-multiplatform.md`](Src/Photonne.Client.Native/docs/ADR-001-kotlin-multiplatform.md).
 
 ## Requisitos
 
