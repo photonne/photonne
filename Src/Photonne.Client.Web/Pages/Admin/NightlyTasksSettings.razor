@@ -250,33 +250,74 @@
 
     private async Task<List<NightlyEntry>> BuildEntriesAsync()
     {
+        var metaEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Enabled")) == "true";
+        var metaMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Mode") ?? "missing";
+
         var thumbEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Thumbnails.Enabled")) == "true";
         var thumbMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Thumbnails.Mode") ?? "missing";
 
-        var metaEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Enabled")) == "true";
-        var metaMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.Metadata.Mode") ?? "missing";
+        var faceRecogEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.FaceRecognition.Enabled")) == "true";
+        var faceRecogMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.FaceRecognition.Mode") ?? "missing";
 
         // FaceClustering defaults to true if the setting has never been written.
         var faceRaw = await SettingsService.GetSettingAsync("NightlyTaskSettings.FaceClustering.Enabled", "true");
         var faceClusterEnabled = !"false".Equals(faceRaw, StringComparison.OrdinalIgnoreCase);
 
+        var objEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.ObjectDetection.Enabled")) == "true";
+        var objMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.ObjectDetection.Mode") ?? "missing";
+
+        var sceneEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.SceneClassification.Enabled")) == "true";
+        var sceneMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.SceneClassification.Mode") ?? "missing";
+
+        var textEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.TextRecognition.Enabled")) == "true";
+        var textMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.TextRecognition.Mode") ?? "missing";
+
+        var embEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Enabled")) == "true";
+        var embMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Mode") ?? "missing";
+
+        // Order mirrors /admin/system (Sistema) so admins see the same list in the same sequence.
         return new()
         {
-            new NightlyEntry(
-                "Generación de miniaturas",
-                thumbEnabled ? $"Activa — modo: {ModeLabel(thumbMode, "regenerar todas", "solo las que faltan")}" : "Desactivada",
-                thumbEnabled,
-                "/admin/settings/images"),
             new NightlyEntry(
                 "Extracción de metadatos",
                 metaEnabled ? $"Activa — modo: {ModeLabel(metaMode, "sobreescribir todos", "solo los que faltan")}" : "Desactivada",
                 metaEnabled,
                 "/admin/settings/metadata"),
             new NightlyEntry(
+                "Generación de miniaturas",
+                thumbEnabled ? $"Activa — modo: {ModeLabel(thumbMode, "regenerar todas", "solo las que faltan")}" : "Desactivada",
+                thumbEnabled,
+                "/admin/settings/images"),
+            new NightlyEntry(
+                "Reconocimiento facial",
+                faceRecogEnabled ? $"Activa — modo: {ModeLabel(faceRecogMode, "reprocesar todas", "solo las que faltan")}" : "Desactivada",
+                faceRecogEnabled,
+                "/admin/settings/face-recognition"),
+            new NightlyEntry(
                 "Reagrupación facial",
                 faceClusterEnabled ? "Activa" : "Desactivada",
                 faceClusterEnabled,
                 "/admin/settings/face-recognition"),
+            new NightlyEntry(
+                "Reconocimiento de objetos",
+                objEnabled ? $"Activa — modo: {ModeLabel(objMode, "reprocesar todas", "solo las que faltan")}" : "Desactivada",
+                objEnabled,
+                "/admin/settings/object-detection"),
+            new NightlyEntry(
+                "Clasificación de escenas",
+                sceneEnabled ? $"Activa — modo: {ModeLabel(sceneMode, "reprocesar todas", "solo las que faltan")}" : "Desactivada",
+                sceneEnabled,
+                "/admin/settings/scene-classification"),
+            new NightlyEntry(
+                "Reconocimiento de texto (OCR)",
+                textEnabled ? $"Activa — modo: {ModeLabel(textMode, "reprocesar todas", "solo las que faltan")}" : "Desactivada",
+                textEnabled,
+                "/admin/settings/text-recognition"),
+            new NightlyEntry(
+                "Búsqueda inteligente (CLIP)",
+                embEnabled ? $"Activa — modo: {ModeLabel(embMode, "reprocesar todas", "solo las que faltan")}" : "Desactivada",
+                embEnabled,
+                "/admin/settings/image-embedding"),
         };
     }
 

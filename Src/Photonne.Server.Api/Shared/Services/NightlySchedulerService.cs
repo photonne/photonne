@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Admin;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 
@@ -9,14 +10,25 @@ namespace Photonne.Server.Api.Shared.Services;
 /// at the administrator-defined local time.
 ///
 /// Settings read from the global settings table (NightlyTaskSettings.*):
-///   Enabled           — master on/off switch (default: false)
-///   ScheduleTime      — "HH:mm" local time in the configured timezone (default: "02:00")
-///   Timezone          — IANA timezone id (default: "UTC")
-///   Thumbnails.Enabled — run thumbnail generation (default: false)
-///   Thumbnails.Mode    — "missing" | "all" (default: "missing")
-///   Metadata.Enabled  — run metadata extraction (default: false)
-///   Metadata.Mode     — "missing" | "all" (default: "missing")
-///   LastRunDate       — ISO date "yyyy-MM-dd" of last successful run (written by this service)
+///   Enabled                       — master on/off switch (default: false)
+///   ScheduleTime                  — "HH:mm" local time in the configured timezone (default: "02:00")
+///   Timezone                      — IANA timezone id (default: "UTC")
+///   Metadata.Enabled              — run metadata extraction (default: false)
+///   Metadata.Mode                 — "missing" | "all" (default: "missing")
+///   Thumbnails.Enabled            — run thumbnail generation (default: false)
+///   Thumbnails.Mode               — "missing" | "all" (default: "missing")
+///   FaceRecognition.Enabled       — enqueue face detection/embeddings backfill (default: false)
+///   FaceRecognition.Mode          — "missing" | "all" (default: "missing")
+///   FaceClustering.Enabled        — re-cluster orphan faces into Persons (default: true)
+///   ObjectDetection.Enabled       — enqueue object detection backfill (default: false)
+///   ObjectDetection.Mode          — "missing" | "all" (default: "missing")
+///   SceneClassification.Enabled   — enqueue scene classification backfill (default: false)
+///   SceneClassification.Mode      — "missing" | "all" (default: "missing")
+///   TextRecognition.Enabled       — enqueue OCR backfill (default: false)
+///   TextRecognition.Mode          — "missing" | "all" (default: "missing")
+///   ImageEmbedding.Enabled        — enqueue CLIP embedding backfill (default: false)
+///   ImageEmbedding.Mode           — "missing" | "all" (default: "missing")
+///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
 /// </summary>
 public class NightlySchedulerService : BackgroundService
 {
@@ -107,23 +119,101 @@ public class NightlySchedulerService : BackgroundService
 
     private async Task RunTasksAsync(IServiceProvider serviceProvider, SettingsService settings, CancellationToken ct)
     {
-        var thumbEnabled = await settings.GetSettingAsync("NightlyTaskSettings.Thumbnails.Enabled", Guid.Empty, "false");
-        var thumbMode    = await settings.GetSettingAsync("NightlyTaskSettings.Thumbnails.Mode",    Guid.Empty, "missing");
+        // Order matches /admin/system (Sistema):
+        //   1. Extracción de metadatos
+        //   2. Generar miniaturas
+        //   3. Reconocimiento facial      (ML backfill)
+        //      └ Reagrupación facial      (clustering of detected faces)
+        //   4. Reconocimiento de objetos  (ML backfill)
+        //   5. Clasificación de escenas   (ML backfill)
+        //   6. Reconocimiento de texto    (ML backfill — OCR)
+        //   7. Búsqueda inteligente       (ML backfill — CLIP)
+
         var metaEnabled  = await settings.GetSettingAsync("NightlyTaskSettings.Metadata.Enabled",  Guid.Empty, "false");
         var metaMode     = await settings.GetSettingAsync("NightlyTaskSettings.Metadata.Mode",     Guid.Empty, "missing");
+        var thumbEnabled = await settings.GetSettingAsync("NightlyTaskSettings.Thumbnails.Enabled", Guid.Empty, "false");
+        var thumbMode    = await settings.GetSettingAsync("NightlyTaskSettings.Thumbnails.Mode",    Guid.Empty, "missing");
+        var faceRecogEnabled = await settings.GetSettingAsync("NightlyTaskSettings.FaceRecognition.Enabled", Guid.Empty, "false");
+        var faceRecogMode    = await settings.GetSettingAsync("NightlyTaskSettings.FaceRecognition.Mode",    Guid.Empty, "missing");
         // Face clustering — defaults to true so newly indexed faces consolidate
         // into Persons overnight without admin intervention. Cheap when nothing
         // changed (orphan count is the gate inside the clustering service).
         var faceClusterEnabled = await settings.GetSettingAsync("NightlyTaskSettings.FaceClustering.Enabled", Guid.Empty, "true");
-
-        if (thumbEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-            await RunThumbnailsAsync(serviceProvider, thumbMode == "all", ct);
+        var objEnabled   = await settings.GetSettingAsync("NightlyTaskSettings.ObjectDetection.Enabled",     Guid.Empty, "false");
+        var objMode      = await settings.GetSettingAsync("NightlyTaskSettings.ObjectDetection.Mode",        Guid.Empty, "missing");
+        var sceneEnabled = await settings.GetSettingAsync("NightlyTaskSettings.SceneClassification.Enabled", Guid.Empty, "false");
+        var sceneMode    = await settings.GetSettingAsync("NightlyTaskSettings.SceneClassification.Mode",    Guid.Empty, "missing");
+        var textEnabled  = await settings.GetSettingAsync("NightlyTaskSettings.TextRecognition.Enabled",     Guid.Empty, "false");
+        var textMode     = await settings.GetSettingAsync("NightlyTaskSettings.TextRecognition.Mode",        Guid.Empty, "missing");
+        var embEnabled   = await settings.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Enabled",      Guid.Empty, "false");
+        var embMode      = await settings.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Mode",         Guid.Empty, "missing");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
 
+        if (thumbEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunThumbnailsAsync(serviceProvider, thumbMode == "all", ct);
+
+        if (faceRecogEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunMlBackfillAsync(MlJobType.FaceRecognition, faceRecogMode == "all", "reconocimiento facial", ct);
+
         if (faceClusterEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunFaceClusteringAsync(ct);
+
+        if (objEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunMlBackfillAsync(MlJobType.ObjectDetection, objMode == "all", "reconocimiento de objetos", ct);
+
+        if (sceneEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunMlBackfillAsync(MlJobType.SceneClassification, sceneMode == "all", "clasificación de escenas", ct);
+
+        if (textEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunMlBackfillAsync(MlJobType.TextRecognition, textMode == "all", "reconocimiento de texto", ct);
+
+        if (embEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunMlBackfillAsync(MlJobType.ImageEmbedding, embMode == "all", "búsqueda inteligente (CLIP)", ct);
+    }
+
+    /// <summary>Enqueues an ML backfill batch as part of the nightly cycle. The
+    /// MlJobProcessorService drains the queue at its own configured cadence;
+    /// this just makes sure new (or all) assets reach the queue.</summary>
+    private async Task RunMlBackfillAsync(MlJobType jobType, bool reprocessAll, string label, CancellationToken ct)
+    {
+        Console.WriteLine($"[NIGHTLY] {label} started (mode: {(reprocessAll ? "all" : "missing")}).");
+
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var mlJobs    = scope.ServiceProvider.GetRequiredService<IMlJobService>();
+
+        try
+        {
+            // batchSize: null → enqueue everything that matches; the ML processor
+            // will pace itself. Bounded by the dedup query that excludes assets
+            // already Pending/Processing for the same job type.
+            var result = await MlBackfillRunner.EnqueueAsync(
+                dbContext, mlJobs, jobType,
+                onlyMissing: !reprocessAll,
+                batchSize: null,
+                ownerScope: null,
+                ct);
+
+            Console.WriteLine($"[NIGHTLY] {label} done — enqueued:{result.Enqueued} of {result.Total}.");
+
+            await NotifyAdminsAsync(
+                NotificationType.JobCompleted,
+                $"Tarea nocturna: {label}",
+                $"Encolados {result.Enqueued} de {result.Total} asset(s) pendientes. El procesador ML los completará en segundo plano.",
+                ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] {label} error: {ex.Message}");
+            await NotifyAdminsAsync(
+                NotificationType.JobFailed,
+                $"Tarea nocturna: {label}",
+                $"Error encolando jobs: {Truncate(ex.Message, 200)}",
+                ct);
+        }
     }
 
     /// <summary>Sends the same notification to every active admin user. Used by

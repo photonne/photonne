@@ -60,6 +60,15 @@ else
                 </MudCardContent>
             </MudCard>
         </MudItem>
+
+        <MudItem xs="12" md="6">
+            <NightlyTaskCard Title="Tarea nocturna: reconocimiento de texto"
+                             Description="Encola el OCR sobre las fotos pendientes (o sobre todas) durante el ciclo nocturno."
+                             EnabledKey="NightlyTaskSettings.TextRecognition.Enabled"
+                             ModeKey="NightlyTaskSettings.TextRecognition.Mode"
+                             MissingLabel="Solo las que faltan"
+                             AllLabel="Reprocesar todas" />
+        </MudItem>
     </MudGrid>
 }
 </div>
