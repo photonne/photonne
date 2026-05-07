@@ -44,32 +44,17 @@ internal static class MlBackfillRunner
 
         try
         {
-            var query = BuildQuery(db, jobType, onlyMissing, ownerScope);
+            var result = await EnqueueAsync(db, mlJobs, jobType, onlyMissing, batchSize, ownerScope, ct);
 
-            var total = await query.CountAsync(ct);
-
-            var ids = await query
-                .OrderBy(a => a.ScannedAt)
-                .Take(batchSize)
-                .Select(a => a.Id)
-                .ToListAsync(ct);
-
-            var enqueued = 0;
-            foreach (var assetId in ids)
-            {
-                await mlJobs.EnqueueMlJobAsync(assetId, jobType, ct);
-                enqueued++;
-            }
-
-            if (notifications is not null && triggeredBy is { } uid && uid != Guid.Empty && enqueued > 0)
+            if (notifications is not null && triggeredBy is { } uid && uid != Guid.Empty && result.Enqueued > 0)
             {
                 var label = JobTypeLabel(jobType);
                 await notifications.CreateAsync(uid, NotificationType.JobCompleted,
                     $"Backfill encolado: {label}",
-                    $"Encolados {enqueued} de {total} asset(s) pendientes para {label}. El procesador ML los irá completando en segundo plano.");
+                    $"Encolados {result.Enqueued} de {result.Total} asset(s) pendientes para {label}. El procesador ML los irá completando en segundo plano.");
             }
 
-            return Results.Ok(new BackfillResponse(enqueued, total));
+            return Results.Ok(result);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -86,7 +71,38 @@ internal static class MlBackfillRunner
         }
     }
 
-    private static string JobTypeLabel(MlJobType type) => type switch
+    /// <summary>Core enqueue loop used by both the admin backfill endpoints and
+    /// the nightly scheduler. Pass <paramref name="batchSize"/> = null to enqueue
+    /// every matching asset (used by the nightly path; the processor drains the
+    /// queue at its own pace).</summary>
+    public static async Task<BackfillResponse> EnqueueAsync(
+        ApplicationDbContext db,
+        IMlJobService mlJobs,
+        MlJobType jobType,
+        bool onlyMissing,
+        int? batchSize,
+        Guid? ownerScope,
+        CancellationToken ct)
+    {
+        var query = BuildQuery(db, jobType, onlyMissing, ownerScope);
+        var total = await query.CountAsync(ct);
+
+        IQueryable<Asset> ordered = query.OrderBy(a => a.ScannedAt);
+        if (batchSize.HasValue)
+            ordered = ordered.Take(batchSize.Value);
+
+        var ids = await ordered.Select(a => a.Id).ToListAsync(ct);
+        var enqueued = 0;
+        foreach (var assetId in ids)
+        {
+            if (ct.IsCancellationRequested) break;
+            await mlJobs.EnqueueMlJobAsync(assetId, jobType, ct);
+            enqueued++;
+        }
+        return new BackfillResponse(enqueued, total);
+    }
+
+    public static string JobTypeLabel(MlJobType type) => type switch
     {
         MlJobType.FaceRecognition     => "reconocimiento facial",
         MlJobType.ObjectDetection     => "detección de objetos",

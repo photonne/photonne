@@ -124,6 +124,15 @@ else
         </MudItem>
 
         <MudItem xs="12" md="6">
+            <NightlyTaskCard Title="Tarea nocturna: detección de caras"
+                             Description="Encola la detección de caras sobre las fotos pendientes (o sobre todas) durante el ciclo nocturno. La reagrupación se controla más arriba."
+                             EnabledKey="NightlyTaskSettings.FaceRecognition.Enabled"
+                             ModeKey="NightlyTaskSettings.FaceRecognition.Mode"
+                             MissingLabel="Solo las que faltan"
+                             AllLabel="Reprocesar todas" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
             <MudCard>
                 <MudCardHeader>
                     <CardHeaderContent>

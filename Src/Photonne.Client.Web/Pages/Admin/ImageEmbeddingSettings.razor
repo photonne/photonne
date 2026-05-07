@@ -61,6 +61,15 @@ else
                 </MudCardContent>
             </MudCard>
         </MudItem>
+
+        <MudItem xs="12" md="6">
+            <NightlyTaskCard Title="Tarea nocturna: búsqueda inteligente (CLIP)"
+                             Description="Encola la generación de embeddings sobre las fotos pendientes (o sobre todas) durante el ciclo nocturno."
+                             EnabledKey="NightlyTaskSettings.ImageEmbedding.Enabled"
+                             ModeKey="NightlyTaskSettings.ImageEmbedding.Mode"
+                             MissingLabel="Solo las que faltan"
+                             AllLabel="Reprocesar todas" />
+        </MudItem>
     </MudGrid>
 }
 </div>
