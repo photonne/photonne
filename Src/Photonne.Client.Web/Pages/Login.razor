@@ -15,7 +15,7 @@
             <div class="d-flex justify-center mb-6">
                 <img src="@(LayoutService.IsDarkMode ? "dark/logo.png" : "light/logo.png")" alt="Photonne" style="height: 48px; width: auto;" />
             </div>
-            <MudForm @ref="_form" @bind-IsValid="@_isValid" @bind-Errors="@_errors">
+            <form onsubmit="return false;">
                 <MudTextField @bind-Value="_username"
                             Label="Usuario o Email"
                             Required="true"
@@ -23,7 +23,8 @@
                             Variant="Variant.Outlined"
                             FullWidth="true"
                             Class="mb-4"
-                            StartAdornment="@(new RenderFragment(builder => builder.AddContent(0, new MarkupString("<i class=\"mud-icon-root mud-svg-icon mud-icon-size-medium\"><svg class=\"mud-icon-root mud-svg-icon mud-icon-size-medium\" viewBox=\"0 0 24 24\"><path d=\"M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\"/></svg></i>"))))" />
+                            UserAttributes="@_usernameAttributes"
+                            OnKeyDown="HandleEnterKey" />
 
                 <MudTextField @bind-Value="_password"
                             Label="Contraseña"
@@ -33,17 +34,18 @@
                             Variant="Variant.Outlined"
                             FullWidth="true"
                             Class="mb-4"
-                            StartAdornment="@(new RenderFragment(builder => builder.AddContent(0, new MarkupString("<i class=\"mud-icon-root mud-svg-icon mud-icon-size-medium\"><svg class=\"mud-icon-root mud-svg-icon mud-icon-size-medium\" viewBox=\"0 0 24 24\"><path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z\"/></svg></i>"))))"
+                            UserAttributes="@_passwordAttributes"
                             Adornment="Adornment.End"
                             AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                             OnAdornmentClick="() => _showPassword = !_showPassword"
-                            AdornmentAriaLabel="Mostrar contraseña" />
+                            AdornmentAriaLabel="Mostrar contraseña"
+                            OnKeyDown="HandleEnterKey" />
 
                 <MudButton Variant="Variant.Filled"
                         Color="Color.Primary"
                         FullWidth="true"
                         OnClick="HandleLogin"
-                        Disabled="@(!_isValid || _loggingIn)"
+                        Disabled="@(_loggingIn)"
                         Class="mt-4">
                     @if (_loggingIn)
                     {
@@ -51,7 +53,7 @@
                     }
                     Iniciar Sesión
                 </MudButton>
-            </MudForm>
+            </form>
 
             @if (_demoInfo.Enabled)
             {
@@ -74,16 +76,29 @@
 </div>
 
 @code {
-    private MudForm? _form;
-    private bool _isValid;
-    private string[] _errors = Array.Empty<string>();
-    private bool _loggingIn = false;
+    private bool _loggingIn;
 
     private string _username = string.Empty;
     private string _password = string.Empty;
     private bool _showPassword;
     private string? _returnUrl;
     private DemoInfo _demoInfo = DemoInfo.Disabled;
+
+    private static readonly Dictionary<string, object?> _usernameAttributes = new()
+    {
+        ["autocomplete"] = "username",
+        ["name"] = "username",
+        ["autocapitalize"] = "off",
+        ["autocorrect"] = "off",
+        ["spellcheck"] = "false",
+        ["inputmode"] = "email"
+    };
+
+    private static readonly Dictionary<string, object?> _passwordAttributes = new()
+    {
+        ["autocomplete"] = "current-password",
+        ["name"] = "password"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -100,17 +115,25 @@
     {
         _username = _demoInfo.DemoUsername ?? "demo";
         _password = _demoInfo.DemoPassword ?? "demo";
-        // MudForm validation lags behind programmatic value updates, so submit
-        // directly instead of going through HandleLogin's Validate() gate.
         await SubmitLoginAsync();
     }
 
     private async Task HandleLogin()
     {
-        await _form!.Validate();
-        if (!_isValid) return;
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+        {
+            return;
+        }
 
         await SubmitLoginAsync();
+    }
+
+    private async Task HandleEnterKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_loggingIn)
+        {
+            await HandleLogin();
+        }
     }
 
     private async Task SubmitLoginAsync()
