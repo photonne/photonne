@@ -3,13 +3,16 @@
 
 @*
     Reusable admin card to configure whether a maintenance task runs as part
-    of the nightly cycle, and in which mode ("missing" vs "all"). The actual
-    schedule (time, timezone, master enable) lives in /admin/settings/nightly;
-    this card just owns the "is X part of tonight's run?" toggle for a single
-    feature.
+    of the nightly cycle, and (optionally) in which mode ("missing" vs "all").
+    The actual schedule (time, timezone, master enable) lives in
+    /admin/settings/nightly; this card just owns the "is X part of tonight's
+    run?" toggle for a single feature.
 
     Keys are passed in so the card can be reused for thumbnails, metadata, or
-    any future feature that has its own NightlyTaskSettings.* pair.
+    any future feature that has its own NightlyTaskSettings.* pair. If a task
+    has no missing/all distinction (e.g. face clustering, which always runs
+    over whatever new faces exist), leave ModeKey empty to hide the mode
+    selector.
 *@
 
 <MudCard>
@@ -37,15 +40,18 @@
                        Label="@(_enabled ? "Activado" : "Desactivado")"
                        Class="mb-3" />
 
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Modo</MudText>
-            <MudRadioGroup @bind-Value="_mode">
-                <MudRadio Value='"missing"' Color="Color.Primary" Disabled="!_enabled">
-                    @MissingLabel
-                </MudRadio>
-                <MudRadio Value='"all"' Color="Color.Warning" Disabled="!_enabled">
-                    @AllLabel
-                </MudRadio>
-            </MudRadioGroup>
+            @if (HasMode)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Modo</MudText>
+                <MudRadioGroup @bind-Value="_mode">
+                    <MudRadio Value='"missing"' Color="Color.Primary" Disabled="!_enabled">
+                        @MissingLabel
+                    </MudRadio>
+                    <MudRadio Value='"all"' Color="Color.Warning" Disabled="!_enabled">
+                        @AllLabel
+                    </MudRadio>
+                </MudRadioGroup>
+            }
 
             <MudText Typo="Typo.caption" Class="mud-text-secondary mt-3 d-block">
                 Requiere que la
@@ -75,14 +81,19 @@
     /// <summary>Settings key for the boolean enable flag (e.g., "NightlyTaskSettings.Thumbnails.Enabled").</summary>
     [Parameter, EditorRequired] public string EnabledKey { get; set; } = "";
 
-    /// <summary>Settings key for the mode string ("missing"|"all"; e.g., "NightlyTaskSettings.Thumbnails.Mode").</summary>
-    [Parameter, EditorRequired] public string ModeKey { get; set; } = "";
+    /// <summary>Settings key for the mode string ("missing"|"all"; e.g., "NightlyTaskSettings.Thumbnails.Mode"). Leave empty for tasks without a missing/all distinction.</summary>
+    [Parameter] public string ModeKey { get; set; } = "";
 
     /// <summary>Label for the "missing" radio option (e.g., "Solo las que faltan").</summary>
     [Parameter] public string MissingLabel { get; set; } = "Solo los que faltan";
 
     /// <summary>Label for the "all" radio option (e.g., "Regenerar todas").</summary>
     [Parameter] public string AllLabel { get; set; } = "Sobreescribir todos";
+
+    /// <summary>Default value for the enable flag when the setting has never been written. Useful for tasks that should opt-in by default (e.g. face clustering).</summary>
+    [Parameter] public bool DefaultEnabled { get; set; } = false;
+
+    private bool HasMode => !string.IsNullOrEmpty(ModeKey);
 
     private bool _loading = true;
     private bool _saving;
@@ -91,10 +102,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var enabledRaw = await SettingsService.GetSettingAsync(EnabledKey, "false");
+        var fallback = DefaultEnabled ? "true" : "false";
+        var enabledRaw = await SettingsService.GetSettingAsync(EnabledKey, fallback);
         _enabled = "true".Equals(enabledRaw, StringComparison.OrdinalIgnoreCase);
-        var modeRaw = await SettingsService.GetSettingAsync(ModeKey, "missing");
-        _mode = modeRaw == "all" ? "all" : "missing";
+        if (HasMode)
+        {
+            var modeRaw = await SettingsService.GetSettingAsync(ModeKey, "missing");
+            _mode = modeRaw == "all" ? "all" : "missing";
+        }
         _loading = false;
     }
 
@@ -104,7 +119,7 @@
         try
         {
             var ok1 = await SettingsService.SaveSettingAsync(EnabledKey, _enabled ? "true" : "false");
-            var ok2 = await SettingsService.SaveSettingAsync(ModeKey, _mode);
+            var ok2 = !HasMode || await SettingsService.SaveSettingAsync(ModeKey, _mode);
             Snackbar.Add(ok1 && ok2 ? "Tarea nocturna guardada." : "No se pudo guardar.",
                 ok1 && ok2 ? Severity.Success : Severity.Error);
         }

@@ -47,19 +47,6 @@ else
                         Si lo desactivas, las nuevas fotos no se procesarán hasta que vuelvas a activarlo.
                         Las personas y caras ya detectadas se mantienen.
                     </MudText>
-
-                    <MudDivider Class="my-3" />
-
-                    <MudSwitch T="bool"
-                               Label="Reagrupar caras automáticamente cada noche"
-                               Color="Color.Primary"
-                               Value="_nightlyClusterEnabled"
-                               ValueChanged="OnNightlyChanged" />
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                        Consolida las caras nuevas en personas existentes. Requiere que la
-                        <MudLink Href="/admin/settings/nightly">programación nocturna</MudLink>
-                        esté activa.
-                    </MudText>
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -124,15 +111,6 @@ else
         </MudItem>
 
         <MudItem xs="12" md="6">
-            <NightlyTaskCard Title="Tarea nocturna: detección de caras"
-                             Description="Encola la detección de caras sobre las fotos pendientes (o sobre todas) durante el ciclo nocturno. La reagrupación se controla más arriba."
-                             EnabledKey="NightlyTaskSettings.FaceRecognition.Enabled"
-                             ModeKey="NightlyTaskSettings.FaceRecognition.Mode"
-                             MissingLabel="Solo las que faltan"
-                             AllLabel="Reprocesar todas" />
-        </MudItem>
-
-        <MudItem xs="12" md="6">
             <MudCard>
                 <MudCardHeader>
                     <CardHeaderContent>
@@ -167,13 +145,28 @@ else
                 </MudCardContent>
             </MudCard>
         </MudItem>
+
+        <MudItem xs="12" md="6">
+            <NightlyTaskCard Title="Tarea nocturna: detección de caras"
+                             Description="Encola la detección de caras sobre las fotos pendientes (o sobre todas) durante el ciclo nocturno."
+                             EnabledKey="NightlyTaskSettings.FaceRecognition.Enabled"
+                             ModeKey="NightlyTaskSettings.FaceRecognition.Mode"
+                             MissingLabel="Solo las que faltan"
+                             AllLabel="Reprocesar todas" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <NightlyTaskCard Title="Tarea nocturna: reagrupación de caras"
+                             Description="Consolida las caras detectadas en personas existentes durante el ciclo nocturno. Es el paso siguiente a la detección."
+                             EnabledKey="NightlyTaskSettings.FaceClustering.Enabled"
+                             DefaultEnabled="true" />
+        </MudItem>
     </MudGrid>
 }
 </div>
 
 @code {
     private const string KeyEnabled = "FaceRecognition.Enabled";
-    private const string KeyNightlyCluster = "NightlyTaskSettings.FaceClustering.Enabled";
     private const string KeyClusteringThreshold = "FaceRecognition.ClusteringThreshold";
     private const string KeySuggestionThreshold = "FaceRecognition.SuggestionThreshold";
     // Defaults match FaceRecognitionOptions; used as fallback when no override is stored.
@@ -182,7 +175,6 @@ else
 
     private bool _isAuthorized;
     private bool _enabled = true;
-    private bool _nightlyClusterEnabled = true;
     private bool _busy;
     private double _clusteringThreshold = DefaultClusteringThreshold;
     private double _suggestionThreshold = DefaultSuggestionThreshold;
@@ -204,7 +196,6 @@ else
         if (!_isAuthorized) return;
 
         _enabled = !"false".Equals(await SettingsService.GetSettingAsync(KeyEnabled, "true"), StringComparison.OrdinalIgnoreCase);
-        _nightlyClusterEnabled = !"false".Equals(await SettingsService.GetSettingAsync(KeyNightlyCluster, "true"), StringComparison.OrdinalIgnoreCase);
         _clusteringThreshold = ParseThreshold(
             await SettingsService.GetSettingAsync(KeyClusteringThreshold, ""), DefaultClusteringThreshold);
         _suggestionThreshold = ParseThreshold(
@@ -220,14 +211,6 @@ else
         _enabled = v;
         var ok = await SettingsService.SaveSettingAsync(KeyEnabled, v ? "true" : "false");
         Snackbar.Add(ok ? (v ? "Detección facial activada" : "Detección facial desactivada") : "No se pudo guardar",
-            ok ? Severity.Success : Severity.Error);
-    }
-
-    private async Task OnNightlyChanged(bool v)
-    {
-        _nightlyClusterEnabled = v;
-        var ok = await SettingsService.SaveSettingAsync(KeyNightlyCluster, v ? "true" : "false");
-        Snackbar.Add(ok ? "Programación nocturna actualizada" : "No se pudo guardar",
             ok ? Severity.Success : Severity.Error);
     }
 
