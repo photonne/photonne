@@ -1,0 +1,6 @@
+// Override the API URL per build configuration if needed.
+PHOTONNE_API_BASE_URL = http:/$()/localhost:1107
+
+PRODUCT_BUNDLE_IDENTIFIER = com.photonne.native
+MARKETING_VERSION = 0.5.0
+CURRENT_PROJECT_VERSION = 1
