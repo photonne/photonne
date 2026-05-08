@@ -94,7 +94,7 @@ fijar la configuración compartida.
 ## Generación del cliente del API desde OpenAPI
 
 Hoy las DTOs están escritas a mano (ver
-`composeApp/src/commonMain/kotlin/com/photonne/native/data/models/`). Cuando
+`composeApp/src/commonMain/kotlin/com/photonne/app/data/models/`). Cuando
 el contrato se estabilice, se puede migrar al plugin
 [`org.openapitools.generator`](https://openapi-generator.tech/) apuntando a
 `http://localhost:1107/openapi/v1.json`.

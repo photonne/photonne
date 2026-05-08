@@ -97,11 +97,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.photonne.native"
+    namespace = "com.photonne.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.photonne.native"
+        applicationId = "com.photonne.app"
         minSdk = 26
         targetSdk = 35
         versionCode = photonneVersion.toVersionCode()
@@ -127,7 +127,7 @@ android {
 
 compose.desktop {
     application {
-        mainClass = "com.photonne.native.MainKt"
+        mainClass = "com.photonne.app.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Photonne"
