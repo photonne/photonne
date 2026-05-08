@@ -16,8 +16,10 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -163,6 +165,17 @@ private fun TimelineCell(asset: TimelineItem, baseUrl: String, onClick: () -> Un
                 contentDescription = asset.fileName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
+            )
+        }
+        if (asset.isFavorite) {
+            Icon(
+                imageVector = Icons.Filled.Favorite,
+                contentDescription = "Favorito",
+                tint = Color(0xFFFF5252),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .size(16.dp)
             )
         }
     }

@@ -52,7 +52,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             startIndex = current,
             hasMore = timelineState.hasMore,
             onLoadMore = timelineViewModel::loadMore,
-            onBack = closeAsset
+            onBack = closeAsset,
+            onFavoriteChanged = timelineViewModel::setFavorite
         )
     } else {
         TimelineScreen(
