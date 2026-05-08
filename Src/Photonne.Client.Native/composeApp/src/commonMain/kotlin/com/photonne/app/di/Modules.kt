@@ -34,7 +34,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     }
     single<PhotonneApi> { PhotonneApiClient(get(), config.apiBaseUrl) }
     singleOf(::AuthRepository)
-    singleOf(::TimelineRepository)
+    single { TimelineRepository(api = get()) }
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
 }
