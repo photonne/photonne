@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.di.PhotonneAppConfig
@@ -66,6 +67,7 @@ fun AssetDetailScreen(
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val config: PhotonneAppConfig = koinInject()
+    val tokenStorage: TokenStorage = koinInject()
     val state by viewModel.state.collectAsState()
 
     val pagerState = rememberPagerState(initialPage = startIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) {
@@ -170,6 +172,8 @@ fun AssetDetailScreen(
                 item = item,
                 baseUrl = config.apiBaseUrl,
                 showOriginal = showOriginal[item.id] == true,
+                isCurrent = isCurrent,
+                authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
                 onScaleChange = { newScale -> if (isCurrent) currentScale = newScale }
             )
         }
@@ -195,36 +199,51 @@ private fun AssetPage(
     item: TimelineItem,
     baseUrl: String,
     showOriginal: Boolean,
+    isCurrent: Boolean,
+    authHeaders: Map<String, String>,
     onScaleChange: (Float) -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        if (item.isVideo) {
-            // Video playback is out of scope for this PR — show a poster + hint.
-            AsyncImage(
-                model = "$baseUrl/api/assets/${item.id}/thumbnail?size=Large",
-                contentDescription = item.fileName,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
-            Text(
-                text = "Reproducción de vídeo próximamente",
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
-        } else {
-            val imageUrl = if (showOriginal) {
-                "$baseUrl/api/assets/${item.id}/content"
-            } else {
-                "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
+        when {
+            item.isVideo && isVideoPlaybackSupported && isCurrent -> {
+                VideoPlayer(
+                    url = "$baseUrl/api/assets/${item.id}/content",
+                    headers = authHeaders,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
-            ZoomablePagerImage(
-                model = imageUrl,
-                contentDescription = item.fileName,
-                onScaleChange = onScaleChange
-            )
+            item.isVideo -> {
+                // Off-screen pages or unsupported platforms render the poster
+                // so the pager preview stays cheap and predictable.
+                AsyncImage(
+                    model = "$baseUrl/api/assets/${item.id}/thumbnail?size=Large",
+                    contentDescription = item.fileName,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (!isVideoPlaybackSupported) {
+                    Text(
+                        text = "Reproducción de vídeo no disponible en este sistema",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            else -> {
+                val imageUrl = if (showOriginal) {
+                    "$baseUrl/api/assets/${item.id}/content"
+                } else {
+                    "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
+                }
+                ZoomablePagerImage(
+                    model = imageUrl,
+                    contentDescription = item.fileName,
+                    onScaleChange = onScaleChange
+                )
+            }
         }
     }
 }
@@ -313,4 +332,9 @@ private fun formatInstant(iso: String): String {
         .substringBefore('.')
         .removeSuffix("Z")
         .replace('T', ' ')
+}
+
+private fun authHeadersFor(tokenStorage: TokenStorage): Map<String, String> {
+    val token = tokenStorage.getAccessToken().orEmpty()
+    return if (token.isBlank()) emptyMap() else mapOf("Authorization" to "Bearer $token")
 }

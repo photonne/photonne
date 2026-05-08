@@ -80,6 +80,9 @@ kotlin {
             implementation(libs.androidx.security.crypto)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
+            implementation(libs.androidx.media3.exoplayer)
+            implementation(libs.androidx.media3.ui)
+            implementation(libs.androidx.media3.datasource.okhttp)
         }
 
         iosMain.dependencies {
