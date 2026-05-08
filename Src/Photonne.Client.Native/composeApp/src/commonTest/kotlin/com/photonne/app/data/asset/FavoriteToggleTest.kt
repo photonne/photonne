@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-private class StubTokenStorage : TokenStorage {
+private class FavoriteStubTokenStorage : TokenStorage {
     override fun getAccessToken(): String? = "token"
     override fun getRefreshToken(): String? = "refresh"
     override fun getDeviceId(): String = "device-1"
@@ -43,7 +43,7 @@ class FavoriteToggleTest {
         val client = buildPhotonneHttpClient(
             engine = engine,
             baseUrl = "http://test.local",
-            tokenStorage = StubTokenStorage(),
+            tokenStorage = FavoriteStubTokenStorage(),
             authState = AuthStateHolder()
         )
         val repository = AssetDetailRepository(api = PhotonneApiClient(client, "http://test.local"))
