@@ -1,6 +1,7 @@
 package com.photonne.app.ui.timeline
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,8 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
@@ -27,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -45,20 +46,23 @@ import com.photonne.app.di.PhotonneAppConfig
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.koin.compose.koinInject
-import org.koin.compose.viewmodel.koinViewModel
 
 private const val PREFETCH_THRESHOLD = 12
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimelineScreen(user: UserDto) {
-    val viewModel: TimelineViewModel = koinViewModel()
+fun TimelineScreen(
+    user: UserDto,
+    state: TimelineUiState,
+    onItemClick: (Int) -> Unit,
+    onLoadMore: () -> Unit,
+    onRefresh: () -> Unit
+) {
     val authRepository: AuthRepository = koinInject()
     val config: PhotonneAppConfig = koinInject()
-    val state by viewModel.state.collectAsState()
     val gridState = rememberLazyGridState()
 
-    val shouldLoadMore by remember(state.hasMore, state.isAppending) {
+    val shouldLoadMore by remember(state.hasMore, state.isAppending, state.isInitialLoading) {
         derivedStateOf {
             val total = gridState.layoutInfo.totalItemsCount
             val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -71,7 +75,7 @@ fun TimelineScreen(user: UserDto) {
         snapshotFlow { shouldLoadMore }
             .distinctUntilChanged()
             .filter { it }
-            .collect { viewModel.loadMore() }
+            .collect { onLoadMore() }
     }
 
     Scaffold(
@@ -87,7 +91,7 @@ fun TimelineScreen(user: UserDto) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = viewModel::refresh) {
+                    IconButton(onClick = onRefresh) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refrescar")
                     }
                     IconButton(onClick = authRepository::logout) {
@@ -105,7 +109,8 @@ fun TimelineScreen(user: UserDto) {
                     items = state.items,
                     isAppending = state.isAppending,
                     baseUrl = config.apiBaseUrl,
-                    gridState = gridState
+                    gridState = gridState,
+                    onItemClick = onItemClick
                 )
             }
             state.errorMessage?.let { ErrorBanner(it) }
@@ -118,7 +123,8 @@ private fun TimelineGrid(
     items: List<TimelineItem>,
     isAppending: Boolean,
     baseUrl: String,
-    gridState: androidx.compose.foundation.lazy.grid.LazyGridState
+    gridState: LazyGridState,
+    onItemClick: (Int) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 110.dp),
@@ -127,8 +133,8 @@ private fun TimelineGrid(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(items, key = { it.id }) { asset ->
-            TimelineCell(asset = asset, baseUrl = baseUrl)
+        itemsIndexed(items, key = { _, item -> item.id }) { index, asset ->
+            TimelineCell(asset = asset, baseUrl = baseUrl, onClick = { onItemClick(index) })
         }
     }
     if (isAppending) {
@@ -142,13 +148,14 @@ private fun TimelineGrid(
 }
 
 @Composable
-private fun TimelineCell(asset: TimelineItem, baseUrl: String) {
+private fun TimelineCell(asset: TimelineItem, baseUrl: String, onClick: () -> Unit) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
     ) {
         if (asset.hasThumbnails) {
             AsyncImage(
