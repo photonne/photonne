@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +52,7 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val PAGER_PREFETCH_THRESHOLD = 8
+private const val PAGER_DISABLE_THRESHOLD = 1.05f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +61,8 @@ fun AssetDetailScreen(
     startIndex: Int,
     hasMore: Boolean,
     onLoadMore: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val config: PhotonneAppConfig = koinInject()
@@ -68,10 +72,14 @@ fun AssetDetailScreen(
         items.size
     }
 
+    var currentScale by remember { mutableStateOf(1f) }
+    val showOriginal = remember { mutableStateMapOf<String, Boolean>() }
+
     LaunchedEffect(pagerState, items) {
         snapshotFlow { pagerState.currentPage }
             .distinctUntilChanged()
             .collect { index ->
+                currentScale = 1f
                 items.getOrNull(index)?.let { viewModel.select(it.id) }
                 if (hasMore && index >= items.size - PAGER_PREFETCH_THRESHOLD) {
                     onLoadMore()
@@ -82,6 +90,10 @@ fun AssetDetailScreen(
     var showInfo by remember { mutableStateOf(false) }
     val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val currentItem = items.getOrNull(pagerState.currentPage)
+    val currentIsFavorite = state.detail
+        ?.takeIf { it.id == currentItem?.id }?.isFavorite
+        ?: currentItem?.isFavorite ?: false
+    val currentShowingOriginal = currentItem?.let { showOriginal[it.id] == true } == true
 
     Scaffold(
         containerColor = Color.Black,
@@ -107,8 +119,31 @@ fun AssetDetailScreen(
                     )
                 },
                 actions = {
-                    if (state.detail?.isFavorite == true) {
-                        Icon(Icons.Filled.Favorite, contentDescription = "Favorito", tint = Color(0xFFFF5252))
+                    if (currentItem != null && !currentItem.isVideo) {
+                        IconButton(onClick = {
+                            showOriginal[currentItem.id] = !currentShowingOriginal
+                        }) {
+                            Text(
+                                text = if (currentShowingOriginal) "ORIG" else "HD",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (currentShowingOriginal) Color(0xFFFFB300) else Color.White
+                            )
+                        }
+                    }
+                    if (currentItem != null) {
+                        IconButton(onClick = {
+                            viewModel.toggleFavorite(currentItem.id) { confirmed ->
+                                onFavoriteChanged(currentItem.id, confirmed)
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (currentIsFavorite) Icons.Filled.Favorite
+                                else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (currentIsFavorite) "Quitar favorito"
+                                else "Marcar favorito",
+                                tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
+                            )
+                        }
                     }
                     IconButton(onClick = { showInfo = true }) {
                         Icon(Icons.Filled.Info, contentDescription = "Detalles")
@@ -126,10 +161,17 @@ fun AssetDetailScreen(
 
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
             modifier = Modifier.fillMaxSize().padding(padding)
         ) { page ->
             val item = items[page]
-            AssetPage(item = item, baseUrl = config.apiBaseUrl)
+            val isCurrent = page == pagerState.currentPage
+            AssetPage(
+                item = item,
+                baseUrl = config.apiBaseUrl,
+                showOriginal = showOriginal[item.id] == true,
+                onScaleChange = { newScale -> if (isCurrent) currentScale = newScale }
+            )
         }
     }
 
@@ -149,7 +191,12 @@ fun AssetDetailScreen(
 }
 
 @Composable
-private fun AssetPage(item: TimelineItem, baseUrl: String) {
+private fun AssetPage(
+    item: TimelineItem,
+    baseUrl: String,
+    showOriginal: Boolean,
+    onScaleChange: (Float) -> Unit
+) {
     Box(
         modifier = Modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center
@@ -168,11 +215,15 @@ private fun AssetPage(item: TimelineItem, baseUrl: String) {
                 style = MaterialTheme.typography.bodySmall
             )
         } else {
-            AsyncImage(
-                model = "$baseUrl/api/assets/${item.id}/thumbnail?size=Large",
+            val imageUrl = if (showOriginal) {
+                "$baseUrl/api/assets/${item.id}/content"
+            } else {
+                "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
+            }
+            ZoomablePagerImage(
+                model = imageUrl,
                 contentDescription = item.fileName,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
+                onScaleChange = onScaleChange
             )
         }
     }
@@ -258,7 +309,6 @@ private fun formatBytes(bytes: Long): String {
 }
 
 private fun formatInstant(iso: String): String {
-    // Trim sub-seconds and trailing offset for a compact display.
     return iso
         .substringBefore('.')
         .removeSuffix("Z")

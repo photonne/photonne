@@ -15,11 +15,16 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
+
+@Serializable
+internal data class FavoriteResponse(val isFavorite: Boolean)
 
 interface PhotonneApi {
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
     suspend fun getAssetDetail(assetId: String): AssetDetail
+    suspend fun toggleFavorite(assetId: String): Boolean
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -69,6 +74,18 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun toggleFavorite(assetId: String): Boolean {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/favorite")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Favorite toggle failed (${response.status.value})"
+            )
+        }
+        val body: FavoriteResponse = response.body()
+        return body.isFavorite
     }
 }
 

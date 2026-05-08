@@ -62,4 +62,44 @@ class AssetDetailViewModel(
                 }
         }
     }
+
+    /**
+     * Optimistically flips the favorite state for [assetId] both in the
+     * cache and in the visible UI state, then calls the API. On failure
+     * the state is reverted. The confirmed value is delivered through
+     * [onCommitted] so callers (e.g. App) can propagate it to the
+     * timeline grid.
+     */
+    fun toggleFavorite(assetId: String, onCommitted: (Boolean) -> Unit) {
+        val previous = cache[assetId]?.isFavorite
+            ?: _state.value.detail?.takeIf { it.id == assetId }?.isFavorite
+            ?: false
+        val optimistic = !previous
+
+        applyFavorite(assetId, optimistic)
+
+        viewModelScope.launch {
+            runCatching { repository.toggleFavorite(assetId) }
+                .onSuccess { confirmed ->
+                    if (confirmed != optimistic) applyFavorite(assetId, confirmed)
+                    onCommitted(confirmed)
+                }
+                .onFailure { error ->
+                    applyFavorite(assetId, previous)
+                    _state.update {
+                        it.copy(errorMessage = error.message ?: "No se pudo actualizar el favorito")
+                    }
+                }
+        }
+    }
+
+    private fun applyFavorite(assetId: String, isFavorite: Boolean) {
+        cache[assetId]?.let { cache[assetId] = it.copy(isFavorite = isFavorite) }
+        _state.update { current ->
+            val detail = current.detail
+            if (detail != null && detail.id == assetId) {
+                current.copy(detail = detail.copy(isFavorite = isFavorite))
+            } else current
+        }
+    }
 }

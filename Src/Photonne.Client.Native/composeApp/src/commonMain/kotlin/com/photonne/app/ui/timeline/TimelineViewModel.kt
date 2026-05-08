@@ -61,6 +61,15 @@ class TimelineViewModel(
         }
     }
 
+    fun setFavorite(assetId: String, isFavorite: Boolean) {
+        _state.update { previous ->
+            val updated = previous.items.map { item ->
+                if (item.id == assetId) item.copy(isFavorite = isFavorite) else item
+            }
+            previous.copy(items = updated)
+        }
+    }
+
     fun loadMore() {
         val current = _state.value
         if (current.isAppending || current.isInitialLoading || !current.hasMore) return
