@@ -5,9 +5,11 @@ import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.timeline.TimelineRepository
+import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import io.ktor.client.HttpClient
@@ -35,6 +37,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single<PhotonneApi> { PhotonneApiClient(get(), config.apiBaseUrl) }
     singleOf(::AuthRepository)
     single { TimelineRepository(api = get()) }
+    singleOf(::AssetDetailRepository)
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
+    viewModelOf(::AssetDetailViewModel)
 }

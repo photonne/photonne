@@ -1,5 +1,6 @@
 package com.photonne.app.data.api
 
+import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
 import com.photonne.app.data.models.TimelinePage
@@ -18,6 +19,7 @@ import kotlinx.datetime.Instant
 interface PhotonneApi {
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
+    suspend fun getAssetDetail(assetId: String): AssetDetail
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -53,6 +55,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Timeline fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetDetail(assetId: String): AssetDetail {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Asset detail fetch failed (${response.status.value})"
             )
         }
         return response.body()
