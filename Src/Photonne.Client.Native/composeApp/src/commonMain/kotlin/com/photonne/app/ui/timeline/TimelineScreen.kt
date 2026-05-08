@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.UserDto
@@ -159,6 +160,18 @@ private fun TimelineCell(asset: TimelineItem, baseUrl: String, onClick: () -> Un
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
+        val url = "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small"
+        AsyncImage(
+            model = url,
+            contentDescription = asset.fileName,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            onState = { state ->
+                if (state is AsyncImagePainter.State.Error) {
+                    println("[Coil] thumb failed url=$url err=${state.result.throwable.message}")
+                }
+            }
+        )
         if (asset.hasThumbnails) {
             AsyncImage(
                 model = "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small",

@@ -72,14 +72,28 @@ public class ThumbnailEndpoint : IEndpoint
 
                 // Generate thumbnails for all sizes (to ensure we have them all)
                 var generatedThumbnails = await thumbnailService.GenerateThumbnailsAsync(physicalPath, assetId, cancellationToken);
-                
+
                 if (generatedThumbnails.Any())
                 {
-                    // Save to database
-                    dbContext.AssetThumbnails.AddRange(generatedThumbnails);
-                    await dbContext.SaveChangesAsync(cancellationToken);
-                    
-                    // Find the requested size
+                    // GenerateThumbnailsAsync always emits Small/Medium/Large; some of those
+                    // sizes may already have a row for this asset (unique on AssetId+Size),
+                    // so only persist the genuinely new ones to avoid 23505.
+                    var existingSizes = await dbContext.AssetThumbnails
+                        .Where(t => t.AssetId == assetId)
+                        .Select(t => t.Size)
+                        .ToListAsync(cancellationToken);
+
+                    var newRows = generatedThumbnails
+                        .Where(t => !existingSizes.Contains(t.Size))
+                        .ToList();
+
+                    if (newRows.Any())
+                    {
+                        dbContext.AssetThumbnails.AddRange(newRows);
+                        await dbContext.SaveChangesAsync(cancellationToken);
+                    }
+
+                    // Disk file for the requested size was just (re)written by the generator.
                     thumbnail = generatedThumbnails.FirstOrDefault(t => t.Size == thumbnailSize);
                 }
                 

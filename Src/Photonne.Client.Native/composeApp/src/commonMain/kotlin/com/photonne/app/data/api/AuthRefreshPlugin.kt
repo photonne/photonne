@@ -10,6 +10,9 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.plugin
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.headers
@@ -53,6 +56,14 @@ fun buildPhotonneHttpClient(
     val client = HttpClient(engine) {
         expectSuccess = false
         install(ContentNegotiation) { json(photonneJson) }
+        install(Logging) {
+            logger = object : Logger {
+                override fun log(message: String) {
+                    println("[Ktor] $message")
+                }
+            }
+            level = LogLevel.INFO
+        }
     }
 
     client.plugin(HttpSend).intercept { request ->
