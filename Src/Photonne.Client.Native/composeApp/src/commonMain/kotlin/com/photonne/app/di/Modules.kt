@@ -7,7 +7,9 @@ import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.timeline.TimelineRepository
 import com.photonne.app.ui.login.LoginViewModel
+import com.photonne.app.ui.timeline.TimelineViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.module.dsl.singleOf
@@ -32,5 +34,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     }
     single<PhotonneApi> { PhotonneApiClient(get(), config.apiBaseUrl) }
     singleOf(::AuthRepository)
+    single { TimelineRepository(api = get()) }
     viewModelOf(::LoginViewModel)
+    viewModelOf(::TimelineViewModel)
 }
