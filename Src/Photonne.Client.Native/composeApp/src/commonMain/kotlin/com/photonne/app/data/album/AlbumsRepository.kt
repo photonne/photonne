@@ -30,6 +30,10 @@ class AlbumsRepository(
         api.addAssetToAlbum(albumId = albumId, assetId = assetId)
     }
 
+    suspend fun addAssetsBatch(albumId: String, assetIds: List<String>) {
+        api.addAssetsToAlbumBatch(albumId = albumId, assetIds = assetIds)
+    }
+
     suspend fun removeAsset(albumId: String, assetId: String) {
         api.removeAssetFromAlbum(albumId = albumId, assetId = assetId)
     }

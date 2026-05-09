@@ -9,4 +9,12 @@ class AssetDetailRepository(
     suspend fun getDetail(assetId: String): AssetDetail = api.getAssetDetail(assetId)
 
     suspend fun toggleFavorite(assetId: String): Boolean = api.toggleFavorite(assetId)
+
+    suspend fun archive(assetIds: List<String>) {
+        api.archiveAssets(assetIds)
+    }
+
+    suspend fun trash(assetIds: List<String>) {
+        api.trashAssets(assetIds)
+    }
 }

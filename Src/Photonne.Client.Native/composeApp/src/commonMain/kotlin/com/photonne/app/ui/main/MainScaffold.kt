@@ -7,11 +7,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -119,6 +121,59 @@ fun TimelineTopBar(user: UserDto, onRefresh: () -> Unit, onLogout: () -> Unit) {
                 Icon(Icons.Filled.Refresh, contentDescription = "Refrescar")
             }
             AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectionTopBar(
+    selectedCount: Int,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onAddToAlbum: () -> Unit,
+    onArchive: () -> Unit,
+    onTrash: () -> Unit
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+            }
+        },
+        title = {
+            Text(
+                text = "$selectedCount seleccionados",
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = {
+            IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
+                Icon(Icons.Filled.Add, contentDescription = "Add to album")
+            }
+            IconButton(onClick = onTrash, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = "Move to trash",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }, enabled = !isMutating) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Más acciones")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Archivar") },
+                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onArchive()
+                        }
+                    )
+                }
+            }
         }
     )
 }

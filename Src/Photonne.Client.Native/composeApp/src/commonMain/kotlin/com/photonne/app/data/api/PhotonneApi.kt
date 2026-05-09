@@ -34,6 +34,9 @@ internal data class AlbumWriteRequest(val name: String, val description: String?
 internal data class AddAssetToAlbumRequest(val assetId: String)
 
 @Serializable
+internal data class BatchAssetIdsRequest(val assetIds: List<String>)
+
+@Serializable
 internal data class SetCoverRequest(val assetId: String)
 
 @Serializable
@@ -65,6 +68,9 @@ interface PhotonneApi {
     suspend fun updateAlbum(albumId: String, name: String, description: String?): AlbumSummary
     suspend fun deleteAlbum(albumId: String)
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
+    suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>)
+    suspend fun archiveAssets(assetIds: List<String>)
+    suspend fun trashAssets(assetIds: List<String>)
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
@@ -229,6 +235,55 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Add asset to album failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/albums/$albumId/assets/batch") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.Created &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Add assets batch failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun archiveAssets(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/archive") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Archive failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun trashAssets(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/delete") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Trash failed (${response.status.value})"
             )
         }
     }

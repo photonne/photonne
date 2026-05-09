@@ -1,5 +1,6 @@
 package com.photonne.app.ui.grid
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -97,13 +99,20 @@ fun AssetGridCell(
     baseUrl: String,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
+    val selectionPadding by animateDpAsState(
+        targetValue = if (isSelected) 8.dp else 0.dp,
+        label = "selectionPadding"
+    )
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isSelected) 0.18f else 0f))
+            .padding(selectionPadding)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
@@ -142,6 +151,23 @@ fun AssetGridCell(
                     .padding(4.dp)
                     .size(16.dp)
             )
+        }
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(4.dp)
+                    .size(20.dp)
+                    .background(MaterialTheme.colorScheme.primary, shape = androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }

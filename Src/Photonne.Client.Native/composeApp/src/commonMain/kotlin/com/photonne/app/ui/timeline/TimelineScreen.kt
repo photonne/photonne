@@ -28,7 +28,8 @@ fun TimelineScreen(
     state: TimelineUiState,
     onItemClick: (Int) -> Unit,
     onLoadMore: () -> Unit,
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onItemLongClick: ((Int) -> Unit)? = null
 ) {
     val config: PhotonneAppConfig = koinInject()
     val pullState = rememberPullToRefreshState()
@@ -51,6 +52,8 @@ fun TimelineScreen(
                     isAppending = state.isAppending,
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
+                    selectedIds = state.selection,
+                    onItemLongClick = onItemLongClick,
                     modifier = Modifier.fillMaxSize()
                 )
             }
