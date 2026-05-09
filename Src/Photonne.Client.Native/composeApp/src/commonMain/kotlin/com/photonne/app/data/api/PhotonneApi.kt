@@ -1,5 +1,6 @@
 package com.photonne.app.data.api
 
+import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.LoginRequest
@@ -30,6 +31,15 @@ internal data class AlbumWriteRequest(val name: String, val description: String?
 @Serializable
 internal data class AddAssetToAlbumRequest(val assetId: String)
 
+@Serializable
+internal data class CreateShareRequest(
+    val albumId: String,
+    val expiresAt: String? = null,
+    val password: String? = null,
+    val allowDownload: Boolean = true,
+    val maxViews: Int? = null
+)
+
 interface PhotonneApi {
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
@@ -41,6 +51,16 @@ interface PhotonneApi {
     suspend fun updateAlbum(albumId: String, name: String, description: String?): AlbumSummary
     suspend fun deleteAlbum(albumId: String)
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
+    suspend fun leaveAlbum(albumId: String)
+    suspend fun listAlbumShares(albumId: String): List<AlbumShareLink>
+    suspend fun createAlbumShare(
+        albumId: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ): AlbumShareLink
+    suspend fun revokeShare(token: String)
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -182,6 +202,73 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Add asset to album failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun leaveAlbum(albumId: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/albums/$albumId/leave")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Leave album failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun listAlbumShares(albumId: String): List<AlbumShareLink> {
+        val response: HttpResponse = client.get("$baseUrl/api/share") {
+            parameter("albumId", albumId)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Listing share links failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun createAlbumShare(
+        albumId: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ): AlbumShareLink {
+        val response: HttpResponse = client.post("$baseUrl/api/share") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                CreateShareRequest(
+                    albumId = albumId,
+                    expiresAt = expiresAt?.toString(),
+                    password = password?.takeIf { it.isNotBlank() },
+                    allowDownload = allowDownload,
+                    maxViews = maxViews
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.Created
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Creating share link failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun revokeShare(token: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/share/$token")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Revoke share link failed (${response.status.value})"
             )
         }
     }

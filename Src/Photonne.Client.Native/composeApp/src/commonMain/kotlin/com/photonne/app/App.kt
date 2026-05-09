@@ -21,9 +21,13 @@ import com.photonne.app.ui.album.AddToAlbumDialog
 import com.photonne.app.ui.album.AlbumDetailScreen
 import com.photonne.app.ui.album.AlbumDetailViewModel
 import com.photonne.app.ui.album.AlbumFormDialog
+import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsListScreen
 import com.photonne.app.ui.album.AlbumsViewModel
+import com.photonne.app.ui.album.CreateShareDialog
 import com.photonne.app.ui.album.DeleteAlbumDialog
+import com.photonne.app.ui.album.LeaveAlbumDialog
+import com.photonne.app.ui.album.ManageSharesDialog
 import com.photonne.app.ui.asset.AssetDetailScreen
 import com.photonne.app.ui.image.buildPhotonneImageLoader
 import com.photonne.app.ui.login.LoginScreen
@@ -83,9 +87,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
+    val albumSharesViewModel: AlbumSharesViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
+    val albumSharesState by albumSharesViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
@@ -94,6 +100,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showCreateAlbum by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
     var showDeleteAlbum by remember { mutableStateOf(false) }
+    var showLeaveAlbum by remember { mutableStateOf(false) }
+    var showShares by remember { mutableStateOf(false) }
+    var showCreateShare by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
@@ -105,10 +114,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 title = albumDetailState.albumName ?: selectedAlbum!!.name,
                 subtitle = albumDetailState.items.size.takeIf { it > 0 }?.let { "$it elementos" },
                 canEdit = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
-                canDelete = selectedAlbum?.canDelete == true || selectedAlbum?.isOwner == true,
+                canDelete = selectedAlbum?.isOwner == true,
+                canShare = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
+                canLeave = selectedAlbum?.isOwner == false,
                 onBack = albumBack,
                 onEdit = { showEditAlbum = true },
                 onDelete = { showDeleteAlbum = true },
+                onShare = {
+                    selectedAlbum?.let { albumSharesViewModel.open(it.id) }
+                    showShares = true
+                },
+                onLeave = { showLeaveAlbum = true },
                 user = user.user,
                 onLogout = onLogout
             )
@@ -251,6 +267,57 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     albumsViewModel.applyDelete(albumId)
                     selectedAlbum = null
                 }
+            }
+        )
+    }
+
+    if (showLeaveAlbum && openedAlbum != null) {
+        LeaveAlbumDialog(
+            albumName = albumDetailState.albumName ?: openedAlbum.name,
+            isSubmitting = albumDetailState.isMutating,
+            errorMessage = albumDetailState.errorMessage,
+            onDismiss = {
+                showLeaveAlbum = false
+                albumDetailViewModel.clearError()
+            },
+            onConfirm = {
+                albumDetailViewModel.leave { albumId ->
+                    showLeaveAlbum = false
+                    albumsViewModel.applyDelete(albumId)
+                    selectedAlbum = null
+                }
+            }
+        )
+    }
+
+    if (showShares && openedAlbum != null) {
+        ManageSharesDialog(
+            state = albumSharesState,
+            onDismiss = {
+                showShares = false
+                albumSharesViewModel.clearError()
+            },
+            onCreate = { showCreateShare = true },
+            onRevoke = { token -> albumSharesViewModel.revoke(token) }
+        )
+    }
+
+    if (showCreateShare && openedAlbum != null) {
+        CreateShareDialog(
+            isSubmitting = albumSharesState.isMutating,
+            errorMessage = albumSharesState.errorMessage,
+            onDismiss = {
+                showCreateShare = false
+                albumSharesViewModel.clearError()
+            },
+            onConfirm = { password, allowDownload, maxViews ->
+                albumSharesViewModel.createLink(
+                    expiresAt = null,
+                    password = password,
+                    allowDownload = allowDownload,
+                    maxViews = maxViews
+                )
+                showCreateShare = false
             }
         )
     }

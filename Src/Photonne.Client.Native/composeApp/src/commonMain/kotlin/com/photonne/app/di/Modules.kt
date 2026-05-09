@@ -11,6 +11,7 @@ import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.timeline.TimelineRepository
 import com.photonne.app.ui.album.AlbumDetailViewModel
+import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsViewModel
 import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.login.LoginViewModel
@@ -47,4 +48,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AssetDetailViewModel)
     viewModelOf(::AlbumsViewModel)
     viewModelOf(::AlbumDetailViewModel)
+    viewModelOf(::AlbumSharesViewModel)
 }

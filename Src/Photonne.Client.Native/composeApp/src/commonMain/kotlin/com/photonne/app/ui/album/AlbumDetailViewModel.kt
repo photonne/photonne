@@ -114,6 +114,27 @@ class AlbumDetailViewModel(
         }
     }
 
+    fun leave(onLeft: (String) -> Unit) {
+        val albumId = _state.value.albumId ?: return
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.leave(albumId) }
+                .onSuccess {
+                    _state.value = AlbumDetailUiState()
+                    onLeft(albumId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to leave album"
+                        )
+                    }
+                }
+        }
+    }
+
     fun clearError() {
         _state.update { it.copy(errorMessage = null) }
     }

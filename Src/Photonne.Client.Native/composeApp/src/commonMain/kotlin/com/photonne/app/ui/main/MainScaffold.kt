@@ -9,10 +9,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -141,13 +143,18 @@ fun AlbumDetailTopBar(
     subtitle: String?,
     canEdit: Boolean,
     canDelete: Boolean,
+    canShare: Boolean,
+    canLeave: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onShare: () -> Unit,
+    onLeave: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val hasMenu = canEdit || canDelete || canShare || canLeave
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -167,7 +174,12 @@ fun AlbumDetailTopBar(
             }
         },
         actions = {
-            if (canEdit || canDelete) {
+            if (canShare) {
+                IconButton(onClick = onShare) {
+                    Icon(Icons.Filled.Share, contentDescription = "Compartir álbum")
+                }
+            }
+            if (hasMenu) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "Acciones del álbum")
@@ -180,6 +192,16 @@ fun AlbumDetailTopBar(
                                 onClick = {
                                     menuOpen = false
                                     onEdit()
+                                }
+                            )
+                        }
+                        if (canShare) {
+                            DropdownMenuItem(
+                                text = { Text("Compartir") },
+                                leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onShare()
                                 }
                             )
                         }
@@ -196,6 +218,18 @@ fun AlbumDetailTopBar(
                                 onClick = {
                                     menuOpen = false
                                     onDelete()
+                                }
+                            )
+                        }
+                        if (canLeave) {
+                            DropdownMenuItem(
+                                text = { Text("Salir del álbum") },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.ExitToApp, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    onLeave()
                                 }
                             )
                         }
