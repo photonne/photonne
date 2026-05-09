@@ -7,8 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -49,7 +49,7 @@ fun MainScaffold(
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Timeline,
                     onClick = { onTabSelected(MainTab.Timeline) },
-                    icon = { Icon(Icons.Filled.Photo, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
                     label = { Text(MainTab.Timeline.label) }
                 )
                 NavigationBarItem(
