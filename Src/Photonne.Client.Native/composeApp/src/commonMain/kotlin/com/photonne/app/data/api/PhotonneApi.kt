@@ -14,6 +14,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -35,6 +36,9 @@ internal data class AddAssetToAlbumRequest(val assetId: String)
 
 @Serializable
 internal data class BatchAssetIdsRequest(val assetIds: List<String>)
+
+@Serializable
+internal data class UpdateDescriptionBody(val caption: String?)
 
 @Serializable
 internal data class SetCoverRequest(val assetId: String)
@@ -63,6 +67,7 @@ interface PhotonneApi {
     suspend fun getMemories(): List<TimelineItem>
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
+    suspend fun updateAssetDescription(assetId: String, description: String?)
     suspend fun getAlbums(): List<AlbumSummary>
     suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
     suspend fun createAlbum(name: String, description: String?): AlbumSummary
@@ -247,6 +252,21 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Add asset to album failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun updateAssetDescription(assetId: String, description: String?) {
+        val response: HttpResponse = client.patch("$baseUrl/api/assets/$assetId/description") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateDescriptionBody(caption = description?.takeIf { it.isNotBlank() }))
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Update description failed (${response.status.value})"
             )
         }
     }

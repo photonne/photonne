@@ -294,7 +294,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onLoadMore = ctx.onLoadMore,
                 onBack = { assetDetail = null },
                 onFavoriteChanged = ctx.onFavoriteChanged,
-                onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) }
+                onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) },
+                onAssetTrashed = { id ->
+                    timelineViewModel.removeItemLocal(id)
+                    if (ctx.source == AssetDetailContext.Source.Album) {
+                        albumDetailViewModel.applyAssetRemovedLocal(id)
+                    }
+                    assetDetail = null
+                },
+                onAssetArchived = { id ->
+                    timelineViewModel.removeItemLocal(id)
+                    if (ctx.source == AssetDetailContext.Source.Album) {
+                        albumDetailViewModel.applyAssetRemovedLocal(id)
+                    }
+                    assetDetail = null
+                }
             )
         }
     }

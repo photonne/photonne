@@ -74,6 +74,18 @@ class TimelineViewModel(
         }
     }
 
+    /** Removes the given asset id from the local timeline state without
+     *  hitting the API. Used by the AssetDetail viewer after a single-asset
+     *  trash/archive so the grid updates immediately. */
+    fun removeItemLocal(assetId: String) {
+        _state.update { previous ->
+            previous.copy(
+                items = previous.items.filterNot { it.id == assetId },
+                selection = previous.selection - assetId
+            )
+        }
+    }
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         _state.update { previous ->
             val updated = previous.items.map { item ->

@@ -1,14 +1,23 @@
 package com.photonne.app.ui.asset
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -16,10 +25,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -41,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -49,7 +67,25 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.action_save
+import com.photonne.app.resources.asset_action_archive
+import com.photonne.app.resources.asset_action_edit_description
+import com.photonne.app.resources.asset_action_more
+import com.photonne.app.resources.asset_action_open_in_maps
+import com.photonne.app.resources.asset_action_trash
+import com.photonne.app.resources.asset_metadata_location
+import com.photonne.app.resources.asset_metadata_open_map
+import com.photonne.app.ui.util.openExternalUrl
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.tan
 import kotlinx.coroutines.flow.distinctUntilChanged
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -65,7 +101,9 @@ fun AssetDetailScreen(
     onLoadMore: () -> Unit,
     onBack: () -> Unit,
     onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit,
-    onAddToAlbum: (TimelineItem) -> Unit = {}
+    onAddToAlbum: (TimelineItem) -> Unit = {},
+    onAssetTrashed: (assetId: String) -> Unit = {},
+    onAssetArchived: (assetId: String) -> Unit = {}
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val config: PhotonneAppConfig = koinInject()
@@ -92,6 +130,9 @@ fun AssetDetailScreen(
     }
 
     var showInfo by remember { mutableStateOf(false) }
+    var showOverflow by remember { mutableStateOf(false) }
+    var showEditDescription by remember { mutableStateOf(false) }
+    var showTrashConfirm by remember { mutableStateOf(false) }
     val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val currentItem = items.getOrNull(pagerState.currentPage)
     val currentIsFavorite = state.detail
@@ -158,6 +199,58 @@ fun AssetDetailScreen(
                     IconButton(onClick = { showInfo = true }) {
                         Icon(Icons.Filled.Info, contentDescription = "Detalles")
                     }
+                    if (currentItem != null) {
+                        Box {
+                            IconButton(onClick = { showOverflow = true }) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = stringResource(Res.string.asset_action_more)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflow,
+                                onDismissRequest = { showOverflow = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(Res.string.asset_action_edit_description)) },
+                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                    onClick = {
+                                        showOverflow = false
+                                        showEditDescription = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(Res.string.asset_action_archive)) },
+                                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                                    onClick = {
+                                        showOverflow = false
+                                        viewModel.archive(currentItem.id) { id ->
+                                            onAssetArchived(id)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(Res.string.asset_action_trash),
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    onClick = {
+                                        showOverflow = false
+                                        showTrashConfirm = true
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             )
         }
@@ -199,6 +292,29 @@ fun AssetDetailScreen(
                 errorMessage = state.errorMessage
             )
         }
+    }
+
+    if (showEditDescription && currentItem != null) {
+        val current = state.detail.takeIf { it?.id == currentItem.id }?.caption
+        EditDescriptionDialog(
+            initialDescription = current,
+            onDismiss = { showEditDescription = false },
+            onConfirm = { value ->
+                viewModel.updateDescription(currentItem.id, value)
+                showEditDescription = false
+            }
+        )
+    }
+
+    if (showTrashConfirm && currentItem != null) {
+        TrashAssetDialog(
+            fileName = currentItem.fileName,
+            onDismiss = { showTrashConfirm = false },
+            onConfirm = {
+                showTrashConfirm = false
+                viewModel.trash(currentItem.id) { id -> onAssetTrashed(id) }
+            }
+        )
     }
 }
 
@@ -296,6 +412,12 @@ private fun AssetMetadataPanel(
         detail?.exif?.focalLength?.let { MetadataRow("Focal", "${it} mm") }
         detail?.folderPath?.let { MetadataRow("Carpeta", it) }
 
+        val lat = detail?.exif?.latitude
+        val lon = detail?.exif?.longitude
+        if (lat != null && lon != null) {
+            GpsPreview(latitude = lat, longitude = lon)
+        }
+
         val tags = detail?.tags ?: fallback.tags
         if (tags.isNotEmpty()) {
             MetadataRow("Etiquetas", tags.joinToString(", "))
@@ -312,6 +434,114 @@ private fun AssetMetadataPanel(
 
         Spacer(Modifier.height(16.dp))
     }
+}
+
+@Composable
+private fun GpsPreview(latitude: Double, longitude: Double) {
+    val coords = formatGps(latitude, longitude)
+    val mapsUrl = "https://www.google.com/maps/?q=$latitude,$longitude"
+    val grid = remember(latitude, longitude) { computeMapGrid(latitude, longitude, MAP_ZOOM) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            stringResource(Res.string.asset_metadata_location),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { openExternalUrl(mapsUrl) }
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    OsmTile(MAP_ZOOM, grid.tileXStart, grid.tileYStart, Modifier.weight(1f).fillMaxHeight())
+                    OsmTile(MAP_ZOOM, grid.tileXStart + 1, grid.tileYStart, Modifier.weight(1f).fillMaxHeight())
+                }
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    OsmTile(MAP_ZOOM, grid.tileXStart, grid.tileYStart + 1, Modifier.weight(1f).fillMaxHeight())
+                    OsmTile(MAP_ZOOM, grid.tileXStart + 1, grid.tileYStart + 1, Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val pinX = maxWidth * grid.markerXFraction.toFloat() - 12.dp
+                val pinY = maxHeight * grid.markerYFraction.toFloat() - 24.dp
+                Icon(
+                    imageVector = Icons.Filled.LocationOn,
+                    contentDescription = stringResource(Res.string.asset_metadata_open_map),
+                    tint = Color(0xFFE53935),
+                    modifier = Modifier
+                        .offset(x = pinX, y = pinY)
+                        .size(24.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp)
+                    .background(
+                        Color.Black.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = coords,
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+        TextButton(onClick = { openExternalUrl(mapsUrl) }) {
+            Icon(Icons.Filled.LocationOn, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(Res.string.asset_action_open_in_maps))
+        }
+    }
+}
+
+@Composable
+private fun OsmTile(zoom: Int, x: Int, y: Int, modifier: Modifier) {
+    AsyncImage(
+        model = "https://tile.openstreetmap.org/$zoom/$x/$y.png",
+        contentDescription = null,
+        contentScale = ContentScale.FillBounds,
+        modifier = modifier
+    )
+}
+
+private const val MAP_ZOOM = 15
+
+private data class MapGrid(
+    val tileXStart: Int,
+    val tileYStart: Int,
+    val markerXFraction: Double,
+    val markerYFraction: Double
+)
+
+private fun computeMapGrid(lat: Double, lon: Double, zoom: Int): MapGrid {
+    val n = (1 shl zoom).toDouble()
+    val worldX = (lon + 180.0) / 360.0 * n
+    val latRad = lat * PI / 180.0
+    val worldY = (1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n
+    val tileXStart = floor(worldX - 0.5).toInt()
+    val tileYStart = floor(worldY - 0.5).toInt()
+    val markerXFraction = (worldX - tileXStart) / 2.0
+    val markerYFraction = (worldY - tileYStart) / 2.0
+    return MapGrid(tileXStart, tileYStart, markerXFraction, markerYFraction)
+}
+
+private fun formatGps(lat: Double, lon: Double): String {
+    fun round5(value: Double): String {
+        val rounded = (value * 100000).toLong() / 100000.0
+        return rounded.toString()
+    }
+    return "${round5(lat)}, ${round5(lon)}"
 }
 
 @Composable
