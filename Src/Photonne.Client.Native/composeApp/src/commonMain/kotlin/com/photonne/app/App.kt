@@ -99,6 +99,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
+    val folderDetailViewModel: com.photonne.app.ui.folder.FolderDetailViewModel = koinViewModel()
     val albumSharesViewModel: AlbumSharesViewModel = koinViewModel()
     val albumPermissionsViewModel: AlbumPermissionsViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
@@ -110,6 +111,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
+    var selectedFolder by remember {
+        mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
+    }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
     var showCreateAlbum by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
@@ -182,6 +186,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onCreateAlbum = { showCreateAlbum = true },
                 onLogout = onLogout
             )
+            selectedTab == MainTab.Folders && selectedFolder != null ->
+                com.photonne.app.ui.main.FolderDetailTopBar(
+                    title = selectedFolder!!.name.ifBlank { selectedFolder!!.path },
+                    subtitle = stringResource(
+                        com.photonne.app.resources.albums_count_format,
+                        selectedFolder!!.assetCount
+                    ),
+                    onBack = { selectedFolder = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.Folders ->
+                com.photonne.app.ui.main.FoldersListTopBar(user = user.user, onLogout = onLogout)
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -197,6 +214,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab = selectedTab,
             onTabSelected = { tab ->
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
+                if (tab == MainTab.Folders && selectedTab == MainTab.Folders) selectedFolder = null
                 selectedTab = tab
             },
             topBar = topBar
@@ -278,6 +296,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             },
                             viewModel = albumDetailViewModel
+                        )
+                    }
+                }
+                MainTab.Folders -> {
+                    val openedFolder = selectedFolder
+                    if (openedFolder == null) {
+                        com.photonne.app.ui.folder.FoldersListScreen(
+                            onFolderClick = { folder -> selectedFolder = folder }
+                        )
+                    } else {
+                        com.photonne.app.ui.folder.FolderDetailScreen(
+                            folderId = openedFolder.id,
+                            folderName = openedFolder.name.ifBlank { openedFolder.path },
+                            onItemClick = { index ->
+                                val folderState = folderDetailViewModel.state.value
+                                assetDetail = AssetDetailContext(
+                                    items = folderState.items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        folderDetailViewModel.setFavorite(id, isFav)
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            },
+                            viewModel = folderDetailViewModel
                         )
                     }
                 }

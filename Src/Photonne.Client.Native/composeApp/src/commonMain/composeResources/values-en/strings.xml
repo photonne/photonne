@@ -101,4 +101,11 @@
     <string name="asset_trash_message">"%1$s" will be moved to the trash. You can restore it from the web app.</string>
     <string name="asset_metadata_location">Location</string>
     <string name="asset_metadata_open_map">View on Maps</string>
+
+    <string name="tab_folders">Folders</string>
+    <string name="folders_title">Folders</string>
+    <string name="folders_empty_title">No folders</string>
+    <string name="folders_empty_subtitle">Index a folder from the web app to see it here.</string>
+    <string name="folder_shared_badge">Shared</string>
+    <string name="folder_external_badge">External library</string>
 </resources>

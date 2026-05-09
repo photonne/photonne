@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
+import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_edit
@@ -57,7 +58,9 @@ import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_more
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
+import androidx.compose.material.icons.filled.List
 import com.photonne.app.resources.tab_albums
+import com.photonne.app.resources.tab_folders
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
 import org.jetbrains.compose.resources.pluralStringResource
@@ -66,6 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 enum class MainTab {
     Timeline,
     Albums,
+    Folders,
     More
 }
 
@@ -91,6 +95,12 @@ fun MainScaffold(
                     onClick = { onTabSelected(MainTab.Albums) },
                     icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
                     label = { Text(stringResource(Res.string.tab_albums)) }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == MainTab.Folders,
+                    onClick = { onTabSelected(MainTab.Folders) },
+                    icon = { Icon(Icons.Filled.List, contentDescription = null) },
+                    label = { Text(stringResource(Res.string.tab_folders)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.More,
@@ -374,6 +384,49 @@ fun AlbumDetailTopBar(
             }
             AccountMenu(user = user, onLogout = onLogout)
         }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FoldersListTopBar(user: UserDto, onLogout: () -> Unit) {
+    TopAppBar(
+        title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
+        actions = { AccountMenu(user = user, onLogout = onLogout) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderDetailTopBar(
+    title: String,
+    subtitle: String?,
+    onBack: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        actions = { AccountMenu(user = user, onLogout = onLogout) }
     )
 }
 

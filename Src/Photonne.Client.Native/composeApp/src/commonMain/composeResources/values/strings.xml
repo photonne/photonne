@@ -101,4 +101,11 @@
     <string name="asset_trash_message">"%1$s" se moverá a la papelera. Podrás restaurarlo desde la app web.</string>
     <string name="asset_metadata_location">Ubicación</string>
     <string name="asset_metadata_open_map">Ver en Mapas</string>
+
+    <string name="tab_folders">Carpetas</string>
+    <string name="folders_title">Carpetas</string>
+    <string name="folders_empty_title">No hay carpetas</string>
+    <string name="folders_empty_subtitle">Indexa una carpeta desde la app web para verla aquí.</string>
+    <string name="folder_shared_badge">Compartida</string>
+    <string name="folder_external_badge">Biblioteca externa</string>
 </resources>
