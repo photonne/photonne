@@ -65,7 +65,7 @@ fun AssetDetailScreen(
     onLoadMore: () -> Unit,
     onBack: () -> Unit,
     onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit,
-    onAddToAlbum: (assetId: String) -> Unit = {}
+    onAddToAlbum: (TimelineItem) -> Unit = {}
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val config: PhotonneAppConfig = koinInject()
@@ -148,7 +148,7 @@ fun AssetDetailScreen(
                                 tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
                             )
                         }
-                        IconButton(onClick = { onAddToAlbum(currentItem.id) }) {
+                        IconButton(onClick = { onAddToAlbum(currentItem) }) {
                             Icon(
                                 Icons.Filled.Add,
                                 contentDescription = "Añadir a álbum"

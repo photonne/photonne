@@ -821,6 +821,10 @@ public class AlbumsEndpoint : IEndpoint
             }
 
             var album = await dbContext.Albums
+                .Include(a => a.AlbumAssets)
+                    .ThenInclude(aa => aa.Asset)
+                        .ThenInclude(asset => asset.Thumbnails)
+                .Include(a => a.Permissions)
                 .FirstOrDefaultAsync(a => a.Id == albumId, cancellationToken);
 
             if (album == null)
@@ -828,11 +832,8 @@ public class AlbumsEndpoint : IEndpoint
                 return Results.NotFound(new { error = $"Album with ID {albumId} not found" });
             }
 
-            // Verify asset is in the album
-            var albumAsset = await dbContext.AlbumAssets
-                .AnyAsync(aa => aa.AlbumId == albumId && aa.AssetId == request.AssetId, cancellationToken);
-
-            if (!albumAsset)
+            var newCoverAlbumAsset = album.AlbumAssets.FirstOrDefault(aa => aa.AssetId == request.AssetId);
+            if (newCoverAlbumAsset == null)
             {
                 return Results.BadRequest(new { error = "Asset must be in the album to set it as cover" });
             }
@@ -842,7 +843,43 @@ public class AlbumsEndpoint : IEndpoint
             await dbContext.SaveChangesAsync(cancellationToken);
             cache.Remove($"albums:{userId}");
 
-            return Results.Ok(new { message = "Cover image updated successfully" });
+            var now = DateTime.UtcNow;
+            var hasActiveShareLink = await dbContext.SharedLinks
+                .AnyAsync(l => l.AlbumId == albumId &&
+                               (l.ExpiresAt == null || l.ExpiresAt > now) &&
+                               (l.MaxViews == null || l.ViewCount < l.MaxViews),
+                    cancellationToken);
+
+            var coverHasMediumThumbnail = newCoverAlbumAsset.Asset?.Thumbnails
+                .Any(t => t.Size == ThumbnailSize.Medium) == true;
+
+            var response = new AlbumResponse
+            {
+                Id = album.Id,
+                Name = album.Name,
+                Description = album.Description,
+                CreatedAt = album.CreatedAt,
+                UpdatedAt = album.UpdatedAt,
+                AssetCount = album.AlbumAssets.Count,
+                IsOwner = album.OwnerId == userId,
+                IsShared = album.Permissions.Any(p => p.CanRead),
+                SharedWithCount = album.Permissions.Count(p => p.CanRead && p.UserId != album.OwnerId),
+                CanRead = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanRead),
+                CanWrite = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanWrite),
+                CanDelete = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanDelete),
+                CanManagePermissions = album.OwnerId == userId || album.Permissions.Any(p => p.UserId == userId && p.CanManagePermissions),
+                HasActiveShareLink = hasActiveShareLink,
+                CoverThumbnailUrl = coverHasMediumThumbnail
+                    ? $"/api/assets/{request.AssetId}/thumbnail?size=Medium"
+                    : null,
+                PreviewThumbnailUrls = album.AlbumAssets
+                    .OrderBy(aa => aa.Order)
+                    .Take(4)
+                    .Select(aa => $"/api/assets/{aa.AssetId}/thumbnail?size=Small")
+                    .ToList()
+            };
+
+            return Results.Ok(response);
         }
         catch (Exception ex)
         {

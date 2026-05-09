@@ -34,6 +34,9 @@ internal data class AlbumWriteRequest(val name: String, val description: String?
 internal data class AddAssetToAlbumRequest(val assetId: String)
 
 @Serializable
+internal data class SetCoverRequest(val assetId: String)
+
+@Serializable
 internal data class CreateShareRequest(
     val albumId: String,
     val expiresAt: String? = null,
@@ -62,6 +65,8 @@ interface PhotonneApi {
     suspend fun updateAlbum(albumId: String, name: String, description: String?): AlbumSummary
     suspend fun deleteAlbum(albumId: String)
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
+    suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
+    suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
     suspend fun listAlbumShares(albumId: String): List<AlbumShareLink>
     suspend fun createAlbumShare(
@@ -226,6 +231,34 @@ class PhotonneApiClient(
                 message = "Add asset to album failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun removeAssetFromAlbum(albumId: String, assetId: String) {
+        val response: HttpResponse = client.delete(
+            "$baseUrl/api/albums/$albumId/assets/$assetId"
+        )
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Remove asset from album failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary {
+        val response: HttpResponse = client.put("$baseUrl/api/albums/$albumId/cover") {
+            contentType(ContentType.Application.Json)
+            setBody(SetCoverRequest(assetId = assetId))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Set album cover failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 
     override suspend fun leaveAlbum(albumId: String) {

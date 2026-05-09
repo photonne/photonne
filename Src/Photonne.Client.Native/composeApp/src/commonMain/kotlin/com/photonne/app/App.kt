@@ -3,6 +3,7 @@ package com.photonne.app
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +62,7 @@ private data class AssetDetailContext(
 }
 
 private data class AddToAlbumState(
-    val assetId: String,
+    val asset: TimelineItem,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null
 )
@@ -114,6 +115,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
+
+    // Mirror the share link count for the currently opened album back into
+    // the albums list so the public-link badge stays in sync after
+    // create/revoke without a full refresh.
+    val openedAlbumId = selectedAlbum?.id
+    val sharedAlbumId = albumSharesState.albumId
+    val activeLinks = albumSharesState.links.isNotEmpty()
+    LaunchedEffect(openedAlbumId, sharedAlbumId, activeLinks) {
+        if (openedAlbumId != null && openedAlbumId == sharedAlbumId) {
+            albumsViewModel.applyShareLinkChanged(openedAlbumId, activeLinks)
+            selectedAlbum = selectedAlbum?.copy(hasActiveShareLink = activeLinks)
+        }
+    }
 
     val topBar: @Composable () -> Unit = {
         when {
@@ -184,9 +198,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     if (openedAlbum == null) {
                         AlbumsListScreen(onAlbumClick = { album -> selectedAlbum = album })
                     } else {
+                        val albumCanManage =
+                            openedAlbum.canWrite || openedAlbum.isOwner
                         AlbumDetailScreen(
                             albumId = openedAlbum.id,
                             albumName = openedAlbum.name,
+                            canManage = albumCanManage,
                             onItemClick = { index ->
                                 assetDetail = AssetDetailContext(
                                     items = albumDetailState.items,
@@ -199,6 +216,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         timelineViewModel.setFavorite(id, isFav)
                                     }
                                 )
+                            },
+                            onSetAsCover = { item ->
+                                albumDetailViewModel.setCover(item.id) { updated ->
+                                    albumsViewModel.applyUpdate(updated)
+                                    selectedAlbum = openedAlbum.copy(
+                                        coverThumbnailUrl = updated.coverThumbnailUrl
+                                    )
+                                }
+                            },
+                            onRemoveFromAlbum = { item ->
+                                albumDetailViewModel.removeAsset(item.id) {
+                                    albumsViewModel.applyAssetRemoved(openedAlbum.id)
+                                }
                             },
                             viewModel = albumDetailViewModel
                         )
@@ -217,7 +247,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onLoadMore = ctx.onLoadMore,
                 onBack = { assetDetail = null },
                 onFavoriteChanged = ctx.onFavoriteChanged,
-                onAddToAlbum = { assetId -> addToAlbum = AddToAlbumState(assetId = assetId) }
+                onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) }
             )
         }
     }
@@ -378,9 +408,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onAlbumSelected = { album ->
                 addToAlbum = addToAlbumState.copy(isSubmitting = true, errorMessage = null)
                 coroutineScope.launch {
-                    runCatching { albumsRepository.addAsset(album.id, addToAlbumState.assetId) }
+                    runCatching { albumsRepository.addAsset(album.id, addToAlbumState.asset.id) }
                         .onSuccess {
                             albumsViewModel.applyAssetAdded(album.id)
+                            albumDetailViewModel.applyAssetAdded(album.id, addToAlbumState.asset)
                             addToAlbum = null
                         }
                         .onFailure { error ->
