@@ -1,8 +1,10 @@
 package com.photonne.app.data.api
 
+import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
+import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -25,6 +27,8 @@ interface PhotonneApi {
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
+    suspend fun getAlbums(): List<AlbumSummary>
+    suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -86,6 +90,28 @@ class PhotonneApiClient(
         }
         val body: FavoriteResponse = response.body()
         return body.isFavorite
+    }
+
+    override suspend fun getAlbums(): List<AlbumSummary> {
+        val response: HttpResponse = client.get("$baseUrl/api/albums")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Albums fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAlbumAssets(albumId: String): List<TimelineItem> {
+        val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/assets")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Album assets fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 }
 
