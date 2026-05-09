@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
@@ -119,10 +122,15 @@ fun TimelineTopBar(user: UserDto, onRefresh: () -> Unit, onLogout: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlbumsListTopBar(user: UserDto, onLogout: () -> Unit) {
+fun AlbumsListTopBar(user: UserDto, onCreateAlbum: () -> Unit, onLogout: () -> Unit) {
     TopAppBar(
         title = { Text("Álbumes", style = MaterialTheme.typography.titleMedium) },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        actions = {
+            IconButton(onClick = onCreateAlbum) {
+                Icon(Icons.Filled.Add, contentDescription = "Crear álbum")
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
     )
 }
 
@@ -131,10 +139,15 @@ fun AlbumsListTopBar(user: UserDto, onLogout: () -> Unit) {
 fun AlbumDetailTopBar(
     title: String,
     subtitle: String?,
+    canEdit: Boolean,
+    canDelete: Boolean,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
 ) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -153,7 +166,44 @@ fun AlbumDetailTopBar(
                 }
             }
         },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        actions = {
+            if (canEdit || canDelete) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Acciones del álbum")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (canEdit) {
+                            DropdownMenuItem(
+                                text = { Text("Editar") },
+                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onEdit()
+                                }
+                            )
+                        }
+                        if (canDelete) {
+                            DropdownMenuItem(
+                                text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    onDelete()
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
     )
 }
 
