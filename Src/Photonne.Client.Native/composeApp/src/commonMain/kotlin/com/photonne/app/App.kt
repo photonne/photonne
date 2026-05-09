@@ -114,6 +114,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
+    var showJumpToDate by remember { mutableStateOf(false) }
+    var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
@@ -175,6 +177,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             else -> TimelineTopBar(
                 user = user.user,
                 onRefresh = timelineViewModel::refresh,
+                onJumpToDate = { showJumpToDate = true },
                 onLogout = onLogout
             )
         }
@@ -214,7 +217,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         timelineState.items.getOrNull(index)?.let {
                             timelineViewModel.toggleSelection(it.id)
                         }
-                    }
+                    },
+                    pendingJumpDate = pendingJumpDate,
+                    onJumpHandled = { pendingJumpDate = null }
                 )
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
@@ -273,6 +278,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) }
             )
         }
+    }
+
+    if (showJumpToDate) {
+        com.photonne.app.ui.timeline.JumpToDateDialog(
+            onDismiss = { showJumpToDate = false },
+            onConfirm = { date ->
+                showJumpToDate = false
+                pendingJumpDate = date
+            }
+        )
     }
 
     if (showCreateAlbum) {

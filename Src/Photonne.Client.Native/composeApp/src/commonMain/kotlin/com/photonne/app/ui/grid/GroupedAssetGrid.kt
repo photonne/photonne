@@ -30,25 +30,19 @@ import kotlinx.datetime.toLocalDateTime
 
 private const val PREFETCH_THRESHOLD = 12
 
-private val SPANISH_MONTHS = listOf(
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-)
-
 internal sealed interface TimelineEntry {
     data class Header(val key: String, val title: String) : TimelineEntry
     data class Cell(val item: TimelineItem, val index: Int) : TimelineEntry
 }
 
-private fun monthKey(instant: Instant): String {
+internal fun monthKeyOf(instant: Instant): String {
     val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
     return "${date.year}-${date.monthNumber.toString().padStart(2, '0')}"
 }
 
-private fun monthLabel(instant: Instant): String {
+internal fun monthLabelOf(instant: Instant): String {
     val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-    val name = SPANISH_MONTHS.getOrElse(date.monthNumber - 1) { date.monthNumber.toString() }
-    return "${name.replaceFirstChar { it.uppercase() }} ${date.year}"
+    return formatLocalizedMonth(date)
 }
 
 internal fun groupTimelineEntries(items: List<TimelineItem>): List<TimelineEntry> {
@@ -56,14 +50,35 @@ internal fun groupTimelineEntries(items: List<TimelineItem>): List<TimelineEntry
     val out = ArrayList<TimelineEntry>(items.size + 8)
     var lastKey: String? = null
     items.forEachIndexed { index, item ->
-        val key = monthKey(item.fileCreatedAt)
+        val key = monthKeyOf(item.fileCreatedAt)
         if (key != lastKey) {
-            out += TimelineEntry.Header(key = key, title = monthLabel(item.fileCreatedAt))
+            out += TimelineEntry.Header(key = key, title = monthLabelOf(item.fileCreatedAt))
             lastKey = key
         }
         out += TimelineEntry.Cell(item = item, index = index)
     }
     return out
+}
+
+/**
+ * Finds the grid-entry index of the header that matches [target] (or the
+ * closest later month). Useful for the "jump to date" affordance which
+ * needs to scroll the grid to a specific position. Returns -1 when the
+ * timeline is empty or no matching header exists.
+ */
+internal fun findEntryIndexForMonth(entries: List<TimelineEntry>, target: kotlinx.datetime.LocalDate): Int {
+    if (entries.isEmpty()) return -1
+    val targetKey = "${target.year}-${target.monthNumber.toString().padStart(2, '0')}"
+    var fallback = -1
+    entries.forEachIndexed { index, entry ->
+        if (entry is TimelineEntry.Header) {
+            if (entry.key == targetKey) return index
+            // Headers are emitted in newest-first order (timeline descends).
+            // We pick the first header whose month is older or equal as a fallback.
+            if (fallback == -1 && entry.key <= targetKey) fallback = index
+        }
+    }
+    return fallback
 }
 
 /**

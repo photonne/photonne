@@ -141,6 +141,12 @@ compose.desktop {
     }
 }
 
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.photonne.app.resources"
+    generateResClass = auto
+}
+
 fun readPhotonneVersion(): String {
     val props = rootProject.file("../Directory.Build.props")
     if (props.exists()) {

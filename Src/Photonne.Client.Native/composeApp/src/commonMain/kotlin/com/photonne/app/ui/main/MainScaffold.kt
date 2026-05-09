@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -36,11 +37,27 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_account
+import com.photonne.app.resources.action_jump_to_date
+import com.photonne.app.resources.action_logout
+import com.photonne.app.resources.action_refresh
+import com.photonne.app.resources.app_name
+import com.photonne.app.resources.selection_action_add_to_album
+import com.photonne.app.resources.selection_action_archive
+import com.photonne.app.resources.selection_action_close
+import com.photonne.app.resources.selection_action_more
+import com.photonne.app.resources.selection_action_trash
+import com.photonne.app.resources.selection_count
+import com.photonne.app.resources.tab_albums
+import com.photonne.app.resources.tab_more
+import com.photonne.app.resources.tab_timeline
+import org.jetbrains.compose.resources.stringResource
 
-enum class MainTab(val label: String) {
-    Timeline("Fotos"),
-    Albums("Álbumes"),
-    More("Más")
+enum class MainTab {
+    Timeline,
+    Albums,
+    More
 }
 
 @Composable
@@ -58,19 +75,19 @@ fun MainScaffold(
                     selected = selectedTab == MainTab.Timeline,
                     onClick = { onTabSelected(MainTab.Timeline) },
                     icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                    label = { Text(MainTab.Timeline.label) }
+                    label = { Text(stringResource(Res.string.tab_timeline)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Albums,
                     onClick = { onTabSelected(MainTab.Albums) },
                     icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
-                    label = { Text(MainTab.Albums.label) }
+                    label = { Text(stringResource(Res.string.tab_albums)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.More,
                     onClick = { onTabSelected(MainTab.More) },
                     icon = { Icon(Icons.Filled.MoreVert, contentDescription = null) },
-                    label = { Text(MainTab.More.label) }
+                    label = { Text(stringResource(Res.string.tab_more)) }
                 )
             }
         }
@@ -87,7 +104,10 @@ fun AccountMenu(user: UserDto, onLogout: () -> Unit) {
     var open by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(Icons.Filled.AccountCircle, contentDescription = "Cuenta")
+            Icon(
+                Icons.Filled.AccountCircle,
+                contentDescription = stringResource(Res.string.action_account)
+            )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
@@ -101,7 +121,7 @@ fun AccountMenu(user: UserDto, onLogout: () -> Unit) {
                 enabled = false
             )
             DropdownMenuItem(
-                text = { Text("Cerrar sesión") },
+                text = { Text(stringResource(Res.string.action_logout)) },
                 onClick = {
                     open = false
                     onLogout()
@@ -113,12 +133,31 @@ fun AccountMenu(user: UserDto, onLogout: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimelineTopBar(user: UserDto, onRefresh: () -> Unit, onLogout: () -> Unit) {
+fun TimelineTopBar(
+    user: UserDto,
+    onRefresh: () -> Unit,
+    onJumpToDate: () -> Unit,
+    onLogout: () -> Unit
+) {
     TopAppBar(
-        title = { Text("Photonne", style = MaterialTheme.typography.titleMedium) },
+        title = {
+            Text(
+                stringResource(Res.string.app_name),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
         actions = {
+            IconButton(onClick = onJumpToDate) {
+                Icon(
+                    Icons.Filled.DateRange,
+                    contentDescription = stringResource(Res.string.action_jump_to_date)
+                )
+            }
             IconButton(onClick = onRefresh) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Refrescar")
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.action_refresh)
+                )
             }
             AccountMenu(user = user, onLogout = onLogout)
         }
@@ -139,33 +178,42 @@ fun SelectionTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
             }
         },
         title = {
             Text(
-                text = "$selectedCount seleccionados",
+                text = stringResource(Res.string.selection_count, selectedCount),
                 style = MaterialTheme.typography.titleMedium
             )
         },
         actions = {
             IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
-                Icon(Icons.Filled.Add, contentDescription = "Add to album")
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
+                )
             }
             IconButton(onClick = onTrash, enabled = !isMutating) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = "Move to trash",
+                    contentDescription = stringResource(Res.string.selection_action_trash),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
             Box {
                 IconButton(onClick = { menuOpen = true }, enabled = !isMutating) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Más acciones")
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(Res.string.selection_action_more)
+                    )
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
-                        text = { Text("Archivar") },
+                        text = { Text(stringResource(Res.string.selection_action_archive)) },
                         leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
                         onClick = {
                             menuOpen = false
