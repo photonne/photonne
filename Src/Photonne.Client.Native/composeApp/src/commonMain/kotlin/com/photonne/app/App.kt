@@ -41,6 +41,7 @@ import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.main.MoreTopBar
+import com.photonne.app.ui.main.SelectionTopBar
 import com.photonne.app.ui.main.TimelineTopBar
 import com.photonne.app.ui.theme.PhotonneTheme
 import com.photonne.app.ui.timeline.TimelineScreen
@@ -112,6 +113,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMembers by remember { mutableStateOf(false) }
     var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
+    var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -131,6 +133,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     val topBar: @Composable () -> Unit = {
         when {
+            selectedTab == MainTab.Timeline && timelineState.isSelectionActive -> SelectionTopBar(
+                selectedCount = timelineState.selection.size,
+                isMutating = timelineState.isBulkMutating,
+                onClose = timelineViewModel::clearSelection,
+                onAddToAlbum = { bulkAddToAlbum = true },
+                onArchive = timelineViewModel::bulkArchive,
+                onTrash = timelineViewModel::bulkTrash
+            )
             selectedTab == MainTab.Albums && selectedAlbum != null -> AlbumDetailTopBar(
                 title = albumDetailState.albumName ?: selectedAlbum!!.name,
                 subtitle = albumDetailState.items.size.takeIf { it > 0 }?.let { "$it elementos" },
@@ -182,17 +192,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 MainTab.Timeline -> TimelineScreen(
                     state = timelineState,
                     onItemClick = { index ->
-                        assetDetail = AssetDetailContext(
-                            items = timelineState.items,
-                            startIndex = index,
-                            source = AssetDetailContext.Source.Timeline,
-                            hasMore = timelineState.hasMore,
-                            onLoadMore = timelineViewModel::loadMore,
-                            onFavoriteChanged = timelineViewModel::setFavorite
-                        )
+                        if (timelineState.isSelectionActive) {
+                            timelineState.items.getOrNull(index)?.let {
+                                timelineViewModel.toggleSelection(it.id)
+                            }
+                        } else {
+                            assetDetail = AssetDetailContext(
+                                items = timelineState.items,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = timelineState.hasMore,
+                                onLoadMore = timelineViewModel::loadMore,
+                                onFavoriteChanged = timelineViewModel::setFavorite
+                            )
+                        }
                     },
                     onLoadMore = timelineViewModel::loadMore,
-                    onRefresh = timelineViewModel::refresh
+                    onRefresh = timelineViewModel::refresh,
+                    onItemLongClick = { index ->
+                        timelineState.items.getOrNull(index)?.let {
+                            timelineViewModel.toggleSelection(it.id)
+                        }
+                    }
                 )
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
@@ -392,6 +413,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
                 showCreateShare = false
             }
+        )
+    }
+
+    if (bulkAddToAlbum) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = timelineState.isBulkMutating,
+            errorMessage = timelineState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbum = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                timelineViewModel.bulkAddToAlbum(album.id) {
+                    albumsViewModel.applyShareLinkChanged(album.id, album.hasActiveShareLink)
+                }
+                bulkAddToAlbum = false
+            },
+            onDismiss = { bulkAddToAlbum = false }
         )
     }
 

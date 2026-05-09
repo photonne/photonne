@@ -81,7 +81,9 @@ fun GroupedAssetGrid(
     hasMore: Boolean = false,
     isAppending: Boolean = false,
     isInitialLoading: Boolean = false,
-    onLoadMore: () -> Unit = {}
+    onLoadMore: () -> Unit = {},
+    selectedIds: Set<String> = emptySet(),
+    onItemLongClick: ((Int) -> Unit)? = null
 ) {
     val entries = remember(items) { groupTimelineEntries(items) }
 
@@ -126,7 +128,9 @@ fun GroupedAssetGrid(
                 is TimelineEntry.Cell -> AssetGridCell(
                     asset = entry.item,
                     baseUrl = baseUrl,
-                    onClick = { onItemClick(entry.index) }
+                    onClick = { onItemClick(entry.index) },
+                    onLongClick = onItemLongClick?.let { { it(entry.index) } },
+                    isSelected = entry.item.id in selectedIds
                 )
             }
         }
