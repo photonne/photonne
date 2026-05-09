@@ -34,6 +34,11 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.albums_count_format
+import com.photonne.app.resources.albums_empty_subtitle
+import com.photonne.app.resources.albums_empty_title
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -51,10 +56,13 @@ fun AlbumsListScreen(onAlbumClick: (AlbumSummary) -> Unit) {
         state.albums.isEmpty() && state.errorMessage == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Aún no tienes álbumes", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(Res.string.albums_empty_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Crea álbumes desde la app web por ahora.",
+                        stringResource(Res.string.albums_empty_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

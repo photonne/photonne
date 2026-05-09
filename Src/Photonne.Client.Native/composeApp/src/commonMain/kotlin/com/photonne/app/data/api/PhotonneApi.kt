@@ -60,6 +60,7 @@ internal data class SetAlbumPermissionBody(
 interface PhotonneApi {
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
+    suspend fun getMemories(): List<TimelineItem>
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
     suspend fun getAlbums(): List<AlbumSummary>
@@ -129,6 +130,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Timeline fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getMemories(): List<TimelineItem> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/memories")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Memories fetch failed (${response.status.value})"
             )
         }
         return response.body()

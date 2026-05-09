@@ -35,6 +35,28 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AlbumShareLink
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_create
+import com.photonne.app.resources.action_leave
+import com.photonne.app.resources.album_leave_message
+import com.photonne.app.resources.album_leave_title
+import com.photonne.app.resources.share_action_copy
+import com.photonne.app.resources.share_action_new
+import com.photonne.app.resources.share_action_revoke
+import com.photonne.app.resources.share_attribute_no_downloads
+import com.photonne.app.resources.share_attribute_password
+import com.photonne.app.resources.share_attribute_views_format
+import com.photonne.app.resources.share_create_title
+import com.photonne.app.resources.share_empty
+import com.photonne.app.resources.share_option_allow_downloads
+import com.photonne.app.resources.share_option_max_views
+import com.photonne.app.resources.share_option_max_views_field
+import com.photonne.app.resources.share_option_password
+import com.photonne.app.resources.share_option_password_field
+import com.photonne.app.resources.share_title
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ManageSharesDialog(
@@ -46,7 +68,7 @@ fun ManageSharesDialog(
     val clipboard = LocalClipboardManager.current
     AlertDialog(
         onDismissRequest = { if (!state.isMutating) onDismiss() },
-        title = { Text("Public share links") },
+        title = { Text(stringResource(Res.string.share_title)) },
         text = {
             Column(
                 modifier = Modifier.heightIn(min = 120.dp, max = 360.dp).fillMaxWidth(),
@@ -58,7 +80,7 @@ fun ManageSharesDialog(
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                     state.links.isEmpty() -> Text(
-                        "No share links yet. Anyone with the link will be able to view this album.",
+                        stringResource(Res.string.share_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -85,11 +107,13 @@ fun ManageSharesDialog(
             TextButton(onClick = onCreate, enabled = !state.isMutating) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.height(4.dp))
-                Text("New link")
+                Text(stringResource(Res.string.share_action_new))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !state.isMutating) { Text("Close") }
+            TextButton(onClick = onDismiss, enabled = !state.isMutating) {
+                Text(stringResource(Res.string.action_close))
+            }
         }
     )
 }
@@ -110,12 +134,15 @@ private fun ShareLinkRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1
             )
+            val passwordAttr = stringResource(Res.string.share_attribute_password)
+            val noDownloadsAttr = stringResource(Res.string.share_attribute_no_downloads)
+            val viewsAttr = stringResource(Res.string.share_attribute_views_format, link.viewCount)
             val attrs = buildList {
-                if (link.hasPassword) add("password")
-                link.expiresAt?.let { add("expires ${it}") }
-                link.maxViews?.let { add("max ${it}") }
-                add("${link.viewCount} views")
-                if (!link.allowDownload) add("no downloads")
+                if (link.hasPassword) add(passwordAttr)
+                link.expiresAt?.let { add("$it") }
+                link.maxViews?.let { add("max $it") }
+                add(viewsAttr)
+                if (!link.allowDownload) add(noDownloadsAttr)
             }
             Text(
                 text = attrs.joinToString(" · "),
@@ -124,12 +151,15 @@ private fun ShareLinkRow(
             )
         }
         IconButton(onClick = onCopy) {
-            Icon(Icons.Filled.Share, contentDescription = "Copy link")
+            Icon(
+                Icons.Filled.Share,
+                contentDescription = stringResource(Res.string.share_action_copy)
+            )
         }
         IconButton(onClick = onRevoke) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = "Revoke",
+                contentDescription = stringResource(Res.string.share_action_revoke),
                 tint = MaterialTheme.colorScheme.error
             )
         }
@@ -159,17 +189,17 @@ fun CreateShareDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text("Create share link") },
+        title = { Text(stringResource(Res.string.share_create_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ToggleRow(
-                    label = "Allow downloads",
+                    label = stringResource(Res.string.share_option_allow_downloads),
                     checked = allowDownload,
                     onCheckedChange = { allowDownload = it },
                     enabled = !isSubmitting
                 )
                 ToggleRow(
-                    label = "Protect with password",
+                    label = stringResource(Res.string.share_option_password),
                     checked = passwordEnabled,
                     onCheckedChange = { passwordEnabled = it },
                     enabled = !isSubmitting
@@ -178,14 +208,14 @@ fun CreateShareDialog(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(Res.string.share_option_password_field)) },
                         singleLine = true,
                         enabled = !isSubmitting,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
                 ToggleRow(
-                    label = "Limit number of views",
+                    label = stringResource(Res.string.share_option_max_views),
                     checked = maxViewsEnabled,
                     onCheckedChange = { maxViewsEnabled = it },
                     enabled = !isSubmitting
@@ -194,7 +224,7 @@ fun CreateShareDialog(
                     OutlinedTextField(
                         value = maxViews,
                         onValueChange = { input -> maxViews = input.filter { it.isDigit() } },
-                        label = { Text("Max views") },
+                        label = { Text(stringResource(Res.string.share_option_max_views_field)) },
                         singleLine = true,
                         enabled = !isSubmitting,
                         modifier = Modifier.fillMaxWidth()
@@ -216,10 +246,12 @@ fun CreateShareDialog(
                     )
                 },
                 enabled = canSubmit
-            ) { Text("Create") }
+            ) { Text(stringResource(Res.string.action_create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_cancel))
+            }
         }
     )
 }
@@ -234,10 +266,10 @@ fun LeaveAlbumDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text("Leave album") },
+        title = { Text(stringResource(Res.string.album_leave_title)) },
         text = {
             Column {
-                Text("You will lose access to \"$albumName\". The owner can invite you back.")
+                Text(stringResource(Res.string.album_leave_message, albumName))
                 if (errorMessage != null) {
                     Spacer(Modifier.height(8.dp))
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
@@ -245,10 +277,14 @@ fun LeaveAlbumDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isSubmitting) { Text("Leave") }
+            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_leave))
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_cancel))
+            }
         }
     )
 }

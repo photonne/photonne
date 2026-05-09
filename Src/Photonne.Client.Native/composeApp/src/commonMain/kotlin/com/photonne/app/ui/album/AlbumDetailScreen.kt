@@ -23,7 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.album_empty_subtitle
+import com.photonne.app.resources.album_empty_title
 import com.photonne.app.ui.grid.AssetGrid
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 @Composable
@@ -61,10 +65,13 @@ fun AlbumDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("Album empty", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(Res.string.album_empty_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Add photos to this album from the asset viewer.",
+                            stringResource(Res.string.album_empty_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -37,6 +37,17 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.ShareableUser
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_invite
+import com.photonne.app.resources.action_remove
+import com.photonne.app.resources.permissions_empty
+import com.photonne.app.resources.permissions_invite_empty
+import com.photonne.app.resources.permissions_invite_people
+import com.photonne.app.resources.permissions_invite_role
+import com.photonne.app.resources.permissions_invite_title
+import com.photonne.app.resources.permissions_title
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ManagePermissionsDialog(
@@ -48,7 +59,7 @@ fun ManagePermissionsDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!state.isMutating) onDismiss() },
-        title = { Text("Album members") },
+        title = { Text(stringResource(Res.string.permissions_title)) },
         text = {
             Column(
                 modifier = Modifier.heightIn(min = 140.dp, max = 360.dp).fillMaxWidth(),
@@ -60,7 +71,7 @@ fun ManagePermissionsDialog(
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                     state.members.isEmpty() -> Text(
-                        "Only you have access. Invite people to give them read or write access.",
+                        stringResource(Res.string.permissions_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -87,11 +98,13 @@ fun ManagePermissionsDialog(
             TextButton(onClick = onInvite, enabled = !state.isMutating) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.height(4.dp))
-                Text("Invite")
+                Text(stringResource(Res.string.action_invite))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !state.isMutating) { Text("Close") }
+            TextButton(onClick = onDismiss, enabled = !state.isMutating) {
+                Text(stringResource(Res.string.action_close))
+            }
         }
     )
 }
@@ -119,7 +132,7 @@ private fun MemberRow(
         IconButton(onClick = onRevoke) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = "Remove",
+                contentDescription = stringResource(Res.string.action_remove),
                 tint = MaterialTheme.colorScheme.error
             )
         }
@@ -161,13 +174,13 @@ fun InviteMemberDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text("Invite member") },
+        title = { Text(stringResource(Res.string.permissions_invite_title)) },
         text = {
             Column(
                 modifier = Modifier.heightIn(min = 200.dp, max = 360.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Role", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(Res.string.permissions_invite_role), style = MaterialTheme.typography.labelMedium)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -188,10 +201,10 @@ fun InviteMemberDialog(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
-                Text("People", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(Res.string.permissions_invite_people), style = MaterialTheme.typography.labelMedium)
                 if (candidates.isEmpty()) {
                     Text(
-                        "No more users to invite.",
+                        stringResource(Res.string.permissions_invite_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -216,7 +229,9 @@ fun InviteMemberDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Close") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_close))
+            }
         }
     )
 }

@@ -16,6 +16,11 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.asset_action_no_permission
+import com.photonne.app.resources.asset_action_remove_from_album
+import com.photonne.app.resources.asset_action_set_cover
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,19 +44,19 @@ fun AlbumAssetActionsSheet(
             )
             if (canManage) {
                 ActionRow(
-                    label = "Set as album cover",
+                    label = stringResource(Res.string.asset_action_set_cover),
                     icon = Icons.Filled.Star,
                     onClick = onSetAsCover
                 )
                 ActionRow(
-                    label = "Remove from album",
+                    label = stringResource(Res.string.asset_action_remove_from_album),
                     icon = Icons.Filled.Delete,
                     isDestructive = true,
                     onClick = onRemoveFromAlbum
                 )
             } else {
                 Text(
-                    text = "You don't have permission to manage this album.",
+                    text = stringResource(Res.string.asset_action_no_permission),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(8.dp)

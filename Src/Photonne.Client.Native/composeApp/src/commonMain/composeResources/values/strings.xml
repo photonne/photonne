@@ -12,14 +12,81 @@
     <string name="action_jump_to_date">Saltar a una fecha</string>
     <string name="action_jump">Saltar</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="action_close">Cerrar</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_create">Crear</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_leave">Salir</string>
+    <string name="action_remove">Quitar</string>
+    <string name="action_share">Compartir</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_invite">Invitar</string>
+    <string name="action_more">Más acciones</string>
 
     <string name="timeline_empty_title">No hay assets en la línea de tiempo</string>
     <string name="timeline_empty_subtitle">Indexa una carpeta desde la app web para empezar.</string>
+    <string name="timeline_memories_section">Recuerdos</string>
+    <string name="timeline_memories_one_year_ago">Hace 1 año</string>
+    <string name="timeline_memories_years_ago">Hace %1$d años</string>
 
-    <string name="selection_count">%1$d seleccionados</string>
+    <plurals name="selection_count">
+        <item quantity="one">%1$d seleccionado</item>
+        <item quantity="other">%1$d seleccionados</item>
+    </plurals>
     <string name="selection_action_close">Cancelar selección</string>
     <string name="selection_action_add_to_album">Añadir a álbum</string>
     <string name="selection_action_archive">Archivar</string>
     <string name="selection_action_trash">Mover a la papelera</string>
     <string name="selection_action_more">Más acciones</string>
+
+    <string name="album_field_name">Nombre</string>
+    <string name="album_field_description">Descripción (opcional)</string>
+    <string name="album_action_new">Nuevo álbum</string>
+    <string name="album_action_edit">Editar álbum</string>
+    <string name="album_action_members">Miembros</string>
+    <string name="album_action_album_actions">Acciones del álbum</string>
+    <string name="album_delete_title">Eliminar álbum</string>
+    <string name="album_delete_message">"%1$s" se eliminará. Las fotos del álbum permanecen en tu biblioteca.</string>
+    <string name="album_leave_title">Salir del álbum</string>
+    <string name="album_leave_message">Perderás acceso a "%1$s". El propietario podrá invitarte de nuevo.</string>
+    <string name="album_empty_title">Álbum vacío</string>
+    <string name="album_empty_subtitle">Añade fotos a este álbum desde el visor.</string>
+    <string name="albums_empty_title">Aún no tienes álbumes</string>
+    <string name="albums_empty_subtitle">Pulsa el botón + de la barra superior para crear el primero.</string>
+    <string name="albums_count_format">%1$d elementos</string>
+
+    <string name="add_to_album_title">Añadir a álbum</string>
+    <string name="add_to_album_empty">Aún no tienes álbumes.</string>
+    <string name="add_to_album_failed">No se pudo añadir al álbum</string>
+
+    <string name="asset_action_set_cover">Establecer como portada</string>
+    <string name="asset_action_remove_from_album">Quitar del álbum</string>
+    <string name="asset_action_no_permission">No tienes permiso para gestionar este álbum.</string>
+
+    <string name="share_title">Enlaces públicos</string>
+    <string name="share_empty">No hay enlaces todavía. Cualquiera con el enlace podrá ver el álbum.</string>
+    <string name="share_action_new">Nuevo enlace</string>
+    <string name="share_action_copy">Copiar enlace</string>
+    <string name="share_action_revoke">Revocar enlace</string>
+    <string name="share_create_title">Crear enlace</string>
+    <string name="share_option_password">Proteger con contraseña</string>
+    <string name="share_option_password_field">Contraseña</string>
+    <string name="share_option_max_views">Limitar el número de vistas</string>
+    <string name="share_option_max_views_field">Vistas máximas</string>
+    <string name="share_option_allow_downloads">Permitir descargas</string>
+    <string name="share_attribute_password">contraseña</string>
+    <string name="share_attribute_no_downloads">sin descargas</string>
+    <string name="share_attribute_views_format">%1$d vistas</string>
+
+    <string name="permissions_title">Miembros del álbum</string>
+    <string name="permissions_empty">Solo tú tienes acceso. Invita a otras personas para darles permiso de lectura o escritura.</string>
+    <string name="permissions_role_viewer">Lector</string>
+    <string name="permissions_role_editor">Editor</string>
+    <string name="permissions_role_admin">Administrador</string>
+    <string name="permissions_invite_title">Invitar miembro</string>
+    <string name="permissions_invite_role">Rol</string>
+    <string name="permissions_invite_people">Personas</string>
+    <string name="permissions_invite_empty">No hay más usuarios para invitar.</string>
+
+    <string name="more_settings_hint">Próximamente: ajustes, gestión de almacenamiento, atajos de carpetas y más.</string>
 </resources>

@@ -17,6 +17,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.album_delete_message
+import com.photonne.app.resources.album_delete_title
+import com.photonne.app.resources.album_field_description
+import com.photonne.app.resources.album_field_name
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Form dialog used to both create a new album and edit an existing one.
@@ -48,7 +56,7 @@ fun AlbumFormDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(Res.string.album_field_name)) },
                     singleLine = true,
                     enabled = !isSubmitting,
                     modifier = Modifier.fillMaxWidth()
@@ -56,7 +64,7 @@ fun AlbumFormDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
+                    label = { Text(stringResource(Res.string.album_field_description)) },
                     enabled = !isSubmitting,
                     minLines = 2,
                     maxLines = 4,
@@ -77,7 +85,9 @@ fun AlbumFormDialog(
             ) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_cancel))
+            }
         }
     )
 }
@@ -92,10 +102,10 @@ fun DeleteAlbumDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text("Delete album") },
+        title = { Text(stringResource(Res.string.album_delete_title)) },
         text = {
             Column {
-                Text("\"$albumName\" will be deleted. The photos inside the album are kept in your library.")
+                Text(stringResource(Res.string.album_delete_message, albumName))
                 if (errorMessage != null) {
                     Spacer(Modifier.height(8.dp))
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
@@ -104,11 +114,16 @@ fun DeleteAlbumDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = !isSubmitting) {
-                Text("Delete", color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(Res.string.action_delete),
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_cancel))
+            }
         }
     )
 }
