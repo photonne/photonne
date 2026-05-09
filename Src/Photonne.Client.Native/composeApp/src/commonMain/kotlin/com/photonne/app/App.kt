@@ -114,6 +114,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
+    var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -278,17 +279,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         AlbumFormDialog(
             title = "New album",
             confirmLabel = "Create",
-            isSubmitting = albumsState.isMutating,
+            isSubmitting = albumsState.isMutating || timelineState.isBulkMutating,
             errorMessage = albumsState.errorMessage,
             onDismiss = {
                 showCreateAlbum = false
+                pendingBulkAddOnCreate = false
                 albumsViewModel.clearError()
             },
             onConfirm = { name, description ->
                 albumsViewModel.create(name, description) { newAlbum ->
-                    showCreateAlbum = false
-                    selectedTab = MainTab.Albums
-                    selectedAlbum = newAlbum
+                    if (pendingBulkAddOnCreate) {
+                        pendingBulkAddOnCreate = false
+                        timelineViewModel.bulkAddToAlbum(newAlbum.id) { added ->
+                            albumsViewModel.applyAssetsAdded(newAlbum.id, added.size)
+                            showCreateAlbum = false
+                            selectedTab = MainTab.Albums
+                            selectedAlbum = newAlbum
+                        }
+                    } else {
+                        showCreateAlbum = false
+                        selectedTab = MainTab.Albums
+                        selectedAlbum = newAlbum
+                    }
                 }
             }
         )
@@ -424,11 +436,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = timelineState.errorMessage,
             onCreateNew = {
                 bulkAddToAlbum = false
+                pendingBulkAddOnCreate = true
                 showCreateAlbum = true
             },
             onAlbumSelected = { album ->
-                timelineViewModel.bulkAddToAlbum(album.id) {
-                    albumsViewModel.applyShareLinkChanged(album.id, album.hasActiveShareLink)
+                timelineViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
                 }
                 bulkAddToAlbum = false
             },

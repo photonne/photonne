@@ -122,6 +122,16 @@ class AlbumDetailViewModel(
         }
     }
 
+    fun applyAssetsAdded(albumId: String, items: List<TimelineItem>) {
+        if (items.isEmpty()) return
+        _state.update { previous ->
+            if (previous.albumId != albumId) return@update previous
+            val existingIds = previous.items.mapTo(HashSet()) { it.id }
+            val toAppend = items.filter { it.id !in existingIds }
+            if (toAppend.isEmpty()) previous else previous.copy(items = previous.items + toAppend)
+        }
+    }
+
     fun removeAsset(assetId: String, onSuccess: (assetId: String) -> Unit = {}) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return

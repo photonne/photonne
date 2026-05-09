@@ -171,15 +171,16 @@ class TimelineViewModel(
         }
     }
 
-    fun bulkAddToAlbum(albumId: String, onComplete: () -> Unit = {}) {
-        val ids = selectedIds()
+    fun bulkAddToAlbum(albumId: String, onComplete: (List<TimelineItem>) -> Unit = {}) {
+        val items = selectedItems()
+        val ids = items.map { it.id }
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
                     _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
-                    onComplete()
+                    onComplete(items)
                 }
                 .onFailure { error ->
                     _state.update {
