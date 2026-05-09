@@ -92,15 +92,16 @@ fun AssetGrid(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AssetGridCell(
+fun AssetGridCell(
     asset: TimelineItem,
     baseUrl: String,
     onClick: () -> Unit,
-    onLongClick: (() -> Unit)?
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
@@ -145,7 +146,7 @@ private fun AssetGridCell(
     }
 }
 
-private fun parseHexColor(hex: String?): Color? {
+internal fun parseHexColor(hex: String?): Color? {
     if (hex.isNullOrBlank()) return null
     val cleaned = hex.removePrefix("#")
     if (cleaned.length != 6) return null
