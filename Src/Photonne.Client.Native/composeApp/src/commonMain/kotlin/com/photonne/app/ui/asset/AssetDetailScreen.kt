@@ -4,12 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
@@ -73,6 +79,11 @@ import com.photonne.app.resources.asset_action_trash
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
 import com.photonne.app.ui.util.openExternalUrl
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.tan
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -429,7 +440,7 @@ private fun AssetMetadataPanel(
 private fun GpsPreview(latitude: Double, longitude: Double) {
     val coords = formatGps(latitude, longitude)
     val mapsUrl = "https://www.google.com/maps/?q=$latitude,$longitude"
-    val staticMap = "https://staticmap.openstreetmap.de/staticmap.php?center=$latitude,$longitude&zoom=14&size=400x180&markers=$latitude,$longitude,red-pushpin"
+    val grid = remember(latitude, longitude) { computeMapGrid(latitude, longitude, MAP_ZOOM) }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -442,17 +453,33 @@ private fun GpsPreview(latitude: Double, longitude: Double) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .aspectRatio(1f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { openExternalUrl(mapsUrl) }
         ) {
-            AsyncImage(
-                model = staticMap,
-                contentDescription = stringResource(Res.string.asset_metadata_open_map),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    OsmTile(MAP_ZOOM, grid.tileXStart, grid.tileYStart, Modifier.weight(1f).fillMaxHeight())
+                    OsmTile(MAP_ZOOM, grid.tileXStart + 1, grid.tileYStart, Modifier.weight(1f).fillMaxHeight())
+                }
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    OsmTile(MAP_ZOOM, grid.tileXStart, grid.tileYStart + 1, Modifier.weight(1f).fillMaxHeight())
+                    OsmTile(MAP_ZOOM, grid.tileXStart + 1, grid.tileYStart + 1, Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val pinX = maxWidth * grid.markerXFraction.toFloat() - 12.dp
+                val pinY = maxHeight * grid.markerYFraction.toFloat() - 24.dp
+                Icon(
+                    imageVector = Icons.Filled.LocationOn,
+                    contentDescription = stringResource(Res.string.asset_metadata_open_map),
+                    tint = Color(0xFFE53935),
+                    modifier = Modifier
+                        .offset(x = pinX, y = pinY)
+                        .size(24.dp)
+                )
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -478,8 +505,38 @@ private fun GpsPreview(latitude: Double, longitude: Double) {
     }
 }
 
+@Composable
+private fun OsmTile(zoom: Int, x: Int, y: Int, modifier: Modifier) {
+    AsyncImage(
+        model = "https://tile.openstreetmap.org/$zoom/$x/$y.png",
+        contentDescription = null,
+        contentScale = ContentScale.FillBounds,
+        modifier = modifier
+    )
+}
+
+private const val MAP_ZOOM = 15
+
+private data class MapGrid(
+    val tileXStart: Int,
+    val tileYStart: Int,
+    val markerXFraction: Double,
+    val markerYFraction: Double
+)
+
+private fun computeMapGrid(lat: Double, lon: Double, zoom: Int): MapGrid {
+    val n = (1 shl zoom).toDouble()
+    val worldX = (lon + 180.0) / 360.0 * n
+    val latRad = lat * PI / 180.0
+    val worldY = (1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n
+    val tileXStart = floor(worldX - 0.5).toInt()
+    val tileYStart = floor(worldY - 0.5).toInt()
+    val markerXFraction = (worldX - tileXStart) / 2.0
+    val markerYFraction = (worldY - tileYStart) / 2.0
+    return MapGrid(tileXStart, tileYStart, markerXFraction, markerYFraction)
+}
+
 private fun formatGps(lat: Double, lon: Double): String {
-    // Multiplatform-friendly five-decimal formatting (avoids JVM-only String.format).
     fun round5(value: Double): String {
         val rounded = (value * 100000).toLong() / 100000.0
         return rounded.toString()
