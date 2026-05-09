@@ -20,7 +20,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -56,6 +58,7 @@ fun TimelineScreen(
     val gridState = rememberLazyGridState()
     val memoriesViewModel: MemoriesViewModel = koinViewModel()
     val memoriesState by memoriesViewModel.state.collectAsState()
+    var memorySheetItems by remember { mutableStateOf<List<com.photonne.app.data.models.TimelineItem>?>(null) }
 
     val entries = remember(state.items) { groupTimelineEntries(state.items) }
 
@@ -107,8 +110,12 @@ fun TimelineScreen(
                         MemoriesCarousel(
                             items = memoriesState.items,
                             baseUrl = config.apiBaseUrl,
-                            onItemClick = { index ->
-                                onMemoryClick(memoriesState.items, index)
+                            onGroupClick = { groupItems ->
+                                if (groupItems.size > 1) {
+                                    memorySheetItems = groupItems
+                                } else {
+                                    onMemoryClick(groupItems, 0)
+                                }
                             }
                         )
                     }
@@ -154,6 +161,18 @@ fun TimelineScreen(
             }
             state.errorMessage?.let { ErrorBanner(it, modifier = Modifier.align(Alignment.TopCenter)) }
         }
+    }
+
+    memorySheetItems?.let { items ->
+        MemoryGroupSheet(
+            items = items,
+            baseUrl = config.apiBaseUrl,
+            onPhotoClick = { index ->
+                memorySheetItems = null
+                onMemoryClick(items, index)
+            },
+            onDismiss = { memorySheetItems = null }
+        )
     }
 }
 

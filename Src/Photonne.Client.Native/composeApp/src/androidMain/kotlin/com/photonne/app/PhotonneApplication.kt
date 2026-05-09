@@ -13,7 +13,12 @@ class PhotonneApplication : Application() {
         startKoin {
             androidContext(this@PhotonneApplication)
             modules(
-                commonModule(PhotonneAppConfig(apiBaseUrl = BuildConfig.API_BASE_URL)),
+                commonModule(
+                    PhotonneAppConfig(
+                        apiBaseUrl = BuildConfig.API_BASE_URL,
+                        useFakeMemories = true
+                    )
+                ),
                 platformModule()
             )
         }

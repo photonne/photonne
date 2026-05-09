@@ -4,6 +4,7 @@ import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.di.PhotonneAppConfig
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -60,7 +61,8 @@ class MemoriesRepositoryTest {
                     authState = AuthStateHolder()
                 ),
                 baseUrl = "http://test.local"
-            )
+            ),
+            config = PhotonneAppConfig(apiBaseUrl = "http://test.local")
         )
 
         val items = repo.list()

@@ -13,9 +13,18 @@ fun main() {
         ?: System.getenv("PHOTONNE_API_BASE_URL")
         ?: "http://localhost:1107"
 
+    val useFakeMemories = (System.getProperty("photonne.fake.memories")
+        ?: System.getenv("PHOTONNE_FAKE_MEMORIES"))
+        ?.equals("true", ignoreCase = true) == true
+
     startKoin {
         modules(
-            commonModule(PhotonneAppConfig(apiBaseUrl = apiBaseUrl)),
+            commonModule(
+                PhotonneAppConfig(
+                    apiBaseUrl = apiBaseUrl,
+                    useFakeMemories = useFakeMemories
+                )
+            ),
             platformModule()
         )
     }

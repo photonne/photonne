@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,16 +33,43 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 
+data class MemoryGroup(
+    val items: List<TimelineItem>,
+    val yearsAgo: Int
+) {
+    val cover: TimelineItem get() = items.first()
+    val count: Int get() = items.size
+}
+
+internal fun groupMemoriesByDay(
+    items: List<TimelineItem>,
+    zone: TimeZone,
+    currentYear: Int
+): List<MemoryGroup> {
+    if (items.isEmpty()) return emptyList()
+    return items
+        .groupBy {
+            val date = it.fileCreatedAt.toLocalDateTime(zone).date
+            Triple(date.year, date.monthNumber, date.dayOfMonth)
+        }
+        .map { (key, group) ->
+            val (year, _, _) = key
+            val yearsAgo = (currentYear - year).coerceAtLeast(1)
+            MemoryGroup(items = group, yearsAgo = yearsAgo)
+        }
+}
+
 @Composable
 fun MemoriesCarousel(
     items: List<TimelineItem>,
     baseUrl: String,
-    onItemClick: (Int) -> Unit,
+    onGroupClick: (List<TimelineItem>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
     val zone = TimeZone.currentSystemDefault()
     val currentYear = Clock.System.now().toLocalDateTime(zone).date.year
+    val groups = groupMemoriesByDay(items, zone, currentYear)
     val oneYear = stringResource(Res.string.timeline_memories_one_year_ago)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -56,17 +83,14 @@ fun MemoriesCarousel(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(items, key = { it.id }) { item ->
-                val itemYear = item.fileCreatedAt.toLocalDateTime(zone).date.year
-                val yearsAgo = (currentYear - itemYear).coerceAtLeast(1)
-                val label = if (yearsAgo == 1) oneYear
-                else stringResource(Res.string.timeline_memories_years_ago, yearsAgo)
-                val index = items.indexOf(item)
+            items(groups, key = { it.cover.id }) { group ->
+                val label = if (group.yearsAgo == 1) oneYear
+                else stringResource(Res.string.timeline_memories_years_ago, group.yearsAgo)
                 MemoryCard(
-                    item = item,
+                    group = group,
                     baseUrl = baseUrl,
                     label = label,
-                    onClick = { onItemClick(index) }
+                    onClick = { onGroupClick(group.items) }
                 )
             }
         }
@@ -75,11 +99,12 @@ fun MemoriesCarousel(
 
 @Composable
 private fun MemoryCard(
-    item: TimelineItem,
+    group: MemoryGroup,
     baseUrl: String,
     label: String,
     onClick: () -> Unit
 ) {
+    val cover = group.cover
     Box(
         modifier = Modifier
             .size(width = 110.dp, height = 150.dp)
@@ -87,13 +112,30 @@ private fun MemoryCard(
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        if (item.hasThumbnails) {
+        if (cover.hasThumbnails) {
             AsyncImage(
-                model = "$baseUrl/api/assets/${item.id}/thumbnail?size=Small",
-                contentDescription = item.fileName,
+                model = "$baseUrl/api/assets/${cover.id}/thumbnail?size=Small",
+                contentDescription = cover.fileName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+        }
+        if (group.count > 1) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.65f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = group.count.toString(),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
         Box(
             modifier = Modifier

@@ -25,7 +25,10 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
-data class PhotonneAppConfig(val apiBaseUrl: String)
+data class PhotonneAppConfig(
+    val apiBaseUrl: String,
+    val useFakeMemories: Boolean = false
+)
 
 expect fun platformModule(): org.koin.core.module.Module
 
