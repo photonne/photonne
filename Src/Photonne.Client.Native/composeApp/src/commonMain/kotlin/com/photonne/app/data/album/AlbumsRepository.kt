@@ -1,8 +1,11 @@
 package com.photonne.app.data.album
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.AlbumMemberRole
+import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.datetime.Instant
 
@@ -50,5 +53,27 @@ class AlbumsRepository(
 
     suspend fun revokeShare(token: String) {
         api.revokeShare(token)
+    }
+
+    suspend fun shareableUsers(): List<ShareableUser> = api.getShareableUsers()
+
+    suspend fun listMembers(albumId: String): List<AlbumPermission> =
+        api.listAlbumPermissions(albumId)
+
+    suspend fun grantMember(
+        albumId: String,
+        userId: String,
+        role: AlbumMemberRole
+    ): AlbumPermission = api.setAlbumPermission(
+        albumId = albumId,
+        userId = userId,
+        canRead = role.canRead,
+        canWrite = role.canWrite,
+        canDelete = role.canDelete,
+        canManagePermissions = role.canManagePermissions
+    )
+
+    suspend fun revokeMember(albumId: String, userId: String) {
+        api.removeAlbumPermission(albumId, userId)
     }
 }

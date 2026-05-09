@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
@@ -144,17 +145,19 @@ fun AlbumDetailTopBar(
     canEdit: Boolean,
     canDelete: Boolean,
     canShare: Boolean,
+    canManageMembers: Boolean,
     canLeave: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onManageMembers: () -> Unit,
     onLeave: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = canEdit || canDelete || canShare || canLeave
+    val hasMenu = canEdit || canDelete || canShare || canManageMembers || canLeave
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -202,6 +205,16 @@ fun AlbumDetailTopBar(
                                 onClick = {
                                     menuOpen = false
                                     onShare()
+                                }
+                            )
+                        }
+                        if (canManageMembers) {
+                            DropdownMenuItem(
+                                text = { Text("Miembros") },
+                                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    onManageMembers()
                                 }
                             )
                         }

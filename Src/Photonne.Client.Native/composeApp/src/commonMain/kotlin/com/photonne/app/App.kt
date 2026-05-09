@@ -21,12 +21,15 @@ import com.photonne.app.ui.album.AddToAlbumDialog
 import com.photonne.app.ui.album.AlbumDetailScreen
 import com.photonne.app.ui.album.AlbumDetailViewModel
 import com.photonne.app.ui.album.AlbumFormDialog
+import com.photonne.app.ui.album.AlbumPermissionsViewModel
 import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsListScreen
 import com.photonne.app.ui.album.AlbumsViewModel
 import com.photonne.app.ui.album.CreateShareDialog
 import com.photonne.app.ui.album.DeleteAlbumDialog
+import com.photonne.app.ui.album.InviteMemberDialog
 import com.photonne.app.ui.album.LeaveAlbumDialog
+import com.photonne.app.ui.album.ManagePermissionsDialog
 import com.photonne.app.ui.album.ManageSharesDialog
 import com.photonne.app.ui.asset.AssetDetailScreen
 import com.photonne.app.ui.image.buildPhotonneImageLoader
@@ -88,10 +91,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val albumSharesViewModel: AlbumSharesViewModel = koinViewModel()
+    val albumPermissionsViewModel: AlbumPermissionsViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
     val albumSharesState by albumSharesViewModel.state.collectAsState()
+    val albumPermissionsState by albumPermissionsViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
@@ -103,6 +108,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showLeaveAlbum by remember { mutableStateOf(false) }
     var showShares by remember { mutableStateOf(false) }
     var showCreateShare by remember { mutableStateOf(false) }
+    var showMembers by remember { mutableStateOf(false) }
+    var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
@@ -116,6 +123,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 canEdit = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
                 canDelete = selectedAlbum?.isOwner == true,
                 canShare = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
+                canManageMembers = selectedAlbum?.isOwner == true ||
+                    selectedAlbum?.canManagePermissions == true,
                 canLeave = selectedAlbum?.isOwner == false,
                 onBack = albumBack,
                 onEdit = { showEditAlbum = true },
@@ -123,6 +132,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onShare = {
                     selectedAlbum?.let { albumSharesViewModel.open(it.id) }
                     showShares = true
+                },
+                onManageMembers = {
+                    selectedAlbum?.let { albumPermissionsViewModel.open(it.id) }
+                    showMembers = true
                 },
                 onLeave = { showLeaveAlbum = true },
                 user = user.user,
@@ -299,6 +312,35 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             },
             onCreate = { showCreateShare = true },
             onRevoke = { token -> albumSharesViewModel.revoke(token) }
+        )
+    }
+
+    if (showMembers && openedAlbum != null) {
+        ManagePermissionsDialog(
+            state = albumPermissionsState,
+            onDismiss = {
+                showMembers = false
+                albumPermissionsViewModel.clearError()
+            },
+            onInvite = { showInviteMember = true },
+            onChangeRole = { member, role -> albumPermissionsViewModel.changeRole(member, role) },
+            onRevoke = { member -> albumPermissionsViewModel.revoke(member) }
+        )
+    }
+
+    if (showInviteMember && openedAlbum != null) {
+        InviteMemberDialog(
+            candidates = albumPermissionsState.invitableUsers,
+            isSubmitting = albumPermissionsState.isMutating,
+            errorMessage = albumPermissionsState.errorMessage,
+            onDismiss = {
+                showInviteMember = false
+                albumPermissionsViewModel.clearError()
+            },
+            onInvite = { selectedUser, role ->
+                albumPermissionsViewModel.grant(selectedUser, role)
+                showInviteMember = false
+            }
         )
     }
 

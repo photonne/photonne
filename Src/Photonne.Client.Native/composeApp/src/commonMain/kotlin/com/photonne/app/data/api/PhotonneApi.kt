@@ -1,10 +1,12 @@
 package com.photonne.app.data.api
 
+import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
+import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import io.ktor.client.HttpClient
@@ -40,6 +42,15 @@ internal data class CreateShareRequest(
     val maxViews: Int? = null
 )
 
+@Serializable
+internal data class SetAlbumPermissionBody(
+    val userId: String,
+    val canRead: Boolean,
+    val canWrite: Boolean,
+    val canDelete: Boolean,
+    val canManagePermissions: Boolean
+)
+
 interface PhotonneApi {
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
@@ -61,6 +72,17 @@ interface PhotonneApi {
         maxViews: Int?
     ): AlbumShareLink
     suspend fun revokeShare(token: String)
+    suspend fun getShareableUsers(): List<ShareableUser>
+    suspend fun listAlbumPermissions(albumId: String): List<AlbumPermission>
+    suspend fun setAlbumPermission(
+        albumId: String,
+        userId: String,
+        canRead: Boolean,
+        canWrite: Boolean,
+        canDelete: Boolean,
+        canManagePermissions: Boolean
+    ): AlbumPermission
+    suspend fun removeAlbumPermission(albumId: String, userId: String)
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -269,6 +291,73 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Revoke share link failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun getShareableUsers(): List<ShareableUser> {
+        val response: HttpResponse = client.get("$baseUrl/api/users/shareable")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Listing users failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun listAlbumPermissions(albumId: String): List<AlbumPermission> {
+        val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId/permissions")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Listing album members failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun setAlbumPermission(
+        albumId: String,
+        userId: String,
+        canRead: Boolean,
+        canWrite: Boolean,
+        canDelete: Boolean,
+        canManagePermissions: Boolean
+    ): AlbumPermission {
+        val response: HttpResponse = client.post("$baseUrl/api/albums/$albumId/permissions") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                SetAlbumPermissionBody(
+                    userId = userId,
+                    canRead = canRead,
+                    canWrite = canWrite,
+                    canDelete = canDelete,
+                    canManagePermissions = canManagePermissions
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.Created
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Granting album permission failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun removeAlbumPermission(albumId: String, userId: String) {
+        val response: HttpResponse = client.delete(
+            "$baseUrl/api/albums/$albumId/permissions/$userId"
+        )
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Removing album member failed (${response.status.value})"
             )
         }
     }
