@@ -114,6 +114,14 @@ class AlbumDetailViewModel(
         }
     }
 
+    fun applyAssetAdded(albumId: String, item: TimelineItem) {
+        _state.update { previous ->
+            if (previous.albumId != albumId) return@update previous
+            if (previous.items.any { it.id == item.id }) return@update previous
+            previous.copy(items = previous.items + item)
+        }
+    }
+
     fun removeAsset(assetId: String, onSuccess: (assetId: String) -> Unit = {}) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return

@@ -62,7 +62,7 @@ private data class AssetDetailContext(
 }
 
 private data class AddToAlbumState(
-    val assetId: String,
+    val asset: TimelineItem,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null
 )
@@ -247,7 +247,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onLoadMore = ctx.onLoadMore,
                 onBack = { assetDetail = null },
                 onFavoriteChanged = ctx.onFavoriteChanged,
-                onAddToAlbum = { assetId -> addToAlbum = AddToAlbumState(assetId = assetId) }
+                onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) }
             )
         }
     }
@@ -408,9 +408,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onAlbumSelected = { album ->
                 addToAlbum = addToAlbumState.copy(isSubmitting = true, errorMessage = null)
                 coroutineScope.launch {
-                    runCatching { albumsRepository.addAsset(album.id, addToAlbumState.assetId) }
+                    runCatching { albumsRepository.addAsset(album.id, addToAlbumState.asset.id) }
                         .onSuccess {
                             albumsViewModel.applyAssetAdded(album.id)
+                            albumDetailViewModel.applyAssetAdded(album.id, addToAlbumState.asset)
                             addToAlbum = null
                         }
                         .onFailure { error ->
