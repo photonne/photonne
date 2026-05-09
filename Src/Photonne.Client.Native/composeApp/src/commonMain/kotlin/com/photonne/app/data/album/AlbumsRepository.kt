@@ -1,8 +1,10 @@
 package com.photonne.app.data.album
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
+import kotlinx.datetime.Instant
 
 class AlbumsRepository(
     private val api: PhotonneApi
@@ -23,5 +25,30 @@ class AlbumsRepository(
 
     suspend fun addAsset(albumId: String, assetId: String) {
         api.addAssetToAlbum(albumId = albumId, assetId = assetId)
+    }
+
+    suspend fun leave(albumId: String) {
+        api.leaveAlbum(albumId)
+    }
+
+    suspend fun listShares(albumId: String): List<AlbumShareLink> =
+        api.listAlbumShares(albumId)
+
+    suspend fun createShare(
+        albumId: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ): AlbumShareLink = api.createAlbumShare(
+        albumId = albumId,
+        expiresAt = expiresAt,
+        password = password,
+        allowDownload = allowDownload,
+        maxViews = maxViews
+    )
+
+    suspend fun revokeShare(token: String) {
+        api.revokeShare(token)
     }
 }
