@@ -24,6 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_close
+import com.photonne.app.resources.add_to_album_empty
+import com.photonne.app.resources.add_to_album_title
+import com.photonne.app.resources.album_action_new
+import com.photonne.app.resources.albums_count_format
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AddToAlbumDialog(
@@ -37,7 +44,7 @@ fun AddToAlbumDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text("Add to album") },
+        title = { Text(stringResource(Res.string.add_to_album_title)) },
         text = {
             Column(modifier = Modifier.heightIn(min = 120.dp, max = 360.dp)) {
                 when {
@@ -46,7 +53,7 @@ fun AddToAlbumDialog(
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                     albums.isEmpty() -> Text(
-                        "You don't have any albums yet.",
+                        stringResource(Res.string.add_to_album_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -69,11 +76,13 @@ fun AddToAlbumDialog(
             TextButton(onClick = onCreateNew, enabled = !isSubmitting) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.height(4.dp))
-                Text("New album")
+                Text(stringResource(Res.string.album_action_new))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Close") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_close))
+            }
         }
     )
 }
@@ -88,7 +97,7 @@ private fun AlbumPickerRow(album: AlbumSummary, onClick: () -> Unit) {
     ) {
         Text(album.name, style = MaterialTheme.typography.titleSmall)
         Text(
-            text = "${album.assetCount} items",
+            text = stringResource(Res.string.albums_count_format, album.assetCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

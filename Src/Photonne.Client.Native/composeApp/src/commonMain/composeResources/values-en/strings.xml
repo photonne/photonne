@@ -12,14 +12,81 @@
     <string name="action_jump_to_date">Jump to a date</string>
     <string name="action_jump">Jump</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+    <string name="action_save">Save</string>
+    <string name="action_create">Create</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_leave">Leave</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_share">Share</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_invite">Invite</string>
+    <string name="action_more">More actions</string>
 
     <string name="timeline_empty_title">Your timeline is empty</string>
     <string name="timeline_empty_subtitle">Index a folder from the web app to get started.</string>
+    <string name="timeline_memories_section">Memories</string>
+    <string name="timeline_memories_one_year_ago">1 year ago</string>
+    <string name="timeline_memories_years_ago">%1$d years ago</string>
 
-    <string name="selection_count">%1$d selected</string>
+    <plurals name="selection_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="selection_action_close">Cancel selection</string>
     <string name="selection_action_add_to_album">Add to album</string>
     <string name="selection_action_archive">Archive</string>
     <string name="selection_action_trash">Move to trash</string>
     <string name="selection_action_more">More actions</string>
+
+    <string name="album_field_name">Name</string>
+    <string name="album_field_description">Description (optional)</string>
+    <string name="album_action_new">New album</string>
+    <string name="album_action_edit">Edit album</string>
+    <string name="album_action_members">Members</string>
+    <string name="album_action_album_actions">Album actions</string>
+    <string name="album_delete_title">Delete album</string>
+    <string name="album_delete_message">"%1$s" will be deleted. The photos inside the album are kept in your library.</string>
+    <string name="album_leave_title">Leave album</string>
+    <string name="album_leave_message">You will lose access to "%1$s". The owner can invite you back.</string>
+    <string name="album_empty_title">Album empty</string>
+    <string name="album_empty_subtitle">Add photos to this album from the asset viewer.</string>
+    <string name="albums_empty_title">No albums yet</string>
+    <string name="albums_empty_subtitle">Tap the + button in the top bar to create your first one.</string>
+    <string name="albums_count_format">%1$d items</string>
+
+    <string name="add_to_album_title">Add to album</string>
+    <string name="add_to_album_empty">You don\'t have any albums yet.</string>
+    <string name="add_to_album_failed">Failed to add to album</string>
+
+    <string name="asset_action_set_cover">Set as album cover</string>
+    <string name="asset_action_remove_from_album">Remove from album</string>
+    <string name="asset_action_no_permission">You don\'t have permission to manage this album.</string>
+
+    <string name="share_title">Public share links</string>
+    <string name="share_empty">No share links yet. Anyone with the link will be able to view this album.</string>
+    <string name="share_action_new">New link</string>
+    <string name="share_action_copy">Copy link</string>
+    <string name="share_action_revoke">Revoke link</string>
+    <string name="share_create_title">Create share link</string>
+    <string name="share_option_password">Protect with password</string>
+    <string name="share_option_password_field">Password</string>
+    <string name="share_option_max_views">Limit number of views</string>
+    <string name="share_option_max_views_field">Max views</string>
+    <string name="share_option_allow_downloads">Allow downloads</string>
+    <string name="share_attribute_password">password</string>
+    <string name="share_attribute_no_downloads">no downloads</string>
+    <string name="share_attribute_views_format">%1$d views</string>
+
+    <string name="permissions_title">Album members</string>
+    <string name="permissions_empty">Only you have access. Invite people to give them read or write access.</string>
+    <string name="permissions_role_viewer">Viewer</string>
+    <string name="permissions_role_editor">Editor</string>
+    <string name="permissions_role_admin">Admin</string>
+    <string name="permissions_invite_title">Invite member</string>
+    <string name="permissions_invite_role">Role</string>
+    <string name="permissions_invite_people">People</string>
+    <string name="permissions_invite_empty">No more users to invite.</string>
+
+    <string name="more_settings_hint">Coming soon: settings, storage management, folder shortcuts and more.</string>
 </resources>

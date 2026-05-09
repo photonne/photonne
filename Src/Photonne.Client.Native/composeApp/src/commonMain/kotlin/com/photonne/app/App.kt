@@ -14,6 +14,13 @@ import androidx.compose.ui.Modifier
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_create
+import com.photonne.app.resources.action_save
+import com.photonne.app.resources.album_action_edit
+import com.photonne.app.resources.album_action_new
+import com.photonne.app.resources.albums_count_format
+import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.models.AlbumSummary
@@ -146,7 +153,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             )
             selectedTab == MainTab.Albums && selectedAlbum != null -> AlbumDetailTopBar(
                 title = albumDetailState.albumName ?: selectedAlbum!!.name,
-                subtitle = albumDetailState.items.size.takeIf { it > 0 }?.let { "$it elementos" },
+                subtitle = albumDetailState.items.size.takeIf { it > 0 }?.let {
+                    stringResource(Res.string.albums_count_format, it)
+                },
                 canEdit = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
                 canDelete = selectedAlbum?.isOwner == true,
                 canShare = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
@@ -219,7 +228,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     },
                     pendingJumpDate = pendingJumpDate,
-                    onJumpHandled = { pendingJumpDate = null }
+                    onJumpHandled = { pendingJumpDate = null },
+                    onMemoryClick = { items, index ->
+                        assetDetail = AssetDetailContext(
+                            items = items,
+                            startIndex = index,
+                            source = AssetDetailContext.Source.Timeline,
+                            hasMore = false,
+                            onLoadMore = {},
+                            onFavoriteChanged = timelineViewModel::setFavorite
+                        )
+                    }
                 )
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
@@ -292,8 +311,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     if (showCreateAlbum) {
         AlbumFormDialog(
-            title = "New album",
-            confirmLabel = "Create",
+            title = stringResource(Res.string.album_action_new),
+            confirmLabel = stringResource(Res.string.action_create),
             isSubmitting = albumsState.isMutating || timelineState.isBulkMutating,
             errorMessage = albumsState.errorMessage,
             onDismiss = {
@@ -324,8 +343,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val openedAlbum = selectedAlbum
     if (showEditAlbum && openedAlbum != null) {
         AlbumFormDialog(
-            title = "Edit album",
-            confirmLabel = "Save",
+            title = stringResource(Res.string.album_action_edit),
+            confirmLabel = stringResource(Res.string.action_save),
             initialName = albumDetailState.albumName ?: openedAlbum.name,
             initialDescription = albumDetailState.albumDescription ?: openedAlbum.description,
             isSubmitting = albumDetailState.isMutating,

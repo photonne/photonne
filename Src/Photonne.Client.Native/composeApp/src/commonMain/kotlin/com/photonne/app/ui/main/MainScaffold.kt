@@ -39,9 +39,17 @@ import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
+import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
+import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_refresh
+import com.photonne.app.resources.action_share
+import com.photonne.app.resources.album_action_album_actions
+import com.photonne.app.resources.album_action_members
+import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.app_name
 import com.photonne.app.resources.selection_action_add_to_album
 import com.photonne.app.resources.selection_action_archive
@@ -52,6 +60,7 @@ import com.photonne.app.resources.selection_count
 import com.photonne.app.resources.tab_albums
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 enum class MainTab {
@@ -186,7 +195,7 @@ fun SelectionTopBar(
         },
         title = {
             Text(
-                text = stringResource(Res.string.selection_count, selectedCount),
+                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
                 style = MaterialTheme.typography.titleMedium
             )
         },
@@ -233,7 +242,10 @@ fun AlbumsListTopBar(user: UserDto, onCreateAlbum: () -> Unit, onLogout: () -> U
         title = { Text("Álbumes", style = MaterialTheme.typography.titleMedium) },
         actions = {
             IconButton(onClick = onCreateAlbum) {
-                Icon(Icons.Filled.Add, contentDescription = "Crear álbum")
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.album_action_new)
+                )
             }
             AccountMenu(user = user, onLogout = onLogout)
         }
@@ -264,7 +276,7 @@ fun AlbumDetailTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
             }
         },
         title = {
@@ -288,12 +300,15 @@ fun AlbumDetailTopBar(
             if (hasMenu) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "Acciones del álbum")
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = stringResource(Res.string.album_action_album_actions)
+                        )
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         if (canEdit) {
                             DropdownMenuItem(
-                                text = { Text("Editar") },
+                                text = { Text(stringResource(Res.string.action_edit)) },
                                 leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -303,7 +318,7 @@ fun AlbumDetailTopBar(
                         }
                         if (canShare) {
                             DropdownMenuItem(
-                                text = { Text("Compartir") },
+                                text = { Text(stringResource(Res.string.action_share)) },
                                 leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -313,7 +328,7 @@ fun AlbumDetailTopBar(
                         }
                         if (canManageMembers) {
                             DropdownMenuItem(
-                                text = { Text("Miembros") },
+                                text = { Text(stringResource(Res.string.album_action_members)) },
                                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
@@ -323,7 +338,12 @@ fun AlbumDetailTopBar(
                         }
                         if (canDelete) {
                             DropdownMenuItem(
-                                text = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
+                                text = {
+                                    Text(
+                                        stringResource(Res.string.action_delete),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Filled.Delete,
@@ -339,7 +359,7 @@ fun AlbumDetailTopBar(
                         }
                         if (canLeave) {
                             DropdownMenuItem(
-                                text = { Text("Salir del álbum") },
+                                text = { Text(stringResource(Res.string.action_leave)) },
                                 leadingIcon = {
                                     Icon(Icons.Filled.ExitToApp, contentDescription = null)
                                 },
