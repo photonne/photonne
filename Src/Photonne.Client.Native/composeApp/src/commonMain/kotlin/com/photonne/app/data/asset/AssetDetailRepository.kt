@@ -17,4 +17,8 @@ class AssetDetailRepository(
     suspend fun trash(assetIds: List<String>) {
         api.trashAssets(assetIds)
     }
+
+    suspend fun updateDescription(assetId: String, description: String?) {
+        api.updateAssetDescription(assetId, description)
+    }
 }

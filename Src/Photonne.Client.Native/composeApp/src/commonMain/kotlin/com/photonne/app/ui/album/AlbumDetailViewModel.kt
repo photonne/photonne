@@ -114,6 +114,13 @@ class AlbumDetailViewModel(
         }
     }
 
+    /** Removes the asset from the local cache without hitting the API. */
+    fun applyAssetRemovedLocal(assetId: String) {
+        _state.update { previous ->
+            previous.copy(items = previous.items.filterNot { it.id == assetId })
+        }
+    }
+
     fun applyAssetAdded(albumId: String, item: TimelineItem) {
         _state.update { previous ->
             if (previous.albumId != albumId) return@update previous

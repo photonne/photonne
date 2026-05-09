@@ -102,4 +102,58 @@ class AssetDetailViewModel(
             } else current
         }
     }
+
+    fun archive(assetId: String, onCompleted: (assetId: String) -> Unit = {}) {
+        viewModelScope.launch {
+            runCatching { repository.archive(listOf(assetId)) }
+                .onSuccess {
+                    cache.remove(assetId)
+                    onCompleted(assetId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(errorMessage = error.message ?: "Failed to archive")
+                    }
+                }
+        }
+    }
+
+    fun trash(assetId: String, onCompleted: (assetId: String) -> Unit = {}) {
+        viewModelScope.launch {
+            runCatching { repository.trash(listOf(assetId)) }
+                .onSuccess {
+                    cache.remove(assetId)
+                    onCompleted(assetId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(errorMessage = error.message ?: "Failed to delete")
+                    }
+                }
+        }
+    }
+
+    fun updateDescription(assetId: String, description: String?) {
+        val cleaned = description?.trim()?.takeIf { it.isNotEmpty() }
+        // Optimistic local update — both cache and visible state.
+        cache[assetId]?.let { cache[assetId] = it.copy(caption = cleaned) }
+        _state.update { current ->
+            val detail = current.detail
+            if (detail != null && detail.id == assetId) {
+                current.copy(detail = detail.copy(caption = cleaned))
+            } else current
+        }
+        viewModelScope.launch {
+            runCatching { repository.updateDescription(assetId, cleaned) }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(errorMessage = error.message ?: "Failed to update description")
+                    }
+                }
+        }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(errorMessage = null) }
+    }
 }

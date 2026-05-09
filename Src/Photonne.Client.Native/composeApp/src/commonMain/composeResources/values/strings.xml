@@ -89,4 +89,16 @@
     <string name="permissions_invite_empty">No hay más usuarios para invitar.</string>
 
     <string name="more_settings_hint">Próximamente: ajustes, gestión de almacenamiento, atajos de carpetas y más.</string>
+
+    <string name="asset_action_archive">Archivar</string>
+    <string name="asset_action_trash">Mover a la papelera</string>
+    <string name="asset_action_edit_description">Editar descripción</string>
+    <string name="asset_action_open_in_maps">Abrir en Mapas</string>
+    <string name="asset_action_more">Más acciones</string>
+    <string name="asset_description_dialog_title">Editar descripción</string>
+    <string name="asset_description_field">Descripción</string>
+    <string name="asset_trash_title">Mover a la papelera</string>
+    <string name="asset_trash_message">"%1$s" se moverá a la papelera. Podrás restaurarlo desde la app web.</string>
+    <string name="asset_metadata_location">Ubicación</string>
+    <string name="asset_metadata_open_map">Ver en Mapas</string>
 </resources>

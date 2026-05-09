@@ -89,4 +89,16 @@
     <string name="permissions_invite_empty">No more users to invite.</string>
 
     <string name="more_settings_hint">Coming soon: settings, storage management, folder shortcuts and more.</string>
+
+    <string name="asset_action_archive">Archive</string>
+    <string name="asset_action_trash">Move to trash</string>
+    <string name="asset_action_edit_description">Edit description</string>
+    <string name="asset_action_open_in_maps">Open in Maps</string>
+    <string name="asset_action_more">More actions</string>
+    <string name="asset_description_dialog_title">Edit description</string>
+    <string name="asset_description_field">Description</string>
+    <string name="asset_trash_title">Move to trash</string>
+    <string name="asset_trash_message">"%1$s" will be moved to the trash. You can restore it from the web app.</string>
+    <string name="asset_metadata_location">Location</string>
+    <string name="asset_metadata_open_map">View on Maps</string>
 </resources>
