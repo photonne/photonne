@@ -9,6 +9,8 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.action_jump
 import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.stringResource
 

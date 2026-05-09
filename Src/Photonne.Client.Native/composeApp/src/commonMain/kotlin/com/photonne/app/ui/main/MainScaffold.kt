@@ -38,6 +38,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_account
+import com.photonne.app.resources.action_jump_to_date
+import com.photonne.app.resources.action_logout
+import com.photonne.app.resources.action_refresh
+import com.photonne.app.resources.app_name
+import com.photonne.app.resources.selection_action_add_to_album
+import com.photonne.app.resources.selection_action_archive
+import com.photonne.app.resources.selection_action_close
+import com.photonne.app.resources.selection_action_more
+import com.photonne.app.resources.selection_action_trash
+import com.photonne.app.resources.selection_count
+import com.photonne.app.resources.tab_albums
+import com.photonne.app.resources.tab_more
+import com.photonne.app.resources.tab_timeline
 import org.jetbrains.compose.resources.stringResource
 
 enum class MainTab {

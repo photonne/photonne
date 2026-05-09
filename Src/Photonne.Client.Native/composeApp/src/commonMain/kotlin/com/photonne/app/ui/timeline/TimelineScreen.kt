@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.di.PhotonneAppConfig
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.timeline_empty_subtitle
+import com.photonne.app.resources.timeline_empty_title
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.findEntryIndexForMonth
 import com.photonne.app.ui.grid.groupTimelineEntries
