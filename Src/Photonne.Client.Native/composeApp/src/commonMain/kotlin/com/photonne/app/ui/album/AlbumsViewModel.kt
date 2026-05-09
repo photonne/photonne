@@ -86,6 +86,28 @@ class AlbumsViewModel(
         }
     }
 
+    fun applyAssetRemoved(albumId: String) {
+        _state.update { previous ->
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id == albumId) {
+                        it.copy(assetCount = (it.assetCount - 1).coerceAtLeast(0))
+                    } else it
+                }
+            )
+        }
+    }
+
+    fun applyShareLinkChanged(albumId: String, hasActiveShareLink: Boolean) {
+        _state.update { previous ->
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id == albumId) it.copy(hasActiveShareLink = hasActiveShareLink) else it
+                }
+            )
+        }
+    }
+
     fun clearError() {
         _state.update { it.copy(errorMessage = null) }
     }

@@ -1,7 +1,8 @@
 package com.photonne.app.ui.grid
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -52,7 +53,8 @@ fun AssetGrid(
     hasMore: Boolean = false,
     isAppending: Boolean = false,
     isInitialLoading: Boolean = false,
-    onLoadMore: () -> Unit = {}
+    onLoadMore: () -> Unit = {},
+    onItemLongClick: ((Int) -> Unit)? = null
 ) {
     val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
         derivedStateOf {
@@ -78,20 +80,31 @@ fun AssetGrid(
         modifier = modifier.fillMaxSize()
     ) {
         itemsIndexed(items, key = { _, item -> item.id }) { index, asset ->
-            AssetGridCell(asset = asset, baseUrl = baseUrl, onClick = { onItemClick(index) })
+            AssetGridCell(
+                asset = asset,
+                baseUrl = baseUrl,
+                onClick = { onItemClick(index) },
+                onLongClick = onItemLongClick?.let { { it(index) } }
+            )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AssetGridCell(asset: TimelineItem, baseUrl: String, onClick: () -> Unit) {
+private fun AssetGridCell(
+    asset: TimelineItem,
+    baseUrl: String,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?
+) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         if (asset.hasThumbnails) {
             AsyncImage(

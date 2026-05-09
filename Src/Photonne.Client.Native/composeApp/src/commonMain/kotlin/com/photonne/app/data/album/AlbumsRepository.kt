@@ -30,6 +30,13 @@ class AlbumsRepository(
         api.addAssetToAlbum(albumId = albumId, assetId = assetId)
     }
 
+    suspend fun removeAsset(albumId: String, assetId: String) {
+        api.removeAssetFromAlbum(albumId = albumId, assetId = assetId)
+    }
+
+    suspend fun setCover(albumId: String, assetId: String): AlbumSummary =
+        api.setAlbumCover(albumId = albumId, assetId = assetId)
+
     suspend fun leave(albumId: String) {
         api.leaveAlbum(albumId)
     }

@@ -114,6 +114,56 @@ class AlbumDetailViewModel(
         }
     }
 
+    fun removeAsset(assetId: String, onSuccess: (assetId: String) -> Unit = {}) {
+        val albumId = _state.value.albumId ?: return
+        if (_state.value.isMutating) return
+        val previous = _state.value.items
+        _state.update {
+            it.copy(
+                isMutating = true,
+                errorMessage = null,
+                items = it.items.filterNot { item -> item.id == assetId }
+            )
+        }
+        viewModelScope.launch {
+            runCatching { repository.removeAsset(albumId, assetId) }
+                .onSuccess {
+                    _state.update { it.copy(isMutating = false) }
+                    onSuccess(assetId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            items = previous,
+                            errorMessage = error.message ?: "Failed to remove asset"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun setCover(assetId: String, onSuccess: (AlbumSummary) -> Unit = {}) {
+        val albumId = _state.value.albumId ?: return
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.setCover(albumId, assetId) }
+                .onSuccess { album ->
+                    _state.update { it.copy(isMutating = false) }
+                    onSuccess(album)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to set album cover"
+                        )
+                    }
+                }
+        }
+    }
+
     fun leave(onLeft: (String) -> Unit) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return

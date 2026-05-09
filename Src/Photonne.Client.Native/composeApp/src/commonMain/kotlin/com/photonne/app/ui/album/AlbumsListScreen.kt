@@ -15,7 +15,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -132,6 +135,22 @@ private fun AlbumCard(album: AlbumSummary, baseUrl: String, onClick: () -> Unit)
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall
                 )
+            }
+            if (album.hasActiveShareLink) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Public share link active",
+                        tint = Color.White,
+                        modifier = Modifier.padding(horizontal = 2.dp)
+                    )
+                }
             }
         }
         Text(
