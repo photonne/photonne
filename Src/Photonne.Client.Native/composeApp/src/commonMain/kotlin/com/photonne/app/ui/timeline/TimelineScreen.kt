@@ -9,47 +9,61 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.di.PhotonneAppConfig
-import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.GroupedAssetGrid
 import org.koin.compose.koinInject
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineScreen(
     state: TimelineUiState,
     onItemClick: (Int) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    onRefresh: () -> Unit = {}
 ) {
     val config: PhotonneAppConfig = koinInject()
-    Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.isInitialLoading -> CenteredLoading()
-            state.isEmpty -> EmptyState()
-            else -> AssetGrid(
-                items = state.items,
-                baseUrl = config.apiBaseUrl,
-                onItemClick = onItemClick,
-                hasMore = state.hasMore,
-                isAppending = state.isAppending,
-                isInitialLoading = state.isInitialLoading,
-                onLoadMore = onLoadMore,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        if (state.isAppending) {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(12.dp).align(Alignment.BottomCenter),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp))
+    val pullState = rememberPullToRefreshState()
+
+    PullToRefreshBox(
+        state = pullState,
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isInitialLoading -> CenteredLoading()
+                state.isEmpty -> EmptyState()
+                else -> GroupedAssetGrid(
+                    items = state.items,
+                    baseUrl = config.apiBaseUrl,
+                    onItemClick = onItemClick,
+                    hasMore = state.hasMore,
+                    isAppending = state.isAppending,
+                    isInitialLoading = state.isInitialLoading,
+                    onLoadMore = onLoadMore,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
+            if (state.isAppending) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp).align(Alignment.BottomCenter),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp))
+                }
+            }
+            state.errorMessage?.let { ErrorBanner(it, modifier = Modifier.align(Alignment.TopCenter)) }
         }
-        state.errorMessage?.let { ErrorBanner(it, modifier = Modifier.align(Alignment.TopCenter)) }
     }
 }
 

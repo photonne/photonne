@@ -191,7 +191,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onFavoriteChanged = timelineViewModel::setFavorite
                         )
                     },
-                    onLoadMore = timelineViewModel::loadMore
+                    onLoadMore = timelineViewModel::loadMore,
+                    onRefresh = timelineViewModel::refresh
                 )
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
