@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.util.onSecondaryClick
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -115,6 +116,7 @@ fun AssetGridCell(
             .padding(selectionPadding)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .let { base -> if (onLongClick != null) base.onSecondaryClick(onLongClick) else base }
     ) {
         if (asset.hasThumbnails) {
             AsyncImage(

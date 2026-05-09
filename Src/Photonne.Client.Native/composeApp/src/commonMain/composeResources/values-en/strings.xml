@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Photonne</string>
+
+    <string name="tab_timeline">Photos</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_more">More</string>
+
+    <string name="action_refresh">Refresh</string>
+    <string name="action_account">Account</string>
+    <string name="action_logout">Log out</string>
+    <string name="action_jump_to_date">Jump to a date</string>
+    <string name="action_jump">Jump</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="timeline_empty_title">Your timeline is empty</string>
+    <string name="timeline_empty_subtitle">Index a folder from the web app to get started.</string>
+
+    <string name="selection_count">%1$d selected</string>
+    <string name="selection_action_close">Cancel selection</string>
+    <string name="selection_action_add_to_album">Add to album</string>
+    <string name="selection_action_archive">Archive</string>
+    <string name="selection_action_trash">Move to trash</string>
+    <string name="selection_action_more">More actions</string>
+</resources>

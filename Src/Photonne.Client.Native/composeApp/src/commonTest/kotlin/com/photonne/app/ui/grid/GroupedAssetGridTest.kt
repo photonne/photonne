@@ -61,4 +61,44 @@ class GroupedAssetGridTest {
         assertEquals(1, entries.filterIsInstance<TimelineEntry.Header>().size)
         assertEquals(3, entries.filterIsInstance<TimelineEntry.Cell>().size)
     }
+
+    @Test
+    fun find_entry_index_returns_exact_match_for_existing_month() {
+        val entries = groupTimelineEntries(
+            listOf(
+                item("a", "2026-05-09T10:00:00Z"),
+                item("b", "2026-04-30T10:00:00Z"),
+                item("c", "2026-04-01T10:00:00Z"),
+                item("d", "2025-12-31T10:00:00Z")
+            )
+        )
+        val target = kotlinx.datetime.LocalDate(2026, 4, 15)
+        val index = findEntryIndexForMonth(entries, target)
+        assertTrue(index >= 0)
+        val entry = entries[index]
+        assertTrue(entry is TimelineEntry.Header)
+        assertEquals("2026-04", (entry as TimelineEntry.Header).key)
+    }
+
+    @Test
+    fun find_entry_index_falls_back_to_closest_older_month() {
+        val entries = groupTimelineEntries(
+            listOf(
+                item("a", "2026-05-09T10:00:00Z"),
+                item("b", "2025-12-31T10:00:00Z"),
+                item("c", "2025-08-15T10:00:00Z")
+            )
+        )
+        val target = kotlinx.datetime.LocalDate(2025, 10, 1) // no October header
+        val index = findEntryIndexForMonth(entries, target)
+        assertTrue(index >= 0)
+        val entry = entries[index] as TimelineEntry.Header
+        assertEquals("2025-08", entry.key)
+    }
+
+    @Test
+    fun find_entry_index_returns_minus_one_for_empty_entries() {
+        val target = kotlinx.datetime.LocalDate(2026, 1, 1)
+        assertEquals(-1, findEntryIndexForMonth(emptyList(), target))
+    }
 }

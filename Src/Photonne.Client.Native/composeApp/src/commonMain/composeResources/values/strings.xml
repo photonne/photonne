@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Photonne</string>
+
+    <string name="tab_timeline">Fotos</string>
+    <string name="tab_albums">Álbumes</string>
+    <string name="tab_more">Más</string>
+
+    <string name="action_refresh">Refrescar</string>
+    <string name="action_account">Cuenta</string>
+    <string name="action_logout">Cerrar sesión</string>
+    <string name="action_jump_to_date">Saltar a una fecha</string>
+    <string name="action_jump">Saltar</string>
+    <string name="action_cancel">Cancelar</string>
+
+    <string name="timeline_empty_title">No hay assets en la línea de tiempo</string>
+    <string name="timeline_empty_subtitle">Indexa una carpeta desde la app web para empezar.</string>
+
+    <string name="selection_count">%1$d seleccionados</string>
+    <string name="selection_action_close">Cancelar selección</string>
+    <string name="selection_action_add_to_album">Añadir a álbum</string>
+    <string name="selection_action_archive">Archivar</string>
+    <string name="selection_action_trash">Mover a la papelera</string>
+    <string name="selection_action_more">Más acciones</string>
+</resources>
