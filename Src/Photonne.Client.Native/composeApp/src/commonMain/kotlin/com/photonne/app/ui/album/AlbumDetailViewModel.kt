@@ -3,6 +3,7 @@ package com.photonne.app.ui.album
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,8 +14,10 @@ import kotlinx.coroutines.launch
 data class AlbumDetailUiState(
     val albumId: String? = null,
     val albumName: String? = null,
+    val albumDescription: String? = null,
     val items: List<TimelineItem> = emptyList(),
     val isLoading: Boolean = false,
+    val isMutating: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -25,12 +28,17 @@ class AlbumDetailViewModel(
     private val _state = MutableStateFlow(AlbumDetailUiState())
     val state: StateFlow<AlbumDetailUiState> = _state.asStateFlow()
 
-    fun open(albumId: String, name: String) {
+    fun open(albumId: String, name: String, description: String? = null) {
         if (_state.value.albumId == albumId && _state.value.items.isNotEmpty()) {
-            _state.update { it.copy(albumName = name) }
+            _state.update { it.copy(albumName = name, albumDescription = description ?: it.albumDescription) }
             return
         }
-        _state.value = AlbumDetailUiState(albumId = albumId, albumName = name, isLoading = true)
+        _state.value = AlbumDetailUiState(
+            albumId = albumId,
+            albumName = name,
+            albumDescription = description,
+            isLoading = true
+        )
         viewModelScope.launch {
             runCatching { repository.assets(albumId) }
                 .onSuccess { items ->
@@ -40,7 +48,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Error al cargar el álbum"
+                            errorMessage = error.message ?: "Failed to load album"
                         )
                     }
                 }
@@ -54,5 +62,59 @@ class AlbumDetailViewModel(
             }
             previous.copy(items = updated)
         }
+    }
+
+    fun rename(name: String, description: String?, onSuccess: (AlbumSummary) -> Unit = {}) {
+        val albumId = _state.value.albumId ?: return
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching {
+                repository.update(albumId, name.trim(), description?.trim()?.takeIf { it.isNotEmpty() })
+            }
+                .onSuccess { album ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            albumName = album.name,
+                            albumDescription = album.description
+                        )
+                    }
+                    onSuccess(album)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to rename album"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun delete(onDeleted: (String) -> Unit) {
+        val albumId = _state.value.albumId ?: return
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.delete(albumId) }
+                .onSuccess {
+                    _state.value = AlbumDetailUiState()
+                    onDeleted(albumId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to delete album"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(errorMessage = null) }
     }
 }

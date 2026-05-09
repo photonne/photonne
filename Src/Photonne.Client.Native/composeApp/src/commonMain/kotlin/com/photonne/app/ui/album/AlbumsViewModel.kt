@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
     val isLoading: Boolean = false,
+    val isMutating: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -29,17 +30,63 @@ class AlbumsViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { repository.list() }
-                .onSuccess { albums ->
-                    _state.value = AlbumsUiState(albums = albums)
-                }
+                .onSuccess { albums -> _state.value = AlbumsUiState(albums = albums) }
                 .onFailure { error ->
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Error al cargar álbumes"
+                            errorMessage = error.message ?: "Failed to load albums"
                         )
                     }
                 }
         }
+    }
+
+    fun create(name: String, description: String?, onCreated: (AlbumSummary) -> Unit = {}) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.create(name.trim(), description?.trim()?.takeIf { it.isNotEmpty() }) }
+                .onSuccess { album ->
+                    _state.update {
+                        it.copy(albums = listOf(album) + it.albums, isMutating = false)
+                    }
+                    onCreated(album)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to create album"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun applyUpdate(updated: AlbumSummary) {
+        _state.update { previous ->
+            previous.copy(albums = previous.albums.map { if (it.id == updated.id) updated else it })
+        }
+    }
+
+    fun applyDelete(albumId: String) {
+        _state.update { previous ->
+            previous.copy(albums = previous.albums.filterNot { it.id == albumId })
+        }
+    }
+
+    fun applyAssetAdded(albumId: String) {
+        _state.update { previous ->
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id == albumId) it.copy(assetCount = it.assetCount + 1) else it
+                }
+            )
+        }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(errorMessage = null) }
     }
 }

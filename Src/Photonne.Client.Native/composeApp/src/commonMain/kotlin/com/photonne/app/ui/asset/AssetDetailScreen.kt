@@ -14,6 +14,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -63,7 +64,8 @@ fun AssetDetailScreen(
     hasMore: Boolean,
     onLoadMore: () -> Unit,
     onBack: () -> Unit,
-    onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit
+    onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit,
+    onAddToAlbum: (assetId: String) -> Unit = {}
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val config: PhotonneAppConfig = koinInject()
@@ -144,6 +146,12 @@ fun AssetDetailScreen(
                                 contentDescription = if (currentIsFavorite) "Quitar favorito"
                                 else "Marcar favorito",
                                 tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
+                            )
+                        }
+                        IconButton(onClick = { onAddToAlbum(currentItem.id) }) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "Añadir a álbum"
                             )
                         }
                     }
