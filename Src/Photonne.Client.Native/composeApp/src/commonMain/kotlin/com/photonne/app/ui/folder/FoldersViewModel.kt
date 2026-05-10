@@ -2,7 +2,10 @@ package com.photonne.app.ui.folder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.auth.AuthState
+import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.folder.FoldersRepository
+import com.photonne.app.data.folder.filterPersonalFolders
 import com.photonne.app.data.models.FolderSummary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +20,8 @@ data class FoldersUiState(
 )
 
 class FoldersViewModel(
-    private val repository: FoldersRepository
+    private val repository: FoldersRepository,
+    private val authState: AuthStateHolder
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FoldersUiState())
@@ -26,11 +30,16 @@ class FoldersViewModel(
     init { refresh() }
 
     fun refresh() {
+        val userId = (authState.state.value as? AuthState.Authenticated)?.user?.id
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { repository.list() }
                 .onSuccess { folders ->
-                    _state.value = FoldersUiState(folders = folders.sortedBy { it.path.lowercase() })
+                    val visible = if (userId.isNullOrBlank()) folders
+                        else filterPersonalFolders(folders, userId)
+                    _state.value = FoldersUiState(
+                        folders = visible.sortedBy { it.path.lowercase() }
+                    )
                 }
                 .onFailure { error ->
                     _state.update {
