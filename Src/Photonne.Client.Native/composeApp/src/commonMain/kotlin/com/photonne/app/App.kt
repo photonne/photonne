@@ -190,7 +190,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.FolderDetailTopBar(
                     title = selectedFolder!!.name.ifBlank { selectedFolder!!.path },
                     subtitle = stringResource(
-                        com.photonne.app.resources.albums_count_format,
+                        Res.string.albums_count_format,
                         selectedFolder!!.assetCount
                     ),
                     onBack = { selectedFolder = null },
