@@ -1,6 +1,9 @@
 package com.photonne.app.di
 
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.folder.FoldersRepository
+import com.photonne.app.ui.folder.FolderDetailViewModel
+import com.photonne.app.ui.folder.FoldersViewModel
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.buildPhotonneHttpClient
@@ -50,6 +53,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::MemoriesRepository)
     singleOf(::AssetDetailRepository)
     singleOf(::AlbumsRepository)
+    singleOf(::FoldersRepository)
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoriesViewModel)
@@ -58,4 +62,6 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AlbumDetailViewModel)
     viewModelOf(::AlbumSharesViewModel)
     viewModelOf(::AlbumPermissionsViewModel)
+    viewModelOf(::FoldersViewModel)
+    viewModelOf(::FolderDetailViewModel)
 }

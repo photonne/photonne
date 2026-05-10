@@ -4,6 +4,7 @@ import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetDetail
+import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
 import com.photonne.app.data.models.ShareableUser
@@ -100,6 +101,9 @@ interface PhotonneApi {
         canManagePermissions: Boolean
     ): AlbumPermission
     suspend fun removeAlbumPermission(albumId: String, userId: String)
+    suspend fun getFolders(): List<FolderSummary>
+    suspend fun getFolder(folderId: String): FolderSummary
+    suspend fun getFolderAssets(folderId: String): List<TimelineItem>
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -480,6 +484,39 @@ class PhotonneApiClient(
                 message = "Removing album member failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun getFolders(): List<FolderSummary> {
+        val response: HttpResponse = client.get("$baseUrl/api/folders")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Folders fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getFolder(folderId: String): FolderSummary {
+        val response: HttpResponse = client.get("$baseUrl/api/folders/$folderId")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Folder fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getFolderAssets(folderId: String): List<TimelineItem> {
+        val response: HttpResponse = client.get("$baseUrl/api/folders/$folderId/assets")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Folder assets fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 }
 
