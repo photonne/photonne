@@ -8,6 +8,7 @@ import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
+import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.PeoplePage
 import com.photonne.app.data.models.SceneLabel
@@ -142,6 +143,7 @@ interface PhotonneApi {
         mimeType: String,
         bytes: ByteArray
     ): UploadAssetResponse
+    suspend fun getMapPoints(): List<MapPoint>
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
@@ -529,6 +531,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Upload failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getMapPoints(): List<MapPoint> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/map/points")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Map points fetch failed (${response.status.value})"
             )
         }
         return response.body()

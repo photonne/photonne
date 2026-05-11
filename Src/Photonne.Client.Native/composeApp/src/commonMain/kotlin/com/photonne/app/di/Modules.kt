@@ -13,6 +13,7 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.map.MapRepository
 import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.data.timeline.MemoriesRepository
 import com.photonne.app.data.timeline.TimelineRepository
@@ -25,6 +26,7 @@ import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.library.ArchivedViewModel
 import com.photonne.app.ui.library.TrashViewModel
 import com.photonne.app.ui.login.LoginViewModel
+import com.photonne.app.ui.map.MapViewModel
 import com.photonne.app.ui.search.SearchViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
@@ -63,6 +65,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::FoldersRepository)
     singleOf(::SearchRepository)
     singleOf(::UploadRepository)
+    singleOf(::MapRepository)
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoriesViewModel)
@@ -78,4 +81,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::ArchivedViewModel)
     viewModelOf(::TrashViewModel)
     viewModelOf(::UploadViewModel)
+    viewModelOf(::MapViewModel)
 }

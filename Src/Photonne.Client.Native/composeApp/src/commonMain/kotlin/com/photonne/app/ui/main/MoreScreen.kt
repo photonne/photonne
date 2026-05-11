@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -27,6 +28,7 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.map_title
 import com.photonne.app.resources.more_settings_hint
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_title
@@ -37,6 +39,7 @@ fun MoreScreen(
     user: UserDto,
     onLogout: () -> Unit,
     onOpenUpload: () -> Unit,
+    onOpenMap: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit
 ) {
@@ -68,6 +71,12 @@ fun MoreScreen(
             icon = Icons.Filled.Add,
             label = stringResource(Res.string.upload_title),
             onClick = onOpenUpload
+        )
+        HorizontalDivider()
+        MoreEntry(
+            icon = Icons.Filled.LocationOn,
+            label = stringResource(Res.string.map_title),
+            onClick = onOpenMap
         )
         HorizontalDivider()
         MoreEntry(
