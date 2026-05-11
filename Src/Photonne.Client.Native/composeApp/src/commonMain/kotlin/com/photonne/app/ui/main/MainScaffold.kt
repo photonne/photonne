@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -66,6 +67,7 @@ import com.photonne.app.resources.selection_count
 import androidx.compose.material.icons.filled.List
 import com.photonne.app.resources.tab_albums
 import com.photonne.app.resources.tab_folders
+import com.photonne.app.resources.tab_search
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
 import org.jetbrains.compose.resources.pluralStringResource
@@ -73,6 +75,7 @@ import org.jetbrains.compose.resources.stringResource
 
 enum class MainTab {
     Timeline,
+    Search,
     Albums,
     Folders,
     More
@@ -94,6 +97,12 @@ fun MainScaffold(
                     onClick = { onTabSelected(MainTab.Timeline) },
                     icon = { Icon(Icons.Filled.Home, contentDescription = null) },
                     label = { Text(stringResource(Res.string.tab_timeline)) }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == MainTab.Search,
+                    onClick = { onTabSelected(MainTab.Search) },
+                    icon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    label = { Text(stringResource(Res.string.tab_search)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.Albums,
@@ -537,6 +546,20 @@ fun FolderSelectionTopBar(
                 Text(stringResource(Res.string.folder_selection_move))
             }
         }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchTopBar(user: UserDto, onLogout: () -> Unit) {
+    TopAppBar(
+        title = {
+            Text(
+                stringResource(Res.string.tab_search),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = { AccountMenu(user = user, onLogout = onLogout) }
     )
 }
 

@@ -124,4 +124,21 @@
     <string name="folder_move_assets_title">Mover a una carpeta</string>
     <string name="action_move">Mover</string>
     <string name="folder_selection_move">Mover a carpeta</string>
+
+    <string name="tab_search">Buscar</string>
+    <string name="search_input_hint">Buscar fotos…</string>
+    <string name="search_mode_text">Texto</string>
+    <string name="search_mode_semantic">IA</string>
+    <string name="search_filters">Filtros</string>
+    <string name="search_clear_all">Limpiar</string>
+    <string name="search_idle_title">Empieza a buscar</string>
+    <string name="search_idle_subtitle">Escribe un término o aplica filtros para ver resultados.</string>
+    <string name="search_empty_results">Sin resultados con esos criterios.</string>
+    <string name="search_filters_loading">Cargando filtros…</string>
+    <string name="search_date_range">Rango de fechas</string>
+    <string name="search_date_from">Desde</string>
+    <string name="search_date_to">Hasta</string>
+    <string name="search_objects_count">Objetos (%1$d)</string>
+    <string name="search_scenes_count">Escenas (%1$d)</string>
+    <string name="search_people_count">Personas (%1$d)</string>
 </resources>

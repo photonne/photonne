@@ -111,6 +111,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
+    val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
     val foldersViewModel: FoldersViewModel = koinViewModel()
     val folderDetailViewModel: com.photonne.app.ui.folder.FolderDetailViewModel = koinViewModel()
     val folderPermissionsViewModel: FolderPermissionsViewModel = koinViewModel()
@@ -119,6 +120,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
+    val searchState by searchViewModel.state.collectAsState()
     val foldersState by foldersViewModel.state.collectAsState()
     val folderDetailState by folderDetailViewModel.state.collectAsState()
     val folderPermissionsState by folderPermissionsViewModel.state.collectAsState()
@@ -152,6 +154,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showInviteFolderMember by remember { mutableStateOf(false) }
     var showMoveFolder by remember { mutableStateOf(false) }
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
+    var showSearchFilters by remember { mutableStateOf(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -248,6 +251,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onCreateFolder = { showCreateFolder = true },
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.Search ->
+                com.photonne.app.ui.main.SearchTopBar(user = user.user, onLogout = onLogout)
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -390,6 +395,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     }
                 }
+                MainTab.Search -> com.photonne.app.ui.search.SearchScreen(
+                    viewModel = searchViewModel,
+                    onOpenFilters = { showSearchFilters = true },
+                    onItemClick = { index ->
+                        assetDetail = AssetDetailContext(
+                            items = searchState.results,
+                            startIndex = index,
+                            source = AssetDetailContext.Source.Timeline,
+                            hasMore = false,
+                            onLoadMore = {},
+                            onFavoriteChanged = { id, isFav ->
+                                searchViewModel.setFavorite(id, isFav)
+                                timelineViewModel.setFavorite(id, isFav)
+                            }
+                        )
+                    }
+                )
                 MainTab.More -> MoreScreen(user = user.user, onLogout = onLogout)
             }
         }
@@ -409,6 +431,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     if (ctx.source == AssetDetailContext.Source.Album) {
                         albumDetailViewModel.applyAssetRemovedLocal(id)
                     }
+                    searchViewModel.removeItem(id)
                     assetDetail = null
                 },
                 onAssetArchived = { id ->
@@ -416,6 +439,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     if (ctx.source == AssetDetailContext.Source.Album) {
                         albumDetailViewModel.applyAssetRemovedLocal(id)
                     }
+                    searchViewModel.removeItem(id)
                     assetDetail = null
                 }
             )
@@ -718,6 +742,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     foldersViewModel.applyUpdate(updated)
                 }
             }
+        )
+    }
+
+    if (showSearchFilters) {
+        com.photonne.app.ui.search.SearchFiltersSheet(
+            state = searchState,
+            onDismiss = { showSearchFilters = false },
+            onDateRangeChange = searchViewModel::setDateRange,
+            onToggleObject = searchViewModel::toggleObjectLabel,
+            onToggleScene = searchViewModel::toggleSceneLabel,
+            onTogglePerson = searchViewModel::togglePerson,
+            onClearAll = searchViewModel::clearAll
         )
     }
 

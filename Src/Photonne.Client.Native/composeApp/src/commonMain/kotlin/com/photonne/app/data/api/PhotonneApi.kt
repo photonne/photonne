@@ -7,6 +7,11 @@ import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
+import com.photonne.app.data.models.ObjectLabel
+import com.photonne.app.data.models.PeoplePage
+import com.photonne.app.data.models.SceneLabel
+import com.photonne.app.data.models.SearchResponse
+import com.photonne.app.data.models.SemanticSearchResponse
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
@@ -151,6 +156,26 @@ interface PhotonneApi {
         targetFolderId: String,
         assetIds: List<String>
     )
+    suspend fun searchAssets(
+        q: String? = null,
+        from: String? = null,
+        to: String? = null,
+        folder: String? = null,
+        personIds: List<String> = emptyList(),
+        objectLabels: List<String> = emptyList(),
+        sceneLabels: List<String> = emptyList(),
+        textQuery: String? = null,
+        pageSize: Int? = null
+    ): SearchResponse
+    suspend fun semanticSearch(q: String, limit: Int? = null): SemanticSearchResponse
+    suspend fun listObjectLabels(q: String? = null, limit: Int? = null): List<ObjectLabel>
+    suspend fun listSceneLabels(q: String? = null, limit: Int? = null): List<SceneLabel>
+    suspend fun listPeople(
+        search: String? = null,
+        includeHidden: Boolean = false,
+        limit: Int? = null,
+        offset: Int? = null
+    ): PeoplePage
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -683,6 +708,100 @@ class PhotonneApiClient(
                 message = "Moving folder assets failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun searchAssets(
+        q: String?,
+        from: String?,
+        to: String?,
+        folder: String?,
+        personIds: List<String>,
+        objectLabels: List<String>,
+        sceneLabels: List<String>,
+        textQuery: String?,
+        pageSize: Int?
+    ): SearchResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/search") {
+            if (!q.isNullOrBlank()) parameter("q", q)
+            if (!from.isNullOrBlank()) parameter("from", from)
+            if (!to.isNullOrBlank()) parameter("to", to)
+            if (!folder.isNullOrBlank()) parameter("folder", folder)
+            if (pageSize != null) parameter("pageSize", pageSize)
+            for (id in personIds) parameter("personId", id)
+            for (label in objectLabels) parameter("objectLabel", label)
+            for (label in sceneLabels) parameter("sceneLabel", label)
+            if (!textQuery.isNullOrBlank()) parameter("textQuery", textQuery)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Search failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun semanticSearch(q: String, limit: Int?): SemanticSearchResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/search/semantic") {
+            parameter("q", q)
+            if (limit != null) parameter("limit", limit)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Semantic search failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun listObjectLabels(q: String?, limit: Int?): List<ObjectLabel> {
+        val response: HttpResponse = client.get("$baseUrl/api/objects/labels") {
+            if (!q.isNullOrBlank()) parameter("q", q)
+            if (limit != null) parameter("limit", limit)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Object labels fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun listSceneLabels(q: String?, limit: Int?): List<SceneLabel> {
+        val response: HttpResponse = client.get("$baseUrl/api/scenes/labels") {
+            if (!q.isNullOrBlank()) parameter("q", q)
+            if (limit != null) parameter("limit", limit)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Scene labels fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun listPeople(
+        search: String?,
+        includeHidden: Boolean,
+        limit: Int?,
+        offset: Int?
+    ): PeoplePage {
+        val response: HttpResponse = client.get("$baseUrl/api/people") {
+            if (!search.isNullOrBlank()) parameter("search", search)
+            if (includeHidden) parameter("includeHidden", true)
+            if (limit != null) parameter("limit", limit)
+            if (offset != null) parameter("offset", offset)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "People fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 }
 
