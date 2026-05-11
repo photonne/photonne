@@ -626,6 +626,7 @@ fun UploadTopBar(
 fun MapTopBar(
     title: String,
     onBack: () -> Unit,
+    onRefresh: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
 ) {
@@ -639,7 +640,15 @@ fun MapTopBar(
             }
         },
         title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.action_refresh)
+                )
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
     )
 }
 

@@ -2,8 +2,11 @@ package com.photonne.app.ui.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.map.MapRepository
 import com.photonne.app.data.models.MapPoint
+import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,11 +20,22 @@ data class MapUiState(
     val points: List<MapPoint> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val firstLoadComplete: Boolean = false
-)
+    val firstLoadComplete: Boolean = false,
+    // Cluster bottom-sheet state. `sheetPoints` is null when the sheet
+    // is closed; the view-model owns it so selection survives a
+    // configuration change and so the bulk actions can drop affected
+    // assets out of the point list when they succeed.
+    val sheetPoints: List<MapPoint>? = null,
+    val selection: Set<String> = emptySet(),
+    val isBulkMutating: Boolean = false
+) {
+    val isSelectionActive: Boolean get() = selection.isNotEmpty()
+}
 
 class MapViewModel(
-    private val repository: MapRepository
+    private val repository: MapRepository,
+    private val assetRepository: AssetDetailRepository,
+    private val albumsRepository: AlbumsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -79,15 +93,117 @@ class MapViewModel(
         _state.update { it.copy(centerLat = lat, centerLng = lng, zoom = zoom) }
     }
 
+    fun openClusterSheet(points: List<MapPoint>) {
+        _state.update {
+            it.copy(
+                sheetPoints = points.sortedByDescending { p -> p.date },
+                selection = emptySet()
+            )
+        }
+    }
+
+    fun closeClusterSheet() {
+        _state.update { it.copy(sheetPoints = null, selection = emptySet()) }
+    }
+
+    fun toggleSelection(assetId: String) {
+        _state.update {
+            val next = it.selection.toMutableSet()
+            if (!next.add(assetId)) next.remove(assetId)
+            it.copy(selection = next)
+        }
+    }
+
+    fun selectAllInSheet() {
+        _state.update {
+            val ids = it.sheetPoints?.map { p -> p.id }?.toSet() ?: return@update it
+            if (it.selection == ids) it.copy(selection = emptySet())
+            else it.copy(selection = ids)
+        }
+    }
+
+    fun clearSelection() {
+        _state.update { it.copy(selection = emptySet()) }
+    }
+
     fun clearError() {
         _state.update { it.copy(errorMessage = null) }
     }
 
+    fun bulkArchive() = runBulk(
+        action = { assetRepository.archive(it) },
+        errorFallback = "Failed to archive"
+    )
+
+    fun bulkTrash() = runBulk(
+        action = { assetRepository.trash(it) },
+        errorFallback = "Failed to delete"
+    )
+
     /**
-     * Pick a starting viewport that fits the user's full set of GPS
-     * points: average the centroid and pick the smallest zoom whose
-     * tile size still covers the latitudinal span.
+     * Add the selected cluster photos to [albumId]. The caller is
+     * expected to refresh the album list afterwards. We do not drop the
+     * affected assets from the map — they're still on disk and still
+     * GPS-tagged.
      */
+    fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
+                .onSuccess {
+                    val sheet = _state.value.sheetPoints.orEmpty()
+                    val asTimeline = sheet
+                        .filter { it.id in ids }
+                        .map { it.toSyntheticItem() }
+                    _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
+                    onSuccess(asTimeline)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: "Failed to add to album"
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun runBulk(
+        action: suspend (List<String>) -> Unit,
+        errorFallback: String
+    ) {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { action(ids) }
+                .onSuccess { _ ->
+                    val idSet = ids.toHashSet()
+                    _state.update { previous ->
+                        val newPoints = previous.points.filterNot { p -> p.id in idSet }
+                        val newSheet = previous.sheetPoints?.filterNot { p -> p.id in idSet }
+                        previous.copy(
+                            isBulkMutating = false,
+                            selection = emptySet(),
+                            points = newPoints,
+                            sheetPoints = newSheet?.takeIf { it.isNotEmpty() }
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: errorFallback
+                        )
+                    }
+                }
+        }
+    }
+
     private fun pickInitialView(points: List<MapPoint>): Triple<Double, Double, Int> {
         if (points.isEmpty()) return Triple(20.0, 0.0, 2)
         val avgLat = points.sumOf { it.latitude } / points.size
@@ -105,3 +221,16 @@ class MapViewModel(
         return Triple(avgLat, avgLng, zoom)
     }
 }
+
+private fun MapPoint.toSyntheticItem(): TimelineItem = TimelineItem(
+    id = id,
+    fileName = "",
+    fullPath = "",
+    fileSize = 0L,
+    fileCreatedAt = date,
+    fileModifiedAt = date,
+    extension = "",
+    scannedAt = date,
+    type = "Image",
+    hasThumbnails = hasThumbnail
+)

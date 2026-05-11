@@ -1,5 +1,6 @@
 package com.photonne.app.ui.map
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,11 +37,13 @@ import org.koin.compose.koinInject
 @Composable
 fun MapScreen(
     viewModel: MapViewModel,
-    onClusterClick: (List<MapPoint>) -> Unit,
-    onPointClick: (MapPoint) -> Unit
+    onPointOpen: (MapPoint) -> Unit,
+    onClusterPhotoOpen: (List<MapPoint>, Int) -> Unit,
+    onBulkAddToAlbum: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val config: PhotonneAppConfig = koinInject()
+    val darkTiles = isSystemInDarkTheme()
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
@@ -51,14 +54,14 @@ fun MapScreen(
             zoom = state.zoom,
             points = state.points,
             baseUrl = config.apiBaseUrl,
+            darkTiles = darkTiles,
             onCenterChanged = viewModel::onCenterChanged,
             onZoomChanged = viewModel::onZoomChanged,
-            onClusterClick = onClusterClick,
-            onPointClick = onPointClick,
+            onClusterClick = viewModel::openClusterSheet,
+            onPointClick = onPointOpen,
             modifier = Modifier.fillMaxSize()
         )
 
-        // Empty / loading overlays
         when {
             !state.firstLoadComplete && state.isLoading ->
                 Surface(
@@ -147,8 +150,6 @@ fun MapScreen(
                 onClick = { viewModel.zoomOut() },
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
-                // No "Remove"/"Minus" in compose-material-icons-core, so we
-                // render a textual minus glyph that visually pairs with Add.
                 Text(
                     text = "−",
                     style = MaterialTheme.typography.titleLarge,
@@ -156,5 +157,23 @@ fun MapScreen(
                 )
             }
         }
+    }
+
+    val sheetPoints = state.sheetPoints
+    if (sheetPoints != null) {
+        MapClusterSheet(
+            points = sheetPoints,
+            baseUrl = config.apiBaseUrl,
+            selectedIds = state.selection,
+            isMutating = state.isBulkMutating,
+            onDismiss = viewModel::closeClusterSheet,
+            onPhotoClick = { index -> onClusterPhotoOpen(sheetPoints, index) },
+            onToggleSelection = viewModel::toggleSelection,
+            onSelectAll = viewModel::selectAllInSheet,
+            onExitSelection = viewModel::clearSelection,
+            onAddToAlbum = onBulkAddToAlbum,
+            onArchive = viewModel::bulkArchive,
+            onTrash = viewModel::bulkTrash
+        )
     }
 }

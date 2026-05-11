@@ -41,12 +41,17 @@ const val MAX_ZOOM = 18
 
 /** Dark CARTO basemap, same as the PWA's default. `{s}` rotates through
  * `a..d` so requests don't all hit the same subdomain. */
-private const val TILE_URL_TEMPLATE =
+private const val TILE_URL_TEMPLATE_DARK =
     "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+
+/** Light CARTO basemap, used when the host theme is in light mode. */
+private const val TILE_URL_TEMPLATE_LIGHT =
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 
 private val MarkerBorderColor = Color(0xFFFFD166)
 private val ClusterBadgeColor = Color(0xFFF44336)
-private val MapBackground = Color(0xFF1A1A1A)
+private val MapBackgroundDark = Color(0xFF1A1A1A)
+private val MapBackgroundLight = Color(0xFFE6E2DA)
 
 /**
  * Interactive CARTO tile viewer with pinch-to-zoom and drag-to-pan,
@@ -61,12 +66,15 @@ fun OsmMap(
     zoom: Int,
     points: List<MapPoint>,
     baseUrl: String,
+    darkTiles: Boolean,
     onCenterChanged: (lat: Double, lng: Double) -> Unit,
     onZoomChanged: (zoom: Int) -> Unit,
     onClusterClick: (List<MapPoint>) -> Unit,
     onPointClick: (MapPoint) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val tileTemplate = if (darkTiles) TILE_URL_TEMPLATE_DARK else TILE_URL_TEMPLATE_LIGHT
+    val backgroundColor = if (darkTiles) MapBackgroundDark else MapBackgroundLight
     var size by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
 
@@ -79,7 +87,7 @@ fun OsmMap(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MapBackground)
+            .background(backgroundColor)
             .onSizeChanged { size = it }
             .pointerInput(zoom) {
                 detectTransformGestures { _, pan, gestureZoom, _ ->
@@ -140,7 +148,7 @@ fun OsmMap(
                 val tilePxY = (tileY * TILE_SIZE_PX - viewportTopWorldY).roundToInt()
                 val subdomain = "abcd"[(((tileX + tileY) % 4) + 4) % 4]
                 AsyncImage(
-                    model = TILE_URL_TEMPLATE
+                    model = tileTemplate
                         .replace("{s}", subdomain.toString())
                         .replace("{z}", zoom.toString())
                         .replace("{x}", wrappedX.toString())

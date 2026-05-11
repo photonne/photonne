@@ -186,6 +186,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
     var bulkAddToAlbumFromSearch by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromMap by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
@@ -198,9 +199,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showSearchFilters by remember { mutableStateOf(false) }
     var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
-    var mapClusterPoints by remember {
-        mutableStateOf<List<com.photonne.app.data.models.MapPoint>?>(null)
-    }
     var showUnarchiveAll by remember { mutableStateOf(false) }
     var showRestoreAllTrash by remember { mutableStateOf(false) }
     var showEmptyTrash by remember { mutableStateOf(false) }
@@ -328,6 +326,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.MapTopBar(
                     title = stringResource(Res.string.map_title),
                     onBack = { moreSubscreen = null },
+                    onRefresh = mapViewModel::refresh,
                     user = user.user,
                     onLogout = onLogout
                 )
@@ -577,11 +576,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
-                        onPointClick = { point ->
-                            // Single thumbnail tap → open the asset
-                            // viewer with this single item. The viewer
-                            // re-fetches asset detail on demand, so a
-                            // thin TimelineItem is enough to seed it.
+                        onPointOpen = { point ->
+                            // Single-marker tap → open the asset viewer
+                            // seeded with that one item. The viewer
+                            // re-fetches asset detail on display, so a
+                            // synthetic TimelineItem is enough.
                             assetDetail = AssetDetailContext(
                                 items = listOf(point.toSyntheticTimelineItem()),
                                 startIndex = 0,
@@ -593,10 +592,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             )
                         },
-                        onClusterClick = { points ->
-                            // Multi-asset cluster → open the bottom sheet.
-                            mapClusterPoints = points
-                        }
+                        onClusterPhotoOpen = { sheetPoints, index ->
+                            // Bottom-sheet thumbnail tap → open the
+                            // viewer seeded with the whole cluster so
+                            // the user can swipe through it.
+                            val items = sheetPoints.map { it.toSyntheticTimelineItem() }
+                            assetDetail = AssetDetailContext(
+                                items = items,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = { id, isFav ->
+                                    timelineViewModel.setFavorite(id, isFav)
+                                }
+                            )
+                            mapViewModel.closeClusterSheet()
+                        },
+                        onBulkAddToAlbum = { bulkAddToAlbumFromMap = true }
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
@@ -1150,26 +1163,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    val activeClusterPoints = mapClusterPoints
-    if (activeClusterPoints != null) {
-        com.photonne.app.ui.map.MapClusterSheet(
-            points = activeClusterPoints,
-            baseUrl = koinInject<com.photonne.app.di.PhotonneAppConfig>().apiBaseUrl,
-            onDismiss = { mapClusterPoints = null },
-            onPhotoClick = { index ->
-                val items = activeClusterPoints.map { it.toSyntheticTimelineItem() }
-                assetDetail = AssetDetailContext(
-                    items = items,
-                    startIndex = index,
-                    source = AssetDetailContext.Source.Timeline,
-                    hasMore = false,
-                    onLoadMore = {},
-                    onFavoriteChanged = { id, isFav ->
-                        timelineViewModel.setFavorite(id, isFav)
-                    }
-                )
-                mapClusterPoints = null
-            }
+    if (bulkAddToAlbumFromMap) {
+        val mapState = mapViewModel.state.collectAsState().value
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = mapState.isBulkMutating,
+            errorMessage = mapState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromMap = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                mapViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromMap = false
+            },
+            onDismiss = { bulkAddToAlbumFromMap = false }
         )
     }
 }
