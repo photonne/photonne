@@ -68,9 +68,10 @@ fun MoreScreen(
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit
 ) {
-    val shortcuts = remember(onOpenUpload, onOpenFavorites, onOpenArchived, onOpenTrash) {
+    val shortcuts = remember(onOpenUpload, onOpenMap, onOpenFavorites, onOpenArchived, onOpenTrash) {
         listOf(
             MoreShortcut("upload", Res.string.upload_title, Icons.Filled.Add, onOpenUpload),
+            MoreShortcut("map", Res.string.map_title, Icons.Filled.LocationOn, onOpenMap),
             MoreShortcut(
                 "favorites",
                 Res.string.favorites_title,
@@ -101,32 +102,6 @@ fun MoreScreen(
         }
 
         Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
-
-        MoreEntry(
-            icon = Icons.Filled.Add,
-            label = stringResource(Res.string.upload_title),
-            onClick = onOpenUpload
-        )
-        HorizontalDivider()
-        MoreEntry(
-            icon = Icons.Filled.LocationOn,
-            label = stringResource(Res.string.map_title),
-            onClick = onOpenMap
-        )
-        HorizontalDivider()
-        MoreEntry(
-            icon = Icons.Filled.Lock,
-            label = stringResource(Res.string.archive_title),
-            onClick = onOpenArchived
-        )
-        HorizontalDivider()
-        MoreEntry(
-            icon = Icons.Filled.Delete,
-            label = stringResource(Res.string.trash_title),
-            onClick = onOpenTrash
-        )
-        HorizontalDivider()
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 150.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
