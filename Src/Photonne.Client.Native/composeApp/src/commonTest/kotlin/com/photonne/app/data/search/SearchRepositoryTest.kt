@@ -75,6 +75,35 @@ class SearchRepositoryTest {
     }
 
     @Test
+    fun text_search_forwards_offset_and_ocr_text_query() = runTest {
+        val captured = mutableListOf<Pair<HttpMethod, String>>()
+        val engine = MockEngine { request ->
+            captured += request.method to request.url.toString()
+            respond(
+                content = ByteReadChannel("""{"items":[],"hasMore":false}"""),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val repo = newRepo(engine)
+
+        repo.textSearch(
+            query = "ticket",
+            from = null,
+            to = null,
+            personIds = emptyList(),
+            objectLabels = emptyList(),
+            sceneLabels = emptyList(),
+            ocrText = "AB-123",
+            offset = 80
+        )
+
+        val url = captured.single().second
+        assertTrue("textQuery") { url.contains("textQuery=AB-123") }
+        assertTrue("offset") { url.contains("offset=80") }
+    }
+
+    @Test
     fun semantic_search_hits_dedicated_endpoint() = runTest {
         val captured = mutableListOf<Pair<HttpMethod, String>>()
         val engine = MockEngine { request ->

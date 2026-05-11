@@ -138,6 +138,8 @@
     <string name="search_date_range">Rango de fechas</string>
     <string name="search_date_from">Desde</string>
     <string name="search_date_to">Hasta</string>
+    <string name="search_ocr_title">Texto en las imágenes (OCR)</string>
+    <string name="search_ocr_hint">Ej.: matrícula, ticket, factura…</string>
     <string name="search_objects_count">Objetos (%1$d)</string>
     <string name="search_scenes_count">Escenas (%1$d)</string>
     <string name="search_people_count">Personas (%1$d)</string>

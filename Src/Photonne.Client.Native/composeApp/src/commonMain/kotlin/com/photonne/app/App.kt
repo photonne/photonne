@@ -144,6 +144,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
+    var bulkAddToAlbumFromSearch by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
@@ -251,6 +252,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onCreateFolder = { showCreateFolder = true },
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.Search && searchState.isSelectionActive -> SelectionTopBar(
+                selectedCount = searchState.selection.size,
+                isMutating = searchState.isBulkMutating,
+                onClose = searchViewModel::clearSelection,
+                onAddToAlbum = { bulkAddToAlbumFromSearch = true },
+                onArchive = searchViewModel::bulkArchive,
+                onTrash = searchViewModel::bulkTrash
+            )
             selectedTab == MainTab.Search ->
                 com.photonne.app.ui.main.SearchTopBar(user = user.user, onLogout = onLogout)
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
@@ -399,17 +408,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     viewModel = searchViewModel,
                     onOpenFilters = { showSearchFilters = true },
                     onItemClick = { index ->
-                        assetDetail = AssetDetailContext(
-                            items = searchState.results,
-                            startIndex = index,
-                            source = AssetDetailContext.Source.Timeline,
-                            hasMore = false,
-                            onLoadMore = {},
-                            onFavoriteChanged = { id, isFav ->
-                                searchViewModel.setFavorite(id, isFav)
-                                timelineViewModel.setFavorite(id, isFav)
+                        if (searchState.isSelectionActive) {
+                            searchState.results.getOrNull(index)?.let {
+                                searchViewModel.toggleSelection(it.id)
                             }
-                        )
+                        } else {
+                            assetDetail = AssetDetailContext(
+                                items = searchState.results,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = { id, isFav ->
+                                    searchViewModel.setFavorite(id, isFav)
+                                    timelineViewModel.setFavorite(id, isFav)
+                                }
+                            )
+                        }
+                    },
+                    onItemLongClick = { index ->
+                        searchState.results.getOrNull(index)?.let {
+                            searchViewModel.toggleSelection(it.id)
+                        }
                     }
                 )
                 MainTab.More -> MoreScreen(user = user.user, onLogout = onLogout)
@@ -750,10 +770,32 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             state = searchState,
             onDismiss = { showSearchFilters = false },
             onDateRangeChange = searchViewModel::setDateRange,
+            onOcrChange = searchViewModel::setOcrText,
             onToggleObject = searchViewModel::toggleObjectLabel,
             onToggleScene = searchViewModel::toggleSceneLabel,
             onTogglePerson = searchViewModel::togglePerson,
             onClearAll = searchViewModel::clearAll
+        )
+    }
+
+    if (bulkAddToAlbumFromSearch) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = searchState.isBulkMutating,
+            errorMessage = searchState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromSearch = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                searchViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromSearch = false
+            },
+            onDismiss = { bulkAddToAlbumFromSearch = false }
         )
     }
 

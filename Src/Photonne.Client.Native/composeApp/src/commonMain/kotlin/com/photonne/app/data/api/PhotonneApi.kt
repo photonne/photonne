@@ -165,7 +165,8 @@ interface PhotonneApi {
         objectLabels: List<String> = emptyList(),
         sceneLabels: List<String> = emptyList(),
         textQuery: String? = null,
-        pageSize: Int? = null
+        pageSize: Int? = null,
+        offset: Int? = null
     ): SearchResponse
     suspend fun semanticSearch(q: String, limit: Int? = null): SemanticSearchResponse
     suspend fun listObjectLabels(q: String? = null, limit: Int? = null): List<ObjectLabel>
@@ -719,7 +720,8 @@ class PhotonneApiClient(
         objectLabels: List<String>,
         sceneLabels: List<String>,
         textQuery: String?,
-        pageSize: Int?
+        pageSize: Int?,
+        offset: Int?
     ): SearchResponse {
         val response: HttpResponse = client.get("$baseUrl/api/assets/search") {
             if (!q.isNullOrBlank()) parameter("q", q)
@@ -727,6 +729,7 @@ class PhotonneApiClient(
             if (!to.isNullOrBlank()) parameter("to", to)
             if (!folder.isNullOrBlank()) parameter("folder", folder)
             if (pageSize != null) parameter("pageSize", pageSize)
+            if (offset != null && offset > 0) parameter("offset", offset)
             for (id in personIds) parameter("personId", id)
             for (label in objectLabels) parameter("objectLabel", label)
             for (label in sceneLabels) parameter("sceneLabel", label)

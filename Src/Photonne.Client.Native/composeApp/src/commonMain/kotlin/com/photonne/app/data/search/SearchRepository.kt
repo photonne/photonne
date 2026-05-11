@@ -18,7 +18,9 @@ class SearchRepository(
         personIds: List<String>,
         objectLabels: List<String>,
         sceneLabels: List<String>,
-        pageSize: Int? = null
+        ocrText: String? = null,
+        pageSize: Int? = null,
+        offset: Int? = null
     ): SearchResponse = api.searchAssets(
         q = query,
         from = from?.toString(),
@@ -26,7 +28,9 @@ class SearchRepository(
         personIds = personIds,
         objectLabels = objectLabels,
         sceneLabels = sceneLabels,
-        pageSize = pageSize
+        textQuery = ocrText,
+        pageSize = pageSize,
+        offset = offset
     )
 
     suspend fun semanticSearch(query: String, limit: Int? = null): SemanticSearchResponse =
