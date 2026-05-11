@@ -58,6 +58,7 @@ import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_logout
+import com.photonne.app.resources.action_more
 import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_action_album_actions

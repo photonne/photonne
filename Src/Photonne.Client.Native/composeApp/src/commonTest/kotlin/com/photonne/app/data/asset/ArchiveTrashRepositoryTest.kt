@@ -44,7 +44,7 @@ class ArchiveTrashRepositoryTest {
         val engine = MockEngine { request ->
             captured += request.method to request.url.toString()
             respond(
-                content = ByteReadChannel("""{"Items":[],"HasMore":false,"NextCursor":null}"""),
+                content = ByteReadChannel("""{"items":[],"hasMore":false,"nextCursor":null}"""),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
@@ -65,7 +65,7 @@ class ArchiveTrashRepositoryTest {
         val engine = MockEngine { request ->
             captured += request.method to request.url.encodedPath
             respond(
-                content = ByteReadChannel("""{"Items":[],"HasMore":false,"NextCursor":null}"""),
+                content = ByteReadChannel("""{"items":[],"hasMore":false,"nextCursor":null}"""),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
