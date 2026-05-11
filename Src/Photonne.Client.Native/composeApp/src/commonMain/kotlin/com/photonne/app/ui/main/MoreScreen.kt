@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +43,7 @@ import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.more_settings_hint
 import com.photonne.app.resources.favorites_title
+import com.photonne.app.resources.people_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_title
 import org.jetbrains.compose.resources.StringResource
@@ -65,19 +67,28 @@ fun MoreScreen(
     onOpenUpload: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenFavorites: () -> Unit,
+    onOpenPeople: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit
 ) {
-    val shortcuts = remember(onOpenUpload, onOpenMap, onOpenFavorites, onOpenArchived, onOpenTrash) {
+    val shortcuts = remember(
+        onOpenUpload,
+        onOpenMap,
+        onOpenFavorites,
+        onOpenPeople,
+        onOpenArchived,
+        onOpenTrash
+    ) {
         listOf(
             MoreShortcut("upload", Res.string.upload_title, Icons.Filled.Add, onOpenUpload),
-            MoreShortcut("map", Res.string.map_title, Icons.Filled.LocationOn, onOpenMap),
             MoreShortcut(
                 "favorites",
                 Res.string.favorites_title,
                 Icons.Filled.Favorite,
                 onOpenFavorites
             ),
+            MoreShortcut("people", Res.string.people_title, Icons.Filled.Person, onOpenPeople),
+            MoreShortcut("map", Res.string.map_title, Icons.Filled.LocationOn, onOpenMap),
             MoreShortcut("archive", Res.string.archive_title, Icons.Filled.Lock, onOpenArchived),
             MoreShortcut("trash", Res.string.trash_title, Icons.Filled.Delete, onOpenTrash)
         )

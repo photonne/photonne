@@ -190,4 +190,16 @@
     <string name="map_action_fit_to_data">Centrar en mis fotos</string>
     <string name="map_cluster_sheet_title">%1$d fotos en este punto</string>
     <string name="map_action_select_all">Seleccionar todo</string>
+
+    <string name="people_title">Personas</string>
+    <string name="people_empty_title">Aún no hay personas</string>
+    <string name="people_empty_subtitle">Cuando el servidor termine de reconocer caras aparecerán aquí.</string>
+    <string name="people_unnamed">Sin nombre</string>
+    <string name="people_rename_title">Renombrar persona</string>
+    <string name="people_rename_field">Nombre</string>
+    <string name="people_action_rename">Renombrar</string>
+    <string name="people_action_hide">Ocultar persona</string>
+    <string name="people_action_unhide">Mostrar persona</string>
+    <string name="people_action_show_hidden">Mostrar ocultas</string>
+    <string name="people_action_hide_hidden">Ocultar ocultas</string>
 </resources>

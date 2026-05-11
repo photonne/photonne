@@ -190,4 +190,16 @@
     <string name="map_action_fit_to_data">Center on my photos</string>
     <string name="map_cluster_sheet_title">%1$d photos at this spot</string>
     <string name="map_action_select_all">Select all</string>
+
+    <string name="people_title">People</string>
+    <string name="people_empty_title">No people yet</string>
+    <string name="people_empty_subtitle">Once the server has finished clustering faces they'll show up here.</string>
+    <string name="people_unnamed">Unnamed</string>
+    <string name="people_rename_title">Rename person</string>
+    <string name="people_rename_field">Name</string>
+    <string name="people_action_rename">Rename</string>
+    <string name="people_action_hide">Hide person</string>
+    <string name="people_action_unhide">Unhide person</string>
+    <string name="people_action_show_hidden">Show hidden</string>
+    <string name="people_action_hide_hidden">Hide hidden</string>
 </resources>

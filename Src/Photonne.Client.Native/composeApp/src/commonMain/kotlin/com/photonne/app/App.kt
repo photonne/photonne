@@ -35,6 +35,8 @@ import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
 import com.photonne.app.resources.favorites_title
+import com.photonne.app.resources.people_title
+import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
@@ -102,7 +104,7 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Upload, Favorites, Map, Archived, Trash }
+private enum class MoreSubscreen { Upload, Favorites, People, Map, Archived, Trash }
 
 /** Build a thin TimelineItem out of a map point so the asset viewer
  * can be seeded without an extra fetch — it re-queries AssetDetail
@@ -157,6 +159,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
+    val peopleViewModel: com.photonne.app.ui.people.PeopleViewModel = koinViewModel()
+    val personDetailViewModel: com.photonne.app.ui.people.PersonDetailViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -169,6 +173,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val archivedState by archivedViewModel.state.collectAsState()
     val trashState by trashViewModel.state.collectAsState()
     val favoritesState by favoritesViewModel.state.collectAsState()
+    val peopleState by peopleViewModel.state.collectAsState()
+    val personDetailState by personDetailViewModel.state.collectAsState()
     val uploadState by uploadViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -191,6 +197,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var bulkAddToAlbumFromSearch by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromMap by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromFavorites by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromPeople by remember { mutableStateOf(false) }
+    var selectedPerson by remember {
+        mutableStateOf<com.photonne.app.data.models.Person?>(null)
+    }
+    var showRenamePerson by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
@@ -334,6 +345,54 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     user = user.user,
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
+                selectedPerson != null && personDetailState.isSelectionActive ->
+                com.photonne.app.ui.main.PersonDetailSelectionTopBar(
+                    selectedCount = personDetailState.selection.size,
+                    isMutating = personDetailState.isBulkMutating,
+                    onClose = personDetailViewModel::clearSelection,
+                    onAddToAlbum = { bulkAddToAlbumFromPeople = true },
+                    onArchive = personDetailViewModel::bulkArchive,
+                    onTrash = personDetailViewModel::bulkTrash
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
+                selectedPerson != null -> {
+                val person = selectedPerson!!
+                val resolvedName = personDetailState.personName ?: person.name
+                com.photonne.app.ui.main.PersonDetailTopBar(
+                    title = resolvedName?.takeIf { it.isNotBlank() }
+                        ?: stringResource(Res.string.people_unnamed),
+                    subtitle = if (personDetailState.total > 0)
+                        stringResource(Res.string.albums_count_format, personDetailState.total)
+                    else null,
+                    isHidden = person.isHidden,
+                    onBack = { selectedPerson = null },
+                    onRename = { showRenamePerson = true },
+                    onToggleHidden = {
+                        if (person.isHidden) {
+                            peopleViewModel.unhide(person.id) {
+                                selectedPerson = person.copy(isHidden = false)
+                            }
+                        } else {
+                            peopleViewModel.hide(person.id) {
+                                selectedPerson = null
+                            }
+                        }
+                    },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            }
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People ->
+                com.photonne.app.ui.main.PeopleTopBar(
+                    title = stringResource(Res.string.people_title),
+                    onBack = { moreSubscreen = null },
+                    onRefresh = peopleViewModel::refresh,
+                    showHidden = peopleState.showHidden,
+                    onToggleHidden = peopleViewModel::toggleShowHidden,
+                    user = user.user,
+                    onLogout = onLogout
+                )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites &&
                 favoritesState.isSelectionActive ->
                 com.photonne.app.ui.main.FavoritesSelectionTopBar(
@@ -422,7 +481,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onTabSelected = { tab ->
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
                 if (tab == MainTab.Folders && selectedTab == MainTab.Folders) selectedFolder = null
-                if (tab == MainTab.More && selectedTab == MainTab.More) moreSubscreen = null
+                if (tab == MainTab.More && selectedTab == MainTab.More) {
+                    moreSubscreen = null
+                    selectedPerson = null
+                }
                 selectedTab = tab
             },
             topBar = topBar
@@ -584,6 +646,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
                         onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
+                        onOpenPeople = { moreSubscreen = MoreSubscreen.People },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
                     )
@@ -638,6 +701,49 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onBulkAddToAlbum = { bulkAddToAlbumFromMap = true }
                     )
+                    MoreSubscreen.People -> {
+                        val person = selectedPerson
+                        if (person == null) {
+                            com.photonne.app.ui.people.PeopleScreen(
+                                state = peopleState,
+                                onPersonClick = { picked ->
+                                    selectedPerson = picked
+                                    personDetailViewModel.open(picked.id, picked.name)
+                                },
+                                onLoadMore = peopleViewModel::loadMore,
+                                onRefresh = peopleViewModel::ensureLoaded
+                            )
+                        } else {
+                            com.photonne.app.ui.people.PersonDetailScreen(
+                                state = personDetailState,
+                                onItemClick = { index ->
+                                    if (personDetailState.isSelectionActive) {
+                                        personDetailState.items.getOrNull(index)?.let {
+                                            personDetailViewModel.toggleSelection(it.id)
+                                        }
+                                    } else {
+                                        assetDetail = AssetDetailContext(
+                                            items = personDetailState.items,
+                                            startIndex = index,
+                                            source = AssetDetailContext.Source.Timeline,
+                                            hasMore = personDetailState.hasMore,
+                                            onLoadMore = personDetailViewModel::loadMore,
+                                            onFavoriteChanged = { id, isFav ->
+                                                personDetailViewModel.setFavorite(id, isFav)
+                                                timelineViewModel.setFavorite(id, isFav)
+                                            }
+                                        )
+                                    }
+                                },
+                                onItemLongClick = { index ->
+                                    personDetailState.items.getOrNull(index)?.let {
+                                        personDetailViewModel.toggleSelection(it.id)
+                                    }
+                                },
+                                onLoadMore = personDetailViewModel::loadMore
+                            )
+                        }
+                    }
                     MoreSubscreen.Favorites -> com.photonne.app.ui.library.FavoritesScreen(
                         state = favoritesState,
                         onItemClick = { index ->
@@ -748,6 +854,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     searchViewModel.removeItem(id)
                     archivedViewModel.applyAssetRemovedLocal(id)
+                    personDetailViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 },
                 onAssetArchived = { id ->
@@ -757,6 +864,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     searchViewModel.removeItem(id)
                     trashViewModel.applyAssetRemovedLocal(id)
+                    personDetailViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 }
             )
@@ -1238,6 +1346,47 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 bulkAddToAlbumFromMap = false
             },
             onDismiss = { bulkAddToAlbumFromMap = false }
+        )
+    }
+
+    if (bulkAddToAlbumFromPeople) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = personDetailState.isBulkMutating,
+            errorMessage = personDetailState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromPeople = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                personDetailViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromPeople = false
+            },
+            onDismiss = { bulkAddToAlbumFromPeople = false }
+        )
+    }
+
+    val activePerson = selectedPerson
+    if (showRenamePerson && activePerson != null) {
+        com.photonne.app.ui.people.RenamePersonDialog(
+            initialName = personDetailState.personName ?: activePerson.name,
+            isSubmitting = peopleState.isMutating,
+            errorMessage = peopleState.errorMessage,
+            onDismiss = {
+                showRenamePerson = false
+                peopleViewModel.clearError()
+            },
+            onConfirm = { name ->
+                peopleViewModel.rename(activePerson.id, name) {
+                    personDetailViewModel.applyRename(name)
+                    selectedPerson = activePerson.copy(name = name)
+                    showRenamePerson = false
+                }
+            }
         )
     }
 }

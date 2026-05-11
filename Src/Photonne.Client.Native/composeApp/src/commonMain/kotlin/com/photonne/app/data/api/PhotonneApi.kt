@@ -11,6 +11,7 @@ import com.photonne.app.data.models.LoginResponse
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.PeoplePage
+import com.photonne.app.data.models.PersonAssetsPage
 import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.data.models.SearchResponse
 import com.photonne.app.data.models.SemanticSearchResponse
@@ -80,6 +81,9 @@ internal data class MoveFolderAssetsBody(
     val targetFolderId: String,
     val assetIds: List<String>
 )
+
+@Serializable
+internal data class RenamePersonBody(val name: String?)
 
 @Serializable
 data class UploadAssetResponse(
@@ -213,6 +217,14 @@ interface PhotonneApi {
         limit: Int? = null,
         offset: Int? = null
     ): PeoplePage
+    suspend fun renamePerson(personId: String, name: String?)
+    suspend fun hidePerson(personId: String)
+    suspend fun unhidePerson(personId: String)
+    suspend fun getPersonAssets(
+        personId: String,
+        limit: Int? = null,
+        offset: Int? = null
+    ): PersonAssetsPage
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -984,6 +996,53 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun renamePerson(personId: String, name: String?) {
+        val response: HttpResponse = client.patch("$baseUrl/api/people/$personId") {
+            contentType(ContentType.Application.Json)
+            setBody(RenamePersonBody(name = name?.trim()?.takeIf { it.isNotEmpty() }))
+        }
+        ensurePersonSuccess(response, "Rename person failed")
+    }
+
+    override suspend fun hidePerson(personId: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/people/$personId/hide")
+        ensurePersonSuccess(response, "Hide person failed")
+    }
+
+    override suspend fun unhidePerson(personId: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/people/$personId/unhide")
+        ensurePersonSuccess(response, "Unhide person failed")
+    }
+
+    override suspend fun getPersonAssets(
+        personId: String,
+        limit: Int?,
+        offset: Int?
+    ): PersonAssetsPage {
+        val response: HttpResponse = client.get("$baseUrl/api/search/people/$personId/assets") {
+            if (limit != null) parameter("limit", limit)
+            if (offset != null) parameter("offset", offset)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Person assets fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    private fun ensurePersonSuccess(response: HttpResponse, message: String) {
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "$message (${response.status.value})"
+            )
+        }
     }
 }
 
