@@ -756,6 +756,44 @@ fun MoreTopBar(user: UserDto, onLogout: () -> Unit) {
     )
 }
 
+/**
+ * Generic title + optional subtitle + back button + account menu top
+ * bar used by every account-settings sub-page.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsTopBar(
+    title: String,
+    subtitle: String? = null,
+    onBack: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        actions = { AccountMenu(user = user, onLogout = onLogout) }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadTopBar(

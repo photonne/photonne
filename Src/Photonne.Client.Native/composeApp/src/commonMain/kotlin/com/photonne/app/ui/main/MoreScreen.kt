@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.map_title
@@ -69,7 +71,8 @@ fun MoreScreen(
     onOpenFavorites: () -> Unit,
     onOpenPeople: () -> Unit,
     onOpenArchived: () -> Unit,
-    onOpenTrash: () -> Unit
+    onOpenTrash: () -> Unit,
+    onOpenAccountSettings: () -> Unit
 ) {
     val shortcuts = remember(
         onOpenUpload,
@@ -77,7 +80,8 @@ fun MoreScreen(
         onOpenFavorites,
         onOpenPeople,
         onOpenArchived,
-        onOpenTrash
+        onOpenTrash,
+        onOpenAccountSettings
     ) {
         listOf(
             MoreShortcut("upload", Res.string.upload_title, Icons.Filled.Add, onOpenUpload),
@@ -90,7 +94,13 @@ fun MoreScreen(
             MoreShortcut("people", Res.string.people_title, Icons.Filled.Person, onOpenPeople),
             MoreShortcut("map", Res.string.map_title, Icons.Filled.LocationOn, onOpenMap),
             MoreShortcut("archive", Res.string.archive_title, Icons.Filled.Lock, onOpenArchived),
-            MoreShortcut("trash", Res.string.trash_title, Icons.Filled.Delete, onOpenTrash)
+            MoreShortcut("trash", Res.string.trash_title, Icons.Filled.Delete, onOpenTrash),
+            MoreShortcut(
+                "account",
+                Res.string.account_settings_title,
+                Icons.Filled.Settings,
+                onOpenAccountSettings
+            )
         )
     }
 

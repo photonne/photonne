@@ -240,4 +240,36 @@
     <string name="share_status_saved">Guardado: %1$s</string>
     <string name="share_status_share_failed">No se pudo compartir: %1$s</string>
     <string name="selection_action_remove_from_album">Quitar del álbum</string>
+
+    <!-- Account settings -->
+    <string name="account_settings_title">Configuración de cuenta</string>
+    <string name="account_settings_hint">Edita tu perfil, contraseña, apariencia y consulta el almacenamiento.</string>
+    <string name="account_section_profile">Perfil</string>
+    <string name="account_section_profile_subtitle">Nombre, correo y nombre de usuario</string>
+    <string name="account_section_security">Seguridad</string>
+    <string name="account_section_security_subtitle">Cambiar contraseña</string>
+    <string name="account_section_appearance">Apariencia</string>
+    <string name="account_section_appearance_subtitle">Tema claro, oscuro o automático</string>
+    <string name="account_section_storage">Almacenamiento</string>
+    <string name="account_section_storage_subtitle">Uso actual y cuota</string>
+    <string name="account_profile_first_name">Nombre</string>
+    <string name="account_profile_last_name">Apellidos</string>
+    <string name="account_profile_email">Correo electrónico</string>
+    <string name="account_profile_username">Nombre de usuario</string>
+    <string name="account_profile_save">Guardar cambios</string>
+    <string name="account_profile_saved">Perfil actualizado</string>
+    <string name="account_security_current">Contraseña actual</string>
+    <string name="account_security_new">Nueva contraseña</string>
+    <string name="account_security_confirm">Confirmar nueva contraseña</string>
+    <string name="account_security_mismatch">Las contraseñas no coinciden</string>
+    <string name="account_security_min_length">Mínimo %1$d caracteres</string>
+    <string name="account_security_submit">Cambiar contraseña</string>
+    <string name="account_security_changed">Contraseña cambiada</string>
+    <string name="appearance_title">Tema</string>
+    <string name="appearance_system">Seguir al sistema</string>
+    <string name="appearance_light">Claro</string>
+    <string name="appearance_dark">Oscuro</string>
+    <string name="storage_used_format">%1$s usados de %2$s</string>
+    <string name="storage_used_unbounded_format">%1$s usados</string>
+    <string name="storage_no_quota">Sin límite de cuota</string>
 </resources>

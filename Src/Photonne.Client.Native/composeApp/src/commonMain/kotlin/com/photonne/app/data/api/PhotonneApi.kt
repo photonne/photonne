@@ -274,6 +274,13 @@ interface PhotonneApi {
     suspend fun setPersonCoverFace(personId: String, faceId: String)
     suspend fun unlinkAssetFromPerson(personId: String, assetId: String): UnlinkAssetResponse
 
+    suspend fun getCurrentUser(): UserDto
+    suspend fun updateProfile(request: com.photonne.app.data.models.UpdateProfileRequest): UserDto
+    suspend fun changePassword(
+        request: com.photonne.app.data.models.ChangePasswordRequest
+    ): com.photonne.app.data.models.ChangePasswordResponse
+    suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto
+
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
     }
@@ -1327,6 +1334,74 @@ class PhotonneApiClient(
                 message = "$message (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun getCurrentUser(): com.photonne.app.data.models.UserDto {
+        val response: HttpResponse = client.get("$baseUrl/api/users/me")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Fetching user failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun updateProfile(
+        request: com.photonne.app.data.models.UpdateProfileRequest
+    ): com.photonne.app.data.models.UserDto {
+        val response: HttpResponse = client.put("$baseUrl/api/users/me") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            // 400 carries `{ "error": "..." }` (UsersEndpoint.cs:381,388); surface that text
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Profile update failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun changePassword(
+        request: com.photonne.app.data.models.ChangePasswordRequest
+    ): com.photonne.app.data.models.ChangePasswordResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/users/me/change-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Password change failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto {
+        val response: HttpResponse = client.get("$baseUrl/api/users/me/storage")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Storage info fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    /**
+     * The users endpoints surface 400-level validation issues as
+     * `{ "error": "human readable text" }`. Try to lift that out so the
+     * settings screens can render a meaningful inline message; fall back
+     * to null when the body isn't shaped that way (and the caller will
+     * use the generic "X failed" copy instead).
+     */
+    private suspend fun parseErrorMessage(response: HttpResponse): String? {
+        return runCatching { response.body<com.photonne.app.data.models.ApiError>().error }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
     }
 }
 
