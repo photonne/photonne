@@ -21,7 +21,10 @@ data class AssetFacesUiState(
     val pendingFaceIds: Set<String> = emptySet(),
     /** Face id for which the user is currently picking a person (assign or set-cover). */
     val assigningFaceId: String? = null
-)
+) {
+    fun personById(personId: String?): Person? =
+        personId?.let { id -> people.firstOrNull { it.id == id } }
+}
 
 /**
  * Backs the per-asset faces bottom sheet. Loads:
@@ -233,10 +236,6 @@ class AssetFacesViewModel(
                 }
                 .onFailure { error -> setError(faceId, error.message ?: "Failed to set cover") }
         }
-    }
-
-    fun personById(personId: String?): Person? = personId?.let { id ->
-        _state.value.people.firstOrNull { it.id == id }
     }
 
     /** Re-fetch the people list. Useful after `assignToNewPerson` succeeds
