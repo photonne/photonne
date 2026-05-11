@@ -749,6 +749,100 @@ fun TrashTopBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FavoritesTopBar(
+    title: String,
+    subtitle: String?,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.action_refresh)
+                )
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+/**
+ * Selection top bar for the Favorites screen — the same bulk vocabulary
+ * as the Timeline selection bar (Add to album, Archive, Trash), since
+ * "Unfavorite" can be done from the asset viewer per item.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FavoritesSelectionTopBar(
+    selectedCount: Int,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onAddToAlbum: () -> Unit,
+    onArchive: () -> Unit,
+    onTrash: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = {
+            IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
+                )
+            }
+            IconButton(onClick = onArchive, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = stringResource(Res.string.selection_action_archive)
+                )
+            }
+            IconButton(onClick = onTrash, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(Res.string.selection_action_trash),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    )
+}
+
 /** Selection top bar tailored to the Archived screen — only exposes Unarchive. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

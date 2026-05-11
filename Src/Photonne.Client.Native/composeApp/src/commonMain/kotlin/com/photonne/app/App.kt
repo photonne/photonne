@@ -34,6 +34,7 @@ import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
+import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
@@ -100,7 +101,7 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Upload, Archived, Trash }
+private enum class MoreSubscreen { Upload, Favorites, Archived, Trash }
 
 @Composable
 fun App() {
@@ -134,6 +135,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumPermissionsViewModel: AlbumPermissionsViewModel = koinViewModel()
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel = koinViewModel()
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
+    val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
@@ -146,6 +148,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumPermissionsState by albumPermissionsViewModel.state.collectAsState()
     val archivedState by archivedViewModel.state.collectAsState()
     val trashState by trashViewModel.state.collectAsState()
+    val favoritesState by favoritesViewModel.state.collectAsState()
     val uploadState by uploadViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -166,6 +169,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
     var bulkAddToAlbumFromSearch by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromFavorites by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
@@ -301,6 +305,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     user = user.user,
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites &&
+                favoritesState.isSelectionActive ->
+                com.photonne.app.ui.main.FavoritesSelectionTopBar(
+                    selectedCount = favoritesState.selection.size,
+                    isMutating = favoritesState.isBulkMutating,
+                    onClose = favoritesViewModel::clearSelection,
+                    onAddToAlbum = { bulkAddToAlbumFromFavorites = true },
+                    onArchive = favoritesViewModel::bulkArchive,
+                    onTrash = favoritesViewModel::bulkTrash
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites -> {
+                val count = favoritesState.items.size
+                com.photonne.app.ui.main.FavoritesTopBar(
+                    title = stringResource(Res.string.favorites_title),
+                    subtitle = if (count > 0)
+                        stringResource(Res.string.albums_count_format, count) else null,
+                    onBack = { moreSubscreen = null },
+                    onRefresh = favoritesViewModel::refresh,
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
                 archivedState.isSelectionActive ->
                 com.photonne.app.ui.main.ArchivedSelectionTopBar(
@@ -527,6 +553,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         user = user.user,
                         onLogout = onLogout,
                         onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
+                        onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
                     )
@@ -543,6 +570,35 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onCancelAll = uploadViewModel::cancelAll,
                         onClearFinished = uploadViewModel::clearFinished,
                         onDismissPickerError = uploadViewModel::clearPickerError
+                    )
+                    MoreSubscreen.Favorites -> com.photonne.app.ui.library.FavoritesScreen(
+                        state = favoritesState,
+                        onItemClick = { index ->
+                            if (favoritesState.isSelectionActive) {
+                                favoritesState.items.getOrNull(index)?.let {
+                                    favoritesViewModel.toggleSelection(it.id)
+                                }
+                            } else {
+                                assetDetail = AssetDetailContext(
+                                    items = favoritesState.items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = favoritesState.hasMore,
+                                    onLoadMore = favoritesViewModel::loadMore,
+                                    onFavoriteChanged = { id, isFav ->
+                                        favoritesViewModel.setFavorite(id, isFav)
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        },
+                        onItemLongClick = { index ->
+                            favoritesState.items.getOrNull(index)?.let {
+                                favoritesViewModel.toggleSelection(it.id)
+                            }
+                        },
+                        onLoadMore = favoritesViewModel::loadMore,
+                        onRefresh = favoritesViewModel::ensureLoaded
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
@@ -625,6 +681,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     searchViewModel.removeItem(id)
                     archivedViewModel.applyAssetRemovedLocal(id)
+                    favoritesViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 },
                 onAssetArchived = { id ->
@@ -634,6 +691,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     searchViewModel.removeItem(id)
                     trashViewModel.applyAssetRemovedLocal(id)
+                    favoritesViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 }
             )
@@ -970,6 +1028,27 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 bulkAddToAlbumFromSearch = false
             },
             onDismiss = { bulkAddToAlbumFromSearch = false }
+        )
+    }
+
+    if (bulkAddToAlbumFromFavorites) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = favoritesState.isBulkMutating,
+            errorMessage = favoritesState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromFavorites = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                favoritesViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromFavorites = false
+            },
+            onDismiss = { bulkAddToAlbumFromFavorites = false }
         )
     }
 

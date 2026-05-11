@@ -163,6 +163,10 @@
     <string name="trash_dialog_empty_message">This cannot be undone. Every photo in the trash will be deleted permanently.</string>
     <string name="trash_dialog_purge_message">%1$d items will be deleted permanently. You won't be able to recover them.</string>
 
+    <string name="favorites_title">Favorites</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_subtitle">Tap the heart on a photo from the viewer to see it here.</string>
+
     <string name="upload_title">Upload</string>
     <string name="upload_subtitle_pending">%1$d pending</string>
     <string name="upload_action_add">Add files</string>
