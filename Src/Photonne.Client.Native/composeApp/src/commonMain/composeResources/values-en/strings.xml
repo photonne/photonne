@@ -239,4 +239,5 @@
     <string name="share_link_copy">Copy link</string>
     <string name="share_status_saved">Saved: %1$s</string>
     <string name="share_status_share_failed">Could not share: %1$s</string>
+    <string name="selection_action_remove_from_album">Remove from album</string>
 </resources>

@@ -109,6 +109,19 @@ class AlbumsViewModel(
         }
     }
 
+    fun applyAssetsRemoved(albumId: String, removedCount: Int) {
+        if (removedCount <= 0) return
+        _state.update { previous ->
+            previous.copy(
+                albums = previous.albums.map {
+                    if (it.id == albumId) {
+                        it.copy(assetCount = (it.assetCount - removedCount).coerceAtLeast(0))
+                    } else it
+                }
+            )
+        }
+    }
+
     fun applyShareLinkChanged(albumId: String, hasActiveShareLink: Boolean) {
         _state.update { previous ->
             previous.copy(

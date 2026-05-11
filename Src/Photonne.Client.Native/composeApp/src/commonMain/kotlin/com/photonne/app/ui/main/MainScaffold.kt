@@ -87,6 +87,7 @@ import com.photonne.app.resources.selection_action_add_to_album
 import com.photonne.app.resources.selection_action_archive
 import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_more
+import com.photonne.app.resources.selection_action_remove_from_album
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
 import androidx.compose.material.icons.filled.List
@@ -315,7 +316,8 @@ fun AssetSelectionTopBar(
     onArchive: () -> Unit,
     onTrash: () -> Unit,
     onMove: (() -> Unit)? = null,
-    onUnlink: (() -> Unit)? = null
+    onUnlink: (() -> Unit)? = null,
+    onRemoveFromAlbum: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val allSelected = totalCount > 0 && selectedCount >= totalCount
@@ -388,6 +390,14 @@ fun AssetSelectionTopBar(
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.people_action_unlink)) },
                             onClick = { menuOpen = false; onUnlink() }
+                        )
+                    }
+                    if (onRemoveFromAlbum != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(stringResource(Res.string.selection_action_remove_from_album))
+                            },
+                            onClick = { menuOpen = false; onRemoveFromAlbum() }
                         )
                     }
                     DropdownMenuItem(

@@ -80,10 +80,23 @@ fun AlbumDetailScreen(
             else -> AssetGrid(
                 items = state.items,
                 baseUrl = config.apiBaseUrl,
-                onItemClick = onItemClick,
-                onItemLongClick = if (canManage) {
-                    { index -> state.items.getOrNull(index)?.let { actionTarget = it } }
-                } else null,
+                onItemClick = { index ->
+                    if (state.isSelectionActive) {
+                        state.items.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
+                    } else {
+                        onItemClick(index)
+                    }
+                },
+                onItemLongClick = { index ->
+                    state.items.getOrNull(index)?.let { item ->
+                        if (state.isSelectionActive || !canManage) {
+                            viewModel.toggleSelection(item.id)
+                        } else {
+                            actionTarget = item
+                        }
+                    }
+                },
+                selectedIds = state.selection,
                 modifier = Modifier.fillMaxWidth()
             )
         }

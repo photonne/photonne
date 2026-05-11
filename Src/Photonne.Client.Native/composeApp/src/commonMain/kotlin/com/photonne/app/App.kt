@@ -214,6 +214,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var bulkAddToAlbumFromPeople by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromFolder by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromArchive by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromAlbum by remember { mutableStateOf(false) }
     var selectedPerson by remember {
         mutableStateOf<com.photonne.app.data.models.Person?>(null)
     }
@@ -272,6 +273,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onArchive = timelineViewModel::bulkArchive,
                     onTrash = timelineViewModel::bulkTrash
+                )
+            selectedTab == MainTab.Albums && selectedAlbum != null &&
+                albumDetailState.isSelectionActive ->
+                AssetSelectionTopBar(
+                    selectedCount = albumDetailState.selection.size,
+                    totalCount = albumDetailState.items.size,
+                    isMutating = albumDetailState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
+                    onClose = albumDetailViewModel::clearSelection,
+                    onSelectAll = albumDetailViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(albumDetailState.selection.toList())
+                    },
+                    onAddToAlbum = { bulkAddToAlbumFromAlbum = true },
+                    onDownload = {
+                        actionsViewModel.download(albumDetailState.selection.toList())
+                    },
+                    onArchive = albumDetailViewModel::bulkArchive,
+                    onTrash = albumDetailViewModel::bulkTrash,
+                    onRemoveFromAlbum = if (selectedAlbum?.canWrite == true ||
+                        selectedAlbum?.isOwner == true
+                    ) {
+                        {
+                            albumDetailViewModel.bulkRemoveFromAlbum { removed ->
+                                selectedAlbum?.let {
+                                    albumsViewModel.applyAssetsRemoved(it.id, removed)
+                                }
+                            }
+                        }
+                    } else null
                 )
             selectedTab == MainTab.Albums && selectedAlbum != null -> AlbumDetailTopBar(
                 title = albumDetailState.albumName ?: selectedAlbum!!.name,
@@ -1572,6 +1603,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 bulkAddToAlbumFromFolder = false
             },
             onDismiss = { bulkAddToAlbumFromFolder = false }
+        )
+    }
+
+    if (bulkAddToAlbumFromAlbum) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = albumDetailState.isBulkMutating,
+            errorMessage = albumDetailState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromAlbum = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                albumDetailViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                }
+                bulkAddToAlbumFromAlbum = false
+            },
+            onDismiss = { bulkAddToAlbumFromAlbum = false }
         )
     }
 
