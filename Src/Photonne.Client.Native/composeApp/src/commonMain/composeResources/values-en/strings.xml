@@ -117,4 +117,11 @@
     <string name="folder_delete_message">"%1$s" will be deleted. Photos stay on disk but lose their index entry; you can re-index from the web app.</string>
     <string name="folder_permissions_title">Folder members</string>
     <string name="folder_permissions_empty">Only you have access. Invite people to grant them read or write access.</string>
+    <string name="folder_action_move">Move folder</string>
+    <string name="folder_move_title">Move folder</string>
+    <string name="folder_picker_root">Root (no parent)</string>
+    <string name="folder_picker_empty">No folders available as a target.</string>
+    <string name="folder_move_assets_title">Move to a folder</string>
+    <string name="action_move">Move</string>
+    <string name="folder_selection_move">Move to folder</string>
 </resources>

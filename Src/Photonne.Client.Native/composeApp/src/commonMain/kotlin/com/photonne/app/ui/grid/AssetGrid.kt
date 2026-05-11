@@ -57,7 +57,8 @@ fun AssetGrid(
     isAppending: Boolean = false,
     isInitialLoading: Boolean = false,
     onLoadMore: () -> Unit = {},
-    onItemLongClick: ((Int) -> Unit)? = null
+    onItemLongClick: ((Int) -> Unit)? = null,
+    selectedIds: Set<String> = emptySet()
 ) {
     val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
         derivedStateOf {
@@ -87,7 +88,8 @@ fun AssetGrid(
                 asset = asset,
                 baseUrl = baseUrl,
                 onClick = { onItemClick(index) },
-                onLongClick = onItemLongClick?.let { { it(index) } }
+                onLongClick = onItemLongClick?.let { { it(index) } },
+                isSelected = asset.id in selectedIds
             )
         }
     }

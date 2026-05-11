@@ -117,4 +117,11 @@
     <string name="folder_delete_message">"%1$s" se eliminará. Las fotos quedarán fuera del índice; podrás reindexarlas desde la app web.</string>
     <string name="folder_permissions_title">Miembros de la carpeta</string>
     <string name="folder_permissions_empty">Solo tú tienes acceso. Invita a alguien para darle permiso de lectura o escritura.</string>
+    <string name="folder_action_move">Mover carpeta</string>
+    <string name="folder_move_title">Mover carpeta</string>
+    <string name="folder_picker_root">Raíz (sin carpeta padre)</string>
+    <string name="folder_picker_empty">No hay carpetas disponibles como destino.</string>
+    <string name="folder_move_assets_title">Mover a una carpeta</string>
+    <string name="action_move">Mover</string>
+    <string name="folder_selection_move">Mover a carpeta</string>
 </resources>

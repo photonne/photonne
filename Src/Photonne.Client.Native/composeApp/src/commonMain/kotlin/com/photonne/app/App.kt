@@ -22,6 +22,8 @@ import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folder_action_edit
 import com.photonne.app.resources.folder_action_new
+import com.photonne.app.resources.folder_move_assets_title
+import com.photonne.app.resources.folder_move_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -148,6 +150,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showDeleteFolder by remember { mutableStateOf(false) }
     var showFolderMembers by remember { mutableStateOf(false) }
     var showInviteFolderMember by remember { mutableStateOf(false) }
+    var showMoveFolder by remember { mutableStateOf(false) }
+    var showMoveSelectedAssets by remember { mutableStateOf(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -206,6 +210,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onCreateAlbum = { showCreateAlbum = true },
                 onLogout = onLogout
             )
+            selectedTab == MainTab.Folders && selectedFolder != null &&
+                folderDetailState.isSelectionActive ->
+                com.photonne.app.ui.main.FolderSelectionTopBar(
+                    selectedCount = folderDetailState.selection.size,
+                    isMutating = folderDetailState.isBulkMutating,
+                    onClose = folderDetailViewModel::clearSelection,
+                    onMoveToFolder = { showMoveSelectedAssets = true }
+                )
             selectedTab == MainTab.Folders && selectedFolder != null -> {
                 val folder = selectedFolder!!
                 FolderDetailTopBar(
@@ -217,8 +229,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     canEdit = folder.isOwner,
                     canDelete = folder.isOwner,
                     canManageMembers = folder.isOwner,
+                    canMove = folder.isOwner,
                     onBack = { selectedFolder = null },
                     onEdit = { showEditFolder = true },
+                    onMove = { showMoveFolder = true },
                     onDelete = { showDeleteFolder = true },
                     onManageMembers = {
                         folderPermissionsViewModel.open(folder.id)
@@ -344,19 +358,33 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.folder.FolderDetailScreen(
                             folderId = openedFolder.id,
                             folderName = openedFolder.name.ifBlank { openedFolder.path },
+                            parentFolderId = openedFolder.parentFolderId,
                             onItemClick = { index ->
-                                val folderState = folderDetailViewModel.state.value
-                                assetDetail = AssetDetailContext(
-                                    items = folderState.items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        folderDetailViewModel.setFavorite(id, isFav)
-                                        timelineViewModel.setFavorite(id, isFav)
+                                if (folderDetailState.isSelectionActive) {
+                                    folderDetailState.items.getOrNull(index)?.let {
+                                        folderDetailViewModel.toggleSelection(it.id)
                                     }
-                                )
+                                } else {
+                                    val folderState = folderDetailViewModel.state.value
+                                    assetDetail = AssetDetailContext(
+                                        items = folderState.items,
+                                        startIndex = index,
+                                        source = AssetDetailContext.Source.Timeline,
+                                        hasMore = false,
+                                        onLoadMore = {},
+                                        onFavoriteChanged = { id, isFav ->
+                                            folderDetailViewModel.setFavorite(id, isFav)
+                                            timelineViewModel.setFavorite(id, isFav)
+                                        }
+                                    )
+                                }
+                            },
+                            onItemLongClick = { index ->
+                                if (openedFolder.isOwner) {
+                                    folderDetailState.items.getOrNull(index)?.let {
+                                        folderDetailViewModel.toggleSelection(it.id)
+                                    }
+                                }
                             },
                             viewModel = folderDetailViewModel
                         )
@@ -663,6 +691,60 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onInvite = { selectedUser, role ->
                 folderPermissionsViewModel.grant(selectedUser, role)
                 showInviteFolderMember = false
+            }
+        )
+    }
+
+    if (showMoveFolder && openedFolder != null) {
+        com.photonne.app.ui.folder.FolderPickerDialog(
+            title = stringResource(Res.string.folder_move_title),
+            folders = foldersState.folders,
+            isSubmitting = folderDetailState.isMutating,
+            errorMessage = folderDetailState.errorMessage,
+            excludeFolderId = openedFolder.id,
+            includeRoot = true,
+            initialSelectionId = openedFolder.parentFolderId,
+            onDismiss = {
+                showMoveFolder = false
+                folderDetailViewModel.clearError()
+            },
+            onConfirm = { targetParentId ->
+                folderDetailViewModel.move(targetParentId) { updated ->
+                    showMoveFolder = false
+                    selectedFolder = openedFolder.copy(
+                        path = updated.path,
+                        parentFolderId = updated.parentFolderId
+                    )
+                    foldersViewModel.applyUpdate(updated)
+                }
+            }
+        )
+    }
+
+    if (showMoveSelectedAssets && openedFolder != null) {
+        com.photonne.app.ui.folder.FolderPickerDialog(
+            title = stringResource(Res.string.folder_move_assets_title),
+            folders = foldersState.folders,
+            isSubmitting = folderDetailState.isBulkMutating,
+            errorMessage = folderDetailState.errorMessage,
+            excludeFolderId = openedFolder.id,
+            includeRoot = false,
+            onDismiss = {
+                showMoveSelectedAssets = false
+                folderDetailViewModel.clearError()
+            },
+            onConfirm = { targetFolderId ->
+                if (targetFolderId != null) {
+                    folderDetailViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
+                        showMoveSelectedAssets = false
+                        val moved = movedIds.size
+                        if (moved > 0) {
+                            selectedFolder = openedFolder.copy(
+                                assetCount = (openedFolder.assetCount - moved).coerceAtLeast(0)
+                            )
+                        }
+                    }
+                }
             }
         )
     }
