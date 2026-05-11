@@ -27,8 +27,10 @@ import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.library.ArchivedViewModel
 import com.photonne.app.ui.library.FavoritesViewModel
 import com.photonne.app.ui.library.TrashViewModel
+import com.photonne.app.ui.people.AssetFacesViewModel
 import com.photonne.app.ui.people.PeopleViewModel
 import com.photonne.app.ui.people.PersonDetailViewModel
+import com.photonne.app.ui.people.PersonSuggestionsViewModel
 import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.map.MapViewModel
 import com.photonne.app.ui.search.SearchViewModel
@@ -90,4 +92,6 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)
+    viewModelOf(::PersonSuggestionsViewModel)
+    viewModelOf(::AssetFacesViewModel)
 }

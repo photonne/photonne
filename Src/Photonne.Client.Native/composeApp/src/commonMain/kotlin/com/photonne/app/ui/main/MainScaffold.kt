@@ -49,9 +49,16 @@ import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_selection_move
 import com.photonne.app.resources.people_action_hide
 import com.photonne.app.resources.people_action_hide_hidden
+import com.photonne.app.resources.people_action_merge
+import com.photonne.app.resources.people_action_recluster
 import com.photonne.app.resources.people_action_rename
 import com.photonne.app.resources.people_action_show_hidden
+import com.photonne.app.resources.people_action_suggestions
+import com.photonne.app.resources.people_action_suggestions_accept_all
+import com.photonne.app.resources.people_action_suggestions_dismiss_all
 import com.photonne.app.resources.people_action_unhide
+import com.photonne.app.resources.people_action_unlink
+import com.photonne.app.resources.people_suggestions_title
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_empty
 import com.photonne.app.resources.trash_action_restore
@@ -831,6 +838,7 @@ fun PeopleTopBar(
     title: String,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
+    onRecluster: () -> Unit,
     showHidden: Boolean,
     onToggleHidden: () -> Unit,
     user: UserDto,
@@ -863,6 +871,10 @@ fun PeopleTopBar(
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.people_action_recluster)) },
+                        onClick = { menuOpen = false; onRecluster() }
+                    )
+                    DropdownMenuItem(
                         text = {
                             Text(
                                 if (showHidden) stringResource(Res.string.people_action_hide_hidden)
@@ -886,6 +898,8 @@ fun PersonDetailTopBar(
     isHidden: Boolean,
     onBack: () -> Unit,
     onRename: () -> Unit,
+    onSuggestions: () -> Unit,
+    onMerge: () -> Unit,
     onToggleHidden: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
@@ -927,6 +941,14 @@ fun PersonDetailTopBar(
                         onClick = { menuOpen = false; onRename() }
                     )
                     DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.people_action_suggestions)) },
+                        onClick = { menuOpen = false; onSuggestions() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.people_action_merge)) },
+                        onClick = { menuOpen = false; onMerge() }
+                    )
+                    DropdownMenuItem(
                         text = {
                             Text(
                                 if (isHidden) stringResource(Res.string.people_action_unhide)
@@ -944,13 +966,80 @@ fun PersonDetailTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun PersonSuggestionsTopBar(
+    title: String,
+    subtitle: String?,
+    isBulkMutating: Boolean,
+    onBack: () -> Unit,
+    onAcceptAll: () -> Unit,
+    onDismissAll: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(
+                    stringResource(Res.string.people_suggestions_title, title),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1
+                )
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        actions = {
+            Box {
+                IconButton(onClick = { menuOpen = true }, enabled = !isBulkMutating) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(Res.string.action_more)
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(Res.string.people_action_suggestions_accept_all))
+                        },
+                        onClick = { menuOpen = false; onAcceptAll() }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(Res.string.people_action_suggestions_dismiss_all))
+                        },
+                        onClick = { menuOpen = false; onDismissAll() }
+                    )
+                }
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun PersonDetailSelectionTopBar(
     selectedCount: Int,
     isMutating: Boolean,
     onClose: () -> Unit,
     onAddToAlbum: () -> Unit,
     onArchive: () -> Unit,
-    onTrash: () -> Unit
+    onTrash: () -> Unit,
+    onUnlink: () -> Unit
 ) {
     TopAppBar(
         navigationIcon = {
@@ -968,6 +1057,9 @@ fun PersonDetailSelectionTopBar(
             )
         },
         actions = {
+            TextButton(onClick = onUnlink, enabled = !isMutating) {
+                Text(stringResource(Res.string.people_action_unlink))
+            }
             IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
                 Icon(
                     Icons.Filled.Add,

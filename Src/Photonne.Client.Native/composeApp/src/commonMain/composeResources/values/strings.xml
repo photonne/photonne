@@ -202,4 +202,27 @@
     <string name="people_action_unhide">Mostrar persona</string>
     <string name="people_action_show_hidden">Mostrar ocultas</string>
     <string name="people_action_hide_hidden">Ocultar ocultas</string>
+    <string name="people_action_recluster">Reagrupar caras</string>
+    <string name="people_action_merge">Fusionar con…</string>
+    <string name="people_action_suggestions">Sugerencias</string>
+    <string name="people_action_unlink">Desvincular</string>
+    <string name="people_action_suggestions_accept_all">Aceptar todas</string>
+    <string name="people_action_suggestions_dismiss_all">Descartar todas</string>
+    <string name="people_suggestions_title">Sugerencias para %1$s</string>
+    <string name="people_suggestions_empty">No hay caras sugeridas para esta persona.</string>
+    <string name="people_suggestions_accept">Aceptar</string>
+    <string name="people_suggestions_dismiss">Descartar</string>
+    <string name="people_picker_title">Elige una persona</string>
+    <string name="people_picker_empty">No hay otras personas con las que fusionar.</string>
+    <string name="people_faces_title">Caras en esta foto</string>
+    <string name="people_faces_empty">El servidor no ha detectado ninguna cara en esta foto.</string>
+    <string name="people_face_unknown">Sin asignar</string>
+    <string name="people_face_suggestion">Sugerencia: %1$s</string>
+    <string name="people_face_assign">Asignar a una persona</string>
+    <string name="people_face_assign_new">Crear nueva persona</string>
+    <string name="people_face_unassign">Quitar asignación</string>
+    <string name="people_face_reject">Marcar como no es una cara</string>
+    <string name="people_face_set_cover">Usar como portada</string>
+
+    <string name="asset_action_faces">Ver caras</string>
 </resources>

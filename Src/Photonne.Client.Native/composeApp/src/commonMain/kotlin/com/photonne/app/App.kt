@@ -104,7 +104,7 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Upload, Favorites, People, Map, Archived, Trash }
+private enum class MoreSubscreen { Upload, Favorites, People, PeopleSuggestions, Map, Archived, Trash }
 
 /** Build a thin TimelineItem out of a map point so the asset viewer
  * can be seeded without an extra fetch — it re-queries AssetDetail
@@ -145,6 +145,8 @@ fun App() {
 private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val authRepository: AuthRepository = koinInject()
     val albumsRepository: AlbumsRepository = koinInject()
+    val peopleRepository: com.photonne.app.data.people.PeopleRepository = koinInject()
+    val photonneConfig: com.photonne.app.di.PhotonneAppConfig = koinInject()
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
@@ -161,6 +163,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
     val peopleViewModel: com.photonne.app.ui.people.PeopleViewModel = koinViewModel()
     val personDetailViewModel: com.photonne.app.ui.people.PersonDetailViewModel = koinViewModel()
+    val personSuggestionsViewModel: com.photonne.app.ui.people.PersonSuggestionsViewModel =
+        koinViewModel()
+    val assetFacesViewModel: com.photonne.app.ui.people.AssetFacesViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -175,6 +180,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesState by favoritesViewModel.state.collectAsState()
     val peopleState by peopleViewModel.state.collectAsState()
     val personDetailState by personDetailViewModel.state.collectAsState()
+    val suggestionsState by personSuggestionsViewModel.state.collectAsState()
+    val assetFacesState by assetFacesViewModel.state.collectAsState()
     val uploadState by uploadViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -202,6 +209,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateOf<com.photonne.app.data.models.Person?>(null)
     }
     var showRenamePerson by remember { mutableStateOf(false) }
+    var showMergePicker by remember { mutableStateOf(false) }
+    var showAssetFacesSheet by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
@@ -345,6 +354,29 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     user = user.user,
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.PeopleSuggestions ->
+                com.photonne.app.ui.main.PersonSuggestionsTopBar(
+                    title = (suggestionsState.personName ?: selectedPerson?.name)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: stringResource(Res.string.people_unnamed),
+                    subtitle = if (suggestionsState.total > 0)
+                        stringResource(Res.string.albums_count_format, suggestionsState.total)
+                    else null,
+                    isBulkMutating = suggestionsState.isBulkMutating,
+                    onBack = { moreSubscreen = MoreSubscreen.People },
+                    onAcceptAll = {
+                        personSuggestionsViewModel.acceptAll {
+                            personDetailViewModel.open(
+                                selectedPerson?.id ?: return@acceptAll,
+                                selectedPerson?.name
+                            )
+                            peopleViewModel.refresh()
+                        }
+                    },
+                    onDismissAll = { personSuggestionsViewModel.dismissAll() },
+                    user = user.user,
+                    onLogout = onLogout
+                )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null && personDetailState.isSelectionActive ->
                 com.photonne.app.ui.main.PersonDetailSelectionTopBar(
@@ -353,7 +385,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = personDetailViewModel::clearSelection,
                     onAddToAlbum = { bulkAddToAlbumFromPeople = true },
                     onArchive = personDetailViewModel::bulkArchive,
-                    onTrash = personDetailViewModel::bulkTrash
+                    onTrash = personDetailViewModel::bulkTrash,
+                    onUnlink = {
+                        personDetailViewModel.bulkUnlinkFromPerson { detached ->
+                            // Local fan-out: faces removed from a person also
+                            // shrink that person's face count in the list.
+                            selectedPerson?.let { p ->
+                                val newCount = (p.faceCount - detached).coerceAtLeast(0)
+                                selectedPerson = p.copy(faceCount = newCount)
+                            }
+                        }
+                    }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null -> {
@@ -368,6 +410,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     isHidden = person.isHidden,
                     onBack = { selectedPerson = null },
                     onRename = { showRenamePerson = true },
+                    onSuggestions = {
+                        personSuggestionsViewModel.open(person.id, person.name)
+                        moreSubscreen = MoreSubscreen.PeopleSuggestions
+                    },
+                    onMerge = { showMergePicker = true },
                     onToggleHidden = {
                         if (person.isHidden) {
                             peopleViewModel.unhide(person.id) {
@@ -388,6 +435,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.people_title),
                     onBack = { moreSubscreen = null },
                     onRefresh = peopleViewModel::refresh,
+                    onRecluster = { peopleViewModel.recluster() },
                     showHidden = peopleState.showHidden,
                     onToggleHidden = peopleViewModel::toggleShowHidden,
                     user = user.user,
@@ -701,6 +749,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onBulkAddToAlbum = { bulkAddToAlbumFromMap = true }
                     )
+                    MoreSubscreen.PeopleSuggestions ->
+                        com.photonne.app.ui.people.PersonSuggestionsScreen(
+                            state = suggestionsState,
+                            onAccept = personSuggestionsViewModel::acceptFace,
+                            onDismissFace = personSuggestionsViewModel::dismissFace,
+                            onLoadMore = personSuggestionsViewModel::loadMore,
+                            onOpen = {
+                                selectedPerson?.let {
+                                    personSuggestionsViewModel.open(it.id, it.name)
+                                }
+                            }
+                        )
                     MoreSubscreen.People -> {
                         val person = selectedPerson
                         if (person == null) {
@@ -866,6 +926,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     trashViewModel.applyAssetRemovedLocal(id)
                     personDetailViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
+                },
+                onOpenFaces = { assetId ->
+                    assetFacesViewModel.open(assetId)
+                    showAssetFacesSheet = true
                 }
             )
         }
@@ -1387,6 +1451,60 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     showRenamePerson = false
                 }
             }
+        )
+    }
+
+    if (showMergePicker && activePerson != null) {
+        com.photonne.app.ui.people.PersonPickerDialog(
+            people = peopleState.people,
+            baseUrl = photonneConfig.apiBaseUrl,
+            excludeId = activePerson.id,
+            onDismiss = { showMergePicker = false },
+            onSelect = { other ->
+                showMergePicker = false
+                coroutineScope.launch {
+                    // The current person absorbs the picked one's faces.
+                    // Mirror the PWA: target is the receiving person,
+                    // `other` is the one that gets dropped.
+                    runCatching {
+                        peopleRepository.merge(
+                            targetPersonId = activePerson.id,
+                            sourcePersonId = other.id
+                        )
+                    }.onSuccess {
+                        peopleViewModel.refresh()
+                        // The current detail might now contain more faces.
+                        personDetailViewModel.open(activePerson.id, activePerson.name)
+                    }
+                }
+            }
+        )
+    }
+
+    if (showAssetFacesSheet && assetFacesState.assetId != null) {
+        com.photonne.app.ui.people.AssetFacesSheet(
+            state = assetFacesState,
+            baseUrl = photonneConfig.apiBaseUrl,
+            onDismiss = {
+                showAssetFacesSheet = false
+                assetFacesViewModel.close()
+            },
+            onAcceptSuggestion = assetFacesViewModel::acceptSuggestion,
+            onDismissSuggestion = assetFacesViewModel::dismissSuggestion,
+            onAssign = assetFacesViewModel::startAssigning,
+            onAssignToPerson = assetFacesViewModel::assignToPerson,
+            onAssignToNewPerson = { faceId, name ->
+                assetFacesViewModel.assignToNewPerson(faceId, name)
+                peopleViewModel.refresh()
+            },
+            onUnassign = assetFacesViewModel::unassign,
+            onReject = assetFacesViewModel::reject,
+            onSetCover = { personId, faceId ->
+                assetFacesViewModel.setAsCover(personId, faceId) {
+                    peopleViewModel.refresh()
+                }
+            },
+            onCancelAssign = assetFacesViewModel::cancelAssigning
         )
     }
 }

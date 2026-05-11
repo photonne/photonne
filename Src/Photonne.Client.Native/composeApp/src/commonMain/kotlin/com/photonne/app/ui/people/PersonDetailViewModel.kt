@@ -181,6 +181,55 @@ class PersonDetailViewModel(
         _state.update { it.copy(errorMessage = null) }
     }
 
+    /**
+     * Detach every selected asset from this person without rejecting any
+     * face. Each asset may carry several faces tied to the person, so the
+     * server operates at asset granularity — we forward one request per
+     * selected asset.
+     */
+    fun bulkUnlinkFromPerson(onSuccess: (detached: Int) -> Unit = {}) {
+        val personId = _state.value.personId ?: return
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        val previous = _state.value.items
+        _state.update {
+            it.copy(
+                isBulkMutating = true,
+                errorMessage = null,
+                items = it.items.filterNot { item -> item.id in it.selection },
+                selection = emptySet()
+            )
+        }
+        viewModelScope.launch {
+            runCatching {
+                var detached = 0
+                for (id in ids) {
+                    val res = peopleRepository.unlinkAsset(personId, id)
+                    detached += res.facesDetached
+                }
+                detached
+            }
+                .onSuccess { detached ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            total = (it.total - ids.size).coerceAtLeast(0)
+                        )
+                    }
+                    onSuccess(detached)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            items = previous,
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: "Failed to unlink"
+                        )
+                    }
+                }
+        }
+    }
+
     private fun runBulk(
         action: suspend (List<String>) -> Unit,
         errorFallback: String

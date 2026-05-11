@@ -208,6 +208,32 @@ class PeopleViewModel(
         _state.update { it.copy(errorMessage = null) }
     }
 
+    /**
+     * Kick off a full per-user reclustering pass. The server does the work
+     * in the background; we just surface the count of new persons it
+     * created and refresh the list so any of them show up immediately.
+     */
+    fun recluster(onSuccess: (personsCreated: Int) -> Unit = {}) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.recluster() }
+                .onSuccess { result ->
+                    _state.update { it.copy(isMutating = false) }
+                    onSuccess(result.personsCreated)
+                    refresh()
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to recluster"
+                        )
+                    }
+                }
+        }
+    }
+
     companion object {
         private const val PAGE_SIZE = 80
     }
