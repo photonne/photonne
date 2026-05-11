@@ -143,4 +143,23 @@
     <string name="search_objects_count">Objetos (%1$d)</string>
     <string name="search_scenes_count">Escenas (%1$d)</string>
     <string name="search_people_count">Personas (%1$d)</string>
+
+    <string name="archive_title">Archivados</string>
+    <string name="archived_empty_title">Sin elementos archivados</string>
+    <string name="archived_empty_subtitle">Archiva una foto para que aparezca aquí sin desaparecer de tu biblioteca.</string>
+    <string name="archive_action_unarchive">Desarchivar</string>
+    <string name="archive_action_unarchive_all">Desarchivar todo</string>
+    <string name="archive_action_unarchive_all_title">Desarchivar todo</string>
+    <string name="archive_action_unarchive_all_message">Se devolverán a la línea de tiempo todos los elementos archivados.</string>
+
+    <string name="trash_title">Papelera</string>
+    <string name="trash_empty_title">La papelera está vacía</string>
+    <string name="trash_empty_subtitle">Las fotos que muevas a la papelera aparecerán aquí hasta que las restaures o las elimines.</string>
+    <string name="trash_action_restore">Restaurar</string>
+    <string name="trash_action_restore_all">Restaurar todo</string>
+    <string name="trash_action_delete_forever">Eliminar para siempre</string>
+    <string name="trash_action_empty">Vaciar papelera</string>
+    <string name="trash_dialog_restore_all_message">Todos los elementos de la papelera volverán a su carpeta original.</string>
+    <string name="trash_dialog_empty_message">Esta acción no se puede deshacer. Se eliminarán definitivamente todas las fotos de la papelera.</string>
+    <string name="trash_dialog_purge_message">Se eliminarán definitivamente %1$d elementos. No podrás recuperarlos.</string>
 </resources>

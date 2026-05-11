@@ -143,4 +143,23 @@
     <string name="search_objects_count">Objects (%1$d)</string>
     <string name="search_scenes_count">Scenes (%1$d)</string>
     <string name="search_people_count">People (%1$d)</string>
+
+    <string name="archive_title">Archive</string>
+    <string name="archived_empty_title">Nothing archived yet</string>
+    <string name="archived_empty_subtitle">Archive a photo to keep it out of the timeline without removing it from the library.</string>
+    <string name="archive_action_unarchive">Unarchive</string>
+    <string name="archive_action_unarchive_all">Unarchive all</string>
+    <string name="archive_action_unarchive_all_title">Unarchive all</string>
+    <string name="archive_action_unarchive_all_message">All archived items will be brought back to the timeline.</string>
+
+    <string name="trash_title">Trash</string>
+    <string name="trash_empty_title">Trash is empty</string>
+    <string name="trash_empty_subtitle">Photos you move to the trash will appear here until you restore them or delete them forever.</string>
+    <string name="trash_action_restore">Restore</string>
+    <string name="trash_action_restore_all">Restore all</string>
+    <string name="trash_action_delete_forever">Delete forever</string>
+    <string name="trash_action_empty">Empty trash</string>
+    <string name="trash_dialog_restore_all_message">All trashed items will be moved back to their original folder.</string>
+    <string name="trash_dialog_empty_message">This cannot be undone. Every photo in the trash will be deleted permanently.</string>
+    <string name="trash_dialog_purge_message">%1$d items will be deleted permanently. You won't be able to recover them.</string>
 </resources>

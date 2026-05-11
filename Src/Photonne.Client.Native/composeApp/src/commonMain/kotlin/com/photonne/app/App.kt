@@ -20,10 +20,21 @@ import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_count_format
+import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.archive_action_unarchive_all_title
+import com.photonne.app.resources.archive_action_unarchive_all_message
+import com.photonne.app.resources.archive_action_unarchive_all
 import com.photonne.app.resources.folder_action_edit
 import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_move_assets_title
 import com.photonne.app.resources.folder_move_title
+import com.photonne.app.resources.trash_action_delete_forever
+import com.photonne.app.resources.trash_action_empty
+import com.photonne.app.resources.trash_action_restore_all
+import com.photonne.app.resources.trash_dialog_empty_message
+import com.photonne.app.resources.trash_dialog_purge_message
+import com.photonne.app.resources.trash_dialog_restore_all_message
+import com.photonne.app.resources.trash_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -87,6 +98,8 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
+private enum class MoreSubscreen { Archived, Trash }
+
 @Composable
 fun App() {
     val httpClient: HttpClient = koinInject()
@@ -117,6 +130,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val folderPermissionsViewModel: FolderPermissionsViewModel = koinViewModel()
     val albumSharesViewModel: AlbumSharesViewModel = koinViewModel()
     val albumPermissionsViewModel: AlbumPermissionsViewModel = koinViewModel()
+    val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel = koinViewModel()
+    val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -126,6 +141,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val folderPermissionsState by folderPermissionsViewModel.state.collectAsState()
     val albumSharesState by albumSharesViewModel.state.collectAsState()
     val albumPermissionsState by albumPermissionsViewModel.state.collectAsState()
+    val archivedState by archivedViewModel.state.collectAsState()
+    val trashState by trashViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
@@ -156,6 +173,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveFolder by remember { mutableStateOf(false) }
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showSearchFilters by remember { mutableStateOf(false) }
+    var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
+    var showUnarchiveAll by remember { mutableStateOf(false) }
+    var showRestoreAllTrash by remember { mutableStateOf(false) }
+    var showEmptyTrash by remember { mutableStateOf(false) }
+    var showPurgeSelected by remember { mutableStateOf(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -262,6 +284,52 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             )
             selectedTab == MainTab.Search ->
                 com.photonne.app.ui.main.SearchTopBar(user = user.user, onLogout = onLogout)
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
+                archivedState.isSelectionActive ->
+                com.photonne.app.ui.main.ArchivedSelectionTopBar(
+                    selectedCount = archivedState.selection.size,
+                    isMutating = archivedState.isBulkMutating,
+                    onClose = archivedViewModel::clearSelection,
+                    onUnarchive = { archivedViewModel.bulkUnarchive() }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived -> {
+                val count = archivedState.items.size
+                com.photonne.app.ui.main.ArchivedTopBar(
+                    title = stringResource(Res.string.archive_title),
+                    subtitle = if (count > 0)
+                        stringResource(Res.string.albums_count_format, count) else null,
+                    canUnarchiveAll = count > 0,
+                    onBack = { moreSubscreen = null },
+                    onRefresh = archivedViewModel::refresh,
+                    onUnarchiveAll = { showUnarchiveAll = true },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            }
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Trash &&
+                trashState.isSelectionActive ->
+                com.photonne.app.ui.main.TrashSelectionTopBar(
+                    selectedCount = trashState.selection.size,
+                    isMutating = trashState.isBulkMutating,
+                    onClose = trashViewModel::clearSelection,
+                    onRestore = { trashViewModel.bulkRestore() },
+                    onPurge = { showPurgeSelected = true }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Trash -> {
+                val count = trashState.items.size
+                com.photonne.app.ui.main.TrashTopBar(
+                    title = stringResource(Res.string.trash_title),
+                    subtitle = if (count > 0)
+                        stringResource(Res.string.albums_count_format, count) else null,
+                    canActOnAll = count > 0,
+                    onBack = { moreSubscreen = null },
+                    onRefresh = trashViewModel::refresh,
+                    onRestoreAll = { showRestoreAllTrash = true },
+                    onEmptyTrash = { showEmptyTrash = true },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            }
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -278,6 +346,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onTabSelected = { tab ->
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
                 if (tab == MainTab.Folders && selectedTab == MainTab.Folders) selectedFolder = null
+                if (tab == MainTab.More && selectedTab == MainTab.More) moreSubscreen = null
                 selectedTab = tab
             },
             topBar = topBar
@@ -432,7 +501,74 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     }
                 )
-                MainTab.More -> MoreScreen(user = user.user, onLogout = onLogout)
+                MainTab.More -> when (moreSubscreen) {
+                    null -> MoreScreen(
+                        user = user.user,
+                        onLogout = onLogout,
+                        onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
+                        onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
+                    )
+                    MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
+                        state = archivedState,
+                        onItemClick = { index ->
+                            if (archivedState.isSelectionActive) {
+                                archivedState.items.getOrNull(index)?.let {
+                                    archivedViewModel.toggleSelection(it.id)
+                                }
+                            } else {
+                                assetDetail = AssetDetailContext(
+                                    items = archivedState.items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = archivedState.hasMore,
+                                    onLoadMore = archivedViewModel::loadMore,
+                                    onFavoriteChanged = { id, isFav ->
+                                        archivedViewModel.setFavorite(id, isFav)
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        },
+                        onItemLongClick = { index ->
+                            archivedState.items.getOrNull(index)?.let {
+                                archivedViewModel.toggleSelection(it.id)
+                            }
+                        },
+                        onLoadMore = archivedViewModel::loadMore,
+                        onRefresh = archivedViewModel::ensureLoaded
+                    )
+                    MoreSubscreen.Trash -> com.photonne.app.ui.library.TrashScreen(
+                        state = trashState,
+                        onItemClick = { index ->
+                            if (trashState.isSelectionActive) {
+                                trashState.items.getOrNull(index)?.let {
+                                    trashViewModel.toggleSelection(it.id)
+                                }
+                            } else {
+                                assetDetail = AssetDetailContext(
+                                    items = trashState.items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = trashState.hasMore,
+                                    onLoadMore = trashViewModel::loadMore,
+                                    onFavoriteChanged = { id, isFav ->
+                                        // Trashed assets ignore favorite changes
+                                        // server-side, but keep the local copy
+                                        // consistent if the viewer toggles.
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        },
+                        onItemLongClick = { index ->
+                            trashState.items.getOrNull(index)?.let {
+                                trashViewModel.toggleSelection(it.id)
+                            }
+                        },
+                        onLoadMore = trashViewModel::loadMore,
+                        onRefresh = trashViewModel::ensureLoaded
+                    )
+                }
             }
         }
 
@@ -452,6 +588,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         albumDetailViewModel.applyAssetRemovedLocal(id)
                     }
                     searchViewModel.removeItem(id)
+                    archivedViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 },
                 onAssetArchived = { id ->
@@ -460,6 +597,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         albumDetailViewModel.applyAssetRemovedLocal(id)
                     }
                     searchViewModel.removeItem(id)
+                    trashViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 }
             )
@@ -856,6 +994,69 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             },
             onDismiss = { addToAlbum = null }
+        )
+    }
+
+    if (showUnarchiveAll) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.archive_action_unarchive_all_title),
+            message = stringResource(Res.string.archive_action_unarchive_all_message),
+            confirmLabel = stringResource(Res.string.archive_action_unarchive_all),
+            isDestructive = false,
+            isSubmitting = archivedState.isBulkMutating,
+            onDismiss = { showUnarchiveAll = false },
+            onConfirm = {
+                archivedViewModel.unarchiveAll {
+                    showUnarchiveAll = false
+                    timelineViewModel.refresh()
+                }
+            }
+        )
+    }
+
+    if (showRestoreAllTrash) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.trash_action_restore_all),
+            message = stringResource(Res.string.trash_dialog_restore_all_message),
+            confirmLabel = stringResource(Res.string.trash_action_restore_all),
+            isDestructive = false,
+            isSubmitting = trashState.isBulkMutating,
+            onDismiss = { showRestoreAllTrash = false },
+            onConfirm = {
+                trashViewModel.restoreAll {
+                    showRestoreAllTrash = false
+                    timelineViewModel.refresh()
+                }
+            }
+        )
+    }
+
+    if (showEmptyTrash) {
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.trash_action_empty),
+            message = stringResource(Res.string.trash_dialog_empty_message),
+            confirmLabel = stringResource(Res.string.trash_action_empty),
+            isDestructive = true,
+            isSubmitting = trashState.isBulkMutating,
+            onDismiss = { showEmptyTrash = false },
+            onConfirm = {
+                trashViewModel.emptyTrash { showEmptyTrash = false }
+            }
+        )
+    }
+
+    if (showPurgeSelected) {
+        val count = trashState.selection.size
+        com.photonne.app.ui.library.ConfirmActionDialog(
+            title = stringResource(Res.string.trash_action_delete_forever),
+            message = stringResource(Res.string.trash_dialog_purge_message, count),
+            confirmLabel = stringResource(Res.string.trash_action_delete_forever),
+            isDestructive = true,
+            isSubmitting = trashState.isBulkMutating,
+            onDismiss = { showPurgeSelected = false },
+            onConfirm = {
+                trashViewModel.bulkPurge { showPurgeSelected = false }
+            }
         )
     }
 }
