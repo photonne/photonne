@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +30,7 @@ import com.photonne.app.resources.admin_server_check_error
 import com.photonne.app.resources.admin_server_current_version
 import com.photonne.app.resources.admin_server_latest_version
 import com.photonne.app.resources.admin_server_release_notes
+import com.photonne.app.resources.admin_server_check_again
 import com.photonne.app.resources.admin_server_release_url
 import com.photonne.app.resources.admin_server_up_to_date
 import com.photonne.app.resources.admin_server_update_available
@@ -141,6 +143,17 @@ fun AdminServerScreen(viewModel: AdminServerViewModel) {
                             )
                             Text(notes, style = MaterialTheme.typography.bodySmall)
                         }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = { viewModel.load(refresh = true) },
+                        enabled = !state.isLoading
+                    ) {
+                        Text(stringResource(Res.string.admin_server_check_again))
                     }
                 }
             }

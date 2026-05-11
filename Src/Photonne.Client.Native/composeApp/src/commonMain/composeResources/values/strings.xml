@@ -329,4 +329,233 @@
     <string name="admin_trash_over_quota_users">Usuarios por encima de la cuota</string>
     <string name="admin_trash_over_quota_bytes">Espacio por encima de la cuota</string>
     <string name="admin_trash_action_cleanup">Limpiar expirados</string>
+
+    <!-- Administration: top-level menu (5 entries) -->
+    <string name="admin_section_libraries">Bibliotecas</string>
+    <string name="admin_section_libraries_subtitle">Carpetas externas indexadas</string>
+    <string name="admin_section_settings">Ajustes</string>
+    <string name="admin_section_settings_subtitle">Configuración del servidor y tareas</string>
+    <string name="admin_section_system">Sistema</string>
+    <string name="admin_section_system_subtitle">Indexar, miniaturas y mantenimiento</string>
+    <string name="admin_server_check_again">Volver a comprobar</string>
+
+    <!-- Libraries -->
+    <string name="admin_libraries_empty">No hay bibliotecas externas configuradas.</string>
+    <string name="admin_libraries_action_new">Nueva biblioteca</string>
+    <string name="admin_libraries_edit_title">Editar biblioteca</string>
+    <string name="admin_libraries_action_scan">Escanear</string>
+    <string name="admin_libraries_action_permissions">Miembros</string>
+    <string name="admin_libraries_action_delete">Eliminar</string>
+    <string name="admin_libraries_field_name">Nombre</string>
+    <string name="admin_libraries_field_path">Ruta absoluta en el servidor</string>
+    <string name="admin_libraries_field_import_subfolders">Incluir subcarpetas</string>
+    <string name="admin_libraries_field_cron">Programación cron (opcional)</string>
+    <string name="admin_libraries_cron_hint">"@daily, @weekly o expresión cron"</string>
+    <string name="admin_libraries_asset_count">%1$d elementos</string>
+    <string name="admin_libraries_last_scan">Último escaneo: %1$s (%2$s)</string>
+    <string name="admin_libraries_no_scan">Sin escaneos todavía</string>
+    <string name="admin_libraries_scan_progress">Escaneando · %1$d%%</string>
+    <string name="admin_libraries_delete_title">Eliminar biblioteca</string>
+    <string name="admin_libraries_delete_message">"%1$s" se eliminará. Los archivos en disco no se borran, pero se pierde la indexación.</string>
+    <string name="admin_libraries_permissions_title">Acceso a la biblioteca</string>
+    <string name="admin_libraries_permissions_empty">Solo tú tienes acceso a esta biblioteca.</string>
+
+    <!-- Settings hub + subpages -->
+    <string name="admin_settings_tasks">Configuración de tareas</string>
+    <string name="admin_settings_tasks_subtitle">Trabajadores en paralelo y tamaño de lotes</string>
+    <string name="admin_settings_workers_section">Trabajadores en paralelo</string>
+    <string name="admin_settings_task_workers_metadata">Metadatos</string>
+    <string name="admin_settings_task_workers_thumbnails">Miniaturas</string>
+    <string name="admin_settings_task_workers_face">Reconocimiento facial</string>
+    <string name="admin_settings_task_workers_object">Reconocimiento de objetos</string>
+    <string name="admin_settings_task_workers_scene">Clasificación de escenas</string>
+    <string name="admin_settings_task_workers_text">Reconocimiento de texto (OCR)</string>
+    <string name="admin_settings_task_workers_embedding">Búsqueda inteligente (embeddings)</string>
+    <string name="admin_settings_task_backfill_batch">Tamaño del lote de backfill</string>
+
+    <string name="admin_settings_face_recognition">Reconocimiento facial</string>
+    <string name="admin_settings_face_recognition_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_object_detection">Reconocimiento de objetos</string>
+    <string name="admin_settings_object_detection_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_scene_classification">Clasificación de escenas</string>
+    <string name="admin_settings_scene_classification_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_text_recognition">Reconocimiento de texto (OCR)</string>
+    <string name="admin_settings_text_recognition_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_image_embedding">Búsqueda inteligente</string>
+    <string name="admin_settings_image_embedding_subtitle">Embeddings CLIP en la tarea nocturna</string>
+    <string name="admin_settings_feature_nightly_section">Tarea nocturna</string>
+    <string name="admin_settings_feature_enabled">Activado en la tarea nocturna</string>
+    <string name="admin_settings_feature_enabled_description">Cuando esté activado, la tarea nocturna ejecutará este modelo.</string>
+    <string name="admin_settings_feature_mode">Modo</string>
+    <string name="admin_settings_feature_mode_missing">Solo elementos sin procesar</string>
+    <string name="admin_settings_feature_mode_all">Todos los elementos</string>
+    <string name="admin_settings_feature_mode_description">"Solo sin procesar" reprocesa nada; "todos" repite el modelo sobre todos los elementos cada noche.</string>
+
+    <string name="admin_settings_image">Ajustes de imagen</string>
+    <string name="admin_settings_image_subtitle">Formato y calidad de miniaturas</string>
+    <string name="admin_settings_image_format">Formato de miniaturas</string>
+    <string name="admin_settings_image_format_jpeg">JPEG</string>
+    <string name="admin_settings_image_format_webp">WebP</string>
+    <string name="admin_settings_image_quality_section">Calidad de compresión</string>
+    <string name="admin_settings_image_quality_small">Pequeña</string>
+    <string name="admin_settings_image_quality_medium">Mediana</string>
+    <string name="admin_settings_image_quality_large">Grande</string>
+
+    <string name="admin_settings_metadata">Configuración de metadatos</string>
+    <string name="admin_settings_metadata_subtitle">Qué campos EXIF/IPTC/XMP se extraen</string>
+    <string name="admin_settings_metadata_datetime">Fecha y hora</string>
+    <string name="admin_settings_metadata_gps">GPS</string>
+    <string name="admin_settings_metadata_camera">Cámara y exposición</string>
+    <string name="admin_settings_metadata_iptc">IPTC (autoría, copyright…)</string>
+    <string name="admin_settings_metadata_xmp">Leer XMP sidecar</string>
+    <string name="admin_settings_metadata_timezone">Zona horaria por defecto</string>
+
+    <string name="admin_settings_nightly">Tareas nocturnas</string>
+    <string name="admin_settings_nightly_subtitle">Programación general y módulos activos</string>
+    <string name="admin_settings_nightly_enabled">Tareas nocturnas activadas</string>
+    <string name="admin_settings_nightly_schedule">Hora de inicio</string>
+    <string name="admin_settings_nightly_timezone">Zona horaria</string>
+    <string name="admin_settings_nightly_features_section">Módulos</string>
+    <string name="admin_settings_nightly_metadata">Metadatos</string>
+    <string name="admin_settings_nightly_thumbnails">Miniaturas</string>
+    <string name="admin_settings_nightly_face">Reconocimiento facial</string>
+    <string name="admin_settings_nightly_object">Reconocimiento de objetos</string>
+    <string name="admin_settings_nightly_scene">Clasificación de escenas</string>
+    <string name="admin_settings_nightly_text">Reconocimiento de texto (OCR)</string>
+    <string name="admin_settings_nightly_embedding">Búsqueda inteligente (embeddings)</string>
+    <string name="admin_settings_nightly_clustering">Reagrupar caras tras los modelos</string>
+    <string name="admin_settings_nightly_mode">Modo de proceso</string>
+
+    <string name="admin_settings_notifications">Notificaciones</string>
+    <string name="admin_settings_notifications_subtitle">Retención y tipos habilitados</string>
+    <string name="admin_settings_notifications_enabled">Notificaciones activadas</string>
+    <string name="admin_settings_notifications_retention_days">Días de retención</string>
+    <string name="admin_settings_notifications_max_per_user">Máximo por usuario</string>
+    <string name="admin_settings_notifications_categories">Tipos de notificación</string>
+    <string name="admin_settings_notifications_job_completed">Tarea completada</string>
+    <string name="admin_settings_notifications_job_failed">Tarea fallida</string>
+    <string name="admin_settings_notifications_share_viewed">Enlace compartido visto</string>
+
+    <string name="admin_settings_server">Configuración del servidor</string>
+    <string name="admin_settings_server_subtitle">URL pública, límites y rutas</string>
+    <string name="admin_settings_server_public_url">URL pública</string>
+    <string name="admin_settings_server_max_upload">Tamaño máximo de subida (MB)</string>
+    <string name="admin_settings_server_max_upload_hint">0 = sin límite</string>
+    <string name="admin_settings_server_session_timeout">Tiempo de sesión (min)</string>
+    <string name="admin_settings_server_thumbnails_path">Ruta de miniaturas</string>
+
+    <string name="admin_settings_trash">Configuración de papelera</string>
+    <string name="admin_settings_trash_subtitle">Retención, cuota y estado actual</string>
+    <string name="admin_settings_trash_section_config">Configuración</string>
+    <string name="admin_settings_trash_section_stats">Estado actual</string>
+    <string name="admin_settings_trash_enabled">Papelera activada</string>
+    <string name="admin_settings_trash_retention">Días de retención</string>
+    <string name="admin_settings_trash_max_quota">Cuota máxima (MB)</string>
+    <string name="admin_settings_trash_max_quota_hint">0 = sin límite</string>
+
+    <string name="admin_settings_user_defaults">Ajustes de usuario</string>
+    <string name="admin_settings_user_defaults_subtitle">Valores por defecto al crear cuentas</string>
+    <string name="admin_settings_user_defaults_active">Cuenta activa por defecto</string>
+    <string name="admin_settings_user_defaults_role">Rol por defecto</string>
+    <string name="admin_settings_user_defaults_quota_gb">Cuota por defecto (GB)</string>
+    <string name="admin_settings_user_defaults_quota_hint">0 = sin límite</string>
+
+    <string name="admin_settings_version">Verificar versión del servidor</string>
+    <string name="admin_settings_version_subtitle">Versión actual y actualizaciones disponibles</string>
+
+    <!-- System hub + subpages -->
+    <string name="admin_system_index">Indexar</string>
+    <string name="admin_system_index_subtitle">Escanear carpetas y procesar archivos</string>
+    <string name="admin_system_metadata">Extracción de metadatos</string>
+    <string name="admin_system_metadata_subtitle">Reextraer datos EXIF / IPTC</string>
+    <string name="admin_system_thumbnails">Generar miniaturas</string>
+    <string name="admin_system_thumbnails_subtitle">Crear o regenerar miniaturas</string>
+    <string name="admin_system_duplicates">Detección de duplicados</string>
+    <string name="admin_system_duplicates_subtitle">Encontrar y limpiar copias repetidas</string>
+    <string name="admin_system_face">Reconocimiento facial</string>
+    <string name="admin_system_face_subtitle">Procesar caras pendientes y reagrupar</string>
+    <string name="admin_system_object">Reconocimiento de objetos</string>
+    <string name="admin_system_object_subtitle">Detectar objetos en imágenes</string>
+    <string name="admin_system_scene">Clasificación de escenas</string>
+    <string name="admin_system_scene_subtitle">Etiquetar escenas en imágenes</string>
+    <string name="admin_system_text">Reconocimiento de texto (OCR)</string>
+    <string name="admin_system_text_subtitle">Reconocer texto en imágenes</string>
+    <string name="admin_system_embedding">Búsqueda inteligente (CLIP)</string>
+    <string name="admin_system_embedding_subtitle">Calcular embeddings para búsqueda semántica</string>
+    <string name="admin_system_maintenance">Mantenimiento</string>
+    <string name="admin_system_maintenance_subtitle">Huérfanos, ficheros perdidos, tamaños…</string>
+    <string name="admin_system_backup">Copia de seguridad</string>
+    <string name="admin_system_backup_subtitle">Exportar e importar la base de datos</string>
+
+    <!-- Index task -->
+    <string name="admin_index_action_start">Iniciar indexado</string>
+    <string name="admin_index_action_cancel">Cancelar</string>
+    <string name="admin_index_started">Indexado en curso…</string>
+    <string name="admin_index_completed">Indexado completado.</string>
+    <string name="admin_index_stats_section">Estadísticas</string>
+    <string name="admin_index_stats_total">Archivos encontrados</string>
+    <string name="admin_index_stats_new">Nuevos</string>
+    <string name="admin_index_stats_updated">Actualizados</string>
+    <string name="admin_index_stats_indexed">Hashes calculados</string>
+    <string name="admin_index_stats_extracted">EXIF extraído</string>
+    <string name="admin_index_stats_jobs_queued">Trabajos ML encolados</string>
+    <string name="admin_index_stats_thumbnails">Miniaturas generadas</string>
+    <string name="admin_index_stats_orphans">Huérfanos limpiados</string>
+    <string name="admin_index_stats_duplicates">Duplicados eliminados</string>
+
+    <!-- Thumbnails task -->
+    <string name="admin_thumbnails_action_start">Generar miniaturas</string>
+    <string name="admin_thumbnails_action_cancel">Cancelar</string>
+    <string name="admin_thumbnails_completed">Generación completada.</string>
+    <string name="admin_thumbnails_regenerate">Regenerar todas las existentes</string>
+    <string name="admin_thumbnails_stats_total">Total</string>
+    <string name="admin_thumbnails_stats_processed">Procesadas</string>
+    <string name="admin_thumbnails_stats_generated">Generadas</string>
+    <string name="admin_thumbnails_stats_skipped">Saltadas</string>
+    <string name="admin_thumbnails_stats_failed">Fallidas</string>
+
+    <!-- Duplicates task -->
+    <string name="admin_duplicates_action_start">Buscar duplicados</string>
+    <string name="admin_duplicates_action_cancel">Cancelar</string>
+    <string name="admin_duplicates_completed">Búsqueda completada.</string>
+    <string name="admin_duplicates_cleanup">Eliminar duplicados detectados</string>
+    <string name="admin_duplicates_physical">Escaneo físico (no solo BD)</string>
+    <string name="admin_duplicates_stats_total">Assets revisados</string>
+    <string name="admin_duplicates_stats_groups">Grupos duplicados</string>
+    <string name="admin_duplicates_stats_assets">Assets duplicados</string>
+    <string name="admin_duplicates_stats_removed">Eliminados</string>
+    <string name="admin_duplicates_stats_reclaimed">Espacio recuperado</string>
+    <string name="admin_duplicates_stats_unindexed">Archivos sin indexar</string>
+
+    <!-- Backfill (ML tasks) -->
+    <string name="admin_backfill_pending">Pendientes</string>
+    <string name="admin_backfill_in_queue">En cola</string>
+    <string name="admin_backfill_only_missing">Solo elementos sin procesar</string>
+    <string name="admin_backfill_action_run">Procesar ahora</string>
+    <string name="admin_backfill_response">Encolados %1$d de %2$d.</string>
+    <string name="admin_backfill_action_clustering">Reagrupar caras</string>
+    <string name="admin_backfill_clustering_result">%1$d usuarios procesados · %2$d personas creadas.</string>
+
+    <!-- Maintenance -->
+    <string name="admin_maintenance_action_orphans">Limpiar miniaturas huérfanas</string>
+    <string name="admin_maintenance_desc_orphans">Elimina archivos de miniaturas que ya no tienen asset asociado.</string>
+    <string name="admin_maintenance_action_missing">Marcar archivos ausentes</string>
+    <string name="admin_maintenance_desc_missing">Recorre los assets indexados y marca como ausentes los que ya no estén en disco.</string>
+    <string name="admin_maintenance_action_recalculate">Recalcular tamaños</string>
+    <string name="admin_maintenance_desc_recalculate">Vuelve a leer el tamaño de cada fichero del disco para corregir contadores de cuota.</string>
+    <string name="admin_maintenance_action_empty_trash">Vaciar papeleras</string>
+    <string name="admin_maintenance_desc_empty_trash">Elimina de forma permanente todos los elementos en la papelera de cualquier usuario.</string>
+    <string name="admin_maintenance_result">Procesados %1$d · Afectados %2$d</string>
+
+    <!-- Backup -->
+    <string name="admin_backup_section_download">Descargar copia de seguridad</string>
+    <string name="admin_backup_section_restore">Restaurar copia de seguridad</string>
+    <string name="admin_backup_explanation">Descarga un JSON con toda la base de datos. Inclúyelo en tu rutina de copia externa.</string>
+    <string name="admin_backup_include_ml">Incluir datos de aprendizaje automático</string>
+    <string name="admin_backup_action_download">Descargar copia</string>
+    <string name="admin_backup_downloaded">Guardado en %1$s.</string>
+    <string name="admin_backup_restore_only_pwa">La restauración de copias de seguridad solo está disponible desde la aplicación web por ahora.</string>
+
+    <!-- Metadata task (uses indexing) -->
+    <string name="admin_metadata_task_explanation">La extracción de metadatos forma parte del proceso de indexado del servidor. Lanza un indexado para reextraer EXIF, GPS y demás campos.</string>
 </resources>

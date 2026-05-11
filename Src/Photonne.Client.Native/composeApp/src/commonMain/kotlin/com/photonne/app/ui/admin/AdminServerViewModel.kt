@@ -23,11 +23,11 @@ class AdminServerViewModel(
     private val _state = MutableStateFlow(AdminServerUiState())
     val state: StateFlow<AdminServerUiState> = _state.asStateFlow()
 
-    fun load() {
+    fun load(refresh: Boolean = false) {
         if (_state.value.isLoading) return
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
-            runCatching { repository.getVersion() }
+            runCatching { repository.getVersion(refresh) }
                 .onSuccess { info ->
                     _state.update { it.copy(info = info, isLoading = false) }
                 }

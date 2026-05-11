@@ -16,9 +16,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -30,18 +31,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.admin_section_server
-import com.photonne.app.resources.admin_section_server_subtitle
+import com.photonne.app.resources.admin_section_libraries
+import com.photonne.app.resources.admin_section_libraries_subtitle
+import com.photonne.app.resources.admin_section_settings
+import com.photonne.app.resources.admin_section_settings_subtitle
 import com.photonne.app.resources.admin_section_stats
 import com.photonne.app.resources.admin_section_stats_subtitle
-import com.photonne.app.resources.admin_section_trash
-import com.photonne.app.resources.admin_section_trash_subtitle
+import com.photonne.app.resources.admin_section_system
+import com.photonne.app.resources.admin_section_system_subtitle
 import com.photonne.app.resources.admin_section_users
 import com.photonne.app.resources.admin_section_users_subtitle
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-enum class AdministrationSection { Users, Stats, Server, Trash }
+enum class AdministrationSection {
+    Users,
+    Libraries,
+    Stats,
+    Settings,
+    System
+}
 
 private data class AdminEntry(
     val section: AdministrationSection,
@@ -60,22 +69,28 @@ fun AdministrationScreen(onOpen: (AdministrationSection) -> Unit) {
             Icons.Filled.Person
         ),
         AdminEntry(
+            AdministrationSection.Libraries,
+            Res.string.admin_section_libraries,
+            Res.string.admin_section_libraries_subtitle,
+            Icons.Filled.Folder
+        ),
+        AdminEntry(
             AdministrationSection.Stats,
             Res.string.admin_section_stats,
             Res.string.admin_section_stats_subtitle,
             Icons.Filled.Info
         ),
         AdminEntry(
-            AdministrationSection.Server,
-            Res.string.admin_section_server,
-            Res.string.admin_section_server_subtitle,
-            Icons.Filled.Build
+            AdministrationSection.Settings,
+            Res.string.admin_section_settings,
+            Res.string.admin_section_settings_subtitle,
+            Icons.Filled.Settings
         ),
         AdminEntry(
-            AdministrationSection.Trash,
-            Res.string.admin_section_trash,
-            Res.string.admin_section_trash_subtitle,
-            Icons.Filled.Delete
+            AdministrationSection.System,
+            Res.string.admin_section_system,
+            Res.string.admin_section_system_subtitle,
+            Icons.Filled.Build
         )
     )
 
