@@ -26,7 +26,11 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.datetime.Instant
@@ -74,6 +78,12 @@ internal data class MoveFolderAssetsBody(
     val sourceFolderId: String?,
     val targetFolderId: String,
     val assetIds: List<String>
+)
+
+@Serializable
+data class UploadAssetResponse(
+    val message: String = "",
+    val assetId: String? = null
 )
 
 @Serializable
@@ -127,6 +137,11 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
+    suspend fun uploadAsset(
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): UploadAssetResponse
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
@@ -477,6 +492,43 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Trash list failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun uploadAsset(
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): UploadAssetResponse {
+        val parsedType = runCatching { ContentType.parse(mimeType) }
+            .getOrDefault(ContentType.Application.OctetStream)
+        val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            key = "file",
+                            value = bytes,
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, parsedType.toString())
+                                append(
+                                    HttpHeaders.ContentDisposition,
+                                    "filename=\"${fileName.replace("\"", "")}\""
+                                )
+                            }
+                        )
+                    }
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.Created
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Upload failed (${response.status.value})"
             )
         }
         return response.body()

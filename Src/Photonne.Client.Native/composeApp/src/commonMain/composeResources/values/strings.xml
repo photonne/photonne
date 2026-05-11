@@ -162,4 +162,19 @@
     <string name="trash_dialog_restore_all_message">Todos los elementos de la papelera volverán a su carpeta original.</string>
     <string name="trash_dialog_empty_message">Esta acción no se puede deshacer. Se eliminarán definitivamente todas las fotos de la papelera.</string>
     <string name="trash_dialog_purge_message">Se eliminarán definitivamente %1$d elementos. No podrás recuperarlos.</string>
+
+    <string name="upload_title">Subir fotos</string>
+    <string name="upload_subtitle_pending">%1$d pendientes</string>
+    <string name="upload_action_add">Añadir archivos</string>
+    <string name="upload_action_cancel_all">Cancelar todo</string>
+    <string name="upload_action_clear_finished">Limpiar lista</string>
+    <string name="upload_empty_title">No hay nada que subir</string>
+    <string name="upload_empty_subtitle">Pulsa "Añadir archivos" para seleccionar fotos o vídeos del dispositivo.</string>
+    <string name="upload_summary">%1$d subidos · %2$d ya en la biblioteca · %3$d fallidos · %4$d pendientes</string>
+    <string name="upload_status_queued">En cola</string>
+    <string name="upload_status_uploading">Subiendo</string>
+    <string name="upload_status_done">Subido</string>
+    <string name="upload_status_skipped">Ya estaba</string>
+    <string name="upload_status_failed">Falló</string>
+    <string name="upload_status_cancelled">Cancelado</string>
 </resources>

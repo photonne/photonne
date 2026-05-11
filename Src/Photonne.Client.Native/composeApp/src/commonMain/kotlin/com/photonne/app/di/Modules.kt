@@ -16,6 +16,7 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.data.timeline.MemoriesRepository
 import com.photonne.app.data.timeline.TimelineRepository
+import com.photonne.app.data.upload.UploadRepository
 import com.photonne.app.ui.album.AlbumDetailViewModel
 import com.photonne.app.ui.album.AlbumPermissionsViewModel
 import com.photonne.app.ui.album.AlbumSharesViewModel
@@ -27,6 +28,7 @@ import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.search.SearchViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
+import com.photonne.app.ui.upload.UploadViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.module.dsl.singleOf
@@ -60,6 +62,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AlbumsRepository)
     singleOf(::FoldersRepository)
     singleOf(::SearchRepository)
+    singleOf(::UploadRepository)
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoriesViewModel)
@@ -74,4 +77,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::SearchViewModel)
     viewModelOf(::ArchivedViewModel)
     viewModelOf(::TrashViewModel)
+    viewModelOf(::UploadViewModel)
 }

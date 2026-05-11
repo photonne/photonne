@@ -77,6 +77,7 @@ import com.photonne.app.resources.tab_folders
 import com.photonne.app.resources.tab_search
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
+import com.photonne.app.resources.upload_title
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -177,6 +178,7 @@ fun TimelineTopBar(
     user: UserDto,
     onRefresh: () -> Unit,
     onJumpToDate: () -> Unit,
+    onUpload: () -> Unit,
     onLogout: () -> Unit
 ) {
     TopAppBar(
@@ -187,6 +189,12 @@ fun TimelineTopBar(
             )
         },
         actions = {
+            IconButton(onClick = onUpload) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.upload_title)
+                )
+            }
             IconButton(onClick = onJumpToDate) {
                 Icon(
                     Icons.Filled.DateRange,
@@ -575,6 +583,40 @@ fun SearchTopBar(user: UserDto, onLogout: () -> Unit) {
 fun MoreTopBar(user: UserDto, onLogout: () -> Unit) {
     TopAppBar(
         title = { Text("Más", style = MaterialTheme.typography.titleMedium) },
+        actions = { AccountMenu(user = user, onLogout = onLogout) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UploadTopBar(
+    title: String,
+    subtitle: String?,
+    onBack: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
         actions = { AccountMenu(user = user, onLogout = onLogout) }
     )
 }

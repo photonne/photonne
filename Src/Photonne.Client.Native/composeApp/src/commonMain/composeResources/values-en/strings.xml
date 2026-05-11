@@ -162,4 +162,19 @@
     <string name="trash_dialog_restore_all_message">All trashed items will be moved back to their original folder.</string>
     <string name="trash_dialog_empty_message">This cannot be undone. Every photo in the trash will be deleted permanently.</string>
     <string name="trash_dialog_purge_message">%1$d items will be deleted permanently. You won't be able to recover them.</string>
+
+    <string name="upload_title">Upload</string>
+    <string name="upload_subtitle_pending">%1$d pending</string>
+    <string name="upload_action_add">Add files</string>
+    <string name="upload_action_cancel_all">Cancel all</string>
+    <string name="upload_action_clear_finished">Clear list</string>
+    <string name="upload_empty_title">Nothing to upload yet</string>
+    <string name="upload_empty_subtitle">Tap "Add files" to pick photos or videos from your device.</string>
+    <string name="upload_summary">%1$d uploaded · %2$d already in library · %3$d failed · %4$d pending</string>
+    <string name="upload_status_queued">Queued</string>
+    <string name="upload_status_uploading">Uploading</string>
+    <string name="upload_status_done">Uploaded</string>
+    <string name="upload_status_skipped">Duplicate</string>
+    <string name="upload_status_failed">Failed</string>
+    <string name="upload_status_cancelled">Cancelled</string>
 </resources>

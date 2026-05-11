@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -28,12 +29,14 @@ import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.more_settings_hint
 import com.photonne.app.resources.trash_title
+import com.photonne.app.resources.upload_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MoreScreen(
     user: UserDto,
     onLogout: () -> Unit,
+    onOpenUpload: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit
 ) {
@@ -61,6 +64,12 @@ fun MoreScreen(
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
 
+        MoreEntry(
+            icon = Icons.Filled.Add,
+            label = stringResource(Res.string.upload_title),
+            onClick = onOpenUpload
+        )
+        HorizontalDivider()
         MoreEntry(
             icon = Icons.Filled.Lock,
             label = stringResource(Res.string.archive_title),
