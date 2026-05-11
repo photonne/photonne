@@ -240,4 +240,36 @@
     <string name="share_status_saved">Saved: %1$s</string>
     <string name="share_status_share_failed">Could not share: %1$s</string>
     <string name="selection_action_remove_from_album">Remove from album</string>
+
+    <!-- Account settings -->
+    <string name="account_settings_title">Account settings</string>
+    <string name="account_settings_hint">Edit your profile, password, appearance and review storage usage.</string>
+    <string name="account_section_profile">Profile</string>
+    <string name="account_section_profile_subtitle">Name, email and username</string>
+    <string name="account_section_security">Security</string>
+    <string name="account_section_security_subtitle">Change password</string>
+    <string name="account_section_appearance">Appearance</string>
+    <string name="account_section_appearance_subtitle">Light, dark or follow the system</string>
+    <string name="account_section_storage">Storage</string>
+    <string name="account_section_storage_subtitle">Current usage and quota</string>
+    <string name="account_profile_first_name">First name</string>
+    <string name="account_profile_last_name">Last name</string>
+    <string name="account_profile_email">Email</string>
+    <string name="account_profile_username">Username</string>
+    <string name="account_profile_save">Save changes</string>
+    <string name="account_profile_saved">Profile updated</string>
+    <string name="account_security_current">Current password</string>
+    <string name="account_security_new">New password</string>
+    <string name="account_security_confirm">Confirm new password</string>
+    <string name="account_security_mismatch">Passwords do not match</string>
+    <string name="account_security_min_length">Minimum %1$d characters</string>
+    <string name="account_security_submit">Change password</string>
+    <string name="account_security_changed">Password changed</string>
+    <string name="appearance_title">Theme</string>
+    <string name="appearance_system">Follow system</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="storage_used_format">%1$s used of %2$s</string>
+    <string name="storage_used_unbounded_format">%1$s used</string>
+    <string name="storage_no_quota">No quota limit</string>
 </resources>

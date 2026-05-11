@@ -1,7 +1,9 @@
 package com.photonne.app.di
 
+import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.actions.AssetActionsRepository
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.settings.ThemePreferenceStore
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.ui.folder.FolderDetailViewModel
 import com.photonne.app.ui.folder.FolderPermissionsViewModel
@@ -36,6 +38,10 @@ import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.map.MapViewModel
 import com.photonne.app.ui.search.SearchViewModel
 import com.photonne.app.ui.actions.AssetSelectionActionsViewModel
+import com.photonne.app.ui.settings.AccountProfileViewModel
+import com.photonne.app.ui.settings.AccountSecurityViewModel
+import com.photonne.app.ui.settings.AccountStorageViewModel
+import com.photonne.app.ui.settings.AppearanceViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import com.photonne.app.ui.upload.UploadViewModel
@@ -66,6 +72,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
     }
     single<PhotonneApi> { PhotonneApiClient(get(), config.apiBaseUrl) }
     singleOf(::AuthRepository)
+    singleOf(::AccountRepository)
+    single { ThemePreferenceStore(get()) }
     single { TimelineRepository(api = get()) }
     singleOf(::MemoriesRepository)
     singleOf(::AssetDetailRepository)
@@ -98,4 +106,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::PersonDetailViewModel)
     viewModelOf(::PersonSuggestionsViewModel)
     viewModelOf(::AssetFacesViewModel)
+    viewModelOf(::AccountProfileViewModel)
+    viewModelOf(::AccountSecurityViewModel)
+    viewModelOf(::AccountStorageViewModel)
+    viewModelOf(::AppearanceViewModel)
 }

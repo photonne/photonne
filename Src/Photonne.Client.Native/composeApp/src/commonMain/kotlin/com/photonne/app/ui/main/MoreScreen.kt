@@ -22,7 +22,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.map_title
@@ -69,7 +72,8 @@ fun MoreScreen(
     onOpenFavorites: () -> Unit,
     onOpenPeople: () -> Unit,
     onOpenArchived: () -> Unit,
-    onOpenTrash: () -> Unit
+    onOpenTrash: () -> Unit,
+    onOpenAccountSettings: () -> Unit
 ) {
     val shortcuts = remember(
         onOpenUpload,
@@ -129,6 +133,9 @@ fun MoreScreen(
             }
         }
 
+        Spacer(Modifier.height(16.dp))
+        AccountSettingsRow(onClick = onOpenAccountSettings)
+
         Spacer(Modifier.height(24.dp))
         Text(
             stringResource(Res.string.more_settings_hint),
@@ -144,6 +151,42 @@ fun MoreScreen(
             horizontalArrangement = Arrangement.Center
         ) {
             Button(onClick = onLogout) { Text(stringResource(Res.string.action_logout)) }
+        }
+    }
+}
+
+@Composable
+private fun AccountSettingsRow(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Settings,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.size(16.dp))
+            Text(
+                text = stringResource(Res.string.account_settings_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

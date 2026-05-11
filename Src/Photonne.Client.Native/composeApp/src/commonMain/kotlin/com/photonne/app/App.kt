@@ -15,6 +15,11 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.account_section_appearance
+import com.photonne.app.resources.account_section_profile
+import com.photonne.app.resources.account_section_security
+import com.photonne.app.resources.account_section_storage
+import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_create
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
@@ -108,7 +113,20 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Upload, Favorites, People, PeopleSuggestions, Map, Archived, Trash }
+private enum class MoreSubscreen {
+    Upload,
+    Favorites,
+    People,
+    PeopleSuggestions,
+    Map,
+    Archived,
+    Trash,
+    AccountSettings,
+    AccountProfile,
+    AccountSecurity,
+    AccountAppearance,
+    AccountStorage
+}
 
 /** Build a thin TimelineItem out of a map point so the asset viewer
  * can be seeded without an extra fetch — it re-queries AssetDetail
@@ -135,7 +153,10 @@ fun App() {
         buildPhotonneImageLoader(context, httpClient)
     }
 
-    PhotonneTheme {
+    val themeStore: com.photonne.app.data.settings.ThemePreferenceStore = koinInject()
+    val themePreference by themeStore.value.collectAsState()
+
+    PhotonneTheme(preference = themePreference) {
         val authState: AuthStateHolder = koinInject()
         val state by authState.state.collectAsState()
         when (val current = state) {
@@ -172,6 +193,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val personSuggestionsViewModel: com.photonne.app.ui.people.PersonSuggestionsViewModel =
         koinViewModel()
     val assetFacesViewModel: com.photonne.app.ui.people.AssetFacesViewModel = koinViewModel()
+    val accountProfileViewModel: com.photonne.app.ui.settings.AccountProfileViewModel =
+        koinViewModel()
+    val accountSecurityViewModel: com.photonne.app.ui.settings.AccountSecurityViewModel =
+        koinViewModel()
+    val accountStorageViewModel: com.photonne.app.ui.settings.AccountStorageViewModel =
+        koinViewModel()
+    val appearanceViewModel: com.photonne.app.ui.settings.AppearanceViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -627,6 +655,41 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onLogout = onLogout
                 )
             }
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSettings ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.account_settings_title),
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountProfile ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.account_section_profile),
+                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSecurity ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.account_section_security),
+                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountAppearance ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.account_section_appearance),
+                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountStorage ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.account_section_storage),
+                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                    user = user.user,
+                    onLogout = onLogout
+                )
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -798,7 +861,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
-                        onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
+                        onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
+                        onOpenAccountSettings = {
+                            moreSubscreen = MoreSubscreen.AccountSettings
+                        }
                     )
                     MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
                         state = uploadState,
@@ -995,6 +1061,37 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onLoadMore = trashViewModel::loadMore,
                         onRefresh = trashViewModel::ensureLoaded
                     )
+                    MoreSubscreen.AccountSettings ->
+                        com.photonne.app.ui.settings.AccountSettingsScreen(
+                            onOpen = { section ->
+                                moreSubscreen = when (section) {
+                                    com.photonne.app.ui.settings.AccountSettingsSection.Profile ->
+                                        MoreSubscreen.AccountProfile
+                                    com.photonne.app.ui.settings.AccountSettingsSection.Security ->
+                                        MoreSubscreen.AccountSecurity
+                                    com.photonne.app.ui.settings.AccountSettingsSection.Appearance ->
+                                        MoreSubscreen.AccountAppearance
+                                    com.photonne.app.ui.settings.AccountSettingsSection.Storage ->
+                                        MoreSubscreen.AccountStorage
+                                }
+                            }
+                        )
+                    MoreSubscreen.AccountProfile ->
+                        com.photonne.app.ui.settings.AccountProfileScreen(
+                            viewModel = accountProfileViewModel
+                        )
+                    MoreSubscreen.AccountSecurity ->
+                        com.photonne.app.ui.settings.AccountSecurityScreen(
+                            viewModel = accountSecurityViewModel
+                        )
+                    MoreSubscreen.AccountAppearance ->
+                        com.photonne.app.ui.settings.AccountAppearanceScreen(
+                            viewModel = appearanceViewModel
+                        )
+                    MoreSubscreen.AccountStorage ->
+                        com.photonne.app.ui.settings.AccountStorageScreen(
+                            viewModel = accountStorageViewModel
+                        )
                 }
             }
         }

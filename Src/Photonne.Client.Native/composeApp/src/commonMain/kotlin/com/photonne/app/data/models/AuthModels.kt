@@ -44,3 +44,33 @@ data class UserDto(
 
 @Serializable
 data class ApiError(val error: String)
+
+/**
+ * Profile fields the user can edit from the account settings → profile
+ * page. Mirrors `UpdateProfileRequest` on `UsersEndpoint.cs:486`: every
+ * field is optional so we can patch a single value at a time, but the
+ * UI always submits the four together with the current values.
+ */
+@Serializable
+data class UpdateProfileRequest(
+    val username: String? = null,
+    val email: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null
+)
+
+@Serializable
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
+
+@Serializable
+data class ChangePasswordResponse(val message: String)
+
+/** Storage usage shown in the account settings → storage page. */
+@Serializable
+data class StorageInfoDto(
+    val usedBytes: Long,
+    val quotaBytes: Long? = null
+)

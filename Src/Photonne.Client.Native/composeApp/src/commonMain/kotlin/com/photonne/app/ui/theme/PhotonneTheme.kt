@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.photonne.app.data.settings.ThemePreference
 
 private val PhotonneBlue = Color(0xFF1565C0)
 private val PhotonneBlueDark = Color(0xFF0D47A1)
@@ -25,9 +26,15 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun PhotonneTheme(
-    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    preference: ThemePreference = ThemePreference.System,
     content: @Composable () -> Unit
 ) {
+    val systemDark = isSystemInDarkTheme()
+    val useDarkTheme = when (preference) {
+        ThemePreference.System -> systemDark
+        ThemePreference.Light -> false
+        ThemePreference.Dark -> true
+    }
     MaterialTheme(
         colorScheme = if (useDarkTheme) DarkColors else LightColors,
         content = content
