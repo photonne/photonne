@@ -3,6 +3,7 @@ package com.photonne.app.ui.album
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +19,16 @@ data class AlbumDetailUiState(
     val items: List<TimelineItem> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null
-)
+    val isBulkMutating: Boolean = false,
+    val errorMessage: String? = null,
+    val selection: Set<String> = emptySet()
+) {
+    val isSelectionActive: Boolean get() = selection.isNotEmpty()
+}
 
 class AlbumDetailViewModel(
-    private val repository: AlbumsRepository
+    private val repository: AlbumsRepository,
+    private val assetRepository: AssetDetailRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AlbumDetailUiState())
@@ -204,6 +210,125 @@ class AlbumDetailViewModel(
                         it.copy(
                             isMutating = false,
                             errorMessage = error.message ?: "Failed to leave album"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun toggleSelection(assetId: String) {
+        _state.update {
+            val next = it.selection.toMutableSet()
+            if (!next.add(assetId)) next.remove(assetId)
+            it.copy(selection = next)
+        }
+    }
+
+    fun clearSelection() {
+        _state.update { it.copy(selection = emptySet()) }
+    }
+
+    fun toggleSelectAll() {
+        _state.update { previous ->
+            val all = previous.items.mapTo(HashSet()) { it.id }
+            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+        }
+    }
+
+    fun bulkArchive() = runAssetBulk(
+        action = { assetRepository.archive(it) },
+        errorFallback = "Failed to archive"
+    )
+
+    fun bulkTrash() = runAssetBulk(
+        action = { assetRepository.trash(it) },
+        errorFallback = "Failed to delete"
+    )
+
+    fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        val added = _state.value.items.filter { it.id in ids }
+        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.addAssetsBatch(albumId, ids) }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
+                    onSuccess(added)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: "Failed to add to album"
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Detach every selected asset from this album. The repo only exposes a
+     * per-asset endpoint, so we fan out one call per id and surface the
+     * count we managed to remove for the album-list badge to stay correct.
+     */
+    fun bulkRemoveFromAlbum(onSuccess: (removed: Int) -> Unit = {}) {
+        val albumId = _state.value.albumId ?: return
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        val previousItems = _state.value.items
+        _state.update {
+            it.copy(
+                isBulkMutating = true,
+                errorMessage = null,
+                items = it.items.filterNot { item -> item.id in it.selection },
+                selection = emptySet()
+            )
+        }
+        viewModelScope.launch {
+            runCatching {
+                for (id in ids) repository.removeAsset(albumId, id)
+            }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false) }
+                    onSuccess(ids.size)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            items = previousItems,
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: "Failed to remove from album"
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun runAssetBulk(
+        action: suspend (List<String>) -> Unit,
+        errorFallback: String
+    ) {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        val previousItems = _state.value.items
+        _state.update {
+            it.copy(
+                isBulkMutating = true,
+                errorMessage = null,
+                items = it.items.filterNot { item -> item.id in it.selection },
+                selection = emptySet()
+            )
+        }
+        viewModelScope.launch {
+            runCatching { action(ids) }
+                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            items = previousItems,
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: errorFallback
                         )
                     }
                 }

@@ -138,6 +138,13 @@ class TimelineViewModel(
         _state.update { it.copy(selection = emptySet()) }
     }
 
+    fun toggleSelectAll() {
+        _state.update { previous ->
+            val all = previous.items.mapTo(HashSet()) { it.id }
+            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+        }
+    }
+
     fun selectedItems(): List<TimelineItem> {
         val state = _state.value
         return state.items.filter { it.id in state.selection }

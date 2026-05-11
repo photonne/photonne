@@ -1,5 +1,6 @@
 package com.photonne.app.di
 
+import com.photonne.app.data.actions.AssetActionsRepository
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.ui.folder.FolderDetailViewModel
@@ -34,6 +35,7 @@ import com.photonne.app.ui.people.PersonSuggestionsViewModel
 import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.map.MapViewModel
 import com.photonne.app.ui.search.SearchViewModel
+import com.photonne.app.ui.actions.AssetSelectionActionsViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import com.photonne.app.ui.upload.UploadViewModel
@@ -69,6 +71,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AssetDetailRepository)
     singleOf(::AlbumsRepository)
     singleOf(::FoldersRepository)
+    singleOf(::AssetActionsRepository)
     singleOf(::SearchRepository)
     singleOf(::UploadRepository)
     singleOf(::MapRepository)
@@ -88,6 +91,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::ArchivedViewModel)
     viewModelOf(::TrashViewModel)
     viewModelOf(::FavoritesViewModel)
+    viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)

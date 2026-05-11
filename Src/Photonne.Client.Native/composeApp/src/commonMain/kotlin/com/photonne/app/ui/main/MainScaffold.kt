@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -41,8 +43,12 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
 import androidx.compose.material3.TextButton
+import com.photonne.app.resources.action_share
 import com.photonne.app.resources.archive_action_unarchive
 import com.photonne.app.resources.archive_action_unarchive_all
+import com.photonne.app.resources.selection_action_deselect_all
+import com.photonne.app.resources.selection_action_download
+import com.photonne.app.resources.selection_action_select_all
 import com.photonne.app.resources.folder_action_actions
 import com.photonne.app.resources.folder_action_move
 import com.photonne.app.resources.folder_action_new
@@ -77,10 +83,12 @@ import com.photonne.app.resources.album_action_album_actions
 import com.photonne.app.resources.album_action_members
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.app_name
+import com.photonne.app.resources.asset_action_set_cover
 import com.photonne.app.resources.selection_action_add_to_album
 import com.photonne.app.resources.selection_action_archive
 import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_more
+import com.photonne.app.resources.selection_action_remove_from_album
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
 import androidx.compose.material.icons.filled.List
@@ -279,6 +287,155 @@ fun SelectionTopBar(
                             menuOpen = false
                             onArchive()
                         }
+                    )
+                }
+            }
+        }
+    )
+}
+
+/** Whether the unified selection top bar shows "Archive" or "Unarchive" on the archive icon. */
+enum class ArchiveMode { Archive, Unarchive }
+
+/**
+ * Unified selection top bar used across every screen that supports
+ * multi-asset selection. Standard actions are always rendered;
+ * `onMove` and `onUnlink` are optional and only show when wired.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AssetSelectionTopBar(
+    selectedCount: Int,
+    totalCount: Int,
+    isMutating: Boolean,
+    archiveMode: ArchiveMode = ArchiveMode.Archive,
+    onClose: () -> Unit,
+    onSelectAll: () -> Unit,
+    onShare: () -> Unit,
+    onAddToAlbum: () -> Unit,
+    onDownload: () -> Unit,
+    onArchive: () -> Unit,
+    onTrash: () -> Unit,
+    onMove: (() -> Unit)? = null,
+    onUnlink: (() -> Unit)? = null,
+    onRemoveFromAlbum: (() -> Unit)? = null,
+    onSetAsCover: (() -> Unit)? = null
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val allSelected = totalCount > 0 && selectedCount >= totalCount
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = pluralStringResource(
+                    Res.plurals.selection_count,
+                    selectedCount,
+                    selectedCount
+                ),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = {
+            IconButton(onClick = onSelectAll, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = stringResource(
+                        if (allSelected) Res.string.selection_action_deselect_all
+                        else Res.string.selection_action_select_all
+                    ),
+                    tint = if (allSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            IconButton(onClick = onShare, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Share,
+                    contentDescription = stringResource(Res.string.action_share)
+                )
+            }
+            IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
+                )
+            }
+            IconButton(onClick = onDownload, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = stringResource(Res.string.selection_action_download)
+                )
+            }
+            // Overflow holds the destructive / context-specific bits so the
+            // primary bar stays at a fixed visual length.
+            Box {
+                IconButton(onClick = { menuOpen = true }, enabled = !isMutating) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(Res.string.selection_action_more)
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (onMove != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.folder_selection_move)) },
+                            onClick = { menuOpen = false; onMove() }
+                        )
+                    }
+                    if (onUnlink != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.people_action_unlink)) },
+                            onClick = { menuOpen = false; onUnlink() }
+                        )
+                    }
+                    if (onSetAsCover != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_set_cover)) },
+                            onClick = { menuOpen = false; onSetAsCover() }
+                        )
+                    }
+                    if (onRemoveFromAlbum != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(stringResource(Res.string.selection_action_remove_from_album))
+                            },
+                            onClick = { menuOpen = false; onRemoveFromAlbum() }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (archiveMode == ArchiveMode.Unarchive)
+                                        Res.string.archive_action_unarchive
+                                    else Res.string.selection_action_archive
+                                )
+                            )
+                        },
+                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                        onClick = { menuOpen = false; onArchive() }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(Res.string.selection_action_trash),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = { menuOpen = false; onTrash() }
                     )
                 }
             }

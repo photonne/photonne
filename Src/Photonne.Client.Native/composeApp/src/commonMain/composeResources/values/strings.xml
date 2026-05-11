@@ -225,4 +225,19 @@
     <string name="people_face_set_cover">Usar como portada</string>
 
     <string name="asset_action_faces">Ver caras</string>
+
+    <string name="selection_action_select_all">Seleccionar todo</string>
+    <string name="selection_action_deselect_all">Deseleccionar todo</string>
+    <string name="selection_action_download">Descargar</string>
+    <string name="share_choice_direct">Compartir directamente</string>
+    <string name="share_choice_direct_subtitle">Abre el panel de compartir del dispositivo (otras apps, mensajería, etc.).</string>
+    <string name="share_choice_link">Crear enlace de Photonne</string>
+    <string name="share_choice_link_subtitle">Crea un álbum con esta selección y devuelve un enlace público.</string>
+    <string name="share_link_album_name_label">Nombre del álbum</string>
+    <string name="share_link_title">Enlace creado</string>
+    <string name="share_link_field_label">Cualquiera con este enlace podrá ver las fotos.</string>
+    <string name="share_link_copy">Copiar enlace</string>
+    <string name="share_status_saved">Guardado: %1$s</string>
+    <string name="share_status_share_failed">No se pudo compartir: %1$s</string>
+    <string name="selection_action_remove_from_album">Quitar del álbum</string>
 </resources>

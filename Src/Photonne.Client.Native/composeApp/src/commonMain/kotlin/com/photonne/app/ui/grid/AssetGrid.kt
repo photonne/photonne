@@ -83,7 +83,7 @@ fun AssetGrid(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        itemsIndexed(items, key = { _, item -> item.id }) { index, asset ->
+        itemsIndexed(items, key = { index, item -> assetCellKey(item, index) }) { index, asset ->
             AssetGridCell(
                 asset = asset,
                 baseUrl = baseUrl,

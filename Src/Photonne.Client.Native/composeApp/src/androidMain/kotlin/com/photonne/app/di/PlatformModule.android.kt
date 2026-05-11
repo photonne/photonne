@@ -2,6 +2,7 @@ package com.photonne.app.di
 
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.photonne.app.ui.actions.AssetSharing
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
 import io.ktor.client.engine.HttpClientEngine
@@ -25,4 +26,5 @@ actual fun platformModule() = module {
         SharedPreferencesSettings(prefs)
     }
     single<HttpClientEngine> { OkHttp.create() }
+    single { AssetSharing(androidContext()) }
 }

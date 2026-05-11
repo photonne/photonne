@@ -3,6 +3,7 @@ package com.photonne.app.data.api
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
@@ -93,6 +94,12 @@ internal data class MoveFolderAssetsBody(
 internal data class RenamePersonBody(val name: String?)
 
 @Serializable
+internal data class DownloadZipBody(
+    val assetIds: List<String>,
+    val fileName: String? = null
+)
+
+@Serializable
 internal data class AssignFaceBody(
     val personId: String? = null,
     val newPersonName: String? = null
@@ -159,6 +166,8 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
+    suspend fun downloadAssetsZip(assetIds: List<String>, fileName: String? = null): ByteArray
+    suspend fun getAssetContent(assetId: String): AssetContentBytes
     suspend fun uploadAsset(
         fileName: String,
         mimeType: String,
@@ -324,6 +333,87 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun downloadAssetsZip(
+        assetIds: List<String>,
+        fileName: String?
+    ): ByteArray {
+        if (assetIds.isEmpty()) return ByteArray(0)
+        val response: HttpResponse = client.post("$baseUrl/api/assets/download-zip") {
+            contentType(ContentType.Application.Json)
+            setBody(DownloadZipBody(assetIds = assetIds, fileName = fileName))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Download failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetContent(assetId: String): AssetContentBytes {
+        val response: HttpResponse =
+            client.get("$baseUrl/api/assets/$assetId/content") {
+                parameter("download", true)
+            }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Asset content fetch failed (${response.status.value})"
+            )
+        }
+        val contentType = response.headers[HttpHeaders.ContentType]
+            ?: "application/octet-stream"
+        val suggested = response.headers[HttpHeaders.ContentDisposition]
+            ?.let(::parseContentDispositionFilename)
+            ?: "photonne_$assetId"
+        return AssetContentBytes(
+            bytes = response.body(),
+            mimeType = contentType,
+            suggestedFileName = suggested
+        )
+    }
+
+    private fun parseContentDispositionFilename(header: String): String? {
+        // RFC 6266; very permissive — handles `filename="x"`, `filename=x`,
+        // and `filename*=UTF-8''percent-encoded` from ASP.NET Core.
+        val star = "filename*="
+        val plain = "filename="
+        val starIdx = header.indexOf(star, ignoreCase = true)
+        if (starIdx >= 0) {
+            val raw = header.substring(starIdx + star.length).substringBefore(';').trim()
+            val payload = raw.substringAfter("''", raw)
+            return runCatching { percentDecodeUtf8(payload) }
+                .getOrDefault(payload)
+                .ifEmpty { null }
+        }
+        val plainIdx = header.indexOf(plain, ignoreCase = true)
+        if (plainIdx >= 0) {
+            return header.substring(plainIdx + plain.length).substringBefore(';').trim()
+                .trim('"').ifEmpty { null }
+        }
+        return null
+    }
+
+    private fun percentDecodeUtf8(input: String): String {
+        val bytes = ArrayList<Byte>(input.length)
+        var i = 0
+        while (i < input.length) {
+            val ch = input[i]
+            if (ch == '%' && i + 2 < input.length) {
+                val code = input.substring(i + 1, i + 3).toIntOrNull(16)
+                if (code != null) {
+                    bytes.add(code.toByte())
+                    i += 3
+                    continue
+                }
+            }
+            bytes.add(ch.code.toByte())
+            i++
+        }
+        return bytes.toByteArray().decodeToString()
     }
 
     override suspend fun toggleFavorite(assetId: String): Boolean {

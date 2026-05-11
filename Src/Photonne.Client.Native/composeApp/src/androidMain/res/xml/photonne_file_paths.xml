@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Matches the `File(context.cacheDir, "shared")` directory used by
+         AssetSharing to copy outgoing files before vending them to the
+         OS share sheet via FileProvider. -->
+    <cache-path name="shared" path="shared/" />
+</paths>
