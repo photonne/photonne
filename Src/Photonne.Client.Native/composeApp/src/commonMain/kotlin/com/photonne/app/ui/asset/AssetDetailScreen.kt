@@ -73,6 +73,7 @@ import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_edit_description
+import com.photonne.app.resources.asset_action_faces
 import com.photonne.app.resources.asset_action_more
 import com.photonne.app.resources.asset_action_open_in_maps
 import com.photonne.app.resources.asset_action_trash
@@ -103,7 +104,8 @@ fun AssetDetailScreen(
     onFavoriteChanged: (assetId: String, isFavorite: Boolean) -> Unit,
     onAddToAlbum: (TimelineItem) -> Unit = {},
     onAssetTrashed: (assetId: String) -> Unit = {},
-    onAssetArchived: (assetId: String) -> Unit = {}
+    onAssetArchived: (assetId: String) -> Unit = {},
+    onOpenFaces: (assetId: String) -> Unit = {}
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val config: PhotonneAppConfig = koinInject()
@@ -217,6 +219,13 @@ fun AssetDetailScreen(
                                     onClick = {
                                         showOverflow = false
                                         showEditDescription = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(Res.string.asset_action_faces)) },
+                                    onClick = {
+                                        showOverflow = false
+                                        onOpenFaces(currentItem.id)
                                     }
                                 )
                                 DropdownMenuItem(

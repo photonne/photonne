@@ -10,7 +10,15 @@ import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.ObjectLabel
+import com.photonne.app.data.models.AssignFaceResponse
+import com.photonne.app.data.models.BulkSuggestionResult
+import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
+import com.photonne.app.data.models.PersonAssetsPage
+import com.photonne.app.data.models.PersonFacesPage
+import com.photonne.app.data.models.PersonSuggestionsPage
+import com.photonne.app.data.models.ReclusterResponse
+import com.photonne.app.data.models.UnlinkAssetResponse
 import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.data.models.SearchResponse
 import com.photonne.app.data.models.SemanticSearchResponse
@@ -79,6 +87,15 @@ internal data class MoveFolderAssetsBody(
     val sourceFolderId: String?,
     val targetFolderId: String,
     val assetIds: List<String>
+)
+
+@Serializable
+internal data class RenamePersonBody(val name: String?)
+
+@Serializable
+internal data class AssignFaceBody(
+    val personId: String? = null,
+    val newPersonName: String? = null
 )
 
 @Serializable
@@ -213,6 +230,40 @@ interface PhotonneApi {
         limit: Int? = null,
         offset: Int? = null
     ): PeoplePage
+    suspend fun renamePerson(personId: String, name: String?)
+    suspend fun hidePerson(personId: String)
+    suspend fun unhidePerson(personId: String)
+    suspend fun getPersonAssets(
+        personId: String,
+        limit: Int? = null,
+        offset: Int? = null
+    ): PersonAssetsPage
+    suspend fun listPersonSuggestions(
+        personId: String,
+        limit: Int? = null,
+        offset: Int? = null
+    ): PersonSuggestionsPage
+    suspend fun acceptAllPersonSuggestions(personId: String): BulkSuggestionResult
+    suspend fun dismissAllPersonSuggestions(personId: String): BulkSuggestionResult
+    suspend fun acceptFaceSuggestion(faceId: String): AssignFaceResponse
+    suspend fun dismissFaceSuggestion(faceId: String)
+    suspend fun assignFace(
+        faceId: String,
+        personId: String? = null,
+        newPersonName: String? = null
+    ): AssignFaceResponse
+    suspend fun rejectFace(faceId: String)
+    suspend fun unassignFace(faceId: String)
+    suspend fun mergePeople(targetPersonId: String, sourcePersonId: String)
+    suspend fun reclusterPeople(): ReclusterResponse
+    suspend fun getAssetFaces(assetId: String): List<Face>
+    suspend fun listPersonFaces(
+        personId: String,
+        limit: Int? = null,
+        offset: Int? = null
+    ): PersonFacesPage
+    suspend fun setPersonCoverFace(personId: String, faceId: String)
+    suspend fun unlinkAssetFromPerson(personId: String, assetId: String): UnlinkAssetResponse
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -984,6 +1035,208 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun renamePerson(personId: String, name: String?) {
+        val response: HttpResponse = client.patch("$baseUrl/api/people/$personId") {
+            contentType(ContentType.Application.Json)
+            setBody(RenamePersonBody(name = name?.trim()?.takeIf { it.isNotEmpty() }))
+        }
+        ensurePersonSuccess(response, "Rename person failed")
+    }
+
+    override suspend fun hidePerson(personId: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/people/$personId/hide")
+        ensurePersonSuccess(response, "Hide person failed")
+    }
+
+    override suspend fun unhidePerson(personId: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/people/$personId/unhide")
+        ensurePersonSuccess(response, "Unhide person failed")
+    }
+
+    override suspend fun getPersonAssets(
+        personId: String,
+        limit: Int?,
+        offset: Int?
+    ): PersonAssetsPage {
+        val response: HttpResponse = client.get("$baseUrl/api/search/people/$personId/assets") {
+            if (limit != null) parameter("limit", limit)
+            if (offset != null) parameter("offset", offset)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Person assets fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun listPersonSuggestions(
+        personId: String,
+        limit: Int?,
+        offset: Int?
+    ): PersonSuggestionsPage {
+        val response: HttpResponse = client.get("$baseUrl/api/people/$personId/suggestions") {
+            if (limit != null) parameter("limit", limit)
+            if (offset != null) parameter("offset", offset)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Suggestions fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun acceptAllPersonSuggestions(personId: String): BulkSuggestionResult {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/people/$personId/suggestions/accept-all")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Accept-all failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun dismissAllPersonSuggestions(personId: String): BulkSuggestionResult {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/people/$personId/suggestions/dismiss-all")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Dismiss-all failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun acceptFaceSuggestion(faceId: String): AssignFaceResponse {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/faces/$faceId/accept-suggestion")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Accept face suggestion failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun dismissFaceSuggestion(faceId: String) {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/faces/$faceId/dismiss-suggestion")
+        ensurePersonSuccess(response, "Dismiss face suggestion failed")
+    }
+
+    override suspend fun assignFace(
+        faceId: String,
+        personId: String?,
+        newPersonName: String?
+    ): AssignFaceResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/faces/$faceId/assign") {
+            contentType(ContentType.Application.Json)
+            setBody(AssignFaceBody(personId = personId, newPersonName = newPersonName))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Assign face failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun rejectFace(faceId: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/faces/$faceId")
+        ensurePersonSuccess(response, "Reject face failed")
+    }
+
+    override suspend fun unassignFace(faceId: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/faces/$faceId/unassign")
+        ensurePersonSuccess(response, "Unassign face failed")
+    }
+
+    override suspend fun mergePeople(targetPersonId: String, sourcePersonId: String) {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/people/$targetPersonId/merge/$sourcePersonId")
+        ensurePersonSuccess(response, "Merge people failed")
+    }
+
+    override suspend fun reclusterPeople(): ReclusterResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/people/recluster")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Recluster failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetFaces(assetId: String): List<Face> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/faces")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Asset faces fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun listPersonFaces(
+        personId: String,
+        limit: Int?,
+        offset: Int?
+    ): PersonFacesPage {
+        val response: HttpResponse = client.get("$baseUrl/api/people/$personId/faces") {
+            if (limit != null) parameter("limit", limit)
+            if (offset != null) parameter("offset", offset)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Person faces fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun setPersonCoverFace(personId: String, faceId: String) {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/people/$personId/cover/$faceId")
+        ensurePersonSuccess(response, "Set cover failed")
+    }
+
+    override suspend fun unlinkAssetFromPerson(
+        personId: String,
+        assetId: String
+    ): UnlinkAssetResponse {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/people/$personId/assets/$assetId/unlink")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Unlink failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    private fun ensurePersonSuccess(response: HttpResponse, message: String) {
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "$message (${response.status.value})"
+            )
+        }
     }
 }
 

@@ -190,4 +190,39 @@
     <string name="map_action_fit_to_data">Center on my photos</string>
     <string name="map_cluster_sheet_title">%1$d photos at this spot</string>
     <string name="map_action_select_all">Select all</string>
+
+    <string name="people_title">People</string>
+    <string name="people_empty_title">No people yet</string>
+    <string name="people_empty_subtitle">Once the server has finished clustering faces they'll show up here.</string>
+    <string name="people_unnamed">Unnamed</string>
+    <string name="people_rename_title">Rename person</string>
+    <string name="people_rename_field">Name</string>
+    <string name="people_action_rename">Rename</string>
+    <string name="people_action_hide">Hide person</string>
+    <string name="people_action_unhide">Unhide person</string>
+    <string name="people_action_show_hidden">Show hidden</string>
+    <string name="people_action_hide_hidden">Hide hidden</string>
+    <string name="people_action_recluster">Recluster faces</string>
+    <string name="people_action_merge">Merge with…</string>
+    <string name="people_action_suggestions">Suggestions</string>
+    <string name="people_action_unlink">Unlink</string>
+    <string name="people_action_suggestions_accept_all">Accept all</string>
+    <string name="people_action_suggestions_dismiss_all">Dismiss all</string>
+    <string name="people_suggestions_title">Suggestions for %1$s</string>
+    <string name="people_suggestions_empty">No suggested faces for this person.</string>
+    <string name="people_suggestions_accept">Accept</string>
+    <string name="people_suggestions_dismiss">Dismiss</string>
+    <string name="people_picker_title">Pick a person</string>
+    <string name="people_picker_empty">No other people to merge with.</string>
+    <string name="people_faces_title">Faces in this photo</string>
+    <string name="people_faces_empty">The server hasn't detected any faces in this photo.</string>
+    <string name="people_face_unknown">Unassigned</string>
+    <string name="people_face_suggestion">Suggestion: %1$s</string>
+    <string name="people_face_assign">Assign to a person</string>
+    <string name="people_face_assign_new">Create a new person</string>
+    <string name="people_face_unassign">Remove assignment</string>
+    <string name="people_face_reject">Mark as not a face</string>
+    <string name="people_face_set_cover">Use as cover</string>
+
+    <string name="asset_action_faces">View faces</string>
 </resources>
