@@ -108,4 +108,13 @@
     <string name="folders_empty_subtitle">Indexa una carpeta desde la app web para verla aquí.</string>
     <string name="folder_shared_badge">Compartida</string>
     <string name="folder_external_badge">Biblioteca externa</string>
+
+    <string name="folder_action_new">Nueva carpeta</string>
+    <string name="folder_action_edit">Editar carpeta</string>
+    <string name="folder_action_actions">Acciones de la carpeta</string>
+    <string name="folder_field_name">Nombre</string>
+    <string name="folder_delete_title">Eliminar carpeta</string>
+    <string name="folder_delete_message">"%1$s" se eliminará. Las fotos quedarán fuera del índice; podrás reindexarlas desde la app web.</string>
+    <string name="folder_permissions_title">Miembros de la carpeta</string>
+    <string name="folder_permissions_empty">Solo tú tienes acceso. Invita a alguien para darle permiso de lectura o escritura.</string>
 </resources>

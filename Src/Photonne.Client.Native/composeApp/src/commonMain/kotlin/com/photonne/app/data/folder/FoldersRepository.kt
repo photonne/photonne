@@ -1,6 +1,7 @@
 package com.photonne.app.data.folder
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.TimelineItem
 
@@ -12,4 +13,34 @@ class FoldersRepository(
     suspend fun get(folderId: String): FolderSummary = api.getFolder(folderId)
 
     suspend fun assets(folderId: String): List<TimelineItem> = api.getFolderAssets(folderId)
+
+    suspend fun create(name: String, parentFolderId: String?, isSharedSpace: Boolean): FolderSummary =
+        api.createFolder(name = name, parentFolderId = parentFolderId, isSharedSpace = isSharedSpace)
+
+    suspend fun update(folderId: String, name: String, parentFolderId: String?): FolderSummary =
+        api.updateFolder(folderId = folderId, name = name, parentFolderId = parentFolderId)
+
+    suspend fun delete(folderId: String) {
+        api.deleteFolder(folderId)
+    }
+
+    suspend fun listMembers(folderId: String): List<AlbumPermission> =
+        api.listFolderPermissions(folderId)
+
+    suspend fun grantMember(
+        folderId: String,
+        userId: String,
+        role: com.photonne.app.data.models.AlbumMemberRole
+    ): AlbumPermission = api.setFolderPermission(
+        folderId = folderId,
+        userId = userId,
+        canRead = role.canRead,
+        canWrite = role.canWrite,
+        canDelete = role.canDelete,
+        canManagePermissions = role.canManagePermissions
+    )
+
+    suspend fun revokeMember(folderId: String, userId: String) {
+        api.removeFolderPermission(folderId, userId)
+    }
 }

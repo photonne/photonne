@@ -20,6 +20,8 @@ import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.albums_count_format
+import com.photonne.app.resources.folder_action_edit
+import com.photonne.app.resources.folder_action_new
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -40,10 +42,18 @@ import com.photonne.app.ui.album.LeaveAlbumDialog
 import com.photonne.app.ui.album.ManagePermissionsDialog
 import com.photonne.app.ui.album.ManageSharesDialog
 import com.photonne.app.ui.asset.AssetDetailScreen
+import com.photonne.app.ui.folder.DeleteFolderDialog
+import com.photonne.app.ui.folder.FolderFormDialog
+import com.photonne.app.ui.folder.FolderPermissionsViewModel
+import com.photonne.app.ui.folder.FoldersViewModel
+import com.photonne.app.ui.folder.InviteFolderMemberDialog
+import com.photonne.app.ui.folder.ManageFolderPermissionsDialog
 import com.photonne.app.ui.image.buildPhotonneImageLoader
 import com.photonne.app.ui.login.LoginScreen
 import com.photonne.app.ui.main.AlbumDetailTopBar
 import com.photonne.app.ui.main.AlbumsListTopBar
+import com.photonne.app.ui.main.FolderDetailTopBar
+import com.photonne.app.ui.main.FoldersListTopBar
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
@@ -99,12 +109,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
+    val foldersViewModel: FoldersViewModel = koinViewModel()
     val folderDetailViewModel: com.photonne.app.ui.folder.FolderDetailViewModel = koinViewModel()
+    val folderPermissionsViewModel: FolderPermissionsViewModel = koinViewModel()
     val albumSharesViewModel: AlbumSharesViewModel = koinViewModel()
     val albumPermissionsViewModel: AlbumPermissionsViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
+    val foldersState by foldersViewModel.state.collectAsState()
+    val folderDetailState by folderDetailViewModel.state.collectAsState()
+    val folderPermissionsState by folderPermissionsViewModel.state.collectAsState()
     val albumSharesState by albumSharesViewModel.state.collectAsState()
     val albumPermissionsState by albumPermissionsViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -128,6 +143,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
     var pendingBulkAddOnCreate by remember { mutableStateOf(false) }
+    var showCreateFolder by remember { mutableStateOf(false) }
+    var showEditFolder by remember { mutableStateOf(false) }
+    var showDeleteFolder by remember { mutableStateOf(false) }
+    var showFolderMembers by remember { mutableStateOf(false) }
+    var showInviteFolderMember by remember { mutableStateOf(false) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -186,19 +206,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onCreateAlbum = { showCreateAlbum = true },
                 onLogout = onLogout
             )
-            selectedTab == MainTab.Folders && selectedFolder != null ->
-                com.photonne.app.ui.main.FolderDetailTopBar(
-                    title = selectedFolder!!.name.ifBlank { selectedFolder!!.path },
+            selectedTab == MainTab.Folders && selectedFolder != null -> {
+                val folder = selectedFolder!!
+                FolderDetailTopBar(
+                    title = (folderDetailState.folderName ?: folder.name).ifBlank { folder.path },
                     subtitle = stringResource(
                         Res.string.albums_count_format,
-                        selectedFolder!!.assetCount
+                        folder.assetCount
                     ),
+                    canEdit = folder.isOwner,
+                    canDelete = folder.isOwner,
+                    canManageMembers = folder.isOwner,
                     onBack = { selectedFolder = null },
+                    onEdit = { showEditFolder = true },
+                    onDelete = { showDeleteFolder = true },
+                    onManageMembers = {
+                        folderPermissionsViewModel.open(folder.id)
+                        showFolderMembers = true
+                    },
                     user = user.user,
                     onLogout = onLogout
                 )
+            }
             selectedTab == MainTab.Folders ->
-                com.photonne.app.ui.main.FoldersListTopBar(user = user.user, onLogout = onLogout)
+                FoldersListTopBar(
+                    user = user.user,
+                    onCreateFolder = { showCreateFolder = true },
+                    onLogout = onLogout
+                )
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -541,6 +576,94 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 bulkAddToAlbum = false
             },
             onDismiss = { bulkAddToAlbum = false }
+        )
+    }
+
+    if (showCreateFolder) {
+        FolderFormDialog(
+            title = stringResource(Res.string.folder_action_new),
+            confirmLabel = stringResource(Res.string.action_create),
+            isSubmitting = foldersState.isMutating,
+            errorMessage = foldersState.errorMessage,
+            onDismiss = {
+                showCreateFolder = false
+                foldersViewModel.clearError()
+            },
+            onConfirm = { name ->
+                foldersViewModel.create(name, parentFolderId = null) {
+                    showCreateFolder = false
+                }
+            }
+        )
+    }
+
+    val openedFolder = selectedFolder
+    if (showEditFolder && openedFolder != null) {
+        FolderFormDialog(
+            title = stringResource(Res.string.folder_action_edit),
+            confirmLabel = stringResource(Res.string.action_save),
+            initialName = folderDetailState.folderName ?: openedFolder.name,
+            isSubmitting = folderDetailState.isMutating,
+            errorMessage = folderDetailState.errorMessage,
+            onDismiss = {
+                showEditFolder = false
+                folderDetailViewModel.clearError()
+            },
+            onConfirm = { name ->
+                folderDetailViewModel.rename(name) { updated ->
+                    showEditFolder = false
+                    selectedFolder = openedFolder.copy(name = updated.name, path = updated.path)
+                    foldersViewModel.applyUpdate(updated)
+                }
+            }
+        )
+    }
+
+    if (showDeleteFolder && openedFolder != null) {
+        DeleteFolderDialog(
+            folderName = folderDetailState.folderName ?: openedFolder.name.ifBlank { openedFolder.path },
+            isSubmitting = folderDetailState.isMutating,
+            errorMessage = folderDetailState.errorMessage,
+            onDismiss = {
+                showDeleteFolder = false
+                folderDetailViewModel.clearError()
+            },
+            onConfirm = {
+                folderDetailViewModel.delete { folderId ->
+                    showDeleteFolder = false
+                    foldersViewModel.applyDelete(folderId)
+                    selectedFolder = null
+                }
+            }
+        )
+    }
+
+    if (showFolderMembers && openedFolder != null) {
+        ManageFolderPermissionsDialog(
+            state = folderPermissionsState,
+            onDismiss = {
+                showFolderMembers = false
+                folderPermissionsViewModel.clearError()
+            },
+            onInvite = { showInviteFolderMember = true },
+            onChangeRole = { member, role -> folderPermissionsViewModel.changeRole(member, role) },
+            onRevoke = { member -> folderPermissionsViewModel.revoke(member) }
+        )
+    }
+
+    if (showInviteFolderMember && openedFolder != null) {
+        InviteFolderMemberDialog(
+            candidates = folderPermissionsState.invitableUsers,
+            isSubmitting = folderPermissionsState.isMutating,
+            errorMessage = folderPermissionsState.errorMessage,
+            onDismiss = {
+                showInviteFolderMember = false
+                folderPermissionsViewModel.clearError()
+            },
+            onInvite = { selectedUser, role ->
+                folderPermissionsViewModel.grant(selectedUser, role)
+                showInviteFolderMember = false
+            }
         )
     }
 

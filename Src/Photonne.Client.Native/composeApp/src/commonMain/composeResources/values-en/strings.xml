@@ -108,4 +108,13 @@
     <string name="folders_empty_subtitle">Index a folder from the web app to see it here.</string>
     <string name="folder_shared_badge">Shared</string>
     <string name="folder_external_badge">External library</string>
+
+    <string name="folder_action_new">New folder</string>
+    <string name="folder_action_edit">Edit folder</string>
+    <string name="folder_action_actions">Folder actions</string>
+    <string name="folder_field_name">Name</string>
+    <string name="folder_delete_title">Delete folder</string>
+    <string name="folder_delete_message">"%1$s" will be deleted. Photos stay on disk but lose their index entry; you can re-index from the web app.</string>
+    <string name="folder_permissions_title">Folder members</string>
+    <string name="folder_permissions_empty">Only you have access. Invite people to grant them read or write access.</string>
 </resources>
