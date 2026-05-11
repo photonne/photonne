@@ -42,6 +42,28 @@ internal data class BatchAssetIdsRequest(val assetIds: List<String>)
 internal data class UpdateDescriptionBody(val caption: String?)
 
 @Serializable
+internal data class CreateFolderBody(
+    val name: String,
+    val parentFolderId: String? = null,
+    val isSharedSpace: Boolean = false
+)
+
+@Serializable
+internal data class UpdateFolderBody(
+    val name: String,
+    val parentFolderId: String? = null
+)
+
+@Serializable
+internal data class SetFolderPermissionBody(
+    val userId: String,
+    val canRead: Boolean,
+    val canWrite: Boolean,
+    val canDelete: Boolean,
+    val canManagePermissions: Boolean
+)
+
+@Serializable
 internal data class SetCoverRequest(val assetId: String)
 
 @Serializable
@@ -104,6 +126,19 @@ interface PhotonneApi {
     suspend fun getFolders(): List<FolderSummary>
     suspend fun getFolder(folderId: String): FolderSummary
     suspend fun getFolderAssets(folderId: String): List<TimelineItem>
+    suspend fun createFolder(name: String, parentFolderId: String?, isSharedSpace: Boolean): FolderSummary
+    suspend fun updateFolder(folderId: String, name: String, parentFolderId: String?): FolderSummary
+    suspend fun deleteFolder(folderId: String)
+    suspend fun listFolderPermissions(folderId: String): List<AlbumPermission>
+    suspend fun setFolderPermission(
+        folderId: String,
+        userId: String,
+        canRead: Boolean,
+        canWrite: Boolean,
+        canDelete: Boolean,
+        canManagePermissions: Boolean
+    ): AlbumPermission
+    suspend fun removeFolderPermission(folderId: String, userId: String)
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -517,6 +552,102 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun createFolder(
+        name: String,
+        parentFolderId: String?,
+        isSharedSpace: Boolean
+    ): FolderSummary {
+        val response: HttpResponse = client.post("$baseUrl/api/folders") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateFolderBody(name = name, parentFolderId = parentFolderId, isSharedSpace = isSharedSpace))
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Folder create failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun updateFolder(
+        folderId: String,
+        name: String,
+        parentFolderId: String?
+    ): FolderSummary {
+        val response: HttpResponse = client.put("$baseUrl/api/folders/$folderId") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateFolderBody(name = name, parentFolderId = parentFolderId))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Folder update failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun deleteFolder(folderId: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/folders/$folderId")
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Folder delete failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun listFolderPermissions(folderId: String): List<AlbumPermission> {
+        val response: HttpResponse = client.get("$baseUrl/api/folders/$folderId/permissions")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Listing folder members failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun setFolderPermission(
+        folderId: String,
+        userId: String,
+        canRead: Boolean,
+        canWrite: Boolean,
+        canDelete: Boolean,
+        canManagePermissions: Boolean
+    ): AlbumPermission {
+        val response: HttpResponse = client.post("$baseUrl/api/folders/$folderId/permissions") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                SetFolderPermissionBody(
+                    userId = userId,
+                    canRead = canRead,
+                    canWrite = canWrite,
+                    canDelete = canDelete,
+                    canManagePermissions = canManagePermissions
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Granting folder permission failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun removeFolderPermission(folderId: String, userId: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/folders/$folderId/permissions/$userId")
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Removing folder member failed (${response.status.value})"
+            )
+        }
     }
 }
 

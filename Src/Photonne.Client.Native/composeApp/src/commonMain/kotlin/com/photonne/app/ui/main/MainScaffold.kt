@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
+import com.photonne.app.resources.folder_action_actions
+import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
@@ -389,10 +391,22 @@ fun AlbumDetailTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FoldersListTopBar(user: UserDto, onLogout: () -> Unit) {
+fun FoldersListTopBar(
+    user: UserDto,
+    onCreateFolder: () -> Unit,
+    onLogout: () -> Unit
+) {
     TopAppBar(
         title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        actions = {
+            IconButton(onClick = onCreateFolder) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.folder_action_new)
+                )
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
     )
 }
 
@@ -401,10 +415,18 @@ fun FoldersListTopBar(user: UserDto, onLogout: () -> Unit) {
 fun FolderDetailTopBar(
     title: String,
     subtitle: String?,
+    canEdit: Boolean,
+    canDelete: Boolean,
+    canManageMembers: Boolean,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onManageMembers: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
 ) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val hasMenu = canEdit || canDelete || canManageMembers
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -426,7 +448,53 @@ fun FolderDetailTopBar(
                 }
             }
         },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        actions = {
+            if (hasMenu) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = stringResource(Res.string.folder_action_actions)
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (canEdit) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.action_edit)) },
+                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                onClick = { menuOpen = false; onEdit() }
+                            )
+                        }
+                        if (canManageMembers) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.album_action_members)) },
+                                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                                onClick = { menuOpen = false; onManageMembers() }
+                            )
+                        }
+                        if (canDelete) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(Res.string.action_delete),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = { menuOpen = false; onDelete() }
+                            )
+                        }
+                    }
+                }
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
     )
 }
 

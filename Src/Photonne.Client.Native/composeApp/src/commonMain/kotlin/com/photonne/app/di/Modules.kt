@@ -3,6 +3,7 @@ package com.photonne.app.di
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.ui.folder.FolderDetailViewModel
+import com.photonne.app.ui.folder.FolderPermissionsViewModel
 import com.photonne.app.ui.folder.FoldersViewModel
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiClient
@@ -64,4 +65,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AlbumPermissionsViewModel)
     viewModelOf(::FoldersViewModel)
     viewModelOf(::FolderDetailViewModel)
+    viewModelOf(::FolderPermissionsViewModel)
 }

@@ -10,11 +10,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.photonne.app.data.models.FolderSummary
+
 data class FolderDetailUiState(
     val folderId: String? = null,
     val folderName: String? = null,
     val items: List<TimelineItem> = emptyList(),
     val isLoading: Boolean = false,
+    val isMutating: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -61,5 +64,53 @@ class FolderDetailViewModel(
         _state.update { previous ->
             previous.copy(items = previous.items.filterNot { it.id == assetId })
         }
+    }
+
+    fun rename(name: String, onSuccess: (FolderSummary) -> Unit = {}) {
+        val folderId = _state.value.folderId ?: return
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.update(folderId, name.trim(), parentFolderId = null) }
+                .onSuccess { folder ->
+                    _state.update {
+                        it.copy(isMutating = false, folderName = folder.name)
+                    }
+                    onSuccess(folder)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to rename folder"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun delete(onDeleted: (String) -> Unit) {
+        val folderId = _state.value.folderId ?: return
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.delete(folderId) }
+                .onSuccess {
+                    _state.value = FolderDetailUiState()
+                    onDeleted(folderId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to delete folder"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(errorMessage = null) }
     }
 }
