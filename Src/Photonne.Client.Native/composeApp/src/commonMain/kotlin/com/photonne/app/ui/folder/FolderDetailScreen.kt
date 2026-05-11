@@ -30,13 +30,15 @@ import org.koin.compose.koinInject
 fun FolderDetailScreen(
     folderId: String,
     folderName: String,
+    parentFolderId: String?,
     onItemClick: (Int) -> Unit,
+    onItemLongClick: (Int) -> Unit,
     viewModel: FolderDetailViewModel
 ) {
     val config: PhotonneAppConfig = koinInject()
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(folderId) { viewModel.open(folderId, folderName) }
+    LaunchedEffect(folderId) { viewModel.open(folderId, folderName, parentFolderId) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -73,6 +75,8 @@ fun FolderDetailScreen(
                 items = state.items,
                 baseUrl = config.apiBaseUrl,
                 onItemClick = onItemClick,
+                onItemLongClick = onItemLongClick,
+                selectedIds = state.selection,
                 modifier = Modifier.fillMaxWidth()
             )
         }

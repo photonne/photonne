@@ -64,6 +64,13 @@ internal data class SetFolderPermissionBody(
 )
 
 @Serializable
+internal data class MoveFolderAssetsBody(
+    val sourceFolderId: String?,
+    val targetFolderId: String,
+    val assetIds: List<String>
+)
+
+@Serializable
 internal data class SetCoverRequest(val assetId: String)
 
 @Serializable
@@ -139,6 +146,11 @@ interface PhotonneApi {
         canManagePermissions: Boolean
     ): AlbumPermission
     suspend fun removeFolderPermission(folderId: String, userId: String)
+    suspend fun moveFolderAssets(
+        sourceFolderId: String?,
+        targetFolderId: String,
+        assetIds: List<String>
+    )
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -646,6 +658,29 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Removing folder member failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun moveFolderAssets(
+        sourceFolderId: String?,
+        targetFolderId: String,
+        assetIds: List<String>
+    ) {
+        val response: HttpResponse = client.post("$baseUrl/api/folders/assets/move") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                MoveFolderAssetsBody(
+                    sourceFolderId = sourceFolderId,
+                    targetFolderId = targetFolderId,
+                    assetIds = assetIds
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Moving folder assets failed (${response.status.value})"
             )
         }
     }

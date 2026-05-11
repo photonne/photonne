@@ -39,8 +39,11 @@ import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
+import androidx.compose.material3.TextButton
 import com.photonne.app.resources.folder_action_actions
+import com.photonne.app.resources.folder_action_move
 import com.photonne.app.resources.folder_action_new
+import com.photonne.app.resources.folder_selection_move
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
@@ -418,15 +421,17 @@ fun FolderDetailTopBar(
     canEdit: Boolean,
     canDelete: Boolean,
     canManageMembers: Boolean,
+    canMove: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onMove: () -> Unit,
     onDelete: () -> Unit,
     onManageMembers: () -> Unit,
     user: UserDto,
     onLogout: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = canEdit || canDelete || canManageMembers
+    val hasMenu = canEdit || canDelete || canManageMembers || canMove
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -465,6 +470,12 @@ fun FolderDetailTopBar(
                                 onClick = { menuOpen = false; onEdit() }
                             )
                         }
+                        if (canMove) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.folder_action_move)) },
+                                onClick = { menuOpen = false; onMove() }
+                            )
+                        }
                         if (canManageMembers) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.album_action_members)) },
@@ -494,6 +505,37 @@ fun FolderDetailTopBar(
                 }
             }
             AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderSelectionTopBar(
+    selectedCount: Int,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onMoveToFolder: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = {
+            TextButton(onClick = onMoveToFolder, enabled = !isMutating) {
+                Text(stringResource(Res.string.folder_selection_move))
+            }
         }
     )
 }

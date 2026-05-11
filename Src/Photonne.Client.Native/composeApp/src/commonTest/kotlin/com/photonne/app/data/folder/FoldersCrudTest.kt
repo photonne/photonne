@@ -173,6 +173,24 @@ class FoldersCrudTest {
     }
 
     @Test
+    fun move_assets_posts_to_dedicated_endpoint() = runTest {
+        val captured = mutableListOf<Pair<HttpMethod, String>>()
+        val engine = MockEngine { request ->
+            captured += request.method to request.url.encodedPath
+            respond(content = ByteReadChannel(""), status = HttpStatusCode.NoContent)
+        }
+        val repo = newRepo(engine)
+
+        repo.moveAssets(
+            sourceFolderId = "f-1",
+            targetFolderId = "f-2",
+            assetIds = listOf("a-1", "a-2")
+        )
+        assertEquals(HttpMethod.Post, captured.single().first)
+        assertEquals("/api/folders/assets/move", captured.single().second)
+    }
+
+    @Test
     fun revoke_member_deletes_user_id() = runTest {
         val captured = mutableListOf<Pair<HttpMethod, String>>()
         val engine = MockEngine { request ->

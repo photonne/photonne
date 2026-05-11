@@ -43,4 +43,16 @@ class FoldersRepository(
     suspend fun revokeMember(folderId: String, userId: String) {
         api.removeFolderPermission(folderId, userId)
     }
+
+    suspend fun moveAssets(
+        sourceFolderId: String?,
+        targetFolderId: String,
+        assetIds: List<String>
+    ) {
+        api.moveFolderAssets(
+            sourceFolderId = sourceFolderId,
+            targetFolderId = targetFolderId,
+            assetIds = assetIds
+        )
+    }
 }
