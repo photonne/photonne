@@ -11,7 +11,7 @@ public class AssetDetailEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/assets/{assetId}", Handle)
+        app.MapGet("/api/assets/{assetId:guid}", Handle)
             .CodeSample(
                 codeSample: "curl -X GET \"http://localhost:5000/api/assets/1\" -H \"Accept: application/json\"",
                 label: "cURL Example")

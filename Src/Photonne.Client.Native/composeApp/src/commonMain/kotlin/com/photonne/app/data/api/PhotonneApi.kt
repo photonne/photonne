@@ -4,6 +4,7 @@ import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetDetail
+import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
@@ -111,7 +112,21 @@ interface PhotonneApi {
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
     suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>)
     suspend fun archiveAssets(assetIds: List<String>)
+    suspend fun unarchiveAssets(assetIds: List<String>)
+    suspend fun unarchiveAll()
     suspend fun trashAssets(assetIds: List<String>)
+    suspend fun restoreAssets(assetIds: List<String>)
+    suspend fun restoreAllTrash()
+    suspend fun purgeAssets(assetIds: List<String>)
+    suspend fun emptyTrash()
+    suspend fun getArchivedAssets(
+        cursor: Instant? = null,
+        pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
+    ): AssetPage
+    suspend fun getTrashedAssets(
+        cursor: Instant? = null,
+        pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
+    ): AssetPage
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
@@ -393,6 +408,87 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Trash failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun unarchiveAssets(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/unarchive") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        ensureSuccess(response, "Unarchive failed")
+    }
+
+    override suspend fun unarchiveAll() {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/archive/unarchive-all")
+        ensureSuccess(response, "Unarchive all failed")
+    }
+
+    override suspend fun restoreAssets(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/restore") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        ensureSuccess(response, "Restore failed")
+    }
+
+    override suspend fun restoreAllTrash() {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/trash/restore-all")
+        ensureSuccess(response, "Restore all failed")
+    }
+
+    override suspend fun purgeAssets(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/purge") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        ensureSuccess(response, "Purge failed")
+    }
+
+    override suspend fun emptyTrash() {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/trash/empty")
+        ensureSuccess(response, "Empty trash failed")
+    }
+
+    override suspend fun getArchivedAssets(cursor: Instant?, pageSize: Int): AssetPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/archived") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Archived list failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getTrashedAssets(cursor: Instant?, pageSize: Int): AssetPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/trash") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Trash list failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    private fun ensureSuccess(response: HttpResponse, message: String) {
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "$message (${response.status.value})"
             )
         }
     }

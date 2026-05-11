@@ -41,10 +41,16 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
 import androidx.compose.material3.TextButton
+import com.photonne.app.resources.archive_action_unarchive
+import com.photonne.app.resources.archive_action_unarchive_all
 import com.photonne.app.resources.folder_action_actions
 import com.photonne.app.resources.folder_action_move
 import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_selection_move
+import com.photonne.app.resources.trash_action_delete_forever
+import com.photonne.app.resources.trash_action_empty
+import com.photonne.app.resources.trash_action_restore
+import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
@@ -52,6 +58,7 @@ import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_logout
+import com.photonne.app.resources.action_more
 import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_action_album_actions
@@ -569,5 +576,205 @@ fun MoreTopBar(user: UserDto, onLogout: () -> Unit) {
     TopAppBar(
         title = { Text("Más", style = MaterialTheme.typography.titleMedium) },
         actions = { AccountMenu(user = user, onLogout = onLogout) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ArchivedTopBar(
+    title: String,
+    subtitle: String?,
+    canUnarchiveAll: Boolean,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    onUnarchiveAll: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.action_refresh)
+                )
+            }
+            if (canUnarchiveAll) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = stringResource(Res.string.action_more)
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.archive_action_unarchive_all)) },
+                            onClick = { menuOpen = false; onUnarchiveAll() }
+                        )
+                    }
+                }
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TrashTopBar(
+    title: String,
+    subtitle: String?,
+    canActOnAll: Boolean,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    onRestoreAll: () -> Unit,
+    onEmptyTrash: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+            }
+        },
+        title = {
+            androidx.compose.foundation.layout.Column {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                subtitle?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.action_refresh)
+                )
+            }
+            if (canActOnAll) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = stringResource(Res.string.action_more)
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.trash_action_restore_all)) },
+                            onClick = { menuOpen = false; onRestoreAll() }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(Res.string.trash_action_empty),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            onClick = { menuOpen = false; onEmptyTrash() }
+                        )
+                    }
+                }
+            }
+            AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+/** Selection top bar tailored to the Archived screen — only exposes Unarchive. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ArchivedSelectionTopBar(
+    selectedCount: Int,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onUnarchive: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = {
+            TextButton(onClick = onUnarchive, enabled = !isMutating) {
+                Text(stringResource(Res.string.archive_action_unarchive))
+            }
+        }
+    )
+}
+
+/** Selection top bar tailored to the Trash screen — Restore + Delete forever. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TrashSelectionTopBar(
+    selectedCount: Int,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onRestore: () -> Unit,
+    onPurge: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        actions = {
+            TextButton(onClick = onRestore, enabled = !isMutating) {
+                Text(stringResource(Res.string.trash_action_restore))
+            }
+            IconButton(onClick = onPurge, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(Res.string.trash_action_delete_forever),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     )
 }
