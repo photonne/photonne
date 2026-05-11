@@ -623,6 +623,28 @@ fun UploadTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun MapTopBar(
+    title: String,
+    onBack: () -> Unit,
+    user: UserDto,
+    onLogout: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
+            }
+        },
+        title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
+        actions = { AccountMenu(user = user, onLogout = onLogout) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun ArchivedTopBar(
     title: String,
     subtitle: String?,

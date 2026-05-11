@@ -8,6 +8,7 @@ import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
+import com.photonne.app.data.models.MapCluster
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.PeoplePage
 import com.photonne.app.data.models.SceneLabel
@@ -142,6 +143,13 @@ interface PhotonneApi {
         mimeType: String,
         bytes: ByteArray
     ): UploadAssetResponse
+    suspend fun getMapClusters(
+        zoom: Int,
+        minLat: Double? = null,
+        minLng: Double? = null,
+        maxLat: Double? = null,
+        maxLng: Double? = null
+    ): List<MapCluster>
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
@@ -529,6 +537,29 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Upload failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getMapClusters(
+        zoom: Int,
+        minLat: Double?,
+        minLng: Double?,
+        maxLat: Double?,
+        maxLng: Double?
+    ): List<MapCluster> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/map") {
+            parameter("zoom", zoom)
+            if (minLat != null) parameter("minLat", minLat)
+            if (minLng != null) parameter("minLng", minLng)
+            if (maxLat != null) parameter("maxLat", maxLat)
+            if (maxLng != null) parameter("maxLng", maxLng)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Map clusters fetch failed (${response.status.value})"
             )
         }
         return response.body()

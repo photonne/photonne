@@ -34,6 +34,7 @@ import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
+import com.photonne.app.resources.map_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
@@ -100,7 +101,7 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Upload, Archived, Trash }
+private enum class MoreSubscreen { Upload, Map, Archived, Trash }
 
 @Composable
 fun App() {
@@ -135,6 +136,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel = koinViewModel()
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
+    val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -297,6 +299,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             uploadState.pendingCount
                         )
                     else null,
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
+                com.photonne.app.ui.main.MapTopBar(
+                    title = stringResource(Res.string.map_title),
                     onBack = { moreSubscreen = null },
                     user = user.user,
                     onLogout = onLogout
@@ -527,6 +536,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         user = user.user,
                         onLogout = onLogout,
                         onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
+                        onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
                     )
@@ -543,6 +553,43 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onCancelAll = uploadViewModel::cancelAll,
                         onClearFinished = uploadViewModel::clearFinished,
                         onDismissPickerError = uploadViewModel::clearPickerError
+                    )
+                    MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
+                        viewModel = mapViewModel,
+                        onClusterClick = { cluster ->
+                            // Build a synthetic timeline-item list out of the
+                            // cluster's assets so the existing AssetDetail
+                            // pager can swipe through them. We only have ids
+                            // at hand; the viewer fetches each asset's full
+                            // detail on demand, so a thin TimelineItem with
+                            // just the id is enough to seed the pager.
+                            val items = cluster.assetIds.map { id ->
+                                com.photonne.app.data.models.TimelineItem(
+                                    id = id,
+                                    fileName = "",
+                                    fullPath = "",
+                                    fileSize = 0L,
+                                    fileCreatedAt = cluster.earliestDate,
+                                    fileModifiedAt = cluster.earliestDate,
+                                    extension = "",
+                                    scannedAt = cluster.earliestDate,
+                                    type = "Image",
+                                    hasThumbnails = cluster.hasThumbnail
+                                )
+                            }
+                            if (items.isNotEmpty()) {
+                                assetDetail = AssetDetailContext(
+                                    items = items,
+                                    startIndex = 0,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        }
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
