@@ -26,6 +26,7 @@ import com.photonne.app.data.models.SemanticSearchResponse
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
+import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -1336,7 +1337,7 @@ class PhotonneApiClient(
         }
     }
 
-    override suspend fun getCurrentUser(): com.photonne.app.data.models.UserDto {
+    override suspend fun getCurrentUser(): UserDto {
         val response: HttpResponse = client.get("$baseUrl/api/users/me")
         if (response.status != HttpStatusCode.OK) {
             throw PhotonneApiException(
@@ -1349,7 +1350,7 @@ class PhotonneApiClient(
 
     override suspend fun updateProfile(
         request: com.photonne.app.data.models.UpdateProfileRequest
-    ): com.photonne.app.data.models.UserDto {
+    ): UserDto {
         val response: HttpResponse = client.put("$baseUrl/api/users/me") {
             contentType(ContentType.Application.Json)
             setBody(request)
