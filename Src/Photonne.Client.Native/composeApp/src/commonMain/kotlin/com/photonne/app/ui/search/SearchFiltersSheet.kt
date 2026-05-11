@@ -20,6 +20,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -40,6 +41,8 @@ import com.photonne.app.resources.search_date_range
 import com.photonne.app.resources.search_date_to
 import com.photonne.app.resources.search_filters_loading
 import com.photonne.app.resources.search_objects_count
+import com.photonne.app.resources.search_ocr_hint
+import com.photonne.app.resources.search_ocr_title
 import com.photonne.app.resources.search_people_count
 import com.photonne.app.resources.search_scenes_count
 import kotlinx.datetime.Instant
@@ -54,6 +57,7 @@ fun SearchFiltersSheet(
     state: SearchUiState,
     onDismiss: () -> Unit,
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit,
+    onOcrChange: (String) -> Unit,
     onToggleObject: (String) -> Unit,
     onToggleScene: (String) -> Unit,
     onTogglePerson: (String) -> Unit,
@@ -74,6 +78,19 @@ fun SearchFiltersSheet(
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // OCR (text inside images)
+            Text(
+                stringResource(Res.string.search_ocr_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            OutlinedTextField(
+                value = state.ocrText,
+                onValueChange = onOcrChange,
+                placeholder = { Text(stringResource(Res.string.search_ocr_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             // Date range
             Text(
                 stringResource(Res.string.search_date_range),

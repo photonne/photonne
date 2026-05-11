@@ -49,6 +49,7 @@ import org.koin.compose.koinInject
 fun SearchScreen(
     viewModel: SearchViewModel,
     onItemClick: (Int) -> Unit,
+    onItemLongClick: (Int) -> Unit,
     onOpenFilters: () -> Unit
 ) {
     val config: PhotonneAppConfig = koinInject()
@@ -126,6 +127,12 @@ fun SearchScreen(
                     items = state.results,
                     baseUrl = config.apiBaseUrl,
                     onItemClick = onItemClick,
+                    onItemLongClick = onItemLongClick,
+                    selectedIds = state.selection,
+                    hasMore = state.hasMore,
+                    isAppending = state.isAppending,
+                    isInitialLoading = state.isLoading,
+                    onLoadMore = viewModel::loadMore,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -214,6 +221,7 @@ private fun ActiveFiltersRow(state: SearchUiState) {
             if (state.from != null || state.to != null) {
                 add(state.from?.toString().orEmpty() + " — " + state.to?.toString().orEmpty())
             }
+            if (state.ocrText.isNotBlank()) add("OCR: ${state.ocrText}")
             if (state.selectedPersonIds.isNotEmpty()) {
                 val names = state.selectedPersonIds
                     .mapNotNull { id -> state.people.firstOrNull { it.id == id }?.name }

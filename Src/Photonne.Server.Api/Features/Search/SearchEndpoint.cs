@@ -28,6 +28,7 @@ public class SearchEndpoint : IEndpoint
         [FromQuery] DateTime? to,
         [FromQuery] string? folder,
         [FromQuery] int? pageSize,
+        [FromQuery] int? offset,
         [FromQuery(Name = "personId")] Guid[]? personIds,
         [FromQuery(Name = "objectLabel")] string[]? objectLabels,
         [FromQuery(Name = "sceneLabel")] string[]? sceneLabels,
@@ -35,6 +36,10 @@ public class SearchEndpoint : IEndpoint
         CancellationToken ct)
     {
         var effectivePageSize = pageSize is > 0 ? Math.Min(pageSize.Value, 200) : 100;
+        // Cap offset so a forged query can't force the server to materialize
+        // an arbitrarily deep window. 10k matches the practical scroll depth
+        // we'd ever ask the user to traverse without re-filtering.
+        var effectiveOffset = offset is > 0 ? Math.Min(offset.Value, 10_000) : 0;
 
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
@@ -178,6 +183,8 @@ public class SearchEndpoint : IEndpoint
         var dbItems = await query
             .OrderByDescending(a => a.FileCreatedAt)
             .ThenByDescending(a => a.FileModifiedAt)
+            .ThenBy(a => a.Id)
+            .Skip(effectiveOffset)
             .Take(effectivePageSize + 1)
             .ToListAsync(ct);
 

@@ -138,6 +138,8 @@
     <string name="search_date_range">Date range</string>
     <string name="search_date_from">From</string>
     <string name="search_date_to">To</string>
+    <string name="search_ocr_title">Text inside images (OCR)</string>
+    <string name="search_ocr_hint">e.g. license plate, ticket, invoice…</string>
     <string name="search_objects_count">Objects (%1$d)</string>
     <string name="search_scenes_count">Scenes (%1$d)</string>
     <string name="search_people_count">People (%1$d)</string>
