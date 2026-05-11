@@ -13,6 +13,7 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.data.timeline.MemoriesRepository
 import com.photonne.app.data.timeline.TimelineRepository
 import com.photonne.app.ui.album.AlbumDetailViewModel
@@ -21,6 +22,7 @@ import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsViewModel
 import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.login.LoginViewModel
+import com.photonne.app.ui.search.SearchViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import io.ktor.client.HttpClient
@@ -55,6 +57,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AssetDetailRepository)
     singleOf(::AlbumsRepository)
     singleOf(::FoldersRepository)
+    singleOf(::SearchRepository)
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoriesViewModel)
@@ -66,4 +69,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::FoldersViewModel)
     viewModelOf(::FolderDetailViewModel)
     viewModelOf(::FolderPermissionsViewModel)
+    viewModelOf(::SearchViewModel)
 }
