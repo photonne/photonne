@@ -6,12 +6,13 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -28,56 +30,60 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.photonne.app.data.models.MapCluster
+import com.photonne.app.data.models.MapPoint
 import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Lat/lng box derived from the current viewport and zoom; what we
- * forward to the backend so it can return only the visible clusters. */
-data class MapBounds(
-    val zoom: Int,
-    val minLat: Double,
-    val minLng: Double,
-    val maxLat: Double,
-    val maxLng: Double
-)
+/** Min/max zoom we ever request from the tile server. CARTO and OSM both
+ * go up to 19; we stay one short so re-pinching past max never blanks out. */
+const val MIN_ZOOM = 1
+const val MAX_ZOOM = 18
+
+/** Dark CARTO basemap, same as the PWA's default. `{s}` rotates through
+ * `a..d` so requests don't all hit the same subdomain. */
+private const val TILE_URL_TEMPLATE =
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+
+private val MarkerBorderColor = Color(0xFFFFD166)
+private val ClusterBadgeColor = Color(0xFFF44336)
+private val MapBackground = Color(0xFF1A1A1A)
 
 /**
- * Interactive OSM tile viewer with pinch-to-zoom and drag-to-pan, plus
- * an overlay of clickable cluster markers. Calls [onViewportChanged]
- * whenever the visible region settles so the caller can refetch data.
+ * Interactive CARTO tile viewer with pinch-to-zoom and drag-to-pan,
+ * plus an overlay of clickable thumbnail markers. Cluster markers
+ * carry a small red badge with the photo count; single-photo markers
+ * are just the thumbnail circle.
  */
 @Composable
 fun OsmMap(
     centerLat: Double,
     centerLng: Double,
     zoom: Int,
-    clusters: List<MapCluster>,
+    points: List<MapPoint>,
+    baseUrl: String,
     onCenterChanged: (lat: Double, lng: Double) -> Unit,
     onZoomChanged: (zoom: Int) -> Unit,
-    onViewportChanged: (MapBounds) -> Unit,
-    onClusterClick: (MapCluster) -> Unit,
+    onClusterClick: (List<MapPoint>) -> Unit,
+    onPointClick: (MapPoint) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
 
-    // Pinch zoom can hold a fractional accumulator that we promote to
-    // an integer zoom level once it crosses the threshold; OSM tiles
-    // only exist at integer zooms.
     var zoomAccumulator by remember(zoom) { mutableFloatStateOf(0f) }
+
+    val markers by remember(points, zoom) {
+        derivedStateOf { clusterPoints(points = points, zoom = zoom) }
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFE6E2DA))
+            .background(MapBackground)
             .onSizeChanged { size = it }
             .pointerInput(zoom) {
                 detectTransformGestures { _, pan, gestureZoom, _ ->
                     if (pan.x != 0f || pan.y != 0f) {
-                        // Convert screen drag (pixels) to a shift in world pixels.
                         val center = project(LatLng(centerLat, centerLng), zoom)
                         val newCenter = WorldPx(center.x - pan.x, center.y - pan.y)
                         val unprojected = unproject(newCenter, zoom)
@@ -132,8 +138,13 @@ fun OsmMap(
                 val wrappedX = ((tileX % tileMax) + tileMax) % tileMax
                 val tilePxX = (tileX * TILE_SIZE_PX - viewportLeftWorldX).roundToInt()
                 val tilePxY = (tileY * TILE_SIZE_PX - viewportTopWorldY).roundToInt()
+                val subdomain = "abcd"[(((tileX + tileY) % 4) + 4) % 4]
                 AsyncImage(
-                    model = "https://tile.openstreetmap.org/$zoom/$wrappedX/$tileY.png",
+                    model = TILE_URL_TEMPLATE
+                        .replace("{s}", subdomain.toString())
+                        .replace("{z}", zoom.toString())
+                        .replace("{x}", wrappedX.toString())
+                        .replace("{y}", tileY.toString()),
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier
@@ -143,75 +154,88 @@ fun OsmMap(
             }
         }
 
-        for (cluster in clusters) {
-            val world = project(LatLng(cluster.latitude, cluster.longitude), zoom)
-            val screenX = (world.x - viewportLeftWorldX).roundToInt()
-            val screenY = (world.y - viewportTopWorldY).roundToInt()
-            // Cull markers slightly outside the viewport
-            if (screenX < -64 || screenX > size.width + 64) continue
-            if (screenY < -64 || screenY > size.height + 64) continue
-            ClusterMarker(
-                cluster = cluster,
+        for (marker in markers) {
+            val screenX = (marker.worldX - viewportLeftWorldX).roundToInt()
+            val screenY = (marker.worldY - viewportTopWorldY).roundToInt()
+            // Generous overdraw so a half-visible marker stays on
+            // screen until it's fully gone.
+            if (screenX < -120 || screenX > size.width + 120) continue
+            if (screenY < -120 || screenY > size.height + 120) continue
+            ThumbnailMarker(
+                marker = marker,
+                baseUrl = baseUrl,
                 offsetPx = IntOffset(screenX, screenY),
-                onClick = { onClusterClick(cluster) }
-            )
-        }
-
-        // Fire viewport-changed once layout settles. We compute lat/lng
-        // bounds at the four screen corners using the projection.
-        LaunchedEffect(zoom, centerLat, centerLng, size) {
-            if (size.width == 0 || size.height == 0) return@LaunchedEffect
-            val tl = unproject(WorldPx(viewportLeftWorldX, viewportTopWorldY), zoom)
-            val br = unproject(
-                WorldPx(
-                    viewportLeftWorldX + size.width,
-                    viewportTopWorldY + size.height
-                ),
-                zoom
-            )
-            onViewportChanged(
-                MapBounds(
-                    zoom = zoom,
-                    minLat = min(tl.latitude, br.latitude),
-                    maxLat = max(tl.latitude, br.latitude),
-                    minLng = min(tl.longitude, br.longitude),
-                    maxLng = max(tl.longitude, br.longitude)
-                )
+                onClick = {
+                    if (marker.count == 1) onPointClick(marker.firstPoint)
+                    else onClusterClick(marker.points)
+                }
             )
         }
     }
 }
 
 @Composable
-private fun ClusterMarker(
-    cluster: MapCluster,
+private fun ThumbnailMarker(
+    marker: MapMarker,
+    baseUrl: String,
     offsetPx: IntOffset,
     onClick: () -> Unit
 ) {
-    // Keep the disc roughly the same on-screen size whatever the
-    // density. Single-photo clusters get a smaller pin so the
-    // viewport doesn't drown in 40dp circles when fully zoomed in.
-    val sizeDp = if (cluster.count == 1) 28 else (32 + (cluster.count.coerceAtMost(99) / 4))
-    val halfPx = with(LocalDensity.current) { (sizeDp.dp / 2).toPx().toInt() }
+    // Same scaling rule as the PWA: 40dp floor, +2dp per asset, capped
+    // at 80dp so dense regions don't take over the screen.
+    val circleDp = if (marker.count == 1) 44
+    else (35 + marker.count * 2).coerceIn(40, 80)
+    val badgeOffsetDp = 12
+    val totalDp = circleDp + badgeOffsetDp
+    val halfPx = with(LocalDensity.current) { (totalDp.dp / 2).toPx().toInt() }
+
     Box(
         modifier = Modifier
             .offset { IntOffset(offsetPx.x - halfPx, offsetPx.y - halfPx) }
-            .size(sizeDp.dp)
-            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-            .pointerInput(cluster.id) {
+            .size(totalDp.dp)
+            .pointerInput(marker.id) {
                 detectTapGestures(onTap = { onClick() })
-            },
-        contentAlignment = Alignment.Center
+            }
     ) {
-        Text(
-            text = if (cluster.count == 1) "1" else cluster.count.toString(),
-            color = MaterialTheme.colorScheme.onPrimary,
-            style = MaterialTheme.typography.labelSmall
-        )
+        // Yellow ring + thumbnail centred inside the wrapper.
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(circleDp.dp)
+                .clip(CircleShape)
+                .background(MarkerBorderColor)
+                .padding(2.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            val previewId = marker.firstPoint.id
+            if (marker.firstPoint.hasThumbnail) {
+                AsyncImage(
+                    model = "$baseUrl/api/assets/$previewId/thumbnail?size=Small",
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        if (marker.count > 1) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .padding(1.5.dp)
+                    .clip(CircleShape)
+                    .background(ClusterBadgeColor)
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (marker.count > 999) "999+" else marker.count.toString(),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
     }
 }
-
-/** Min/max zoom we ever request from OSM. The free tile server caps at
- * 19; we stay one short so re-pinching after max never produces blanks. */
-const val MIN_ZOOM = 1
-const val MAX_ZOOM = 18

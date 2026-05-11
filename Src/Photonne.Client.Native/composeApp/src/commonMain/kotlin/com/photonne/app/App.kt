@@ -103,6 +103,24 @@ private data class AddToAlbumState(
 
 private enum class MoreSubscreen { Upload, Map, Archived, Trash }
 
+/** Build a thin TimelineItem out of a map point so the asset viewer
+ * can be seeded without an extra fetch — it re-queries AssetDetail
+ * on display, so most fields can stay blank. */
+private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
+    com.photonne.app.data.models.TimelineItem =
+    com.photonne.app.data.models.TimelineItem(
+        id = id,
+        fileName = "",
+        fullPath = "",
+        fileSize = 0L,
+        fileCreatedAt = date,
+        fileModifiedAt = date,
+        extension = "",
+        scannedAt = date,
+        type = "Image",
+        hasThumbnails = hasThumbnail
+    )
+
 @Composable
 fun App() {
     val httpClient: HttpClient = koinInject()
@@ -180,6 +198,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showSearchFilters by remember { mutableStateOf(false) }
     var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
+    var mapClusterPoints by remember {
+        mutableStateOf<List<com.photonne.app.data.models.MapPoint>?>(null)
+    }
     var showUnarchiveAll by remember { mutableStateOf(false) }
     var showRestoreAllTrash by remember { mutableStateOf(false) }
     var showEmptyTrash by remember { mutableStateOf(false) }
@@ -556,39 +577,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
-                        onClusterClick = { cluster ->
-                            // Build a synthetic timeline-item list out of the
-                            // cluster's assets so the existing AssetDetail
-                            // pager can swipe through them. We only have ids
-                            // at hand; the viewer fetches each asset's full
-                            // detail on demand, so a thin TimelineItem with
-                            // just the id is enough to seed the pager.
-                            val items = cluster.assetIds.map { id ->
-                                com.photonne.app.data.models.TimelineItem(
-                                    id = id,
-                                    fileName = "",
-                                    fullPath = "",
-                                    fileSize = 0L,
-                                    fileCreatedAt = cluster.earliestDate,
-                                    fileModifiedAt = cluster.earliestDate,
-                                    extension = "",
-                                    scannedAt = cluster.earliestDate,
-                                    type = "Image",
-                                    hasThumbnails = cluster.hasThumbnail
-                                )
-                            }
-                            if (items.isNotEmpty()) {
-                                assetDetail = AssetDetailContext(
-                                    items = items,
-                                    startIndex = 0,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
-                                )
-                            }
+                        onPointClick = { point ->
+                            // Single thumbnail tap → open the asset
+                            // viewer with this single item. The viewer
+                            // re-fetches asset detail on demand, so a
+                            // thin TimelineItem is enough to seed it.
+                            assetDetail = AssetDetailContext(
+                                items = listOf(point.toSyntheticTimelineItem()),
+                                startIndex = 0,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = { id, isFav ->
+                                    timelineViewModel.setFavorite(id, isFav)
+                                }
+                            )
+                        },
+                        onClusterClick = { points ->
+                            // Multi-asset cluster → open the bottom sheet.
+                            mapClusterPoints = points
                         }
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
@@ -1139,6 +1146,29 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onDismiss = { showPurgeSelected = false },
             onConfirm = {
                 trashViewModel.bulkPurge { showPurgeSelected = false }
+            }
+        )
+    }
+
+    val activeClusterPoints = mapClusterPoints
+    if (activeClusterPoints != null) {
+        com.photonne.app.ui.map.MapClusterSheet(
+            points = activeClusterPoints,
+            baseUrl = koinInject<com.photonne.app.di.PhotonneAppConfig>().apiBaseUrl,
+            onDismiss = { mapClusterPoints = null },
+            onPhotoClick = { index ->
+                val items = activeClusterPoints.map { it.toSyntheticTimelineItem() }
+                assetDetail = AssetDetailContext(
+                    items = items,
+                    startIndex = index,
+                    source = AssetDetailContext.Source.Timeline,
+                    hasMore = false,
+                    onLoadMore = {},
+                    onFavoriteChanged = { id, isFav ->
+                        timelineViewModel.setFavorite(id, isFav)
+                    }
+                )
+                mapClusterPoints = null
             }
         )
     }

@@ -39,10 +39,10 @@ class MapRepositoryTest {
     )
 
     @Test
-    fun clusters_forwards_zoom_and_bounds_query_params() = runTest {
+    fun points_calls_dedicated_endpoint() = runTest {
         val captured = mutableListOf<Pair<HttpMethod, String>>()
         val engine = MockEngine { request ->
-            captured += request.method to request.url.toString()
+            captured += request.method to request.url.encodedPath
             respond(
                 content = ByteReadChannel("[]"),
                 status = HttpStatusCode.OK,
@@ -51,38 +51,29 @@ class MapRepositoryTest {
         }
         val repo = newRepo(engine)
 
-        repo.clusters(
-            zoom = 7,
-            minLat = 40.0,
-            minLng = -3.5,
-            maxLat = 41.0,
-            maxLng = -2.5
-        )
-
-        val url = captured.single().second
+        val points = repo.points()
+        assertTrue(points.isEmpty())
         assertEquals(HttpMethod.Get, captured.single().first)
-        assertTrue("path") { url.contains("/api/assets/map") }
-        assertTrue("zoom") { url.contains("zoom=7") }
-        assertTrue("minLat") { url.contains("minLat=40") }
-        assertTrue("minLng") { url.contains("minLng=-3.5") }
-        assertTrue("maxLat") { url.contains("maxLat=41") }
-        assertTrue("maxLng") { url.contains("maxLng=-2.5") }
+        assertEquals("/api/assets/map/points", captured.single().second)
     }
 
     @Test
-    fun clusters_decodes_response_payload() = runTest {
+    fun points_decodes_response_payload() = runTest {
         val payload = """
             [
               {
-                "id": "c1",
-                "latitude": 40.0,
-                "longitude": -3.0,
-                "count": 4,
-                "assetIds": ["a","b","c","d"],
-                "earliestDate": "2026-01-01T00:00:00Z",
-                "latestDate": "2026-02-01T00:00:00Z",
-                "firstAssetId": "a",
-                "hasThumbnail": true
+                "id": "p1",
+                "latitude": 41.4,
+                "longitude": 2.17,
+                "hasThumbnail": true,
+                "date": "2026-01-01T00:00:00Z"
+              },
+              {
+                "id": "p2",
+                "latitude": 40.4,
+                "longitude": -3.7,
+                "hasThumbnail": false,
+                "date": "2026-02-01T00:00:00Z"
               }
             ]
         """.trimIndent()
@@ -95,11 +86,11 @@ class MapRepositoryTest {
         }
         val repo = newRepo(engine)
 
-        val clusters = repo.clusters(zoom = 5)
-        assertEquals(1, clusters.size)
-        assertEquals("c1", clusters[0].id)
-        assertEquals(4, clusters[0].count)
-        assertEquals("a", clusters[0].firstAssetId)
-        assertTrue { clusters[0].hasThumbnail }
+        val points = repo.points()
+        assertEquals(2, points.size)
+        assertEquals("p1", points[0].id)
+        assertTrue(points[0].hasThumbnail)
+        assertEquals("p2", points[1].id)
+        assertEquals(false, points[1].hasThumbnail)
     }
 }
