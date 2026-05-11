@@ -69,15 +69,19 @@ import com.photonne.app.ui.folder.InviteFolderMemberDialog
 import com.photonne.app.ui.folder.ManageFolderPermissionsDialog
 import com.photonne.app.ui.image.buildPhotonneImageLoader
 import com.photonne.app.ui.login.LoginScreen
+import com.photonne.app.ui.actions.AssetActionWorking
+import com.photonne.app.ui.actions.ShareAssetsDialog
+import com.photonne.app.ui.actions.ShareLinkResultDialog
 import com.photonne.app.ui.main.AlbumDetailTopBar
 import com.photonne.app.ui.main.AlbumsListTopBar
+import com.photonne.app.ui.main.ArchiveMode
+import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.FolderDetailTopBar
 import com.photonne.app.ui.main.FoldersListTopBar
 import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.main.MoreTopBar
-import com.photonne.app.ui.main.SelectionTopBar
 import com.photonne.app.ui.main.TimelineTopBar
 import com.photonne.app.ui.theme.PhotonneTheme
 import com.photonne.app.ui.timeline.TimelineScreen
@@ -160,6 +164,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
+    val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
+        koinViewModel()
     val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
     val peopleViewModel: com.photonne.app.ui.people.PeopleViewModel = koinViewModel()
     val personDetailViewModel: com.photonne.app.ui.people.PersonDetailViewModel = koinViewModel()
@@ -183,6 +189,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val suggestionsState by personSuggestionsViewModel.state.collectAsState()
     val assetFacesState by assetFacesViewModel.state.collectAsState()
     val uploadState by uploadViewModel.state.collectAsState()
+    val actionsState by actionsViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
@@ -205,6 +212,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var bulkAddToAlbumFromMap by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromFavorites by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromPeople by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromFolder by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromArchive by remember { mutableStateOf(false) }
     var selectedPerson by remember {
         mutableStateOf<com.photonne.app.data.models.Person?>(null)
     }
@@ -246,14 +255,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     val topBar: @Composable () -> Unit = {
         when {
-            selectedTab == MainTab.Timeline && timelineState.isSelectionActive -> SelectionTopBar(
-                selectedCount = timelineState.selection.size,
-                isMutating = timelineState.isBulkMutating,
-                onClose = timelineViewModel::clearSelection,
-                onAddToAlbum = { bulkAddToAlbum = true },
-                onArchive = timelineViewModel::bulkArchive,
-                onTrash = timelineViewModel::bulkTrash
-            )
+            selectedTab == MainTab.Timeline && timelineState.isSelectionActive ->
+                AssetSelectionTopBar(
+                    selectedCount = timelineState.selection.size,
+                    totalCount = timelineState.items.size,
+                    isMutating = timelineState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
+                    onClose = timelineViewModel::clearSelection,
+                    onSelectAll = timelineViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(timelineState.selection.toList())
+                    },
+                    onAddToAlbum = { bulkAddToAlbum = true },
+                    onDownload = {
+                        actionsViewModel.download(timelineState.selection.toList())
+                    },
+                    onArchive = timelineViewModel::bulkArchive,
+                    onTrash = timelineViewModel::bulkTrash
+                )
             selectedTab == MainTab.Albums && selectedAlbum != null -> AlbumDetailTopBar(
                 title = albumDetailState.albumName ?: selectedAlbum!!.name,
                 subtitle = albumDetailState.items.size.takeIf { it > 0 }?.let {
@@ -287,11 +306,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             )
             selectedTab == MainTab.Folders && selectedFolder != null &&
                 folderDetailState.isSelectionActive ->
-                com.photonne.app.ui.main.FolderSelectionTopBar(
+                AssetSelectionTopBar(
                     selectedCount = folderDetailState.selection.size,
-                    isMutating = folderDetailState.isBulkMutating,
+                    totalCount = folderDetailState.items.size,
+                    isMutating = folderDetailState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
                     onClose = folderDetailViewModel::clearSelection,
-                    onMoveToFolder = { showMoveSelectedAssets = true }
+                    onSelectAll = folderDetailViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(folderDetailState.selection.toList())
+                    },
+                    onAddToAlbum = { bulkAddToAlbumFromFolder = true },
+                    onDownload = {
+                        actionsViewModel.download(folderDetailState.selection.toList())
+                    },
+                    onArchive = folderDetailViewModel::bulkArchive,
+                    onTrash = folderDetailViewModel::bulkTrash,
+                    onMove = if (selectedFolder?.isOwner == true) {
+                        { showMoveSelectedAssets = true }
+                    } else null
                 )
             selectedTab == MainTab.Folders && selectedFolder != null -> {
                 val folder = selectedFolder!!
@@ -323,14 +356,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onCreateFolder = { showCreateFolder = true },
                     onLogout = onLogout
                 )
-            selectedTab == MainTab.Search && searchState.isSelectionActive -> SelectionTopBar(
-                selectedCount = searchState.selection.size,
-                isMutating = searchState.isBulkMutating,
-                onClose = searchViewModel::clearSelection,
-                onAddToAlbum = { bulkAddToAlbumFromSearch = true },
-                onArchive = searchViewModel::bulkArchive,
-                onTrash = searchViewModel::bulkTrash
-            )
+            selectedTab == MainTab.Search && searchState.isSelectionActive ->
+                AssetSelectionTopBar(
+                    selectedCount = searchState.selection.size,
+                    totalCount = searchState.results.size,
+                    isMutating = searchState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
+                    onClose = searchViewModel::clearSelection,
+                    onSelectAll = searchViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(searchState.selection.toList())
+                    },
+                    onAddToAlbum = { bulkAddToAlbumFromSearch = true },
+                    onDownload = {
+                        actionsViewModel.download(searchState.selection.toList())
+                    },
+                    onArchive = searchViewModel::bulkArchive,
+                    onTrash = searchViewModel::bulkTrash
+                )
             selectedTab == MainTab.Search ->
                 com.photonne.app.ui.main.SearchTopBar(user = user.user, onLogout = onLogout)
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Upload ->
@@ -379,11 +422,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null && personDetailState.isSelectionActive ->
-                com.photonne.app.ui.main.PersonDetailSelectionTopBar(
+                AssetSelectionTopBar(
                     selectedCount = personDetailState.selection.size,
-                    isMutating = personDetailState.isBulkMutating,
+                    totalCount = personDetailState.items.size,
+                    isMutating = personDetailState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
                     onClose = personDetailViewModel::clearSelection,
+                    onSelectAll = personDetailViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(personDetailState.selection.toList())
+                    },
                     onAddToAlbum = { bulkAddToAlbumFromPeople = true },
+                    onDownload = {
+                        actionsViewModel.download(personDetailState.selection.toList())
+                    },
                     onArchive = personDetailViewModel::bulkArchive,
                     onTrash = personDetailViewModel::bulkTrash,
                     onUnlink = {
@@ -443,11 +495,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites &&
                 favoritesState.isSelectionActive ->
-                com.photonne.app.ui.main.FavoritesSelectionTopBar(
+                AssetSelectionTopBar(
                     selectedCount = favoritesState.selection.size,
-                    isMutating = favoritesState.isBulkMutating,
+                    totalCount = favoritesState.items.size,
+                    isMutating = favoritesState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
                     onClose = favoritesViewModel::clearSelection,
+                    onSelectAll = favoritesViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(favoritesState.selection.toList())
+                    },
                     onAddToAlbum = { bulkAddToAlbumFromFavorites = true },
+                    onDownload = {
+                        actionsViewModel.download(favoritesState.selection.toList())
+                    },
                     onArchive = favoritesViewModel::bulkArchive,
                     onTrash = favoritesViewModel::bulkTrash
                 )
@@ -465,11 +526,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
                 archivedState.isSelectionActive ->
-                com.photonne.app.ui.main.ArchivedSelectionTopBar(
+                AssetSelectionTopBar(
                     selectedCount = archivedState.selection.size,
-                    isMutating = archivedState.isBulkMutating,
+                    totalCount = archivedState.items.size,
+                    isMutating = archivedState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
+                    archiveMode = ArchiveMode.Unarchive,
                     onClose = archivedViewModel::clearSelection,
-                    onUnarchive = { archivedViewModel.bulkUnarchive() }
+                    onSelectAll = archivedViewModel::toggleSelectAll,
+                    onShare = {
+                        actionsViewModel.beginShare(archivedState.selection.toList())
+                    },
+                    onAddToAlbum = { bulkAddToAlbumFromArchive = true },
+                    onDownload = {
+                        actionsViewModel.download(archivedState.selection.toList())
+                    },
+                    onArchive = { archivedViewModel.bulkUnarchive() },
+                    onTrash = archivedViewModel::bulkTrash
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived -> {
                 val count = archivedState.items.size
@@ -1478,6 +1551,67 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 }
             }
+        )
+    }
+
+    if (bulkAddToAlbumFromFolder) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = folderDetailState.isBulkMutating,
+            errorMessage = folderDetailState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromFolder = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                folderDetailViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromFolder = false
+            },
+            onDismiss = { bulkAddToAlbumFromFolder = false }
+        )
+    }
+
+    if (bulkAddToAlbumFromArchive) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = archivedState.isBulkMutating,
+            errorMessage = archivedState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromArchive = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                archivedViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromArchive = false
+            },
+            onDismiss = { bulkAddToAlbumFromArchive = false }
+        )
+    }
+
+    val shareIds = actionsState.shareChooserIds
+    if (shareIds != null) {
+        ShareAssetsDialog(
+            selectedCount = shareIds.size,
+            onDismiss = actionsViewModel::cancelShare,
+            onShareDirectly = { actionsViewModel.shareDirectly(shareIds) },
+            onCreateLink = { name -> actionsViewModel.createPhotonneLink(shareIds, name) }
+        )
+    }
+
+    val createdLink = actionsState.createdLink
+    if (createdLink != null) {
+        ShareLinkResultDialog(
+            url = createdLink,
+            onCopy = { actionsViewModel.dismissLink() },
+            onDismiss = actionsViewModel::dismissLink
         )
     }
 

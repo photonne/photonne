@@ -119,6 +119,13 @@ class FavoritesViewModel(
         _state.update { it.copy(selection = emptySet()) }
     }
 
+    fun toggleSelectAll() {
+        _state.update { previous ->
+            val all = previous.items.mapTo(HashSet()) { it.id }
+            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+        }
+    }
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         // When the user unfavorites an asset from the viewer while the
         // Favorites screen is hosting the list, it disappears from the

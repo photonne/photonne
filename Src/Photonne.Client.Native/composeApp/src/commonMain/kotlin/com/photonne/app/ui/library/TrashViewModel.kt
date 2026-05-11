@@ -117,6 +117,13 @@ class TrashViewModel(
         _state.update { it.copy(selection = emptySet()) }
     }
 
+    fun toggleSelectAll() {
+        _state.update { previous ->
+            val all = previous.items.mapTo(HashSet()) { it.id }
+            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+        }
+    }
+
     fun bulkRestore(onSuccess: (Int) -> Unit = {}) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return

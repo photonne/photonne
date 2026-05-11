@@ -2,6 +2,7 @@ package com.photonne.app.ui.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,8 @@ data class ArchivedUiState(
 }
 
 class ArchivedViewModel(
-    private val repository: AssetDetailRepository
+    private val repository: AssetDetailRepository,
+    private val albumsRepository: AlbumsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ArchivedUiState())
@@ -117,6 +119,13 @@ class ArchivedViewModel(
         _state.update { it.copy(selection = emptySet()) }
     }
 
+    fun toggleSelectAll() {
+        _state.update { previous ->
+            val all = previous.items.mapTo(HashSet()) { it.id }
+            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+        }
+    }
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         _state.update { previous ->
             previous.copy(
@@ -173,6 +182,55 @@ class ArchivedViewModel(
                         it.copy(
                             isBulkMutating = false,
                             errorMessage = error.message ?: "Failed to unarchive all"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun bulkTrash() {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        val previousItems = _state.value.items
+        _state.update {
+            it.copy(
+                isBulkMutating = true,
+                errorMessage = null,
+                items = it.items.filterNot { item -> item.id in it.selection },
+                selection = emptySet()
+            )
+        }
+        viewModelScope.launch {
+            runCatching { repository.trash(ids) }
+                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            items = previousItems,
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: "Failed to delete"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        val added = _state.value.items.filter { it.id in ids }
+        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
+                .onSuccess {
+                    _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
+                    onSuccess(added)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            errorMessage = error.message ?: "Failed to add to album"
                         )
                     }
                 }
