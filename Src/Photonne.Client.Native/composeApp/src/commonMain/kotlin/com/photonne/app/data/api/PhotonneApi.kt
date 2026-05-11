@@ -385,9 +385,9 @@ class PhotonneApiClient(
         if (starIdx >= 0) {
             val raw = header.substring(starIdx + star.length).substringBefore(';').trim()
             val payload = raw.substringAfter("''", raw)
-            return runCatching {
-                io.ktor.http.decodeURLPart(payload)
-            }.getOrDefault(payload).ifEmpty { null }
+            return runCatching { percentDecodeUtf8(payload) }
+                .getOrDefault(payload)
+                .ifEmpty { null }
         }
         val plainIdx = header.indexOf(plain, ignoreCase = true)
         if (plainIdx >= 0) {
@@ -395,6 +395,25 @@ class PhotonneApiClient(
                 .trim('"').ifEmpty { null }
         }
         return null
+    }
+
+    private fun percentDecodeUtf8(input: String): String {
+        val bytes = ArrayList<Byte>(input.length)
+        var i = 0
+        while (i < input.length) {
+            val ch = input[i]
+            if (ch == '%' && i + 2 < input.length) {
+                val code = input.substring(i + 1, i + 3).toIntOrNull(16)
+                if (code != null) {
+                    bytes.add(code.toByte())
+                    i += 3
+                    continue
+                }
+            }
+            bytes.add(ch.code.toByte())
+            i++
+        }
+        return bytes.toByteArray().decodeToString()
     }
 
     override suspend fun toggleFavorite(assetId: String): Boolean {

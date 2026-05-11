@@ -48,7 +48,7 @@ class AssetActionsRepository(
             allowDownload = allowDownload,
             maxViews = null
         )
-        return SharedAssetsLink(albumId = album.id, url = link.url)
+        return SharedAssetsLink(albumId = album.id, url = link.shareUrl)
     }
 }
 

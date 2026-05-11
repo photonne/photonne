@@ -30,6 +30,19 @@ import kotlinx.datetime.toLocalDateTime
 
 private const val PREFETCH_THRESHOLD = 12
 
+/**
+ * Sentinel returned by the server for assets that exist on disk but
+ * haven't been indexed yet (timeline endpoint, "Copied" sync status).
+ * Multiple such rows can come back in the same page, so the grid must
+ * fall back to a path-based key to avoid duplicate-key crashes.
+ */
+private const val EMPTY_ASSET_ID = "00000000-0000-0000-0000-000000000000"
+
+internal fun assetCellKey(item: TimelineItem, index: Int): String =
+    if (item.id.isEmpty() || item.id == EMPTY_ASSET_ID) {
+        "u:$index:${item.fullPath}"
+    } else item.id
+
 internal sealed interface TimelineEntry {
     data class Header(val key: String, val title: String) : TimelineEntry
     data class Cell(val item: TimelineItem, val index: Int) : TimelineEntry
@@ -130,7 +143,7 @@ fun GroupedAssetGrid(
             key = { entry ->
                 when (entry) {
                     is TimelineEntry.Header -> "h:${entry.key}"
-                    is TimelineEntry.Cell -> entry.item.id
+                    is TimelineEntry.Cell -> assetCellKey(entry.item, entry.index)
                 }
             },
             span = { entry ->
