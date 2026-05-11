@@ -181,4 +181,13 @@
     <string name="upload_status_skipped">Ya estaba</string>
     <string name="upload_status_failed">Falló</string>
     <string name="upload_status_cancelled">Cancelado</string>
+
+    <string name="map_title">Mapa</string>
+    <string name="map_empty_title">Sin fotos en el mapa</string>
+    <string name="map_empty_subtitle">Las fotos con coordenadas GPS aparecerán aquí.</string>
+    <string name="map_action_zoom_in">Acercar</string>
+    <string name="map_action_zoom_out">Alejar</string>
+    <string name="map_action_fit_to_data">Centrar en mis fotos</string>
+    <string name="map_cluster_sheet_title">%1$d fotos en este punto</string>
+    <string name="map_action_select_all">Seleccionar todo</string>
 </resources>

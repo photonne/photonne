@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -38,6 +39,8 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.map_title
+import com.photonne.app.resources.more_settings_hint
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_title
@@ -60,6 +63,7 @@ fun MoreScreen(
     user: UserDto,
     onLogout: () -> Unit,
     onOpenUpload: () -> Unit,
+    onOpenMap: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit
@@ -97,7 +101,32 @@ fun MoreScreen(
         }
 
         Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
 
+        MoreEntry(
+            icon = Icons.Filled.Add,
+            label = stringResource(Res.string.upload_title),
+            onClick = onOpenUpload
+        )
+        HorizontalDivider()
+        MoreEntry(
+            icon = Icons.Filled.LocationOn,
+            label = stringResource(Res.string.map_title),
+            onClick = onOpenMap
+        )
+        HorizontalDivider()
+        MoreEntry(
+            icon = Icons.Filled.Lock,
+            label = stringResource(Res.string.archive_title),
+            onClick = onOpenArchived
+        )
+        HorizontalDivider()
+        MoreEntry(
+            icon = Icons.Filled.Delete,
+            label = stringResource(Res.string.trash_title),
+            onClick = onOpenTrash
+        )
+        HorizontalDivider()
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 150.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -115,6 +144,15 @@ fun MoreScreen(
         }
 
         Spacer(Modifier.height(24.dp))
+        Text(
+            stringResource(Res.string.more_settings_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+        )
+        Spacer(Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.Center

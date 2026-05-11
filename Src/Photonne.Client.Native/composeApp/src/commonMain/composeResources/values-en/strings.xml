@@ -181,4 +181,13 @@
     <string name="upload_status_skipped">Duplicate</string>
     <string name="upload_status_failed">Failed</string>
     <string name="upload_status_cancelled">Cancelled</string>
+
+    <string name="map_title">Map</string>
+    <string name="map_empty_title">No photos on the map</string>
+    <string name="map_empty_subtitle">Photos tagged with GPS coordinates will show up here.</string>
+    <string name="map_action_zoom_in">Zoom in</string>
+    <string name="map_action_zoom_out">Zoom out</string>
+    <string name="map_action_fit_to_data">Center on my photos</string>
+    <string name="map_cluster_sheet_title">%1$d photos at this spot</string>
+    <string name="map_action_select_all">Select all</string>
 </resources>

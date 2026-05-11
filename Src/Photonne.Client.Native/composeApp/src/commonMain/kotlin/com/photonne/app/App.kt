@@ -35,6 +35,7 @@ import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
 import com.photonne.app.resources.favorites_title
+import com.photonne.app.resources.map_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
@@ -101,7 +102,25 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Upload, Favorites, Archived, Trash }
+private enum class MoreSubscreen { Upload, Favorites, Map, Archived, Trash }
+
+/** Build a thin TimelineItem out of a map point so the asset viewer
+ * can be seeded without an extra fetch — it re-queries AssetDetail
+ * on display, so most fields can stay blank. */
+private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
+    com.photonne.app.data.models.TimelineItem =
+    com.photonne.app.data.models.TimelineItem(
+        id = id,
+        fileName = "",
+        fullPath = "",
+        fileSize = 0L,
+        fileCreatedAt = date,
+        fileModifiedAt = date,
+        extension = "",
+        scannedAt = date,
+        type = "Image",
+        hasThumbnails = hasThumbnail
+    )
 
 @Composable
 fun App() {
@@ -137,6 +156,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
+    val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -169,6 +189,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
     var bulkAddToAlbum by remember { mutableStateOf<Boolean>(false) }
     var bulkAddToAlbumFromSearch by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromMap by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromFavorites by remember { mutableStateOf(false) }
     var showJumpToDate by remember { mutableStateOf(false) }
     var pendingJumpDate by remember { mutableStateOf<kotlinx.datetime.Instant?>(null) }
@@ -302,6 +323,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     else null,
                     onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
+                com.photonne.app.ui.main.MapTopBar(
+                    title = stringResource(Res.string.map_title),
+                    onBack = { moreSubscreen = null },
+                    onRefresh = mapViewModel::refresh,
                     user = user.user,
                     onLogout = onLogout
                 )
@@ -553,6 +582,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         user = user.user,
                         onLogout = onLogout,
                         onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
+                        onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
@@ -570,6 +600,43 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onCancelAll = uploadViewModel::cancelAll,
                         onClearFinished = uploadViewModel::clearFinished,
                         onDismissPickerError = uploadViewModel::clearPickerError
+                    )
+                    MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
+                        viewModel = mapViewModel,
+                        onPointOpen = { point ->
+                            // Single-marker tap → open the asset viewer
+                            // seeded with that one item. The viewer
+                            // re-fetches asset detail on display, so a
+                            // synthetic TimelineItem is enough.
+                            assetDetail = AssetDetailContext(
+                                items = listOf(point.toSyntheticTimelineItem()),
+                                startIndex = 0,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = { id, isFav ->
+                                    timelineViewModel.setFavorite(id, isFav)
+                                }
+                            )
+                        },
+                        onClusterPhotoOpen = { sheetPoints, index ->
+                            // Bottom-sheet thumbnail tap → open the
+                            // viewer seeded with the whole cluster so
+                            // the user can swipe through it.
+                            val items = sheetPoints.map { it.toSyntheticTimelineItem() }
+                            assetDetail = AssetDetailContext(
+                                items = items,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = { id, isFav ->
+                                    timelineViewModel.setFavorite(id, isFav)
+                                }
+                            )
+                            mapViewModel.closeClusterSheet()
+                        },
+                        onBulkAddToAlbum = { bulkAddToAlbumFromMap = true }
                     )
                     MoreSubscreen.Favorites -> com.photonne.app.ui.library.FavoritesScreen(
                         state = favoritesState,
@@ -681,7 +748,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     searchViewModel.removeItem(id)
                     archivedViewModel.applyAssetRemovedLocal(id)
-                    favoritesViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 },
                 onAssetArchived = { id ->
@@ -691,7 +757,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     searchViewModel.removeItem(id)
                     trashViewModel.applyAssetRemovedLocal(id)
-                    favoritesViewModel.applyAssetRemovedLocal(id)
                     assetDetail = null
                 }
             )
@@ -1031,27 +1096,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    if (bulkAddToAlbumFromFavorites) {
-        AddToAlbumDialog(
-            albums = albumsState.albums,
-            isLoadingAlbums = albumsState.isLoading,
-            isSubmitting = favoritesState.isBulkMutating,
-            errorMessage = favoritesState.errorMessage,
-            onCreateNew = {
-                bulkAddToAlbumFromFavorites = false
-                showCreateAlbum = true
-            },
-            onAlbumSelected = { album ->
-                favoritesViewModel.bulkAddToAlbum(album.id) { added ->
-                    albumsViewModel.applyAssetsAdded(album.id, added.size)
-                    albumDetailViewModel.applyAssetsAdded(album.id, added)
-                }
-                bulkAddToAlbumFromFavorites = false
-            },
-            onDismiss = { bulkAddToAlbumFromFavorites = false }
-        )
-    }
-
     if (showMoveSelectedAssets && openedFolder != null) {
         com.photonne.app.ui.folder.FolderPickerDialog(
             title = stringResource(Res.string.folder_move_assets_title),
@@ -1172,6 +1216,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onConfirm = {
                 trashViewModel.bulkPurge { showPurgeSelected = false }
             }
+        )
+    }
+
+    if (bulkAddToAlbumFromMap) {
+        val mapState = mapViewModel.state.collectAsState().value
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = mapState.isBulkMutating,
+            errorMessage = mapState.errorMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromMap = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                mapViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromMap = false
+            },
+            onDismiss = { bulkAddToAlbumFromMap = false }
         )
     }
 }
