@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
+import com.photonne.app.resources.folder_action_actions
+import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
