@@ -282,6 +282,26 @@ interface PhotonneApi {
     ): com.photonne.app.data.models.ChangePasswordResponse
     suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto
 
+    // Administration ---------------------------------------------------------
+    suspend fun adminListUsers(): List<UserDto>
+    suspend fun adminGetUser(id: String): UserDto
+    suspend fun adminCreateUser(
+        request: com.photonne.app.data.models.CreateUserRequest
+    ): UserDto
+    suspend fun adminUpdateUser(
+        id: String,
+        request: com.photonne.app.data.models.UpdateUserRequest
+    ): UserDto
+    suspend fun adminDeleteUser(id: String)
+    suspend fun adminResetUserPassword(
+        id: String,
+        request: com.photonne.app.data.models.AdminResetPasswordRequest
+    ): com.photonne.app.data.models.AdminResetPasswordResponse
+    suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse
+    suspend fun adminGetVersion(): com.photonne.app.data.models.VersionInfoResponse
+    suspend fun adminGetTrashStats(): com.photonne.app.data.models.TrashStatsResponse
+    suspend fun adminCleanupExpiredTrash(): com.photonne.app.data.models.TrashCleanupResult
+
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
     }
@@ -1387,6 +1407,135 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Storage info fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminListUsers(): List<UserDto> {
+        val response: HttpResponse = client.get("$baseUrl/api/users")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Listing users failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetUser(id: String): UserDto {
+        val response: HttpResponse = client.get("$baseUrl/api/users/$id")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching user failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminCreateUser(
+        request: com.photonne.app.data.models.CreateUserRequest
+    ): UserDto {
+        val response: HttpResponse = client.post("$baseUrl/api/users") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Creating user failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminUpdateUser(
+        id: String,
+        request: com.photonne.app.data.models.UpdateUserRequest
+    ): UserDto {
+        val response: HttpResponse = client.put("$baseUrl/api/users/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Updating user failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminDeleteUser(id: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/users/$id")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Deleting user failed"
+            )
+        }
+    }
+
+    override suspend fun adminResetUserPassword(
+        id: String,
+        request: com.photonne.app.data.models.AdminResetPasswordRequest
+    ): com.photonne.app.data.models.AdminResetPasswordResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/users/$id/reset-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Resetting password failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/stats")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching stats failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetVersion(): com.photonne.app.data.models.VersionInfoResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/version")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching version failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetTrashStats(): com.photonne.app.data.models.TrashStatsResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/trash/stats")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching trash stats failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminCleanupExpiredTrash():
+        com.photonne.app.data.models.TrashCleanupResult {
+        val response: HttpResponse = client.post("$baseUrl/api/admin/trash/cleanup-expired")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Trash cleanup failed"
             )
         }
         return response.body()

@@ -20,6 +20,11 @@ import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_section_security
 import com.photonne.app.resources.account_section_storage
 import com.photonne.app.resources.account_settings_title
+import com.photonne.app.resources.admin_section_server
+import com.photonne.app.resources.admin_section_stats
+import com.photonne.app.resources.admin_section_trash
+import com.photonne.app.resources.admin_section_users
+import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.action_create
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
@@ -125,7 +130,12 @@ private enum class MoreSubscreen {
     AccountProfile,
     AccountSecurity,
     AccountAppearance,
-    AccountStorage
+    AccountStorage,
+    Administration,
+    AdminUsers,
+    AdminStats,
+    AdminServer,
+    AdminTrash
 }
 
 /** Build a thin TimelineItem out of a map point so the asset viewer
@@ -200,6 +210,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val accountStorageViewModel: com.photonne.app.ui.settings.AccountStorageViewModel =
         koinViewModel()
     val appearanceViewModel: com.photonne.app.ui.settings.AppearanceViewModel = koinViewModel()
+    val adminUsersViewModel: com.photonne.app.ui.admin.AdminUsersViewModel = koinViewModel()
+    val adminStatsViewModel: com.photonne.app.ui.admin.AdminStatsViewModel = koinViewModel()
+    val adminServerViewModel: com.photonne.app.ui.admin.AdminServerViewModel = koinViewModel()
+    val adminTrashViewModel: com.photonne.app.ui.admin.AdminTrashViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -690,6 +704,41 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     user = user.user,
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Administration ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.administration_title),
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminUsers ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_users),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminStats ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_stats),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminServer ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_server),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminTrash ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_trash),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -864,6 +913,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
+                        },
+                        onOpenAdministration = if (
+                            user.user.role.equals("Admin", ignoreCase = true)
+                        ) {
+                            { moreSubscreen = MoreSubscreen.Administration }
+                        } else {
+                            null
                         }
                     )
                     MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
@@ -1091,6 +1147,37 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AccountStorage ->
                         com.photonne.app.ui.settings.AccountStorageScreen(
                             viewModel = accountStorageViewModel
+                        )
+                    MoreSubscreen.Administration ->
+                        com.photonne.app.ui.admin.AdministrationScreen(
+                            onOpen = { section ->
+                                moreSubscreen = when (section) {
+                                    com.photonne.app.ui.admin.AdministrationSection.Users ->
+                                        MoreSubscreen.AdminUsers
+                                    com.photonne.app.ui.admin.AdministrationSection.Stats ->
+                                        MoreSubscreen.AdminStats
+                                    com.photonne.app.ui.admin.AdministrationSection.Server ->
+                                        MoreSubscreen.AdminServer
+                                    com.photonne.app.ui.admin.AdministrationSection.Trash ->
+                                        MoreSubscreen.AdminTrash
+                                }
+                            }
+                        )
+                    MoreSubscreen.AdminUsers ->
+                        com.photonne.app.ui.admin.AdminUsersScreen(
+                            viewModel = adminUsersViewModel
+                        )
+                    MoreSubscreen.AdminStats ->
+                        com.photonne.app.ui.admin.AdminStatsScreen(
+                            viewModel = adminStatsViewModel
+                        )
+                    MoreSubscreen.AdminServer ->
+                        com.photonne.app.ui.admin.AdminServerScreen(
+                            viewModel = adminServerViewModel
+                        )
+                    MoreSubscreen.AdminTrash ->
+                        com.photonne.app.ui.admin.AdminTrashScreen(
+                            viewModel = adminTrashViewModel
                         )
                 }
             }

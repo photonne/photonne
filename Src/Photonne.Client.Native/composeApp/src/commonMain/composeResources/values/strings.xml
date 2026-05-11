@@ -272,4 +272,61 @@
     <string name="storage_used_format">%1$s usados de %2$s</string>
     <string name="storage_used_unbounded_format">%1$s usados</string>
     <string name="storage_no_quota">Sin límite de cuota</string>
+
+    <!-- Administration -->
+    <string name="administration_title">Administración</string>
+    <string name="administration_hint">Gestiona usuarios, consulta estadísticas y administra la papelera del servidor.</string>
+    <string name="admin_section_users">Usuarios</string>
+    <string name="admin_section_users_subtitle">Crear, editar y eliminar cuentas</string>
+    <string name="admin_section_stats">Estadísticas</string>
+    <string name="admin_section_stats_subtitle">Uso global y por usuario</string>
+    <string name="admin_section_server">Servidor</string>
+    <string name="admin_section_server_subtitle">Versión y actualizaciones</string>
+    <string name="admin_section_trash">Papelera del sistema</string>
+    <string name="admin_section_trash_subtitle">Retención y limpieza de expirados</string>
+
+    <string name="admin_users_empty">No hay usuarios todavía.</string>
+    <string name="admin_user_action_new">Nuevo usuario</string>
+    <string name="admin_user_edit_title">Editar usuario</string>
+    <string name="admin_user_field_password">Contraseña</string>
+    <string name="admin_user_field_admin">Administrador</string>
+    <string name="admin_user_field_active">Cuenta activa</string>
+    <string name="admin_user_field_quota_mb">Cuota (MB)</string>
+    <string name="admin_user_field_quota_mb_hint">Deja en blanco para usar el valor por defecto.</string>
+    <string name="admin_user_role_admin">Administrador</string>
+    <string name="admin_user_role_user">Usuario</string>
+    <string name="admin_user_inactive_badge">Inactivo</string>
+    <string name="admin_user_primary_admin_badge">Administrador principal</string>
+    <string name="admin_user_last_login">Último acceso: %1$s</string>
+    <string name="admin_user_never_logged_in">Nunca ha accedido</string>
+    <string name="admin_user_quota_format">Cuota: %1$s</string>
+    <string name="admin_user_action_reset_password">Restablecer contraseña</string>
+    <string name="admin_user_action_reset_password_title">Restablecer contraseña</string>
+    <string name="admin_user_action_reset_password_message">Define una nueva contraseña para "%1$s". El usuario deberá iniciar sesión con la nueva contraseña.</string>
+    <string name="admin_user_action_delete_title">Eliminar usuario</string>
+    <string name="admin_user_action_delete_message">"%1$s" será eliminado de forma permanente. Sus fotos y datos asociados se borrarán.</string>
+
+    <string name="admin_stats_total_photos">Fotos totales</string>
+    <string name="admin_stats_total_videos">Vídeos totales</string>
+    <string name="admin_stats_total_storage">Almacenamiento total</string>
+    <string name="admin_stats_per_user">Uso por usuario</string>
+    <string name="admin_stats_per_user_breakdown">No hay datos de uso por usuario disponibles.</string>
+
+    <string name="admin_server_current_version">Versión actual</string>
+    <string name="admin_server_latest_version">Última versión publicada</string>
+    <string name="admin_server_checked_at">Comprobado el</string>
+    <string name="admin_server_up_to_date">Tu instalación está al día.</string>
+    <string name="admin_server_update_available">Hay una actualización disponible.</string>
+    <string name="admin_server_check_error">Error al comprobar actualizaciones: %1$s</string>
+    <string name="admin_server_release_notes">Notas de la versión</string>
+    <string name="admin_server_release_url">Página de la versión</string>
+
+    <string name="admin_trash_total_items">Elementos en la papelera</string>
+    <string name="admin_trash_total_bytes">Espacio ocupado</string>
+    <string name="admin_trash_expired">Elementos expirados</string>
+    <string name="admin_trash_retention_days">Días de retención</string>
+    <string name="admin_trash_quota_mb">Cuota máxima (MB)</string>
+    <string name="admin_trash_over_quota_users">Usuarios por encima de la cuota</string>
+    <string name="admin_trash_over_quota_bytes">Espacio por encima de la cuota</string>
+    <string name="admin_trash_action_cleanup">Limpiar expirados</string>
 </resources>

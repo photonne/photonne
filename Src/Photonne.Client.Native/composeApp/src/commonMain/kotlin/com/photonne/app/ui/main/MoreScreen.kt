@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Favorite
@@ -42,6 +43,7 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
+import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.more_settings_hint
@@ -73,7 +75,8 @@ fun MoreScreen(
     onOpenPeople: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
-    onOpenAccountSettings: () -> Unit
+    onOpenAccountSettings: () -> Unit,
+    onOpenAdministration: (() -> Unit)? = null
 ) {
     val shortcuts = remember(
         onOpenUpload,
@@ -136,6 +139,11 @@ fun MoreScreen(
         Spacer(Modifier.height(16.dp))
         AccountSettingsRow(onClick = onOpenAccountSettings)
 
+        onOpenAdministration?.let { handler ->
+            Spacer(Modifier.height(8.dp))
+            AdministrationRow(onClick = handler)
+        }
+
         Spacer(Modifier.height(24.dp))
         Text(
             stringResource(Res.string.more_settings_hint),
@@ -178,6 +186,42 @@ private fun AccountSettingsRow(onClick: () -> Unit) {
             Spacer(Modifier.size(16.dp))
             Text(
                 text = stringResource(Res.string.account_settings_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdministrationRow(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Build,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.size(16.dp))
+            Text(
+                text = stringResource(Res.string.administration_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)

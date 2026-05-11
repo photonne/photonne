@@ -39,7 +39,9 @@ data class UserDto(
     val lastName: String? = null,
     val isActive: Boolean = true,
     val isPrimaryAdmin: Boolean = false,
-    @SerialName("storageQuotaBytes") val storageQuotaBytes: Long? = null
+    @SerialName("storageQuotaBytes") val storageQuotaBytes: Long? = null,
+    val createdAt: String? = null,
+    val lastLoginAt: String? = null
 )
 
 @Serializable

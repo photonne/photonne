@@ -272,4 +272,61 @@
     <string name="storage_used_format">%1$s used of %2$s</string>
     <string name="storage_used_unbounded_format">%1$s used</string>
     <string name="storage_no_quota">No quota limit</string>
+
+    <!-- Administration -->
+    <string name="administration_title">Administration</string>
+    <string name="administration_hint">Manage users, review usage and clean up the server trash.</string>
+    <string name="admin_section_users">Users</string>
+    <string name="admin_section_users_subtitle">Create, edit and delete accounts</string>
+    <string name="admin_section_stats">Statistics</string>
+    <string name="admin_section_stats_subtitle">Global usage and per-user breakdown</string>
+    <string name="admin_section_server">Server</string>
+    <string name="admin_section_server_subtitle">Version and updates</string>
+    <string name="admin_section_trash">System trash</string>
+    <string name="admin_section_trash_subtitle">Retention and cleanup of expired items</string>
+
+    <string name="admin_users_empty">No users yet.</string>
+    <string name="admin_user_action_new">New user</string>
+    <string name="admin_user_edit_title">Edit user</string>
+    <string name="admin_user_field_password">Password</string>
+    <string name="admin_user_field_admin">Administrator</string>
+    <string name="admin_user_field_active">Account active</string>
+    <string name="admin_user_field_quota_mb">Quota (MB)</string>
+    <string name="admin_user_field_quota_mb_hint">Leave blank to use the default value.</string>
+    <string name="admin_user_role_admin">Administrator</string>
+    <string name="admin_user_role_user">User</string>
+    <string name="admin_user_inactive_badge">Inactive</string>
+    <string name="admin_user_primary_admin_badge">Primary admin</string>
+    <string name="admin_user_last_login">Last login: %1$s</string>
+    <string name="admin_user_never_logged_in">Never signed in</string>
+    <string name="admin_user_quota_format">Quota: %1$s</string>
+    <string name="admin_user_action_reset_password">Reset password</string>
+    <string name="admin_user_action_reset_password_title">Reset password</string>
+    <string name="admin_user_action_reset_password_message">Set a new password for "%1$s". The user will need to sign in with the new password.</string>
+    <string name="admin_user_action_delete_title">Delete user</string>
+    <string name="admin_user_action_delete_message">"%1$s" will be permanently deleted. Their photos and associated data will be removed.</string>
+
+    <string name="admin_stats_total_photos">Total photos</string>
+    <string name="admin_stats_total_videos">Total videos</string>
+    <string name="admin_stats_total_storage">Total storage</string>
+    <string name="admin_stats_per_user">Per-user usage</string>
+    <string name="admin_stats_per_user_breakdown">No per-user usage data available.</string>
+
+    <string name="admin_server_current_version">Current version</string>
+    <string name="admin_server_latest_version">Latest released version</string>
+    <string name="admin_server_checked_at">Checked at</string>
+    <string name="admin_server_up_to_date">Your installation is up to date.</string>
+    <string name="admin_server_update_available">An update is available.</string>
+    <string name="admin_server_check_error">Update check failed: %1$s</string>
+    <string name="admin_server_release_notes">Release notes</string>
+    <string name="admin_server_release_url">Release page</string>
+
+    <string name="admin_trash_total_items">Items in trash</string>
+    <string name="admin_trash_total_bytes">Space used</string>
+    <string name="admin_trash_expired">Expired items</string>
+    <string name="admin_trash_retention_days">Retention days</string>
+    <string name="admin_trash_quota_mb">Max quota (MB)</string>
+    <string name="admin_trash_over_quota_users">Users over quota</string>
+    <string name="admin_trash_over_quota_bytes">Space over quota</string>
+    <string name="admin_trash_action_cleanup">Clean up expired</string>
 </resources>
