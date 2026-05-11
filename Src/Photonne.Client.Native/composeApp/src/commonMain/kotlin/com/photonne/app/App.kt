@@ -302,6 +302,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             }
                         }
+                    } else null,
+                    onSetAsCover = if (albumDetailState.selection.size == 1 &&
+                        (selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true)
+                    ) {
+                        {
+                            val assetId = albumDetailState.selection.first()
+                            albumDetailViewModel.setCover(assetId) { updated ->
+                                albumsViewModel.applyUpdate(updated)
+                                selectedAlbum = selectedAlbum?.copy(
+                                    coverThumbnailUrl = updated.coverThumbnailUrl
+                                )
+                                albumDetailViewModel.clearSelection()
+                            }
+                        }
                     } else null
                 )
             selectedTab == MainTab.Albums && selectedAlbum != null -> AlbumDetailTopBar(
@@ -685,12 +699,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     if (openedAlbum == null) {
                         AlbumsListScreen(onAlbumClick = { album -> selectedAlbum = album })
                     } else {
-                        val albumCanManage =
-                            openedAlbum.canWrite || openedAlbum.isOwner
                         AlbumDetailScreen(
                             albumId = openedAlbum.id,
                             albumName = openedAlbum.name,
-                            canManage = albumCanManage,
                             onItemClick = { index ->
                                 assetDetail = AssetDetailContext(
                                     items = albumDetailState.items,
@@ -703,19 +714,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         timelineViewModel.setFavorite(id, isFav)
                                     }
                                 )
-                            },
-                            onSetAsCover = { item ->
-                                albumDetailViewModel.setCover(item.id) { updated ->
-                                    albumsViewModel.applyUpdate(updated)
-                                    selectedAlbum = openedAlbum.copy(
-                                        coverThumbnailUrl = updated.coverThumbnailUrl
-                                    )
-                                }
-                            },
-                            onRemoveFromAlbum = { item ->
-                                albumDetailViewModel.removeAsset(item.id) {
-                                    albumsViewModel.applyAssetRemoved(openedAlbum.id)
-                                }
                             },
                             viewModel = albumDetailViewModel
                         )

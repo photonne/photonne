@@ -15,13 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.di.PhotonneAppConfig
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.album_empty_subtitle
@@ -34,15 +30,11 @@ import org.koin.compose.koinInject
 fun AlbumDetailScreen(
     albumId: String,
     albumName: String,
-    canManage: Boolean,
     onItemClick: (Int) -> Unit,
-    onSetAsCover: (TimelineItem) -> Unit,
-    onRemoveFromAlbum: (TimelineItem) -> Unit,
     viewModel: AlbumDetailViewModel
 ) {
     val config: PhotonneAppConfig = koinInject()
     val state by viewModel.state.collectAsState()
-    var actionTarget by remember { mutableStateOf<TimelineItem?>(null) }
 
     LaunchedEffect(albumId) { viewModel.open(albumId, albumName) }
 
@@ -88,33 +80,11 @@ fun AlbumDetailScreen(
                     }
                 },
                 onItemLongClick = { index ->
-                    state.items.getOrNull(index)?.let { item ->
-                        if (state.isSelectionActive || !canManage) {
-                            viewModel.toggleSelection(item.id)
-                        } else {
-                            actionTarget = item
-                        }
-                    }
+                    state.items.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
                 },
                 selectedIds = state.selection,
                 modifier = Modifier.fillMaxWidth()
             )
         }
-    }
-
-    actionTarget?.let { target ->
-        AlbumAssetActionsSheet(
-            fileName = target.fileName,
-            canManage = canManage,
-            onSetAsCover = {
-                actionTarget = null
-                onSetAsCover(target)
-            },
-            onRemoveFromAlbum = {
-                actionTarget = null
-                onRemoveFromAlbum(target)
-            },
-            onDismiss = { actionTarget = null }
-        )
     }
 }

@@ -83,6 +83,7 @@ import com.photonne.app.resources.album_action_album_actions
 import com.photonne.app.resources.album_action_members
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.app_name
+import com.photonne.app.resources.asset_action_set_cover
 import com.photonne.app.resources.selection_action_add_to_album
 import com.photonne.app.resources.selection_action_archive
 import com.photonne.app.resources.selection_action_close
@@ -317,7 +318,8 @@ fun AssetSelectionTopBar(
     onTrash: () -> Unit,
     onMove: (() -> Unit)? = null,
     onUnlink: (() -> Unit)? = null,
-    onRemoveFromAlbum: (() -> Unit)? = null
+    onRemoveFromAlbum: (() -> Unit)? = null,
+    onSetAsCover: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val allSelected = totalCount > 0 && selectedCount >= totalCount
@@ -390,6 +392,12 @@ fun AssetSelectionTopBar(
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.people_action_unlink)) },
                             onClick = { menuOpen = false; onUnlink() }
+                        )
+                    }
+                    if (onSetAsCover != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_set_cover)) },
+                            onClick = { menuOpen = false; onSetAsCover() }
                         )
                     }
                     if (onRemoveFromAlbum != null) {
