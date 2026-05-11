@@ -35,6 +35,8 @@ import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
 import com.photonne.app.resources.trash_title
+import com.photonne.app.resources.upload_subtitle_pending
+import com.photonne.app.resources.upload_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -98,7 +100,7 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-private enum class MoreSubscreen { Archived, Trash }
+private enum class MoreSubscreen { Upload, Archived, Trash }
 
 @Composable
 fun App() {
@@ -132,6 +134,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumPermissionsViewModel: AlbumPermissionsViewModel = koinViewModel()
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel = koinViewModel()
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
+    val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -143,6 +146,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumPermissionsState by albumPermissionsViewModel.state.collectAsState()
     val archivedState by archivedViewModel.state.collectAsState()
     val trashState by trashViewModel.state.collectAsState()
+    val uploadState by uploadViewModel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
@@ -284,6 +288,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             )
             selectedTab == MainTab.Search ->
                 com.photonne.app.ui.main.SearchTopBar(user = user.user, onLogout = onLogout)
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Upload ->
+                com.photonne.app.ui.main.UploadTopBar(
+                    title = stringResource(Res.string.upload_title),
+                    subtitle = if (uploadState.pendingCount > 0)
+                        stringResource(
+                            Res.string.upload_subtitle_pending,
+                            uploadState.pendingCount
+                        )
+                    else null,
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
                 archivedState.isSelectionActive ->
                 com.photonne.app.ui.main.ArchivedSelectionTopBar(
@@ -335,6 +352,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 user = user.user,
                 onRefresh = timelineViewModel::refresh,
                 onJumpToDate = { showJumpToDate = true },
+                onUpload = {
+                    selectedTab = MainTab.More
+                    moreSubscreen = MoreSubscreen.Upload
+                },
                 onLogout = onLogout
             )
         }
@@ -505,8 +526,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     null -> MoreScreen(
                         user = user.user,
                         onLogout = onLogout,
+                        onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash }
+                    )
+                    MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
+                        state = uploadState,
+                        onPicked = { files ->
+                            uploadViewModel.enqueue(files) { timelineViewModel.refresh() }
+                        },
+                        onPickerError = uploadViewModel::pickerErrorRaised,
+                        onRetry = { id ->
+                            uploadViewModel.retry(id) { timelineViewModel.refresh() }
+                        },
+                        onRemove = uploadViewModel::remove,
+                        onCancelAll = uploadViewModel::cancelAll,
+                        onClearFinished = uploadViewModel::clearFinished,
+                        onDismissPickerError = uploadViewModel::clearPickerError
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
