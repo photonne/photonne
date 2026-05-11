@@ -163,6 +163,10 @@
     <string name="trash_dialog_empty_message">Esta acción no se puede deshacer. Se eliminarán definitivamente todas las fotos de la papelera.</string>
     <string name="trash_dialog_purge_message">Se eliminarán definitivamente %1$d elementos. No podrás recuperarlos.</string>
 
+    <string name="favorites_title">Favoritas</string>
+    <string name="favorites_empty_title">Aún no hay favoritas</string>
+    <string name="favorites_empty_subtitle">Marca una foto con el corazón desde el visor para que aparezca aquí.</string>
+
     <string name="upload_title">Subir fotos</string>
     <string name="upload_subtitle_pending">%1$d pendientes</string>
     <string name="upload_action_add">Añadir archivos</string>

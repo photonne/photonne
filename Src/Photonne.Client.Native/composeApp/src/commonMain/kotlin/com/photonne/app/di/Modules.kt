@@ -24,6 +24,7 @@ import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsViewModel
 import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.library.ArchivedViewModel
+import com.photonne.app.ui.library.FavoritesViewModel
 import com.photonne.app.ui.library.TrashViewModel
 import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.map.MapViewModel
@@ -80,6 +81,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::SearchViewModel)
     viewModelOf(::ArchivedViewModel)
     viewModelOf(::TrashViewModel)
+    viewModelOf(::FavoritesViewModel)
     viewModelOf(::UploadViewModel)
     viewModelOf(::MapViewModel)
 }

@@ -138,6 +138,10 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
+    suspend fun getFavoriteAssets(
+        cursor: Instant? = null,
+        pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
+    ): AssetPage
     suspend fun uploadAsset(
         fileName: String,
         mimeType: String,
@@ -494,6 +498,20 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Trash list failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getFavoriteAssets(cursor: Instant?, pageSize: Int): AssetPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/favorites") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Favorites list failed (${response.status.value})"
             )
         }
         return response.body()

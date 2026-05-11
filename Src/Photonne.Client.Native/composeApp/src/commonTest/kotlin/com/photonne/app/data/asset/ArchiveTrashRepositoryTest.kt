@@ -160,4 +160,24 @@ class ArchiveTrashRepositoryTest {
         assertEquals(HttpMethod.Post, captured.single().first)
         assertEquals("/api/assets/trash/empty", captured.single().second)
     }
+
+    @Test
+    fun list_favorites_calls_favorites_endpoint_with_page_size() = runTest {
+        val captured = mutableListOf<Pair<HttpMethod, String>>()
+        val engine = MockEngine { request ->
+            captured += request.method to request.url.toString()
+            respond(
+                content = ByteReadChannel("""{"items":[],"hasMore":false,"nextCursor":null}"""),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val repo = newRepo(engine)
+
+        val page = repo.listFavorites(cursor = null, pageSize = 50)
+        assertTrue(page.items.isEmpty())
+        assertEquals(HttpMethod.Get, captured.single().first)
+        assertTrue("path") { captured.single().second.contains("/api/assets/favorites") }
+        assertTrue("pageSize") { captured.single().second.contains("pageSize=50") }
+    }
 }
