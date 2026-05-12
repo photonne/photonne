@@ -69,9 +69,6 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_cancel
-import com.photonne.app.resources.action_delete
-import com.photonne.app.resources.action_save
 import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_edit_description
 import com.photonne.app.resources.asset_action_faces

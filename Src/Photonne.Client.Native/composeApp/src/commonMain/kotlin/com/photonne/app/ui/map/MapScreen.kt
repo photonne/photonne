@@ -28,7 +28,6 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.map_action_fit_to_data
 import com.photonne.app.resources.map_action_zoom_in
-import com.photonne.app.resources.map_action_zoom_out
 import com.photonne.app.resources.map_empty_subtitle
 import com.photonne.app.resources.map_empty_title
 import org.jetbrains.compose.resources.stringResource
