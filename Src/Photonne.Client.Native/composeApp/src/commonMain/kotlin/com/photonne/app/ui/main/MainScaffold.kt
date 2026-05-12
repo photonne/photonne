@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.filled.Close
@@ -86,11 +85,9 @@ import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
-import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_more
 import com.photonne.app.resources.action_refresh
-import com.photonne.app.resources.album_action_album_actions
 import com.photonne.app.resources.album_action_members
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.app_name
@@ -502,137 +499,6 @@ fun AlbumsListTopBar(user: UserDto, onCreateAlbum: () -> Unit, onLogout: () -> U
                     Icons.Outlined.AddBox,
                     contentDescription = stringResource(Res.string.album_action_new)
                 )
-            }
-            AccountMenu(user = user, onLogout = onLogout)
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AlbumDetailTopBar(
-    title: String,
-    subtitle: String?,
-    canEdit: Boolean,
-    canDelete: Boolean,
-    canShare: Boolean,
-    canManageMembers: Boolean,
-    canLeave: Boolean,
-    onBack: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onShare: () -> Unit,
-    onManageMembers: () -> Unit,
-    onLeave: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = canEdit || canDelete || canShare || canManageMembers || canLeave
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = {
-            androidx.compose.foundation.layout.Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        actions = {
-            if (canShare) {
-                IconButton(onClick = onShare) {
-                    Icon(Icons.Outlined.Share, contentDescription = "Compartir álbum")
-                }
-            }
-            if (hasMenu) {
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = stringResource(Res.string.album_action_album_actions)
-                        )
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        if (canEdit) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.action_edit)) },
-                                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    onEdit()
-                                }
-                            )
-                        }
-                        if (canShare) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.action_share)) },
-                                leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    onShare()
-                                }
-                            )
-                        }
-                        if (canManageMembers) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.album_action_members)) },
-                                leadingIcon = { Icon(Icons.Outlined.People, contentDescription = null) },
-                                onClick = {
-                                    menuOpen = false
-                                    onManageMembers()
-                                }
-                            )
-                        }
-                        if (canDelete) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(Res.string.action_delete),
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                onClick = {
-                                    menuOpen = false
-                                    onDelete()
-                                }
-                            )
-                        }
-                        if (canLeave) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.action_leave)) },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.Logout,
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = {
-                                    menuOpen = false
-                                    onLeave()
-                                }
-                            )
-                        }
-                    }
-                }
             }
             AccountMenu(user = user, onLogout = onLogout)
         }

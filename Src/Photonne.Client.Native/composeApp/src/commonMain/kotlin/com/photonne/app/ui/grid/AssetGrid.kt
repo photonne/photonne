@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -58,7 +59,8 @@ fun AssetGrid(
     isInitialLoading: Boolean = false,
     onLoadMore: () -> Unit = {},
     onItemLongClick: ((Int) -> Unit)? = null,
-    selectedIds: Set<String> = emptySet()
+    selectedIds: Set<String> = emptySet(),
+    header: (@Composable () -> Unit)? = null
 ) {
     val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
         derivedStateOf {
@@ -83,6 +85,15 @@ fun AssetGrid(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier.fillMaxSize()
     ) {
+        if (header != null) {
+            item(
+                key = "asset-grid-header",
+                span = { GridItemSpan(maxLineSpan) },
+                contentType = "asset-grid-header"
+            ) {
+                header()
+            }
+        }
         itemsIndexed(items, key = { index, item -> assetCellKey(item, index) }) { index, asset ->
             AssetGridCell(
                 asset = asset,

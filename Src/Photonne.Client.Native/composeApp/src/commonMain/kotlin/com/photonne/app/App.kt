@@ -108,7 +108,6 @@ import com.photonne.app.ui.login.LoginScreen
 import com.photonne.app.ui.actions.AssetActionWorking
 import com.photonne.app.ui.actions.ShareAssetsDialog
 import com.photonne.app.ui.actions.ShareLinkResultDialog
-import com.photonne.app.ui.main.AlbumDetailTopBar
 import com.photonne.app.ui.main.AlbumsListTopBar
 import com.photonne.app.ui.main.ArchiveMode
 import com.photonne.app.ui.main.AssetSelectionTopBar
@@ -525,32 +524,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     } else null
                 )
-            selectedTab == MainTab.Albums && selectedAlbum != null -> AlbumDetailTopBar(
-                title = albumDetailState.albumName ?: selectedAlbum!!.name,
-                subtitle = albumDetailState.items.size.takeIf { it > 0 }?.let {
-                    stringResource(Res.string.albums_count_format, it)
-                },
-                canEdit = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
-                canDelete = selectedAlbum?.isOwner == true,
-                canShare = selectedAlbum?.canWrite == true || selectedAlbum?.isOwner == true,
-                canManageMembers = selectedAlbum?.isOwner == true ||
-                    selectedAlbum?.canManagePermissions == true,
-                canLeave = selectedAlbum?.isOwner == false,
-                onBack = albumBack,
-                onEdit = { showEditAlbum = true },
-                onDelete = { showDeleteAlbum = true },
-                onShare = {
-                    selectedAlbum?.let { albumSharesViewModel.open(it.id) }
-                    showShares = true
-                },
-                onManageMembers = {
-                    selectedAlbum?.let { albumPermissionsViewModel.open(it.id) }
-                    showMembers = true
-                },
-                onLeave = { showLeaveAlbum = true },
-                user = user.user,
-                onLogout = onLogout
-            )
+            selectedTab == MainTab.Albums && selectedAlbum != null -> {
+                // The hero inside AlbumDetailScreen owns back / share / overflow
+                // controls (PWA-style), so no separate top bar here.
+            }
             selectedTab == MainTab.Albums -> AlbumsListTopBar(
                 user = user.user,
                 onCreateAlbum = { showCreateAlbum = true },
@@ -1002,8 +979,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         AlbumsListScreen(onAlbumClick = { album -> selectedAlbum = album })
                     } else {
                         AlbumDetailScreen(
-                            albumId = openedAlbum.id,
-                            albumName = openedAlbum.name,
+                            album = openedAlbum,
                             onItemClick = { index ->
                                 assetDetail = AssetDetailContext(
                                     items = albumDetailState.items,
@@ -1017,6 +993,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     }
                                 )
                             },
+                            onBack = albumBack,
+                            onShare = {
+                                albumSharesViewModel.open(openedAlbum.id)
+                                showShares = true
+                            },
+                            onEdit = { showEditAlbum = true },
+                            onDelete = { showDeleteAlbum = true },
+                            onManageMembers = {
+                                albumPermissionsViewModel.open(openedAlbum.id)
+                                showMembers = true
+                            },
+                            onLeave = { showLeaveAlbum = true },
                             viewModel = albumDetailViewModel
                         )
                     }

@@ -54,6 +54,11 @@
     <string name="albums_empty_title">No albums yet</string>
     <string name="albums_empty_subtitle">Tap the + button in the top bar to create your first one.</string>
     <string name="albums_count_format">%1$d items</string>
+    <plurals name="album_hero_photos">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <string name="album_hero_shared">Shared album</string>
 
     <string name="add_to_album_title">Add to album</string>
     <string name="add_to_album_empty">You don\'t have any albums yet.</string>
