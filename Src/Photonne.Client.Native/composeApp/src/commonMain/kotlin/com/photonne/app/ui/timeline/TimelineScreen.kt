@@ -26,7 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
@@ -38,7 +38,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +52,7 @@ fun TimelineScreen(
     onJumpHandled: () -> Unit = {},
     onMemoryClick: (List<com.photonne.app.data.models.TimelineItem>, Int) -> Unit = { _, _ -> }
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
     val gridState = rememberLazyGridState()
     val memoriesViewModel: MemoriesViewModel = koinViewModel()
@@ -109,7 +108,7 @@ fun TimelineScreen(
                     if (memoriesState.items.isNotEmpty()) {
                         MemoriesCarousel(
                             items = memoriesState.items,
-                            baseUrl = config.apiBaseUrl,
+                            baseUrl = apiBaseUrl,
                             onGroupClick = { groupItems ->
                                 if (groupItems.size > 1) {
                                     memorySheetItems = groupItems
@@ -122,7 +121,7 @@ fun TimelineScreen(
                     Box(modifier = Modifier.fillMaxSize()) {
                         GroupedAssetGrid(
                             items = state.items,
-                            baseUrl = config.apiBaseUrl,
+                            baseUrl = apiBaseUrl,
                             onItemClick = onItemClick,
                             gridState = gridState,
                             hasMore = state.hasMore,
@@ -166,7 +165,7 @@ fun TimelineScreen(
     memorySheetItems?.let { items ->
         MemoryGroupSheet(
             items = items,
-            baseUrl = config.apiBaseUrl,
+            baseUrl = apiBaseUrl,
             onPhotoClick = { index ->
                 memorySheetItems = null
                 onMemoryClick(items, index)

@@ -31,7 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.search_clear_all
 import com.photonne.app.resources.search_empty_results
@@ -43,7 +43,6 @@ import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
 import com.photonne.app.ui.grid.AssetGrid
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 
 @Composable
 fun SearchScreen(
@@ -52,7 +51,7 @@ fun SearchScreen(
     onItemLongClick: (Int) -> Unit,
     onOpenFilters: () -> Unit
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.ensureFacetsLoaded() }
@@ -125,7 +124,7 @@ fun SearchScreen(
                     }
                 else -> AssetGrid(
                     items = state.results,
-                    baseUrl = config.apiBaseUrl,
+                    baseUrl = apiBaseUrl,
                     onItemClick = onItemClick,
                     onItemLongClick = onItemLongClick,
                     selectedIds = state.selection,

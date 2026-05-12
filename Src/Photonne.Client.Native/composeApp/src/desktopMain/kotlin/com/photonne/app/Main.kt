@@ -9,9 +9,9 @@ import com.photonne.app.di.platformModule
 import org.koin.core.context.startKoin
 
 fun main() {
-    val apiBaseUrl = System.getProperty("photonne.api.baseUrl")
-        ?: System.getenv("PHOTONNE_API_BASE_URL")
-        ?: "http://localhost:1107"
+    val apiBaseUrl = (System.getProperty("photonne.api.baseUrl")
+        ?: System.getenv("PHOTONNE_API_BASE_URL"))
+        ?.takeIf { it.isNotBlank() }
 
     val useFakeMemories = (System.getProperty("photonne.fake.memories")
         ?: System.getenv("PHOTONNE_FAKE_MEMORIES"))

@@ -16,13 +16,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.trash_empty_subtitle
 import com.photonne.app.resources.trash_empty_title
 import com.photonne.app.ui.grid.AssetGrid
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 
 @Composable
 fun TrashScreen(
@@ -32,7 +31,7 @@ fun TrashScreen(
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
 
     LaunchedEffect(Unit) { onRefresh() }
 
@@ -69,7 +68,7 @@ fun TrashScreen(
                 }
             else -> AssetGrid(
                 items = state.items,
-                baseUrl = config.apiBaseUrl,
+                baseUrl = apiBaseUrl,
                 onItemClick = onItemClick,
                 onItemLongClick = onItemLongClick,
                 selectedIds = state.selection,

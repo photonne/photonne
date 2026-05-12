@@ -11,6 +11,7 @@ import com.photonne.app.ui.folder.FolderPermissionsViewModel
 import com.photonne.app.ui.folder.FoldersViewModel
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiClient
+import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
@@ -76,7 +77,7 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 data class PhotonneAppConfig(
-    val apiBaseUrl: String,
+    val apiBaseUrl: String? = null,
     val useFakeMemories: Boolean = false
 )
 
@@ -86,15 +87,20 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { config }
     singleOf(::AuthStateHolder)
     single<TokenStorage> { SettingsTokenStorage(get()) }
+    single { ServerUrlStore(get()) }
     single<HttpClient> {
+        val urlStore = get<ServerUrlStore>()
         buildPhotonneHttpClient(
             engine = get<HttpClientEngine>(),
-            baseUrl = config.apiBaseUrl,
+            baseUrlProvider = { urlStore.requireBaseUrl() },
             tokenStorage = get(),
             authState = get()
         )
     }
-    single<PhotonneApi> { PhotonneApiClient(get(), config.apiBaseUrl) }
+    single<PhotonneApi> {
+        val urlStore = get<ServerUrlStore>()
+        PhotonneApiClient(get(), baseUrlProvider = { urlStore.requireBaseUrl() })
+    }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)

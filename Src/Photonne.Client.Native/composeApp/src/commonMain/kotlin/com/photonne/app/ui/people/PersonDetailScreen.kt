@@ -11,9 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.ui.grid.AssetGrid
-import org.koin.compose.koinInject
 
 @Composable
 fun PersonDetailScreen(
@@ -22,7 +21,7 @@ fun PersonDetailScreen(
     onItemLongClick: (Int) -> Unit,
     onLoadMore: () -> Unit
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isInitialLoading ->
@@ -38,7 +37,7 @@ fun PersonDetailScreen(
                 }
             else -> AssetGrid(
                 items = state.items,
-                baseUrl = config.apiBaseUrl,
+                baseUrl = apiBaseUrl,
                 onItemClick = onItemClick,
                 onItemLongClick = onItemLongClick,
                 selectedIds = state.selection,

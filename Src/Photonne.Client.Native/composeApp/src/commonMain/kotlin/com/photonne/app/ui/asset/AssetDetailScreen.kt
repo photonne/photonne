@@ -63,10 +63,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
-import com.photonne.app.di.PhotonneAppConfig
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
@@ -108,7 +108,7 @@ fun AssetDetailScreen(
     onOpenFaces: (assetId: String) -> Unit = {}
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     val tokenStorage: TokenStorage = koinInject()
     val state by viewModel.state.collectAsState()
 
@@ -280,7 +280,7 @@ fun AssetDetailScreen(
             val isCurrent = page == pagerState.currentPage
             AssetPage(
                 item = item,
-                baseUrl = config.apiBaseUrl,
+                baseUrl = apiBaseUrl,
                 showOriginal = showOriginal[item.id] == true,
                 isCurrent = isCurrent,
                 authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },

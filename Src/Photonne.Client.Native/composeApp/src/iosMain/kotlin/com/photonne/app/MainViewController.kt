@@ -9,7 +9,7 @@ import org.koin.core.context.startKoin
 private var koinStarted = false
 
 fun MainViewController(
-    apiBaseUrl: String,
+    apiBaseUrl: String?,
     useFakeMemories: Boolean = false
 ) = ComposeUIViewController {
     if (!koinStarted) {
@@ -17,7 +17,7 @@ fun MainViewController(
             modules(
                 commonModule(
                     PhotonneAppConfig(
-                        apiBaseUrl = apiBaseUrl,
+                        apiBaseUrl = apiBaseUrl?.takeIf { it.isNotBlank() },
                         useFakeMemories = useFakeMemories
                     )
                 ),

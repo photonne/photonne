@@ -34,7 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.Person
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.people_empty_subtitle
 import com.photonne.app.resources.people_empty_title
@@ -42,7 +42,6 @@ import com.photonne.app.resources.people_unnamed
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 
 @Composable
 fun PeopleScreen(
@@ -51,7 +50,7 @@ fun PeopleScreen(
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
 
     LaunchedEffect(Unit) { onRefresh() }
 
@@ -121,7 +120,7 @@ fun PeopleScreen(
                     items(state.people, key = { it.id }) { person ->
                         PersonCard(
                             person = person,
-                            baseUrl = config.apiBaseUrl,
+                            baseUrl = apiBaseUrl,
                             onClick = { onPersonClick(person) }
                         )
                     }

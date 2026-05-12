@@ -374,8 +374,12 @@ interface PhotonneApi {
 
 class PhotonneApiClient(
     private val client: HttpClient,
-    private val baseUrl: String
+    private val baseUrlProvider: () -> String
 ) : PhotonneApi {
+
+    constructor(client: HttpClient, baseUrl: String) : this(client, { baseUrl })
+
+    private val baseUrl: String get() = baseUrlProvider()
 
     override suspend fun login(username: String, password: String, deviceId: String): LoginResponse {
         val response: HttpResponse = client.post("$baseUrl/api/auth/login") {

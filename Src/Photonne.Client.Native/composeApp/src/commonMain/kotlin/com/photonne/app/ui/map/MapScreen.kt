@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.map_action_fit_to_data
 import com.photonne.app.resources.map_action_zoom_in
@@ -32,7 +32,6 @@ import com.photonne.app.resources.map_action_zoom_out
 import com.photonne.app.resources.map_empty_subtitle
 import com.photonne.app.resources.map_empty_title
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 
 @Composable
 fun MapScreen(
@@ -42,7 +41,7 @@ fun MapScreen(
     onBulkAddToAlbum: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     val darkTiles = isSystemInDarkTheme()
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
@@ -53,7 +52,7 @@ fun MapScreen(
             centerLng = state.centerLng,
             zoom = state.zoom,
             points = state.points,
-            baseUrl = config.apiBaseUrl,
+            baseUrl = apiBaseUrl,
             darkTiles = darkTiles,
             onCenterChanged = viewModel::onCenterChanged,
             onZoomChanged = viewModel::onZoomChanged,
@@ -163,7 +162,7 @@ fun MapScreen(
     if (sheetPoints != null) {
         MapClusterSheet(
             points = sheetPoints,
-            baseUrl = config.apiBaseUrl,
+            baseUrl = apiBaseUrl,
             selectedIds = state.selection,
             isMutating = state.isBulkMutating,
             onDismiss = viewModel::closeClusterSheet,

@@ -33,19 +33,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.AlbumSummary
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.albums_empty_subtitle
 import com.photonne.app.resources.albums_empty_title
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun AlbumsListScreen(onAlbumClick: (AlbumSummary) -> Unit) {
     val viewModel: AlbumsViewModel = koinViewModel()
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
 
     when {
@@ -91,7 +90,7 @@ fun AlbumsListScreen(onAlbumClick: (AlbumSummary) -> Unit) {
                 items(state.albums, key = { it.id }) { album ->
                     AlbumCard(
                         album = album,
-                        baseUrl = config.apiBaseUrl,
+                        baseUrl = apiBaseUrl,
                         onClick = { onAlbumClick(album) }
                     )
                 }

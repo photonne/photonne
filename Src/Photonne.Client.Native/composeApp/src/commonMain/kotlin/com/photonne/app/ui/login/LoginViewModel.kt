@@ -2,13 +2,26 @@ package com.photonne.app.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.api.ServerUrlStore
+import com.photonne.app.data.api.skipAuthRefresh
 import com.photonne.app.data.auth.AuthRepository
+import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.di.PhotonneAppConfig
+import io.ktor.client.HttpClient
+import io.ktor.client.request.head
+import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class LoginStep { ServerUrl, Credentials }
+
 data class LoginUiState(
+    val step: LoginStep = LoginStep.ServerUrl,
+    val serverUrl: String = "",
     val username: String = "",
     val password: String = "",
     val isSubmitting: Boolean = false,
@@ -16,11 +29,31 @@ data class LoginUiState(
 )
 
 class LoginViewModel(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val tokenStorage: TokenStorage,
+    private val serverUrlStore: ServerUrlStore,
+    private val httpClient: HttpClient,
+    config: PhotonneAppConfig
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(LoginUiState())
+    private val _state = MutableStateFlow(initialState(config))
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
+
+    private fun initialState(config: PhotonneAppConfig): LoginUiState {
+        val saved = serverUrlStore.get()
+        return if (saved != null) {
+            LoginUiState(step = LoginStep.Credentials, serverUrl = saved)
+        } else {
+            LoginUiState(
+                step = LoginStep.ServerUrl,
+                serverUrl = config.apiBaseUrl.orEmpty()
+            )
+        }
+    }
+
+    fun onServerUrlChange(value: String) {
+        _state.value = _state.value.copy(serverUrl = value, errorMessage = null)
+    }
 
     fun onUsernameChange(value: String) {
         _state.value = _state.value.copy(username = value, errorMessage = null)
@@ -30,6 +63,43 @@ class LoginViewModel(
         _state.value = _state.value.copy(password = value, errorMessage = null)
     }
 
+    fun submitServerUrl() {
+        val current = _state.value
+        if (current.isSubmitting) return
+        val normalized = ServerUrlStore.normalize(current.serverUrl)
+        if (!isValidUrl(normalized)) {
+            _state.value = current.copy(errorMessage = "Introduce una URL válida (ej. https://photos.example.com)")
+            return
+        }
+        _state.value = current.copy(isSubmitting = true, errorMessage = null)
+        viewModelScope.launch {
+            val reachable = probe(normalized)
+            if (reachable.isFailure) {
+                _state.value = _state.value.copy(
+                    isSubmitting = false,
+                    errorMessage = reachable.exceptionOrNull()?.message
+                        ?: "No se pudo contactar con el servidor"
+                )
+                return@launch
+            }
+            serverUrlStore.set(normalized)
+            _state.value = LoginUiState(
+                step = LoginStep.Credentials,
+                serverUrl = normalized
+            )
+        }
+    }
+
+    fun changeServer() {
+        if (_state.value.isSubmitting) return
+        tokenStorage.clear()
+        val previous = serverUrlStore.get().orEmpty()
+        _state.value = LoginUiState(
+            step = LoginStep.ServerUrl,
+            serverUrl = previous
+        )
+    }
+
     fun submit() {
         val current = _state.value
         if (current.isSubmitting) return
@@ -37,11 +107,18 @@ class LoginViewModel(
             _state.value = current.copy(errorMessage = "Introduce usuario y contraseña")
             return
         }
+        if (serverUrlStore.get().isNullOrEmpty()) {
+            _state.value = current.copy(
+                step = LoginStep.ServerUrl,
+                errorMessage = "Configura primero la URL del servidor"
+            )
+            return
+        }
         _state.value = current.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
             val result = authRepository.login(current.username.trim(), current.password)
             _state.value = if (result.isSuccess) {
-                LoginUiState()
+                LoginUiState(step = LoginStep.Credentials, serverUrl = serverUrlStore.get().orEmpty())
             } else {
                 _state.value.copy(
                     isSubmitting = false,
@@ -49,5 +126,34 @@ class LoginViewModel(
                 )
             }
         }
+    }
+
+    private fun isValidUrl(url: String): Boolean = try {
+        if (url.isBlank()) false
+        else {
+            val parsed = Url(url)
+            parsed.host.isNotEmpty() && (parsed.protocol.name == "http" || parsed.protocol.name == "https")
+        }
+    } catch (_: Throwable) {
+        false
+    }
+
+    private suspend fun probe(baseUrl: String): Result<Unit> = try {
+        val response: HttpResponse = httpClient.head("$baseUrl/api/auth/login") {
+            skipAuthRefresh()
+        }
+        if (response.status.value in 500..599) {
+            Result.failure(
+                RuntimeException("El servidor respondió con ${response.status.value}")
+            )
+        } else {
+            Result.success(Unit)
+        }
+    } catch (t: Throwable) {
+        Result.failure(
+            RuntimeException(
+                "No se pudo contactar con el servidor: ${t.message ?: t::class.simpleName}"
+            )
+        )
     }
 }

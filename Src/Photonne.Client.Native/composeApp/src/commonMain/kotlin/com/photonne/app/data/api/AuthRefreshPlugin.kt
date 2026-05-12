@@ -50,6 +50,13 @@ fun buildPhotonneHttpClient(
     baseUrl: String,
     tokenStorage: TokenStorage,
     authState: AuthStateHolder
+): HttpClient = buildPhotonneHttpClient(engine, { baseUrl }, tokenStorage, authState)
+
+fun buildPhotonneHttpClient(
+    engine: HttpClientEngine,
+    baseUrlProvider: () -> String,
+    tokenStorage: TokenStorage,
+    authState: AuthStateHolder
 ): HttpClient {
     val refreshMutex = Mutex()
 
@@ -80,7 +87,7 @@ fun buildPhotonneHttpClient(
         if (firstCall.response.status != HttpStatusCode.Unauthorized) return@intercept firstCall
 
         val refreshed = refreshMutex.withLock {
-            attemptRefresh(client, baseUrl, tokenStorage)
+            attemptRefresh(client, baseUrlProvider(), tokenStorage)
         }
         if (!refreshed) {
             tokenStorage.clear()

@@ -11,7 +11,7 @@ plugins {
 }
 
 val photonneVersion: String = readPhotonneVersion()
-val apiBaseUrl: String = (findProperty("ApiBaseUrl") as? String) ?: "http://localhost:1107"
+val apiBaseUrl: String = (findProperty("ApiBaseUrl") as? String).orEmpty()
 
 kotlin {
     androidTarget {

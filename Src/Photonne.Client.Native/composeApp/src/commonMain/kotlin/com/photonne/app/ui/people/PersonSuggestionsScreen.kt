@@ -38,7 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.PersonSuggestion
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.people_suggestions_accept
 import com.photonne.app.resources.people_suggestions_dismiss
@@ -46,7 +46,6 @@ import com.photonne.app.resources.people_suggestions_empty
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 
 @Composable
 fun PersonSuggestionsScreen(
@@ -56,7 +55,7 @@ fun PersonSuggestionsScreen(
     onLoadMore: () -> Unit,
     onOpen: () -> Unit
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
 
     LaunchedEffect(Unit) { onOpen() }
 
@@ -112,7 +111,7 @@ fun PersonSuggestionsScreen(
                     items(state.items, key = { it.id }) { suggestion ->
                         SuggestionCard(
                             suggestion = suggestion,
-                            baseUrl = config.apiBaseUrl,
+                            baseUrl = apiBaseUrl,
                             isPending = suggestion.id in state.pendingFaceIds,
                             onAccept = { onAccept(suggestion.id) },
                             onDismiss = { onDismissFace(suggestion.id) }

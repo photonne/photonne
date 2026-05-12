@@ -18,7 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.photonne.app.di.PhotonneAppConfig
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.album_empty_subtitle
 import com.photonne.app.resources.album_empty_title
@@ -33,7 +33,7 @@ fun AlbumDetailScreen(
     onItemClick: (Int) -> Unit,
     viewModel: AlbumDetailViewModel
 ) {
-    val config: PhotonneAppConfig = koinInject()
+    val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(albumId) { viewModel.open(albumId, albumName) }
@@ -71,7 +71,7 @@ fun AlbumDetailScreen(
                 }
             else -> AssetGrid(
                 items = state.items,
-                baseUrl = config.apiBaseUrl,
+                baseUrl = apiBaseUrl,
                 onItemClick = { index ->
                     if (state.isSelectionActive) {
                         state.items.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }

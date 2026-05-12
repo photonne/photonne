@@ -319,7 +319,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val authRepository: AuthRepository = koinInject()
     val albumsRepository: AlbumsRepository = koinInject()
     val peopleRepository: com.photonne.app.data.people.PeopleRepository = koinInject()
-    val photonneConfig: com.photonne.app.di.PhotonneAppConfig = koinInject()
+    val apiBaseUrl = com.photonne.app.data.api.rememberApiBaseUrl()
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
@@ -2149,7 +2149,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showMergePicker && activePerson != null) {
         com.photonne.app.ui.people.PersonPickerDialog(
             people = peopleState.people,
-            baseUrl = photonneConfig.apiBaseUrl,
+            baseUrl = apiBaseUrl,
             excludeId = activePerson.id,
             onDismiss = { showMergePicker = false },
             onSelect = { other ->
@@ -2257,7 +2257,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showAssetFacesSheet && assetFacesState.assetId != null) {
         com.photonne.app.ui.people.AssetFacesSheet(
             state = assetFacesState,
-            baseUrl = photonneConfig.apiBaseUrl,
+            baseUrl = apiBaseUrl,
             onDismiss = {
                 showAssetFacesSheet = false
                 assetFacesViewModel.close()
