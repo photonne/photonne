@@ -2,6 +2,7 @@ package com.photonne.app.di
 
 import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.actions.AssetActionsRepository
+import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.settings.ThemePreferenceStore
 import com.photonne.app.data.folder.FoldersRepository
@@ -22,6 +23,7 @@ import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.data.timeline.MemoriesRepository
 import com.photonne.app.data.timeline.TimelineRepository
 import com.photonne.app.data.upload.UploadRepository
+import com.photonne.app.ui.actions.AssetSharing
 import com.photonne.app.ui.album.AlbumDetailViewModel
 import com.photonne.app.ui.album.AlbumPermissionsViewModel
 import com.photonne.app.ui.album.AlbumSharesViewModel
@@ -38,6 +40,27 @@ import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.map.MapViewModel
 import com.photonne.app.ui.search.SearchViewModel
 import com.photonne.app.ui.actions.AssetSelectionActionsViewModel
+import com.photonne.app.ui.admin.AdminBackfillKind
+import com.photonne.app.ui.admin.AdminBackfillViewModel
+import com.photonne.app.ui.admin.AdminBackupViewModel
+import com.photonne.app.ui.admin.AdminDuplicatesViewModel
+import com.photonne.app.ui.admin.AdminImageSettingsViewModel
+import com.photonne.app.ui.admin.AdminIndexAssetsViewModel
+import com.photonne.app.ui.admin.AdminLibrariesViewModel
+import com.photonne.app.ui.admin.AdminMaintenanceViewModel
+import com.photonne.app.ui.admin.AdminMetadataSettingsViewModel
+import com.photonne.app.ui.admin.AdminMlFeature
+import com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel
+import com.photonne.app.ui.admin.AdminNightlySettingsViewModel
+import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
+import com.photonne.app.ui.admin.AdminServerSettingsViewModel
+import com.photonne.app.ui.admin.AdminServerViewModel
+import com.photonne.app.ui.admin.AdminStatsViewModel
+import com.photonne.app.ui.admin.AdminTaskSettingsViewModel
+import com.photonne.app.ui.admin.AdminThumbnailsViewModel
+import com.photonne.app.ui.admin.AdminTrashSettingsViewModel
+import com.photonne.app.ui.admin.AdminUserDefaultsViewModel
+import com.photonne.app.ui.admin.AdminUsersViewModel
 import com.photonne.app.ui.settings.AccountProfileViewModel
 import com.photonne.app.ui.settings.AccountSecurityViewModel
 import com.photonne.app.ui.settings.AccountStorageViewModel
@@ -48,6 +71,7 @@ import com.photonne.app.ui.upload.UploadViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -73,6 +97,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single<PhotonneApi> { PhotonneApiClient(get(), config.apiBaseUrl) }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
+    singleOf(::AdminRepository)
     single { ThemePreferenceStore(get()) }
     single { TimelineRepository(api = get()) }
     singleOf(::MemoriesRepository)
@@ -110,4 +135,27 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AccountSecurityViewModel)
     viewModelOf(::AccountStorageViewModel)
     viewModelOf(::AppearanceViewModel)
+    viewModelOf(::AdminUsersViewModel)
+    viewModelOf(::AdminStatsViewModel)
+    viewModelOf(::AdminServerViewModel)
+    viewModelOf(::AdminLibrariesViewModel)
+    viewModelOf(::AdminTaskSettingsViewModel)
+    viewModelOf(::AdminImageSettingsViewModel)
+    viewModelOf(::AdminMetadataSettingsViewModel)
+    viewModelOf(::AdminNightlySettingsViewModel)
+    viewModelOf(::AdminNotificationSettingsViewModel)
+    viewModelOf(::AdminServerSettingsViewModel)
+    viewModelOf(::AdminTrashSettingsViewModel)
+    viewModelOf(::AdminUserDefaultsViewModel)
+    viewModelOf(::AdminIndexAssetsViewModel)
+    viewModelOf(::AdminThumbnailsViewModel)
+    viewModelOf(::AdminDuplicatesViewModel)
+    viewModelOf(::AdminMaintenanceViewModel)
+    viewModel { (feature: AdminMlFeature) ->
+        AdminMlFeatureSettingsViewModel(get(), feature)
+    }
+    viewModel { (kind: AdminBackfillKind) ->
+        AdminBackfillViewModel(get(), kind)
+    }
+    viewModel { AdminBackupViewModel(get(), get<AssetSharing>()) }
 }

@@ -272,4 +272,290 @@
     <string name="storage_used_format">%1$s used of %2$s</string>
     <string name="storage_used_unbounded_format">%1$s used</string>
     <string name="storage_no_quota">No quota limit</string>
+
+    <!-- Administration -->
+    <string name="administration_title">Administration</string>
+    <string name="administration_hint">Manage users, review usage and clean up the server trash.</string>
+    <string name="admin_section_users">Users</string>
+    <string name="admin_section_users_subtitle">Create, edit and delete accounts</string>
+    <string name="admin_section_stats">Statistics</string>
+    <string name="admin_section_stats_subtitle">Global usage and per-user breakdown</string>
+    <string name="admin_section_server">Server</string>
+    <string name="admin_section_server_subtitle">Version and updates</string>
+    <string name="admin_section_trash">System trash</string>
+    <string name="admin_section_trash_subtitle">Retention and cleanup of expired items</string>
+
+    <string name="admin_users_empty">No users yet.</string>
+    <string name="admin_user_action_new">New user</string>
+    <string name="admin_user_edit_title">Edit user</string>
+    <string name="admin_user_field_password">Password</string>
+    <string name="admin_user_field_admin">Administrator</string>
+    <string name="admin_user_field_active">Account active</string>
+    <string name="admin_user_field_quota_mb">Quota (MB)</string>
+    <string name="admin_user_field_quota_mb_hint">Leave blank to use the default value.</string>
+    <string name="admin_user_role_admin">Administrator</string>
+    <string name="admin_user_role_user">User</string>
+    <string name="admin_user_inactive_badge">Inactive</string>
+    <string name="admin_user_primary_admin_badge">Primary admin</string>
+    <string name="admin_user_last_login">Last login: %1$s</string>
+    <string name="admin_user_never_logged_in">Never signed in</string>
+    <string name="admin_user_quota_format">Quota: %1$s</string>
+    <string name="admin_user_action_reset_password">Reset password</string>
+    <string name="admin_user_action_reset_password_title">Reset password</string>
+    <string name="admin_user_action_reset_password_message">Set a new password for "%1$s". The user will need to sign in with the new password.</string>
+    <string name="admin_user_action_delete_title">Delete user</string>
+    <string name="admin_user_action_delete_message">"%1$s" will be permanently deleted. Their photos and associated data will be removed.</string>
+
+    <string name="admin_stats_total_photos">Total photos</string>
+    <string name="admin_stats_total_videos">Total videos</string>
+    <string name="admin_stats_total_storage">Total storage</string>
+    <string name="admin_stats_per_user">Per-user usage</string>
+    <string name="admin_stats_per_user_breakdown">No per-user usage data available.</string>
+
+    <string name="admin_server_current_version">Current version</string>
+    <string name="admin_server_latest_version">Latest released version</string>
+    <string name="admin_server_checked_at">Checked at</string>
+    <string name="admin_server_up_to_date">Your installation is up to date.</string>
+    <string name="admin_server_update_available">An update is available.</string>
+    <string name="admin_server_check_error">Update check failed: %1$s</string>
+    <string name="admin_server_release_notes">Release notes</string>
+    <string name="admin_server_release_url">Release page</string>
+
+    <string name="admin_trash_total_items">Items in trash</string>
+    <string name="admin_trash_total_bytes">Space used</string>
+    <string name="admin_trash_expired">Expired items</string>
+    <string name="admin_trash_retention_days">Retention days</string>
+    <string name="admin_trash_quota_mb">Max quota (MB)</string>
+    <string name="admin_trash_over_quota_users">Users over quota</string>
+    <string name="admin_trash_over_quota_bytes">Space over quota</string>
+    <string name="admin_trash_action_cleanup">Clean up expired</string>
+
+    <!-- Administration: top-level menu -->
+    <string name="admin_section_libraries">External libraries</string>
+    <string name="admin_section_libraries_subtitle">Indexed external folders</string>
+    <string name="admin_section_settings">Settings</string>
+    <string name="admin_section_settings_subtitle">Server and task configuration</string>
+    <string name="admin_section_system">System</string>
+    <string name="admin_section_system_subtitle">Index, thumbnails and maintenance</string>
+    <string name="admin_server_check_again">Check again</string>
+
+    <!-- Libraries -->
+    <string name="admin_libraries_empty">No external libraries configured yet.</string>
+    <string name="admin_libraries_action_new">New library</string>
+    <string name="admin_libraries_edit_title">Edit library</string>
+    <string name="admin_libraries_action_scan">Scan</string>
+    <string name="admin_libraries_action_permissions">Members</string>
+    <string name="admin_libraries_action_delete">Delete</string>
+    <string name="admin_libraries_field_name">Name</string>
+    <string name="admin_libraries_field_path">Absolute server path</string>
+    <string name="admin_libraries_field_import_subfolders">Include subfolders</string>
+    <string name="admin_libraries_field_cron">Cron schedule (optional)</string>
+    <string name="admin_libraries_cron_hint">"@daily, @weekly or cron expression"</string>
+    <string name="admin_libraries_asset_count">%1$d items</string>
+    <string name="admin_libraries_last_scan">Last scan: %1$s (%2$s)</string>
+    <string name="admin_libraries_no_scan">Never scanned</string>
+    <string name="admin_libraries_scan_progress">Scanning · %1$d%%</string>
+    <string name="admin_libraries_delete_title">Delete library</string>
+    <string name="admin_libraries_delete_message">"%1$s" will be removed. Files on disk are kept but lose their index entry.</string>
+    <string name="admin_libraries_permissions_title">Library access</string>
+    <string name="admin_libraries_permissions_empty">Only you can access this library.</string>
+
+    <!-- Settings hub + subpages -->
+    <string name="admin_settings_tasks">Task configuration</string>
+    <string name="admin_settings_tasks_subtitle">Parallel workers and batch sizes</string>
+    <string name="admin_settings_workers_section">Parallel workers</string>
+    <string name="admin_settings_task_workers_metadata">Metadata</string>
+    <string name="admin_settings_task_workers_thumbnails">Thumbnails</string>
+    <string name="admin_settings_task_workers_face">Face recognition</string>
+    <string name="admin_settings_task_workers_object">Object detection</string>
+    <string name="admin_settings_task_workers_scene">Scene classification</string>
+    <string name="admin_settings_task_workers_text">Text recognition (OCR)</string>
+    <string name="admin_settings_task_workers_embedding">Smart search (embeddings)</string>
+    <string name="admin_settings_task_backfill_batch">Backfill batch size</string>
+
+    <string name="admin_settings_face_recognition">Face recognition</string>
+    <string name="admin_settings_face_recognition_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_object_detection">Object detection</string>
+    <string name="admin_settings_object_detection_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_scene_classification">Scene classification</string>
+    <string name="admin_settings_scene_classification_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_text_recognition">Text recognition (OCR)</string>
+    <string name="admin_settings_text_recognition_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_image_embedding">Smart search</string>
+    <string name="admin_settings_image_embedding_subtitle">CLIP embeddings in the nightly task</string>
+    <string name="admin_settings_feature_nightly_section">Nightly task</string>
+    <string name="admin_settings_feature_enabled">Run during the nightly task</string>
+    <string name="admin_settings_feature_enabled_description">When enabled, the nightly task processes this model.</string>
+    <string name="admin_settings_feature_mode">Mode</string>
+    <string name="admin_settings_feature_mode_missing">Only items without results</string>
+    <string name="admin_settings_feature_mode_all">All items</string>
+    <string name="admin_settings_feature_mode_description">"Only missing" never reprocesses; "all" re-runs the model on every asset each night.</string>
+
+    <string name="admin_settings_image">Image settings</string>
+    <string name="admin_settings_image_subtitle">Thumbnail format and quality</string>
+    <string name="admin_settings_image_format">Thumbnail format</string>
+    <string name="admin_settings_image_format_jpeg">JPEG</string>
+    <string name="admin_settings_image_format_webp">WebP</string>
+    <string name="admin_settings_image_quality_section">Compression quality</string>
+    <string name="admin_settings_image_quality_small">Small</string>
+    <string name="admin_settings_image_quality_medium">Medium</string>
+    <string name="admin_settings_image_quality_large">Large</string>
+
+    <string name="admin_settings_metadata">Metadata settings</string>
+    <string name="admin_settings_metadata_subtitle">Which EXIF/IPTC/XMP fields to extract</string>
+    <string name="admin_settings_metadata_datetime">Date and time</string>
+    <string name="admin_settings_metadata_gps">GPS</string>
+    <string name="admin_settings_metadata_camera">Camera and exposure</string>
+    <string name="admin_settings_metadata_iptc">IPTC (authorship, copyright…)</string>
+    <string name="admin_settings_metadata_xmp">Read XMP sidecar</string>
+    <string name="admin_settings_metadata_timezone">Default timezone</string>
+
+    <string name="admin_settings_nightly">Nightly tasks</string>
+    <string name="admin_settings_nightly_subtitle">Master schedule and active modules</string>
+    <string name="admin_settings_nightly_enabled">Nightly tasks enabled</string>
+    <string name="admin_settings_nightly_schedule">Start time</string>
+    <string name="admin_settings_nightly_timezone">Timezone</string>
+    <string name="admin_settings_nightly_features_section">Modules</string>
+    <string name="admin_settings_nightly_metadata">Metadata</string>
+    <string name="admin_settings_nightly_thumbnails">Thumbnails</string>
+    <string name="admin_settings_nightly_face">Face recognition</string>
+    <string name="admin_settings_nightly_object">Object detection</string>
+    <string name="admin_settings_nightly_scene">Scene classification</string>
+    <string name="admin_settings_nightly_text">Text recognition (OCR)</string>
+    <string name="admin_settings_nightly_embedding">Smart search (embeddings)</string>
+    <string name="admin_settings_nightly_clustering">Re-cluster faces after model runs</string>
+    <string name="admin_settings_nightly_mode">Processing mode</string>
+
+    <string name="admin_settings_notifications">Notifications</string>
+    <string name="admin_settings_notifications_subtitle">Retention and enabled types</string>
+    <string name="admin_settings_notifications_enabled">Notifications enabled</string>
+    <string name="admin_settings_notifications_retention_days">Retention days</string>
+    <string name="admin_settings_notifications_max_per_user">Max per user</string>
+    <string name="admin_settings_notifications_categories">Notification types</string>
+    <string name="admin_settings_notifications_job_completed">Job completed</string>
+    <string name="admin_settings_notifications_job_failed">Job failed</string>
+    <string name="admin_settings_notifications_share_viewed">Share link viewed</string>
+
+    <string name="admin_settings_server">Server configuration</string>
+    <string name="admin_settings_server_subtitle">Public URL, limits and paths</string>
+    <string name="admin_settings_server_public_url">Public URL</string>
+    <string name="admin_settings_server_max_upload">Max upload size (MB)</string>
+    <string name="admin_settings_server_max_upload_hint">0 = unlimited</string>
+    <string name="admin_settings_server_session_timeout">Session timeout (min)</string>
+    <string name="admin_settings_server_thumbnails_path">Thumbnails path</string>
+
+    <string name="admin_settings_trash">Trash configuration</string>
+    <string name="admin_settings_trash_subtitle">Retention, quota and current state</string>
+    <string name="admin_settings_trash_section_config">Configuration</string>
+    <string name="admin_settings_trash_section_stats">Current state</string>
+    <string name="admin_settings_trash_enabled">Trash enabled</string>
+    <string name="admin_settings_trash_retention">Retention days</string>
+    <string name="admin_settings_trash_max_quota">Max quota (MB)</string>
+    <string name="admin_settings_trash_max_quota_hint">0 = unlimited</string>
+
+    <string name="admin_settings_user_defaults">User defaults</string>
+    <string name="admin_settings_user_defaults_subtitle">Default values for new accounts</string>
+    <string name="admin_settings_user_defaults_active">Active by default</string>
+    <string name="admin_settings_user_defaults_role">Default role</string>
+    <string name="admin_settings_user_defaults_quota_gb">Default quota (GB)</string>
+    <string name="admin_settings_user_defaults_quota_hint">0 = unlimited</string>
+
+    <string name="admin_settings_version">Server version</string>
+    <string name="admin_settings_version_subtitle">Current version and available updates</string>
+
+    <!-- System hub + subpages -->
+    <string name="admin_system_index">Index</string>
+    <string name="admin_system_index_subtitle">Scan folders and process files</string>
+    <string name="admin_system_metadata">Extract metadata</string>
+    <string name="admin_system_metadata_subtitle">Re-extract EXIF / IPTC data</string>
+    <string name="admin_system_thumbnails">Generate thumbnails</string>
+    <string name="admin_system_thumbnails_subtitle">Create or regenerate thumbnails</string>
+    <string name="admin_system_duplicates">Detect duplicates</string>
+    <string name="admin_system_duplicates_subtitle">Find and clean up duplicates</string>
+    <string name="admin_system_face">Face recognition</string>
+    <string name="admin_system_face_subtitle">Process pending faces and re-cluster</string>
+    <string name="admin_system_object">Object detection</string>
+    <string name="admin_system_object_subtitle">Detect objects in images</string>
+    <string name="admin_system_scene">Scene classification</string>
+    <string name="admin_system_scene_subtitle">Tag scenes in images</string>
+    <string name="admin_system_text">Text recognition (OCR)</string>
+    <string name="admin_system_text_subtitle">Recognize text in images</string>
+    <string name="admin_system_embedding">Smart search (CLIP)</string>
+    <string name="admin_system_embedding_subtitle">Compute embeddings for semantic search</string>
+    <string name="admin_system_maintenance">Maintenance</string>
+    <string name="admin_system_maintenance_subtitle">Orphans, missing files, sizes…</string>
+    <string name="admin_system_backup">Backup</string>
+    <string name="admin_system_backup_subtitle">Export and import the database</string>
+
+    <!-- Index task -->
+    <string name="admin_index_action_start">Start indexing</string>
+    <string name="admin_index_action_cancel">Cancel</string>
+    <string name="admin_index_started">Indexing in progress…</string>
+    <string name="admin_index_completed">Indexing finished.</string>
+    <string name="admin_index_stats_section">Statistics</string>
+    <string name="admin_index_stats_total">Files found</string>
+    <string name="admin_index_stats_new">New</string>
+    <string name="admin_index_stats_updated">Updated</string>
+    <string name="admin_index_stats_indexed">Hashes computed</string>
+    <string name="admin_index_stats_extracted">EXIF extracted</string>
+    <string name="admin_index_stats_jobs_queued">ML jobs queued</string>
+    <string name="admin_index_stats_thumbnails">Thumbnails generated</string>
+    <string name="admin_index_stats_orphans">Orphans cleaned</string>
+    <string name="admin_index_stats_duplicates">Duplicates removed</string>
+
+    <!-- Thumbnails task -->
+    <string name="admin_thumbnails_action_start">Generate thumbnails</string>
+    <string name="admin_thumbnails_action_cancel">Cancel</string>
+    <string name="admin_thumbnails_completed">Generation finished.</string>
+    <string name="admin_thumbnails_regenerate">Regenerate existing</string>
+    <string name="admin_thumbnails_stats_total">Total</string>
+    <string name="admin_thumbnails_stats_processed">Processed</string>
+    <string name="admin_thumbnails_stats_generated">Generated</string>
+    <string name="admin_thumbnails_stats_skipped">Skipped</string>
+    <string name="admin_thumbnails_stats_failed">Failed</string>
+
+    <!-- Duplicates task -->
+    <string name="admin_duplicates_action_start">Find duplicates</string>
+    <string name="admin_duplicates_action_cancel">Cancel</string>
+    <string name="admin_duplicates_completed">Scan finished.</string>
+    <string name="admin_duplicates_cleanup">Remove detected duplicates</string>
+    <string name="admin_duplicates_physical">Physical scan (not DB only)</string>
+    <string name="admin_duplicates_stats_total">Assets scanned</string>
+    <string name="admin_duplicates_stats_groups">Duplicate groups</string>
+    <string name="admin_duplicates_stats_assets">Duplicate assets</string>
+    <string name="admin_duplicates_stats_removed">Removed</string>
+    <string name="admin_duplicates_stats_reclaimed">Space reclaimed</string>
+    <string name="admin_duplicates_stats_unindexed">Unindexed files</string>
+
+    <!-- Backfill (ML tasks) -->
+    <string name="admin_backfill_pending">Pending</string>
+    <string name="admin_backfill_in_queue">In queue</string>
+    <string name="admin_backfill_only_missing">Only missing items</string>
+    <string name="admin_backfill_action_run">Process now</string>
+    <string name="admin_backfill_response">Queued %1$d of %2$d.</string>
+    <string name="admin_backfill_action_clustering">Re-cluster faces</string>
+    <string name="admin_backfill_clustering_result">%1$d owners processed · %2$d persons created.</string>
+
+    <!-- Maintenance -->
+    <string name="admin_maintenance_action_orphans">Clean orphan thumbnails</string>
+    <string name="admin_maintenance_desc_orphans">Removes thumbnail files that no longer match any asset.</string>
+    <string name="admin_maintenance_action_missing">Mark missing files</string>
+    <string name="admin_maintenance_desc_missing">Scans indexed assets and marks those no longer on disk as missing.</string>
+    <string name="admin_maintenance_action_recalculate">Recalculate sizes</string>
+    <string name="admin_maintenance_desc_recalculate">Re-reads file sizes from disk to fix quota counters.</string>
+    <string name="admin_maintenance_action_empty_trash">Empty all trashes</string>
+    <string name="admin_maintenance_desc_empty_trash">Permanently deletes every item in every user's trash.</string>
+    <string name="admin_maintenance_result">Processed %1$d · Affected %2$d</string>
+
+    <!-- Backup -->
+    <string name="admin_backup_section_download">Download backup</string>
+    <string name="admin_backup_section_restore">Restore backup</string>
+    <string name="admin_backup_explanation">Download a JSON dump of the whole database. Use it as part of your external backup routine.</string>
+    <string name="admin_backup_include_ml">Include machine-learning data</string>
+    <string name="admin_backup_action_download">Download backup</string>
+    <string name="admin_backup_downloaded">Saved to %1$s.</string>
+    <string name="admin_backup_restore_only_pwa">Backup restore is only available from the web app for now.</string>
+
+    <!-- Metadata task (uses indexing) -->
+    <string name="admin_metadata_task_explanation">Metadata extraction is part of the server's index pipeline. Trigger an index run to re-extract EXIF, GPS and other fields.</string>
 </resources>

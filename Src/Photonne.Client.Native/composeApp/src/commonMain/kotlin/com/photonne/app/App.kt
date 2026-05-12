@@ -20,6 +20,37 @@ import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_section_security
 import com.photonne.app.resources.account_section_storage
 import com.photonne.app.resources.account_settings_title
+import com.photonne.app.resources.admin_section_libraries
+import com.photonne.app.resources.admin_section_settings
+import com.photonne.app.resources.admin_section_stats
+import com.photonne.app.resources.admin_section_system
+import com.photonne.app.resources.admin_section_users
+import com.photonne.app.resources.admin_settings_face_recognition
+import com.photonne.app.resources.admin_settings_image
+import com.photonne.app.resources.admin_settings_image_embedding
+import com.photonne.app.resources.admin_settings_metadata
+import com.photonne.app.resources.admin_settings_nightly
+import com.photonne.app.resources.admin_settings_notifications
+import com.photonne.app.resources.admin_settings_object_detection
+import com.photonne.app.resources.admin_settings_scene_classification
+import com.photonne.app.resources.admin_settings_server
+import com.photonne.app.resources.admin_settings_tasks
+import com.photonne.app.resources.admin_settings_text_recognition
+import com.photonne.app.resources.admin_settings_trash
+import com.photonne.app.resources.admin_settings_user_defaults
+import com.photonne.app.resources.admin_settings_version
+import com.photonne.app.resources.admin_system_backup
+import com.photonne.app.resources.admin_system_duplicates
+import com.photonne.app.resources.admin_system_embedding
+import com.photonne.app.resources.admin_system_face
+import com.photonne.app.resources.admin_system_index
+import com.photonne.app.resources.admin_system_maintenance
+import com.photonne.app.resources.admin_system_metadata
+import com.photonne.app.resources.admin_system_object
+import com.photonne.app.resources.admin_system_scene
+import com.photonne.app.resources.admin_system_text
+import com.photonne.app.resources.admin_system_thumbnails
+import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.action_create
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.album_action_edit
@@ -125,7 +156,124 @@ private enum class MoreSubscreen {
     AccountProfile,
     AccountSecurity,
     AccountAppearance,
-    AccountStorage
+    AccountStorage,
+    Administration,
+    AdminUsers,
+    AdminLibraries,
+    AdminStats,
+    AdminSettingsHub,
+    AdminSettingsTasks,
+    AdminSettingsFaceRecognition,
+    AdminSettingsObjectDetection,
+    AdminSettingsSceneClassification,
+    AdminSettingsTextRecognition,
+    AdminSettingsImageEmbedding,
+    AdminSettingsImage,
+    AdminSettingsMetadata,
+    AdminSettingsNightly,
+    AdminSettingsNotifications,
+    AdminSettingsServer,
+    AdminSettingsTrash,
+    AdminSettingsUserDefaults,
+    AdminSettingsVersion,
+    AdminSystemHub,
+    AdminSystemIndex,
+    AdminSystemExtractMetadata,
+    AdminSystemThumbnails,
+    AdminSystemDuplicates,
+    AdminSystemFaceRecognition,
+    AdminSystemObjectDetection,
+    AdminSystemSceneClassification,
+    AdminSystemTextRecognition,
+    AdminSystemImageEmbedding,
+    AdminSystemMaintenance,
+    AdminSystemBackup
+}
+
+/** True when the given subscreen is one of the 14 Ajustes leaves so the
+ *  top bar / back button can be configured generically. */
+private fun isAdminSettingsSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
+    MoreSubscreen.AdminSettingsTasks,
+    MoreSubscreen.AdminSettingsFaceRecognition,
+    MoreSubscreen.AdminSettingsObjectDetection,
+    MoreSubscreen.AdminSettingsSceneClassification,
+    MoreSubscreen.AdminSettingsTextRecognition,
+    MoreSubscreen.AdminSettingsImageEmbedding,
+    MoreSubscreen.AdminSettingsImage,
+    MoreSubscreen.AdminSettingsMetadata,
+    MoreSubscreen.AdminSettingsNightly,
+    MoreSubscreen.AdminSettingsNotifications,
+    MoreSubscreen.AdminSettingsServer,
+    MoreSubscreen.AdminSettingsTrash,
+    MoreSubscreen.AdminSettingsUserDefaults,
+    MoreSubscreen.AdminSettingsVersion -> true
+    else -> false
+}
+
+private fun isAdminSystemSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
+    MoreSubscreen.AdminSystemIndex,
+    MoreSubscreen.AdminSystemExtractMetadata,
+    MoreSubscreen.AdminSystemThumbnails,
+    MoreSubscreen.AdminSystemDuplicates,
+    MoreSubscreen.AdminSystemFaceRecognition,
+    MoreSubscreen.AdminSystemObjectDetection,
+    MoreSubscreen.AdminSystemSceneClassification,
+    MoreSubscreen.AdminSystemTextRecognition,
+    MoreSubscreen.AdminSystemImageEmbedding,
+    MoreSubscreen.AdminSystemMaintenance,
+    MoreSubscreen.AdminSystemBackup -> true
+    else -> false
+}
+
+private fun adminSettingsSubpageMeta(
+    subscreen: MoreSubscreen
+): Pair<org.jetbrains.compose.resources.StringResource, Unit> = when (subscreen) {
+    MoreSubscreen.AdminSettingsTasks ->
+        Res.string.admin_settings_tasks to Unit
+    MoreSubscreen.AdminSettingsFaceRecognition ->
+        Res.string.admin_settings_face_recognition to Unit
+    MoreSubscreen.AdminSettingsObjectDetection ->
+        Res.string.admin_settings_object_detection to Unit
+    MoreSubscreen.AdminSettingsSceneClassification ->
+        Res.string.admin_settings_scene_classification to Unit
+    MoreSubscreen.AdminSettingsTextRecognition ->
+        Res.string.admin_settings_text_recognition to Unit
+    MoreSubscreen.AdminSettingsImageEmbedding ->
+        Res.string.admin_settings_image_embedding to Unit
+    MoreSubscreen.AdminSettingsImage ->
+        Res.string.admin_settings_image to Unit
+    MoreSubscreen.AdminSettingsMetadata ->
+        Res.string.admin_settings_metadata to Unit
+    MoreSubscreen.AdminSettingsNightly ->
+        Res.string.admin_settings_nightly to Unit
+    MoreSubscreen.AdminSettingsNotifications ->
+        Res.string.admin_settings_notifications to Unit
+    MoreSubscreen.AdminSettingsServer ->
+        Res.string.admin_settings_server to Unit
+    MoreSubscreen.AdminSettingsTrash ->
+        Res.string.admin_settings_trash to Unit
+    MoreSubscreen.AdminSettingsUserDefaults ->
+        Res.string.admin_settings_user_defaults to Unit
+    MoreSubscreen.AdminSettingsVersion ->
+        Res.string.admin_settings_version to Unit
+    else -> Res.string.admin_section_settings to Unit
+}
+
+private fun adminSystemSubpageMeta(
+    subscreen: MoreSubscreen
+): Pair<org.jetbrains.compose.resources.StringResource, Unit> = when (subscreen) {
+    MoreSubscreen.AdminSystemIndex -> Res.string.admin_system_index to Unit
+    MoreSubscreen.AdminSystemExtractMetadata -> Res.string.admin_system_metadata to Unit
+    MoreSubscreen.AdminSystemThumbnails -> Res.string.admin_system_thumbnails to Unit
+    MoreSubscreen.AdminSystemDuplicates -> Res.string.admin_system_duplicates to Unit
+    MoreSubscreen.AdminSystemFaceRecognition -> Res.string.admin_system_face to Unit
+    MoreSubscreen.AdminSystemObjectDetection -> Res.string.admin_system_object to Unit
+    MoreSubscreen.AdminSystemSceneClassification -> Res.string.admin_system_scene to Unit
+    MoreSubscreen.AdminSystemTextRecognition -> Res.string.admin_system_text to Unit
+    MoreSubscreen.AdminSystemImageEmbedding -> Res.string.admin_system_embedding to Unit
+    MoreSubscreen.AdminSystemMaintenance -> Res.string.admin_system_maintenance to Unit
+    MoreSubscreen.AdminSystemBackup -> Res.string.admin_system_backup to Unit
+    else -> Res.string.admin_section_system to Unit
 }
 
 /** Build a thin TimelineItem out of a map point so the asset viewer
@@ -200,6 +348,37 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val accountStorageViewModel: com.photonne.app.ui.settings.AccountStorageViewModel =
         koinViewModel()
     val appearanceViewModel: com.photonne.app.ui.settings.AppearanceViewModel = koinViewModel()
+    val adminUsersViewModel: com.photonne.app.ui.admin.AdminUsersViewModel = koinViewModel()
+    val adminLibrariesViewModel: com.photonne.app.ui.admin.AdminLibrariesViewModel =
+        koinViewModel()
+    val adminStatsViewModel: com.photonne.app.ui.admin.AdminStatsViewModel = koinViewModel()
+    val adminVersionViewModel: com.photonne.app.ui.admin.AdminServerViewModel = koinViewModel()
+    val adminTaskSettingsViewModel: com.photonne.app.ui.admin.AdminTaskSettingsViewModel =
+        koinViewModel()
+    val adminImageSettingsViewModel: com.photonne.app.ui.admin.AdminImageSettingsViewModel =
+        koinViewModel()
+    val adminMetadataSettingsViewModel:
+        com.photonne.app.ui.admin.AdminMetadataSettingsViewModel = koinViewModel()
+    val adminNightlySettingsViewModel:
+        com.photonne.app.ui.admin.AdminNightlySettingsViewModel = koinViewModel()
+    val adminNotificationSettingsViewModel:
+        com.photonne.app.ui.admin.AdminNotificationSettingsViewModel = koinViewModel()
+    val adminServerSettingsViewModel:
+        com.photonne.app.ui.admin.AdminServerSettingsViewModel = koinViewModel()
+    val adminTrashSettingsViewModel:
+        com.photonne.app.ui.admin.AdminTrashSettingsViewModel = koinViewModel()
+    val adminUserDefaultsViewModel:
+        com.photonne.app.ui.admin.AdminUserDefaultsViewModel = koinViewModel()
+    val adminIndexAssetsViewModel:
+        com.photonne.app.ui.admin.AdminIndexAssetsViewModel = koinViewModel()
+    val adminThumbnailsViewModel:
+        com.photonne.app.ui.admin.AdminThumbnailsViewModel = koinViewModel()
+    val adminDuplicatesViewModel:
+        com.photonne.app.ui.admin.AdminDuplicatesViewModel = koinViewModel()
+    val adminMaintenanceViewModel:
+        com.photonne.app.ui.admin.AdminMaintenanceViewModel = koinViewModel()
+    val adminBackupViewModel:
+        com.photonne.app.ui.admin.AdminBackupViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
     val albumsState by albumsViewModel.state.collectAsState()
     val albumDetailState by albumDetailViewModel.state.collectAsState()
@@ -690,6 +869,66 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     user = user.user,
                     onLogout = onLogout
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Administration ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.administration_title),
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminUsers ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_users),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminLibraries ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_libraries),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminStats ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_stats),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminSettingsHub ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_settings),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminSystemHub ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_section_system),
+                    onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && isAdminSettingsSubpage(moreSubscreen) -> {
+                val (titleRes, _) = adminSettingsSubpageMeta(moreSubscreen!!)
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(titleRes),
+                    onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            }
+            selectedTab == MainTab.More && isAdminSystemSubpage(moreSubscreen) -> {
+                val (titleRes, _) = adminSystemSubpageMeta(moreSubscreen!!)
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(titleRes),
+                    onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            }
             selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
             else -> TimelineTopBar(
                 user = user.user,
@@ -864,6 +1103,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
+                        },
+                        onOpenAdministration = if (
+                            user.user.role.equals("Admin", ignoreCase = true)
+                        ) {
+                            { moreSubscreen = MoreSubscreen.Administration }
+                        } else {
+                            null
                         }
                     )
                     MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
@@ -1091,6 +1337,253 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AccountStorage ->
                         com.photonne.app.ui.settings.AccountStorageScreen(
                             viewModel = accountStorageViewModel
+                        )
+                    MoreSubscreen.Administration ->
+                        com.photonne.app.ui.admin.AdministrationScreen(
+                            onOpen = { section ->
+                                moreSubscreen = when (section) {
+                                    com.photonne.app.ui.admin.AdministrationSection.Users ->
+                                        MoreSubscreen.AdminUsers
+                                    com.photonne.app.ui.admin.AdministrationSection.Libraries ->
+                                        MoreSubscreen.AdminLibraries
+                                    com.photonne.app.ui.admin.AdministrationSection.Stats ->
+                                        MoreSubscreen.AdminStats
+                                    com.photonne.app.ui.admin.AdministrationSection.Settings ->
+                                        MoreSubscreen.AdminSettingsHub
+                                    com.photonne.app.ui.admin.AdministrationSection.System ->
+                                        MoreSubscreen.AdminSystemHub
+                                }
+                            }
+                        )
+                    MoreSubscreen.AdminUsers ->
+                        com.photonne.app.ui.admin.AdminUsersScreen(
+                            viewModel = adminUsersViewModel
+                        )
+                    MoreSubscreen.AdminLibraries -> {
+                        val usersState by adminUsersViewModel.state.collectAsState()
+                        LaunchedEffect(Unit) { adminUsersViewModel.ensureLoaded() }
+                        com.photonne.app.ui.admin.AdminLibrariesScreen(
+                            viewModel = adminLibrariesViewModel,
+                            knownUsers = usersState.users
+                        )
+                    }
+                    MoreSubscreen.AdminStats ->
+                        com.photonne.app.ui.admin.AdminStatsScreen(
+                            viewModel = adminStatsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsHub ->
+                        com.photonne.app.ui.admin.AdminSettingsHubScreen(
+                            onOpen = { entry ->
+                                moreSubscreen = when (entry) {
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.Tasks ->
+                                        MoreSubscreen.AdminSettingsTasks
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.FaceRecognition ->
+                                        MoreSubscreen.AdminSettingsFaceRecognition
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.ObjectDetection ->
+                                        MoreSubscreen.AdminSettingsObjectDetection
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.SceneClassification ->
+                                        MoreSubscreen.AdminSettingsSceneClassification
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.TextRecognition ->
+                                        MoreSubscreen.AdminSettingsTextRecognition
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.ImageEmbedding ->
+                                        MoreSubscreen.AdminSettingsImageEmbedding
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.ImageSettings ->
+                                        MoreSubscreen.AdminSettingsImage
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.Metadata ->
+                                        MoreSubscreen.AdminSettingsMetadata
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.NightlyTasks ->
+                                        MoreSubscreen.AdminSettingsNightly
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.Notifications ->
+                                        MoreSubscreen.AdminSettingsNotifications
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.Server ->
+                                        MoreSubscreen.AdminSettingsServer
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.Trash ->
+                                        MoreSubscreen.AdminSettingsTrash
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.UserDefaults ->
+                                        MoreSubscreen.AdminSettingsUserDefaults
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.VersionCheck ->
+                                        MoreSubscreen.AdminSettingsVersion
+                                }
+                            }
+                        )
+                    MoreSubscreen.AdminSettingsTasks ->
+                        com.photonne.app.ui.admin.AdminTaskSettingsScreen(
+                            viewModel = adminTaskSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsFaceRecognition -> {
+                        val vm: com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminMlFeature.FaceRecognition
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminMlFeatureSettingsScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSettingsObjectDetection -> {
+                        val vm: com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminMlFeature.ObjectDetection
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminMlFeatureSettingsScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSettingsSceneClassification -> {
+                        val vm: com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminMlFeature.SceneClassification
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminMlFeatureSettingsScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSettingsTextRecognition -> {
+                        val vm: com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminMlFeature.TextRecognition
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminMlFeatureSettingsScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSettingsImageEmbedding -> {
+                        val vm: com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminMlFeature.ImageEmbedding
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminMlFeatureSettingsScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSettingsImage ->
+                        com.photonne.app.ui.admin.AdminImageSettingsScreen(
+                            viewModel = adminImageSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsMetadata ->
+                        com.photonne.app.ui.admin.AdminMetadataSettingsScreen(
+                            viewModel = adminMetadataSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsNightly ->
+                        com.photonne.app.ui.admin.AdminNightlySettingsScreen(
+                            viewModel = adminNightlySettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsNotifications ->
+                        com.photonne.app.ui.admin.AdminNotificationSettingsScreen(
+                            viewModel = adminNotificationSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsServer ->
+                        com.photonne.app.ui.admin.AdminServerSettingsScreen(
+                            viewModel = adminServerSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsTrash ->
+                        com.photonne.app.ui.admin.AdminTrashSettingsScreen(
+                            viewModel = adminTrashSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsUserDefaults ->
+                        com.photonne.app.ui.admin.AdminUserDefaultsScreen(
+                            viewModel = adminUserDefaultsViewModel
+                        )
+                    MoreSubscreen.AdminSettingsVersion ->
+                        com.photonne.app.ui.admin.AdminServerScreen(
+                            viewModel = adminVersionViewModel
+                        )
+                    MoreSubscreen.AdminSystemHub ->
+                        com.photonne.app.ui.admin.AdminSystemHubScreen(
+                            onOpen = { entry ->
+                                moreSubscreen = when (entry) {
+                                    com.photonne.app.ui.admin.AdminSystemEntry.IndexAssets ->
+                                        MoreSubscreen.AdminSystemIndex
+                                    com.photonne.app.ui.admin.AdminSystemEntry.ExtractMetadata ->
+                                        MoreSubscreen.AdminSystemExtractMetadata
+                                    com.photonne.app.ui.admin.AdminSystemEntry.GenerateThumbnails ->
+                                        MoreSubscreen.AdminSystemThumbnails
+                                    com.photonne.app.ui.admin.AdminSystemEntry.DetectDuplicates ->
+                                        MoreSubscreen.AdminSystemDuplicates
+                                    com.photonne.app.ui.admin.AdminSystemEntry.FaceRecognition ->
+                                        MoreSubscreen.AdminSystemFaceRecognition
+                                    com.photonne.app.ui.admin.AdminSystemEntry.ObjectDetection ->
+                                        MoreSubscreen.AdminSystemObjectDetection
+                                    com.photonne.app.ui.admin.AdminSystemEntry.SceneClassification ->
+                                        MoreSubscreen.AdminSystemSceneClassification
+                                    com.photonne.app.ui.admin.AdminSystemEntry.TextRecognition ->
+                                        MoreSubscreen.AdminSystemTextRecognition
+                                    com.photonne.app.ui.admin.AdminSystemEntry.ImageEmbedding ->
+                                        MoreSubscreen.AdminSystemImageEmbedding
+                                    com.photonne.app.ui.admin.AdminSystemEntry.Maintenance ->
+                                        MoreSubscreen.AdminSystemMaintenance
+                                    com.photonne.app.ui.admin.AdminSystemEntry.Backup ->
+                                        MoreSubscreen.AdminSystemBackup
+                                }
+                            }
+                        )
+                    MoreSubscreen.AdminSystemIndex ->
+                        com.photonne.app.ui.admin.AdminIndexAssetsScreen(
+                            viewModel = adminIndexAssetsViewModel
+                        )
+                    MoreSubscreen.AdminSystemExtractMetadata ->
+                        com.photonne.app.ui.admin.AdminMetadataTaskScreen(
+                            viewModel = adminIndexAssetsViewModel
+                        )
+                    MoreSubscreen.AdminSystemThumbnails ->
+                        com.photonne.app.ui.admin.AdminThumbnailsScreen(
+                            viewModel = adminThumbnailsViewModel
+                        )
+                    MoreSubscreen.AdminSystemDuplicates ->
+                        com.photonne.app.ui.admin.AdminDuplicatesScreen(
+                            viewModel = adminDuplicatesViewModel
+                        )
+                    MoreSubscreen.AdminSystemFaceRecognition -> {
+                        val vm: com.photonne.app.ui.admin.AdminBackfillViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminBackfillKind.FaceRecognition
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminBackfillScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSystemObjectDetection -> {
+                        val vm: com.photonne.app.ui.admin.AdminBackfillViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminBackfillKind.ObjectDetection
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminBackfillScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSystemSceneClassification -> {
+                        val vm: com.photonne.app.ui.admin.AdminBackfillViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminBackfillKind.SceneClassification
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminBackfillScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSystemTextRecognition -> {
+                        val vm: com.photonne.app.ui.admin.AdminBackfillViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminBackfillKind.TextRecognition
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminBackfillScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSystemImageEmbedding -> {
+                        val vm: com.photonne.app.ui.admin.AdminBackfillViewModel =
+                            koinViewModel {
+                                org.koin.core.parameter.parametersOf(
+                                    com.photonne.app.ui.admin.AdminBackfillKind.ImageEmbedding
+                                )
+                            }
+                        com.photonne.app.ui.admin.AdminBackfillScreen(viewModel = vm)
+                    }
+                    MoreSubscreen.AdminSystemMaintenance ->
+                        com.photonne.app.ui.admin.AdminMaintenanceScreen(
+                            viewModel = adminMaintenanceViewModel
+                        )
+                    MoreSubscreen.AdminSystemBackup ->
+                        com.photonne.app.ui.admin.AdminBackupScreen(
+                            viewModel = adminBackupViewModel
                         )
                 }
             }

@@ -34,9 +34,11 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
+import io.ktor.client.request.prepareGet
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.http.ContentType
@@ -44,8 +46,12 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.utils.io.readUTF8Line
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 @Serializable
 internal data class FavoriteResponse(val isFavorite: Boolean)
@@ -281,6 +287,85 @@ interface PhotonneApi {
         request: com.photonne.app.data.models.ChangePasswordRequest
     ): com.photonne.app.data.models.ChangePasswordResponse
     suspend fun getStorageInfo(): com.photonne.app.data.models.StorageInfoDto
+
+    // Administration ---------------------------------------------------------
+    suspend fun adminListUsers(): List<UserDto>
+    suspend fun adminGetUser(id: String): UserDto
+    suspend fun adminCreateUser(
+        request: com.photonne.app.data.models.CreateUserRequest
+    ): UserDto
+    suspend fun adminUpdateUser(
+        id: String,
+        request: com.photonne.app.data.models.UpdateUserRequest
+    ): UserDto
+    suspend fun adminDeleteUser(id: String)
+    suspend fun adminResetUserPassword(
+        id: String,
+        request: com.photonne.app.data.models.AdminResetPasswordRequest
+    ): com.photonne.app.data.models.AdminResetPasswordResponse
+    suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse
+    suspend fun adminGetVersion(refresh: Boolean = false): com.photonne.app.data.models.VersionInfoResponse
+    suspend fun adminGetTrashStats(): com.photonne.app.data.models.TrashStatsResponse
+    suspend fun adminCleanupExpiredTrash(): com.photonne.app.data.models.TrashCleanupResult
+
+    // Generic settings -------------------------------------------------------
+    suspend fun adminGetSetting(key: String): com.photonne.app.data.models.SettingDto
+    suspend fun adminSaveSetting(
+        key: String,
+        value: String
+    ): com.photonne.app.data.models.SaveSettingResponse
+
+    // External libraries -----------------------------------------------------
+    suspend fun adminListLibraries(): List<com.photonne.app.data.models.ExternalLibraryDto>
+    suspend fun adminCreateLibrary(
+        request: com.photonne.app.data.models.CreateLibraryRequest
+    ): com.photonne.app.data.models.ExternalLibraryDto
+    suspend fun adminUpdateLibrary(
+        id: String,
+        request: com.photonne.app.data.models.UpdateLibraryRequest
+    ): com.photonne.app.data.models.ExternalLibraryDto
+    suspend fun adminDeleteLibrary(id: String)
+    suspend fun adminScanLibrary(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.LibraryScanProgress>
+    suspend fun adminListLibraryPermissions(
+        id: String
+    ): List<com.photonne.app.data.models.LibraryPermissionDto>
+    suspend fun adminSetLibraryPermission(
+        id: String,
+        userId: String,
+        canRead: Boolean
+    ): com.photonne.app.data.models.LibraryPermissionDto
+    suspend fun adminRemoveLibraryPermission(id: String, userId: String)
+
+    // ML backfill / maintenance ---------------------------------------------
+    suspend fun adminBackfill(
+        kind: String,
+        request: com.photonne.app.data.models.BackfillRequest
+    ): com.photonne.app.data.models.BackfillResponse
+    suspend fun adminPendingCount(kind: String): com.photonne.app.data.models.PendingCountResponse
+    suspend fun adminRunFaceClustering(): com.photonne.app.data.models.GlobalReclusterResponse
+    suspend fun adminMaintenanceTask(
+        kind: String
+    ): com.photonne.app.data.models.MaintenanceTaskResult
+
+    // Streaming tasks -------------------------------------------------------
+    suspend fun adminIndexStream():
+        kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.IndexStreamEvent>
+    suspend fun adminThumbnailsStream(
+        regenerate: Boolean
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.ThumbnailStreamEvent>
+    suspend fun adminDuplicatesStream(
+        cleanup: Boolean,
+        physical: Boolean
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.DuplicatesStreamEvent>
+
+    // Database backup / restore --------------------------------------------
+    suspend fun adminDownloadBackup(includeMl: Boolean): com.photonne.app.data.models.AssetContentBytes
+    suspend fun adminRestoreBackup(
+        fileName: String,
+        bytes: ByteArray
+    ): com.photonne.app.data.models.BackupRestoreResponse
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
@@ -1392,6 +1477,479 @@ class PhotonneApiClient(
         return response.body()
     }
 
+    override suspend fun adminListUsers(): List<UserDto> {
+        val response: HttpResponse = client.get("$baseUrl/api/users")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Listing users failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetUser(id: String): UserDto {
+        val response: HttpResponse = client.get("$baseUrl/api/users/$id")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching user failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminCreateUser(
+        request: com.photonne.app.data.models.CreateUserRequest
+    ): UserDto {
+        val response: HttpResponse = client.post("$baseUrl/api/users") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Creating user failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminUpdateUser(
+        id: String,
+        request: com.photonne.app.data.models.UpdateUserRequest
+    ): UserDto {
+        val response: HttpResponse = client.put("$baseUrl/api/users/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Updating user failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminDeleteUser(id: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/users/$id")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Deleting user failed"
+            )
+        }
+    }
+
+    override suspend fun adminResetUserPassword(
+        id: String,
+        request: com.photonne.app.data.models.AdminResetPasswordRequest
+    ): com.photonne.app.data.models.AdminResetPasswordResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/users/$id/reset-password") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Resetting password failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/stats")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching stats failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetVersion(
+        refresh: Boolean
+    ): com.photonne.app.data.models.VersionInfoResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/version") {
+            if (refresh) parameter("refresh", true)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching version failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetTrashStats(): com.photonne.app.data.models.TrashStatsResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/trash/stats")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching trash stats failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminCleanupExpiredTrash():
+        com.photonne.app.data.models.TrashCleanupResult {
+        val response: HttpResponse = client.post("$baseUrl/api/admin/trash/cleanup-expired")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Trash cleanup failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminGetSetting(key: String): com.photonne.app.data.models.SettingDto {
+        val response: HttpResponse = client.get("$baseUrl/api/settings") {
+            parameter("key", key)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Fetching setting $key failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminSaveSetting(
+        key: String,
+        value: String
+    ): com.photonne.app.data.models.SaveSettingResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/settings") {
+            contentType(ContentType.Application.Json)
+            setBody(com.photonne.app.data.models.SaveSettingRequest(key = key, value = value))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Saving setting $key failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminListLibraries():
+        List<com.photonne.app.data.models.ExternalLibraryDto> {
+        val response: HttpResponse = client.get("$baseUrl/api/libraries")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Listing libraries failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminCreateLibrary(
+        request: com.photonne.app.data.models.CreateLibraryRequest
+    ): com.photonne.app.data.models.ExternalLibraryDto {
+        val response: HttpResponse = client.post("$baseUrl/api/libraries") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Creating library failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminUpdateLibrary(
+        id: String,
+        request: com.photonne.app.data.models.UpdateLibraryRequest
+    ): com.photonne.app.data.models.ExternalLibraryDto {
+        val response: HttpResponse = client.put("$baseUrl/api/libraries/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        // Server returns 204 NoContent; client must re-fetch to get latest dto. Use GET.
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Updating library failed"
+            )
+        }
+        val refreshed: HttpResponse = client.get("$baseUrl/api/libraries/$id")
+        if (refreshed.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = refreshed.status.value,
+                message = "Library fetch after update failed"
+            )
+        }
+        return refreshed.body()
+    }
+
+    override suspend fun adminDeleteLibrary(id: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/libraries/$id")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Deleting library failed"
+            )
+        }
+    }
+
+    override suspend fun adminScanLibrary(
+        id: String
+    ): Flow<com.photonne.app.data.models.LibraryScanProgress> =
+        streamJsonLines("$baseUrl/api/libraries/$id/scan/stream")
+
+    override suspend fun adminListLibraryPermissions(
+        id: String
+    ): List<com.photonne.app.data.models.LibraryPermissionDto> {
+        val response: HttpResponse = client.get("$baseUrl/api/libraries/$id/permissions")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Listing permissions failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminSetLibraryPermission(
+        id: String,
+        userId: String,
+        canRead: Boolean
+    ): com.photonne.app.data.models.LibraryPermissionDto {
+        val response: HttpResponse = client.post("$baseUrl/api/libraries/$id/permissions") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                com.photonne.app.data.models.SetLibraryPermissionRequest(
+                    userId = userId,
+                    canRead = canRead
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.Created
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Granting permission failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminRemoveLibraryPermission(id: String, userId: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/libraries/$id/permissions/$userId")
+        if (response.status != HttpStatusCode.OK &&
+            response.status != HttpStatusCode.NoContent
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Removing permission failed"
+            )
+        }
+    }
+
+    override suspend fun adminBackfill(
+        kind: String,
+        request: com.photonne.app.data.models.BackfillRequest
+    ): com.photonne.app.data.models.BackfillResponse {
+        val response: HttpResponse = client.post(
+            "$baseUrl/api/admin/maintenance/$kind/backfill"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Backfill $kind failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminPendingCount(
+        kind: String
+    ): com.photonne.app.data.models.PendingCountResponse {
+        val response: HttpResponse = client.get(
+            "$baseUrl/api/admin/maintenance/$kind/pending-count"
+        )
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Pending count $kind failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminRunFaceClustering():
+        com.photonne.app.data.models.GlobalReclusterResponse {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/admin/maintenance/face-clustering/run")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Face clustering failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminMaintenanceTask(
+        kind: String
+    ): com.photonne.app.data.models.MaintenanceTaskResult {
+        val response: HttpResponse = client.post("$baseUrl/api/admin/maintenance/$kind")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Maintenance task $kind failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminIndexStream():
+        Flow<com.photonne.app.data.models.IndexStreamEvent> =
+        streamJsonLines("$baseUrl/api/assets/index/stream")
+
+    override suspend fun adminThumbnailsStream(
+        regenerate: Boolean
+    ): Flow<com.photonne.app.data.models.ThumbnailStreamEvent> = flow {
+        client.prepareGet("$baseUrl/api/assets/thumbnails/stream") {
+            parameter("regenerate", regenerate)
+        }.execute { response ->
+            ensureStreamSuccess(response, "Thumbnails stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching {
+                    streamJson.decodeFromString(
+                        com.photonne.app.data.models.ThumbnailStreamEvent.serializer(),
+                        line
+                    )
+                }.getOrNull()?.let { emit(it) }
+            }
+        }
+    }
+
+    override suspend fun adminDuplicatesStream(
+        cleanup: Boolean,
+        physical: Boolean
+    ): Flow<com.photonne.app.data.models.DuplicatesStreamEvent> = flow {
+        client.prepareGet("$baseUrl/api/assets/duplicates/stream") {
+            parameter("cleanup", cleanup)
+            parameter("physical", physical)
+        }.execute { response ->
+            ensureStreamSuccess(response, "Duplicates stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching {
+                    streamJson.decodeFromString(
+                        com.photonne.app.data.models.DuplicatesStreamEvent.serializer(),
+                        line
+                    )
+                }.getOrNull()?.let { emit(it) }
+            }
+        }
+    }
+
+    override suspend fun adminDownloadBackup(
+        includeMl: Boolean
+    ): AssetContentBytes {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/database/backup") {
+            parameter("includeMl", includeMl)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Backup download failed"
+            )
+        }
+        val mime = response.headers[HttpHeaders.ContentType] ?: "application/json"
+        val suggested = response.headers[HttpHeaders.ContentDisposition]
+            ?.let(::parseContentDispositionFilename)
+            ?: "photonne_backup.json"
+        return AssetContentBytes(
+            bytes = response.body(),
+            mimeType = mime,
+            suggestedFileName = suggested
+        )
+    }
+
+    override suspend fun adminRestoreBackup(
+        fileName: String,
+        bytes: ByteArray
+    ): com.photonne.app.data.models.BackupRestoreResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/admin/database/restore") {
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            key = "file",
+                            value = bytes,
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, "application/json")
+                                append(
+                                    HttpHeaders.ContentDisposition,
+                                    "filename=\"${fileName.replace("\"", "")}\""
+                                )
+                            }
+                        )
+                    }
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Backup restore failed"
+            )
+        }
+        return response.body()
+    }
+
+    /** Shared streaming helper for endpoints that emit one JSON object
+     *  per line via `IAsyncEnumerable<T>` on the server side. */
+    private inline fun <reified T> streamJsonLines(url: String): Flow<T> = flow {
+        client.prepareGet(url).execute { response ->
+            ensureStreamSuccess(response, "Stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching { streamJson.decodeFromString<T>(line) }
+                    .getOrNull()
+                    ?.let { emit(it) }
+            }
+        }
+    }
+
+    private fun ensureStreamSuccess(response: HttpResponse, message: String) {
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "$message (${response.status.value})"
+            )
+        }
+    }
+
     /**
      * The users endpoints surface 400-level validation issues as
      * `{ "error": "human readable text" }`. Try to lift that out so the
@@ -1403,6 +1961,15 @@ class PhotonneApiClient(
         return runCatching { response.body<com.photonne.app.data.models.ApiError>().error }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
+    }
+
+    private companion object {
+        /** Lenient JSON for streaming events so unknown fields (added on
+         *  newer servers) don't cause the whole stream to die. */
+        val streamJson: Json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
     }
 }
 
