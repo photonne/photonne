@@ -23,16 +23,17 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.AddToPhotos
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -154,7 +155,7 @@ fun AssetDetailScreen(
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 title = {
@@ -185,7 +186,7 @@ fun AssetDetailScreen(
                         }) {
                             Icon(
                                 imageVector = if (currentIsFavorite) Icons.Filled.Favorite
-                                else Icons.Filled.FavoriteBorder,
+                                else Icons.Outlined.FavoriteBorder,
                                 contentDescription = if (currentIsFavorite) "Quitar favorito"
                                 else "Marcar favorito",
                                 tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
@@ -193,19 +194,19 @@ fun AssetDetailScreen(
                         }
                         IconButton(onClick = { onAddToAlbum(currentItem) }) {
                             Icon(
-                                Icons.Filled.Add,
+                                Icons.Outlined.AddToPhotos,
                                 contentDescription = "Añadir a álbum"
                             )
                         }
                     }
                     IconButton(onClick = { showInfo = true }) {
-                        Icon(Icons.Filled.Info, contentDescription = "Detalles")
+                        Icon(Icons.Outlined.Info, contentDescription = "Detalles")
                     }
                     if (currentItem != null) {
                         Box {
                             IconButton(onClick = { showOverflow = true }) {
                                 Icon(
-                                    Icons.Filled.MoreVert,
+                                    Icons.Outlined.MoreVert,
                                     contentDescription = stringResource(Res.string.asset_action_more)
                                 )
                             }
@@ -215,7 +216,7 @@ fun AssetDetailScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(Res.string.asset_action_edit_description)) },
-                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                                     onClick = {
                                         showOverflow = false
                                         showEditDescription = true
@@ -223,6 +224,7 @@ fun AssetDetailScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(Res.string.asset_action_faces)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
                                     onClick = {
                                         showOverflow = false
                                         onOpenFaces(currentItem.id)
@@ -230,7 +232,7 @@ fun AssetDetailScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(Res.string.asset_action_archive)) },
-                                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
                                     onClick = {
                                         showOverflow = false
                                         viewModel.archive(currentItem.id) { id ->
@@ -247,7 +249,7 @@ fun AssetDetailScreen(
                                     },
                                     leadingIcon = {
                                         Icon(
-                                            Icons.Filled.Delete,
+                                            Icons.Outlined.Delete,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.error
                                         )

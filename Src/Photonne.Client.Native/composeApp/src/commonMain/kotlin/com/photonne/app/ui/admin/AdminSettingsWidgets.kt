@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import org.jetbrains.compose.resources.stringResource
@@ -82,7 +83,11 @@ fun AdminSettingsForm(
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Spacer(Modifier.size(12.dp))
             }
-            Button(onClick = onSave, enabled = canSave) {
+            Button(
+                onClick = onSave,
+                enabled = canSave,
+                modifier = Modifier.actionButtonHeight()
+            ) {
                 Text(stringResource(Res.string.action_save))
             }
         }

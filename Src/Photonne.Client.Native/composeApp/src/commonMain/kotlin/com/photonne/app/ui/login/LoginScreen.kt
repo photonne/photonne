@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -26,6 +25,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.ButtonLoadingIndicator
+import com.photonne.app.ui.theme.actionButtonHeight
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -84,10 +85,10 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
     Button(
         onClick = viewModel::submitServerUrl,
         enabled = !state.isSubmitting && state.serverUrl.isNotBlank(),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().actionButtonHeight()
     ) {
         if (state.isSubmitting) {
-            CircularProgressIndicator(modifier = Modifier.height(20.dp))
+            ButtonLoadingIndicator()
         } else {
             Text("Continuar")
         }
@@ -137,10 +138,10 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     Button(
         onClick = viewModel::submit,
         enabled = !state.isSubmitting,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().actionButtonHeight()
     ) {
         if (state.isSubmitting) {
-            CircularProgressIndicator(modifier = Modifier.height(20.dp))
+            ButtonLoadingIndicator()
         } else {
             Text("Entrar")
         }

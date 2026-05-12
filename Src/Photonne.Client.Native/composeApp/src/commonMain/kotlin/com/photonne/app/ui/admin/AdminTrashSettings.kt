@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.ui.theme.actionButtonHeight
 import kotlinx.coroutines.launch
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
@@ -178,7 +179,11 @@ fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
             settings.successMessage?.let {
                 Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
             }
-            Button(onClick = viewModel::save, enabled = settings.canSave) {
+            Button(
+                onClick = viewModel::save,
+                enabled = settings.canSave,
+                modifier = Modifier.actionButtonHeight()
+            ) {
                 Text(stringResource(Res.string.action_save))
             }
         }

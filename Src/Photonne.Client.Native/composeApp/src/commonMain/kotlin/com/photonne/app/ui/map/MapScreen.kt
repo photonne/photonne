@@ -1,6 +1,5 @@
 package com.photonne.app.ui.map
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
@@ -42,7 +42,7 @@ fun MapScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val apiBaseUrl = rememberApiBaseUrl()
-    val darkTiles = isSystemInDarkTheme()
+    val darkTiles = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 

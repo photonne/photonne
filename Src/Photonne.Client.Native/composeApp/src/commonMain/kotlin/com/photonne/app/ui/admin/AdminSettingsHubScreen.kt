@@ -1,19 +1,20 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.ImageSearch
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Landscape
+import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.NightsStay
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.runtime.Composable
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_settings_face_recognition
@@ -70,85 +71,85 @@ fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
             AdminSettingsEntry.Tasks.name,
             stringResource(Res.string.admin_settings_tasks),
             stringResource(Res.string.admin_settings_tasks_subtitle),
-            Icons.Filled.Build
+            Icons.Outlined.Build
         ),
         AdminHubEntry(
             AdminSettingsEntry.FaceRecognition.name,
             stringResource(Res.string.admin_settings_face_recognition),
             stringResource(Res.string.admin_settings_face_recognition_subtitle),
-            Icons.Filled.Face
+            Icons.Outlined.Face
         ),
         AdminHubEntry(
             AdminSettingsEntry.ObjectDetection.name,
             stringResource(Res.string.admin_settings_object_detection),
             stringResource(Res.string.admin_settings_object_detection_subtitle),
-            Icons.Filled.Star
+            Icons.Outlined.Category
         ),
         AdminHubEntry(
             AdminSettingsEntry.SceneClassification.name,
             stringResource(Res.string.admin_settings_scene_classification),
             stringResource(Res.string.admin_settings_scene_classification_subtitle),
-            Icons.Filled.LocationOn
+            Icons.Outlined.Landscape
         ),
         AdminHubEntry(
             AdminSettingsEntry.TextRecognition.name,
             stringResource(Res.string.admin_settings_text_recognition),
             stringResource(Res.string.admin_settings_text_recognition_subtitle),
-            Icons.Filled.Email
+            Icons.Outlined.TextFields
         ),
         AdminHubEntry(
             AdminSettingsEntry.ImageEmbedding.name,
             stringResource(Res.string.admin_settings_image_embedding),
             stringResource(Res.string.admin_settings_image_embedding_subtitle),
-            Icons.Filled.Search
+            Icons.Outlined.ImageSearch
         ),
         AdminHubEntry(
             AdminSettingsEntry.ImageSettings.name,
             stringResource(Res.string.admin_settings_image),
             stringResource(Res.string.admin_settings_image_subtitle),
-            Icons.Filled.Edit
+            Icons.Outlined.Image
         ),
         AdminHubEntry(
             AdminSettingsEntry.Metadata.name,
             stringResource(Res.string.admin_settings_metadata),
             stringResource(Res.string.admin_settings_metadata_subtitle),
-            Icons.Filled.Place
+            Icons.Outlined.Info
         ),
         AdminHubEntry(
             AdminSettingsEntry.NightlyTasks.name,
             stringResource(Res.string.admin_settings_nightly),
             stringResource(Res.string.admin_settings_nightly_subtitle),
-            Icons.Filled.DateRange
+            Icons.Outlined.NightsStay
         ),
         AdminHubEntry(
             AdminSettingsEntry.Notifications.name,
             stringResource(Res.string.admin_settings_notifications),
             stringResource(Res.string.admin_settings_notifications_subtitle),
-            Icons.Filled.Email
+            Icons.Outlined.NotificationsNone
         ),
         AdminHubEntry(
             AdminSettingsEntry.Server.name,
             stringResource(Res.string.admin_settings_server),
             stringResource(Res.string.admin_settings_server_subtitle),
-            Icons.Filled.Settings
+            Icons.Outlined.Dns
         ),
         AdminHubEntry(
             AdminSettingsEntry.Trash.name,
             stringResource(Res.string.admin_settings_trash),
             stringResource(Res.string.admin_settings_trash_subtitle),
-            Icons.Filled.Delete
+            Icons.Outlined.Delete
         ),
         AdminHubEntry(
             AdminSettingsEntry.UserDefaults.name,
             stringResource(Res.string.admin_settings_user_defaults),
             stringResource(Res.string.admin_settings_user_defaults_subtitle),
-            Icons.Filled.Person
+            Icons.Outlined.ManageAccounts
         ),
         AdminHubEntry(
             AdminSettingsEntry.VersionCheck.name,
             stringResource(Res.string.admin_settings_version),
             stringResource(Res.string.admin_settings_version_subtitle),
-            Icons.Filled.Info
+            Icons.Outlined.Update
         )
     )
 

@@ -15,11 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.FolderSpecial
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -66,31 +66,31 @@ fun AdministrationScreen(onOpen: (AdministrationSection) -> Unit) {
             AdministrationSection.Users,
             Res.string.admin_section_users,
             Res.string.admin_section_users_subtitle,
-            Icons.Filled.Person
+            Icons.Outlined.People
         ),
         AdminEntry(
             AdministrationSection.Libraries,
             Res.string.admin_section_libraries,
             Res.string.admin_section_libraries_subtitle,
-            Icons.AutoMirrored.Filled.List
+            Icons.Outlined.FolderSpecial
         ),
         AdminEntry(
             AdministrationSection.Stats,
             Res.string.admin_section_stats,
             Res.string.admin_section_stats_subtitle,
-            Icons.Filled.Info
+            Icons.Outlined.QueryStats
         ),
         AdminEntry(
             AdministrationSection.Settings,
             Res.string.admin_section_settings,
             Res.string.admin_section_settings_subtitle,
-            Icons.Filled.Settings
+            Icons.Outlined.Settings
         ),
         AdminEntry(
             AdministrationSection.System,
             Res.string.admin_section_system,
             Res.string.admin_section_system_subtitle,
-            Icons.Filled.Build
+            Icons.Outlined.Storage
         )
     )
 
@@ -132,7 +132,11 @@ private fun AdminEntryRow(entry: AdminEntry, onClick: () -> Unit) {
                 modifier = Modifier.size(28.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(entry.title), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(entry.title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     stringResource(entry.subtitle),
                     style = MaterialTheme.typography.bodySmall,

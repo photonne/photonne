@@ -4,24 +4,36 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.AddBox
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.AddToPhotos
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PhotoAlbum
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,7 +103,6 @@ import com.photonne.app.resources.selection_action_more
 import com.photonne.app.resources.selection_action_remove_from_album
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
-import androidx.compose.material.icons.filled.List
 import com.photonne.app.resources.tab_albums
 import com.photonne.app.resources.tab_folders
 import com.photonne.app.resources.tab_search
@@ -120,34 +131,66 @@ fun MainScaffold(
         topBar = topBar,
         bottomBar = {
             NavigationBar {
+                val timelineActive = selectedTab == MainTab.Timeline
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.Timeline,
+                    selected = timelineActive,
                     onClick = { onTabSelected(MainTab.Timeline) },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            if (timelineActive) Icons.Filled.PhotoLibrary
+                            else Icons.Outlined.PhotoLibrary,
+                            contentDescription = null
+                        )
+                    },
                     label = { Text(stringResource(Res.string.tab_timeline)) }
                 )
+                val searchActive = selectedTab == MainTab.Search
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.Search,
+                    selected = searchActive,
                     onClick = { onTabSelected(MainTab.Search) },
-                    icon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            if (searchActive) Icons.Filled.Search else Icons.Outlined.Search,
+                            contentDescription = null
+                        )
+                    },
                     label = { Text(stringResource(Res.string.tab_search)) }
                 )
+                val albumsActive = selectedTab == MainTab.Albums
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.Albums,
+                    selected = albumsActive,
                     onClick = { onTabSelected(MainTab.Albums) },
-                    icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            if (albumsActive) Icons.Filled.Collections
+                            else Icons.Outlined.Collections,
+                            contentDescription = null
+                        )
+                    },
                     label = { Text(stringResource(Res.string.tab_albums)) }
                 )
+                val foldersActive = selectedTab == MainTab.Folders
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.Folders,
+                    selected = foldersActive,
                     onClick = { onTabSelected(MainTab.Folders) },
-                    icon = { Icon(Icons.Filled.List, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            if (foldersActive) Icons.Filled.Folder else Icons.Outlined.Folder,
+                            contentDescription = null
+                        )
+                    },
                     label = { Text(stringResource(Res.string.tab_folders)) }
                 )
+                val moreActive = selectedTab == MainTab.More
                 NavigationBarItem(
-                    selected = selectedTab == MainTab.More,
+                    selected = moreActive,
                     onClick = { onTabSelected(MainTab.More) },
-                    icon = { Icon(Icons.Filled.MoreVert, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView,
+                            contentDescription = null
+                        )
+                    },
                     label = { Text(stringResource(Res.string.tab_more)) }
                 )
             }
@@ -166,7 +209,7 @@ fun AccountMenu(user: UserDto, onLogout: () -> Unit) {
     Box {
         IconButton(onClick = { open = true }) {
             Icon(
-                Icons.Filled.AccountCircle,
+                Icons.Outlined.AccountCircle,
                 contentDescription = stringResource(Res.string.action_account)
             )
         }
@@ -211,19 +254,19 @@ fun TimelineTopBar(
         actions = {
             IconButton(onClick = onUpload) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.AddPhotoAlternate,
                     contentDescription = stringResource(Res.string.upload_title)
                 )
             }
             IconButton(onClick = onJumpToDate) {
                 Icon(
-                    Icons.Filled.DateRange,
+                    Icons.Outlined.CalendarMonth,
                     contentDescription = stringResource(Res.string.action_jump_to_date)
                 )
             }
             IconButton(onClick = onRefresh) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    Icons.Outlined.Refresh,
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
@@ -261,13 +304,13 @@ fun SelectionTopBar(
         actions = {
             IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.AddToPhotos,
                     contentDescription = stringResource(Res.string.selection_action_add_to_album)
                 )
             }
             IconButton(onClick = onTrash, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Delete,
+                    Icons.Outlined.Delete,
                     contentDescription = stringResource(Res.string.selection_action_trash),
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -282,7 +325,7 @@ fun SelectionTopBar(
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(Res.string.selection_action_archive)) },
-                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
                         onClick = {
                             menuOpen = false
                             onArchive()
@@ -345,7 +388,7 @@ fun AssetSelectionTopBar(
         actions = {
             IconButton(onClick = onSelectAll, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Check,
+                    Icons.Outlined.SelectAll,
                     contentDescription = stringResource(
                         if (allSelected) Res.string.selection_action_deselect_all
                         else Res.string.selection_action_select_all
@@ -356,19 +399,19 @@ fun AssetSelectionTopBar(
             }
             IconButton(onClick = onShare, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Share,
+                    Icons.Outlined.Share,
                     contentDescription = stringResource(Res.string.action_share)
                 )
             }
             IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.AddToPhotos,
                     contentDescription = stringResource(Res.string.selection_action_add_to_album)
                 )
             }
             IconButton(onClick = onDownload, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.KeyboardArrowDown,
+                    Icons.Outlined.Download,
                     contentDescription = stringResource(Res.string.selection_action_download)
                 )
             }
@@ -385,6 +428,9 @@ fun AssetSelectionTopBar(
                     if (onMove != null) {
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.folder_selection_move)) },
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
+                            },
                             onClick = { menuOpen = false; onMove() }
                         )
                     }
@@ -397,6 +443,9 @@ fun AssetSelectionTopBar(
                     if (onSetAsCover != null) {
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.asset_action_set_cover)) },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.PhotoAlbum, contentDescription = null)
+                            },
                             onClick = { menuOpen = false; onSetAsCover() }
                         )
                     }
@@ -418,7 +467,7 @@ fun AssetSelectionTopBar(
                                 )
                             )
                         },
-                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
                         onClick = { menuOpen = false; onArchive() }
                     )
                     DropdownMenuItem(
@@ -430,7 +479,7 @@ fun AssetSelectionTopBar(
                         },
                         leadingIcon = {
                             Icon(
-                                Icons.Filled.Delete,
+                                Icons.Outlined.Delete,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error
                             )
@@ -451,7 +500,7 @@ fun AlbumsListTopBar(user: UserDto, onCreateAlbum: () -> Unit, onLogout: () -> U
         actions = {
             IconButton(onClick = onCreateAlbum) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.AddBox,
                     contentDescription = stringResource(Res.string.album_action_new)
                 )
             }
@@ -484,7 +533,10 @@ fun AlbumDetailTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
             }
         },
         title = {
@@ -502,7 +554,7 @@ fun AlbumDetailTopBar(
         actions = {
             if (canShare) {
                 IconButton(onClick = onShare) {
-                    Icon(Icons.Filled.Share, contentDescription = "Compartir álbum")
+                    Icon(Icons.Outlined.Share, contentDescription = "Compartir álbum")
                 }
             }
             if (hasMenu) {
@@ -517,7 +569,7 @@ fun AlbumDetailTopBar(
                         if (canEdit) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.action_edit)) },
-                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
                                     onEdit()
@@ -527,7 +579,7 @@ fun AlbumDetailTopBar(
                         if (canShare) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.action_share)) },
-                                leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
                                     onShare()
@@ -537,7 +589,7 @@ fun AlbumDetailTopBar(
                         if (canManageMembers) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.album_action_members)) },
-                                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Outlined.People, contentDescription = null) },
                                 onClick = {
                                     menuOpen = false
                                     onManageMembers()
@@ -554,7 +606,7 @@ fun AlbumDetailTopBar(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        Icons.Filled.Delete,
+                                        Icons.Outlined.Delete,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.error
                                     )
@@ -569,7 +621,10 @@ fun AlbumDetailTopBar(
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.action_leave)) },
                                 leadingIcon = {
-                                    Icon(Icons.Filled.ExitToApp, contentDescription = null)
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Logout,
+                                        contentDescription = null
+                                    )
                                 },
                                 onClick = {
                                     menuOpen = false
@@ -597,7 +652,7 @@ fun FoldersListTopBar(
         actions = {
             IconButton(onClick = onCreateFolder) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.CreateNewFolder,
                     contentDescription = stringResource(Res.string.folder_action_new)
                 )
             }
@@ -629,7 +684,7 @@ fun FolderDetailTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -659,20 +714,23 @@ fun FolderDetailTopBar(
                         if (canEdit) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.action_edit)) },
-                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                                 onClick = { menuOpen = false; onEdit() }
                             )
                         }
                         if (canMove) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.folder_action_move)) },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
+                                },
                                 onClick = { menuOpen = false; onMove() }
                             )
                         }
                         if (canManageMembers) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.album_action_members)) },
-                                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Outlined.People, contentDescription = null) },
                                 onClick = { menuOpen = false; onManageMembers() }
                             )
                         }
@@ -686,7 +744,7 @@ fun FolderDetailTopBar(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        Icons.Filled.Delete,
+                                        Icons.Outlined.Delete,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.error
                                     )
@@ -773,7 +831,7 @@ fun SettingsTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -807,7 +865,7 @@ fun UploadTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -841,7 +899,7 @@ fun MapTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -850,7 +908,7 @@ fun MapTopBar(
         actions = {
             IconButton(onClick = onRefresh) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    Icons.Outlined.Refresh,
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
@@ -875,7 +933,10 @@ fun ArchivedTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
             }
         },
         title = {
@@ -893,7 +954,7 @@ fun ArchivedTopBar(
         actions = {
             IconButton(onClick = onRefresh) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    Icons.Outlined.Refresh,
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
@@ -935,7 +996,10 @@ fun TrashTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
             }
         },
         title = {
@@ -953,7 +1017,7 @@ fun TrashTopBar(
         actions = {
             IconButton(onClick = onRefresh) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    Icons.Outlined.Refresh,
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
@@ -1000,7 +1064,10 @@ fun FavoritesTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_close))
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
             }
         },
         title = {
@@ -1018,7 +1085,7 @@ fun FavoritesTopBar(
         actions = {
             IconButton(onClick = onRefresh) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    Icons.Outlined.Refresh,
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
@@ -1044,7 +1111,7 @@ fun PeopleTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -1053,7 +1120,7 @@ fun PeopleTopBar(
         actions = {
             IconButton(onClick = onRefresh) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    Icons.Outlined.Refresh,
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
@@ -1104,7 +1171,7 @@ fun PersonDetailTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -1132,7 +1199,7 @@ fun PersonDetailTopBar(
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(Res.string.people_action_rename)) },
-                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                         onClick = { menuOpen = false; onRename() }
                     )
                     DropdownMenuItem(
@@ -1176,7 +1243,7 @@ fun PersonSuggestionsTopBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(Res.string.action_close)
                 )
             }
@@ -1257,19 +1324,19 @@ fun PersonDetailSelectionTopBar(
             }
             IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.AddToPhotos,
                     contentDescription = stringResource(Res.string.selection_action_add_to_album)
                 )
             }
             IconButton(onClick = onArchive, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Lock,
+                    Icons.Outlined.Archive,
                     contentDescription = stringResource(Res.string.selection_action_archive)
                 )
             }
             IconButton(onClick = onTrash, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Delete,
+                    Icons.Outlined.Delete,
                     contentDescription = stringResource(Res.string.selection_action_trash),
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -1311,19 +1378,19 @@ fun FavoritesSelectionTopBar(
         actions = {
             IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Outlined.AddToPhotos,
                     contentDescription = stringResource(Res.string.selection_action_add_to_album)
                 )
             }
             IconButton(onClick = onArchive, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Lock,
+                    Icons.Outlined.Archive,
                     contentDescription = stringResource(Res.string.selection_action_archive)
                 )
             }
             IconButton(onClick = onTrash, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Delete,
+                    Icons.Outlined.Delete,
                     contentDescription = stringResource(Res.string.selection_action_trash),
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -1395,7 +1462,7 @@ fun TrashSelectionTopBar(
             }
             IconButton(onClick = onPurge, enabled = !isMutating) {
                 Icon(
-                    Icons.Filled.Delete,
+                    Icons.Outlined.Delete,
                     contentDescription = stringResource(Res.string.trash_action_delete_forever),
                     tint = MaterialTheme.colorScheme.error
                 )

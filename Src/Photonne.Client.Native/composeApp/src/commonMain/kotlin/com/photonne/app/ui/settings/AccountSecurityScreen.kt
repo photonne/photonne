@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_security_changed
 import com.photonne.app.resources.account_security_confirm
@@ -114,7 +115,8 @@ fun AccountSecurityScreen(viewModel: AccountSecurityViewModel) {
             }
             Button(
                 onClick = viewModel::submit,
-                enabled = state.canSave
+                enabled = state.canSave,
+                modifier = Modifier.actionButtonHeight()
             ) {
                 Text(stringResource(Res.string.account_security_submit))
             }

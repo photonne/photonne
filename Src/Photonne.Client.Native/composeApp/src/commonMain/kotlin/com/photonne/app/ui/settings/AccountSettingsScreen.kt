@@ -14,11 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -57,25 +57,25 @@ fun AccountSettingsScreen(onOpen: (AccountSettingsSection) -> Unit) {
             AccountSettingsSection.Profile,
             Res.string.account_section_profile,
             Res.string.account_section_profile_subtitle,
-            Icons.Filled.Person
+            Icons.Outlined.Person
         ),
         SettingsEntry(
             AccountSettingsSection.Security,
             Res.string.account_section_security,
             Res.string.account_section_security_subtitle,
-            Icons.Filled.Lock
+            Icons.Outlined.Lock
         ),
         SettingsEntry(
             AccountSettingsSection.Appearance,
             Res.string.account_section_appearance,
             Res.string.account_section_appearance_subtitle,
-            Icons.Filled.Star
+            Icons.Outlined.Palette
         ),
         SettingsEntry(
             AccountSettingsSection.Storage,
             Res.string.account_section_storage,
             Res.string.account_section_storage_subtitle,
-            Icons.Filled.Settings
+            Icons.Outlined.Storage
         )
     )
 
@@ -119,7 +119,8 @@ private fun SettingsRow(entry: SettingsEntry, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     stringResource(entry.title),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     stringResource(entry.subtitle),
@@ -129,7 +130,7 @@ private fun SettingsRow(entry: SettingsEntry, onClick: () -> Unit) {
             }
             Box(contentAlignment = Alignment.CenterEnd) {
                 Icon(
-                    imageVector = Icons.Filled.KeyboardArrowRight,
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )

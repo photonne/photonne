@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_server_checked_at
 import com.photonne.app.resources.admin_server_check_error
@@ -151,7 +152,8 @@ fun AdminServerScreen(viewModel: AdminServerViewModel) {
                 ) {
                     Button(
                         onClick = { viewModel.load(refresh = true) },
-                        enabled = !state.isLoading
+                        enabled = !state.isLoading,
+                        modifier = Modifier.actionButtonHeight()
                     ) {
                         Text(stringResource(Res.string.admin_server_check_again))
                     }

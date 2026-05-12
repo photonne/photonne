@@ -1,17 +1,17 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.ImageSearch
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Landscape
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.runtime.Composable
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_backup
@@ -59,67 +59,67 @@ fun AdminSystemHubScreen(onOpen: (AdminSystemEntry) -> Unit) {
             AdminSystemEntry.IndexAssets.name,
             stringResource(Res.string.admin_system_index),
             stringResource(Res.string.admin_system_index_subtitle),
-            Icons.Filled.Refresh
+            Icons.Outlined.Sync
         ),
         AdminHubEntry(
             AdminSystemEntry.ExtractMetadata.name,
             stringResource(Res.string.admin_system_metadata),
             stringResource(Res.string.admin_system_metadata_subtitle),
-            Icons.Filled.Info
+            Icons.Outlined.Info
         ),
         AdminHubEntry(
             AdminSystemEntry.GenerateThumbnails.name,
             stringResource(Res.string.admin_system_thumbnails),
             stringResource(Res.string.admin_system_thumbnails_subtitle),
-            Icons.Filled.Create
+            Icons.Outlined.Image
         ),
         AdminHubEntry(
             AdminSystemEntry.DetectDuplicates.name,
             stringResource(Res.string.admin_system_duplicates),
             stringResource(Res.string.admin_system_duplicates_subtitle),
-            Icons.Filled.List
+            Icons.Outlined.ContentCopy
         ),
         AdminHubEntry(
             AdminSystemEntry.FaceRecognition.name,
             stringResource(Res.string.admin_system_face),
             stringResource(Res.string.admin_system_face_subtitle),
-            Icons.Filled.Face
+            Icons.Outlined.Face
         ),
         AdminHubEntry(
             AdminSystemEntry.ObjectDetection.name,
             stringResource(Res.string.admin_system_object),
             stringResource(Res.string.admin_system_object_subtitle),
-            Icons.Filled.Star
+            Icons.Outlined.Category
         ),
         AdminHubEntry(
             AdminSystemEntry.SceneClassification.name,
             stringResource(Res.string.admin_system_scene),
             stringResource(Res.string.admin_system_scene_subtitle),
-            Icons.Filled.LocationOn
+            Icons.Outlined.Landscape
         ),
         AdminHubEntry(
             AdminSystemEntry.TextRecognition.name,
             stringResource(Res.string.admin_system_text),
             stringResource(Res.string.admin_system_text_subtitle),
-            Icons.Filled.Email
+            Icons.Outlined.TextFields
         ),
         AdminHubEntry(
             AdminSystemEntry.ImageEmbedding.name,
             stringResource(Res.string.admin_system_embedding),
             stringResource(Res.string.admin_system_embedding_subtitle),
-            Icons.Filled.Search
+            Icons.Outlined.ImageSearch
         ),
         AdminHubEntry(
             AdminSystemEntry.Maintenance.name,
             stringResource(Res.string.admin_system_maintenance),
             stringResource(Res.string.admin_system_maintenance_subtitle),
-            Icons.Filled.Build
+            Icons.Outlined.Build
         ),
         AdminHubEntry(
             AdminSystemEntry.Backup.name,
             stringResource(Res.string.admin_system_backup),
             stringResource(Res.string.admin_system_backup_subtitle),
-            Icons.Filled.Lock
+            Icons.Outlined.Backup
         )
     )
 

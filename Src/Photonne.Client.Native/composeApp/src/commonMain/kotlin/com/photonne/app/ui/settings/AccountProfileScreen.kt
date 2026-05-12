@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_profile_email
 import com.photonne.app.resources.account_profile_first_name
@@ -109,7 +110,8 @@ fun AccountProfileScreen(viewModel: AccountProfileViewModel) {
             }
             Button(
                 onClick = viewModel::save,
-                enabled = state.canSave
+                enabled = state.canSave,
+                modifier = Modifier.actionButtonHeight()
             ) {
                 Text(stringResource(Res.string.account_profile_save))
             }

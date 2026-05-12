@@ -80,7 +80,11 @@ private fun HubEntryRow(entry: AdminHubEntry, onClick: () -> Unit) {
                 modifier = Modifier.size(24.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(entry.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    entry.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 entry.subtitle?.let {
                     Text(
                         it,
