@@ -116,9 +116,9 @@ fun SettingSwitch(
 fun SettingNumberField(
     label: String,
     value: String,
-    onChange: (String) -> Unit,
     enabled: Boolean = true,
-    supporting: String? = null
+    supporting: String? = null,
+    onChange: (String) -> Unit
 ) {
     OutlinedTextField(
         value = value,
@@ -136,9 +136,9 @@ fun SettingNumberField(
 fun SettingTextField(
     label: String,
     value: String,
-    onChange: (String) -> Unit,
     enabled: Boolean = true,
-    supporting: String? = null
+    supporting: String? = null,
+    onChange: (String) -> Unit
 ) {
     OutlinedTextField(
         value = value,

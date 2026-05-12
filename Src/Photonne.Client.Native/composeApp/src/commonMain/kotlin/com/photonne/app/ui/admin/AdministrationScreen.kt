@@ -15,8 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -72,7 +72,7 @@ fun AdministrationScreen(onOpen: (AdministrationSection) -> Unit) {
             AdministrationSection.Libraries,
             Res.string.admin_section_libraries,
             Res.string.admin_section_libraries_subtitle,
-            Icons.Filled.Folder
+            Icons.AutoMirrored.Filled.List
         ),
         AdminEntry(
             AdministrationSection.Stats,

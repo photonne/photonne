@@ -30,6 +30,7 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
 import kotlinx.coroutines.launch
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_settings_trash_enabled
 import com.photonne.app.resources.admin_settings_trash_max_quota
 import com.photonne.app.resources.admin_settings_trash_max_quota_hint
@@ -178,7 +179,7 @@ fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
                 Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
             }
             Button(onClick = viewModel::save, enabled = settings.canSave) {
-                Text(stringResource(com.photonne.app.resources.Res.string.action_save))
+                Text(stringResource(Res.string.action_save))
             }
         }
 

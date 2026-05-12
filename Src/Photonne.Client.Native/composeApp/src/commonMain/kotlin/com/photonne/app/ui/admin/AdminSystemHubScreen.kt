@@ -2,12 +2,12 @@ package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -71,7 +71,7 @@ fun AdminSystemHubScreen(onOpen: (AdminSystemEntry) -> Unit) {
             AdminSystemEntry.GenerateThumbnails.name,
             stringResource(Res.string.admin_system_thumbnails),
             stringResource(Res.string.admin_system_thumbnails_subtitle),
-            Icons.Filled.Image
+            Icons.Filled.Create
         ),
         AdminHubEntry(
             AdminSystemEntry.DetectDuplicates.name,
@@ -95,7 +95,7 @@ fun AdminSystemHubScreen(onOpen: (AdminSystemEntry) -> Unit) {
             AdminSystemEntry.SceneClassification.name,
             stringResource(Res.string.admin_system_scene),
             stringResource(Res.string.admin_system_scene_subtitle),
-            Icons.Filled.Image
+            Icons.Filled.LocationOn
         ),
         AdminHubEntry(
             AdminSystemEntry.TextRecognition.name,

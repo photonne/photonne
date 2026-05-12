@@ -1,14 +1,14 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
@@ -88,7 +88,7 @@ fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
             AdminSettingsEntry.SceneClassification.name,
             stringResource(Res.string.admin_settings_scene_classification),
             stringResource(Res.string.admin_settings_scene_classification_subtitle),
-            Icons.Filled.Image
+            Icons.Filled.LocationOn
         ),
         AdminHubEntry(
             AdminSettingsEntry.TextRecognition.name,
@@ -106,7 +106,7 @@ fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
             AdminSettingsEntry.ImageSettings.name,
             stringResource(Res.string.admin_settings_image),
             stringResource(Res.string.admin_settings_image_subtitle),
-            Icons.Filled.Image
+            Icons.Filled.Edit
         ),
         AdminHubEntry(
             AdminSettingsEntry.Metadata.name,

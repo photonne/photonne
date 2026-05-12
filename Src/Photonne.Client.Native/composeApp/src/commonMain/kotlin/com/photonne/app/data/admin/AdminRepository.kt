@@ -27,10 +27,10 @@ import com.photonne.app.data.models.VersionInfoResponse
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Admin-only operations exposed by `/api/users/*`, `/api/admin/*`,
- * `/api/libraries/*` and `/api/settings`. The server gates everything
- * with the `Admin` role policy, so the UI shows the entry point only
- * when the current user has that role.
+ * Admin-only operations exposed by the `/api/users`, `/api/admin`,
+ * `/api/libraries` and `/api/settings` endpoint families. The server
+ * gates everything with the `Admin` role policy, so the UI shows the
+ * entry point only when the current user has that role.
  */
 class AdminRepository(private val api: PhotonneApi) {
 
