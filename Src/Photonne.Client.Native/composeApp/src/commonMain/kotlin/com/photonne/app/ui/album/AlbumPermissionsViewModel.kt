@@ -48,9 +48,14 @@ class AlbumPermissionsViewModel(
         viewModelScope.launch { reloadInternal(albumId) }
     }
 
-    fun grant(user: ShareableUser, role: AlbumMemberRole) {
+    fun grant(
+        user: ShareableUser,
+        role: AlbumMemberRole,
+        onMembershipChanged: (memberCount: Int) -> Unit = {}
+    ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
+        val wasMember = _state.value.members.any { it.userId == user.id }
         _state.update { it.copy(isMutating = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { repository.grantMember(albumId, user.id, role) }
@@ -62,6 +67,7 @@ class AlbumPermissionsViewModel(
                             isMutating = false
                         )
                     }
+                    if (!wasMember) onMembershipChanged(_state.value.members.size)
                 }
                 .onFailure { error ->
                     _state.update {
@@ -82,7 +88,10 @@ class AlbumPermissionsViewModel(
         )
     }
 
-    fun revoke(member: AlbumPermission) {
+    fun revoke(
+        member: AlbumPermission,
+        onMembershipChanged: (memberCount: Int) -> Unit = {}
+    ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, errorMessage = null) }
@@ -95,6 +104,7 @@ class AlbumPermissionsViewModel(
                             isMutating = false
                         )
                     }
+                    onMembershipChanged(_state.value.members.size)
                 }
                 .onFailure { error ->
                     _state.update {

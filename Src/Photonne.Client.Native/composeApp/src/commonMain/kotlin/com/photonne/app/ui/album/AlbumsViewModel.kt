@@ -10,12 +10,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class AlbumsTab { Mine, Shared, MyLinks }
+
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
+    val selectedTab: AlbumsTab = AlbumsTab.Mine,
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val errorMessage: String? = null
-)
+) {
+    val visibleAlbums: List<AlbumSummary> get() = when (selectedTab) {
+        AlbumsTab.Mine -> albums.filter { it.isOwner && !it.isShared }
+        AlbumsTab.Shared -> albums.filter { !it.isOwner || it.isShared }
+        AlbumsTab.MyLinks -> albums.filter { it.isOwner && it.hasActiveShareLink }
+    }
+}
 
 class AlbumsViewModel(
     private val repository: AlbumsRepository
@@ -26,11 +35,19 @@ class AlbumsViewModel(
 
     init { refresh() }
 
+    fun selectTab(tab: AlbumsTab) {
+        _state.update { it.copy(selectedTab = tab) }
+    }
+
     fun refresh() {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { repository.list() }
-                .onSuccess { albums -> _state.value = AlbumsUiState(albums = albums) }
+                .onSuccess { albums ->
+                    _state.update {
+                        it.copy(albums = albums, isLoading = false, errorMessage = null)
+                    }
+                }
                 .onFailure { error ->
                     _state.update {
                         it.copy(

@@ -1738,7 +1738,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             },
             onInvite = { showInviteMember = true },
             onChangeRole = { member, role -> albumPermissionsViewModel.changeRole(member, role) },
-            onRevoke = { member -> albumPermissionsViewModel.revoke(member) }
+            onRevoke = { member ->
+                albumPermissionsViewModel.revoke(member) { newCount ->
+                    selectedAlbum?.let { album ->
+                        val updated = album.copy(
+                            isShared = newCount > 0,
+                            sharedWithCount = newCount
+                        )
+                        selectedAlbum = updated
+                        albumsViewModel.applyUpdate(updated)
+                    }
+                }
+            }
         )
     }
 
@@ -1752,7 +1763,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumPermissionsViewModel.clearError()
             },
             onInvite = { selectedUser, role ->
-                albumPermissionsViewModel.grant(selectedUser, role)
+                albumPermissionsViewModel.grant(selectedUser, role) { newCount ->
+                    selectedAlbum?.let { album ->
+                        val updated = album.copy(
+                            isShared = true,
+                            sharedWithCount = newCount
+                        )
+                        selectedAlbum = updated
+                        albumsViewModel.applyUpdate(updated)
+                    }
+                }
                 showInviteMember = false
             }
         )
@@ -1868,7 +1888,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             },
             onInvite = { showInviteFolderMember = true },
             onChangeRole = { member, role -> folderPermissionsViewModel.changeRole(member, role) },
-            onRevoke = { member -> folderPermissionsViewModel.revoke(member) }
+            onRevoke = { member ->
+                folderPermissionsViewModel.revoke(member) { newCount ->
+                    selectedFolder?.let { folder ->
+                        val updated = folder.copy(
+                            isShared = newCount > 0,
+                            sharedWithCount = newCount
+                        )
+                        selectedFolder = updated
+                        foldersViewModel.applyUpdate(updated)
+                    }
+                }
+            }
         )
     }
 
@@ -1882,7 +1913,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 folderPermissionsViewModel.clearError()
             },
             onInvite = { selectedUser, role ->
-                folderPermissionsViewModel.grant(selectedUser, role)
+                folderPermissionsViewModel.grant(selectedUser, role) { newCount ->
+                    selectedFolder?.let { folder ->
+                        val updated = folder.copy(
+                            isShared = true,
+                            sharedWithCount = newCount
+                        )
+                        selectedFolder = updated
+                        foldersViewModel.applyUpdate(updated)
+                    }
+                }
                 showInviteFolderMember = false
             }
         )
@@ -1891,7 +1931,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showMoveFolder && openedFolder != null) {
         com.photonne.app.ui.folder.FolderPickerDialog(
             title = stringResource(Res.string.folder_move_title),
-            folders = foldersState.folders,
+            folders = foldersState.personalFolders,
             isSubmitting = folderDetailState.isMutating,
             errorMessage = folderDetailState.errorMessage,
             excludeFolderId = openedFolder.id,
@@ -1951,7 +1991,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showMoveSelectedAssets && openedFolder != null) {
         com.photonne.app.ui.folder.FolderPickerDialog(
             title = stringResource(Res.string.folder_move_assets_title),
-            folders = foldersState.folders,
+            folders = foldersState.personalFolders,
             isSubmitting = folderDetailState.isBulkMutating,
             errorMessage = folderDetailState.errorMessage,
             excludeFolderId = openedFolder.id,

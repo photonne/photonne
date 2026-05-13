@@ -54,6 +54,11 @@
     <string name="albums_empty_title">No albums yet</string>
     <string name="albums_empty_subtitle">Tap the + button in the top bar to create your first one.</string>
     <string name="albums_count_format">%1$d items</string>
+    <string name="albums_tab_mine">Mine</string>
+    <string name="albums_tab_shared">Shared</string>
+    <string name="albums_tab_my_links">My links</string>
+    <string name="albums_shared_empty">No albums have been shared with you yet.</string>
+    <string name="albums_my_links_empty">You don't have any albums with an active public link.</string>
     <plurals name="album_hero_photos">
         <item quantity="one">%1$d photo</item>
         <item quantity="other">%1$d photos</item>
@@ -113,6 +118,11 @@
     <string name="folders_empty_subtitle">Index a folder from the web app to see it here.</string>
     <string name="folder_shared_badge">Shared</string>
     <string name="folder_external_badge">External library</string>
+    <string name="folders_tab_personal">Personal</string>
+    <string name="folders_tab_shared">Shared</string>
+    <string name="folders_tab_libraries">Libraries</string>
+    <string name="folders_shared_empty">No folders have been shared with you yet.</string>
+    <string name="folders_libraries_empty">No external libraries available.</string>
 
     <string name="folder_action_new">New folder</string>
     <string name="folder_action_edit">Edit folder</string>

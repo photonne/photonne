@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,8 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,9 +39,13 @@ import coil3.compose.AsyncImage
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.albums_empty_subtitle
 import com.photonne.app.resources.albums_empty_title
+import com.photonne.app.resources.albums_my_links_empty
+import com.photonne.app.resources.albums_shared_empty
+import com.photonne.app.resources.albums_tab_mine
+import com.photonne.app.resources.albums_tab_my_links
+import com.photonne.app.resources.albums_tab_shared
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -46,55 +54,91 @@ fun AlbumsListScreen(onAlbumClick: (AlbumSummary) -> Unit) {
     val viewModel: AlbumsViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
+    val visible = state.visibleAlbums
 
-    when {
-        state.isLoading && state.albums.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    Column(modifier = Modifier.fillMaxSize()) {
+        AlbumsTabBar(selected = state.selectedTab, onSelect = viewModel::selectTab)
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isLoading && state.albums.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                state.errorMessage != null && state.albums.isEmpty() ->
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            state.errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                visible.isEmpty() -> EmptyAlbumsState(state.selectedTab)
+                else ->
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 160.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(visible, key = { it.id }) { album ->
+                            AlbumCard(
+                                album = album,
+                                baseUrl = apiBaseUrl,
+                                onClick = { onAlbumClick(album) }
+                            )
+                        }
+                    }
             }
-        state.albums.isEmpty() && state.errorMessage == null ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AlbumsTabBar(selected: AlbumsTab, onSelect: (AlbumsTab) -> Unit) {
+    val tabs = AlbumsTab.values()
+    PrimaryTabRow(selectedTabIndex = tabs.indexOf(selected)) {
+        tabs.forEach { tab ->
+            Tab(
+                selected = tab == selected,
+                onClick = { onSelect(tab) },
+                text = {
                     Text(
-                        stringResource(Res.string.albums_empty_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        stringResource(Res.string.albums_empty_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
+                        when (tab) {
+                            AlbumsTab.Mine -> stringResource(Res.string.albums_tab_mine)
+                            AlbumsTab.Shared -> stringResource(Res.string.albums_tab_shared)
+                            AlbumsTab.MyLinks -> stringResource(Res.string.albums_tab_my_links)
+                        }
                     )
                 }
-            }
-        state.errorMessage != null && state.albums.isEmpty() ->
-            Box(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    state.errorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
-            }
-        else ->
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(state.albums, key = { it.id }) { album ->
-                    AlbumCard(
-                        album = album,
-                        baseUrl = apiBaseUrl,
-                        onClick = { onAlbumClick(album) }
-                    )
-                }
-            }
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyAlbumsState(tab: AlbumsTab) {
+    val title = stringResource(Res.string.albums_empty_title)
+    val subtitle = when (tab) {
+        AlbumsTab.Mine -> stringResource(Res.string.albums_empty_subtitle)
+        AlbumsTab.Shared -> stringResource(Res.string.albums_shared_empty)
+        AlbumsTab.MyLinks -> stringResource(Res.string.albums_my_links_empty)
+    }
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 

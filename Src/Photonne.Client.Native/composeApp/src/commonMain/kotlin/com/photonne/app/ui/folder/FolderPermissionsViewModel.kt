@@ -49,9 +49,14 @@ class FolderPermissionsViewModel(
         viewModelScope.launch { reloadInternal(folderId) }
     }
 
-    fun grant(user: ShareableUser, role: AlbumMemberRole) {
+    fun grant(
+        user: ShareableUser,
+        role: AlbumMemberRole,
+        onMembershipChanged: (memberCount: Int) -> Unit = {}
+    ) {
         val folderId = _state.value.folderId ?: return
         if (_state.value.isMutating) return
+        val wasMember = _state.value.members.any { it.userId == user.id }
         _state.update { it.copy(isMutating = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { foldersRepository.grantMember(folderId, user.id, role) }
@@ -60,6 +65,7 @@ class FolderPermissionsViewModel(
                         val without = it.members.filterNot { p -> p.userId == permission.userId }
                         it.copy(members = without + permission, isMutating = false)
                     }
+                    if (!wasMember) onMembershipChanged(_state.value.members.size)
                 }
                 .onFailure { error ->
                     _state.update {
@@ -80,7 +86,10 @@ class FolderPermissionsViewModel(
         )
     }
 
-    fun revoke(member: AlbumPermission) {
+    fun revoke(
+        member: AlbumPermission,
+        onMembershipChanged: (memberCount: Int) -> Unit = {}
+    ) {
         val folderId = _state.value.folderId ?: return
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, errorMessage = null) }
@@ -93,6 +102,7 @@ class FolderPermissionsViewModel(
                             isMutating = false
                         )
                     }
+                    onMembershipChanged(_state.value.members.size)
                 }
                 .onFailure { error ->
                     _state.update {
