@@ -1,5 +1,6 @@
 package com.photonne.app.ui.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +26,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.app_name
 import com.photonne.app.ui.theme.ButtonLoadingIndicator
 import com.photonne.app.ui.theme.actionButtonHeight
+import com.photonne.app.ui.theme.photonneLogoPainter
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -40,7 +45,14 @@ fun LoginScreen() {
                 modifier = Modifier.widthIn(max = 360.dp).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Photonne", style = MaterialTheme.typography.headlineMedium)
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Image(
+                        painter = photonneLogoPainter(),
+                        contentDescription = stringResource(Res.string.app_name),
+                        modifier = Modifier.height(56.dp)
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
 
                 when (state.step) {
                     LoginStep.ServerUrl -> ServerUrlStep(state, viewModel)

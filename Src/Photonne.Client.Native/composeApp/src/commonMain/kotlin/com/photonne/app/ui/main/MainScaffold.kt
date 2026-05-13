@@ -1,7 +1,9 @@
 package com.photonne.app.ui.main
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -128,6 +130,8 @@ import com.photonne.app.resources.tab_search
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
 import com.photonne.app.resources.upload_title
+import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.theme.photonneLogoPainter
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -272,9 +276,10 @@ fun TimelineTopBar(
 ) {
     TopAppBar(
         title = {
-            Text(
-                stringResource(Res.string.app_name),
-                style = MaterialTheme.typography.titleMedium
+            Image(
+                painter = photonneLogoPainter(),
+                contentDescription = stringResource(Res.string.app_name),
+                modifier = Modifier.height(32.dp)
             )
         },
         actions = {

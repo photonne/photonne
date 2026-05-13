@@ -7,9 +7,16 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.settings.ThemePreference
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.photonne_logo_dark
+import com.photonne.app.resources.photonne_logo_light
+import org.jetbrains.compose.resources.painterResource
 
 // Brand colors mirror Src/Photonne.Client.Web/Services/ThemeService.cs so the
 // native and PWA clients share the same gold identity.
@@ -71,6 +78,13 @@ private val PhotonneShapes = Shapes(
     extraLarge = RoundedCornerShape(24.dp)
 )
 
+/**
+ * Exposes the effective dark/light state to descendants so resource pickers
+ * (e.g. [photonneLogoPainter]) follow the user's in-app preference, not just
+ * the OS setting — mirrors the PWA's LayoutService.IsDarkMode behavior.
+ */
+val LocalIsDarkTheme = staticCompositionLocalOf { false }
+
 @Composable
 fun PhotonneTheme(
     preference: ThemePreference = ThemePreference.System,
@@ -82,9 +96,19 @@ fun PhotonneTheme(
         ThemePreference.Light -> false
         ThemePreference.Dark -> true
     }
-    MaterialTheme(
-        colorScheme = if (useDarkTheme) DarkColors else LightColors,
-        shapes = PhotonneShapes,
-        content = content
-    )
+    CompositionLocalProvider(LocalIsDarkTheme provides useDarkTheme) {
+        MaterialTheme(
+            colorScheme = if (useDarkTheme) DarkColors else LightColors,
+            shapes = PhotonneShapes,
+            content = content
+        )
+    }
 }
+
+/** Photonne wordmark variant that follows the effective in-app theme. */
+@Composable
+fun photonneLogoPainter(): Painter =
+    painterResource(
+        if (LocalIsDarkTheme.current) Res.drawable.photonne_logo_dark
+        else Res.drawable.photonne_logo_light
+    )
