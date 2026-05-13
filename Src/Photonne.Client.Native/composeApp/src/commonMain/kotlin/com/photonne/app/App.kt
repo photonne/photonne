@@ -507,18 +507,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 } else {
                     AlbumsListTopBar(
-                        user = user.user,
                         onCreateAlbum = { showCreateAlbum = true },
-                        onOpenFilters = { showAlbumsFilters = true },
-                        onLogout = onLogout
+                        onOpenFilters = { showAlbumsFilters = true }
                     )
                 }
             }
             selectedTab == MainTab.Albums -> AlbumsListTopBar(
-                user = user.user,
                 onCreateAlbum = { showCreateAlbum = true },
-                onOpenFilters = { showAlbumsFilters = true },
-                onLogout = onLogout
+                onOpenFilters = { showAlbumsFilters = true }
             )
             selectedTab == MainTab.Folders && selectedFolder != null &&
                 folderDetailState.isSelectionActive ->
@@ -547,9 +543,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onManageMembers = {
                         folderPermissionsViewModel.open(folder.id)
                         showFolderMembers = true
-                    },
-                    user = user.user,
-                    onLogout = onLogout
+                    }
                 )
             }
             selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
@@ -563,19 +557,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 } else {
                     FoldersListTopBar(
-                        user = user.user,
                         onCreateFolder = { showCreateFolder = true },
-                        onOpenFilters = { showFoldersFilters = true },
-                        onLogout = onLogout
+                        onOpenFilters = { showFoldersFilters = true }
                     )
                 }
             }
             selectedTab == MainTab.Folders ->
                 FoldersListTopBar(
-                    user = user.user,
                     onCreateFolder = { showCreateFolder = true },
-                    onOpenFilters = { showFoldersFilters = true },
-                    onLogout = onLogout
+                    onOpenFilters = { showFoldersFilters = true }
                 )
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
                 AssetSelectionTopBar(
@@ -585,7 +575,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = searchViewModel::clearSelection
                 )
             selectedTab == MainTab.Search ->
-                com.photonne.app.ui.main.SearchTopBar(user = user.user, onLogout = onLogout)
+                com.photonne.app.ui.main.SearchTopBar()
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Upload ->
                 com.photonne.app.ui.main.UploadTopBar(
                     title = stringResource(Res.string.upload_title),
@@ -595,31 +585,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             uploadState.pendingCount
                         )
                     else null,
-                    onBack = { moreSubscreen = null },
-                    user = user.user,
-                    onLogout = onLogout
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSync ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.device_sync_title),
-                    onBack = { moreSubscreen = null },
-                    user = user.user,
-                    onLogout = onLogout
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSyncPending ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.backup_pending_screen_title),
-                    onBack = { moreSubscreen = MoreSubscreen.DeviceSync },
-                    user = user.user,
-                    onLogout = onLogout
+                    onBack = { moreSubscreen = MoreSubscreen.DeviceSync }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
                 com.photonne.app.ui.main.MapTopBar(
                     title = stringResource(Res.string.map_title),
                     onBack = { moreSubscreen = null },
-                    onRefresh = mapViewModel::refresh,
-                    user = user.user,
-                    onLogout = onLogout
+                    onRefresh = mapViewModel::refresh
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.PeopleSuggestions ->
                 com.photonne.app.ui.main.PersonSuggestionsTopBar(
@@ -640,9 +622,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             peopleViewModel.refresh()
                         }
                     },
-                    onDismissAll = { personSuggestionsViewModel.dismissAll() },
-                    user = user.user,
-                    onLogout = onLogout
+                    onDismissAll = { personSuggestionsViewModel.dismissAll() }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null && personDetailState.isSelectionActive ->
@@ -680,9 +660,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 selectedPerson = null
                             }
                         }
-                    },
-                    user = user.user,
-                    onLogout = onLogout
+                    }
                 )
             }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People ->
@@ -692,9 +670,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onRefresh = peopleViewModel::refresh,
                     onRecluster = { peopleViewModel.recluster() },
                     showHidden = peopleState.showHidden,
-                    onToggleHidden = peopleViewModel::toggleShowHidden,
-                    user = user.user,
-                    onLogout = onLogout
+                    onToggleHidden = peopleViewModel::toggleShowHidden
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites &&
                 favoritesState.isSelectionActive ->
@@ -711,9 +687,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     subtitle = if (count > 0)
                         stringResource(Res.string.albums_count_format, count) else null,
                     onBack = { moreSubscreen = null },
-                    onRefresh = favoritesViewModel::refresh,
-                    user = user.user,
-                    onLogout = onLogout
+                    onRefresh = favoritesViewModel::refresh
                 )
             }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
@@ -733,9 +707,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     canUnarchiveAll = count > 0,
                     onBack = { moreSubscreen = null },
                     onRefresh = archivedViewModel::refresh,
-                    onUnarchiveAll = { showUnarchiveAll = true },
-                    user = user.user,
-                    onLogout = onLogout
+                    onUnarchiveAll = { showUnarchiveAll = true }
                 )
             }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Trash &&
@@ -757,95 +729,69 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = { moreSubscreen = null },
                     onRefresh = trashViewModel::refresh,
                     onRestoreAll = { showRestoreAllTrash = true },
-                    onEmptyTrash = { showEmptyTrash = true },
-                    user = user.user,
-                    onLogout = onLogout
+                    onEmptyTrash = { showEmptyTrash = true }
                 )
             }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSettings ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_settings_title),
                     onBack = { moreSubscreen = null },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountProfile ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_profile),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSecurity ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_security),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountAppearance ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_appearance),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountStorage ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_storage),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Administration ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.administration_title),
                     onBack = { moreSubscreen = null },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminUsers ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_users),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminLibraries ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_libraries),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminStats ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_stats),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminSettingsHub ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_settings),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminSystemHub ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_system),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             selectedTab == MainTab.More && isAdminSettingsSubpage(moreSubscreen) -> {
                 val (titleRes, _) = adminSettingsSubpageMeta(moreSubscreen!!)
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(titleRes),
                     onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             }
             selectedTab == MainTab.More && isAdminSystemSubpage(moreSubscreen) -> {
@@ -853,20 +799,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(titleRes),
                     onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
-                    user = user.user,
-                    onLogout = onLogout
                 )
             }
-            selectedTab == MainTab.More -> MoreTopBar(user = user.user, onLogout = onLogout)
+            selectedTab == MainTab.More -> MoreTopBar()
             else -> TimelineTopBar(
-                user = user.user,
                 onRefresh = timelineViewModel::refresh,
                 onJumpToDate = { showJumpToDate = true },
                 onUpload = {
                     selectedTab = MainTab.More
                     moreSubscreen = MoreSubscreen.Upload
-                },
-                onLogout = onLogout
+                }
             )
         }
     }

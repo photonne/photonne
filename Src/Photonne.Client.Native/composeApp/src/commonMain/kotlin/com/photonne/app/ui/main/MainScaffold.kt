@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AddToPhotos
@@ -58,9 +57,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_account
 import androidx.compose.material3.TextButton
 import com.photonne.app.resources.action_collaborators
 import com.photonne.app.resources.action_rename
@@ -98,7 +95,6 @@ import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
-import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.action_more
 import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.album_action_members
@@ -232,47 +228,12 @@ private fun MainNavigationBar(
     }
 }
 
-/** Account menu shared by every top bar so logout is always one tap away. */
-@Composable
-fun AccountMenu(user: UserDto, onLogout: () -> Unit) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(
-                Icons.Outlined.AccountCircle,
-                contentDescription = stringResource(Res.string.action_account)
-            )
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = user.firstName?.takeIf { it.isNotBlank() } ?: user.username,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                },
-                onClick = { open = false },
-                enabled = false
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.action_logout)) },
-                onClick = {
-                    open = false
-                    onLogout()
-                }
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineTopBar(
-    user: UserDto,
     onRefresh: () -> Unit,
     onJumpToDate: () -> Unit,
-    onUpload: () -> Unit,
-    onLogout: () -> Unit
+    onUpload: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -301,7 +262,6 @@ fun TimelineTopBar(
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -612,10 +572,8 @@ fun AssetSelectionBottomBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumsListTopBar(
-    user: UserDto,
     onCreateAlbum: () -> Unit,
-    onOpenFilters: () -> Unit,
-    onLogout: () -> Unit
+    onOpenFilters: () -> Unit
 ) {
     TopAppBar(
         title = { Text("Álbumes", style = MaterialTheme.typography.titleMedium) },
@@ -632,7 +590,6 @@ fun AlbumsListTopBar(
                     contentDescription = stringResource(Res.string.album_action_new)
                 )
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -749,10 +706,8 @@ fun AlbumCardSelectionBottomBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoldersListTopBar(
-    user: UserDto,
     onCreateFolder: () -> Unit,
-    onOpenFilters: () -> Unit,
-    onLogout: () -> Unit
+    onOpenFilters: () -> Unit
 ) {
     TopAppBar(
         title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
@@ -769,7 +724,6 @@ fun FoldersListTopBar(
                     contentDescription = stringResource(Res.string.folder_action_new)
                 )
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -879,9 +833,7 @@ fun FolderDetailTopBar(
     onEdit: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
-    onManageMembers: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onManageMembers: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val hasMenu = canEdit || canDelete || canManageMembers || canMove
@@ -960,7 +912,6 @@ fun FolderDetailTopBar(
                     }
                 }
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -998,39 +949,32 @@ fun FolderSelectionTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchTopBar(user: UserDto, onLogout: () -> Unit) {
+fun SearchTopBar() {
     TopAppBar(
         title = {
             Text(
                 stringResource(Res.string.tab_search),
                 style = MaterialTheme.typography.titleMedium
             )
-        },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoreTopBar(user: UserDto, onLogout: () -> Unit) {
+fun MoreTopBar() {
     TopAppBar(
-        title = { Text("Más", style = MaterialTheme.typography.titleMedium) },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        title = { Text("Más", style = MaterialTheme.typography.titleMedium) }
     )
 }
 
-/**
- * Generic title + optional subtitle + back button + account menu top
- * bar used by every account-settings sub-page.
- */
+/** Generic title + optional subtitle + back button used by every settings sub-page. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsTopBar(
     title: String,
     subtitle: String? = null,
-    onBack: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onBack: () -> Unit
 ) {
     TopAppBar(
         navigationIcon = {
@@ -1052,8 +996,7 @@ fun SettingsTopBar(
                     )
                 }
             }
-        },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        }
     )
 }
 
@@ -1062,9 +1005,7 @@ fun SettingsTopBar(
 fun UploadTopBar(
     title: String,
     subtitle: String?,
-    onBack: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onBack: () -> Unit
 ) {
     TopAppBar(
         navigationIcon = {
@@ -1086,8 +1027,7 @@ fun UploadTopBar(
                     )
                 }
             }
-        },
-        actions = { AccountMenu(user = user, onLogout = onLogout) }
+        }
     )
 }
 
@@ -1096,9 +1036,7 @@ fun UploadTopBar(
 fun MapTopBar(
     title: String,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onRefresh: () -> Unit
 ) {
     TopAppBar(
         navigationIcon = {
@@ -1117,7 +1055,6 @@ fun MapTopBar(
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -1130,9 +1067,7 @@ fun ArchivedTopBar(
     canUnarchiveAll: Boolean,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
-    onUnarchiveAll: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onUnarchiveAll: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     TopAppBar(
@@ -1179,7 +1114,6 @@ fun ArchivedTopBar(
                     }
                 }
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -1193,9 +1127,7 @@ fun TrashTopBar(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onRestoreAll: () -> Unit,
-    onEmptyTrash: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onEmptyTrash: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     TopAppBar(
@@ -1251,7 +1183,6 @@ fun TrashTopBar(
                     }
                 }
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -1262,9 +1193,7 @@ fun FavoritesTopBar(
     title: String,
     subtitle: String?,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onRefresh: () -> Unit
 ) {
     TopAppBar(
         navigationIcon = {
@@ -1294,7 +1223,6 @@ fun FavoritesTopBar(
                     contentDescription = stringResource(Res.string.action_refresh)
                 )
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -1307,9 +1235,7 @@ fun PeopleTopBar(
     onRefresh: () -> Unit,
     onRecluster: () -> Unit,
     showHidden: Boolean,
-    onToggleHidden: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onToggleHidden: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     TopAppBar(
@@ -1352,7 +1278,6 @@ fun PeopleTopBar(
                     )
                 }
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -1367,9 +1292,7 @@ fun PersonDetailTopBar(
     onRename: () -> Unit,
     onSuggestions: () -> Unit,
     onMerge: () -> Unit,
-    onToggleHidden: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onToggleHidden: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     TopAppBar(
@@ -1426,7 +1349,6 @@ fun PersonDetailTopBar(
                     )
                 }
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
@@ -1439,9 +1361,7 @@ fun PersonSuggestionsTopBar(
     isBulkMutating: Boolean,
     onBack: () -> Unit,
     onAcceptAll: () -> Unit,
-    onDismissAll: () -> Unit,
-    user: UserDto,
-    onLogout: () -> Unit
+    onDismissAll: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     TopAppBar(
@@ -1492,7 +1412,6 @@ fun PersonSuggestionsTopBar(
                     )
                 }
             }
-            AccountMenu(user = user, onLogout = onLogout)
         }
     )
 }
