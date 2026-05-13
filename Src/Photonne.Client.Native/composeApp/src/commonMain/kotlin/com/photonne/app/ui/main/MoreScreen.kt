@@ -48,6 +48,7 @@ import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.device_sync_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title

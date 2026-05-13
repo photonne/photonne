@@ -60,7 +60,6 @@ import com.photonne.app.resources.device_sync_action_select_all
 import com.photonne.app.resources.device_sync_action_sync
 import com.photonne.app.resources.device_sync_change_folder
 import com.photonne.app.resources.device_sync_empty_folder
-import com.photonne.app.resources.device_sync_empty_state
 import com.photonne.app.resources.device_sync_folder_label
 import com.photonne.app.resources.device_sync_intro
 import com.photonne.app.resources.device_sync_not_supported

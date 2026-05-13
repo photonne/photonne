@@ -68,6 +68,7 @@ import com.photonne.app.ui.settings.AccountStorageViewModel
 import com.photonne.app.ui.settings.AppearanceViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
+import com.photonne.app.ui.devicesync.DeviceSyncViewModel
 import com.photonne.app.ui.upload.UploadViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
@@ -141,7 +142,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::FavoritesViewModel)
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
-    viewModelOf(::com.photonne.app.ui.devicesync.DeviceSyncViewModel)
+    viewModelOf(::DeviceSyncViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)

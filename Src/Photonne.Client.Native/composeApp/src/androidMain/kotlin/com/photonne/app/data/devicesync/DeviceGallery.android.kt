@@ -23,7 +23,7 @@ import java.security.MessageDigest
  *   takes a persistable read permission so we can re-open the same
  *   tree on a later app launch, and returns the tree URI.
  * - `listMedia()` walks the picked tree with [DocumentFile.listFiles]
- *   recursively, filtering for `image/*` and `video/*`. SAF child
+ *   recursively, filtering for image and video MIME types. SAF child
  *   queries are slow on big trees, so the walk happens on `IO`.
  * - `computeSha256()` streams the file in 64 KiB chunks through
  *   `MessageDigest` so we never hold the full payload to compute the
