@@ -438,6 +438,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveFolder by remember { mutableStateOf(false) }
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showSearchFilters by remember { mutableStateOf(false) }
+    var showAlbumsFilters by remember { mutableStateOf(false) }
+    var showFoldersFilters by remember { mutableStateOf(false) }
+    var pendingActionAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
+    var pendingActionFolder by remember {
+        mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
+    }
     var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
     var showUnarchiveAll by remember { mutableStateOf(false) }
     var showRestoreAllTrash by remember { mutableStateOf(false) }
@@ -528,9 +534,50 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 // The hero inside AlbumDetailScreen owns back / share / overflow
                 // controls (PWA-style), so no separate top bar here.
             }
+            selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
+                val target = albumsState.albums.firstOrNull {
+                    it.id == albumsState.selectedAlbumId
+                }
+                if (target != null) {
+                    com.photonne.app.ui.main.AlbumCardSelectionTopBar(
+                        albumName = target.name,
+                        canManageMembers = target.isOwner || target.canManagePermissions,
+                        canEdit = target.canWrite || target.isOwner,
+                        canDelete = target.isOwner,
+                        canLeave = !target.isOwner,
+                        isMutating = albumsState.isMutating,
+                        onClose = albumsViewModel::clearSelection,
+                        onManageMembers = {
+                            pendingActionAlbum = target
+                            albumPermissionsViewModel.open(target.id)
+                            showMembers = true
+                        },
+                        onEdit = {
+                            pendingActionAlbum = target
+                            showEditAlbum = true
+                        },
+                        onLeave = {
+                            pendingActionAlbum = target
+                            showLeaveAlbum = true
+                        },
+                        onDelete = {
+                            pendingActionAlbum = target
+                            showDeleteAlbum = true
+                        }
+                    )
+                } else {
+                    AlbumsListTopBar(
+                        user = user.user,
+                        onCreateAlbum = { showCreateAlbum = true },
+                        onOpenFilters = { showAlbumsFilters = true },
+                        onLogout = onLogout
+                    )
+                }
+            }
             selectedTab == MainTab.Albums -> AlbumsListTopBar(
                 user = user.user,
                 onCreateAlbum = { showCreateAlbum = true },
+                onOpenFilters = { showAlbumsFilters = true },
                 onLogout = onLogout
             )
             selectedTab == MainTab.Folders && selectedFolder != null &&
@@ -579,10 +626,45 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onLogout = onLogout
                 )
             }
+            selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
+                val target = (foldersState.personalFolders + foldersState.sharedFolders)
+                    .firstOrNull { it.id == foldersState.selectedFolderId }
+                if (target != null) {
+                    com.photonne.app.ui.main.FolderCardSelectionTopBar(
+                        folderName = target.name.ifBlank { target.path },
+                        canManageMembers = target.isOwner && target.isShared,
+                        canRename = target.isOwner,
+                        canDelete = target.isOwner,
+                        isMutating = foldersState.isMutating,
+                        onClose = foldersViewModel::clearSelection,
+                        onManageMembers = {
+                            pendingActionFolder = target
+                            folderPermissionsViewModel.open(target.id)
+                            showFolderMembers = true
+                        },
+                        onRename = {
+                            pendingActionFolder = target
+                            showEditFolder = true
+                        },
+                        onDelete = {
+                            pendingActionFolder = target
+                            showDeleteFolder = true
+                        }
+                    )
+                } else {
+                    FoldersListTopBar(
+                        user = user.user,
+                        onCreateFolder = { showCreateFolder = true },
+                        onOpenFilters = { showFoldersFilters = true },
+                        onLogout = onLogout
+                    )
+                }
+            }
             selectedTab == MainTab.Folders ->
                 FoldersListTopBar(
                     user = user.user,
                     onCreateFolder = { showCreateFolder = true },
+                    onOpenFilters = { showFoldersFilters = true },
                     onLogout = onLogout
                 )
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
@@ -930,6 +1012,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     moreSubscreen = null
                     selectedPerson = null
                 }
+                if (tab != MainTab.Albums) albumsViewModel.clearSelection()
+                if (tab != MainTab.Folders) foldersViewModel.clearSelection()
                 selectedTab = tab
             },
             topBar = topBar
@@ -976,7 +1060,22 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
                     if (openedAlbum == null) {
-                        AlbumsListScreen(onAlbumClick = { album -> selectedAlbum = album })
+                        AlbumsListScreen(
+                            onAlbumClick = { album ->
+                                if (albumsState.isSelectionActive) {
+                                    if (albumsState.selectedAlbumId == album.id) {
+                                        albumsViewModel.clearSelection()
+                                    } else {
+                                        albumsViewModel.selectAlbum(album.id)
+                                    }
+                                } else {
+                                    selectedAlbum = album
+                                }
+                            },
+                            onAlbumLongPress = { album ->
+                                albumsViewModel.selectAlbum(album.id)
+                            }
+                        )
                     } else {
                         AlbumDetailScreen(
                             album = openedAlbum,
@@ -1013,7 +1112,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     val openedFolder = selectedFolder
                     if (openedFolder == null) {
                         com.photonne.app.ui.folder.FoldersListScreen(
-                            onFolderClick = { folder -> selectedFolder = folder }
+                            onFolderClick = { folder ->
+                                if (foldersState.isSelectionActive) {
+                                    if (foldersState.selectedFolderId == folder.id) {
+                                        foldersViewModel.clearSelection()
+                                    } else {
+                                        foldersViewModel.selectFolder(folder.id)
+                                    }
+                                } else {
+                                    selectedFolder = folder
+                                }
+                            },
+                            onFolderLongPress = { folder ->
+                                foldersViewModel.selectFolder(folder.id)
+                            }
                         )
                     } else {
                         com.photonne.app.ui.folder.FolderDetailScreen(
@@ -1677,6 +1789,27 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             }
         )
+    } else if (showEditAlbum && pendingActionAlbum != null) {
+        val target = pendingActionAlbum!!
+        AlbumFormDialog(
+            title = stringResource(Res.string.album_action_edit),
+            confirmLabel = stringResource(Res.string.action_save),
+            initialName = target.name,
+            initialDescription = target.description,
+            isSubmitting = albumsState.isMutating,
+            errorMessage = albumsState.errorMessage,
+            onDismiss = {
+                showEditAlbum = false
+                pendingActionAlbum = null
+                albumsViewModel.clearError()
+            },
+            onConfirm = { name, description ->
+                albumsViewModel.renameAlbum(target.id, name, description) {
+                    showEditAlbum = false
+                    pendingActionAlbum = null
+                }
+            }
+        )
     }
 
     if (showDeleteAlbum && openedAlbum != null) {
@@ -1693,6 +1826,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     showDeleteAlbum = false
                     albumsViewModel.applyDelete(albumId)
                     selectedAlbum = null
+                }
+            }
+        )
+    } else if (showDeleteAlbum && pendingActionAlbum != null) {
+        val target = pendingActionAlbum!!
+        DeleteAlbumDialog(
+            albumName = target.name,
+            isSubmitting = albumsState.isMutating,
+            errorMessage = albumsState.errorMessage,
+            onDismiss = {
+                showDeleteAlbum = false
+                pendingActionAlbum = null
+                albumsViewModel.clearError()
+            },
+            onConfirm = {
+                albumsViewModel.deleteAlbum(target.id) {
+                    showDeleteAlbum = false
+                    pendingActionAlbum = null
                 }
             }
         )
@@ -1715,6 +1866,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             }
         )
+    } else if (showLeaveAlbum && pendingActionAlbum != null) {
+        val target = pendingActionAlbum!!
+        LeaveAlbumDialog(
+            albumName = target.name,
+            isSubmitting = albumsState.isMutating,
+            errorMessage = albumsState.errorMessage,
+            onDismiss = {
+                showLeaveAlbum = false
+                pendingActionAlbum = null
+                albumsViewModel.clearError()
+            },
+            onConfirm = {
+                albumsViewModel.leaveAlbum(target.id) {
+                    showLeaveAlbum = false
+                    pendingActionAlbum = null
+                }
+            }
+        )
     }
 
     if (showShares && openedAlbum != null) {
@@ -1729,11 +1898,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         )
     }
 
-    if (showMembers && openedAlbum != null) {
+    if (showMembers && (openedAlbum != null || pendingActionAlbum != null)) {
         ManagePermissionsDialog(
             state = albumPermissionsState,
             onDismiss = {
                 showMembers = false
+                if (openedAlbum == null) pendingActionAlbum = null
                 albumPermissionsViewModel.clearError()
             },
             onInvite = { showInviteMember = true },
@@ -1748,12 +1918,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         selectedAlbum = updated
                         albumsViewModel.applyUpdate(updated)
                     }
+                    pendingActionAlbum?.let { album ->
+                        val updated = album.copy(
+                            isShared = newCount > 0,
+                            sharedWithCount = newCount
+                        )
+                        pendingActionAlbum = updated
+                        albumsViewModel.applyUpdate(updated)
+                    }
                 }
             }
         )
     }
 
-    if (showInviteMember && openedAlbum != null) {
+    if (showInviteMember && (openedAlbum != null || pendingActionAlbum != null)) {
         InviteMemberDialog(
             candidates = albumPermissionsState.invitableUsers,
             isSubmitting = albumPermissionsState.isMutating,
@@ -1770,6 +1948,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             sharedWithCount = newCount
                         )
                         selectedAlbum = updated
+                        albumsViewModel.applyUpdate(updated)
+                    }
+                    pendingActionAlbum?.let { album ->
+                        val updated = album.copy(
+                            isShared = true,
+                            sharedWithCount = newCount
+                        )
+                        pendingActionAlbum = updated
                         albumsViewModel.applyUpdate(updated)
                     }
                 }
@@ -1858,6 +2044,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             }
         )
+    } else if (showEditFolder && pendingActionFolder != null) {
+        val target = pendingActionFolder!!
+        FolderFormDialog(
+            title = stringResource(Res.string.folder_action_edit),
+            confirmLabel = stringResource(Res.string.action_save),
+            initialName = target.name,
+            isSubmitting = foldersState.isMutating,
+            errorMessage = foldersState.errorMessage,
+            onDismiss = {
+                showEditFolder = false
+                pendingActionFolder = null
+                foldersViewModel.clearError()
+            },
+            onConfirm = { name ->
+                foldersViewModel.renameFolder(target.id, name) {
+                    showEditFolder = false
+                    pendingActionFolder = null
+                }
+            }
+        )
     }
 
     if (showDeleteFolder && openedFolder != null) {
@@ -1877,13 +2083,32 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             }
         )
+    } else if (showDeleteFolder && pendingActionFolder != null) {
+        val target = pendingActionFolder!!
+        DeleteFolderDialog(
+            folderName = target.name.ifBlank { target.path },
+            isSubmitting = foldersState.isMutating,
+            errorMessage = foldersState.errorMessage,
+            onDismiss = {
+                showDeleteFolder = false
+                pendingActionFolder = null
+                foldersViewModel.clearError()
+            },
+            onConfirm = {
+                foldersViewModel.deleteFolder(target.id) {
+                    showDeleteFolder = false
+                    pendingActionFolder = null
+                }
+            }
+        )
     }
 
-    if (showFolderMembers && openedFolder != null) {
+    if (showFolderMembers && (openedFolder != null || pendingActionFolder != null)) {
         ManageFolderPermissionsDialog(
             state = folderPermissionsState,
             onDismiss = {
                 showFolderMembers = false
+                if (openedFolder == null) pendingActionFolder = null
                 folderPermissionsViewModel.clearError()
             },
             onInvite = { showInviteFolderMember = true },
@@ -1898,12 +2123,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         selectedFolder = updated
                         foldersViewModel.applyUpdate(updated)
                     }
+                    pendingActionFolder?.let { folder ->
+                        val updated = folder.copy(
+                            isShared = newCount > 0,
+                            sharedWithCount = newCount
+                        )
+                        pendingActionFolder = updated
+                        foldersViewModel.applyUpdate(updated)
+                    }
                 }
             }
         )
     }
 
-    if (showInviteFolderMember && openedFolder != null) {
+    if (showInviteFolderMember && (openedFolder != null || pendingActionFolder != null)) {
         InviteFolderMemberDialog(
             candidates = folderPermissionsState.invitableUsers,
             isSubmitting = folderPermissionsState.isMutating,
@@ -1920,6 +2153,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             sharedWithCount = newCount
                         )
                         selectedFolder = updated
+                        foldersViewModel.applyUpdate(updated)
+                    }
+                    pendingActionFolder?.let { folder ->
+                        val updated = folder.copy(
+                            isShared = true,
+                            sharedWithCount = newCount
+                        )
+                        pendingActionFolder = updated
                         foldersViewModel.applyUpdate(updated)
                     }
                 }
@@ -1951,6 +2192,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     foldersViewModel.applyUpdate(updated)
                 }
             }
+        )
+    }
+
+    if (showAlbumsFilters) {
+        com.photonne.app.ui.album.AlbumsFiltersSheet(
+            state = albumsState,
+            onDismiss = { showAlbumsFilters = false },
+            onSortChange = albumsViewModel::setSort,
+            onViewModeChange = albumsViewModel::setViewMode,
+            onGroupByYearChange = albumsViewModel::setGroupByYear
+        )
+    }
+
+    if (showFoldersFilters) {
+        com.photonne.app.ui.folder.FoldersFiltersSheet(
+            state = foldersState,
+            onDismiss = { showFoldersFilters = false },
+            onSortChange = foldersViewModel::setSort,
+            onViewModeChange = foldersViewModel::setViewMode
         )
     }
 

@@ -59,6 +59,20 @@
     <string name="albums_tab_my_links">Mis enlaces</string>
     <string name="albums_shared_empty">Aún no te han compartido álbumes.</string>
     <string name="albums_my_links_empty">No tienes álbumes con enlace público activo.</string>
+
+    <string name="filters_title">Opciones de vista</string>
+    <string name="filters_sort_label">Ordenar por</string>
+    <string name="filters_view_label">Vista</string>
+    <string name="view_mode_grid">Cuadrícula</string>
+    <string name="view_mode_list">Lista</string>
+    <string name="albums_action_filters">Opciones de vista</string>
+    <string name="albums_sort_recent">Foto más reciente</string>
+    <string name="albums_sort_oldest">Foto más antigua</string>
+    <string name="albums_sort_name">Nombre</string>
+    <string name="albums_filters_group_by_year">Agrupar por año</string>
+    <string name="action_collaborators">Colaboradores</string>
+    <string name="action_rename">Renombrar</string>
+    <string name="album_card_action_leave">Salir del álbum</string>
     <plurals name="album_hero_photos">
         <item quantity="one">%1$d foto</item>
         <item quantity="other">%1$d fotos</item>
@@ -123,6 +137,9 @@
     <string name="folders_tab_libraries">Bibliotecas</string>
     <string name="folders_shared_empty">Aún no te han compartido carpetas.</string>
     <string name="folders_libraries_empty">No hay bibliotecas externas disponibles.</string>
+    <string name="folders_action_filters">Opciones de vista</string>
+    <string name="folders_sort_name">Nombre</string>
+    <string name="folders_sort_asset_count">Cantidad de archivos</string>
 
     <string name="folder_action_new">Nueva carpeta</string>
     <string name="folder_action_edit">Editar carpeta</string>

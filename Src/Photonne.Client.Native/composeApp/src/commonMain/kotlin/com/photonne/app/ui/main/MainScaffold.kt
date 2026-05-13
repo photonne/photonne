@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.filled.Close
@@ -31,8 +32,11 @@ import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,7 +58,12 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_account
 import androidx.compose.material3.TextButton
+import com.photonne.app.resources.action_collaborators
+import com.photonne.app.resources.action_rename
 import com.photonne.app.resources.action_share
+import com.photonne.app.resources.album_card_action_leave
+import com.photonne.app.resources.albums_action_filters
+import com.photonne.app.resources.folders_action_filters
 import com.photonne.app.resources.archive_action_unarchive
 import com.photonne.app.resources.archive_action_unarchive_all
 import com.photonne.app.resources.selection_action_deselect_all
@@ -490,10 +499,21 @@ fun AssetSelectionTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlbumsListTopBar(user: UserDto, onCreateAlbum: () -> Unit, onLogout: () -> Unit) {
+fun AlbumsListTopBar(
+    user: UserDto,
+    onCreateAlbum: () -> Unit,
+    onOpenFilters: () -> Unit,
+    onLogout: () -> Unit
+) {
     TopAppBar(
         title = { Text("Álbumes", style = MaterialTheme.typography.titleMedium) },
         actions = {
+            IconButton(onClick = onOpenFilters) {
+                Icon(
+                    Icons.Outlined.Tune,
+                    contentDescription = stringResource(Res.string.albums_action_filters)
+                )
+            }
             IconButton(onClick = onCreateAlbum) {
                 Icon(
                     Icons.Outlined.AddBox,
@@ -505,16 +525,93 @@ fun AlbumsListTopBar(user: UserDto, onCreateAlbum: () -> Unit, onLogout: () -> U
     )
 }
 
+/**
+ * Top bar shown when a single album card is selected from the list. Mirrors
+ * the PWA's Albums selection toolbar (Members, Edit, Leave, Delete) — actions
+ * are gated by the album's permission flags.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlbumCardSelectionTopBar(
+    albumName: String,
+    canManageMembers: Boolean,
+    canEdit: Boolean,
+    canDelete: Boolean,
+    canLeave: Boolean,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onManageMembers: () -> Unit,
+    onEdit: () -> Unit,
+    onLeave: () -> Unit,
+    onDelete: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(albumName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        },
+        actions = {
+            if (canManageMembers) {
+                IconButton(onClick = onManageMembers, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.Group,
+                        contentDescription = stringResource(Res.string.action_collaborators)
+                    )
+                }
+            }
+            if (canEdit) {
+                IconButton(onClick = onEdit, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = stringResource(Res.string.action_edit)
+                    )
+                }
+            }
+            if (canLeave) {
+                IconButton(onClick = onLeave, enabled = !isMutating) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = stringResource(Res.string.album_card_action_leave)
+                    )
+                }
+            }
+            if (canDelete) {
+                IconButton(onClick = onDelete, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = stringResource(Res.string.action_delete),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoldersListTopBar(
     user: UserDto,
     onCreateFolder: () -> Unit,
+    onOpenFilters: () -> Unit,
     onLogout: () -> Unit
 ) {
     TopAppBar(
         title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
         actions = {
+            IconButton(onClick = onOpenFilters) {
+                Icon(
+                    Icons.Outlined.Tune,
+                    contentDescription = stringResource(Res.string.folders_action_filters)
+                )
+            }
             IconButton(onClick = onCreateFolder) {
                 Icon(
                     Icons.Outlined.CreateNewFolder,
@@ -522,6 +619,65 @@ fun FoldersListTopBar(
                 )
             }
             AccountMenu(user = user, onLogout = onLogout)
+        }
+    )
+}
+
+/**
+ * Top bar shown when a single folder card is selected from the list. Mirrors
+ * the PWA's Folders selection toolbar (Members, Rename, Delete).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderCardSelectionTopBar(
+    folderName: String,
+    canManageMembers: Boolean,
+    canRename: Boolean,
+    canDelete: Boolean,
+    isMutating: Boolean,
+    onClose: () -> Unit,
+    onManageMembers: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose, enabled = !isMutating) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.selection_action_close)
+                )
+            }
+        },
+        title = {
+            Text(folderName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        },
+        actions = {
+            if (canManageMembers) {
+                IconButton(onClick = onManageMembers, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.Group,
+                        contentDescription = stringResource(Res.string.action_collaborators)
+                    )
+                }
+            }
+            if (canRename) {
+                IconButton(onClick = onRename, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.DriveFileRenameOutline,
+                        contentDescription = stringResource(Res.string.action_rename)
+                    )
+                }
+            }
+            if (canDelete) {
+                IconButton(onClick = onDelete, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = stringResource(Res.string.action_delete),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
     )
 }

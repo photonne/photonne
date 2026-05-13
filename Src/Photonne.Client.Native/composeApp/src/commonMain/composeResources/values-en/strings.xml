@@ -59,6 +59,20 @@
     <string name="albums_tab_my_links">My links</string>
     <string name="albums_shared_empty">No albums have been shared with you yet.</string>
     <string name="albums_my_links_empty">You don't have any albums with an active public link.</string>
+
+    <string name="filters_title">View options</string>
+    <string name="filters_sort_label">Sort by</string>
+    <string name="filters_view_label">View</string>
+    <string name="view_mode_grid">Grid</string>
+    <string name="view_mode_list">List</string>
+    <string name="albums_action_filters">View options</string>
+    <string name="albums_sort_recent">Most recent photo</string>
+    <string name="albums_sort_oldest">Oldest photo</string>
+    <string name="albums_sort_name">Name</string>
+    <string name="albums_filters_group_by_year">Group by year</string>
+    <string name="action_collaborators">Collaborators</string>
+    <string name="action_rename">Rename</string>
+    <string name="album_card_action_leave">Leave album</string>
     <plurals name="album_hero_photos">
         <item quantity="one">%1$d photo</item>
         <item quantity="other">%1$d photos</item>
@@ -123,6 +137,9 @@
     <string name="folders_tab_libraries">Libraries</string>
     <string name="folders_shared_empty">No folders have been shared with you yet.</string>
     <string name="folders_libraries_empty">No external libraries available.</string>
+    <string name="folders_action_filters">View options</string>
+    <string name="folders_sort_name">Name</string>
+    <string name="folders_sort_asset_count">File count</string>
 
     <string name="folder_action_new">New folder</string>
     <string name="folder_action_edit">Edit folder</string>

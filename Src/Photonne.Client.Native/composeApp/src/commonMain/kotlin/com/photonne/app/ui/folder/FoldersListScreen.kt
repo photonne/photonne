@@ -1,24 +1,33 @@
 package com.photonne.app.ui.folder
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.ExternalLibraryDto
@@ -52,7 +62,10 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun FoldersListScreen(onFolderClick: (FolderSummary) -> Unit) {
+fun FoldersListScreen(
+    onFolderClick: (FolderSummary) -> Unit,
+    onFolderLongPress: (FolderSummary) -> Unit
+) {
     val viewModel: FoldersViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 
@@ -65,19 +78,23 @@ fun FoldersListScreen(onFolderClick: (FolderSummary) -> Unit) {
             when (state.selectedTab) {
                 FoldersTab.Personal -> FolderListContent(
                     folders = state.personalFolders,
+                    state = state,
                     isLoading = state.isLoading,
                     errorMessage = state.errorMessage,
                     emptyTitle = stringResource(Res.string.folders_empty_title),
                     emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
-                    onFolderClick = onFolderClick
+                    onFolderClick = onFolderClick,
+                    onFolderLongPress = onFolderLongPress
                 )
                 FoldersTab.Shared -> FolderListContent(
                     folders = state.sharedFolders,
+                    state = state,
                     isLoading = state.isLoading,
                     errorMessage = state.errorMessage,
                     emptyTitle = stringResource(Res.string.folders_empty_title),
                     emptySubtitle = stringResource(Res.string.folders_shared_empty),
-                    onFolderClick = onFolderClick
+                    onFolderClick = onFolderClick,
+                    onFolderLongPress = onFolderLongPress
                 )
                 FoldersTab.Libraries -> LibrariesContent(
                     libraries = state.libraries,
@@ -118,11 +135,13 @@ private fun FoldersTabBar(selected: FoldersTab, onSelect: (FoldersTab) -> Unit) 
 @Composable
 private fun FolderListContent(
     folders: List<FolderSummary>,
+    state: FoldersUiState,
     isLoading: Boolean,
     errorMessage: String?,
     emptyTitle: String,
     emptySubtitle: String,
-    onFolderClick: (FolderSummary) -> Unit
+    onFolderClick: (FolderSummary) -> Unit,
+    onFolderLongPress: (FolderSummary) -> Unit
 ) {
     when {
         isLoading && folders.isEmpty() ->
@@ -142,13 +161,36 @@ private fun FolderListContent(
                     textAlign = TextAlign.Center
                 )
             }
-        else -> LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(vertical = 8.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(folders, key = { it.id }) { folder ->
-                FolderRow(folder = folder, onClick = { onFolderClick(folder) })
+        else -> when (state.viewMode) {
+            FolderViewMode.List -> LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(folders, key = { it.id }) { folder ->
+                    FolderRow(
+                        folder = folder,
+                        isSelected = state.selectedFolderId == folder.id,
+                        onClick = { onFolderClick(folder) },
+                        onLongPress = { onFolderLongPress(folder) }
+                    )
+                }
+            }
+            FolderViewMode.Grid -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 140.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(folders, key = { it.id }) { folder ->
+                    FolderCard(
+                        folder = folder,
+                        isSelected = state.selectedFolderId == folder.id,
+                        onClick = { onFolderClick(folder) },
+                        onLongPress = { onFolderLongPress(folder) }
+                    )
+                }
             }
         }
     }
@@ -194,12 +236,18 @@ private fun LibrariesContent(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FolderRow(folder: FolderSummary, onClick: () -> Unit) {
+private fun FolderRow(
+    folder: FolderSummary,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -207,13 +255,22 @@ private fun FolderRow(folder: FolderSummary, onClick: () -> Unit) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (isSelected) Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    ) else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.List,
+                imageVector = if (isSelected) Icons.Filled.CheckCircle
+                else Icons.AutoMirrored.Filled.List,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (isSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(Modifier.size(12.dp))
@@ -246,6 +303,92 @@ private fun FolderRow(folder: FolderSummary, onClick: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FolderCard(
+    folder: FolderSummary,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (isSelected) Modifier.border(
+                        width = 3.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp)
+                    ) else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(56.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(6.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "${folder.assetCount}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+            if (folder.isShared) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = stringResource(Res.string.folder_shared_badge),
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .background(Color.White, shape = RoundedCornerShape(50))
+                        .padding(2.dp)
+                        .size(20.dp)
+                )
+            }
+        }
+        Text(
+            text = folder.name.ifBlank { folder.path },
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 1
+        )
     }
 }
 

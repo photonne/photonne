@@ -1,22 +1,30 @@
 package com.photonne.app.ui.album
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +47,7 @@ import coil3.compose.AsyncImage
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.albums_empty_subtitle
 import com.photonne.app.resources.albums_empty_title
 import com.photonne.app.resources.albums_my_links_empty
@@ -46,11 +55,16 @@ import com.photonne.app.resources.albums_shared_empty
 import com.photonne.app.resources.albums_tab_mine
 import com.photonne.app.resources.albums_tab_my_links
 import com.photonne.app.resources.albums_tab_shared
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun AlbumsListScreen(onAlbumClick: (AlbumSummary) -> Unit) {
+fun AlbumsListScreen(
+    onAlbumClick: (AlbumSummary) -> Unit,
+    onAlbumLongPress: (AlbumSummary) -> Unit
+) {
     val viewModel: AlbumsViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
@@ -76,25 +90,114 @@ fun AlbumsListScreen(onAlbumClick: (AlbumSummary) -> Unit) {
                         )
                     }
                 visible.isEmpty() -> EmptyAlbumsState(state.selectedTab)
-                else ->
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(16.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(visible, key = { it.id }) { album ->
-                            AlbumCard(
-                                album = album,
-                                baseUrl = apiBaseUrl,
-                                onClick = { onAlbumClick(album) }
-                            )
-                        }
-                    }
+                else -> AlbumsContent(
+                    albums = visible,
+                    state = state,
+                    apiBaseUrl = apiBaseUrl,
+                    onClick = onAlbumClick,
+                    onLongPress = onAlbumLongPress
+                )
             }
         }
     }
+}
+
+@Composable
+private fun AlbumsContent(
+    albums: List<AlbumSummary>,
+    state: AlbumsUiState,
+    apiBaseUrl: String,
+    onClick: (AlbumSummary) -> Unit,
+    onLongPress: (AlbumSummary) -> Unit
+) {
+    val groups = if (state.groupByYear) groupByYear(albums) else emptyList()
+    when (state.viewMode) {
+        AlbumViewMode.Grid -> LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 160.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(16.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (state.groupByYear) {
+                groups.forEach { (year, items) ->
+                    item(
+                        key = "year-$year",
+                        span = { GridItemSpan(maxLineSpan) }
+                    ) {
+                        YearHeader(year)
+                    }
+                    items(items, key = { it.id }) { album ->
+                        AlbumCard(
+                            album = album,
+                            baseUrl = apiBaseUrl,
+                            isSelected = state.selectedAlbumId == album.id,
+                            onClick = { onClick(album) },
+                            onLongPress = { onLongPress(album) }
+                        )
+                    }
+                }
+            } else {
+                items(albums, key = { it.id }) { album ->
+                    AlbumCard(
+                        album = album,
+                        baseUrl = apiBaseUrl,
+                        isSelected = state.selectedAlbumId == album.id,
+                        onClick = { onClick(album) },
+                        onLongPress = { onLongPress(album) }
+                    )
+                }
+            }
+        }
+        AlbumViewMode.List -> LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            contentPadding = PaddingValues(vertical = 8.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (state.groupByYear) {
+                groups.forEach { (year, items) ->
+                    item(key = "year-$year") { YearHeader(year, modifier = Modifier.padding(horizontal = 16.dp)) }
+                    items(items, key = { it.id }) { album ->
+                        AlbumRow(
+                            album = album,
+                            baseUrl = apiBaseUrl,
+                            isSelected = state.selectedAlbumId == album.id,
+                            onClick = { onClick(album) },
+                            onLongPress = { onLongPress(album) }
+                        )
+                    }
+                }
+            } else {
+                items(albums, key = { it.id }) { album ->
+                    AlbumRow(
+                        album = album,
+                        baseUrl = apiBaseUrl,
+                        isSelected = state.selectedAlbumId == album.id,
+                        onClick = { onClick(album) },
+                        onLongPress = { onLongPress(album) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun groupByYear(albums: List<AlbumSummary>): List<Pair<Int, List<AlbumSummary>>> {
+    val tz = TimeZone.currentSystemDefault()
+    return albums
+        .groupBy { it.createdAt.toLocalDateTime(tz).year }
+        .toList()
+        .sortedByDescending { it.first }
+}
+
+@Composable
+private fun YearHeader(year: Int, modifier: Modifier = Modifier) {
+    Text(
+        text = year.toString(),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(top = 8.dp, bottom = 4.dp)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,12 +245,19 @@ private fun EmptyAlbumsState(tab: AlbumsTab) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AlbumCard(album: AlbumSummary, baseUrl: String, onClick: () -> Unit) {
+private fun AlbumCard(
+    album: AlbumSummary,
+    baseUrl: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
@@ -156,6 +266,13 @@ private fun AlbumCard(album: AlbumSummary, baseUrl: String, onClick: () -> Unit)
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (isSelected) Modifier.border(
+                        width = 3.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp)
+                    ) else Modifier
+                )
         ) {
             val cover = album.coverThumbnailUrl?.let { resolveCover(it, baseUrl) }
             if (cover != null) {
@@ -203,12 +320,107 @@ private fun AlbumCard(album: AlbumSummary, baseUrl: String, onClick: () -> Unit)
                     )
                 }
             }
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .background(Color.White, shape = RoundedCornerShape(50))
+                        .padding(2.dp)
+                        .size(20.dp)
+                )
+            }
         }
         Text(
             text = album.name,
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1
         )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AlbumRow(
+    album: AlbumSummary,
+    baseUrl: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (isSelected) Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    ) else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            val cover = album.coverThumbnailUrl?.let { resolveCover(it, baseUrl) }
+            if (cover != null) {
+                AsyncImage(
+                    model = cover,
+                    contentDescription = album.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Text(
+                    album.name.firstOrNull()?.uppercase() ?: "·",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(2.dp)
+                        .background(Color.White, shape = RoundedCornerShape(50))
+                        .size(16.dp)
+                )
+            }
+        }
+        Spacer(Modifier.size(12.dp))
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = album.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1
+            )
+            if (!album.description.isNullOrBlank()) {
+                Text(
+                    text = album.description!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            Text(
+                text = stringResource(Res.string.albums_count_format, album.assetCount),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
