@@ -1,13 +1,11 @@
 package com.photonne.app.ui.library
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +19,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.archived_empty_subtitle
 import com.photonne.app.resources.archived_empty_title
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.theme.EmptyState
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -49,23 +48,11 @@ fun ArchivedScreen(
                     Text(state.errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             state.isEmpty ->
-                Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            stringResource(Res.string.archived_empty_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            stringResource(Res.string.archived_empty_subtitle),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                EmptyState(
+                    icon = Icons.Outlined.Archive,
+                    title = stringResource(Res.string.archived_empty_title),
+                    subtitle = stringResource(Res.string.archived_empty_subtitle)
+                )
             else -> AssetGrid(
                 items = state.items,
                 baseUrl = apiBaseUrl,

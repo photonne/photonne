@@ -1,13 +1,11 @@
 package com.photonne.app.ui.folder
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,6 +21,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.theme.EmptyState
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -53,23 +52,11 @@ fun FolderDetailScreen(
                     Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
                 }
             state.items.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            stringResource(Res.string.folders_empty_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            stringResource(Res.string.folders_empty_subtitle),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                EmptyState(
+                    icon = Icons.Outlined.Folder,
+                    title = stringResource(Res.string.folders_empty_title),
+                    subtitle = stringResource(Res.string.folders_empty_subtitle)
+                )
             else -> AssetGrid(
                 items = state.items,
                 baseUrl = apiBaseUrl,

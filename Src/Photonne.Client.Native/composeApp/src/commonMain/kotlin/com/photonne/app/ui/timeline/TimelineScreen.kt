@@ -3,12 +3,13 @@ package com.photonne.app.ui.timeline
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import com.photonne.app.ui.grid.TimelineEntry
 import com.photonne.app.ui.grid.findEntryIndexForMonth
 import com.photonne.app.ui.grid.groupTimelineEntries
 import com.photonne.app.ui.grid.mergeTimelineWithLocal
+import com.photonne.app.ui.theme.EmptyState
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -123,7 +125,7 @@ fun TimelineScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isInitialLoading -> CenteredLoading()
-                state.isEmpty -> EmptyState()
+                state.isEmpty -> TimelineEmptyState()
                 else -> Column(modifier = Modifier.fillMaxSize()) {
                     if (memoriesState.items.isNotEmpty()) {
                         MemoriesCarousel(
@@ -224,18 +226,12 @@ private fun CenteredLoading() {
 }
 
 @Composable
-private fun EmptyState() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(Res.string.timeline_empty_title), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(Res.string.timeline_empty_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+private fun TimelineEmptyState() {
+    EmptyState(
+        icon = Icons.Outlined.PhotoLibrary,
+        title = stringResource(Res.string.timeline_empty_title),
+        subtitle = stringResource(Res.string.timeline_empty_subtitle)
+    )
 }
 
 @Composable

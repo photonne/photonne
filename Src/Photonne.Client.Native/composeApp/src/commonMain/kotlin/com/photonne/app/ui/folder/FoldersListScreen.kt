@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -58,6 +59,7 @@ import com.photonne.app.resources.folders_shared_empty
 import com.photonne.app.resources.folders_tab_libraries
 import com.photonne.app.resources.folders_tab_personal
 import com.photonne.app.resources.folders_tab_shared
+import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -209,7 +211,8 @@ private fun LibrariesContent(
                 CircularProgressIndicator()
             }
         libraries.isEmpty() && errorMessage == null ->
-            EmptyState(
+            SharedEmptyState(
+                icon = Icons.AutoMirrored.Filled.LibraryBooks,
                 title = stringResource(Res.string.folders_tab_libraries),
                 subtitle = stringResource(Res.string.folders_libraries_empty)
             )
@@ -463,19 +466,9 @@ private fun Badge(label: String, icon: androidx.compose.ui.graphics.vector.Image
 
 @Composable
 private fun EmptyState(title: String, subtitle: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+    SharedEmptyState(
+        icon = Icons.Outlined.Folder,
+        title = title,
+        subtitle = subtitle
+    )
 }

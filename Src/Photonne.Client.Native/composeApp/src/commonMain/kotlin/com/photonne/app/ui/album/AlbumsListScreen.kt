@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,6 +56,7 @@ import com.photonne.app.resources.albums_shared_empty
 import com.photonne.app.resources.albums_tab_mine
 import com.photonne.app.resources.albums_tab_my_links
 import com.photonne.app.resources.albums_tab_shared
+import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
@@ -231,18 +233,11 @@ private fun EmptyAlbumsState(tab: AlbumsTab) {
         AlbumsTab.Shared -> stringResource(Res.string.albums_shared_empty)
         AlbumsTab.MyLinks -> stringResource(Res.string.albums_my_links_empty)
     }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+    SharedEmptyState(
+        icon = Icons.Outlined.Collections,
+        title = title,
+        subtitle = subtitle
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

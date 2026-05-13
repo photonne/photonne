@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PhotoAlbum
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -62,6 +63,7 @@ import com.photonne.app.resources.album_hero_photos
 import com.photonne.app.resources.album_hero_shared
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.formatLocalizedMonth
+import com.photonne.app.ui.theme.EmptyState
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -145,25 +147,11 @@ fun AlbumDetailScreen(
             state.items.isEmpty() ->
                 Column(modifier = Modifier.fillMaxSize()) {
                     hero()
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                stringResource(Res.string.album_empty_title),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                stringResource(Res.string.album_empty_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    EmptyState(
+                        icon = Icons.Outlined.PhotoAlbum,
+                        title = stringResource(Res.string.album_empty_title),
+                        subtitle = stringResource(Res.string.album_empty_subtitle)
+                    )
                 }
             else -> AssetGrid(
                 items = state.items,

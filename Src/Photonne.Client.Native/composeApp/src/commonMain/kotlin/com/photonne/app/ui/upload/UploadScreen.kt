@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -45,6 +46,7 @@ import com.photonne.app.resources.upload_status_queued
 import com.photonne.app.resources.upload_status_skipped
 import com.photonne.app.resources.upload_status_uploading
 import com.photonne.app.resources.upload_summary
+import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -156,25 +158,11 @@ private fun Header(
 
 @Composable
 private fun EmptyState() {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                stringResource(Res.string.upload_empty_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                stringResource(Res.string.upload_empty_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    SharedEmptyState(
+        icon = Icons.Outlined.AddPhotoAlternate,
+        title = stringResource(Res.string.upload_empty_title),
+        subtitle = stringResource(Res.string.upload_empty_subtitle)
+    )
 }
 
 @Composable
