@@ -17,10 +17,13 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -35,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.ui.util.onSecondaryClick
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -131,12 +135,22 @@ fun AssetGridCell(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .let { base -> if (onLongClick != null) base.onSecondaryClick(onLongClick) else base }
     ) {
-        if (asset.hasThumbnails) {
+        val thumbnailModel = asset.localThumbnailModel
+            ?: if (asset.hasThumbnails) "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small" else null
+        if (thumbnailModel != null) {
             AsyncImage(
-                model = "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small",
+                model = thumbnailModel,
                 contentDescription = asset.fileName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
+            )
+        }
+        asset.localSyncBadge?.let { badge ->
+            // BottomStart so we don't collide with the video glyph
+            // (TopEnd) or the favorite heart (BottomEnd).
+            LocalSyncBadge(
+                badge = badge,
+                modifier = Modifier.align(Alignment.BottomStart).padding(4.dp)
             )
         }
         if (asset.isVideo) {
@@ -184,6 +198,35 @@ fun AssetGridCell(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LocalSyncBadge(badge: LocalSyncBadge, modifier: Modifier = Modifier) {
+    // Pending: a translucent gray circle so the cloud icon reads as
+    // "queued / not yet uploaded" without competing with favorite or
+    // selection accents. Uploading / Failed keep their semantic
+    // colours because they signal active work or an error.
+    val (bg, icon) = when (badge) {
+        LocalSyncBadge.Pending ->
+            Color(0xFF424242).copy(alpha = 0.7f) to Icons.Filled.CloudUpload
+        LocalSyncBadge.Uploading ->
+            MaterialTheme.colorScheme.tertiary to Icons.Filled.CloudUpload
+        LocalSyncBadge.Failed ->
+            MaterialTheme.colorScheme.error to Icons.Filled.Refresh
+    }
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .background(bg, shape = CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 

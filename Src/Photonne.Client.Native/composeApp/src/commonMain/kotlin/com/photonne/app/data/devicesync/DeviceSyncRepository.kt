@@ -36,6 +36,12 @@ class DeviceSyncRepository(
         stateStore.clearFolder()
     }
 
+    fun isBackupEnabled(): Boolean = stateStore.isBackupEnabled()
+
+    fun setBackupEnabled(enabled: Boolean) {
+        stateStore.setBackupEnabled(enabled)
+    }
+
     suspend fun restoreFolder(uri: String): DeviceFolderRef? =
         gallery.restoreFolder(uri)
 

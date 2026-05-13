@@ -32,7 +32,14 @@ class DeviceSyncStateStore(private val settings: Settings) {
         settings.remove(KEY_FOLDER)
     }
 
+    fun isBackupEnabled(): Boolean = settings.getBoolean(KEY_BACKUP_ENABLED, false)
+
+    fun setBackupEnabled(enabled: Boolean) {
+        settings.putBoolean(KEY_BACKUP_ENABLED, enabled)
+    }
+
     private companion object {
         const val KEY_FOLDER = "device_sync.folder"
+        const val KEY_BACKUP_ENABLED = "device_sync.backup_enabled"
     }
 }

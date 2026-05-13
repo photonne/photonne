@@ -21,12 +21,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -101,7 +101,7 @@ fun MoreScreen(
             MoreShortcut(
                 "devicesync",
                 Res.string.device_sync_title,
-                Icons.Outlined.PhotoLibrary,
+                Icons.Filled.CloudUpload,
                 onOpenDeviceSync
             ),
             MoreShortcut(

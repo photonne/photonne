@@ -7,6 +7,7 @@ import com.photonne.app.data.devicesync.DeviceMedia
 import com.photonne.app.data.devicesync.DeviceMediaSyncState
 import com.photonne.app.data.devicesync.DeviceMediaType
 import com.photonne.app.data.devicesync.DeviceSyncRepository
+import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +30,7 @@ data class DeviceSyncEntry(
 
 data class DeviceSyncUiState(
     val isSupported: Boolean = true,
+    val isBackupEnabled: Boolean = false,
     val folder: DeviceFolderRef? = null,
     val entries: List<DeviceSyncEntry> = emptyList(),
     val isLoading: Boolean = false,
@@ -46,6 +48,20 @@ data class DeviceSyncUiState(
     val syncedCount: Int get() = entries.count {
         it.syncState is DeviceMediaSyncState.Synced
     }
+
+    /**
+     * Entries known not to be on the server yet (NotSynced, Uploading
+     * or Failed). Used by the Timeline merge so device-only items
+     * surface alongside server assets with a sync badge. We
+     * deliberately leave Unknown out — until we've hashed and asked
+     * the server, we can't tell whether they're already backed up,
+     * and assuming "pending" would double-show every photo.
+     */
+    val pendingEntries: List<DeviceSyncEntry> get() = entries.filter {
+        it.syncState is DeviceMediaSyncState.NotSynced ||
+            it.syncState is DeviceMediaSyncState.Uploading ||
+            it.syncState is DeviceMediaSyncState.Failed
+    }
 }
 
 /** Progress snapshot while the manual sync is uploading files. */
@@ -62,9 +78,28 @@ class DeviceSyncViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
-        DeviceSyncUiState(isSupported = repository.isSupported)
+        DeviceSyncUiState(
+            isSupported = repository.isSupported,
+            isBackupEnabled = repository.isBackupEnabled()
+        )
     )
     val state: StateFlow<DeviceSyncUiState> = _state.asStateFlow()
+
+    init {
+        // Eager-load the saved folder so the timeline merge can show
+        // device-only photos as soon as the user opens the app —
+        // otherwise we'd have to wait for them to visit the Backup
+        // screen before pending items become visible.
+        if (repository.isSupported && repository.savedFolder() != null) {
+            ensureLoaded()
+        }
+    }
+
+    fun setBackupEnabled(enabled: Boolean) {
+        repository.setBackupEnabled(enabled)
+        _state.update { it.copy(isBackupEnabled = enabled) }
+        if (enabled) ensureLoaded()
+    }
 
     /**
      * Called every time the screen is composed. If the folder hasn't
@@ -401,6 +436,63 @@ class DeviceSyncViewModel(
     }
 
     fun thumbnailModel(media: DeviceMedia): String = repository.thumbnailModel(media)
+
+    /**
+     * Renders every device entry as a synthetic [TimelineItem] so the
+     * timeline can show the full device gallery — confirmed-pending
+     * items get a cloud badge, items whose state is still unknown get
+     * no badge (the merge step dedups them against server-known
+     * items, so most unknowns disappear before reaching the screen).
+     *
+     * Confirmed `Synced` entries are excluded outright: the server
+     * timeline already contains them, and adding a device copy would
+     * just duplicate the cell.
+     */
+    fun deviceTimelineItems(): List<TimelineItem> {
+        val source = _state.value.entries
+        if (source.isEmpty()) return emptyList()
+        return source.mapNotNull { entry ->
+            val state = entry.syncState
+            if (state is DeviceMediaSyncState.Synced) return@mapNotNull null
+            val media = entry.media
+            val instant = Instant.fromEpochMilliseconds(media.dateModifiedMillis)
+            val ext = media.displayName.substringAfterLast('.', missingDelimiterValue = "")
+            val type = if (media.type == DeviceMediaType.Video) "VIDEO" else "IMAGE"
+            val badge = when (state) {
+                DeviceMediaSyncState.Uploading -> LocalSyncBadge.Uploading
+                is DeviceMediaSyncState.Failed -> LocalSyncBadge.Failed
+                DeviceMediaSyncState.NotSynced -> LocalSyncBadge.Pending
+                // Unknown: treat as pending until a hash check proves
+                // otherwise. The merge step still dedups against
+                // server entries by checksum / (fileName, fileSize),
+                // so most photos already on the server won't show up
+                // here at all.
+                DeviceMediaSyncState.Unknown -> LocalSyncBadge.Pending
+                is DeviceMediaSyncState.Synced -> return@mapNotNull null
+            }
+            TimelineItem(
+                id = "device:${media.uri}",
+                fileName = media.displayName,
+                fullPath = if (media.relativePath.isBlank()) media.displayName
+                else "${media.relativePath}/${media.displayName}",
+                fileSize = media.sizeBytes,
+                fileCreatedAt = instant,
+                fileModifiedAt = instant,
+                extension = ext,
+                scannedAt = instant,
+                type = type,
+                checksum = media.sha256,
+                hasThumbnails = false,
+                localThumbnailModel = repository.thumbnailModel(media),
+                localUri = media.uri,
+                localSyncBadge = badge
+            )
+        }
+    }
+
+    /** Look up the [DeviceSyncEntry] backing a synthetic local timeline item. */
+    fun pendingEntryByUri(uri: String): DeviceSyncEntry? =
+        _state.value.entries.firstOrNull { it.media.uri == uri }
 
     /**
      * Builds the minimal [TimelineItem] that lets AssetDetailScreen

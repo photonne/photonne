@@ -2,6 +2,7 @@ package com.photonne.app.data.models
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class TimelineItem(
@@ -24,10 +25,20 @@ data class TimelineItem(
     val isArchived: Boolean = false,
     val isFileMissing: Boolean = false,
     val dominantColor: String? = null,
-    val isReadOnly: Boolean = false
+    val isReadOnly: Boolean = false,
+    // Local-only fields populated when the timeline is interleaved with
+    // device-pending entries from the Backup module. The server never
+    // emits these, so they're @Transient to stay out of serialization.
+    @Transient val localThumbnailModel: String? = null,
+    @Transient val localUri: String? = null,
+    @Transient val localSyncBadge: LocalSyncBadge? = null
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
+    val isLocalOnly: Boolean get() = localUri != null
 }
+
+/** Sync state surfaced as a small badge over a device-pending thumbnail. */
+enum class LocalSyncBadge { Pending, Uploading, Failed }
 
 @Serializable
 data class TimelinePage(
