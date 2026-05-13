@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -47,6 +48,7 @@ import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
+import com.photonne.app.resources.device_sync_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
@@ -76,6 +78,7 @@ fun MoreScreen(
     onOpenPeople: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
+    onOpenDeviceSync: () -> Unit,
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null
 ) {
@@ -85,7 +88,8 @@ fun MoreScreen(
         onOpenFavorites,
         onOpenPeople,
         onOpenArchived,
-        onOpenTrash
+        onOpenTrash,
+        onOpenDeviceSync
     ) {
         listOf(
             MoreShortcut(
@@ -93,6 +97,12 @@ fun MoreScreen(
                 Res.string.upload_title,
                 Icons.Outlined.AddPhotoAlternate,
                 onOpenUpload
+            ),
+            MoreShortcut(
+                "devicesync",
+                Res.string.device_sync_title,
+                Icons.Filled.CloudUpload,
+                onOpenDeviceSync
             ),
             MoreShortcut(
                 "favorites",

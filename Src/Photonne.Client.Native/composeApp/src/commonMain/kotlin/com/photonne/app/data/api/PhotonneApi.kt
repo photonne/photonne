@@ -119,6 +119,9 @@ data class UploadAssetResponse(
 )
 
 @Serializable
+internal data class ExistsByChecksumBody(val assetId: String = "")
+
+@Serializable
 internal data class SetCoverRequest(val assetId: String)
 
 @Serializable
@@ -180,6 +183,13 @@ interface PhotonneApi {
         mimeType: String,
         bytes: ByteArray
     ): UploadAssetResponse
+    /**
+     * Looks up an existing asset by SHA-256 checksum on the server.
+     * Returns the asset id when the user already has a matching file
+     * (HTTP 200), null when nothing matches (HTTP 404). Anything else
+     * propagates as a [PhotonneApiException].
+     */
+    suspend fun assetExistsByChecksum(sha256: String): String?
     suspend fun getMapPoints(): List<MapPoint>
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
@@ -790,6 +800,21 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun assetExistsByChecksum(sha256: String): String? {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/exists/$sha256")
+        return when (response.status) {
+            HttpStatusCode.OK -> {
+                val body: ExistsByChecksumBody = response.body()
+                body.assetId.takeIf { it.isNotBlank() }
+            }
+            HttpStatusCode.NotFound -> null
+            else -> throw PhotonneApiException(
+                status = response.status.value,
+                message = "Hash lookup failed (${response.status.value})"
+            )
+        }
     }
 
     override suspend fun getMapPoints(): List<MapPoint> {

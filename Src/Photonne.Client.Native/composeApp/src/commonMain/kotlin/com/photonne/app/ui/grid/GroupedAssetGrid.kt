@@ -74,6 +74,54 @@ internal fun groupTimelineEntries(items: List<TimelineItem>): List<TimelineEntry
 }
 
 /**
+ * Merges server timeline items with locally-known device items (both
+ * already typed as [TimelineItem] — the latter carry
+ * `localUri`/`localThumbnailModel`). The merge:
+ *
+ * 1. Dedups local items against server items by SHA-256 (when both
+ *    sides know it) and, as a fallback, by `(fileName, fileSize)`.
+ *    This stops Unknown device entries from double-rendering when the
+ *    server already has the photo.
+ * 2. Interleaves the survivors with the server list, preserving
+ *    descending `fileCreatedAt` order so click callbacks resolve back
+ *    to the right entry via the merged list's index.
+ */
+internal fun mergeTimelineWithLocal(
+    server: List<TimelineItem>,
+    local: List<TimelineItem>
+): List<TimelineItem> {
+    if (local.isEmpty()) return server
+    val serverChecksums = server.mapNotNullTo(HashSet()) {
+        it.checksum?.takeIf { c -> c.isNotBlank() }
+    }
+    val serverDedupKeys = server.mapTo(HashSet()) { dedupKey(it.fileName, it.fileSize) }
+    val dedupedLocal = local.filter { item ->
+        val checksum = item.checksum
+        if (!checksum.isNullOrBlank() && checksum in serverChecksums) return@filter false
+        dedupKey(item.fileName, item.fileSize) !in serverDedupKeys
+    }
+    if (dedupedLocal.isEmpty()) return server
+    if (server.isEmpty()) return dedupedLocal.sortedByDescending { it.fileCreatedAt }
+    // Both lists are descending; a manual merge keeps it O(n+m).
+    val merged = ArrayList<TimelineItem>(server.size + dedupedLocal.size)
+    var i = 0
+    var j = 0
+    val localSorted = dedupedLocal.sortedByDescending { it.fileCreatedAt }
+    while (i < server.size && j < localSorted.size) {
+        if (server[i].fileCreatedAt >= localSorted[j].fileCreatedAt) {
+            merged += server[i]; i++
+        } else {
+            merged += localSorted[j]; j++
+        }
+    }
+    while (i < server.size) { merged += server[i]; i++ }
+    while (j < localSorted.size) { merged += localSorted[j]; j++ }
+    return merged
+}
+
+private fun dedupKey(fileName: String, fileSize: Long): String = "$fileName|$fileSize"
+
+/**
  * Finds the grid-entry index of the header that matches [target] (or the
  * closest later month). Useful for the "jump to date" affordance which
  * needs to scroll the grid to a specific position. Returns -1 when the

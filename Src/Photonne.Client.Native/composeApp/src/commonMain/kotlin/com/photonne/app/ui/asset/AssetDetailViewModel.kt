@@ -36,6 +36,14 @@ class AssetDetailViewModel(
     fun select(assetId: String) {
         if (assetId == currentId && _state.value.detail?.id == assetId) return
         currentId = assetId
+        // Synthetic ids ("device:<uri>") represent local-only entries
+        // that have no server detail to fetch. Skip the round-trip and
+        // let callers fall back to the local TimelineItem fields.
+        if (assetId.startsWith("device:")) {
+            currentJob?.cancel()
+            _state.value = AssetDetailUiState()
+            return
+        }
         cache[assetId]?.let { cached ->
             _state.value = AssetDetailUiState(detail = cached)
             return

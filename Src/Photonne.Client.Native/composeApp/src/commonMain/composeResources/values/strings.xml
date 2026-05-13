@@ -602,4 +602,46 @@
 
     <!-- Metadata task (uses indexing) -->
     <string name="admin_metadata_task_explanation">La extracción de metadatos forma parte del proceso de indexado del servidor. Lanza un indexado para reextraer EXIF, GPS y demás campos.</string>
+
+    <!-- Backup (formerly Device sync) -->
+    <string name="device_sync_title">Copia de seguridad</string>
+    <string name="device_sync_intro">Elige una carpeta de tu dispositivo y verás todas sus fotos y vídeos. Después puedes sincronizar las que quieras con tu cuenta.</string>
+    <string name="device_sync_action_pick_folder">Elegir carpeta</string>
+    <string name="device_sync_folder_label">Carpeta</string>
+    <string name="device_sync_change_folder">Cambiar</string>
+    <string name="device_sync_total">%1$d elementos</string>
+    <string name="device_sync_empty_folder">No hay fotos ni vídeos en esta carpeta.</string>
+    <string name="device_sync_not_supported">La copia de seguridad del dispositivo aún no está disponible en esta plataforma.</string>
+    <string name="device_sync_action_refresh_states">Comprobar estado</string>
+    <string name="device_sync_action_select_all">Seleccionar todo</string>
+    <string name="device_sync_action_sync">Sincronizar (%1$d)</string>
+    <string name="device_sync_progress">%1$d / %2$d</string>
+    <string name="device_sync_action_free_space">Liberar espacio (%1$d)</string>
+    <string name="device_sync_free_space_dialog_title">Liberar espacio</string>
+    <string name="device_sync_free_space_dialog_message">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</string>
+    <string name="device_sync_free_space_confirm">Borrar del dispositivo</string>
+    <string name="device_sync_free_space_cancel">Cancelar</string>
+    <string name="device_sync_free_space_in_progress">Liberando espacio…</string>
+    <string name="device_sync_preview_back">Volver</string>
+    <string name="device_sync_preview_open_detail">Detalles</string>
+    <string name="device_sync_preview_video_unsupported">Reproducción de vídeo no disponible en este sistema</string>
+
+    <!-- Backup home -->
+    <string name="backup_enabled_label">Copia de seguridad</string>
+    <string name="backup_enabled_on">Activada</string>
+    <string name="backup_enabled_off">Desactivada</string>
+    <string name="backup_section_origin">Origen</string>
+    <string name="backup_section_destination">Destino</string>
+    <string name="backup_source_label">Carpeta del dispositivo</string>
+    <string name="backup_source_none">Sin carpeta seleccionada</string>
+    <string name="backup_source_pick">Seleccionar carpeta del dispositivo</string>
+    <string name="backup_destination_label">Carpeta por defecto</string>
+    <string name="backup_destination_default">MobileBackup</string>
+    <string name="backup_pending_title">Estado de la copia</string>
+    <string name="backup_pending_count">%1$d pendientes</string>
+    <string name="backup_pending_none">Todo al día</string>
+    <string name="backup_pending_unknown">Comprueba el estado para ver cuántos faltan</string>
+    <string name="backup_pending_view">Ver pendientes</string>
+    <string name="backup_pending_screen_title">Pendientes</string>
+    <string name="backup_disabled_hint">Activa la copia de seguridad para empezar a subir tus fotos.</string>
 </resources>

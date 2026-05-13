@@ -74,6 +74,8 @@ import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.map_title
+import com.photonne.app.resources.backup_pending_screen_title
+import com.photonne.app.resources.device_sync_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
@@ -146,6 +148,8 @@ private data class AddToAlbumState(
 
 private enum class MoreSubscreen {
     Upload,
+    DeviceSync,
+    DeviceSyncPending,
     Favorites,
     People,
     PeopleSuggestions,
@@ -333,6 +337,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
+    val deviceSyncViewModel: com.photonne.app.ui.devicesync.DeviceSyncViewModel = koinViewModel()
+    val deviceGallery: com.photonne.app.data.devicesync.DeviceGallery =
+        org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
         koinViewModel()
     val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
@@ -589,6 +596,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     else null,
                     onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSync ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.device_sync_title),
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSyncPending ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.backup_pending_screen_title),
+                    onBack = { moreSubscreen = MoreSubscreen.DeviceSync },
                     user = user.user,
                     onLogout = onLogout
                 )
@@ -1121,29 +1142,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             when (selectedTab) {
                 MainTab.Timeline -> TimelineScreen(
                     state = timelineState,
-                    onItemClick = { index ->
-                        if (timelineState.isSelectionActive) {
-                            timelineState.items.getOrNull(index)?.let {
-                                timelineViewModel.toggleSelection(it.id)
-                            }
-                        } else {
-                            assetDetail = AssetDetailContext(
-                                items = timelineState.items,
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = timelineState.hasMore,
-                                onLoadMore = timelineViewModel::loadMore,
-                                onFavoriteChanged = timelineViewModel::setFavorite
-                            )
-                        }
+                    onOpenAsset = { mergedItems, mergedIndex ->
+                        assetDetail = AssetDetailContext(
+                            items = mergedItems,
+                            startIndex = mergedIndex,
+                            source = AssetDetailContext.Source.Timeline,
+                            hasMore = timelineState.hasMore,
+                            onLoadMore = timelineViewModel::loadMore,
+                            onFavoriteChanged = timelineViewModel::setFavorite
+                        )
                     },
                     onLoadMore = timelineViewModel::loadMore,
                     onRefresh = timelineViewModel::refresh,
-                    onItemLongClick = { index ->
-                        timelineState.items.getOrNull(index)?.let {
-                            timelineViewModel.toggleSelection(it.id)
-                        }
-                    },
+                    onToggleSelection = timelineViewModel::toggleSelection,
                     pendingJumpDate = pendingJumpDate,
                     onJumpHandled = { pendingJumpDate = null },
                     onMemoryClick = { items, index ->
@@ -1301,6 +1312,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
+                        onOpenDeviceSync = { moreSubscreen = MoreSubscreen.DeviceSync },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
                         },
@@ -1326,6 +1338,31 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onClearFinished = uploadViewModel::clearFinished,
                         onDismissPickerError = uploadViewModel::clearPickerError
                     )
+                    MoreSubscreen.DeviceSync ->
+                        com.photonne.app.ui.devicesync.BackupScreen(
+                            viewModel = deviceSyncViewModel,
+                            gallery = deviceGallery,
+                            onOpenPending = {
+                                moreSubscreen = MoreSubscreen.DeviceSyncPending
+                            }
+                        )
+                    MoreSubscreen.DeviceSyncPending ->
+                        com.photonne.app.ui.devicesync.DeviceSyncScreen(
+                            viewModel = deviceSyncViewModel,
+                            gallery = deviceGallery,
+                            onOpenAsset = { item ->
+                                assetDetail = AssetDetailContext(
+                                    items = listOf(item),
+                                    startIndex = 0,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
                         onPointOpen = { point ->

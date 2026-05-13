@@ -602,4 +602,46 @@
 
     <!-- Metadata task (uses indexing) -->
     <string name="admin_metadata_task_explanation">Metadata extraction is part of the server's index pipeline. Trigger an index run to re-extract EXIF, GPS and other fields.</string>
+
+    <!-- Backup (formerly Device sync) -->
+    <string name="device_sync_title">Backup</string>
+    <string name="device_sync_intro">Pick a folder from your device and you'll see every photo and video inside it. Then sync the ones you want into your account.</string>
+    <string name="device_sync_action_pick_folder">Pick folder</string>
+    <string name="device_sync_folder_label">Folder</string>
+    <string name="device_sync_change_folder">Change</string>
+    <string name="device_sync_total">%1$d items</string>
+    <string name="device_sync_empty_folder">No photos or videos in this folder.</string>
+    <string name="device_sync_not_supported">Device backup is not available on this platform yet.</string>
+    <string name="device_sync_action_refresh_states">Check sync state</string>
+    <string name="device_sync_action_select_all">Select all</string>
+    <string name="device_sync_action_sync">Sync (%1$d)</string>
+    <string name="device_sync_progress">%1$d / %2$d</string>
+    <string name="device_sync_action_free_space">Free up space (%1$d)</string>
+    <string name="device_sync_free_space_dialog_title">Free up space</string>
+    <string name="device_sync_free_space_dialog_message">%1$d already-synced files will be removed from the device. This cannot be undone.</string>
+    <string name="device_sync_free_space_confirm">Delete from device</string>
+    <string name="device_sync_free_space_cancel">Cancel</string>
+    <string name="device_sync_free_space_in_progress">Freeing space…</string>
+    <string name="device_sync_preview_back">Back</string>
+    <string name="device_sync_preview_open_detail">Details</string>
+    <string name="device_sync_preview_video_unsupported">Video playback is not available on this platform</string>
+
+    <!-- Backup home -->
+    <string name="backup_enabled_label">Backup</string>
+    <string name="backup_enabled_on">On</string>
+    <string name="backup_enabled_off">Off</string>
+    <string name="backup_section_origin">Origin</string>
+    <string name="backup_section_destination">Destination</string>
+    <string name="backup_source_label">Device folder</string>
+    <string name="backup_source_none">No folder selected</string>
+    <string name="backup_source_pick">Pick device folder</string>
+    <string name="backup_destination_label">Default folder</string>
+    <string name="backup_destination_default">MobileBackup</string>
+    <string name="backup_pending_title">Backup status</string>
+    <string name="backup_pending_count">%1$d pending</string>
+    <string name="backup_pending_none">All caught up</string>
+    <string name="backup_pending_unknown">Run a state check to see how many are missing</string>
+    <string name="backup_pending_view">View pending</string>
+    <string name="backup_pending_screen_title">Pending</string>
+    <string name="backup_disabled_hint">Turn backup on to start uploading your photos.</string>
 </resources>

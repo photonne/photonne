@@ -30,10 +30,12 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
+import com.photonne.app.ui.devicesync.DeviceSyncViewModel
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineEntry
 import com.photonne.app.ui.grid.findEntryIndexForMonth
 import com.photonne.app.ui.grid.groupTimelineEntries
+import com.photonne.app.ui.grid.mergeTimelineWithLocal
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -44,10 +46,17 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun TimelineScreen(
     state: TimelineUiState,
-    onItemClick: (Int) -> Unit,
+    /**
+     * Opens the asset viewer with [items] (server entries possibly
+     * interleaved with device-pending ones from the Backup module) at
+     * the given [mergedIndex]. The pager and detail viewer handle
+     * local items in-place via their `localUri`/`localThumbnailModel`
+     * fields, so the same viewer covers both kinds.
+     */
+    onOpenAsset: (items: List<com.photonne.app.data.models.TimelineItem>, mergedIndex: Int) -> Unit,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit = {},
-    onItemLongClick: ((Int) -> Unit)? = null,
+    onToggleSelection: ((assetId: String) -> Unit)? = null,
     pendingJumpDate: Instant? = null,
     onJumpHandled: () -> Unit = {},
     onMemoryClick: (List<com.photonne.app.data.models.TimelineItem>, Int) -> Unit = { _, _ -> }
@@ -57,9 +66,20 @@ fun TimelineScreen(
     val gridState = rememberLazyGridState()
     val memoriesViewModel: MemoriesViewModel = koinViewModel()
     val memoriesState by memoriesViewModel.state.collectAsState()
+    val deviceSyncViewModel: DeviceSyncViewModel = koinViewModel()
+    val deviceSyncState by deviceSyncViewModel.state.collectAsState()
     var memorySheetItems by remember { mutableStateOf<List<com.photonne.app.data.models.TimelineItem>?>(null) }
 
-    val entries = remember(state.items) { groupTimelineEntries(state.items) }
+    // Only mix device entries in once backup is enabled — otherwise the
+    // timeline reflects only what's actually on the server.
+    val localItems = remember(deviceSyncState.entries, deviceSyncState.isBackupEnabled) {
+        if (!deviceSyncState.isBackupEnabled) emptyList()
+        else deviceSyncViewModel.deviceTimelineItems()
+    }
+    val mergedItems = remember(state.items, localItems) {
+        mergeTimelineWithLocal(state.items, localItems)
+    }
+    val entries = remember(mergedItems) { groupTimelineEntries(mergedItems) }
 
     val stickyHeader by remember(entries) {
         derivedStateOf {
@@ -120,16 +140,37 @@ fun TimelineScreen(
                     }
                     Box(modifier = Modifier.fillMaxSize()) {
                         GroupedAssetGrid(
-                            items = state.items,
+                            items = mergedItems,
                             baseUrl = apiBaseUrl,
-                            onItemClick = onItemClick,
+                            onItemClick = { mergedIndex ->
+                                val item = mergedItems.getOrNull(mergedIndex)
+                                    ?: return@GroupedAssetGrid
+                                val toggler = onToggleSelection
+                                if (state.isSelectionActive && !item.isLocalOnly &&
+                                    toggler != null) {
+                                    // Tap-to-multi-select only applies to
+                                    // server assets — local-only items
+                                    // aren't part of the timeline's bulk
+                                    // operations.
+                                    toggler(item.id)
+                                } else {
+                                    onOpenAsset(mergedItems, mergedIndex)
+                                }
+                            },
                             gridState = gridState,
                             hasMore = state.hasMore,
                             isAppending = state.isAppending,
                             isInitialLoading = state.isInitialLoading,
                             onLoadMore = onLoadMore,
                             selectedIds = state.selection,
-                            onItemLongClick = onItemLongClick,
+                            onItemLongClick = onToggleSelection?.let { toggler ->
+                                { mergedIndex ->
+                                    val item = mergedItems.getOrNull(mergedIndex)
+                                    if (item != null && !item.isLocalOnly) {
+                                        toggler(item.id)
+                                    }
+                                }
+                            },
                             modifier = Modifier.fillMaxSize()
                         )
                         stickyHeader?.let { header ->

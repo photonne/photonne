@@ -101,4 +101,104 @@ class GroupedAssetGridTest {
         val target = kotlinx.datetime.LocalDate(2026, 1, 1)
         assertEquals(-1, findEntryIndexForMonth(emptyList(), target))
     }
+
+    @Test
+    fun merge_with_local_interleaves_by_date_descending() {
+        val server = listOf(
+            item("s1", "2026-05-10T10:00:00Z"),
+            item("s2", "2026-05-08T10:00:00Z"),
+            item("s3", "2026-04-30T10:00:00Z")
+        )
+        val local = listOf(
+            item("l1", "2026-05-09T10:00:00Z"),
+            item("l2", "2026-05-07T10:00:00Z")
+        )
+        val merged = mergeTimelineWithLocal(server, local)
+        assertEquals(listOf("s1", "l1", "s2", "l2", "s3"), merged.map { it.id })
+    }
+
+    @Test
+    fun merge_with_empty_local_returns_server_unchanged() {
+        val server = listOf(item("s1", "2026-05-10T10:00:00Z"))
+        assertEquals(server, mergeTimelineWithLocal(server, emptyList()))
+    }
+
+    @Test
+    fun merge_dedups_local_against_server_by_filename_and_size() {
+        // The device knows about "shared.jpg" (size 100) but so does the
+        // server — the local copy should be filtered out so the cell
+        // doesn't appear twice. "only_local.jpg" survives because the
+        // server doesn't have a matching (name, size) pair.
+        val server = listOf(
+            TimelineItem(
+                id = "s1", fileName = "shared.jpg",
+                fullPath = "/photos/shared.jpg", fileSize = 100L,
+                fileCreatedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                fileModifiedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                extension = ".jpg",
+                scannedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                type = "IMAGE"
+            )
+        )
+        val local = listOf(
+            TimelineItem(
+                id = "device:1", fileName = "shared.jpg",
+                fullPath = "shared.jpg", fileSize = 100L,
+                fileCreatedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                fileModifiedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                extension = ".jpg",
+                scannedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                type = "IMAGE", localUri = "1"
+            ),
+            TimelineItem(
+                id = "device:2", fileName = "only_local.jpg",
+                fullPath = "only_local.jpg", fileSize = 200L,
+                fileCreatedAt = Instant.parse("2026-05-08T10:00:00Z"),
+                fileModifiedAt = Instant.parse("2026-05-08T10:00:00Z"),
+                extension = ".jpg",
+                scannedAt = Instant.parse("2026-05-08T10:00:00Z"),
+                type = "IMAGE", localUri = "2"
+            )
+        )
+        val merged = mergeTimelineWithLocal(server, local)
+        assertEquals(listOf("s1", "device:2"), merged.map { it.id })
+    }
+
+    @Test
+    fun merge_dedups_local_against_server_by_checksum() {
+        val server = listOf(
+            TimelineItem(
+                id = "s1", fileName = "renamed.jpg",
+                fullPath = "/photos/renamed.jpg", fileSize = 999L,
+                fileCreatedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                fileModifiedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                extension = ".jpg",
+                scannedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                type = "IMAGE", checksum = "abc123"
+            )
+        )
+        val local = listOf(
+            TimelineItem(
+                id = "device:1", fileName = "original.jpg",
+                fullPath = "original.jpg", fileSize = 100L,
+                fileCreatedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                fileModifiedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                extension = ".jpg",
+                scannedAt = Instant.parse("2026-05-09T10:00:00Z"),
+                type = "IMAGE", checksum = "abc123", localUri = "1"
+            )
+        )
+        // Server hash trumps the (filename, size) mismatch.
+        assertEquals(listOf("s1"), mergeTimelineWithLocal(server, local).map { it.id })
+    }
+
+    @Test
+    fun merge_with_empty_server_returns_local_sorted() {
+        val local = listOf(
+            item("l1", "2026-05-07T10:00:00Z"),
+            item("l2", "2026-05-09T10:00:00Z")
+        )
+        val merged = mergeTimelineWithLocal(emptyList(), local)
+        assertEquals(listOf("l2", "l1"), merged.map { it.id })
+    }
 }

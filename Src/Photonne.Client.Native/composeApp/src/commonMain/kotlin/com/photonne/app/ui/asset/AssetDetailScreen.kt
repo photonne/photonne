@@ -164,7 +164,8 @@ fun AssetDetailScreen(
                     )
                 },
                 actions = {
-                    if (currentItem != null && !currentItem.isVideo) {
+                    val isLocalOnly = currentItem?.isLocalOnly == true
+                    if (currentItem != null && !currentItem.isVideo && !isLocalOnly) {
                         IconButton(onClick = {
                             showOriginal[currentItem.id] = !currentShowingOriginal
                         }) {
@@ -175,7 +176,7 @@ fun AssetDetailScreen(
                             )
                         }
                     }
-                    if (currentItem != null) {
+                    if (currentItem != null && !isLocalOnly) {
                         IconButton(onClick = {
                             viewModel.toggleFavorite(currentItem.id) { confirmed ->
                                 onFavoriteChanged(currentItem.id, confirmed)
@@ -199,7 +200,7 @@ fun AssetDetailScreen(
                     IconButton(onClick = { showInfo = true }) {
                         Icon(Icons.Outlined.Info, contentDescription = "Detalles")
                     }
-                    if (currentItem != null) {
+                    if (currentItem != null && !isLocalOnly) {
                         Box {
                             IconButton(onClick = { showOverflow = true }) {
                                 Icon(
@@ -339,6 +340,30 @@ private fun AssetPage(
         modifier = Modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
+        // Local-only entries don't exist on the server: render directly
+        // from the device URI through Coil for both photos and the
+        // video poster. We deliberately don't try to play a device
+        // video here — it pulls in platform players that the regular
+        // server pipeline avoids, and the existing
+        // DeviceAssetPreviewScreen already covers that case if needed.
+        val localUri = item.localUri
+        if (localUri != null) {
+            val model = item.localThumbnailModel ?: localUri
+            ZoomablePagerImage(
+                model = model,
+                contentDescription = item.fileName,
+                onScaleChange = onScaleChange
+            )
+            if (item.isVideo) {
+                Text(
+                    text = "Vídeo del dispositivo — abre Copia de seguridad para reproducirlo",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return@Box
+        }
         when {
             item.isVideo && isVideoPlaybackSupported && isCurrent -> {
                 VideoPlayer(

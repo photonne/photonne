@@ -68,6 +68,7 @@ import com.photonne.app.ui.settings.AccountStorageViewModel
 import com.photonne.app.ui.settings.AppearanceViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
+import com.photonne.app.ui.devicesync.DeviceSyncViewModel
 import com.photonne.app.ui.upload.UploadViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
@@ -104,6 +105,15 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)
+    single { com.photonne.app.data.devicesync.DeviceSyncStateStore(get()) }
+    single {
+        com.photonne.app.data.devicesync.DeviceSyncRepository(
+            gallery = get(),
+            api = get(),
+            uploads = get(),
+            stateStore = get()
+        )
+    }
     single { ThemePreferenceStore(get()) }
     single { TimelineRepository(api = get()) }
     singleOf(::MemoriesRepository)
@@ -132,6 +142,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::FavoritesViewModel)
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
+    viewModelOf(::DeviceSyncViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)

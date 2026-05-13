@@ -27,4 +27,5 @@ actual fun platformModule() = module {
     }
     single<HttpClientEngine> { OkHttp.create() }
     single { AssetSharing(androidContext()) }
+    single { com.photonne.app.data.devicesync.DeviceGallery(androidContext()) }
 }

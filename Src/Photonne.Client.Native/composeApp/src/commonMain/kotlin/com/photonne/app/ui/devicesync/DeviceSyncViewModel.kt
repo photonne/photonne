@@ -1,0 +1,523 @@
+package com.photonne.app.ui.devicesync
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.devicesync.DeviceFolderRef
+import com.photonne.app.data.devicesync.DeviceMedia
+import com.photonne.app.data.devicesync.DeviceMediaSyncState
+import com.photonne.app.data.devicesync.DeviceMediaType
+import com.photonne.app.data.devicesync.DeviceSyncRepository
+import com.photonne.app.data.models.LocalSyncBadge
+import com.photonne.app.data.models.TimelineItem
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+
+/**
+ * One entry in the gallery grid. `media` carries the raw metadata
+ * coming back from the platform layer; `syncState` is the verdict
+ * after we've hashed the file and asked the server, lazily, when
+ * the user scrolls past it or explicitly requests a refresh.
+ */
+data class DeviceSyncEntry(
+    val media: DeviceMedia,
+    val syncState: DeviceMediaSyncState = DeviceMediaSyncState.Unknown,
+    val isSelected: Boolean = false
+)
+
+data class DeviceSyncUiState(
+    val isSupported: Boolean = true,
+    val isBackupEnabled: Boolean = false,
+    val folder: DeviceFolderRef? = null,
+    val entries: List<DeviceSyncEntry> = emptyList(),
+    val isLoading: Boolean = false,
+    val isCheckingHashes: Boolean = false,
+    val isSyncing: Boolean = false,
+    val isFreeingSpace: Boolean = false,
+    val syncProgress: SyncProgress? = null,
+    val errorMessage: String? = null,
+    val statusMessage: String? = null
+) {
+    val selectedCount: Int get() = entries.count { it.isSelected }
+    val syncableSelectedCount: Int get() = entries.count {
+        it.isSelected && it.syncState !is DeviceMediaSyncState.Synced
+    }
+    val syncedCount: Int get() = entries.count {
+        it.syncState is DeviceMediaSyncState.Synced
+    }
+
+    /**
+     * Entries known not to be on the server yet (NotSynced, Uploading
+     * or Failed). Used by the Timeline merge so device-only items
+     * surface alongside server assets with a sync badge. We
+     * deliberately leave Unknown out — until we've hashed and asked
+     * the server, we can't tell whether they're already backed up,
+     * and assuming "pending" would double-show every photo.
+     */
+    val pendingEntries: List<DeviceSyncEntry> get() = entries.filter {
+        it.syncState is DeviceMediaSyncState.NotSynced ||
+            it.syncState is DeviceMediaSyncState.Uploading ||
+            it.syncState is DeviceMediaSyncState.Failed
+    }
+}
+
+/** Progress snapshot while the manual sync is uploading files. */
+data class SyncProgress(
+    val total: Int,
+    val completed: Int,
+    val skipped: Int,
+    val failed: Int,
+    val currentName: String? = null
+)
+
+class DeviceSyncViewModel(
+    private val repository: DeviceSyncRepository
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(
+        DeviceSyncUiState(
+            isSupported = repository.isSupported,
+            isBackupEnabled = repository.isBackupEnabled()
+        )
+    )
+    val state: StateFlow<DeviceSyncUiState> = _state.asStateFlow()
+
+    init {
+        // Eager-load the saved folder so the timeline merge can show
+        // device-only photos as soon as the user opens the app —
+        // otherwise we'd have to wait for them to visit the Backup
+        // screen before pending items become visible.
+        if (repository.isSupported && repository.savedFolder() != null) {
+            ensureLoaded()
+        }
+    }
+
+    fun setBackupEnabled(enabled: Boolean) {
+        repository.setBackupEnabled(enabled)
+        _state.update { it.copy(isBackupEnabled = enabled) }
+        if (enabled) ensureLoaded()
+    }
+
+    /**
+     * Called every time the screen is composed. If the folder hasn't
+     * been resolved yet we restore the saved bookmark; if it has, we
+     * re-list its contents so new photos taken since the last visit
+     * show up. Sync states already computed are preserved.
+     */
+    fun ensureLoaded() {
+        if (_state.value.isLoading) return
+        if (!repository.isSupported) return
+        val folder = _state.value.folder
+        if (folder != null) {
+            refreshFolderContents(folder)
+            return
+        }
+        val saved = repository.savedFolder() ?: return
+        viewModelScope.launch {
+            val resumed = runCatching { repository.restoreFolder(saved.uri) }.getOrNull()
+            if (resumed == null) {
+                // Stale bookmark — drop it so we don't keep retrying.
+                repository.forgetFolder()
+                return@launch
+            }
+            applyFolder(resumed)
+        }
+    }
+
+    /**
+     * Re-list a folder we've already loaded once, merging new entries
+     * in and keeping the [DeviceSyncEntry.syncState] of anything we'd
+     * already checked. Runs without toggling `isLoading` so the
+     * existing grid stays visible during the re-scan — only the
+     * initial load (empty entries) shows a spinner.
+     */
+    private fun refreshFolderContents(folder: DeviceFolderRef) {
+        val showSpinner = _state.value.entries.isEmpty()
+        if (showSpinner) {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+        } else {
+            _state.update { it.copy(errorMessage = null) }
+        }
+        viewModelScope.launch {
+            val result = runCatching { repository.listMedia(folder) }
+            result
+                .onSuccess { items ->
+                    _state.update { current ->
+                        val previous = current.entries.associateBy { it.media.uri }
+                        current.copy(
+                            isLoading = false,
+                            entries = items.map { media ->
+                                val existing = previous[media.uri]
+                                if (existing != null) {
+                                    existing.copy(
+                                        media = media.copy(sha256 = existing.media.sha256)
+                                    )
+                                } else {
+                                    DeviceSyncEntry(media = media)
+                                }
+                            }
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Could not refresh folder"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun onFolderPicked(folder: DeviceFolderRef?) {
+        if (folder == null) return
+        repository.rememberFolder(folder)
+        applyFolder(folder)
+    }
+
+    fun clearMessages() {
+        _state.update { it.copy(errorMessage = null, statusMessage = null) }
+    }
+
+    fun toggleSelection(uri: String) {
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    if (entry.media.uri == uri) entry.copy(isSelected = !entry.isSelected)
+                    else entry
+                }
+            )
+        }
+    }
+
+    fun selectAllNotSynced() {
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    if (entry.syncState is DeviceMediaSyncState.Synced) entry
+                    else entry.copy(isSelected = true)
+                }
+            )
+        }
+    }
+
+    fun clearSelection() {
+        _state.update { current ->
+            current.copy(entries = current.entries.map { it.copy(isSelected = false) })
+        }
+    }
+
+    /**
+     * Streams through every entry, hashing locally and asking the
+     * server if a matching asset already exists. Runs serially to
+     * keep memory pressure low; users with very large folders can
+     * just sync without waiting for the full pass.
+     */
+    fun refreshSyncStates() {
+        val folder = _state.value.folder ?: return
+        if (_state.value.isCheckingHashes) return
+        _state.update { it.copy(isCheckingHashes = true, errorMessage = null) }
+        viewModelScope.launch {
+            val snapshot = _state.value.entries
+            for (entry in snapshot) {
+                if (!_state.value.isCheckingHashes) break // user cancelled / left screen
+                val (hash, state) = runCatching {
+                    repository.checkSyncStatus(entry.media)
+                }.getOrElse {
+                    "" to DeviceMediaSyncState.Failed(it.message ?: "Hash check failed")
+                }
+                _state.update { current ->
+                    current.copy(
+                        entries = current.entries.map { e ->
+                            if (e.media.uri == entry.media.uri) {
+                                e.copy(
+                                    media = e.media.copy(
+                                        sha256 = hash.takeIf { it.isNotBlank() }
+                                    ),
+                                    syncState = state
+                                )
+                            } else e
+                        }
+                    )
+                }
+            }
+            _state.update { it.copy(isCheckingHashes = false) }
+        }
+        _state.value.folder
+    }
+
+    fun stopHashCheck() {
+        _state.update { it.copy(isCheckingHashes = false) }
+    }
+
+    /** Uploads every selected entry that isn't already synced. */
+    fun syncSelected() {
+        if (_state.value.isSyncing) return
+        val selected = _state.value.entries.filter {
+            it.isSelected && it.syncState !is DeviceMediaSyncState.Synced
+        }
+        if (selected.isEmpty()) return
+
+        _state.update {
+            it.copy(
+                isSyncing = true,
+                errorMessage = null,
+                statusMessage = null,
+                syncProgress = SyncProgress(
+                    total = selected.size,
+                    completed = 0,
+                    skipped = 0,
+                    failed = 0
+                )
+            )
+        }
+
+        viewModelScope.launch {
+            var completed = 0
+            var skipped = 0
+            var failed = 0
+            for (entry in selected) {
+                if (!_state.value.isSyncing) break
+                _state.update { current ->
+                    current.copy(
+                        entries = current.entries.map { e ->
+                            if (e.media.uri == entry.media.uri) {
+                                e.copy(syncState = DeviceMediaSyncState.Uploading)
+                            } else e
+                        },
+                        syncProgress = current.syncProgress?.copy(
+                            currentName = entry.media.displayName
+                        )
+                    )
+                }
+                val result = runCatching { repository.upload(entry.media) }
+                result
+                    .onSuccess { response ->
+                        // Server message contains "already exists" when the
+                        // upload short-circuited via the SHA-256 dedup
+                        // path. Track those as skipped rather than counted
+                        // as full uploads.
+                        val msg = response.message
+                        val isDup = msg.contains("already exists", ignoreCase = true)
+                        if (isDup) skipped++ else completed++
+                        val nextState: DeviceMediaSyncState =
+                            DeviceMediaSyncState.Synced(response.assetId.orEmpty())
+                        _state.update { current ->
+                            current.copy(
+                                entries = current.entries.map { e ->
+                                    if (e.media.uri == entry.media.uri) {
+                                        e.copy(
+                                            syncState = nextState,
+                                            isSelected = false
+                                        )
+                                    } else e
+                                },
+                                syncProgress = current.syncProgress?.copy(
+                                    completed = completed,
+                                    skipped = skipped
+                                )
+                            )
+                        }
+                    }
+                    .onFailure { error ->
+                        failed++
+                        _state.update { current ->
+                            current.copy(
+                                entries = current.entries.map { e ->
+                                    if (e.media.uri == entry.media.uri) {
+                                        e.copy(
+                                            syncState = DeviceMediaSyncState.Failed(
+                                                error.message ?: "Upload failed"
+                                            )
+                                        )
+                                    } else e
+                                },
+                                syncProgress = current.syncProgress?.copy(failed = failed)
+                            )
+                        }
+                    }
+            }
+            _state.update {
+                it.copy(
+                    isSyncing = false,
+                    statusMessage = "Subidos $completed · Omitidos $skipped · Fallidos $failed"
+                )
+            }
+        }
+    }
+
+    fun cancelSync() {
+        _state.update { it.copy(isSyncing = false) }
+    }
+
+    /**
+     * Deletes from local storage every entry that we've confirmed is
+     * already on the server. The "free up space" entry point assumes
+     * the caller has already shown a confirmation dialog — by the
+     * time this fires, the user has agreed to the deletion.
+     */
+    fun freeUpSyncedSpace() {
+        if (_state.value.isFreeingSpace || _state.value.isSyncing) return
+        val targets = _state.value.entries.filter {
+            it.syncState is DeviceMediaSyncState.Synced
+        }
+        if (targets.isEmpty()) return
+
+        _state.update {
+            it.copy(
+                isFreeingSpace = true,
+                errorMessage = null,
+                statusMessage = null
+            )
+        }
+
+        viewModelScope.launch {
+            var deleted = 0
+            var failed = 0
+            for (entry in targets) {
+                if (!_state.value.isFreeingSpace) break
+                val ok = runCatching {
+                    repository.deleteLocal(entry.media)
+                }.getOrDefault(false)
+                if (ok) deleted++ else failed++
+                if (ok) {
+                    _state.update { current ->
+                        current.copy(
+                            entries = current.entries.filterNot {
+                                it.media.uri == entry.media.uri
+                            }
+                        )
+                    }
+                }
+            }
+            _state.update {
+                val msg = if (failed == 0) {
+                    "Liberados $deleted archivos del dispositivo"
+                } else {
+                    "Liberados $deleted · No se pudo borrar $failed"
+                }
+                it.copy(isFreeingSpace = false, statusMessage = msg)
+            }
+        }
+    }
+
+    fun pickAnotherFolder() {
+        _state.update {
+            it.copy(folder = null, entries = emptyList(), syncProgress = null)
+        }
+    }
+
+    private fun applyFolder(folder: DeviceFolderRef) {
+        _state.update { it.copy(folder = folder, isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            val media = runCatching { repository.listMedia(folder) }
+            media
+                .onSuccess { items ->
+                    _state.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            entries = items.map { DeviceSyncEntry(media = it) }
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Could not list folder"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun thumbnailModel(media: DeviceMedia): String = repository.thumbnailModel(media)
+
+    /**
+     * Renders every device entry as a synthetic [TimelineItem] so the
+     * timeline can show the full device gallery — confirmed-pending
+     * items get a cloud badge, items whose state is still unknown get
+     * no badge (the merge step dedups them against server-known
+     * items, so most unknowns disappear before reaching the screen).
+     *
+     * Confirmed `Synced` entries are excluded outright: the server
+     * timeline already contains them, and adding a device copy would
+     * just duplicate the cell.
+     */
+    fun deviceTimelineItems(): List<TimelineItem> {
+        val source = _state.value.entries
+        if (source.isEmpty()) return emptyList()
+        return source.mapNotNull { entry ->
+            val state = entry.syncState
+            if (state is DeviceMediaSyncState.Synced) return@mapNotNull null
+            val media = entry.media
+            val instant = Instant.fromEpochMilliseconds(media.dateModifiedMillis)
+            val ext = media.displayName.substringAfterLast('.', missingDelimiterValue = "")
+            val type = if (media.type == DeviceMediaType.Video) "VIDEO" else "IMAGE"
+            val badge = when (state) {
+                DeviceMediaSyncState.Uploading -> LocalSyncBadge.Uploading
+                is DeviceMediaSyncState.Failed -> LocalSyncBadge.Failed
+                DeviceMediaSyncState.NotSynced -> LocalSyncBadge.Pending
+                // Unknown: treat as pending until a hash check proves
+                // otherwise. The merge step still dedups against
+                // server entries by checksum / (fileName, fileSize),
+                // so most photos already on the server won't show up
+                // here at all.
+                DeviceMediaSyncState.Unknown -> LocalSyncBadge.Pending
+                is DeviceMediaSyncState.Synced -> return@mapNotNull null
+            }
+            TimelineItem(
+                id = "device:${media.uri}",
+                fileName = media.displayName,
+                fullPath = if (media.relativePath.isBlank()) media.displayName
+                else "${media.relativePath}/${media.displayName}",
+                fileSize = media.sizeBytes,
+                fileCreatedAt = instant,
+                fileModifiedAt = instant,
+                extension = ext,
+                scannedAt = instant,
+                type = type,
+                checksum = media.sha256,
+                hasThumbnails = false,
+                localThumbnailModel = repository.thumbnailModel(media),
+                localUri = media.uri,
+                localSyncBadge = badge
+            )
+        }
+    }
+
+    /** Look up the [DeviceSyncEntry] backing a synthetic local timeline item. */
+    fun pendingEntryByUri(uri: String): DeviceSyncEntry? =
+        _state.value.entries.firstOrNull { it.media.uri == uri }
+
+    /**
+     * Builds the minimal [TimelineItem] that lets AssetDetailScreen
+     * boot before its own ViewModel fetches the full server-side
+     * `AssetDetail` for [entry]. Only valid for entries we've already
+     * matched against the server (i.e. with a `Synced` state).
+     */
+    fun timelineItemFor(entry: DeviceSyncEntry): TimelineItem? {
+        val synced = entry.syncState as? DeviceMediaSyncState.Synced ?: return null
+        val media = entry.media
+        val instant = Instant.fromEpochMilliseconds(media.dateModifiedMillis)
+        val ext = media.displayName.substringAfterLast('.', missingDelimiterValue = "")
+        val type = if (media.type == DeviceMediaType.Video) "VIDEO" else "IMAGE"
+        return TimelineItem(
+            id = synced.assetId,
+            fileName = media.displayName,
+            fullPath = if (media.relativePath.isBlank()) media.displayName
+            else "${media.relativePath}/${media.displayName}",
+            fileSize = media.sizeBytes,
+            fileCreatedAt = instant,
+            fileModifiedAt = instant,
+            extension = ext,
+            scannedAt = instant,
+            type = type,
+            checksum = media.sha256
+        )
+    }
+}
