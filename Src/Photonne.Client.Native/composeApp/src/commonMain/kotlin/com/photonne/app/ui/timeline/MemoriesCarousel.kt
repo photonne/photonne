@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -83,7 +83,10 @@ fun MemoriesCarousel(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(groups, key = { it.cover.id }) { group ->
+            // Memory covers can share an empty UUID when the server hasn't
+            // yet assigned a stable id; prefix with the carousel index so
+            // duplicates don't collide and crash the LazyRow.
+            itemsIndexed(groups, key = { idx, group -> "memory:$idx:${group.cover.id}" }) { _, group ->
                 val label = if (group.yearsAgo == 1) oneYear
                 else stringResource(Res.string.timeline_memories_years_ago, group.yearsAgo)
                 MemoryCard(
