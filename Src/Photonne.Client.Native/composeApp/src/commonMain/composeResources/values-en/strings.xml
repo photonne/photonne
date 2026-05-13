@@ -602,4 +602,18 @@
 
     <!-- Metadata task (uses indexing) -->
     <string name="admin_metadata_task_explanation">Metadata extraction is part of the server's index pipeline. Trigger an index run to re-extract EXIF, GPS and other fields.</string>
+
+    <!-- Device sync -->
+    <string name="device_sync_title">Device gallery</string>
+    <string name="device_sync_intro">Pick a folder from your device and you'll see every photo and video inside it. Then sync the ones you want into your account.</string>
+    <string name="device_sync_action_pick_folder">Pick folder</string>
+    <string name="device_sync_folder_label">Folder</string>
+    <string name="device_sync_change_folder">Change</string>
+    <string name="device_sync_total">%1$d items</string>
+    <string name="device_sync_empty_folder">No photos or videos in this folder.</string>
+    <string name="device_sync_not_supported">Device sync is not available on this platform yet.</string>
+    <string name="device_sync_action_refresh_states">Check sync state</string>
+    <string name="device_sync_action_select_all">Select all</string>
+    <string name="device_sync_action_sync">Sync (%1$d)</string>
+    <string name="device_sync_progress">%1$d / %2$d</string>
 </resources>

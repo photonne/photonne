@@ -104,6 +104,15 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)
+    single { com.photonne.app.data.devicesync.DeviceSyncStateStore(get()) }
+    single {
+        com.photonne.app.data.devicesync.DeviceSyncRepository(
+            gallery = get(),
+            api = get(),
+            uploads = get(),
+            stateStore = get()
+        )
+    }
     single { ThemePreferenceStore(get()) }
     single { TimelineRepository(api = get()) }
     singleOf(::MemoriesRepository)
@@ -132,6 +141,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::FavoritesViewModel)
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
+    viewModelOf(::com.photonne.app.ui.devicesync.DeviceSyncViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)

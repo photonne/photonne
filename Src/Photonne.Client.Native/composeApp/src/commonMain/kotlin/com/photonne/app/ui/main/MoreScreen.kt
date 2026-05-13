@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -76,6 +77,7 @@ fun MoreScreen(
     onOpenPeople: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
+    onOpenDeviceSync: () -> Unit,
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null
 ) {
@@ -85,7 +87,8 @@ fun MoreScreen(
         onOpenFavorites,
         onOpenPeople,
         onOpenArchived,
-        onOpenTrash
+        onOpenTrash,
+        onOpenDeviceSync
     ) {
         listOf(
             MoreShortcut(
@@ -93,6 +96,12 @@ fun MoreScreen(
                 Res.string.upload_title,
                 Icons.Outlined.AddPhotoAlternate,
                 onOpenUpload
+            ),
+            MoreShortcut(
+                "devicesync",
+                Res.string.device_sync_title,
+                Icons.Outlined.PhotoLibrary,
+                onOpenDeviceSync
             ),
             MoreShortcut(
                 "favorites",

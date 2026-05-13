@@ -12,4 +12,5 @@ actual fun platformModule() = module {
     single<Settings> { PreferencesSettings(Preferences.userRoot().node("com/photonne/app")) }
     single<HttpClientEngine> { CIO.create() }
     single { AssetSharing() }
+    single { com.photonne.app.data.devicesync.DeviceGallery() }
 }

@@ -602,4 +602,18 @@
 
     <!-- Metadata task (uses indexing) -->
     <string name="admin_metadata_task_explanation">La extracción de metadatos forma parte del proceso de indexado del servidor. Lanza un indexado para reextraer EXIF, GPS y demás campos.</string>
+
+    <!-- Device sync -->
+    <string name="device_sync_title">Galería del dispositivo</string>
+    <string name="device_sync_intro">Elige una carpeta de tu dispositivo y verás todas sus fotos y vídeos. Después puedes sincronizar las que quieras con tu cuenta.</string>
+    <string name="device_sync_action_pick_folder">Elegir carpeta</string>
+    <string name="device_sync_folder_label">Carpeta</string>
+    <string name="device_sync_change_folder">Cambiar</string>
+    <string name="device_sync_total">%1$d elementos</string>
+    <string name="device_sync_empty_folder">No hay fotos ni vídeos en esta carpeta.</string>
+    <string name="device_sync_not_supported">La sincronización con el dispositivo aún no está disponible en esta plataforma.</string>
+    <string name="device_sync_action_refresh_states">Comprobar estado</string>
+    <string name="device_sync_action_select_all">Seleccionar todo</string>
+    <string name="device_sync_action_sync">Sincronizar (%1$d)</string>
+    <string name="device_sync_progress">%1$d / %2$d</string>
 </resources>

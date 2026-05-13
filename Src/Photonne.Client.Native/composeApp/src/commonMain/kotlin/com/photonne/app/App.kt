@@ -74,6 +74,7 @@ import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.map_title
+import com.photonne.app.resources.device_sync_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
@@ -146,6 +147,7 @@ private data class AddToAlbumState(
 
 private enum class MoreSubscreen {
     Upload,
+    DeviceSync,
     Favorites,
     People,
     PeopleSuggestions,
@@ -333,6 +335,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
+    val deviceSyncViewModel: com.photonne.app.ui.devicesync.DeviceSyncViewModel = koinViewModel()
+    val deviceGallery: com.photonne.app.data.devicesync.DeviceGallery =
+        org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
         koinViewModel()
     val mapViewModel: com.photonne.app.ui.map.MapViewModel = koinViewModel()
@@ -588,6 +593,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             uploadState.pendingCount
                         )
                     else null,
+                    onBack = { moreSubscreen = null },
+                    user = user.user,
+                    onLogout = onLogout
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSync ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.device_sync_title),
                     onBack = { moreSubscreen = null },
                     user = user.user,
                     onLogout = onLogout
@@ -1301,6 +1313,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
+                        onOpenDeviceSync = { moreSubscreen = MoreSubscreen.DeviceSync },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
                         },
@@ -1326,6 +1339,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onClearFinished = uploadViewModel::clearFinished,
                         onDismissPickerError = uploadViewModel::clearPickerError
                     )
+                    MoreSubscreen.DeviceSync ->
+                        com.photonne.app.ui.devicesync.DeviceSyncScreen(
+                            viewModel = deviceSyncViewModel,
+                            gallery = deviceGallery
+                        )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
                         onPointOpen = { point ->
