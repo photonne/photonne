@@ -88,45 +88,28 @@ fun MoreScreen(
         onOpenFavorites,
         onOpenPeople,
         onOpenArchived,
-        onOpenTrash,
-        onOpenDeviceSync
+        onOpenTrash
     ) {
         listOf(
-            MoreShortcut(
-                "upload",
-                Res.string.upload_title,
-                Icons.Outlined.AddPhotoAlternate,
-                onOpenUpload
-            ),
-            MoreShortcut(
-                "devicesync",
-                Res.string.device_sync_title,
-                Icons.Filled.CloudUpload,
-                onOpenDeviceSync
-            ),
-            MoreShortcut(
-                "favorites",
-                Res.string.favorites_title,
-                Icons.Outlined.FavoriteBorder,
-                onOpenFavorites
-            ),
+            MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
             MoreShortcut("people", Res.string.people_title, Icons.Outlined.People, onOpenPeople),
             MoreShortcut("map", Res.string.map_title, Icons.Outlined.Map, onOpenMap),
+            MoreShortcut("upload", Res.string.upload_title, Icons.Outlined.AddPhotoAlternate, onOpenUpload),
             MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
             MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
         )
     }
 
-    // Lay the shortcuts out two-per-row by hand so the whole screen lives in
+    // Lay the shortcuts out three-per-row by hand so the whole screen lives in
     // a single LazyColumn — otherwise a nested LazyVerticalGrid swallows the
     // page scroll and the logout/version footer is unreachable on small
     // screens.
-    val shortcutRows = remember(shortcuts) { shortcuts.chunked(2) }
+    val shortcutRows = remember(shortcuts) { shortcuts.chunked(3) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item("header") {
             Column(
@@ -153,7 +136,7 @@ fun MoreScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 row.forEach { shortcut ->
                     MoreShortcutCard(
@@ -163,15 +146,23 @@ fun MoreScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // Keep the last row balanced when the number of shortcuts is odd.
-                repeat(2 - row.size) {
+                // Keep the last row balanced when the number of shortcuts doesn't fill it.
+                repeat(3 - row.size) {
                     Spacer(Modifier.weight(1f))
                 }
             }
         }
 
-        item("account-settings") {
+        item("devicesync") {
             Spacer(Modifier.height(4.dp))
+            SettingsLikeRow(
+                icon = Icons.Filled.CloudUpload,
+                label = stringResource(Res.string.device_sync_title),
+                onClick = onOpenDeviceSync
+            )
+        }
+
+        item("account-settings") {
             SettingsLikeRow(
                 icon = Icons.Outlined.Settings,
                 label = stringResource(Res.string.account_settings_title),
@@ -255,21 +246,26 @@ private fun MoreShortcutCard(
 ) {
     Card(
         modifier = modifier
-            .aspectRatio(1.4f)
+            .aspectRatio(1f)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            IconPill(icon = icon, modifier = Modifier.align(Alignment.TopStart))
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            IconPill(icon = icon)
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.align(Alignment.BottomStart)
+                textAlign = TextAlign.Center,
+                maxLines = 2
             )
         }
     }
