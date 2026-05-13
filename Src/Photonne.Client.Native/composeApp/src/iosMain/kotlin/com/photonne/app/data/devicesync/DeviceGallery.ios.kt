@@ -38,6 +38,8 @@ actual class DeviceGallery {
     }
 
     actual fun thumbnailModel(media: DeviceMedia): String = media.uri
+
+    actual suspend fun deleteFile(media: DeviceMedia): Boolean = false
 }
 
 @Composable

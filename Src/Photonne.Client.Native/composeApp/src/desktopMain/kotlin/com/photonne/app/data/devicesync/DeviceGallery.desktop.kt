@@ -87,6 +87,14 @@ actual class DeviceGallery {
         }
 
     actual fun thumbnailModel(media: DeviceMedia): String = media.uri
+
+    actual suspend fun deleteFile(media: DeviceMedia): Boolean =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val file = File(URI(media.uri))
+                !file.exists() || file.delete()
+            }.getOrDefault(false)
+        }
 }
 
 private fun mediaTypeFromExtension(ext: String): DeviceMediaType? =

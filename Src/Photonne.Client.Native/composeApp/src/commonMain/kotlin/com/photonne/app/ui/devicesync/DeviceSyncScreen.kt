@@ -1,7 +1,7 @@
 package com.photonne.app.ui.devicesync
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,9 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,6 +43,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,7 +58,9 @@ import com.photonne.app.data.devicesync.DeviceGallery
 import com.photonne.app.data.devicesync.DeviceMediaSyncState
 import com.photonne.app.data.devicesync.DeviceMediaType
 import com.photonne.app.data.devicesync.rememberDeviceFolderPicker
+import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.device_sync_action_free_space
 import com.photonne.app.resources.device_sync_action_pick_folder
 import com.photonne.app.resources.device_sync_action_refresh_states
 import com.photonne.app.resources.device_sync_action_select_all
@@ -61,6 +68,11 @@ import com.photonne.app.resources.device_sync_action_sync
 import com.photonne.app.resources.device_sync_change_folder
 import com.photonne.app.resources.device_sync_empty_folder
 import com.photonne.app.resources.device_sync_folder_label
+import com.photonne.app.resources.device_sync_free_space_cancel
+import com.photonne.app.resources.device_sync_free_space_confirm
+import com.photonne.app.resources.device_sync_free_space_dialog_message
+import com.photonne.app.resources.device_sync_free_space_dialog_title
+import com.photonne.app.resources.device_sync_free_space_in_progress
 import com.photonne.app.resources.device_sync_intro
 import com.photonne.app.resources.device_sync_not_supported
 import com.photonne.app.resources.device_sync_progress
@@ -71,7 +83,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun DeviceSyncScreen(
     viewModel: DeviceSyncViewModel,
-    gallery: DeviceGallery
+    gallery: DeviceGallery,
+    onOpenAsset: (TimelineItem) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
@@ -79,6 +92,8 @@ fun DeviceSyncScreen(
         gallery = gallery,
         onPicked = viewModel::onFolderPicked
     )
+    var showFreeSpaceConfirm by remember { mutableStateOf(false) }
+    var previewStartUri by remember { mutableStateOf<String?>(null) }
 
     if (!state.isSupported) {
         EmptyMessage(stringResource(Res.string.device_sync_not_supported))
@@ -133,7 +148,8 @@ fun DeviceSyncScreen(
                 onRefreshSyncStates = viewModel::refreshSyncStates,
                 onStopRefresh = viewModel::stopHashCheck,
                 onSelectAll = viewModel::selectAllNotSynced,
-                onClearSelection = viewModel::clearSelection
+                onClearSelection = viewModel::clearSelection,
+                onFreeUpSpace = { showFreeSpaceConfirm = true }
             )
 
             when {
@@ -146,7 +162,20 @@ fun DeviceSyncScreen(
                 else -> MediaGrid(
                     state = state,
                     thumbnailModel = viewModel::thumbnailModel,
-                    onToggle = viewModel::toggleSelection
+                    onClick = { entry ->
+                        if (state.selectedCount > 0) {
+                            // Once the user has anything selected they
+                            // are in "queue for sync" mode; tap toggles
+                            // selection so it matches the existing
+                            // multi-select flow.
+                            viewModel.toggleSelection(entry.media.uri)
+                        } else {
+                            previewStartUri = entry.media.uri
+                        }
+                    },
+                    onLongClick = { entry ->
+                        viewModel.toggleSelection(entry.media.uri)
+                    }
                 )
             }
         }
@@ -169,6 +198,74 @@ fun DeviceSyncScreen(
             )
         }
     }
+
+    if (showFreeSpaceConfirm) {
+        FreeUpSpaceDialog(
+            count = state.syncedCount,
+            onDismiss = { showFreeSpaceConfirm = false },
+            onConfirm = {
+                showFreeSpaceConfirm = false
+                viewModel.freeUpSyncedSpace()
+            }
+        )
+    }
+
+    val startUri = previewStartUri
+    if (startUri != null) {
+        val startIndex = state.entries.indexOfFirst { it.media.uri == startUri }
+        if (startIndex < 0) {
+            previewStartUri = null
+        } else {
+            DeviceAssetPreviewScreen(
+                entries = state.entries,
+                startIndex = startIndex,
+                thumbnailModel = viewModel::thumbnailModel,
+                onBack = { previewStartUri = null },
+                onOpenDetail = { entry ->
+                    val item = viewModel.timelineItemFor(entry)
+                    if (item != null) {
+                        previewStartUri = null
+                        onOpenAsset(item)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FreeUpSpaceDialog(
+    count: Int,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = { Text(stringResource(Res.string.device_sync_free_space_dialog_title)) },
+        text = {
+            Text(stringResource(Res.string.device_sync_free_space_dialog_message, count))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    stringResource(Res.string.device_sync_free_space_confirm),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.device_sync_free_space_cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -224,33 +321,67 @@ private fun ActionBar(
     onRefreshSyncStates: () -> Unit,
     onStopRefresh: () -> Unit,
     onSelectAll: () -> Unit,
-    onClearSelection: () -> Unit
+    onClearSelection: () -> Unit,
+    onFreeUpSpace: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        OutlinedButton(
-            onClick = if (state.isCheckingHashes) onStopRefresh else onRefreshSyncStates,
-            modifier = Modifier.weight(1f),
-            enabled = !state.isSyncing
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Refresh, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(Res.string.device_sync_action_refresh_states))
+            OutlinedButton(
+                onClick = if (state.isCheckingHashes) onStopRefresh else onRefreshSyncStates,
+                modifier = Modifier.weight(1f),
+                enabled = !state.isSyncing && !state.isFreeingSpace
+            ) {
+                Icon(Icons.Filled.Refresh, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(Res.string.device_sync_action_refresh_states))
+            }
+            OutlinedButton(
+                onClick = if (state.selectedCount > 0) onClearSelection else onSelectAll,
+                modifier = Modifier.weight(1f),
+                enabled = !state.isSyncing && !state.isFreeingSpace
+            ) {
+                Text(
+                    if (state.selectedCount > 0) "× ${state.selectedCount}"
+                    else stringResource(Res.string.device_sync_action_select_all)
+                )
+            }
         }
-        OutlinedButton(
-            onClick = if (state.selectedCount > 0) onClearSelection else onSelectAll,
-            modifier = Modifier.weight(1f),
-            enabled = !state.isSyncing
-        ) {
-            Text(
-                if (state.selectedCount > 0) "× ${state.selectedCount}"
-                else stringResource(Res.string.device_sync_action_select_all)
-            )
+        if (state.syncedCount > 0) {
+            Spacer(Modifier.size(4.dp))
+            OutlinedButton(
+                onClick = onFreeUpSpace,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isSyncing && !state.isFreeingSpace
+            ) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    stringResource(
+                        Res.string.device_sync_action_free_space,
+                        state.syncedCount
+                    ),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            if (state.isFreeingSpace) {
+                Spacer(Modifier.size(4.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
+                Text(
+                    stringResource(Res.string.device_sync_free_space_in_progress),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -296,7 +427,8 @@ private fun SyncProgressCard(progress: SyncProgress, isSyncing: Boolean) {
 private fun MediaGrid(
     state: DeviceSyncUiState,
     thumbnailModel: (com.photonne.app.data.devicesync.DeviceMedia) -> String,
-    onToggle: (String) -> Unit
+    onClick: (DeviceSyncEntry) -> Unit,
+    onLongClick: (DeviceSyncEntry) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 96.dp),
@@ -311,17 +443,20 @@ private fun MediaGrid(
             MediaCell(
                 entry = entry,
                 thumbnailModel = thumbnailModel(entry.media),
-                onClick = { onToggle(entry.media.uri) }
+                onClick = { onClick(entry) },
+                onLongClick = { onLongClick(entry) }
             )
         }
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun MediaCell(
     entry: DeviceSyncEntry,
     thumbnailModel: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -330,7 +465,7 @@ private fun MediaCell(
                 MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(6.dp)
             )
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         AsyncImage(
             model = thumbnailModel,

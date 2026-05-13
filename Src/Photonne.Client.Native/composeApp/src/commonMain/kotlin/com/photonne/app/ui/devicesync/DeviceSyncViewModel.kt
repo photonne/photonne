@@ -5,12 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.devicesync.DeviceFolderRef
 import com.photonne.app.data.devicesync.DeviceMedia
 import com.photonne.app.data.devicesync.DeviceMediaSyncState
+import com.photonne.app.data.devicesync.DeviceMediaType
 import com.photonne.app.data.devicesync.DeviceSyncRepository
+import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
 
 /**
  * One entry in the gallery grid. `media` carries the raw metadata
@@ -31,6 +34,7 @@ data class DeviceSyncUiState(
     val isLoading: Boolean = false,
     val isCheckingHashes: Boolean = false,
     val isSyncing: Boolean = false,
+    val isFreeingSpace: Boolean = false,
     val syncProgress: SyncProgress? = null,
     val errorMessage: String? = null,
     val statusMessage: String? = null
@@ -38,6 +42,9 @@ data class DeviceSyncUiState(
     val selectedCount: Int get() = entries.count { it.isSelected }
     val syncableSelectedCount: Int get() = entries.count {
         it.isSelected && it.syncState !is DeviceMediaSyncState.Synced
+    }
+    val syncedCount: Int get() = entries.count {
+        it.syncState is DeviceMediaSyncState.Synced
     }
 }
 
@@ -60,13 +67,19 @@ class DeviceSyncViewModel(
     val state: StateFlow<DeviceSyncUiState> = _state.asStateFlow()
 
     /**
-     * Called when the screen is first composed. Tries to resume the
-     * previously-picked folder; if there isn't one (or the platform
-     * dropped the grant) the screen shows the empty CTA.
+     * Called every time the screen is composed. If the folder hasn't
+     * been resolved yet we restore the saved bookmark; if it has, we
+     * re-list its contents so new photos taken since the last visit
+     * show up. Sync states already computed are preserved.
      */
     fun ensureLoaded() {
-        if (_state.value.folder != null || _state.value.isLoading) return
+        if (_state.value.isLoading) return
         if (!repository.isSupported) return
+        val folder = _state.value.folder
+        if (folder != null) {
+            refreshFolderContents(folder)
+            return
+        }
         val saved = repository.savedFolder() ?: return
         viewModelScope.launch {
             val resumed = runCatching { repository.restoreFolder(saved.uri) }.getOrNull()
@@ -76,6 +89,52 @@ class DeviceSyncViewModel(
                 return@launch
             }
             applyFolder(resumed)
+        }
+    }
+
+    /**
+     * Re-list a folder we've already loaded once, merging new entries
+     * in and keeping the [DeviceSyncEntry.syncState] of anything we'd
+     * already checked. Runs without toggling `isLoading` so the
+     * existing grid stays visible during the re-scan — only the
+     * initial load (empty entries) shows a spinner.
+     */
+    private fun refreshFolderContents(folder: DeviceFolderRef) {
+        val showSpinner = _state.value.entries.isEmpty()
+        if (showSpinner) {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+        } else {
+            _state.update { it.copy(errorMessage = null) }
+        }
+        viewModelScope.launch {
+            val result = runCatching { repository.listMedia(folder) }
+            result
+                .onSuccess { items ->
+                    _state.update { current ->
+                        val previous = current.entries.associateBy { it.media.uri }
+                        current.copy(
+                            isLoading = false,
+                            entries = items.map { media ->
+                                val existing = previous[media.uri]
+                                if (existing != null) {
+                                    existing.copy(
+                                        media = media.copy(sha256 = existing.media.sha256)
+                                    )
+                                } else {
+                                    DeviceSyncEntry(media = media)
+                                }
+                            }
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Could not refresh folder"
+                        )
+                    }
+                }
         }
     }
 
@@ -260,6 +319,57 @@ class DeviceSyncViewModel(
         _state.update { it.copy(isSyncing = false) }
     }
 
+    /**
+     * Deletes from local storage every entry that we've confirmed is
+     * already on the server. The "free up space" entry point assumes
+     * the caller has already shown a confirmation dialog — by the
+     * time this fires, the user has agreed to the deletion.
+     */
+    fun freeUpSyncedSpace() {
+        if (_state.value.isFreeingSpace || _state.value.isSyncing) return
+        val targets = _state.value.entries.filter {
+            it.syncState is DeviceMediaSyncState.Synced
+        }
+        if (targets.isEmpty()) return
+
+        _state.update {
+            it.copy(
+                isFreeingSpace = true,
+                errorMessage = null,
+                statusMessage = null
+            )
+        }
+
+        viewModelScope.launch {
+            var deleted = 0
+            var failed = 0
+            for (entry in targets) {
+                if (!_state.value.isFreeingSpace) break
+                val ok = runCatching {
+                    repository.deleteLocal(entry.media)
+                }.getOrDefault(false)
+                if (ok) deleted++ else failed++
+                if (ok) {
+                    _state.update { current ->
+                        current.copy(
+                            entries = current.entries.filterNot {
+                                it.media.uri == entry.media.uri
+                            }
+                        )
+                    }
+                }
+            }
+            _state.update {
+                val msg = if (failed == 0) {
+                    "Liberados $deleted archivos del dispositivo"
+                } else {
+                    "Liberados $deleted · No se pudo borrar $failed"
+                }
+                it.copy(isFreeingSpace = false, statusMessage = msg)
+            }
+        }
+    }
+
     fun pickAnotherFolder() {
         _state.update {
             it.copy(folder = null, entries = emptyList(), syncProgress = null)
@@ -291,4 +401,31 @@ class DeviceSyncViewModel(
     }
 
     fun thumbnailModel(media: DeviceMedia): String = repository.thumbnailModel(media)
+
+    /**
+     * Builds the minimal [TimelineItem] that lets AssetDetailScreen
+     * boot before its own ViewModel fetches the full server-side
+     * `AssetDetail` for [entry]. Only valid for entries we've already
+     * matched against the server (i.e. with a `Synced` state).
+     */
+    fun timelineItemFor(entry: DeviceSyncEntry): TimelineItem? {
+        val synced = entry.syncState as? DeviceMediaSyncState.Synced ?: return null
+        val media = entry.media
+        val instant = Instant.fromEpochMilliseconds(media.dateModifiedMillis)
+        val ext = media.displayName.substringAfterLast('.', missingDelimiterValue = "")
+        val type = if (media.type == DeviceMediaType.Video) "VIDEO" else "IMAGE"
+        return TimelineItem(
+            id = synced.assetId,
+            fileName = media.displayName,
+            fullPath = if (media.relativePath.isBlank()) media.displayName
+            else "${media.relativePath}/${media.displayName}",
+            fileSize = media.sizeBytes,
+            fileCreatedAt = instant,
+            fileModifiedAt = instant,
+            extension = ext,
+            scannedAt = instant,
+            type = type,
+            checksum = media.sha256
+        )
+    }
 }

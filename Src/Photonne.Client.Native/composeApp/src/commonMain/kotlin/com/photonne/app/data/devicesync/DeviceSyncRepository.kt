@@ -73,4 +73,7 @@ class DeviceSyncRepository(
     }
 
     fun thumbnailModel(media: DeviceMedia): String = gallery.thumbnailModel(media)
+
+    /** Deletes [media] from the device storage. */
+    suspend fun deleteLocal(media: DeviceMedia): Boolean = gallery.deleteFile(media)
 }

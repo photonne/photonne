@@ -616,4 +616,13 @@
     <string name="device_sync_action_select_all">Seleccionar todo</string>
     <string name="device_sync_action_sync">Sincronizar (%1$d)</string>
     <string name="device_sync_progress">%1$d / %2$d</string>
+    <string name="device_sync_action_free_space">Liberar espacio (%1$d)</string>
+    <string name="device_sync_free_space_dialog_title">Liberar espacio</string>
+    <string name="device_sync_free_space_dialog_message">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</string>
+    <string name="device_sync_free_space_confirm">Borrar del dispositivo</string>
+    <string name="device_sync_free_space_cancel">Cancelar</string>
+    <string name="device_sync_free_space_in_progress">Liberando espacio…</string>
+    <string name="device_sync_preview_back">Volver</string>
+    <string name="device_sync_preview_open_detail">Detalles</string>
+    <string name="device_sync_preview_video_unsupported">Reproducción de vídeo no disponible en este sistema</string>
 </resources>

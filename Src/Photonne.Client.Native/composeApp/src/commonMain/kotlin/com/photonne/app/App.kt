@@ -1342,7 +1342,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.DeviceSync ->
                         com.photonne.app.ui.devicesync.DeviceSyncScreen(
                             viewModel = deviceSyncViewModel,
-                            gallery = deviceGallery
+                            gallery = deviceGallery,
+                            onOpenAsset = { item ->
+                                assetDetail = AssetDetailContext(
+                                    items = listOf(item),
+                                    startIndex = 0,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
                         )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,

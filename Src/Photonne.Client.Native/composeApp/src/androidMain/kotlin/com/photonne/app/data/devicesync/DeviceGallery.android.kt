@@ -51,6 +51,18 @@ actual class DeviceGallery(private val context: Context) {
             )
         }
 
+    actual suspend fun deleteFile(media: DeviceMedia): Boolean =
+        withContext(Dispatchers.IO) {
+            val uri = runCatching { Uri.parse(media.uri) }.getOrNull() ?: return@withContext false
+            // SAF files picked through a tree URI can be deleted via
+            // DocumentsContract when the user granted write access; older
+            // grants only have read, in which case this returns false and
+            // the UI surfaces a re-pick prompt.
+            runCatching {
+                DocumentsContract.deleteDocument(context.contentResolver, uri)
+            }.getOrDefault(false)
+        }
+
     actual suspend fun listMedia(folder: DeviceFolderRef): List<DeviceMedia> =
         withContext(Dispatchers.IO) {
             val parsed = Uri.parse(folder.uri)
@@ -147,8 +159,10 @@ actual fun rememberDeviceFolderPicker(
             return@rememberLauncherForActivityResult
         }
         // Persist the grant so the next app launch can reopen the
-        // tree without re-prompting.
-        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        // tree without re-prompting. Write access is required for the
+        // "Free up space" flow to delete synced files in-place.
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         runCatching { context.contentResolver.takePersistableUriPermission(uri, flags) }
         scope.launch {
             val ref = withContext(Dispatchers.IO) {

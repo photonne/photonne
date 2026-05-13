@@ -62,6 +62,13 @@ expect class DeviceGallery {
     fun thumbnailModel(media: DeviceMedia): String
 
     /**
+     * Delete [media] from the device. Returns true if the file is no
+     * longer present afterwards. Used by the "Free up space" flow
+     * after we've confirmed the file is safely synced to the server.
+     */
+    suspend fun deleteFile(media: DeviceMedia): Boolean
+
+    /**
      * True when this platform is capable of folder picking + walking.
      * Used to gate the Device Sync entry point in the Más menu.
      */
