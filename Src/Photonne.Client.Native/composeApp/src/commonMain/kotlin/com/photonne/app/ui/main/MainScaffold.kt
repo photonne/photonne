@@ -66,6 +66,7 @@ import com.photonne.app.resources.action_rename
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_card_action_leave
 import com.photonne.app.resources.albums_action_filters
+import com.photonne.app.resources.albums_action_search
 import com.photonne.app.resources.folders_action_filters
 import com.photonne.app.resources.archive_action_unarchive
 import com.photonne.app.resources.archive_action_unarchive_all
@@ -591,11 +592,19 @@ private fun SelectionLabel(text: String, color: Color = Color.Unspecified) {
 @Composable
 fun AlbumsListTopBar(
     onCreateAlbum: () -> Unit,
-    onOpenFilters: () -> Unit
+    onOpenFilters: () -> Unit,
+    isSearchActive: Boolean = false,
+    onToggleSearch: () -> Unit = {}
 ) {
     TopAppBar(
         title = { Text("Álbumes", style = MaterialTheme.typography.titleMedium) },
         actions = {
+            IconButton(onClick = onToggleSearch) {
+                Icon(
+                    imageVector = if (isSearchActive) Icons.Filled.Search else Icons.Outlined.Search,
+                    contentDescription = stringResource(Res.string.albums_action_search)
+                )
+            }
             IconButton(onClick = onOpenFilters) {
                 Icon(
                     Icons.Outlined.Tune,

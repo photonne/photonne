@@ -23,35 +23,49 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.albums_action_search
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.albums_empty_subtitle
 import com.photonne.app.resources.albums_empty_title
 import com.photonne.app.resources.albums_my_links_empty
+import com.photonne.app.resources.albums_search_empty_subtitle
+import com.photonne.app.resources.albums_search_empty_title
+import com.photonne.app.resources.albums_search_placeholder
 import com.photonne.app.resources.albums_shared_empty
 import com.photonne.app.resources.albums_tab_mine
 import com.photonne.app.resources.albums_tab_my_links
@@ -74,6 +88,13 @@ fun AlbumsListScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         AlbumsTabBar(selected = state.selectedTab, onSelect = viewModel::selectTab)
+        if (state.isSearchActive) {
+            AlbumsSearchField(
+                query = state.searchQuery,
+                onQueryChange = viewModel::setSearchQuery,
+                onClose = viewModel::toggleSearch
+            )
+        }
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.albums.isEmpty() ->
@@ -91,6 +112,8 @@ fun AlbumsListScreen(
                             textAlign = TextAlign.Center
                         )
                     }
+                visible.isEmpty() && state.hasActiveQuery ->
+                    EmptySearchState(query = state.searchQuery.trim())
                 visible.isEmpty() -> EmptyAlbumsState(state.selectedTab)
                 else -> AlbumsContent(
                     albums = visible,
@@ -102,6 +125,47 @@ fun AlbumsListScreen(
             }
         }
     }
+}
+
+@Composable
+private fun AlbumsSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text(stringResource(Res.string.albums_search_placeholder)) },
+        singleLine = true,
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = {
+                if (query.isEmpty()) onClose() else onQueryChange("")
+            }) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.albums_action_search)
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .focusRequester(focusRequester)
+    )
+}
+
+@Composable
+private fun EmptySearchState(query: String) {
+    SharedEmptyState(
+        icon = Icons.Filled.Search,
+        title = stringResource(Res.string.albums_search_empty_title),
+        subtitle = stringResource(Res.string.albums_search_empty_subtitle, query)
+    )
 }
 
 @Composable

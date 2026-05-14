@@ -24,22 +24,33 @@ data class AlbumsUiState(
     val viewMode: AlbumViewMode = AlbumViewMode.Grid,
     val groupByYear: Boolean = false,
     val selectedAlbumId: String? = null,
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val errorMessage: String? = null
 ) {
     val isSelectionActive: Boolean get() = selectedAlbumId != null
 
+    val hasActiveQuery: Boolean get() = searchQuery.isNotBlank()
+
     val visibleAlbums: List<AlbumSummary> get() {
-        val filtered = when (selectedTab) {
+        val tabFiltered = when (selectedTab) {
             AlbumsTab.Mine -> albums.filter { it.isOwner && !it.isShared }
             AlbumsTab.Shared -> albums.filter { !it.isOwner || it.isShared }
             AlbumsTab.MyLinks -> albums.filter { it.isOwner && it.hasActiveShareLink }
         }
+        val queryFiltered = if (hasActiveQuery) {
+            val needle = searchQuery.trim().lowercase()
+            tabFiltered.filter { album ->
+                album.name.lowercase().contains(needle) ||
+                    (album.description?.lowercase()?.contains(needle) == true)
+            }
+        } else tabFiltered
         return when (sort) {
-            AlbumSort.Recent -> filtered.sortedByDescending { it.createdAt }
-            AlbumSort.Oldest -> filtered.sortedBy { it.createdAt }
-            AlbumSort.Name -> filtered.sortedBy { it.name.lowercase() }
+            AlbumSort.Recent -> queryFiltered.sortedByDescending { it.createdAt }
+            AlbumSort.Oldest -> queryFiltered.sortedBy { it.createdAt }
+            AlbumSort.Name -> queryFiltered.sortedBy { it.name.lowercase() }
         }
     }
 }
@@ -67,6 +78,17 @@ class AlbumsViewModel(
 
     fun selectTab(tab: AlbumsTab) {
         _state.update { it.copy(selectedTab = tab, selectedAlbumId = null) }
+    }
+
+    fun toggleSearch() {
+        _state.update {
+            if (it.isSearchActive) it.copy(isSearchActive = false, searchQuery = "")
+            else it.copy(isSearchActive = true)
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _state.update { it.copy(searchQuery = query) }
     }
 
     fun setSort(sort: AlbumSort) {

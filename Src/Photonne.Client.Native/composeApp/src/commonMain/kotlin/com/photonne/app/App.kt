@@ -534,13 +534,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 } else {
                     AlbumsListTopBar(
                         onCreateAlbum = { showCreateAlbum = true },
-                        onOpenFilters = { showAlbumsFilters = true }
+                        onOpenFilters = { showAlbumsFilters = true },
+                        isSearchActive = albumsState.isSearchActive,
+                        onToggleSearch = albumsViewModel::toggleSearch
                     )
                 }
             }
             selectedTab == MainTab.Albums -> AlbumsListTopBar(
                 onCreateAlbum = { showCreateAlbum = true },
-                onOpenFilters = { showAlbumsFilters = true }
+                onOpenFilters = { showAlbumsFilters = true },
+                isSearchActive = albumsState.isSearchActive,
+                onToggleSearch = albumsViewModel::toggleSearch
             )
             selectedTab == MainTab.Folders && selectedFolder != null &&
                 folderDetailState.isSelectionActive ->

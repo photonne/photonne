@@ -59,6 +59,10 @@
     <string name="albums_tab_my_links">Mis enlaces</string>
     <string name="albums_shared_empty">Aún no te han compartido álbumes.</string>
     <string name="albums_my_links_empty">No tienes álbumes con enlace público activo.</string>
+    <string name="albums_action_search">Buscar álbumes</string>
+    <string name="albums_search_placeholder">Buscar por nombre…</string>
+    <string name="albums_search_empty_title">Sin resultados</string>
+    <string name="albums_search_empty_subtitle">Ningún álbum coincide con "%1$s".</string>
 
     <string name="filters_title">Opciones de vista</string>
     <string name="filters_sort_label">Ordenar por</string>
