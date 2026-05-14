@@ -302,6 +302,8 @@
     <string name="account_profile_username">Username</string>
     <string name="account_profile_save">Save changes</string>
     <string name="account_profile_saved">Profile updated</string>
+    <string name="account_profile_summary_account_created">Account created</string>
+    <string name="account_profile_summary_last_login">Last access</string>
     <string name="account_security_current">Current password</string>
     <string name="account_security_new">New password</string>
     <string name="account_security_confirm">Confirm new password</string>
