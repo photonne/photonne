@@ -1,7 +1,11 @@
 package com.photonne.app.ui.upload
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,13 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -29,22 +37,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.upload_action_add
 import com.photonne.app.resources.upload_action_cancel_all
 import com.photonne.app.resources.upload_action_clear_finished
 import com.photonne.app.resources.upload_empty_subtitle
 import com.photonne.app.resources.upload_empty_title
-import com.photonne.app.resources.upload_status_cancelled
-import com.photonne.app.resources.upload_status_done
-import com.photonne.app.resources.upload_status_failed
-import com.photonne.app.resources.upload_status_queued
-import com.photonne.app.resources.upload_status_skipped
-import com.photonne.app.resources.upload_status_uploading
 import com.photonne.app.resources.upload_summary
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import org.jetbrains.compose.resources.stringResource
@@ -73,19 +82,21 @@ fun UploadScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Header(
-            state = state,
-            onPickFiles = onPickFiles,
-            onCancelAll = onCancelAll,
-            onClearFinished = onClearFinished
-        )
+        if (state.items.isNotEmpty()) {
+            Header(
+                state = state,
+                onPickFiles = onPickFiles,
+                onCancelAll = onCancelAll,
+                onClearFinished = onClearFinished
+            )
+        }
 
         state.pickerError?.let { error ->
             ErrorBanner(message = error, onDismiss = onDismissPickerError)
         }
 
         if (state.items.isEmpty()) {
-            EmptyState()
+            ClickableEmptyState(onPickFiles = onPickFiles)
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(state.items, key = { it.id }) { item ->
@@ -94,7 +105,9 @@ fun UploadScreen(
                         onRetry = { onRetry(item.id) },
                         onRemove = { onRemove(item.id) }
                     )
-                    HorizontalDivider()
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                    )
                 }
             }
         }
@@ -128,6 +141,7 @@ private fun Header(
                     strokeWidth = 2.dp
                 )
             }
+            Spacer(Modifier.weight(1f))
             if (state.pendingCount > 0) {
                 TextButton(onClick = onCancelAll) {
                     Text(stringResource(Res.string.upload_action_cancel_all))
@@ -139,29 +153,34 @@ private fun Header(
                 }
             }
         }
-        if (state.items.isNotEmpty()) {
-            Text(
-                stringResource(
-                    Res.string.upload_summary,
-                    state.doneCount,
-                    state.skippedCount,
-                    state.failedCount,
-                    state.pendingCount
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            stringResource(
+                Res.string.upload_summary,
+                state.doneCount,
+                state.skippedCount,
+                state.failedCount,
+                state.pendingCount
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
     HorizontalDivider()
 }
 
 @Composable
-private fun EmptyState() {
+private fun ClickableEmptyState(onPickFiles: () -> Unit) {
     SharedEmptyState(
         icon = Icons.Outlined.AddPhotoAlternate,
         title = stringResource(Res.string.upload_empty_title),
-        subtitle = stringResource(Res.string.upload_empty_subtitle)
+        subtitle = stringResource(Res.string.upload_empty_subtitle),
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onPickFiles
+            )
     )
 }
 
@@ -197,88 +216,140 @@ private fun UploadRow(
     onRetry: () -> Unit,
     onRemove: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StatusBadge(item.status)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
-                Text(
-                    formatBytes(item.sizeBytes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (item.status == UploadStatus.Failed || item.status == UploadStatus.Cancelled) {
-                IconButton(onClick = onRetry) {
-                    Icon(Icons.Filled.Refresh, contentDescription = null)
-                }
-            }
-            if (item.status != UploadStatus.Uploading) {
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Filled.Close, contentDescription = null)
-                }
-            }
-        }
-        if (item.status == UploadStatus.Uploading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-        item.errorMessage?.takeIf { item.status == UploadStatus.Failed }?.let { message ->
+        Thumbnail(item)
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
+                item.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            Text(
+                formatBytes(item.sizeBytes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (item.status == UploadStatus.Uploading) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .height(2.dp)
+                )
+            }
+            item.errorMessage?.takeIf { item.status == UploadStatus.Failed }?.let { message ->
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        RowAction(item = item, onRetry = onRetry, onRemove = onRemove)
+    }
+}
+
+@Composable
+private fun Thumbnail(item: UploadItem) {
+    val isImage = item.mimeType.startsWith("image/", ignoreCase = true)
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        if (isImage && item.bytes != null) {
+            AsyncImage(
+                model = item.bytes,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(
+                imageVector = if (isImage) Icons.Outlined.Image else Icons.Outlined.Videocam,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(24.dp)
+            )
+        }
+        when (item.status) {
+            UploadStatus.Done -> ThumbStatusOverlay(
+                Icons.Filled.CheckCircle,
+                Color(0xFF66BB6A)
+            )
+            UploadStatus.Skipped -> ThumbStatusOverlay(
+                Icons.Filled.CheckCircle,
+                Color.White.copy(alpha = 0.9f)
+            )
+            UploadStatus.Failed -> ThumbStatusOverlay(
+                Icons.Filled.ErrorOutline,
+                MaterialTheme.colorScheme.error
+            )
+            UploadStatus.Cancelled -> ThumbStatusOverlay(
+                Icons.Filled.ErrorOutline,
+                Color.White.copy(alpha = 0.9f)
+            )
+            else -> Unit
         }
     }
 }
 
 @Composable
-private fun StatusBadge(status: UploadStatus) {
-    val (label, color) = when (status) {
-        UploadStatus.Queued -> stringResource(Res.string.upload_status_queued) to
-            MaterialTheme.colorScheme.onSurfaceVariant
-        UploadStatus.Uploading -> stringResource(Res.string.upload_status_uploading) to
-            MaterialTheme.colorScheme.primary
-        UploadStatus.Done -> stringResource(Res.string.upload_status_done) to
-            Color(0xFF2E7D32)
-        UploadStatus.Skipped -> stringResource(Res.string.upload_status_skipped) to
-            MaterialTheme.colorScheme.onSurfaceVariant
-        UploadStatus.Failed -> stringResource(Res.string.upload_status_failed) to
-            MaterialTheme.colorScheme.error
-        UploadStatus.Cancelled -> stringResource(Res.string.upload_status_cancelled) to
-            MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.height(24.dp)
+private fun BoxScope.ThumbStatusOverlay(icon: ImageVector, tint: Color) {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(Color.Black.copy(alpha = 0.35f)),
+        contentAlignment = Alignment.Center
     ) {
-        when (status) {
-            UploadStatus.Done -> Icon(
-                Icons.Filled.Check,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(16.dp)
-            )
-            UploadStatus.Failed -> Icon(
-                Icons.Filled.Warning,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(16.dp)
-            )
-            else -> Unit
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun RowAction(
+    item: UploadItem,
+    onRetry: () -> Unit,
+    onRemove: () -> Unit
+) {
+    when (item.status) {
+        UploadStatus.Uploading -> CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.dp
+        )
+        UploadStatus.Queued -> IconButton(onClick = onRemove) {
+            Icon(Icons.Filled.Close, contentDescription = null)
         }
-        Text(label, style = MaterialTheme.typography.labelMedium, color = color)
+        UploadStatus.Failed, UploadStatus.Cancelled -> Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onRetry) {
+                Icon(Icons.Filled.Refresh, contentDescription = null)
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Filled.Close, contentDescription = null)
+            }
+        }
+        UploadStatus.Done, UploadStatus.Skipped -> Unit
     }
 }
 

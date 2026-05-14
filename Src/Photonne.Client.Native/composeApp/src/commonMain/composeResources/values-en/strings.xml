@@ -212,8 +212,8 @@
     <string name="upload_action_add">Add files</string>
     <string name="upload_action_cancel_all">Cancel all</string>
     <string name="upload_action_clear_finished">Clear list</string>
-    <string name="upload_empty_title">Nothing to upload yet</string>
-    <string name="upload_empty_subtitle">Tap "Add files" to pick photos or videos from your device.</string>
+    <string name="upload_empty_title">Add photos and videos</string>
+    <string name="upload_empty_subtitle">Tap to pick files from your device</string>
     <string name="upload_summary">%1$d uploaded · %2$d already in library · %3$d failed · %4$d pending</string>
     <string name="upload_status_queued">Queued</string>
     <string name="upload_status_uploading">Uploading</string>

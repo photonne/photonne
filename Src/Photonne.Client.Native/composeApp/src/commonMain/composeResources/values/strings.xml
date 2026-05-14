@@ -212,8 +212,8 @@
     <string name="upload_action_add">Añadir archivos</string>
     <string name="upload_action_cancel_all">Cancelar todo</string>
     <string name="upload_action_clear_finished">Limpiar lista</string>
-    <string name="upload_empty_title">No hay nada que subir</string>
-    <string name="upload_empty_subtitle">Pulsa "Añadir archivos" para seleccionar fotos o vídeos del dispositivo.</string>
+    <string name="upload_empty_title">Añadir fotos y vídeos</string>
+    <string name="upload_empty_subtitle">Toca para seleccionar archivos desde tu dispositivo</string>
     <string name="upload_summary">%1$d subidos · %2$d ya en la biblioteca · %3$d fallidos · %4$d pendientes</string>
     <string name="upload_status_queued">En cola</string>
     <string name="upload_status_uploading">Subiendo</string>
