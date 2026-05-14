@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,15 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,6 +31,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -62,6 +61,7 @@ import com.photonne.app.resources.utilities_duplicates_confirm_message
 import com.photonne.app.resources.utilities_duplicates_confirm_title
 import com.photonne.app.resources.utilities_duplicates_empty
 import com.photonne.app.resources.utilities_duplicates_group_assets
+import com.photonne.app.resources.utilities_duplicates_open_detail
 import com.photonne.app.resources.utilities_duplicates_summary
 import com.photonne.app.ui.admin.humanBytes
 import org.jetbrains.compose.resources.stringResource
@@ -69,7 +69,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun UtilitiesDuplicatesScreen(
     viewModel: UtilitiesDuplicatesViewModel,
-    baseUrl: String
+    baseUrl: String,
+    onOpenAsset: (index: Int, items: List<TimelineItem>) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
@@ -165,6 +166,9 @@ fun UtilitiesDuplicatesScreen(
                                 baseUrl = baseUrl,
                                 onToggle = { assetId ->
                                     viewModel.toggleAsset(view.group.hash, assetId)
+                                },
+                                onOpenAsset = { index ->
+                                    onOpenAsset(index, view.group.assets)
                                 }
                             )
                         }
@@ -228,7 +232,8 @@ fun UtilitiesDuplicatesScreen(
 private fun DuplicateGroupCard(
     view: DuplicateGroupView,
     baseUrl: String,
-    onToggle: (String) -> Unit
+    onToggle: (String) -> Unit,
+    onOpenAsset: (index: Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -246,112 +251,138 @@ private fun DuplicateGroupCard(
                 style = MaterialTheme.typography.titleSmall
             )
             Spacer(Modifier.height(8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 96.dp),
-                contentPadding = PaddingValues(0.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(
-                        // Cap the inner grid so the outer LazyColumn keeps
-                        // controlling scroll; a fixed cap keeps mixed group
-                        // sizes from making the screen jumpy.
-                        when {
-                            view.group.assets.size <= 3 -> 110.dp
-                            view.group.assets.size <= 6 -> 220.dp
-                            else -> 330.dp
-                        }
-                    )
-            ) {
-                items(view.group.assets, key = { it.id }) { asset ->
-                    DuplicateAssetCell(
-                        asset = asset,
-                        baseUrl = baseUrl,
-                        isSelected = asset.id in view.selectedAssetIds,
-                        onClick = { onToggle(asset.id) }
-                    )
-                }
+            // Each copy is rendered as a row inside the group card so
+            // the full path is readable on one line of meta — and we
+            // avoid nesting a scrollable grid inside the outer
+            // LazyColumn.
+            view.group.assets.forEachIndexed { index, asset ->
+                if (index > 0) Spacer(Modifier.height(8.dp))
+                DuplicateAssetRow(
+                    asset = asset,
+                    baseUrl = baseUrl,
+                    isSelected = asset.id in view.selectedAssetIds,
+                    onToggle = { onToggle(asset.id) },
+                    onOpen = { onOpenAsset(index) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun DuplicateAssetCell(
+private fun DuplicateAssetRow(
     asset: TimelineItem,
     baseUrl: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onToggle: () -> Unit,
+    onOpen: () -> Unit
 ) {
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .aspectRatio(1f)
+            .fillMaxWidth()
             .background(
-                MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(6.dp)
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                } else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
             )
-            .border(
-                width = if (isSelected) 2.dp else 0.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                shape = RoundedCornerShape(6.dp)
-            )
-            .clickable(onClick = onClick)
+            .clickable(onClick = onToggle)
+            .padding(6.dp)
     ) {
-        if (asset.hasThumbnails) {
-            AsyncImage(
-                model = "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small",
-                contentDescription = asset.fileName,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        if (asset.isVideo) {
-            Icon(
-                imageVector = Icons.Filled.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(4.dp)
-                    .size(20.dp)
-            )
-        }
-        // Asset size badge — helps the user pick which copy to keep at
-        // a glance without opening the viewer.
         Box(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(4.dp)
-                .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(4.dp))
-                .padding(horizontal = 4.dp, vertical = 1.dp)
+                .size(72.dp)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(6.dp)
+                )
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else Color.Transparent,
+                    shape = RoundedCornerShape(6.dp)
+                )
         ) {
+            if (asset.hasThumbnails) {
+                AsyncImage(
+                    model = "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small",
+                    contentDescription = asset.fileName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            if (asset.isVideo) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(2.dp)
+                        .size(16.dp)
+                )
+            }
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(2.dp)
+                        .background(Color.White, shape = CircleShape)
+                        .size(18.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.size(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                humanBytes(asset.fileSize),
-                color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
+                asset.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.30f),
-                        shape = RoundedCornerShape(6.dp)
-                    )
+            Text(
+                humanBytes(asset.fileSize),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1
             )
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Folder,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(top = 1.dp)
+                        .size(12.dp)
+                )
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    asset.fullPath,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        IconButton(onClick = onOpen) {
             Icon(
-                imageVector = Icons.Filled.CheckCircle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .background(Color.White, shape = CircleShape)
-                    .size(20.dp)
+                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = stringResource(Res.string.utilities_duplicates_open_detail),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

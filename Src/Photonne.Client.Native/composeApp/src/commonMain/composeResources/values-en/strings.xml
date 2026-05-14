@@ -712,6 +712,7 @@
     <string name="utilities_duplicates_action_delete">Delete %1$d (%2$s)</string>
     <string name="utilities_duplicates_confirm_title">Move to trash</string>
     <string name="utilities_duplicates_confirm_message">%1$d items will be moved to your trash. You can restore them from the web app.</string>
+    <string name="utilities_duplicates_open_detail">Open detail</string>
 
     <!-- Large files -->
     <string name="utilities_large_files_count_label">Show</string>

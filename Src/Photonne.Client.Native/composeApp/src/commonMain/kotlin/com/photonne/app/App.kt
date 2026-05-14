@@ -1493,7 +1493,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.UtilitiesDuplicates ->
                         com.photonne.app.ui.utilities.UtilitiesDuplicatesScreen(
                             viewModel = utilitiesDuplicatesViewModel,
-                            baseUrl = apiBaseUrl
+                            baseUrl = apiBaseUrl,
+                            onOpenAsset = { index, items ->
+                                assetDetail = AssetDetailContext(
+                                    items = items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
                         )
                     MoreSubscreen.UtilitiesLargeFiles ->
                         com.photonne.app.ui.utilities.UtilitiesLargeFilesScreen(

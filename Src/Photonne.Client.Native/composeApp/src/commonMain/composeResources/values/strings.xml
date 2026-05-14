@@ -712,6 +712,7 @@
     <string name="utilities_duplicates_action_delete">Borrar %1$d (%2$s)</string>
     <string name="utilities_duplicates_confirm_title">Mover a la papelera</string>
     <string name="utilities_duplicates_confirm_message">%1$d elementos se moverán a tu papelera. Podrás restaurarlos desde la app web.</string>
+    <string name="utilities_duplicates_open_detail">Abrir detalle</string>
 
     <!-- Large files -->
     <string name="utilities_large_files_count_label">Mostrar</string>
