@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.skipAuthRefresh
 import com.photonne.app.data.auth.AuthRepository
+import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.di.PhotonneAppConfig
 import io.ktor.client.HttpClient
@@ -24,6 +25,7 @@ data class LoginUiState(
     val serverUrl: String = "",
     val username: String = "",
     val password: String = "",
+    val rememberMe: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null
 )
@@ -32,6 +34,7 @@ class LoginViewModel(
     private val authRepository: AuthRepository,
     private val tokenStorage: TokenStorage,
     private val serverUrlStore: ServerUrlStore,
+    private val rememberedCredentialsStore: RememberedCredentialsStore,
     private val httpClient: HttpClient,
     config: PhotonneAppConfig
 ) : ViewModel() {
@@ -41,12 +44,20 @@ class LoginViewModel(
 
     private fun initialState(config: PhotonneAppConfig): LoginUiState {
         val saved = serverUrlStore.get()
+        val remembered = rememberedCredentialsStore.get()
         return if (saved != null) {
-            LoginUiState(step = LoginStep.Credentials, serverUrl = saved)
+            LoginUiState(
+                step = LoginStep.Credentials,
+                serverUrl = saved,
+                username = remembered?.username.orEmpty(),
+                password = remembered?.password.orEmpty(),
+                rememberMe = remembered != null
+            )
         } else {
             LoginUiState(
                 step = LoginStep.ServerUrl,
-                serverUrl = config.apiBaseUrl.orEmpty()
+                serverUrl = config.apiBaseUrl.orEmpty(),
+                rememberMe = rememberedCredentialsStore.isEnabled()
             )
         }
     }
@@ -61,6 +72,10 @@ class LoginViewModel(
 
     fun onPasswordChange(value: String) {
         _state.value = _state.value.copy(password = value, errorMessage = null)
+    }
+
+    fun onRememberMeChange(value: Boolean) {
+        _state.value = _state.value.copy(rememberMe = value)
     }
 
     fun submitServerUrl() {
@@ -83,9 +98,13 @@ class LoginViewModel(
                 return@launch
             }
             serverUrlStore.set(normalized)
+            val remembered = rememberedCredentialsStore.get()
             _state.value = LoginUiState(
                 step = LoginStep.Credentials,
-                serverUrl = normalized
+                serverUrl = normalized,
+                username = remembered?.username.orEmpty(),
+                password = remembered?.password.orEmpty(),
+                rememberMe = remembered != null
             )
         }
     }
@@ -96,7 +115,8 @@ class LoginViewModel(
         val previous = serverUrlStore.get().orEmpty()
         _state.value = LoginUiState(
             step = LoginStep.ServerUrl,
-            serverUrl = previous
+            serverUrl = previous,
+            rememberMe = rememberedCredentialsStore.isEnabled()
         )
     }
 
@@ -116,9 +136,21 @@ class LoginViewModel(
         }
         _state.value = current.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
-            val result = authRepository.login(current.username.trim(), current.password)
+            val username = current.username.trim()
+            val result = authRepository.login(username, current.password)
             _state.value = if (result.isSuccess) {
-                LoginUiState(step = LoginStep.Credentials, serverUrl = serverUrlStore.get().orEmpty())
+                if (current.rememberMe) {
+                    rememberedCredentialsStore.save(username, current.password)
+                } else {
+                    rememberedCredentialsStore.clear()
+                }
+                LoginUiState(
+                    step = LoginStep.Credentials,
+                    serverUrl = serverUrlStore.get().orEmpty(),
+                    username = if (current.rememberMe) username else "",
+                    password = if (current.rememberMe) current.password else "",
+                    rememberMe = current.rememberMe
+                )
             } else {
                 _state.value.copy(
                     isSubmitting = false,

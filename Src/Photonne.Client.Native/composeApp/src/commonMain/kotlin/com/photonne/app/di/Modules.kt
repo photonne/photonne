@@ -16,6 +16,7 @@ import com.photonne.app.data.api.buildPhotonneHttpClient
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.map.MapRepository
@@ -88,6 +89,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { config }
     singleOf(::AuthStateHolder)
     single<TokenStorage> { SettingsTokenStorage(get()) }
+    single { RememberedCredentialsStore(get()) }
     single { ServerUrlStore(get()) }
     single<HttpClient> {
         val urlStore = get<ServerUrlStore>()

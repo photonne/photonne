@@ -1,9 +1,11 @@
 package com.photonne.app.ui.login
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,17 +13,30 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.AutofillNode
+import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalAutofill
+import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
@@ -107,6 +122,7 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     Text(
@@ -126,7 +142,18 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         label = { Text("Usuario o email") },
         enabled = !state.isSubmitting,
         singleLine = true,
-        modifier = Modifier.fillMaxWidth()
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            capitalization = KeyboardCapitalization.None,
+            autoCorrectEnabled = false,
+            imeAction = ImeAction.Next
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .autofill(
+                autofillTypes = listOf(AutofillType.Username, AutofillType.EmailAddress),
+                onFill = viewModel::onUsernameChange
+            )
     )
 
     OutlinedTextField(
@@ -140,8 +167,32 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
             keyboardType = KeyboardType.Password,
             imeAction = ImeAction.Go
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .autofill(
+                autofillTypes = listOf(AutofillType.Password),
+                onFill = viewModel::onPasswordChange
+            )
     )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !state.isSubmitting) {
+                viewModel.onRememberMeChange(!state.rememberMe)
+            }
+    ) {
+        Checkbox(
+            checked = state.rememberMe,
+            onCheckedChange = { viewModel.onRememberMeChange(it) },
+            enabled = !state.isSubmitting
+        )
+        Text(
+            "Recuérdame en este dispositivo",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
 
     state.errorMessage?.let {
         Text(it, color = MaterialTheme.colorScheme.error)
@@ -166,4 +217,43 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
     ) {
         Text("Cambiar servidor")
     }
+}
+
+/**
+ * Registers the field with Android's autofill framework so password managers
+ * (1Password, Bitwarden, Google, …) can detect and fill it. No-op on iOS and
+ * desktop, where Compose Multiplatform does not yet bridge to native autofill.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun Modifier.autofill(
+    autofillTypes: List<AutofillType>,
+    onFill: (String) -> Unit
+): Modifier {
+    val autofill = LocalAutofill.current
+    val autofillTree = LocalAutofillTree.current
+    val currentOnFill by rememberUpdatedState(onFill)
+    val autofillNode = remember(autofillTypes) {
+        AutofillNode(
+            autofillTypes = autofillTypes,
+            onFill = { value -> currentOnFill(value) }
+        )
+    }
+    DisposableEffect(autofillNode) {
+        autofillTree += autofillNode
+        onDispose { autofillTree.children.remove(autofillNode.id) }
+    }
+    return this
+        .onGloballyPositioned { coordinates ->
+            autofillNode.boundingBox = coordinates.boundsInWindow()
+        }
+        .onFocusChanged { focusState ->
+            autofill?.run {
+                if (focusState.isFocused) {
+                    requestAutofillForNode(autofillNode)
+                } else {
+                    cancelAutofillForNode(autofillNode)
+                }
+            }
+        }
 }
