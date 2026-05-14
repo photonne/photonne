@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.People
@@ -50,6 +51,7 @@ import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.device_sync_short_title
+import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
@@ -62,20 +64,13 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Library shortcut shown on the More tab. Each entry resolves to a
  * subscreen in [App] (Upload, Favorites, Archive, Trash, …).
- *
- * A `null` value for [labelRes]/[icon]/[onClick] marks an explicit
- * empty slot in the 3×3 grid — we keep one reserved slot so the grid
- * stays balanced while leaving room for a future entry without having
- * to reshuffle the layout.
  */
 private data class MoreShortcut(
     val key: String,
-    val labelRes: StringResource?,
-    val icon: ImageVector?,
-    val onClick: (() -> Unit)?
-) {
-    val isPlaceholder: Boolean get() = labelRes == null
-}
+    val labelRes: StringResource,
+    val icon: ImageVector,
+    val onClick: () -> Unit
+)
 
 @Composable
 fun MoreScreen(
@@ -85,6 +80,7 @@ fun MoreScreen(
     onOpenMap: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenPeople: () -> Unit,
+    onOpenExplore: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
@@ -97,22 +93,24 @@ fun MoreScreen(
         onOpenMap,
         onOpenFavorites,
         onOpenPeople,
+        onOpenExplore,
         onOpenArchived,
         onOpenTrash,
         onOpenUtilities,
         onOpenDeviceSync
     ) {
         listOf(
+            // Row 1: discovery / collections
             MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
             MoreShortcut("people", Res.string.people_title, Icons.Outlined.People, onOpenPeople),
             MoreShortcut("map", Res.string.map_title, Icons.Outlined.Map, onOpenMap),
-            MoreShortcut("upload", Res.string.upload_title, Icons.Outlined.AddPhotoAlternate, onOpenUpload),
+            // Row 2: library buckets
+            MoreShortcut("explore", Res.string.explore_title, Icons.Outlined.Explore, onOpenExplore),
             MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
             MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash),
+            // Row 3: ingestion / maintenance
+            MoreShortcut("upload", Res.string.upload_title, Icons.Outlined.AddPhotoAlternate, onOpenUpload),
             MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities),
-            // Reserved future slot — keeps the 3×3 grid balanced while
-            // leaving room for one more entry without reshuffling order.
-            MoreShortcut("future", null, null, null),
             MoreShortcut("devicesync", Res.string.device_sync_short_title, Icons.Outlined.CloudUpload, onOpenDeviceSync)
         )
     }
@@ -156,18 +154,12 @@ fun MoreScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 row.forEach { shortcut ->
-                    if (shortcut.isPlaceholder) {
-                        // Empty slot reserved for a future entry — keeps the
-                        // grid 3×3 while we figure out what goes there.
-                        Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
-                    } else {
-                        MoreShortcutCard(
-                            label = stringResource(shortcut.labelRes!!),
-                            icon = shortcut.icon!!,
-                            onClick = shortcut.onClick!!,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    MoreShortcutCard(
+                        label = stringResource(shortcut.labelRes),
+                        icon = shortcut.icon,
+                        onClick = shortcut.onClick,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 // Keep the last row balanced when the number of shortcuts doesn't fill it.
                 repeat(3 - row.size) {

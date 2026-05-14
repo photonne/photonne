@@ -709,4 +709,22 @@
 
     <!-- Device sync short label (used in the Más grid; the screen itself keeps device_sync_title) -->
     <string name="device_sync_short_title">Copia de seguridad</string>
+
+    <!-- Explore hub -->
+    <string name="explore_title">Explorar</string>
+    <string name="explore_section_memories">Recuerdos</string>
+    <string name="explore_section_memories_subtitle">Fotos de hace un año, dos años…</string>
+    <string name="explore_section_places">Lugares</string>
+    <string name="explore_section_places_subtitle">Ciudades y países</string>
+    <string name="explore_section_scenes">Escenas</string>
+    <string name="explore_section_scenes_subtitle">Playa, montaña, ciudad…</string>
+    <string name="explore_section_objects">Objetos</string>
+    <string name="explore_section_objects_subtitle">Coches, perros, comida…</string>
+
+    <string name="explore_memories_empty">No hay recuerdos por mostrar aún.</string>
+    <string name="explore_memories_group_count">%1$d fotos</string>
+    <string name="explore_places_coming_soon">Lugares estará disponible cuando se añada la geocodificación inversa al servidor.</string>
+    <string name="explore_scenes_empty">Aún no hay escenas detectadas. La clasificación de escenas se ejecuta en segundo plano.</string>
+    <string name="explore_objects_empty">Aún no hay objetos detectados. La detección de objetos se ejecuta en segundo plano.</string>
+    <string name="explore_label_count">%1$d fotos</string>
 </resources>

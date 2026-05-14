@@ -88,6 +88,11 @@ import com.photonne.app.resources.utilities_section_duplicates
 import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_title
+import com.photonne.app.resources.explore_title
+import com.photonne.app.resources.explore_section_memories
+import com.photonne.app.resources.explore_section_places
+import com.photonne.app.resources.explore_section_scenes
+import com.photonne.app.resources.explore_section_objects
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -169,6 +174,11 @@ private enum class MoreSubscreen {
     UtilitiesDuplicates,
     UtilitiesLargeFiles,
     UtilitiesLocations,
+    Explore,
+    ExploreMemories,
+    ExplorePlaces,
+    ExploreScenes,
+    ExploreObjects,
     AccountSettings,
     AccountProfile,
     AccountSecurity,
@@ -359,6 +369,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel = koinViewModel()
     val utilitiesLocationsViewModel:
         com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
+    val exploreFacetsViewModel:
+        com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
+    val memoriesViewModel:
+        com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
     val deviceGallery: com.photonne.app.data.devicesync.DeviceGallery =
         org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
@@ -654,6 +668,31 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_section_locations),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Explore ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.explore_title),
+                    onBack = { moreSubscreen = null }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreMemories ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.explore_section_memories),
+                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExplorePlaces ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.explore_section_places),
+                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreScenes ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.explore_section_scenes),
+                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreObjects ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.explore_section_objects),
+                    onBack = { moreSubscreen = MoreSubscreen.Explore }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
                 com.photonne.app.ui.main.MapTopBar(
@@ -1341,6 +1380,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
+                        onOpenExplore = { moreSubscreen = MoreSubscreen.Explore },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
@@ -1433,6 +1473,61 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.UtilitiesLocations ->
                         com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
                             viewModel = utilitiesLocationsViewModel
+                        )
+                    MoreSubscreen.Explore ->
+                        com.photonne.app.ui.explore.ExploreHubScreen(
+                            onOpen = { entry ->
+                                moreSubscreen = when (entry) {
+                                    com.photonne.app.ui.explore.ExploreEntry.Memories ->
+                                        MoreSubscreen.ExploreMemories
+                                    com.photonne.app.ui.explore.ExploreEntry.Places ->
+                                        MoreSubscreen.ExplorePlaces
+                                    com.photonne.app.ui.explore.ExploreEntry.Scenes ->
+                                        MoreSubscreen.ExploreScenes
+                                    com.photonne.app.ui.explore.ExploreEntry.Objects ->
+                                        MoreSubscreen.ExploreObjects
+                                }
+                            }
+                        )
+                    MoreSubscreen.ExploreMemories ->
+                        com.photonne.app.ui.explore.ExploreMemoriesScreen(
+                            viewModel = memoriesViewModel,
+                            baseUrl = apiBaseUrl,
+                            onGroupClick = { groupItems ->
+                                assetDetail = AssetDetailContext(
+                                    items = groupItems,
+                                    startIndex = 0,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        )
+                    MoreSubscreen.ExplorePlaces ->
+                        com.photonne.app.ui.explore.ExplorePlacesScreen()
+                    MoreSubscreen.ExploreScenes ->
+                        com.photonne.app.ui.explore.ExploreScenesScreen(
+                            viewModel = exploreFacetsViewModel,
+                            // Tapping a scene jumps to the Search tab pre-filtered
+                            // by that label — same flow as the PWA, where Explorar
+                            // is just a deep-linking surface for the search engine.
+                            onSceneClick = { label ->
+                                searchViewModel.clearAll()
+                                searchViewModel.toggleSceneLabel(label)
+                                selectedTab = MainTab.Search
+                            }
+                        )
+                    MoreSubscreen.ExploreObjects ->
+                        com.photonne.app.ui.explore.ExploreObjectsScreen(
+                            viewModel = exploreFacetsViewModel,
+                            onObjectClick = { label ->
+                                searchViewModel.clearAll()
+                                searchViewModel.toggleObjectLabel(label)
+                                selectedTab = MainTab.Search
+                            }
                         )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
