@@ -1,14 +1,22 @@
 package com.photonne.app.ui.folder
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +32,7 @@ import com.photonne.app.resources.folder_delete_title
 import com.photonne.app.resources.folder_field_name
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderFormDialog(
     title: String,
@@ -36,36 +45,45 @@ fun FolderFormDialog(
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     val canSubmit = name.trim().isNotEmpty() && !isSubmitting
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(title) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(Res.string.folder_field_name)) },
-                    singleLine = true,
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(Res.string.folder_field_name)) },
+                singleLine = true,
+                enabled = !isSubmitting,
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (errorMessage != null) {
+                Text(errorMessage, color = MaterialTheme.colorScheme.error)
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { onConfirm(name.trim()) }, enabled = canSubmit) {
+                    Text(confirmLabel)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name.trim()) }, enabled = canSubmit) {
-                Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
         }
-    )
+    }
 }
 
 @Composable

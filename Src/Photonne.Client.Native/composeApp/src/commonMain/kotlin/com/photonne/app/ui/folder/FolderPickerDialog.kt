@@ -14,12 +14,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +39,7 @@ import com.photonne.app.resources.folder_picker_empty
 import com.photonne.app.resources.folder_picker_root
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderPickerDialog(
     title: String,
@@ -63,13 +67,24 @@ fun FolderPickerDialog(
         mutableStateOf(includeRoot && initialSelectionId == null)
     }
     val canSubmit = !isSubmitting && (rootSelected || selectedId != null)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(title) },
-        text = {
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
             Column(
-                modifier = Modifier.heightIn(min = 200.dp, max = 420.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 460.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (candidates.isEmpty() && !includeRoot) {
@@ -122,30 +137,31 @@ fun FolderPickerDialog(
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = canSubmit,
-                onClick = {
-                    onConfirm(if (rootSelected) null else selectedId)
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
+                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                    Text(stringResource(Res.string.action_cancel))
                 }
-                Text(stringResource(Res.string.action_move))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    enabled = canSubmit,
+                    onClick = { onConfirm(if (rootSelected) null else selectedId) }
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(stringResource(Res.string.action_move))
+                }
             }
         }
-    )
+    }
 }
 
 @Composable

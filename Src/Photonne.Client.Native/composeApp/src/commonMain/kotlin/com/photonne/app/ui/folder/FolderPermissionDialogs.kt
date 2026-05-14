@@ -10,22 +10,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +52,7 @@ import com.photonne.app.resources.permissions_invite_role
 import com.photonne.app.resources.permissions_invite_title
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageFolderPermissionsDialog(
     state: FolderPermissionsUiState,
@@ -57,12 +61,24 @@ fun ManageFolderPermissionsDialog(
     onChangeRole: (AlbumPermission, AlbumMemberRole) -> Unit,
     onRevoke: (AlbumPermission) -> Unit
 ) {
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = { if (!state.isMutating) onDismiss() },
-        title = { Text(stringResource(Res.string.folder_permissions_title)) },
-        text = {
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                stringResource(Res.string.folder_permissions_title),
+                style = MaterialTheme.typography.titleLarge
+            )
             Column(
-                modifier = Modifier.heightIn(min = 140.dp, max = 360.dp).fillMaxWidth(),
+                modifier = Modifier.heightIn(min = 140.dp, max = 420.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 when {
@@ -93,20 +109,22 @@ fun ManageFolderPermissionsDialog(
                     Text(state.errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onInvite, enabled = !state.isMutating) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.height(4.dp))
-                Text(stringResource(Res.string.action_invite))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !state.isMutating) {
-                Text(stringResource(Res.string.action_close))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onInvite, enabled = !state.isMutating) {
+                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(Res.string.action_invite))
+                }
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = onDismiss, enabled = !state.isMutating) {
+                    Text(stringResource(Res.string.action_close))
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -139,6 +157,7 @@ private fun MemberRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RoleChip(role: AlbumMemberRole, onChangeRole: (AlbumMemberRole) -> Unit) {
     var open by remember { mutableStateOf(false) }
@@ -158,6 +177,7 @@ private fun RoleChip(role: AlbumMemberRole, onChangeRole: (AlbumMemberRole) -> U
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteFolderMemberDialog(
     candidates: List<ShareableUser>,
@@ -167,40 +187,50 @@ fun InviteFolderMemberDialog(
     onInvite: (ShareableUser, AlbumMemberRole) -> Unit
 ) {
     var role by remember { mutableStateOf(AlbumMemberRole.Viewer) }
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(stringResource(Res.string.permissions_invite_title)) },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(min = 200.dp, max = 360.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                stringResource(Res.string.permissions_invite_title),
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                stringResource(Res.string.permissions_invite_role),
+                style = MaterialTheme.typography.labelMedium
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    stringResource(Res.string.permissions_invite_role),
-                    style = MaterialTheme.typography.labelMedium
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    AlbumMemberRole.entries.forEach { option ->
-                        AssistChip(
-                            onClick = { role = option },
-                            label = { Text(option.label) },
-                            colors = if (option == role) {
-                                AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            } else AssistChipDefaults.assistChipColors()
-                        )
-                    }
+                AlbumMemberRole.entries.forEach { option ->
+                    AssistChip(
+                        onClick = { role = option },
+                        label = { Text(option.label) },
+                        colors = if (option == role) {
+                            AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else AssistChipDefaults.assistChipColors()
+                    )
                 }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    stringResource(Res.string.permissions_invite_people),
-                    style = MaterialTheme.typography.labelMedium
-                )
+            }
+            Text(
+                stringResource(Res.string.permissions_invite_people),
+                style = MaterialTheme.typography.labelMedium
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 360.dp)
+            ) {
                 if (candidates.isEmpty()) {
                     Text(
                         stringResource(Res.string.permissions_invite_empty),
@@ -220,19 +250,20 @@ fun InviteFolderMemberDialog(
                         }
                     }
                 }
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+            }
+            if (errorMessage != null) {
+                Text(errorMessage, color = MaterialTheme.colorScheme.error)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                    Text(stringResource(Res.string.action_close))
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_close))
-            }
         }
-    )
+    }
 }
 
 @Composable

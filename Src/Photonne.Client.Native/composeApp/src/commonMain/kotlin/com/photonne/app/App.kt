@@ -26,6 +26,10 @@ import com.photonne.app.resources.admin_section_settings
 import com.photonne.app.resources.admin_section_stats
 import com.photonne.app.resources.admin_section_system
 import com.photonne.app.resources.admin_section_users
+import com.photonne.app.resources.admin_libraries_action_new
+import com.photonne.app.resources.admin_libraries_edit_title
+import com.photonne.app.resources.admin_user_action_new
+import com.photonne.app.resources.admin_user_edit_title
 import com.photonne.app.resources.admin_settings_face_recognition
 import com.photonne.app.resources.admin_settings_image
 import com.photonne.app.resources.admin_settings_image_embedding
@@ -164,7 +168,9 @@ private enum class MoreSubscreen {
     AccountStorage,
     Administration,
     AdminUsers,
+    AdminUserEditor,
     AdminLibraries,
+    AdminLibraryEditor,
     AdminStats,
     AdminSettingsHub,
     AdminSettingsTasks,
@@ -457,6 +463,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
     }
     var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
+    var adminUserEditorId by remember { mutableStateOf<String?>(null) }
+    var adminLibraryEditorId by remember { mutableStateOf<String?>(null) }
     var showUnarchiveAll by remember { mutableStateOf(false) }
     var showRestoreAllTrash by remember { mutableStateOf(false) }
     var showEmptyTrash by remember { mutableStateOf(false) }
@@ -775,10 +783,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.admin_section_users),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminUserEditor ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(
+                        if (adminUserEditorId == null) Res.string.admin_user_action_new
+                        else Res.string.admin_user_edit_title
+                    ),
+                    onBack = {
+                        adminUserEditorId = null
+                        adminUsersViewModel.clearMessages()
+                        moreSubscreen = MoreSubscreen.AdminUsers
+                    },
+                )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminLibraries ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_libraries),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminLibraryEditor ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(
+                        if (adminLibraryEditorId == null) Res.string.admin_libraries_action_new
+                        else Res.string.admin_libraries_edit_title
+                    ),
+                    onBack = {
+                        adminLibraryEditorId = null
+                        adminLibrariesViewModel.clearMessages()
+                        moreSubscreen = MoreSubscreen.AdminLibraries
+                    },
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminStats ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -1551,16 +1583,54 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.AdminUsers ->
                         com.photonne.app.ui.admin.AdminUsersScreen(
-                            viewModel = adminUsersViewModel
+                            viewModel = adminUsersViewModel,
+                            onCreate = {
+                                adminUserEditorId = null
+                                adminUsersViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminUserEditor
+                            },
+                            onEdit = { user ->
+                                adminUserEditorId = user.id
+                                adminUsersViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminUserEditor
+                            }
+                        )
+                    MoreSubscreen.AdminUserEditor ->
+                        com.photonne.app.ui.admin.AdminUserEditorScreen(
+                            viewModel = adminUsersViewModel,
+                            userId = adminUserEditorId,
+                            onDone = {
+                                adminUserEditorId = null
+                                moreSubscreen = MoreSubscreen.AdminUsers
+                            }
                         )
                     MoreSubscreen.AdminLibraries -> {
                         val usersState by adminUsersViewModel.state.collectAsState()
                         LaunchedEffect(Unit) { adminUsersViewModel.ensureLoaded() }
                         com.photonne.app.ui.admin.AdminLibrariesScreen(
                             viewModel = adminLibrariesViewModel,
-                            knownUsers = usersState.users
+                            knownUsers = usersState.users,
+                            onCreate = {
+                                adminLibraryEditorId = null
+                                adminLibrariesViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
+                            },
+                            onEdit = { library ->
+                                adminLibraryEditorId = library.id
+                                adminLibrariesViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
+                            }
                         )
                     }
+                    MoreSubscreen.AdminLibraryEditor ->
+                        com.photonne.app.ui.admin.AdminLibraryEditorScreen(
+                            viewModel = adminLibrariesViewModel,
+                            libraryId = adminLibraryEditorId,
+                            onDone = {
+                                adminLibraryEditorId = null
+                                moreSubscreen = MoreSubscreen.AdminLibraries
+                            }
+                        )
                     MoreSubscreen.AdminStats ->
                         com.photonne.app.ui.admin.AdminStatsScreen(
                             viewModel = adminStatsViewModel

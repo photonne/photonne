@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -34,9 +36,10 @@ import com.photonne.app.resources.people_unnamed
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Dialog that lists every other person the caller has and returns the
- * one they tap. Used by the Merge flow on PersonDetail.
+ * Bottom sheet that lists every other person the caller has and returns
+ * the one they tap. Used by the Merge flow on PersonDetail.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PersonPickerDialog(
     people: List<Person>,
@@ -48,10 +51,19 @@ fun PersonPickerDialog(
     val candidates = remember(people, excludeId) {
         if (excludeId == null) people else people.filter { it.id != excludeId }
     }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.people_picker_title)) },
-        text = {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                stringResource(Res.string.people_picker_title),
+                style = MaterialTheme.typography.titleLarge
+            )
             if (candidates.isEmpty()) {
                 Text(
                     stringResource(Res.string.people_picker_empty),
@@ -60,7 +72,7 @@ fun PersonPickerDialog(
                 )
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 360.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 420.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(candidates, key = { it.id }) { person ->
@@ -72,14 +84,16 @@ fun PersonPickerDialog(
                     }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.action_cancel))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
             }
         }
-    )
+    }
 }
 
 @Composable

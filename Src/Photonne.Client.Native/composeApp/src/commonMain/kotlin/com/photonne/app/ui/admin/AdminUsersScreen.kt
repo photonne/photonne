@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -30,9 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -50,20 +46,15 @@ import com.photonne.app.resources.admin_user_role_user
 import com.photonne.app.resources.admin_users_empty
 import org.jetbrains.compose.resources.stringResource
 
-private sealed class AdminUserDialog {
-    object Create : AdminUserDialog()
-    data class Edit(val user: UserDto) : AdminUserDialog()
-    data class Delete(val user: UserDto) : AdminUserDialog()
-    data class ResetPassword(val user: UserDto) : AdminUserDialog()
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminUsersScreen(viewModel: AdminUsersViewModel) {
+fun AdminUsersScreen(
+    viewModel: AdminUsersViewModel,
+    onCreate: () -> Unit,
+    onEdit: (UserDto) -> Unit
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
-
-    var dialog by remember { mutableStateOf<AdminUserDialog?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -118,93 +109,19 @@ fun AdminUsersScreen(viewModel: AdminUsersViewModel) {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(state.users, key = { it.id }) { user ->
-                            UserRow(user = user, onClick = { dialog = AdminUserDialog.Edit(user) })
+                            UserRow(user = user, onClick = { onEdit(user) })
                         }
                     }
             }
         }
 
         ExtendedFloatingActionButton(
-            onClick = { dialog = AdminUserDialog.Create },
+            onClick = onCreate,
             icon = { Icon(Icons.Filled.Add, contentDescription = null) },
             text = { Text(stringResource(Res.string.admin_user_action_new)) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
-        )
-    }
-
-    when (val current = dialog) {
-        null -> Unit
-        AdminUserDialog.Create -> AdminUserFormDialog(
-            existing = null,
-            isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
-            onDismiss = {
-                dialog = null
-                viewModel.clearMessages()
-            },
-            onConfirmCreate = { input ->
-                viewModel.create(
-                    username = input.username,
-                    email = input.email,
-                    password = input.password.orEmpty(),
-                    firstName = input.firstName,
-                    lastName = input.lastName,
-                    role = input.role,
-                    isActive = input.isActive,
-                    storageQuotaBytes = input.storageQuotaBytes
-                ) { dialog = null }
-            },
-            onConfirmEdit = { _, _ -> }
-        )
-        is AdminUserDialog.Edit -> AdminUserFormDialog(
-            existing = current.user,
-            isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
-            onDismiss = {
-                dialog = null
-                viewModel.clearMessages()
-            },
-            onConfirmCreate = { _ -> },
-            onConfirmEdit = { id, input ->
-                viewModel.update(
-                    userId = id,
-                    username = input.username,
-                    email = input.email,
-                    firstName = input.firstName,
-                    lastName = input.lastName,
-                    role = input.role,
-                    isActive = input.isActive,
-                    storageQuotaBytes = input.storageQuotaBytes
-                ) { dialog = null }
-            },
-            onResetPassword = { dialog = AdminUserDialog.ResetPassword(current.user) },
-            onDelete = { dialog = AdminUserDialog.Delete(current.user) }
-        )
-        is AdminUserDialog.Delete -> AdminDeleteUserDialog(
-            user = current.user,
-            isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
-            onDismiss = {
-                dialog = null
-                viewModel.clearMessages()
-            },
-            onConfirm = {
-                viewModel.delete(current.user.id) { dialog = null }
-            }
-        )
-        is AdminUserDialog.ResetPassword -> AdminResetPasswordDialog(
-            user = current.user,
-            isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
-            onDismiss = {
-                dialog = null
-                viewModel.clearMessages()
-            },
-            onConfirm = { newPassword ->
-                viewModel.resetPassword(current.user.id, newPassword) { dialog = null }
-            }
         )
     }
 }

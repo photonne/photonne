@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -16,14 +17,18 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +63,7 @@ import com.photonne.app.resources.share_option_password_field
 import com.photonne.app.resources.share_title
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageSharesDialog(
     state: AlbumSharesUiState,
@@ -66,12 +72,21 @@ fun ManageSharesDialog(
     onRevoke: (token: String) -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = { if (!state.isMutating) onDismiss() },
-        title = { Text(stringResource(Res.string.share_title)) },
-        text = {
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(stringResource(Res.string.share_title), style = MaterialTheme.typography.titleLarge)
             Column(
-                modifier = Modifier.heightIn(min = 120.dp, max = 360.dp).fillMaxWidth(),
+                modifier = Modifier.heightIn(min = 120.dp, max = 420.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 when {
@@ -102,20 +117,22 @@ fun ManageSharesDialog(
                     Text(state.errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onCreate, enabled = !state.isMutating) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.height(4.dp))
-                Text(stringResource(Res.string.share_action_new))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !state.isMutating) {
-                Text(stringResource(Res.string.action_close))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onCreate, enabled = !state.isMutating) {
+                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(Res.string.share_action_new))
+                }
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = onDismiss, enabled = !state.isMutating) {
+                    Text(stringResource(Res.string.action_close))
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -166,6 +183,7 @@ private fun ShareLinkRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateShareDialog(
     isSubmitting: Boolean,
@@ -187,73 +205,84 @@ fun CreateShareDialog(
         (!passwordEnabled || password.trim().isNotEmpty()) &&
         (!maxViewsEnabled || maxViews.toIntOrNull()?.let { it > 0 } == true)
 
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(stringResource(Res.string.share_create_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ToggleRow(
-                    label = stringResource(Res.string.share_option_allow_downloads),
-                    checked = allowDownload,
-                    onCheckedChange = { allowDownload = it },
-                    enabled = !isSubmitting
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                stringResource(Res.string.share_create_title),
+                style = MaterialTheme.typography.titleLarge
+            )
+            ToggleRow(
+                label = stringResource(Res.string.share_option_allow_downloads),
+                checked = allowDownload,
+                onCheckedChange = { allowDownload = it },
+                enabled = !isSubmitting
+            )
+            ToggleRow(
+                label = stringResource(Res.string.share_option_password),
+                checked = passwordEnabled,
+                onCheckedChange = { passwordEnabled = it },
+                enabled = !isSubmitting
+            )
+            if (passwordEnabled) {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(stringResource(Res.string.share_option_password_field)) },
+                    singleLine = true,
+                    enabled = !isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                ToggleRow(
-                    label = stringResource(Res.string.share_option_password),
-                    checked = passwordEnabled,
-                    onCheckedChange = { passwordEnabled = it },
-                    enabled = !isSubmitting
-                )
-                if (passwordEnabled) {
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text(stringResource(Res.string.share_option_password_field)) },
-                        singleLine = true,
-                        enabled = !isSubmitting,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                ToggleRow(
-                    label = stringResource(Res.string.share_option_max_views),
-                    checked = maxViewsEnabled,
-                    onCheckedChange = { maxViewsEnabled = it },
-                    enabled = !isSubmitting
-                )
-                if (maxViewsEnabled) {
-                    OutlinedTextField(
-                        value = maxViews,
-                        onValueChange = { input -> maxViews = input.filter { it.isDigit() } },
-                        label = { Text(stringResource(Res.string.share_option_max_views_field)) },
-                        singleLine = true,
-                        enabled = !isSubmitting,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        if (passwordEnabled) password else null,
-                        allowDownload,
-                        if (maxViewsEnabled) maxViews.toIntOrNull() else null
-                    )
-                },
-                enabled = canSubmit
-            ) { Text(stringResource(Res.string.action_create)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
+            ToggleRow(
+                label = stringResource(Res.string.share_option_max_views),
+                checked = maxViewsEnabled,
+                onCheckedChange = { maxViewsEnabled = it },
+                enabled = !isSubmitting
+            )
+            if (maxViewsEnabled) {
+                OutlinedTextField(
+                    value = maxViews,
+                    onValueChange = { input -> maxViews = input.filter { it.isDigit() } },
+                    label = { Text(stringResource(Res.string.share_option_max_views_field)) },
+                    singleLine = true,
+                    enabled = !isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (errorMessage != null) {
+                Text(errorMessage, color = MaterialTheme.colorScheme.error)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        onConfirm(
+                            if (passwordEnabled) password else null,
+                            allowDownload,
+                            if (maxViewsEnabled) maxViews.toIntOrNull() else null
+                        )
+                    },
+                    enabled = canSubmit
+                ) { Text(stringResource(Res.string.action_create)) }
             }
         }
-    )
+    }
 }
 
 @Composable

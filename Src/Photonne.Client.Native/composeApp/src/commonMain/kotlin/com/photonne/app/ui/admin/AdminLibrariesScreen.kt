@@ -10,64 +10,48 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_close
-import com.photonne.app.resources.action_create
-import com.photonne.app.resources.action_delete
-import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_libraries_action_delete
 import com.photonne.app.resources.admin_libraries_action_new
 import com.photonne.app.resources.admin_libraries_action_permissions
 import com.photonne.app.resources.admin_libraries_action_scan
 import com.photonne.app.resources.admin_libraries_asset_count
-import com.photonne.app.resources.admin_libraries_cron_hint
-import com.photonne.app.resources.admin_libraries_delete_message
-import com.photonne.app.resources.admin_libraries_delete_title
-import com.photonne.app.resources.admin_libraries_edit_title
 import com.photonne.app.resources.admin_libraries_empty
-import com.photonne.app.resources.admin_libraries_field_cron
-import com.photonne.app.resources.admin_libraries_field_import_subfolders
-import com.photonne.app.resources.admin_libraries_field_name
-import com.photonne.app.resources.admin_libraries_field_path
 import com.photonne.app.resources.admin_libraries_last_scan
 import com.photonne.app.resources.admin_libraries_no_scan
 import com.photonne.app.resources.admin_libraries_permissions_empty
@@ -75,22 +59,16 @@ import com.photonne.app.resources.admin_libraries_permissions_title
 import com.photonne.app.resources.admin_libraries_scan_progress
 import org.jetbrains.compose.resources.stringResource
 
-private sealed class LibraryDialog {
-    object Create : LibraryDialog()
-    data class Edit(val lib: ExternalLibraryDto) : LibraryDialog()
-    data class Delete(val lib: ExternalLibraryDto) : LibraryDialog()
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminLibrariesScreen(
     viewModel: AdminLibrariesViewModel,
-    knownUsers: List<UserDto>
+    knownUsers: List<UserDto>,
+    onCreate: () -> Unit,
+    onEdit: (ExternalLibraryDto) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
-
-    var dialog by remember { mutableStateOf<LibraryDialog?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -170,8 +148,7 @@ fun AdminLibrariesScreen(
                         items(state.libraries, key = { it.id }) { lib ->
                             LibraryCard(
                                 library = lib,
-                                onEdit = { dialog = LibraryDialog.Edit(lib) },
-                                onDelete = { dialog = LibraryDialog.Delete(lib) },
+                                onEdit = { onEdit(lib) },
                                 onScan = { viewModel.startScan(lib.id) },
                                 onPermissions = {
                                     viewModel.openPermissions(lib.id, knownUsers)
@@ -183,65 +160,12 @@ fun AdminLibrariesScreen(
         }
 
         ExtendedFloatingActionButton(
-            onClick = { dialog = LibraryDialog.Create },
+            onClick = onCreate,
             icon = { Icon(Icons.Filled.Add, contentDescription = null) },
             text = { Text(stringResource(Res.string.admin_libraries_action_new)) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
-        )
-    }
-
-    when (val current = dialog) {
-        null -> Unit
-        LibraryDialog.Create -> LibraryFormDialog(
-            existing = null,
-            isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
-            onDismiss = {
-                dialog = null
-                viewModel.clearMessages()
-            },
-            onConfirm = { name, path, importSub, cron ->
-                viewModel.create(name, path, importSub, cron) { dialog = null }
-            }
-        )
-        is LibraryDialog.Edit -> LibraryFormDialog(
-            existing = current.lib,
-            isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
-            onDismiss = {
-                dialog = null
-                viewModel.clearMessages()
-            },
-            onConfirm = { name, path, importSub, cron ->
-                viewModel.update(current.lib.id, name, path, importSub, cron) { dialog = null }
-            }
-        )
-        is LibraryDialog.Delete -> AlertDialog(
-            onDismissRequest = { dialog = null },
-            title = { Text(stringResource(Res.string.admin_libraries_delete_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        Res.string.admin_libraries_delete_message,
-                        current.lib.name
-                    )
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.delete(current.lib.id) { dialog = null } },
-                    enabled = !state.isMutating
-                ) {
-                    Text(stringResource(Res.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { dialog = null }, enabled = !state.isMutating) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-            }
         )
     }
 
@@ -260,7 +184,6 @@ fun AdminLibrariesScreen(
 private fun LibraryCard(
     library: ExternalLibraryDto,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
     onScan: () -> Unit,
     onPermissions: () -> Unit
 ) {
@@ -331,114 +254,12 @@ private fun LibraryCard(
                 OutlinedButton(onClick = onPermissions, modifier = Modifier.weight(1f)) {
                     Text(stringResource(Res.string.admin_libraries_action_permissions))
                 }
-                OutlinedButton(onClick = onDelete) {
-                    Text(stringResource(Res.string.admin_libraries_action_delete))
-                }
             }
         }
     }
 }
 
-@Composable
-private fun LibraryFormDialog(
-    existing: ExternalLibraryDto?,
-    isSubmitting: Boolean,
-    errorMessage: String?,
-    onDismiss: () -> Unit,
-    onConfirm: (name: String, path: String, importSubfolders: Boolean, cron: String?) -> Unit
-) {
-    val isEdit = existing != null
-    var name by remember(existing?.id) { mutableStateOf(existing?.name.orEmpty()) }
-    var path by remember(existing?.id) { mutableStateOf(existing?.path.orEmpty()) }
-    var importSubfolders by remember(existing?.id) {
-        mutableStateOf(existing?.importSubfolders ?: true)
-    }
-    var cron by remember(existing?.id) { mutableStateOf(existing?.cronSchedule.orEmpty()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                stringResource(
-                    if (isEdit) Res.string.admin_libraries_edit_title
-                    else Res.string.admin_libraries_action_new
-                )
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(Res.string.admin_libraries_field_name)) },
-                    singleLine = true,
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = path,
-                    onValueChange = { path = it },
-                    label = { Text(stringResource(Res.string.admin_libraries_field_path)) },
-                    singleLine = true,
-                    enabled = !isSubmitting,
-                    keyboardOptions = KeyboardOptions(
-                        autoCorrectEnabled = false
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        stringResource(Res.string.admin_libraries_field_import_subfolders),
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Switch(
-                        checked = importSubfolders,
-                        onCheckedChange = { importSubfolders = it },
-                        enabled = !isSubmitting
-                    )
-                }
-                OutlinedTextField(
-                    value = cron,
-                    onValueChange = { cron = it },
-                    label = { Text(stringResource(Res.string.admin_libraries_field_cron)) },
-                    singleLine = true,
-                    enabled = !isSubmitting,
-                    supportingText = {
-                        Text(stringResource(Res.string.admin_libraries_cron_hint))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                errorMessage?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error)
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = !isSubmitting && name.isNotBlank() && path.isNotBlank(),
-                onClick = {
-                    onConfirm(name, path, importSubfolders, cron.takeIf { it.isNotBlank() })
-                }
-            ) {
-                Text(
-                    stringResource(
-                        if (isEdit) Res.string.action_save else Res.string.action_create
-                    )
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
-        }
-    )
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryPermissionsDialog(
     permissions: List<com.photonne.app.data.models.LibraryPermissionDto>,
@@ -447,11 +268,23 @@ private fun LibraryPermissionsDialog(
     onRevoke: (userId: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.admin_libraries_permissions_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                stringResource(Res.string.admin_libraries_permissions_title),
+                style = MaterialTheme.typography.titleLarge
+            )
+            Column(
+                modifier = Modifier.heightIn(min = 140.dp, max = 420.dp).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (permissions.isEmpty()) {
                     Text(
                         stringResource(Res.string.admin_libraries_permissions_empty),
@@ -472,7 +305,7 @@ private fun LibraryPermissionsDialog(
                                 )
                             }
                             TextButton(onClick = { onRevoke(perm.userId) }) {
-                                Text(stringResource(Res.string.action_delete))
+                                Text(stringResource(Res.string.admin_libraries_action_delete))
                             }
                         }
                     }
@@ -505,11 +338,14 @@ private fun LibraryPermissionsDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.action_close))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.action_close))
+                }
             }
         }
-    )
+    }
 }
