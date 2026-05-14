@@ -57,6 +57,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import com.photonne.app.resources.Res
 import androidx.compose.material3.TextButton
 import com.photonne.app.resources.action_collaborators
@@ -410,7 +412,7 @@ fun AssetSelectionBottomBar(
                 )
             },
             label = {
-                Text(
+                SelectionLabel(
                     stringResource(
                         if (allSelected) Res.string.selection_label_deselect_all
                         else Res.string.selection_label_select_all
@@ -428,7 +430,7 @@ fun AssetSelectionBottomBar(
                     contentDescription = stringResource(Res.string.action_share)
                 )
             },
-            label = { Text(stringResource(Res.string.selection_label_share)) }
+            label = { SelectionLabel(stringResource(Res.string.selection_label_share)) }
         )
         NavigationBarItem(
             selected = false,
@@ -440,7 +442,7 @@ fun AssetSelectionBottomBar(
                     contentDescription = stringResource(Res.string.selection_action_add_to_album)
                 )
             },
-            label = { Text(stringResource(Res.string.selection_label_add_to_album)) }
+            label = { SelectionLabel(stringResource(Res.string.selection_label_add_to_album)) }
         )
         if (!hasContextAction) {
             NavigationBarItem(
@@ -453,7 +455,7 @@ fun AssetSelectionBottomBar(
                         contentDescription = stringResource(Res.string.selection_action_download)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_download)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_download)) }
             )
         }
         if (onMove != null) {
@@ -467,7 +469,7 @@ fun AssetSelectionBottomBar(
                         contentDescription = stringResource(Res.string.folder_selection_move)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_move)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_move)) }
             )
         }
         if (onRemoveFromAlbum != null) {
@@ -481,7 +483,7 @@ fun AssetSelectionBottomBar(
                         contentDescription = stringResource(Res.string.selection_action_remove_from_album)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_remove)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_remove)) }
             )
         }
         if (onSetAsCover != null) {
@@ -495,7 +497,7 @@ fun AssetSelectionBottomBar(
                         contentDescription = stringResource(Res.string.asset_action_set_cover)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_set_cover)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_set_cover)) }
             )
         }
         if (onUnlink != null) {
@@ -509,7 +511,7 @@ fun AssetSelectionBottomBar(
                         contentDescription = stringResource(Res.string.people_action_unlink)
                     )
                 },
-                label = { Text(stringResource(Res.string.people_action_unlink)) }
+                label = { SelectionLabel(stringResource(Res.string.people_action_unlink)) }
             )
         }
         NavigationBarItem(
@@ -564,9 +566,25 @@ fun AssetSelectionBottomBar(
                     }
                 }
             },
-            label = { Text(stringResource(Res.string.selection_label_more)) }
+            label = { SelectionLabel(stringResource(Res.string.selection_label_more)) }
         )
     }
+}
+
+/**
+ * Label used by every selection bottom-bar item. Uses [MaterialTheme.typography.labelSmall]
+ * so longer Spanish labels (e.g. "Deseleccionar") fit on a single line, and clamps to one
+ * line with ellipsis as a safety net.
+ */
+@Composable
+private fun SelectionLabel(text: String, color: Color = Color.Unspecified) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -649,7 +667,7 @@ fun AlbumCardSelectionBottomBar(
                         contentDescription = stringResource(Res.string.action_collaborators)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_members)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_members)) }
             )
         }
         if (canEdit) {
@@ -663,7 +681,7 @@ fun AlbumCardSelectionBottomBar(
                         contentDescription = stringResource(Res.string.action_edit)
                     )
                 },
-                label = { Text(stringResource(Res.string.action_edit)) }
+                label = { SelectionLabel(stringResource(Res.string.action_edit)) }
             )
         }
         if (canLeave) {
@@ -677,7 +695,7 @@ fun AlbumCardSelectionBottomBar(
                         contentDescription = stringResource(Res.string.album_card_action_leave)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_leave)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_leave)) }
             )
         }
         if (canDelete) {
@@ -693,7 +711,7 @@ fun AlbumCardSelectionBottomBar(
                     )
                 },
                 label = {
-                    Text(
+                    SelectionLabel(
                         stringResource(Res.string.action_delete),
                         color = MaterialTheme.colorScheme.error
                     )
@@ -780,7 +798,7 @@ fun FolderCardSelectionBottomBar(
                         contentDescription = stringResource(Res.string.action_collaborators)
                     )
                 },
-                label = { Text(stringResource(Res.string.selection_label_members)) }
+                label = { SelectionLabel(stringResource(Res.string.selection_label_members)) }
             )
         }
         if (canRename) {
@@ -794,7 +812,7 @@ fun FolderCardSelectionBottomBar(
                         contentDescription = stringResource(Res.string.action_rename)
                     )
                 },
-                label = { Text(stringResource(Res.string.action_rename)) }
+                label = { SelectionLabel(stringResource(Res.string.action_rename)) }
             )
         }
         if (canDelete) {
@@ -810,7 +828,7 @@ fun FolderCardSelectionBottomBar(
                     )
                 },
                 label = {
-                    Text(
+                    SelectionLabel(
                         stringResource(Res.string.action_delete),
                         color = MaterialTheme.colorScheme.error
                     )
