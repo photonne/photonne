@@ -27,7 +27,7 @@ class GroupedAssetGridTest {
             item("b", "2026-05-08T10:00:00Z"),
             item("c", "2026-04-30T10:00:00Z"),
             item("d", "2026-04-01T10:00:00Z"),
-            item("e", "2025-12-31T23:59:59Z")
+            item("e", "2025-12-31T12:00:00Z")
         )
 
         val entries = groupTimelineEntries(items)

@@ -350,6 +350,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val peopleRepository: com.photonne.app.data.people.PeopleRepository = koinInject()
     val apiBaseUrl = com.photonne.app.data.api.rememberApiBaseUrl()
     val timelineViewModel: TimelineViewModel = koinViewModel()
+    val timelineZoomStore: com.photonne.app.data.settings.TimelineZoomStore = koinInject()
+    val timelineZoom by timelineZoomStore.value.collectAsState()
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
@@ -929,7 +931,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onUpload = {
                     selectedTab = MainTab.More
                     moreSubscreen = MoreSubscreen.Upload
-                }
+                },
+                currentZoom = timelineZoom,
+                onZoomSelected = timelineZoomStore::update
             )
         }
     }

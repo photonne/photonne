@@ -20,11 +20,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.data.settings.TimelineGrouping
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -58,14 +61,49 @@ internal fun monthLabelOf(instant: Instant): String {
     return formatLocalizedMonth(date)
 }
 
-internal fun groupTimelineEntries(items: List<TimelineItem>): List<TimelineEntry> {
+internal fun dayKeyOf(instant: Instant): String {
+    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val mm = date.monthNumber.toString().padStart(2, '0')
+    val dd = date.dayOfMonth.toString().padStart(2, '0')
+    return "${date.year}-$mm-$dd"
+}
+
+internal fun dayLabelOf(instant: Instant): String {
+    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    return formatLocalizedDay(date)
+}
+
+internal fun yearKeyOf(instant: Instant): String =
+    instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.year.toString()
+
+internal fun yearLabelOf(instant: Instant): String = yearKeyOf(instant)
+
+private fun keyOf(instant: Instant, grouping: TimelineGrouping): String = when (grouping) {
+    TimelineGrouping.Year -> yearKeyOf(instant)
+    TimelineGrouping.Month -> monthKeyOf(instant)
+    TimelineGrouping.Day -> dayKeyOf(instant)
+}
+
+private fun labelOf(instant: Instant, grouping: TimelineGrouping): String = when (grouping) {
+    TimelineGrouping.Year -> yearLabelOf(instant)
+    TimelineGrouping.Month -> monthLabelOf(instant)
+    TimelineGrouping.Day -> dayLabelOf(instant)
+}
+
+internal fun groupTimelineEntries(
+    items: List<TimelineItem>,
+    grouping: TimelineGrouping = TimelineGrouping.Month
+): List<TimelineEntry> {
     if (items.isEmpty()) return emptyList()
     val out = ArrayList<TimelineEntry>(items.size + 8)
     var lastKey: String? = null
     items.forEachIndexed { index, item ->
-        val key = monthKeyOf(item.fileCreatedAt)
+        val key = keyOf(item.fileCreatedAt, grouping)
         if (key != lastKey) {
-            out += TimelineEntry.Header(key = key, title = monthLabelOf(item.fileCreatedAt))
+            out += TimelineEntry.Header(
+                key = key,
+                title = labelOf(item.fileCreatedAt, grouping)
+            )
             lastKey = key
         }
         out += TimelineEntry.Cell(item = item, index = index)
@@ -123,24 +161,43 @@ private fun dedupKey(fileName: String, fileSize: Long): String = "$fileName|$fil
 
 /**
  * Finds the grid-entry index of the header that matches [target] (or the
- * closest later month). Useful for the "jump to date" affordance which
- * needs to scroll the grid to a specific position. Returns -1 when the
- * timeline is empty or no matching header exists.
+ * closest older bucket) for the given [grouping]. Used both by the
+ * "jump to date" affordance and to re-anchor the grid when the user
+ * switches zoom levels. Returns -1 when the timeline is empty or no
+ * matching header exists.
  */
-internal fun findEntryIndexForMonth(entries: List<TimelineEntry>, target: kotlinx.datetime.LocalDate): Int {
+internal fun findEntryIndexForDate(
+    entries: List<TimelineEntry>,
+    target: LocalDate,
+    grouping: TimelineGrouping
+): Int {
     if (entries.isEmpty()) return -1
-    val targetKey = "${target.year}-${target.monthNumber.toString().padStart(2, '0')}"
+    val targetKey = targetKeyFor(target, grouping)
     var fallback = -1
     entries.forEachIndexed { index, entry ->
         if (entry is TimelineEntry.Header) {
             if (entry.key == targetKey) return index
             // Headers are emitted in newest-first order (timeline descends).
-            // We pick the first header whose month is older or equal as a fallback.
+            // We pick the first header whose key is older or equal as a fallback.
             if (fallback == -1 && entry.key <= targetKey) fallback = index
         }
     }
     return fallback
 }
+
+private fun targetKeyFor(target: LocalDate, grouping: TimelineGrouping): String {
+    val mm = target.monthNumber.toString().padStart(2, '0')
+    val dd = target.dayOfMonth.toString().padStart(2, '0')
+    return when (grouping) {
+        TimelineGrouping.Year -> target.year.toString()
+        TimelineGrouping.Month -> "${target.year}-$mm"
+        TimelineGrouping.Day -> "${target.year}-$mm-$dd"
+    }
+}
+
+/** Backwards-compatible Month-grouping shim for the jump-to-date flow. */
+internal fun findEntryIndexForMonth(entries: List<TimelineEntry>, target: LocalDate): Int =
+    findEntryIndexForDate(entries, target, TimelineGrouping.Month)
 
 /**
  * Same square grid as [AssetGrid] but with non-sticky month/year
@@ -159,9 +216,11 @@ fun GroupedAssetGrid(
     isInitialLoading: Boolean = false,
     onLoadMore: () -> Unit = {},
     selectedIds: Set<String> = emptySet(),
-    onItemLongClick: ((Int) -> Unit)? = null
+    onItemLongClick: ((Int) -> Unit)? = null,
+    grouping: TimelineGrouping = TimelineGrouping.Month,
+    cellMinSize: Dp = 110.dp
 ) {
-    val entries = remember(items) { groupTimelineEntries(items) }
+    val entries = remember(items, grouping) { groupTimelineEntries(items, grouping) }
 
     val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
         derivedStateOf {
@@ -180,7 +239,7 @@ fun GroupedAssetGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 110.dp),
+        columns = GridCells.Adaptive(minSize = cellMinSize),
         state = gridState,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),

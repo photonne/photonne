@@ -31,23 +31,31 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.data.settings.TimelineZoomLevel
+import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
 import com.photonne.app.ui.devicesync.DeviceSyncViewModel
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineEntry
-import com.photonne.app.ui.grid.findEntryIndexForMonth
+import com.photonne.app.ui.grid.findEntryIndexForDate
 import com.photonne.app.ui.grid.groupTimelineEntries
 import com.photonne.app.ui.grid.mergeTimelineWithLocal
 import com.photonne.app.ui.theme.EmptyState
+import kotlin.math.abs
+import kotlin.math.ln
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +80,8 @@ fun TimelineScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
     val gridState = rememberLazyGridState()
+    val zoomStore: TimelineZoomStore = koinInject()
+    val zoomLevel by zoomStore.value.collectAsState()
     val memoriesViewModel: MemoriesViewModel = koinViewModel()
     val memoriesState by memoriesViewModel.state.collectAsState()
     val deviceSyncViewModel: DeviceSyncViewModel = koinViewModel()
@@ -128,7 +138,65 @@ fun TimelineScreen(
     val mergedItems = remember(state.items, localItems) {
         mergeTimelineWithLocal(state.items, localItems)
     }
-    val entries = remember(mergedItems) { groupTimelineEntries(mergedItems) }
+    val entries = remember(mergedItems, zoomLevel) {
+        groupTimelineEntries(mergedItems, zoomLevel.grouping)
+    }
+
+    // Continuously snapshot the topmost visible cell's date — used to
+    // re-anchor the grid when the zoom level changes (dropdown or pinch)
+    // so the user's place in time is preserved across re-groupings.
+    val anchorDate: LocalDate? by remember {
+        derivedStateOf {
+            val idx = gridState.firstVisibleItemIndex
+            if (entries.isEmpty()) return@derivedStateOf null
+            val end = minOf(idx + 8, entries.size - 1)
+            for (i in idx..end) {
+                val e = entries.getOrNull(i)
+                if (e is TimelineEntry.Cell) {
+                    return@derivedStateOf e.item.fileCreatedAt
+                        .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                }
+            }
+            null
+        }
+    }
+
+    var isFirstZoomComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(zoomLevel) {
+        if (isFirstZoomComposition) {
+            isFirstZoomComposition = false
+            return@LaunchedEffect
+        }
+        val target = anchorDate ?: return@LaunchedEffect
+        val newIdx = findEntryIndexForDate(entries, target, zoomLevel.grouping)
+        if (newIdx >= 0) {
+            runCatching { gridState.animateScrollToItem(newIdx) }
+        }
+    }
+
+    // Pinch state: during a two-finger zoom the grid's cellMinSize lerps
+    // toward the next zoom level for visual feedback, then snaps to a
+    // discrete level on gesture end. Grouping stays at zoomLevel.grouping
+    // for the duration of the gesture — only the size animates.
+    var gestureActive by remember { mutableStateOf(false) }
+    var gestureZoom by remember { mutableFloatStateOf(1f) }
+    val gestureTarget: TimelineZoomLevel = remember(zoomLevel, gestureZoom) {
+        if (gestureZoom > 1f) nextZoomLevelIn(zoomLevel)
+        else nextZoomLevelOut(zoomLevel)
+    }
+    val gestureFraction: Float = remember(gestureZoom) {
+        if (gestureZoom <= 0f) 0f
+        else (abs(ln(gestureZoom)) / ln(1.5f)).toFloat().coerceIn(0f, 1f)
+    }
+    val effectiveCellMinSize = if (!gestureActive) {
+        zoomLevel.cellMinSizeDp.dp
+    } else {
+        lerp(
+            zoomLevel.cellMinSizeDp.dp,
+            gestureTarget.cellMinSizeDp.dp,
+            gestureFraction
+        )
+    }
 
     val stickyHeader by remember(entries) {
         derivedStateOf {
@@ -156,7 +224,7 @@ fun TimelineScreen(
             return@LaunchedEffect
         }
         val targetDate = target.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val index = findEntryIndexForMonth(entries, targetDate)
+        val index = findEntryIndexForDate(entries, targetDate, zoomLevel.grouping)
         if (index >= 0) {
             runCatching { gridState.animateScrollToItem(index) }
         }
@@ -192,7 +260,34 @@ fun TimelineScreen(
                             }
                         )
                     }
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectTimelinePinch(
+                                    onZoomStart = {
+                                        gestureActive = true
+                                        gestureZoom = 1f
+                                    },
+                                    onZoom = { z -> gestureZoom = z },
+                                    onZoomEnd = { finalZoom ->
+                                        gestureActive = false
+                                        val fraction = if (finalZoom <= 0f) 0f
+                                        else (abs(ln(finalZoom)) / ln(1.5f))
+                                            .toFloat().coerceIn(0f, 1f)
+                                        if (fraction > 0.5f) {
+                                            val target = if (finalZoom > 1f)
+                                                nextZoomLevelIn(zoomLevel)
+                                            else nextZoomLevelOut(zoomLevel)
+                                            if (target != zoomLevel) {
+                                                zoomStore.update(target)
+                                            }
+                                        }
+                                        gestureZoom = 1f
+                                    }
+                                )
+                            }
+                    ) {
                         GroupedAssetGrid(
                             items = mergedItems,
                             baseUrl = apiBaseUrl,
@@ -225,6 +320,8 @@ fun TimelineScreen(
                                     }
                                 }
                             },
+                            grouping = zoomLevel.grouping,
+                            cellMinSize = effectiveCellMinSize,
                             modifier = Modifier.fillMaxSize()
                         )
                         stickyHeader?.let { header ->
@@ -268,6 +365,21 @@ fun TimelineScreen(
             onDismiss = { memorySheetItems = null }
         )
     }
+}
+
+/**
+ * Returns the next-most-zoomed-in level. Levels are ordered Year (most
+ * zoomed-out) → Month → DayLarge → DayMedium → DaySmall (most zoomed-in).
+ */
+private fun nextZoomLevelIn(current: TimelineZoomLevel): TimelineZoomLevel {
+    val all = TimelineZoomLevel.entries
+    return all.getOrNull(current.ordinal + 1) ?: current
+}
+
+/** Inverse of [nextZoomLevelIn]: returns the next-most-zoomed-out level. */
+private fun nextZoomLevelOut(current: TimelineZoomLevel): TimelineZoomLevel {
+    val all = TimelineZoomLevel.entries
+    return all.getOrNull(current.ordinal - 1) ?: current
 }
 
 @Composable

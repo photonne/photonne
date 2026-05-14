@@ -5,6 +5,7 @@ import com.photonne.app.data.actions.AssetActionsRepository
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.settings.ThemePreferenceStore
+import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.ui.folder.FolderDetailViewModel
 import com.photonne.app.ui.folder.FolderPermissionsViewModel
@@ -122,6 +123,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
         )
     }
     single { ThemePreferenceStore(get()) }
+    single { TimelineZoomStore(get()) }
     single { TimelineRepository(api = get()) }
     singleOf(::MemoriesRepository)
     singleOf(::AssetDetailRepository)

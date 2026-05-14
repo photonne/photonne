@@ -29,6 +29,13 @@
     <string name="timeline_memories_one_year_ago">1 year ago</string>
     <string name="timeline_memories_years_ago">%1$d years ago</string>
 
+    <string name="timeline_zoom_action">Grid size</string>
+    <string name="timeline_zoom_year">Year</string>
+    <string name="timeline_zoom_month">Month</string>
+    <string name="timeline_zoom_day_large">Day — large</string>
+    <string name="timeline_zoom_day_medium">Day — medium</string>
+    <string name="timeline_zoom_day_small">Day — small</string>
+
     <plurals name="selection_count">
         <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>

@@ -237,7 +237,9 @@ private fun MainNavigationBar(
 fun TimelineTopBar(
     onRefresh: () -> Unit,
     onJumpToDate: () -> Unit,
-    onUpload: () -> Unit
+    onUpload: () -> Unit,
+    currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
+    onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit
 ) {
     TopAppBar(
         title = {
@@ -254,6 +256,10 @@ fun TimelineTopBar(
                     contentDescription = stringResource(Res.string.upload_title)
                 )
             }
+            com.photonne.app.ui.timeline.TimelineZoomMenuAction(
+                current = currentZoom,
+                onSelect = onZoomSelected
+            )
             IconButton(onClick = onJumpToDate) {
                 Icon(
                     Icons.Outlined.CalendarMonth,
