@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -411,6 +412,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var selectedFolder by remember {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
     }
+    val folderBackStack = remember {
+        mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
+    }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
     var showCreateAlbum by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
@@ -536,7 +540,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     canDelete = folder.isOwner,
                     canManageMembers = folder.isOwner,
                     canMove = folder.isOwner,
-                    onBack = { selectedFolder = null },
+                    onBack = {
+                        selectedFolder = if (folderBackStack.isNotEmpty()) {
+                            folderBackStack.removeAt(folderBackStack.lastIndex)
+                        } else null
+                    },
                     onEdit = { showEditFolder = true },
                     onMove = { showMoveFolder = true },
                     onDelete = { showDeleteFolder = true },
@@ -1069,7 +1077,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab = selectedTab,
             onTabSelected = { tab ->
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
-                if (tab == MainTab.Folders && selectedTab == MainTab.Folders) selectedFolder = null
+                if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
+                    selectedFolder = null
+                    folderBackStack.clear()
+                }
                 if (tab == MainTab.More && selectedTab == MainTab.More) {
                     moreSubscreen = null
                     selectedPerson = null
@@ -1211,6 +1222,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         folderDetailViewModel.toggleSelection(it.id)
                                     }
                                 }
+                            },
+                            onSubfolderClick = { subfolder ->
+                                folderBackStack.add(openedFolder)
+                                selectedFolder = subfolder
                             },
                             viewModel = folderDetailViewModel
                         )
@@ -2158,7 +2173,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 folderDetailViewModel.delete { folderId ->
                     showDeleteFolder = false
                     foldersViewModel.applyDelete(folderId)
-                    selectedFolder = null
+                    selectedFolder = if (folderBackStack.isNotEmpty()) {
+                        folderBackStack.removeAt(folderBackStack.lastIndex)
+                    } else null
                 }
             }
         )

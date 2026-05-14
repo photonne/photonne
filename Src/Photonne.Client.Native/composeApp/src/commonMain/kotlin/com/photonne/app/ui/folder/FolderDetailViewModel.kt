@@ -7,6 +7,8 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.TimelineItem
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +20,7 @@ data class FolderDetailUiState(
     val folderName: String? = null,
     val parentFolderId: String? = null,
     val items: List<TimelineItem> = emptyList(),
+    val subFolders: List<FolderSummary> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val errorMessage: String? = null,
@@ -37,7 +40,9 @@ class FolderDetailViewModel(
     val state: StateFlow<FolderDetailUiState> = _state.asStateFlow()
 
     fun open(folderId: String, name: String, parentFolderId: String?) {
-        if (_state.value.folderId == folderId && _state.value.items.isNotEmpty()) {
+        if (_state.value.folderId == folderId &&
+            (_state.value.items.isNotEmpty() || _state.value.subFolders.isNotEmpty())
+        ) {
             _state.update { it.copy(folderName = name, parentFolderId = parentFolderId) }
             return
         }
@@ -48,9 +53,22 @@ class FolderDetailViewModel(
             isLoading = true
         )
         viewModelScope.launch {
-            runCatching { repository.assets(folderId) }
-                .onSuccess { items ->
-                    _state.update { it.copy(items = items, isLoading = false) }
+            runCatching {
+                val assets = async { repository.assets(folderId) }
+                val details = async {
+                    runCatching { repository.get(folderId) }.getOrNull()
+                }
+                awaitAll(assets, details)
+                assets.await() to details.await()
+            }
+                .onSuccess { (items, details) ->
+                    _state.update {
+                        it.copy(
+                            items = items,
+                            subFolders = details?.subFolders.orEmpty(),
+                            isLoading = false
+                        )
+                    }
                 }
                 .onFailure { error ->
                     _state.update {

@@ -104,9 +104,7 @@ class FoldersViewModel(
                     val sort = _state.value.sort
                     val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
                     val shared = sortFolders(folders.filter { isSharedFolder(it) }, sort)
-                    val libRoots = folders
-                        .filter { it.externalLibraryId != null && it.parentFolderId == null }
-                        .associateBy { it.externalLibraryId!! }
+                    val libRoots = resolveLibraryRoots(folders)
                     _state.update {
                         it.copy(
                             personalFolders = personal,
@@ -265,6 +263,17 @@ private fun sortLibraries(
 ): List<ExternalLibraryDto> = when (sort) {
     FolderSort.Name -> libs.sortedBy { it.name.lowercase() }
     FolderSort.AssetCount -> libs.sortedByDescending { it.assetCount }
+}
+
+private fun resolveLibraryRoots(folders: List<FolderSummary>): Map<String, FolderSummary> {
+    val byId = folders.associateBy { it.id }
+    return folders
+        .filter { folder ->
+            val libId = folder.externalLibraryId ?: return@filter false
+            val parentId = folder.parentFolderId ?: return@filter true
+            byId[parentId]?.externalLibraryId != libId
+        }
+        .associateBy { it.externalLibraryId!! }
 }
 
 private fun isSharedFolder(folder: FolderSummary): Boolean {

@@ -16,5 +16,6 @@ data class FolderSummary(
     val isShared: Boolean = false,
     val isOwner: Boolean = true,
     val sharedWithCount: Int = 0,
-    val externalLibraryId: String? = null
+    val externalLibraryId: String? = null,
+    val subFolders: List<FolderSummary> = emptyList()
 )
