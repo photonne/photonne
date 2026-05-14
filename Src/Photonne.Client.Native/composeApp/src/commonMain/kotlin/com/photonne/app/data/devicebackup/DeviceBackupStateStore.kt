@@ -1,4 +1,4 @@
-package com.photonne.app.data.devicesync
+package com.photonne.app.data.devicebackup
 
 import com.russhwolf.settings.Settings
 import kotlinx.serialization.encodeToString
@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
  * keeps the local store tiny and means switching servers / accounts
  * doesn't leave us with stale "synced" flags.
  */
-class DeviceSyncStateStore(private val settings: Settings) {
+class DeviceBackupStateStore(private val settings: Settings) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -39,7 +39,7 @@ class DeviceSyncStateStore(private val settings: Settings) {
     }
 
     private companion object {
-        const val KEY_FOLDER = "device_sync.folder"
-        const val KEY_BACKUP_ENABLED = "device_sync.backup_enabled"
+        const val KEY_FOLDER = "device_backup.folder"
+        const val KEY_BACKUP_ENABLED = "device_backup.backup_enabled"
     }
 }

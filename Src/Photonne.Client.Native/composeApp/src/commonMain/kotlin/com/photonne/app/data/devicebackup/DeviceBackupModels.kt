@@ -1,4 +1,4 @@
-package com.photonne.app.data.devicesync
+package com.photonne.app.data.devicebackup
 
 import kotlinx.serialization.Serializable
 

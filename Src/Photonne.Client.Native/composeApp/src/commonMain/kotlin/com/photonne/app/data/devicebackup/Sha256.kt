@@ -1,4 +1,4 @@
-package com.photonne.app.data.devicesync
+package com.photonne.app.data.devicebackup
 
 /**
  * Minimal incremental SHA-256 used by the iOS device-sync flow, where

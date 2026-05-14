@@ -12,5 +12,5 @@ actual fun platformModule() = module {
     single<Settings> { NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults) }
     single<HttpClientEngine> { Darwin.create() }
     single { AssetSharing() }
-    single { com.photonne.app.data.devicesync.DeviceGallery() }
+    single { com.photonne.app.data.devicebackup.DeviceGallery() }
 }

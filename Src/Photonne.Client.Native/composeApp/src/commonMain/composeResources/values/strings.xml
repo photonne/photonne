@@ -643,27 +643,27 @@
     <string name="admin_metadata_task_explanation">La extracción de metadatos forma parte del proceso de indexado del servidor. Lanza un indexado para reextraer EXIF, GPS y demás campos.</string>
 
     <!-- Backup (formerly Device sync) -->
-    <string name="device_sync_title">Copia de seguridad</string>
-    <string name="device_sync_intro">Elige una carpeta de tu dispositivo y verás todas sus fotos y vídeos. Después puedes sincronizar las que quieras con tu cuenta.</string>
-    <string name="device_sync_action_pick_folder">Elegir carpeta</string>
-    <string name="device_sync_folder_label">Carpeta</string>
-    <string name="device_sync_change_folder">Cambiar</string>
-    <string name="device_sync_total">%1$d elementos</string>
-    <string name="device_sync_empty_folder">No hay fotos ni vídeos en esta carpeta.</string>
-    <string name="device_sync_not_supported">La copia de seguridad del dispositivo aún no está disponible en esta plataforma.</string>
-    <string name="device_sync_action_refresh_states">Comprobar estado</string>
-    <string name="device_sync_action_select_all">Seleccionar todo</string>
-    <string name="device_sync_action_sync">Sincronizar (%1$d)</string>
-    <string name="device_sync_progress">%1$d / %2$d</string>
-    <string name="device_sync_action_free_space">Liberar espacio (%1$d)</string>
-    <string name="device_sync_free_space_dialog_title">Liberar espacio</string>
-    <string name="device_sync_free_space_dialog_message">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</string>
-    <string name="device_sync_free_space_confirm">Borrar del dispositivo</string>
-    <string name="device_sync_free_space_cancel">Cancelar</string>
-    <string name="device_sync_free_space_in_progress">Liberando espacio…</string>
-    <string name="device_sync_preview_back">Volver</string>
-    <string name="device_sync_preview_open_detail">Detalles</string>
-    <string name="device_sync_preview_video_unsupported">Reproducción de vídeo no disponible en este sistema</string>
+    <string name="device_backup_title">Copia de seguridad</string>
+    <string name="device_backup_intro">Elige una carpeta de tu dispositivo y verás todas sus fotos y vídeos. Después puedes sincronizar las que quieras con tu cuenta.</string>
+    <string name="device_backup_action_pick_folder">Elegir carpeta</string>
+    <string name="device_backup_folder_label">Carpeta</string>
+    <string name="device_backup_change_folder">Cambiar</string>
+    <string name="device_backup_total">%1$d elementos</string>
+    <string name="device_backup_empty_folder">No hay fotos ni vídeos en esta carpeta.</string>
+    <string name="device_backup_not_supported">La copia de seguridad del dispositivo aún no está disponible en esta plataforma.</string>
+    <string name="device_backup_action_refresh_states">Comprobar estado</string>
+    <string name="device_backup_action_select_all">Seleccionar todo</string>
+    <string name="device_backup_action_sync">Sincronizar (%1$d)</string>
+    <string name="device_backup_progress">%1$d / %2$d</string>
+    <string name="device_backup_action_free_space">Liberar espacio (%1$d)</string>
+    <string name="device_backup_free_space_dialog_title">Liberar espacio</string>
+    <string name="device_backup_free_space_dialog_message">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</string>
+    <string name="device_backup_free_space_confirm">Borrar del dispositivo</string>
+    <string name="device_backup_free_space_cancel">Cancelar</string>
+    <string name="device_backup_free_space_in_progress">Liberando espacio…</string>
+    <string name="device_backup_preview_back">Volver</string>
+    <string name="device_backup_preview_open_detail">Detalles</string>
+    <string name="device_backup_preview_video_unsupported">Reproducción de vídeo no disponible en este sistema</string>
 
     <!-- Backup home -->
     <string name="backup_enabled_label">Copia de seguridad</string>
@@ -714,9 +714,6 @@
     <string name="utilities_locations_shared_badge">Compartida</string>
     <string name="utilities_locations_external_badge">Biblioteca externa</string>
 
-    <!-- Device sync short label (used in the Más grid; the screen itself keeps device_sync_title) -->
-    <string name="device_sync_short_title">Copia de seguridad</string>
-
     <!-- Explore hub -->
     <string name="explore_title">Explorar</string>
     <string name="explore_section_memories">Recuerdos</string>
@@ -727,6 +724,23 @@
     <string name="explore_section_scenes_subtitle">Playa, montaña, ciudad…</string>
     <string name="explore_section_objects">Objetos</string>
     <string name="explore_section_objects_subtitle">Coches, perros, comida…</string>
+
+    <!-- Notifications -->
+    <string name="notifications_title">Notificaciones</string>
+    <string name="notifications_action_mark_all_read">Marcar todas como leídas</string>
+    <string name="notifications_filter_all">Todas</string>
+    <string name="notifications_filter_unread">No leídas</string>
+    <string name="notifications_empty_title">No hay notificaciones.</string>
+    <string name="notifications_empty_unread_title">No hay notificaciones sin leer.</string>
+    <string name="notifications_empty_subtitle">Aquí aparecerán los avisos sobre tu biblioteca.</string>
+    <string name="notifications_total">%1$d notificaciones en total</string>
+    <string name="notifications_pagination_page">Página %1$d de %2$d</string>
+    <string name="notifications_pagination_previous">Anterior</string>
+    <string name="notifications_pagination_next">Siguiente</string>
+    <string name="notifications_time_just_now">Ahora mismo</string>
+    <string name="notifications_time_minutes_ago">Hace %1$d min</string>
+    <string name="notifications_time_hours_ago">Hace %1$dh</string>
+    <string name="notifications_time_days_ago">Hace %1$dd</string>
 
     <string name="explore_memories_empty">No hay recuerdos por mostrar aún.</string>
     <string name="explore_memories_group_count">%1$d fotos</string>

@@ -382,6 +382,16 @@ interface PhotonneApi {
     suspend fun utilitiesLargeFiles(count: Int): List<com.photonne.app.data.models.TimelineItem>
     suspend fun utilitiesFolderTree(): List<com.photonne.app.data.models.FolderTreeNode>
 
+    // Notifications --------------------------------------------------------
+    suspend fun getNotifications(
+        page: Int = 1,
+        pageSize: Int = 20,
+        unreadOnly: Boolean = false
+    ): com.photonne.app.data.models.NotificationsPage
+    suspend fun getUnreadNotificationCount(): Int
+    suspend fun markNotificationRead(id: String)
+    suspend fun markAllNotificationsRead()
+
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
     }
@@ -2021,6 +2031,60 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun getNotifications(
+        page: Int,
+        pageSize: Int,
+        unreadOnly: Boolean
+    ): com.photonne.app.data.models.NotificationsPage {
+        val response: HttpResponse = client.get("$baseUrl/api/notifications") {
+            parameter("page", page)
+            parameter("pageSize", pageSize)
+            parameter("unreadOnly", unreadOnly)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Notifications fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getUnreadNotificationCount(): Int {
+        val response: HttpResponse = client.get("$baseUrl/api/notifications/unread-count")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Unread count fetch failed (${response.status.value})"
+            )
+        }
+        return response.body<com.photonne.app.data.models.UnreadNotificationCount>().count
+    }
+
+    override suspend fun markNotificationRead(id: String) {
+        val response: HttpResponse = client.patch("$baseUrl/api/notifications/$id/read")
+        if (response.status != HttpStatusCode.NoContent &&
+            response.status != HttpStatusCode.OK
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Mark notification read failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun markAllNotificationsRead() {
+        val response: HttpResponse = client.patch("$baseUrl/api/notifications/read-all")
+        if (response.status != HttpStatusCode.NoContent &&
+            response.status != HttpStatusCode.OK
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Mark all read failed (${response.status.value})"
+            )
+        }
     }
 
     /**

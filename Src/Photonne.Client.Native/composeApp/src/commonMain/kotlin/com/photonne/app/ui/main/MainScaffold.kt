@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -40,6 +41,8 @@ import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +70,7 @@ import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_card_action_leave
 import com.photonne.app.resources.albums_action_filters
 import com.photonne.app.resources.albums_action_search
+import com.photonne.app.resources.notifications_action_mark_all_read
 import com.photonne.app.resources.folders_action_filters
 import com.photonne.app.resources.folders_action_search
 import com.photonne.app.resources.archive_action_unarchive
@@ -149,11 +153,16 @@ fun MainScaffold(
     onTabSelected: (MainTab) -> Unit,
     topBar: @Composable () -> Unit,
     bottomBar: (@Composable () -> Unit)? = null,
+    floatingActionButton: @Composable () -> Unit = {},
+    moreTabUnreadCount: Int = 0,
     content: @Composable () -> Unit
 ) {
     Scaffold(
         topBar = topBar,
-        bottomBar = bottomBar ?: { MainNavigationBar(selectedTab, onTabSelected) }
+        bottomBar = bottomBar ?: {
+            MainNavigationBar(selectedTab, onTabSelected, moreTabUnreadCount)
+        },
+        floatingActionButton = floatingActionButton
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             content()
@@ -164,7 +173,8 @@ fun MainScaffold(
 @Composable
 private fun MainNavigationBar(
     selectedTab: MainTab,
-    onTabSelected: (MainTab) -> Unit
+    onTabSelected: (MainTab) -> Unit,
+    moreTabUnreadCount: Int = 0
 ) {
     NavigationBar {
         val timelineActive = selectedTab == MainTab.Timeline
@@ -222,10 +232,23 @@ private fun MainNavigationBar(
             selected = moreActive,
             onClick = { onTabSelected(MainTab.More) },
             icon = {
-                Icon(
-                    if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView,
-                    contentDescription = null
-                )
+                val moreIcon = if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView
+                if (moreTabUnreadCount > 0) {
+                    BadgedBox(
+                        badge = {
+                            Badge {
+                                Text(
+                                    if (moreTabUnreadCount > 99) "99+"
+                                    else moreTabUnreadCount.toString()
+                                )
+                            }
+                        }
+                    ) {
+                        Icon(moreIcon, contentDescription = null)
+                    }
+                } else {
+                    Icon(moreIcon, contentDescription = null)
+                }
             },
             label = { Text(stringResource(Res.string.tab_more)) }
         )
@@ -237,7 +260,6 @@ private fun MainNavigationBar(
 fun TimelineTopBar(
     onRefresh: () -> Unit,
     onJumpToDate: () -> Unit,
-    onUpload: () -> Unit,
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit
 ) {
@@ -250,12 +272,6 @@ fun TimelineTopBar(
             )
         },
         actions = {
-            IconButton(onClick = onUpload) {
-                Icon(
-                    Icons.Outlined.AddPhotoAlternate,
-                    contentDescription = stringResource(Res.string.upload_title)
-                )
-            }
             com.photonne.app.ui.timeline.TimelineZoomMenuAction(
                 current = currentZoom,
                 onSelect = onZoomSelected
@@ -1037,6 +1053,37 @@ fun SettingsTopBar(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationsTopBar(
+    title: String,
+    canMarkAllRead: Boolean,
+    onBack: () -> Unit,
+    onMarkAllRead: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_close)
+                )
+            }
+        },
+        title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
+        actions = {
+            IconButton(onClick = onMarkAllRead, enabled = canMarkAllRead) {
+                Icon(
+                    Icons.Outlined.DoneAll,
+                    contentDescription = stringResource(
+                        Res.string.notifications_action_mark_all_read
+                    )
+                )
             }
         }
     )

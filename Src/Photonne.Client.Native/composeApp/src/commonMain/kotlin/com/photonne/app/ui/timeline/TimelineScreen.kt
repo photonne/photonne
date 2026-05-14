@@ -41,7 +41,7 @@ import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
-import com.photonne.app.ui.devicesync.DeviceSyncViewModel
+import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineEntry
 import com.photonne.app.ui.grid.findEntryIndexForDate
@@ -84,8 +84,8 @@ fun TimelineScreen(
     val zoomLevel by zoomStore.value.collectAsState()
     val memoriesViewModel: MemoriesViewModel = koinViewModel()
     val memoriesState by memoriesViewModel.state.collectAsState()
-    val deviceSyncViewModel: DeviceSyncViewModel = koinViewModel()
-    val deviceSyncState by deviceSyncViewModel.state.collectAsState()
+    val deviceBackupViewModel: DeviceBackupViewModel = koinViewModel()
+    val deviceBackupState by deviceBackupViewModel.state.collectAsState()
     var memorySheetItems by remember { mutableStateOf<List<com.photonne.app.data.models.TimelineItem>?>(null) }
 
     // Drives the Memories carousel collapse: scrolling up consumes deltas to
@@ -131,9 +131,9 @@ fun TimelineScreen(
 
     // Only mix device entries in once backup is enabled — otherwise the
     // timeline reflects only what's actually on the server.
-    val localItems = remember(deviceSyncState.entries, deviceSyncState.isBackupEnabled) {
-        if (!deviceSyncState.isBackupEnabled) emptyList()
-        else deviceSyncViewModel.deviceTimelineItems()
+    val localItems = remember(deviceBackupState.entries, deviceBackupState.isBackupEnabled) {
+        if (!deviceBackupState.isBackupEnabled) emptyList()
+        else deviceBackupViewModel.deviceTimelineItems()
     }
     val mergedItems = remember(state.items, localItems) {
         mergeTimelineWithLocal(state.items, localItems)

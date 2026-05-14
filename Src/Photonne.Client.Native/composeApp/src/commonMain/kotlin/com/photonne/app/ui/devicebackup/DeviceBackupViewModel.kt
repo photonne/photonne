@@ -1,12 +1,12 @@
-package com.photonne.app.ui.devicesync
+package com.photonne.app.ui.devicebackup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.photonne.app.data.devicesync.DeviceFolderRef
-import com.photonne.app.data.devicesync.DeviceMedia
-import com.photonne.app.data.devicesync.DeviceMediaSyncState
-import com.photonne.app.data.devicesync.DeviceMediaType
-import com.photonne.app.data.devicesync.DeviceSyncRepository
+import com.photonne.app.data.devicebackup.DeviceFolderRef
+import com.photonne.app.data.devicebackup.DeviceMedia
+import com.photonne.app.data.devicebackup.DeviceMediaSyncState
+import com.photonne.app.data.devicebackup.DeviceMediaType
+import com.photonne.app.data.devicebackup.DeviceBackupRepository
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,17 +22,17 @@ import kotlinx.datetime.Instant
  * after we've hashed the file and asked the server, lazily, when
  * the user scrolls past it or explicitly requests a refresh.
  */
-data class DeviceSyncEntry(
+data class DeviceBackupEntry(
     val media: DeviceMedia,
     val syncState: DeviceMediaSyncState = DeviceMediaSyncState.Unknown,
     val isSelected: Boolean = false
 )
 
-data class DeviceSyncUiState(
+data class DeviceBackupUiState(
     val isSupported: Boolean = true,
     val isBackupEnabled: Boolean = false,
     val folder: DeviceFolderRef? = null,
-    val entries: List<DeviceSyncEntry> = emptyList(),
+    val entries: List<DeviceBackupEntry> = emptyList(),
     val isLoading: Boolean = false,
     val isCheckingHashes: Boolean = false,
     val isSyncing: Boolean = false,
@@ -57,7 +57,7 @@ data class DeviceSyncUiState(
      * the server, we can't tell whether they're already backed up,
      * and assuming "pending" would double-show every photo.
      */
-    val pendingEntries: List<DeviceSyncEntry> get() = entries.filter {
+    val pendingEntries: List<DeviceBackupEntry> get() = entries.filter {
         it.syncState is DeviceMediaSyncState.NotSynced ||
             it.syncState is DeviceMediaSyncState.Uploading ||
             it.syncState is DeviceMediaSyncState.Failed
@@ -73,17 +73,17 @@ data class SyncProgress(
     val currentName: String? = null
 )
 
-class DeviceSyncViewModel(
-    private val repository: DeviceSyncRepository
+class DeviceBackupViewModel(
+    private val repository: DeviceBackupRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
-        DeviceSyncUiState(
+        DeviceBackupUiState(
             isSupported = repository.isSupported,
             isBackupEnabled = repository.isBackupEnabled()
         )
     )
-    val state: StateFlow<DeviceSyncUiState> = _state.asStateFlow()
+    val state: StateFlow<DeviceBackupUiState> = _state.asStateFlow()
 
     init {
         // Eager-load the saved folder so the timeline merge can show
@@ -129,7 +129,7 @@ class DeviceSyncViewModel(
 
     /**
      * Re-list a folder we've already loaded once, merging new entries
-     * in and keeping the [DeviceSyncEntry.syncState] of anything we'd
+     * in and keeping the [DeviceBackupEntry.syncState] of anything we'd
      * already checked. Runs without toggling `isLoading` so the
      * existing grid stays visible during the re-scan — only the
      * initial load (empty entries) shows a spinner.
@@ -156,7 +156,7 @@ class DeviceSyncViewModel(
                                         media = media.copy(sha256 = existing.media.sha256)
                                     )
                                 } else {
-                                    DeviceSyncEntry(media = media)
+                                    DeviceBackupEntry(media = media)
                                 }
                             }
                         )
@@ -420,7 +420,7 @@ class DeviceSyncViewModel(
                     _state.update { current ->
                         current.copy(
                             isLoading = false,
-                            entries = items.map { DeviceSyncEntry(media = it) }
+                            entries = items.map { DeviceBackupEntry(media = it) }
                         )
                     }
                 }
@@ -490,8 +490,8 @@ class DeviceSyncViewModel(
         }
     }
 
-    /** Look up the [DeviceSyncEntry] backing a synthetic local timeline item. */
-    fun pendingEntryByUri(uri: String): DeviceSyncEntry? =
+    /** Look up the [DeviceBackupEntry] backing a synthetic local timeline item. */
+    fun pendingEntryByUri(uri: String): DeviceBackupEntry? =
         _state.value.entries.firstOrNull { it.media.uri == uri }
 
     /**
@@ -500,7 +500,7 @@ class DeviceSyncViewModel(
      * `AssetDetail` for [entry]. Only valid for entries we've already
      * matched against the server (i.e. with a `Synced` state).
      */
-    fun timelineItemFor(entry: DeviceSyncEntry): TimelineItem? {
+    fun timelineItemFor(entry: DeviceBackupEntry): TimelineItem? {
         val synced = entry.syncState as? DeviceMediaSyncState.Synced ?: return null
         val media = entry.media
         val instant = Instant.fromEpochMilliseconds(media.dateModifiedMillis)

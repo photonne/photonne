@@ -1,4 +1,4 @@
-package com.photonne.app.data.devicesync
+package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.upload.UploadRepository
@@ -17,11 +17,11 @@ import com.photonne.app.data.upload.UploadRepository
  *    [UploadRepository] so they reuse the rest of the app's upload
  *    queue, retry, and dedup-on-name handling.
  */
-class DeviceSyncRepository(
+class DeviceBackupRepository(
     private val gallery: DeviceGallery,
     private val api: PhotonneApi,
     private val uploads: UploadRepository,
-    private val stateStore: DeviceSyncStateStore
+    private val stateStore: DeviceBackupStateStore
 ) {
 
     val isSupported: Boolean get() = gallery.isSupported

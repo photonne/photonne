@@ -1,4 +1,4 @@
-package com.photonne.app.ui.devicesync
+package com.photonne.app.ui.devicebackup
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -53,36 +53,36 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.photonne.app.data.devicesync.DeviceFolderRef
-import com.photonne.app.data.devicesync.DeviceGallery
-import com.photonne.app.data.devicesync.DeviceMediaSyncState
-import com.photonne.app.data.devicesync.DeviceMediaType
-import com.photonne.app.data.devicesync.rememberDeviceFolderPicker
+import com.photonne.app.data.devicebackup.DeviceFolderRef
+import com.photonne.app.data.devicebackup.DeviceGallery
+import com.photonne.app.data.devicebackup.DeviceMediaSyncState
+import com.photonne.app.data.devicebackup.DeviceMediaType
+import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.device_sync_action_free_space
-import com.photonne.app.resources.device_sync_action_pick_folder
-import com.photonne.app.resources.device_sync_action_refresh_states
-import com.photonne.app.resources.device_sync_action_select_all
-import com.photonne.app.resources.device_sync_action_sync
-import com.photonne.app.resources.device_sync_change_folder
-import com.photonne.app.resources.device_sync_empty_folder
-import com.photonne.app.resources.device_sync_folder_label
-import com.photonne.app.resources.device_sync_free_space_cancel
-import com.photonne.app.resources.device_sync_free_space_confirm
-import com.photonne.app.resources.device_sync_free_space_dialog_message
-import com.photonne.app.resources.device_sync_free_space_dialog_title
-import com.photonne.app.resources.device_sync_free_space_in_progress
-import com.photonne.app.resources.device_sync_intro
-import com.photonne.app.resources.device_sync_not_supported
-import com.photonne.app.resources.device_sync_progress
-import com.photonne.app.resources.device_sync_total
+import com.photonne.app.resources.device_backup_action_free_space
+import com.photonne.app.resources.device_backup_action_pick_folder
+import com.photonne.app.resources.device_backup_action_refresh_states
+import com.photonne.app.resources.device_backup_action_select_all
+import com.photonne.app.resources.device_backup_action_sync
+import com.photonne.app.resources.device_backup_change_folder
+import com.photonne.app.resources.device_backup_empty_folder
+import com.photonne.app.resources.device_backup_folder_label
+import com.photonne.app.resources.device_backup_free_space_cancel
+import com.photonne.app.resources.device_backup_free_space_confirm
+import com.photonne.app.resources.device_backup_free_space_dialog_message
+import com.photonne.app.resources.device_backup_free_space_dialog_title
+import com.photonne.app.resources.device_backup_free_space_in_progress
+import com.photonne.app.resources.device_backup_intro
+import com.photonne.app.resources.device_backup_not_supported
+import com.photonne.app.resources.device_backup_progress
+import com.photonne.app.resources.device_backup_total
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceSyncScreen(
-    viewModel: DeviceSyncViewModel,
+fun BackupPendingScreen(
+    viewModel: DeviceBackupViewModel,
     gallery: DeviceGallery,
     onOpenAsset: (TimelineItem) -> Unit = {}
 ) {
@@ -96,15 +96,15 @@ fun DeviceSyncScreen(
     var previewStartUri by remember { mutableStateOf<String?>(null) }
 
     if (!state.isSupported) {
-        EmptyMessage(stringResource(Res.string.device_sync_not_supported))
+        EmptyMessage(stringResource(Res.string.device_backup_not_supported))
         return
     }
 
     val folder = state.folder
     if (folder == null) {
         EmptyState(
-            intro = stringResource(Res.string.device_sync_intro),
-            actionLabel = stringResource(Res.string.device_sync_action_pick_folder),
+            intro = stringResource(Res.string.device_backup_intro),
+            actionLabel = stringResource(Res.string.device_backup_action_pick_folder),
             onAction = pickFolder
         )
         return
@@ -158,7 +158,7 @@ fun DeviceSyncScreen(
                         CircularProgressIndicator()
                     }
                 state.entries.isEmpty() ->
-                    EmptyMessage(stringResource(Res.string.device_sync_empty_folder))
+                    EmptyMessage(stringResource(Res.string.device_backup_empty_folder))
                 else -> MediaGrid(
                     state = state,
                     thumbnailModel = viewModel::thumbnailModel,
@@ -187,7 +187,7 @@ fun DeviceSyncScreen(
                 text = {
                     Text(
                         stringResource(
-                            Res.string.device_sync_action_sync,
+                            Res.string.device_backup_action_sync,
                             state.syncableSelectedCount
                         )
                     )
@@ -248,21 +248,21 @@ private fun FreeUpSpaceDialog(
                 tint = MaterialTheme.colorScheme.error
             )
         },
-        title = { Text(stringResource(Res.string.device_sync_free_space_dialog_title)) },
+        title = { Text(stringResource(Res.string.device_backup_free_space_dialog_title)) },
         text = {
-            Text(stringResource(Res.string.device_sync_free_space_dialog_message, count))
+            Text(stringResource(Res.string.device_backup_free_space_dialog_message, count))
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
-                    stringResource(Res.string.device_sync_free_space_confirm),
+                    stringResource(Res.string.device_backup_free_space_confirm),
                     color = MaterialTheme.colorScheme.error
                 )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.device_sync_free_space_cancel))
+                Text(stringResource(Res.string.device_backup_free_space_cancel))
             }
         }
     )
@@ -292,7 +292,7 @@ private fun FolderHeader(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    stringResource(Res.string.device_sync_folder_label),
+                    stringResource(Res.string.device_backup_folder_label),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -303,13 +303,13 @@ private fun FolderHeader(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    stringResource(Res.string.device_sync_total, totalCount),
+                    stringResource(Res.string.device_backup_total, totalCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             TextButton(onClick = onChangeFolder) {
-                Text(stringResource(Res.string.device_sync_change_folder))
+                Text(stringResource(Res.string.device_backup_change_folder))
             }
         }
     }
@@ -317,7 +317,7 @@ private fun FolderHeader(
 
 @Composable
 private fun ActionBar(
-    state: DeviceSyncUiState,
+    state: DeviceBackupUiState,
     onRefreshSyncStates: () -> Unit,
     onStopRefresh: () -> Unit,
     onSelectAll: () -> Unit,
@@ -339,7 +339,7 @@ private fun ActionBar(
             ) {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text(stringResource(Res.string.device_sync_action_refresh_states))
+                Text(stringResource(Res.string.device_backup_action_refresh_states))
             }
             OutlinedButton(
                 onClick = if (state.selectedCount > 0) onClearSelection else onSelectAll,
@@ -348,7 +348,7 @@ private fun ActionBar(
             ) {
                 Text(
                     if (state.selectedCount > 0) "× ${state.selectedCount}"
-                    else stringResource(Res.string.device_sync_action_select_all)
+                    else stringResource(Res.string.device_backup_action_select_all)
                 )
             }
         }
@@ -367,7 +367,7 @@ private fun ActionBar(
                 Spacer(Modifier.size(8.dp))
                 Text(
                     stringResource(
-                        Res.string.device_sync_action_free_space,
+                        Res.string.device_backup_action_free_space,
                         state.syncedCount
                     ),
                     color = MaterialTheme.colorScheme.error
@@ -377,7 +377,7 @@ private fun ActionBar(
                 Spacer(Modifier.size(4.dp))
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
                 Text(
-                    stringResource(Res.string.device_sync_free_space_in_progress),
+                    stringResource(Res.string.device_backup_free_space_in_progress),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -399,7 +399,7 @@ private fun SyncProgressCard(progress: SyncProgress, isSyncing: Boolean) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
                 stringResource(
-                    Res.string.device_sync_progress,
+                    Res.string.device_backup_progress,
                     done,
                     progress.total
                 ),
@@ -425,10 +425,10 @@ private fun SyncProgressCard(progress: SyncProgress, isSyncing: Boolean) {
 
 @Composable
 private fun MediaGrid(
-    state: DeviceSyncUiState,
-    thumbnailModel: (com.photonne.app.data.devicesync.DeviceMedia) -> String,
-    onClick: (DeviceSyncEntry) -> Unit,
-    onLongClick: (DeviceSyncEntry) -> Unit
+    state: DeviceBackupUiState,
+    thumbnailModel: (com.photonne.app.data.devicebackup.DeviceMedia) -> String,
+    onClick: (DeviceBackupEntry) -> Unit,
+    onLongClick: (DeviceBackupEntry) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 96.dp),
@@ -453,7 +453,7 @@ private fun MediaGrid(
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun MediaCell(
-    entry: DeviceSyncEntry,
+    entry: DeviceBackupEntry,
     thumbnailModel: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit

@@ -28,10 +28,14 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -50,9 +54,10 @@ import com.photonne.app.resources.account_settings_title
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
-import com.photonne.app.resources.device_sync_short_title
+import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.map_title
+import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.resources.trash_title
@@ -64,12 +69,15 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * Library shortcut shown on the More tab. Each entry resolves to a
  * subscreen in [App] (Upload, Favorites, Archive, Trash, …).
+ * `badgeCount` renders a Material badge on the tile when > 0 — currently
+ * only used by the Notifications tile to mirror the bottom-nav badge.
  */
 private data class MoreShortcut(
     val key: String,
     val labelRes: StringResource,
     val icon: ImageVector,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
+    val badgeCount: Int = 0
 )
 
 @Composable
@@ -84,7 +92,9 @@ fun MoreScreen(
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
-    onOpenDeviceSync: () -> Unit,
+    onOpenDeviceBackup: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    notificationsUnreadCount: Int = 0,
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null
 ) {
@@ -97,8 +107,12 @@ fun MoreScreen(
         onOpenArchived,
         onOpenTrash,
         onOpenUtilities,
-        onOpenDeviceSync
+        onOpenNotifications,
+        notificationsUnreadCount
     ) {
+        // 3×3 destination grid. Configuration entries (Copia de seguridad,
+        // Configuración cuenta, Administración) live as rows below — that
+        // keeps "grid = content destinations, list = configuration".
         listOf(
             // Row 1: discovery / collections
             MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
@@ -108,10 +122,16 @@ fun MoreScreen(
             MoreShortcut("explore", Res.string.explore_title, Icons.Outlined.Explore, onOpenExplore),
             MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
             MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash),
-            // Row 3: ingestion / maintenance
+            // Row 3: ingestion / awareness
             MoreShortcut("upload", Res.string.upload_title, Icons.Outlined.AddPhotoAlternate, onOpenUpload),
-            MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities),
-            MoreShortcut("devicesync", Res.string.device_sync_short_title, Icons.Outlined.CloudUpload, onOpenDeviceSync)
+            MoreShortcut(
+                "notifications",
+                Res.string.notifications_title,
+                Icons.Outlined.Notifications,
+                onOpenNotifications,
+                badgeCount = notificationsUnreadCount
+            ),
+            MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities)
         )
     }
 
@@ -158,6 +178,7 @@ fun MoreScreen(
                         label = stringResource(shortcut.labelRes),
                         icon = shortcut.icon,
                         onClick = shortcut.onClick,
+                        badgeCount = shortcut.badgeCount,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -168,8 +189,16 @@ fun MoreScreen(
             }
         }
 
-        item("account-settings") {
+        item("devicebackup") {
             Spacer(Modifier.height(4.dp))
+            SettingsLikeRow(
+                icon = Icons.Outlined.CloudUpload,
+                label = stringResource(Res.string.device_backup_title),
+                onClick = onOpenDeviceBackup
+            )
+        }
+
+        item("account-settings") {
             SettingsLikeRow(
                 icon = Icons.Outlined.Settings,
                 label = stringResource(Res.string.account_settings_title),
@@ -244,12 +273,14 @@ private fun SettingsLikeRow(icon: ImageVector, label: String, onClick: () -> Uni
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MoreShortcutCard(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    badgeCount: Int = 0
 ) {
     Card(
         modifier = modifier
@@ -265,7 +296,19 @@ private fun MoreShortcutCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            IconPill(icon = icon)
+            if (badgeCount > 0) {
+                BadgedBox(
+                    badge = {
+                        Badge {
+                            Text(if (badgeCount > 99) "99+" else badgeCount.toString())
+                        }
+                    }
+                ) {
+                    IconPill(icon = icon)
+                }
+            } else {
+                IconPill(icon = icon)
+            }
             Spacer(Modifier.height(8.dp))
             Text(
                 text = label,

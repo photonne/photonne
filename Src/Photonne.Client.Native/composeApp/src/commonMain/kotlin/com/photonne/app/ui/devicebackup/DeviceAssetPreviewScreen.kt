@@ -1,4 +1,4 @@
-package com.photonne.app.ui.devicesync
+package com.photonne.app.ui.devicebackup
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,12 +30,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.photonne.app.data.devicesync.DeviceMediaSyncState
-import com.photonne.app.data.devicesync.DeviceMediaType
+import com.photonne.app.data.devicebackup.DeviceMediaSyncState
+import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.device_sync_preview_back
-import com.photonne.app.resources.device_sync_preview_open_detail
-import com.photonne.app.resources.device_sync_preview_video_unsupported
+import com.photonne.app.resources.device_backup_preview_back
+import com.photonne.app.resources.device_backup_preview_open_detail
+import com.photonne.app.resources.device_backup_preview_video_unsupported
 import com.photonne.app.ui.asset.VideoPlayer
 import com.photonne.app.ui.asset.ZoomablePagerImage
 import com.photonne.app.ui.asset.isVideoPlaybackSupported
@@ -54,11 +54,11 @@ private const val PAGER_DISABLE_THRESHOLD = 1.05f
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceAssetPreviewScreen(
-    entries: List<DeviceSyncEntry>,
+    entries: List<DeviceBackupEntry>,
     startIndex: Int,
-    thumbnailModel: (com.photonne.app.data.devicesync.DeviceMedia) -> String,
+    thumbnailModel: (com.photonne.app.data.devicebackup.DeviceMedia) -> String,
     onBack: () -> Unit,
-    onOpenDetail: (DeviceSyncEntry) -> Unit
+    onOpenDetail: (DeviceBackupEntry) -> Unit
 ) {
     if (entries.isEmpty()) {
         // Defensive — caller should gate on a non-empty list, but if
@@ -100,7 +100,7 @@ fun DeviceAssetPreviewScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(Res.string.device_sync_preview_back)
+                            contentDescription = stringResource(Res.string.device_backup_preview_back)
                         )
                     }
                 },
@@ -118,7 +118,7 @@ fun DeviceAssetPreviewScreen(
                             Icon(
                                 Icons.Outlined.Info,
                                 contentDescription = stringResource(
-                                    Res.string.device_sync_preview_open_detail
+                                    Res.string.device_backup_preview_open_detail
                                 )
                             )
                         }
@@ -146,8 +146,8 @@ fun DeviceAssetPreviewScreen(
 
 @Composable
 private fun DeviceAssetPage(
-    entry: DeviceSyncEntry,
-    thumbnailModel: (com.photonne.app.data.devicesync.DeviceMedia) -> String,
+    entry: DeviceBackupEntry,
+    thumbnailModel: (com.photonne.app.data.devicebackup.DeviceMedia) -> String,
     isCurrent: Boolean,
     onScaleChange: (Float) -> Unit
 ) {
@@ -174,7 +174,7 @@ private fun DeviceAssetPage(
                 )
                 if (!isVideoPlaybackSupported && isCurrent) {
                     Text(
-                        text = stringResource(Res.string.device_sync_preview_video_unsupported),
+                        text = stringResource(Res.string.device_backup_preview_video_unsupported),
                         color = Color.White,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(16.dp)

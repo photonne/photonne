@@ -2,6 +2,10 @@ package com.photonne.app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,8 +83,9 @@ import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.map_title
+import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.backup_pending_screen_title
-import com.photonne.app.resources.device_sync_title
+import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
@@ -162,8 +167,8 @@ private data class AddToAlbumState(
 
 private enum class MoreSubscreen {
     Upload,
-    DeviceSync,
-    DeviceSyncPending,
+    DeviceBackup,
+    DeviceBackupPending,
     Favorites,
     People,
     PeopleSuggestions,
@@ -184,6 +189,7 @@ private enum class MoreSubscreen {
     AccountSecurity,
     AccountAppearance,
     AccountStorage,
+    Notifications,
     Administration,
     AdminUsers,
     AdminUserEditor,
@@ -364,7 +370,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
-    val deviceSyncViewModel: com.photonne.app.ui.devicesync.DeviceSyncViewModel = koinViewModel()
+    val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
     val utilitiesLargeFilesViewModel:
@@ -375,7 +381,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
-    val deviceGallery: com.photonne.app.data.devicesync.DeviceGallery =
+    val notificationsViewModel:
+        com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
+    val notificationsState by notificationsViewModel.state.collectAsState()
+    val deviceGallery: com.photonne.app.data.devicebackup.DeviceGallery =
         org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
         koinViewModel()
@@ -641,15 +650,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     else null,
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSync ->
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceBackup ->
                 com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.device_sync_title),
+                    title = stringResource(Res.string.device_backup_title),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceSyncPending ->
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceBackupPending ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.backup_pending_screen_title),
-                    onBack = { moreSubscreen = MoreSubscreen.DeviceSync }
+                    onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Utilities ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -831,6 +840,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onEmptyTrash = { showEmptyTrash = true }
                 )
             }
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Notifications ->
+                com.photonne.app.ui.main.NotificationsTopBar(
+                    title = stringResource(Res.string.notifications_title),
+                    canMarkAllRead = notificationsState.unreadCount > 0 &&
+                        !notificationsState.isMarkingAllRead,
+                    onBack = { moreSubscreen = null },
+                    onMarkAllRead = notificationsViewModel::markAllRead
+                )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSettings ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_settings_title),
@@ -928,10 +945,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             else -> TimelineTopBar(
                 onRefresh = timelineViewModel::refresh,
                 onJumpToDate = { showJumpToDate = true },
-                onUpload = {
-                    selectedTab = MainTab.More
-                    moreSubscreen = MoreSubscreen.Upload
-                },
                 currentZoom = timelineZoom,
                 onZoomSelected = timelineZoomStore::update
             )
@@ -1189,6 +1202,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         else -> null
     }
 
+    // Primary upload entry point on Timeline — shown only when the timeline
+    // is the active tab and there's no overriding bottom bar (selection mode
+    // takes the bottom bar and would crash into the FAB).
+    val floatingActionButton: @Composable () -> Unit = {
+        if (selectedTab == MainTab.Timeline && bottomBar == null) {
+            FloatingActionButton(
+                onClick = {
+                    selectedTab = MainTab.More
+                    moreSubscreen = MoreSubscreen.Upload
+                }
+            ) {
+                Icon(
+                    Icons.Outlined.AddPhotoAlternate,
+                    contentDescription = stringResource(Res.string.upload_title)
+                )
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         MainScaffold(
             selectedTab = selectedTab,
@@ -1207,7 +1239,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 selectedTab = tab
             },
             topBar = topBar,
-            bottomBar = bottomBar
+            bottomBar = bottomBar,
+            floatingActionButton = floatingActionButton,
+            moreTabUnreadCount = notificationsState.unreadCount
         ) {
             when (selectedTab) {
                 MainTab.Timeline -> TimelineScreen(
@@ -1388,7 +1422,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
-                        onOpenDeviceSync = { moreSubscreen = MoreSubscreen.DeviceSync },
+                        onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                        onOpenNotifications = {
+                            moreSubscreen = MoreSubscreen.Notifications
+                        },
+                        notificationsUnreadCount = notificationsState.unreadCount,
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
                         },
@@ -1414,17 +1452,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onClearFinished = uploadViewModel::clearFinished,
                         onDismissPickerError = uploadViewModel::clearPickerError
                     )
-                    MoreSubscreen.DeviceSync ->
-                        com.photonne.app.ui.devicesync.BackupScreen(
-                            viewModel = deviceSyncViewModel,
+                    MoreSubscreen.DeviceBackup ->
+                        com.photonne.app.ui.devicebackup.BackupScreen(
+                            viewModel = deviceBackupViewModel,
                             gallery = deviceGallery,
                             onOpenPending = {
-                                moreSubscreen = MoreSubscreen.DeviceSyncPending
+                                moreSubscreen = MoreSubscreen.DeviceBackupPending
                             }
                         )
-                    MoreSubscreen.DeviceSyncPending ->
-                        com.photonne.app.ui.devicesync.DeviceSyncScreen(
-                            viewModel = deviceSyncViewModel,
+                    MoreSubscreen.DeviceBackupPending ->
+                        com.photonne.app.ui.devicebackup.BackupPendingScreen(
+                            viewModel = deviceBackupViewModel,
                             gallery = deviceGallery,
                             onOpenAsset = { item ->
                                 assetDetail = AssetDetailContext(
@@ -1714,6 +1752,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onLoadMore = trashViewModel::loadMore,
                         onRefresh = trashViewModel::ensureLoaded
                     )
+                    MoreSubscreen.Notifications ->
+                        com.photonne.app.ui.notifications.NotificationsScreen(
+                            viewModel = notificationsViewModel
+                        )
                     MoreSubscreen.AccountSettings ->
                         com.photonne.app.ui.settings.AccountSettingsScreen(
                             onOpen = { section ->

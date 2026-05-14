@@ -23,6 +23,7 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.map.MapRepository
 import com.photonne.app.data.people.PeopleRepository
 import com.photonne.app.data.search.SearchRepository
+import com.photonne.app.data.notifications.NotificationsRepository
 import com.photonne.app.data.timeline.MemoriesRepository
 import com.photonne.app.data.timeline.TimelineRepository
 import com.photonne.app.data.upload.UploadRepository
@@ -68,9 +69,10 @@ import com.photonne.app.ui.settings.AccountProfileViewModel
 import com.photonne.app.ui.settings.AccountSecurityViewModel
 import com.photonne.app.ui.settings.AccountStorageViewModel
 import com.photonne.app.ui.settings.AppearanceViewModel
+import com.photonne.app.ui.notifications.NotificationsViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
-import com.photonne.app.ui.devicesync.DeviceSyncViewModel
+import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.explore.ExploreFacetsViewModel
 import com.photonne.app.ui.upload.UploadViewModel
 import com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel
@@ -113,9 +115,9 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)
     single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }
-    single { com.photonne.app.data.devicesync.DeviceSyncStateStore(get()) }
+    single { com.photonne.app.data.devicebackup.DeviceBackupStateStore(get()) }
     single {
-        com.photonne.app.data.devicesync.DeviceSyncRepository(
+        com.photonne.app.data.devicebackup.DeviceBackupRepository(
             gallery = get(),
             api = get(),
             uploads = get(),
@@ -126,6 +128,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { TimelineZoomStore(get()) }
     single { TimelineRepository(api = get()) }
     singleOf(::MemoriesRepository)
+    singleOf(::NotificationsRepository)
     singleOf(::AssetDetailRepository)
     singleOf(::AlbumsRepository)
     singleOf(::FoldersRepository)
@@ -137,6 +140,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoriesViewModel)
+    viewModelOf(::NotificationsViewModel)
     viewModelOf(::AssetDetailViewModel)
     viewModelOf(::AlbumsViewModel)
     viewModelOf(::AlbumDetailViewModel)
@@ -151,7 +155,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::FavoritesViewModel)
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
-    viewModelOf(::DeviceSyncViewModel)
+    viewModelOf(::DeviceBackupViewModel)
     viewModelOf(::UtilitiesDuplicatesViewModel)
     viewModelOf(::UtilitiesLargeFilesViewModel)
     viewModelOf(::UtilitiesLocationsViewModel)

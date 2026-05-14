@@ -1,4 +1,4 @@
-package com.photonne.app.ui.devicesync
+package com.photonne.app.ui.devicebackup
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,9 +44,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.photonne.app.data.devicesync.DeviceGallery
-import com.photonne.app.data.devicesync.DeviceMediaSyncState
-import com.photonne.app.data.devicesync.rememberDeviceFolderPicker
+import com.photonne.app.data.devicebackup.DeviceGallery
+import com.photonne.app.data.devicebackup.DeviceMediaSyncState
+import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_destination_default
 import com.photonne.app.resources.backup_destination_label
@@ -64,13 +64,13 @@ import com.photonne.app.resources.backup_section_origin
 import com.photonne.app.resources.backup_source_label
 import com.photonne.app.resources.backup_source_none
 import com.photonne.app.resources.backup_source_pick
-import com.photonne.app.resources.device_sync_action_free_space
-import com.photonne.app.resources.device_sync_free_space_cancel
-import com.photonne.app.resources.device_sync_free_space_confirm
-import com.photonne.app.resources.device_sync_free_space_dialog_message
-import com.photonne.app.resources.device_sync_free_space_dialog_title
-import com.photonne.app.resources.device_sync_free_space_in_progress
-import com.photonne.app.resources.device_sync_not_supported
+import com.photonne.app.resources.device_backup_action_free_space
+import com.photonne.app.resources.device_backup_free_space_cancel
+import com.photonne.app.resources.device_backup_free_space_confirm
+import com.photonne.app.resources.device_backup_free_space_dialog_message
+import com.photonne.app.resources.device_backup_free_space_dialog_title
+import com.photonne.app.resources.device_backup_free_space_in_progress
+import com.photonne.app.resources.device_backup_not_supported
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -81,7 +81,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun BackupScreen(
-    viewModel: DeviceSyncViewModel,
+    viewModel: DeviceBackupViewModel,
     gallery: DeviceGallery,
     onOpenPending: () -> Unit
 ) {
@@ -101,7 +101,7 @@ fun BackupScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                stringResource(Res.string.device_sync_not_supported),
+                stringResource(Res.string.device_backup_not_supported),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -217,9 +217,9 @@ fun BackupScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text(stringResource(Res.string.device_sync_free_space_dialog_title)) },
+            title = { Text(stringResource(Res.string.device_backup_free_space_dialog_title)) },
             text = {
-                Text(stringResource(Res.string.device_sync_free_space_dialog_message, syncedCount))
+                Text(stringResource(Res.string.device_backup_free_space_dialog_message, syncedCount))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -227,14 +227,14 @@ fun BackupScreen(
                     viewModel.freeUpSyncedSpace()
                 }) {
                     Text(
-                        stringResource(Res.string.device_sync_free_space_confirm),
+                        stringResource(Res.string.device_backup_free_space_confirm),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showFreeSpaceConfirm = false }) {
-                    Text(stringResource(Res.string.device_sync_free_space_cancel))
+                    Text(stringResource(Res.string.device_backup_free_space_cancel))
                 }
             }
         )
@@ -429,7 +429,7 @@ private fun FreeSpaceRow(
                 )
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    text = stringResource(Res.string.device_sync_action_free_space, count),
+                    text = stringResource(Res.string.device_backup_action_free_space, count),
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -439,7 +439,7 @@ private fun FreeSpaceRow(
                     modifier = Modifier.fillMaxWidth().height(2.dp)
                 )
                 Text(
-                    text = stringResource(Res.string.device_sync_free_space_in_progress),
+                    text = stringResource(Res.string.device_backup_free_space_in_progress),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
