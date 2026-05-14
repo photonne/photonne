@@ -71,6 +71,9 @@ import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import com.photonne.app.ui.devicesync.DeviceSyncViewModel
 import com.photonne.app.ui.upload.UploadViewModel
+import com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel
+import com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel
+import com.photonne.app.ui.utilities.UtilitiesLocationsViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import org.koin.core.module.dsl.singleOf
@@ -146,9 +149,9 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
     viewModelOf(::DeviceSyncViewModel)
-    viewModelOf(::com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel)
-    viewModelOf(::com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel)
-    viewModelOf(::com.photonne.app.ui.utilities.UtilitiesLocationsViewModel)
+    viewModelOf(::UtilitiesDuplicatesViewModel)
+    viewModelOf(::UtilitiesLargeFilesViewModel)
+    viewModelOf(::UtilitiesLocationsViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)

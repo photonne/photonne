@@ -7,7 +7,7 @@ import com.photonne.app.data.models.UserDuplicateGroup
 
 /**
  * Backs the three sub-pages of the Utilities hub. Each call hits a
- * dedicated `/api/utilities/*` endpoint that's user-scoped on the
+ * dedicated `/api/utilities/...` endpoint that's user-scoped on the
  * server (not admin-gated), so this repository doesn't need to know
  * anything about the caller's role.
  *
