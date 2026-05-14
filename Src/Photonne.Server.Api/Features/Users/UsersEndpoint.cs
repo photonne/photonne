@@ -350,14 +350,66 @@ public class UsersEndpoint : IEndpoint
         if (dbUser == null)
             return Results.NotFound();
 
-        var usedBytes = await dbContext.Assets
+        // Group by (type, library) so we can return both the personal subset
+        // (ExternalLibraryId == null) and per-library usage in one query.
+        var breakdown = await dbContext.Assets
+            .AsNoTracking()
             .Where(a => a.OwnerId == userId && a.DeletedAt == null)
-            .SumAsync(a => (long?)a.FileSize, cancellationToken) ?? 0L;
+            .GroupBy(a => new { a.Type, a.ExternalLibraryId })
+            .Select(g => new
+            {
+                Type = g.Key.Type,
+                LibraryId = g.Key.ExternalLibraryId,
+                Count = g.Count(),
+                Bytes = g.Sum(a => (long?)a.FileSize) ?? 0L
+            })
+            .ToListAsync(cancellationToken);
+
+        var libraryIds = breakdown
+            .Where(b => b.LibraryId.HasValue)
+            .Select(b => b.LibraryId!.Value)
+            .Distinct()
+            .ToList();
+
+        var libraryNames = libraryIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await dbContext.ExternalLibraries
+                .AsNoTracking()
+                .Where(l => libraryIds.Contains(l.Id))
+                .Select(l => new { l.Id, l.Name })
+                .ToDictionaryAsync(l => l.Id, l => l.Name, cancellationToken);
+
+        int CountOf(Guid? libId, AssetType type) =>
+            breakdown.FirstOrDefault(b => b.LibraryId == libId && b.Type == type)?.Count ?? 0;
+        long BytesOf(Guid? libId, AssetType type) =>
+            breakdown.FirstOrDefault(b => b.LibraryId == libId && b.Type == type)?.Bytes ?? 0L;
+
+        var libraries = libraryIds
+            .Select(id => new StorageLibraryUsage
+            {
+                Id = id,
+                Name = libraryNames.TryGetValue(id, out var name) ? name : id.ToString(),
+                Photos = CountOf(id, AssetType.Image),
+                Videos = CountOf(id, AssetType.Video),
+                PhotoBytes = BytesOf(id, AssetType.Image),
+                VideoBytes = BytesOf(id, AssetType.Video)
+            })
+            .OrderByDescending(l => l.PhotoBytes + l.VideoBytes)
+            .ToList();
 
         return Results.Ok(new StorageInfoDto
         {
-            UsedBytes = usedBytes,
-            QuotaBytes = dbUser.StorageQuotaBytes
+            UsedBytes = breakdown.Sum(b => b.Bytes),
+            QuotaBytes = dbUser.StorageQuotaBytes,
+            Photos = breakdown.Where(b => b.Type == AssetType.Image).Sum(b => b.Count),
+            Videos = breakdown.Where(b => b.Type == AssetType.Video).Sum(b => b.Count),
+            PhotoBytes = breakdown.Where(b => b.Type == AssetType.Image).Sum(b => b.Bytes),
+            VideoBytes = breakdown.Where(b => b.Type == AssetType.Video).Sum(b => b.Bytes),
+            PersonalPhotos = CountOf(null, AssetType.Image),
+            PersonalVideos = CountOf(null, AssetType.Video),
+            PersonalPhotoBytes = BytesOf(null, AssetType.Image),
+            PersonalVideoBytes = BytesOf(null, AssetType.Video),
+            Libraries = libraries
         });
     }
 
@@ -469,6 +521,25 @@ public class StorageInfoDto
 {
     public long UsedBytes { get; set; }
     public long? QuotaBytes { get; set; }
+    public int Photos { get; set; }
+    public int Videos { get; set; }
+    public long PhotoBytes { get; set; }
+    public long VideoBytes { get; set; }
+    public int PersonalPhotos { get; set; }
+    public int PersonalVideos { get; set; }
+    public long PersonalPhotoBytes { get; set; }
+    public long PersonalVideoBytes { get; set; }
+    public List<StorageLibraryUsage> Libraries { get; set; } = new();
+}
+
+public class StorageLibraryUsage
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Photos { get; set; }
+    public int Videos { get; set; }
+    public long PhotoBytes { get; set; }
+    public long VideoBytes { get; set; }
 }
 
 public class ResetPasswordRequest

@@ -74,5 +74,24 @@ data class ChangePasswordResponse(val message: String)
 @Serializable
 data class StorageInfoDto(
     val usedBytes: Long,
-    val quotaBytes: Long? = null
+    val quotaBytes: Long? = null,
+    val photos: Int = 0,
+    val videos: Int = 0,
+    val photoBytes: Long = 0L,
+    val videoBytes: Long = 0L,
+    val personalPhotos: Int = 0,
+    val personalVideos: Int = 0,
+    val personalPhotoBytes: Long = 0L,
+    val personalVideoBytes: Long = 0L,
+    val libraries: List<StorageLibraryUsageDto> = emptyList()
+)
+
+@Serializable
+data class StorageLibraryUsageDto(
+    val id: String,
+    val name: String,
+    val photos: Int = 0,
+    val videos: Int = 0,
+    val photoBytes: Long = 0L,
+    val videoBytes: Long = 0L
 )

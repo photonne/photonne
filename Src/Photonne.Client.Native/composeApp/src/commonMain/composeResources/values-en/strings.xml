@@ -333,6 +333,16 @@
     <string name="storage_used_format">%1$s used of %2$s</string>
     <string name="storage_used_unbounded_format">%1$s used</string>
     <string name="storage_no_quota">No quota limit</string>
+    <string name="storage_used_percent_format">%1$s used of %2$s (%3$d%%)</string>
+    <string name="storage_remaining_format">%1$s remaining</string>
+    <string name="storage_section_overview">Overview</string>
+    <string name="storage_section_breakdown">Library breakdown</string>
+    <string name="storage_section_personal">Your library</string>
+    <string name="storage_section_libraries">External libraries</string>
+    <string name="storage_label_photos">Photos</string>
+    <string name="storage_label_videos">Videos</string>
+    <string name="storage_label_total">Total</string>
+    <string name="storage_count_size_format">%1$d · %2$s</string>
 
     <!-- Administration -->
     <string name="administration_title">Administration</string>
