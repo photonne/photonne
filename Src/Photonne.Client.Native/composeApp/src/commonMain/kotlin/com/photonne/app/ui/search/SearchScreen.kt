@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +43,7 @@ import com.photonne.app.resources.search_input_hint
 import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.theme.EmptyState
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -92,36 +94,16 @@ fun SearchScreen(
                         )
                     }
                 !state.hasAnyCriteria ->
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                stringResource(Res.string.search_idle_title),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                stringResource(Res.string.search_idle_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    EmptyState(
+                        icon = Icons.Outlined.Search,
+                        title = stringResource(Res.string.search_idle_title),
+                        subtitle = stringResource(Res.string.search_idle_subtitle)
+                    )
                 state.results.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            stringResource(Res.string.search_empty_results),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    EmptyState(
+                        icon = Icons.Outlined.Search,
+                        title = stringResource(Res.string.search_empty_results)
+                    )
                 else -> AssetGrid(
                     items = state.results,
                     baseUrl = apiBaseUrl,
