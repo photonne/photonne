@@ -27,16 +27,55 @@ data class FoldersUiState(
     val personalFolders: List<FolderSummary> = emptyList(),
     val sharedFolders: List<FolderSummary> = emptyList(),
     val libraries: List<ExternalLibraryDto> = emptyList(),
+    val libraryFolders: List<FolderSummary> = emptyList(),
     val libraryRoots: Map<String, FolderSummary> = emptyMap(),
     val selectedTab: FoldersTab = FoldersTab.Personal,
     val sort: FolderSort = FolderSort.Name,
     val viewMode: FolderViewMode = FolderViewMode.List,
     val selectedFolderId: String? = null,
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val errorMessage: String? = null
 ) {
     val isSelectionActive: Boolean get() = selectedFolderId != null
+
+    val hasActiveQuery: Boolean get() = searchQuery.isNotBlank()
+
+    val visiblePersonalFolders: List<FolderSummary>
+        get() = personalFolders.filterByQuery(searchQuery)
+
+    val visibleSharedFolders: List<FolderSummary>
+        get() = sharedFolders.filterByQuery(searchQuery)
+
+    val visibleLibraries: List<ExternalLibraryDto>
+        get() {
+            if (!hasActiveQuery) return libraries
+            val needle = searchQuery.trim().lowercase()
+            return libraries.filter { it.name.lowercase().contains(needle) }
+        }
+
+    val visibleLibraryFolders: List<FolderSummary>
+        get() = libraryFolders.filterByQuery(searchQuery)
+}
+
+private fun List<FolderSummary>.filterByQuery(query: String): List<FolderSummary> {
+    if (query.isBlank()) return this
+    val needle = query.trim().lowercase()
+    return flattenFolders()
+        .distinctBy { it.id }
+        .filter { folder -> folder.name.lowercase().contains(needle) }
+}
+
+private fun List<FolderSummary>.flattenFolders(): List<FolderSummary> {
+    val out = mutableListOf<FolderSummary>()
+    fun visit(folder: FolderSummary) {
+        out.add(folder)
+        folder.subFolders.forEach(::visit)
+    }
+    forEach(::visit)
+    return out
 }
 
 class FoldersViewModel(
@@ -64,6 +103,17 @@ class FoldersViewModel(
 
     fun selectTab(tab: FoldersTab) {
         _state.update { it.copy(selectedTab = tab, selectedFolderId = null) }
+    }
+
+    fun toggleSearch() {
+        _state.update {
+            if (it.isSearchActive) it.copy(isSearchActive = false, searchQuery = "")
+            else it.copy(isSearchActive = true)
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _state.update { it.copy(searchQuery = query) }
     }
 
     fun setSort(sort: FolderSort) {
@@ -105,11 +155,13 @@ class FoldersViewModel(
                     val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
                     val shared = sortFolders(folders.filter { isSharedFolder(it) }, sort)
                     val libRoots = resolveLibraryRoots(folders)
+                    val libFolders = sortFolders(folders.filter { it.externalLibraryId != null }, sort)
                     _state.update {
                         it.copy(
                             personalFolders = personal,
                             sharedFolders = shared,
                             libraries = sortLibraries(libs, sort),
+                            libraryFolders = libFolders,
                             libraryRoots = libRoots,
                             isLoading = false,
                             selectedFolderId = it.selectedFolderId?.takeIf { id ->
@@ -236,10 +288,12 @@ class FoldersViewModel(
         val sort = _state.value.sort
         val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
         val shared = sortFolders(allFolders.filter { isSharedFolder(it) }, sort)
+        val libFolders = sortFolders(allFolders.filter { it.externalLibraryId != null }, sort)
         _state.update {
             it.copy(
                 personalFolders = personal,
                 sharedFolders = shared,
+                libraryFolders = libFolders,
                 libraries = sortLibraries(it.libraries, sort)
             )
         }

@@ -142,6 +142,10 @@
     <string name="folders_shared_empty">Aún no te han compartido carpetas.</string>
     <string name="folders_libraries_empty">No hay bibliotecas externas disponibles.</string>
     <string name="folders_action_filters">Opciones de vista</string>
+    <string name="folders_action_search">Buscar carpetas</string>
+    <string name="folders_search_placeholder">Buscar por nombre…</string>
+    <string name="folders_search_empty_title">Sin resultados</string>
+    <string name="folders_search_empty_subtitle">Ninguna carpeta coincide con "%1$s".</string>
     <string name="folders_sort_name">Nombre</string>
     <string name="folders_sort_asset_count">Cantidad de archivos</string>
 

@@ -23,27 +23,37 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.ExternalLibraryDto
@@ -52,9 +62,13 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folder_external_badge
 import com.photonne.app.resources.folder_shared_badge
+import com.photonne.app.resources.folders_action_search
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
 import com.photonne.app.resources.folders_libraries_empty
+import com.photonne.app.resources.folders_search_empty_subtitle
+import com.photonne.app.resources.folders_search_empty_title
+import com.photonne.app.resources.folders_search_placeholder
 import com.photonne.app.resources.folders_shared_empty
 import com.photonne.app.resources.folders_tab_libraries
 import com.photonne.app.resources.folders_tab_personal
@@ -76,10 +90,17 @@ fun FoldersListScreen(
             selected = state.selectedTab,
             onSelect = viewModel::selectTab
         )
+        if (state.isSearchActive) {
+            FoldersSearchField(
+                query = state.searchQuery,
+                onQueryChange = viewModel::setSearchQuery,
+                onClose = viewModel::toggleSearch
+            )
+        }
         Box(modifier = Modifier.fillMaxSize()) {
             when (state.selectedTab) {
                 FoldersTab.Personal -> FolderListContent(
-                    folders = state.personalFolders,
+                    folders = state.visiblePersonalFolders,
                     state = state,
                     isLoading = state.isLoading,
                     errorMessage = state.errorMessage,
@@ -89,7 +110,7 @@ fun FoldersListScreen(
                     onFolderLongPress = onFolderLongPress
                 )
                 FoldersTab.Shared -> FolderListContent(
-                    folders = state.sharedFolders,
+                    folders = state.visibleSharedFolders,
                     state = state,
                     isLoading = state.isLoading,
                     errorMessage = state.errorMessage,
@@ -98,17 +119,62 @@ fun FoldersListScreen(
                     onFolderClick = onFolderClick,
                     onFolderLongPress = onFolderLongPress
                 )
-                FoldersTab.Libraries -> LibrariesContent(
-                    libraries = state.libraries,
-                    isLoading = state.isLoading,
-                    errorMessage = state.errorMessage,
-                    onLibraryClick = { lib ->
-                        viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
-                    }
-                )
+                FoldersTab.Libraries -> if (state.hasActiveQuery) {
+                    FolderListContent(
+                        folders = state.visibleLibraryFolders,
+                        state = state,
+                        isLoading = state.isLoading,
+                        errorMessage = state.errorMessage,
+                        emptyTitle = stringResource(Res.string.folders_empty_title),
+                        emptySubtitle = stringResource(Res.string.folders_libraries_empty),
+                        onFolderClick = onFolderClick,
+                        onFolderLongPress = onFolderLongPress
+                    )
+                } else {
+                    LibrariesContent(
+                        libraries = state.visibleLibraries,
+                        isLoading = state.isLoading,
+                        errorMessage = state.errorMessage,
+                        onLibraryClick = { lib ->
+                            viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
+                        }
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun FoldersSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text(stringResource(Res.string.folders_search_placeholder)) },
+        singleLine = true,
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = {
+                if (query.isEmpty()) onClose() else onQueryChange("")
+            }) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.folders_action_search)
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .focusRequester(focusRequester)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -150,6 +216,8 @@ private fun FolderListContent(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
+        folders.isEmpty() && state.hasActiveQuery ->
+            EmptySearchState(query = state.searchQuery.trim())
         folders.isEmpty() && errorMessage == null ->
             EmptyState(title = emptyTitle, subtitle = emptySubtitle)
         errorMessage != null && folders.isEmpty() ->
@@ -470,5 +538,14 @@ private fun EmptyState(title: String, subtitle: String) {
         icon = Icons.Outlined.Folder,
         title = title,
         subtitle = subtitle
+    )
+}
+
+@Composable
+private fun EmptySearchState(query: String) {
+    SharedEmptyState(
+        icon = Icons.Filled.Search,
+        title = stringResource(Res.string.folders_search_empty_title),
+        subtitle = stringResource(Res.string.folders_search_empty_subtitle, query)
     )
 }

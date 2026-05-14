@@ -142,6 +142,10 @@
     <string name="folders_shared_empty">No folders have been shared with you yet.</string>
     <string name="folders_libraries_empty">No external libraries available.</string>
     <string name="folders_action_filters">View options</string>
+    <string name="folders_action_search">Search folders</string>
+    <string name="folders_search_placeholder">Search by name…</string>
+    <string name="folders_search_empty_title">No results</string>
+    <string name="folders_search_empty_subtitle">No folder matches "%1$s".</string>
     <string name="folders_sort_name">Name</string>
     <string name="folders_sort_asset_count">File count</string>
 

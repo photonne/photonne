@@ -592,14 +592,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 } else {
                     FoldersListTopBar(
                         onCreateFolder = { showCreateFolder = true },
-                        onOpenFilters = { showFoldersFilters = true }
+                        onOpenFilters = { showFoldersFilters = true },
+                        isSearchActive = foldersState.isSearchActive,
+                        onToggleSearch = foldersViewModel::toggleSearch
                     )
                 }
             }
             selectedTab == MainTab.Folders ->
                 FoldersListTopBar(
                     onCreateFolder = { showCreateFolder = true },
-                    onOpenFilters = { showFoldersFilters = true }
+                    onOpenFilters = { showFoldersFilters = true },
+                    isSearchActive = foldersState.isSearchActive,
+                    onToggleSearch = foldersViewModel::toggleSearch
                 )
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
                 AssetSelectionTopBar(
