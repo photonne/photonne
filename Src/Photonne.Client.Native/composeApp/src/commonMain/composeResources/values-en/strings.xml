@@ -668,4 +668,37 @@
     <string name="backup_pending_view">View pending</string>
     <string name="backup_pending_screen_title">Pending</string>
     <string name="backup_disabled_hint">Turn backup on to start uploading your photos.</string>
+
+    <!-- Utilities hub -->
+    <string name="utilities_title">Utilities</string>
+    <string name="utilities_section_duplicates">Find duplicates</string>
+    <string name="utilities_section_duplicates_subtitle">Identify repeated photos and videos.</string>
+    <string name="utilities_section_large_files">Review large files</string>
+    <string name="utilities_section_large_files_subtitle">Items taking the most storage.</string>
+    <string name="utilities_section_locations">Manage locations</string>
+    <string name="utilities_section_locations_subtitle">Folders and storage paths.</string>
+
+    <!-- Duplicates -->
+    <string name="utilities_duplicates_empty">No duplicates found.</string>
+    <string name="utilities_duplicates_summary">%1$d groups · %2$s reclaimable</string>
+    <string name="utilities_duplicates_group_assets">%1$d copies · %2$s total</string>
+    <string name="utilities_duplicates_action_auto_select">Keep the largest copy</string>
+    <string name="utilities_duplicates_action_clear">Clear selection</string>
+    <string name="utilities_duplicates_action_delete">Delete %1$d (%2$s)</string>
+    <string name="utilities_duplicates_confirm_title">Move to trash</string>
+    <string name="utilities_duplicates_confirm_message">%1$d items will be moved to your trash. You can restore them from the web app.</string>
+
+    <!-- Large files -->
+    <string name="utilities_large_files_count_label">Show</string>
+    <string name="utilities_large_files_empty">No large files to show.</string>
+    <string name="utilities_large_files_total">%1$d items · %2$s</string>
+
+    <!-- Locations -->
+    <string name="utilities_locations_empty">No indexed folders yet.</string>
+    <string name="utilities_locations_item_count">%1$d items</string>
+    <string name="utilities_locations_shared_badge">Shared</string>
+    <string name="utilities_locations_external_badge">External library</string>
+
+    <!-- Device sync short label (used in the Más grid; the screen itself keeps device_sync_title) -->
+    <string name="device_sync_short_title">Backup</string>
 </resources>
