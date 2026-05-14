@@ -21,11 +21,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
@@ -71,6 +77,47 @@ fun TimelineScreen(
     val deviceSyncViewModel: DeviceSyncViewModel = koinViewModel()
     val deviceSyncState by deviceSyncViewModel.state.collectAsState()
     var memorySheetItems by remember { mutableStateOf<List<com.photonne.app.data.models.TimelineItem>?>(null) }
+
+    // Drives the Memories carousel collapse: scrolling up consumes deltas to
+    // shrink the row from 110x150 to 40x60; reaching the top of the grid
+    // expands it back. Pull-to-refresh still works because we only consume
+    // post-scroll deltas while the carousel is partially collapsed.
+    val density = LocalDensity.current
+    val collapseRangePx = remember(density) { with(density) { 120.dp.toPx() } }
+    var collapseOffsetPx by remember { mutableFloatStateOf(0f) }
+    val collapseFraction = (-collapseOffsetPx / collapseRangePx).coerceIn(0f, 1f)
+    val hasMemories = memoriesState.items.isNotEmpty()
+    val nestedScrollConnection = remember(collapseRangePx, hasMemories) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!hasMemories) return Offset.Zero
+                val delta = available.y
+                if (delta < 0 && collapseOffsetPx > -collapseRangePx) {
+                    val newOffset = (collapseOffsetPx + delta).coerceIn(-collapseRangePx, 0f)
+                    val consumed = newOffset - collapseOffsetPx
+                    collapseOffsetPx = newOffset
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (!hasMemories) return Offset.Zero
+                val delta = available.y
+                if (delta > 0 && collapseOffsetPx < 0f) {
+                    val newOffset = (collapseOffsetPx + delta).coerceIn(-collapseRangePx, 0f)
+                    val consumedDelta = newOffset - collapseOffsetPx
+                    collapseOffsetPx = newOffset
+                    return Offset(0f, consumedDelta)
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     // Only mix device entries in once backup is enabled — otherwise the
     // timeline reflects only what's actually on the server.
@@ -126,11 +173,16 @@ fun TimelineScreen(
             when {
                 state.isInitialLoading -> CenteredLoading()
                 state.isEmpty -> TimelineEmptyState()
-                else -> Column(modifier = Modifier.fillMaxSize()) {
-                    if (memoriesState.items.isNotEmpty()) {
+                else -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection)
+                ) {
+                    if (hasMemories) {
                         MemoriesCarousel(
                             items = memoriesState.items,
                             baseUrl = apiBaseUrl,
+                            collapseFraction = collapseFraction,
                             onGroupClick = { groupItems ->
                                 if (groupItems.size > 1) {
                                     memorySheetItems = groupItems
