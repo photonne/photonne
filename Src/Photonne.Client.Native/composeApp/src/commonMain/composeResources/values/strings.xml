@@ -668,4 +668,37 @@
     <string name="backup_pending_view">Ver pendientes</string>
     <string name="backup_pending_screen_title">Pendientes</string>
     <string name="backup_disabled_hint">Activa la copia de seguridad para empezar a subir tus fotos.</string>
+
+    <!-- Utilities hub -->
+    <string name="utilities_title">Utilidades</string>
+    <string name="utilities_section_duplicates">Buscar duplicados</string>
+    <string name="utilities_section_duplicates_subtitle">Encuentra fotos y vídeos repetidos.</string>
+    <string name="utilities_section_large_files">Revisar archivos grandes</string>
+    <string name="utilities_section_large_files_subtitle">Los elementos que más espacio ocupan.</string>
+    <string name="utilities_section_locations">Administrar ubicación</string>
+    <string name="utilities_section_locations_subtitle">Carpetas y rutas de almacenamiento.</string>
+
+    <!-- Duplicates -->
+    <string name="utilities_duplicates_empty">No se han encontrado duplicados.</string>
+    <string name="utilities_duplicates_summary">%1$d grupos · %2$s recuperables</string>
+    <string name="utilities_duplicates_group_assets">%1$d copias · %2$s en total</string>
+    <string name="utilities_duplicates_action_auto_select">Mantener la copia más grande</string>
+    <string name="utilities_duplicates_action_clear">Limpiar selección</string>
+    <string name="utilities_duplicates_action_delete">Borrar %1$d (%2$s)</string>
+    <string name="utilities_duplicates_confirm_title">Mover a la papelera</string>
+    <string name="utilities_duplicates_confirm_message">%1$d elementos se moverán a tu papelera. Podrás restaurarlos desde la app web.</string>
+
+    <!-- Large files -->
+    <string name="utilities_large_files_count_label">Mostrar</string>
+    <string name="utilities_large_files_empty">No hay archivos grandes que mostrar.</string>
+    <string name="utilities_large_files_total">%1$d elementos · %2$s</string>
+
+    <!-- Locations -->
+    <string name="utilities_locations_empty">Aún no tienes carpetas indexadas.</string>
+    <string name="utilities_locations_item_count">%1$d elementos</string>
+    <string name="utilities_locations_shared_badge">Compartida</string>
+    <string name="utilities_locations_external_badge">Biblioteca externa</string>
+
+    <!-- Device sync short label (used in the Más grid; the screen itself keeps device_sync_title) -->
+    <string name="device_sync_short_title">Copia de seguridad</string>
 </resources>

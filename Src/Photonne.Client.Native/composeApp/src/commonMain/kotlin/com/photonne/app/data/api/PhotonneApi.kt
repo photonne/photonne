@@ -377,6 +377,11 @@ interface PhotonneApi {
         bytes: ByteArray
     ): com.photonne.app.data.models.BackupRestoreResponse
 
+    // User utilities (mirrors /utilities/* pages in the PWA) ----------------
+    suspend fun utilitiesDuplicates(): List<com.photonne.app.data.models.UserDuplicateGroup>
+    suspend fun utilitiesLargeFiles(count: Int): List<com.photonne.app.data.models.TimelineItem>
+    suspend fun utilitiesFolderTree(): List<com.photonne.app.data.models.FolderTreeNode>
+
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
     }
@@ -1977,6 +1982,45 @@ class PhotonneApiClient(
                 message = "$message (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun utilitiesDuplicates():
+        List<com.photonne.app.data.models.UserDuplicateGroup> {
+        val response: HttpResponse = client.get("$baseUrl/api/utilities/duplicates")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Duplicates fetch failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun utilitiesLargeFiles(
+        count: Int
+    ): List<com.photonne.app.data.models.TimelineItem> {
+        val response: HttpResponse = client.get("$baseUrl/api/utilities/large-files") {
+            parameter("count", count)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Large files fetch failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun utilitiesFolderTree():
+        List<com.photonne.app.data.models.FolderTreeNode> {
+        val response: HttpResponse = client.get("$baseUrl/api/utilities/folders/tree")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Folder tree fetch failed"
+            )
+        }
+        return response.body()
     }
 
     /**

@@ -107,6 +107,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)
+    single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }
     single { com.photonne.app.data.devicesync.DeviceSyncStateStore(get()) }
     single {
         com.photonne.app.data.devicesync.DeviceSyncRepository(
@@ -145,6 +146,9 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
     viewModelOf(::DeviceSyncViewModel)
+    viewModelOf(::com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel)
+    viewModelOf(::com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel)
+    viewModelOf(::com.photonne.app.ui.utilities.UtilitiesLocationsViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)

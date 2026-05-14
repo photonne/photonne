@@ -84,6 +84,10 @@ import com.photonne.app.resources.device_sync_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
 import com.photonne.app.resources.upload_title
+import com.photonne.app.resources.utilities_section_duplicates
+import com.photonne.app.resources.utilities_section_large_files
+import com.photonne.app.resources.utilities_section_locations
+import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -161,6 +165,10 @@ private enum class MoreSubscreen {
     Map,
     Archived,
     Trash,
+    Utilities,
+    UtilitiesDuplicates,
+    UtilitiesLargeFiles,
+    UtilitiesLocations,
     AccountSettings,
     AccountProfile,
     AccountSecurity,
@@ -345,6 +353,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceSyncViewModel: com.photonne.app.ui.devicesync.DeviceSyncViewModel = koinViewModel()
+    val utilitiesDuplicatesViewModel:
+        com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
+    val utilitiesLargeFilesViewModel:
+        com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel = koinViewModel()
+    val utilitiesLocationsViewModel:
+        com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
     val deviceGallery: com.photonne.app.data.devicesync.DeviceGallery =
         org.koin.compose.koinInject()
     val actionsViewModel: com.photonne.app.ui.actions.AssetSelectionActionsViewModel =
@@ -612,6 +626,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.backup_pending_screen_title),
                     onBack = { moreSubscreen = MoreSubscreen.DeviceSync }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Utilities ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.utilities_title),
+                    onBack = { moreSubscreen = null }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.utilities_section_duplicates),
+                    onBack = { moreSubscreen = MoreSubscreen.Utilities }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesLargeFiles ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.utilities_section_large_files),
+                    onBack = { moreSubscreen = MoreSubscreen.Utilities }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesLocations ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.utilities_section_locations),
+                    onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
                 com.photonne.app.ui.main.MapTopBar(
@@ -1301,6 +1335,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
+                        onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
                         onOpenDeviceSync = { moreSubscreen = MoreSubscreen.DeviceSync },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
@@ -1351,6 +1386,45 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     }
                                 )
                             }
+                        )
+                    MoreSubscreen.Utilities ->
+                        com.photonne.app.ui.utilities.UtilitiesHubScreen(
+                            onOpen = { entry ->
+                                moreSubscreen = when (entry) {
+                                    com.photonne.app.ui.utilities.UtilitiesEntry.Duplicates ->
+                                        MoreSubscreen.UtilitiesDuplicates
+                                    com.photonne.app.ui.utilities.UtilitiesEntry.LargeFiles ->
+                                        MoreSubscreen.UtilitiesLargeFiles
+                                    com.photonne.app.ui.utilities.UtilitiesEntry.Locations ->
+                                        MoreSubscreen.UtilitiesLocations
+                                }
+                            }
+                        )
+                    MoreSubscreen.UtilitiesDuplicates ->
+                        com.photonne.app.ui.utilities.UtilitiesDuplicatesScreen(
+                            viewModel = utilitiesDuplicatesViewModel,
+                            baseUrl = apiBaseUrl
+                        )
+                    MoreSubscreen.UtilitiesLargeFiles ->
+                        com.photonne.app.ui.utilities.UtilitiesLargeFilesScreen(
+                            viewModel = utilitiesLargeFilesViewModel,
+                            baseUrl = apiBaseUrl,
+                            onAssetClick = { index, items ->
+                                assetDetail = AssetDetailContext(
+                                    items = items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        )
+                    MoreSubscreen.UtilitiesLocations ->
+                        com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
+                            viewModel = utilitiesLocationsViewModel
                         )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
