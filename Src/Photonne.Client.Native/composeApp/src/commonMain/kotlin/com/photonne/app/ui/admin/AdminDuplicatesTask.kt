@@ -6,23 +6,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -42,12 +42,16 @@ import com.photonne.app.resources.admin_duplicates_stats_reclaimed
 import com.photonne.app.resources.admin_duplicates_stats_removed
 import com.photonne.app.resources.admin_duplicates_stats_total
 import com.photonne.app.resources.admin_duplicates_stats_unindexed
+import com.photonne.app.resources.admin_task_chip_completed
+import com.photonne.app.resources.admin_task_chip_running
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.stringResource
 
 data class AdminDuplicatesUiState(
@@ -55,6 +59,8 @@ data class AdminDuplicatesUiState(
     val physical: Boolean = false,
     val isRunning: Boolean = false,
     val lastEvent: DuplicatesStreamEvent? = null,
+    val startedAtMs: Long? = null,
+    val finishedAtMs: Long? = null,
     val errorMessage: String? = null
 )
 
@@ -77,34 +83,62 @@ class AdminDuplicatesViewModel(
         if (_state.value.isRunning) return
         val cleanup = _state.value.cleanup
         val physical = _state.value.physical
-        _state.update { it.copy(isRunning = true, errorMessage = null, lastEvent = null) }
+        _state.update {
+            it.copy(
+                isRunning = true,
+                errorMessage = null,
+                lastEvent = null,
+                startedAtMs = Clock.System.now().toEpochMilliseconds(),
+                finishedAtMs = null
+            )
+        }
         job = viewModelScope.launch {
-            runCatching {
+            try {
                 repository.duplicatesStream(cleanup = cleanup, physical = physical)
                     .collect { event -> _state.update { it.copy(lastEvent = event) } }
-            }
-                .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            isRunning = false,
-                            errorMessage = error.message ?: "Duplicate scan failed"
-                        )
-                    }
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
                 }
-            _state.update { it.copy(isRunning = false) }
+            } catch (t: kotlinx.coroutines.CancellationException) {
+                throw t
+            } catch (e: Throwable) {
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        errorMessage = e.message ?: "Duplicate scan failed",
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
+                }
+            }
         }
     }
 
     fun cancel() {
         job?.cancel()
         job = null
-        _state.update { it.copy(isRunning = false) }
+        _state.update {
+            it.copy(
+                isRunning = false,
+                finishedAtMs = Clock.System.now().toEpochMilliseconds()
+            )
+        }
     }
 }
 
 @Composable
 fun AdminDuplicatesScreen(viewModel: AdminDuplicatesViewModel) {
     val state by viewModel.state.collectAsState()
+
+    var nowMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
+    LaunchedEffect(state.isRunning) {
+        while (state.isRunning) {
+            nowMs = Clock.System.now().toEpochMilliseconds()
+            delay(1000L)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -147,48 +181,94 @@ fun AdminDuplicatesScreen(viewModel: AdminDuplicatesViewModel) {
         }
 
         val event = state.lastEvent
+        val isCompleted = event?.isCompleted == true && !state.isRunning
         val pct = (event?.percentage ?: 0.0).toFloat().coerceIn(0f, 100f) / 100f
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Text(
-                    text = when {
-                        event != null && event.isCompleted ->
-                            stringResource(Res.string.admin_duplicates_completed)
-                        event != null -> event.message
-                        else -> "—"
-                    },
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { pct },
-                    modifier = Modifier.fillMaxWidth().height(6.dp)
-                )
-            }
+
+        val startMs = state.startedAtMs
+        val endMs = state.finishedAtMs ?: nowMs
+        val elapsedSeconds = startMs?.let { ((endMs - it) / 1000L).coerceAtLeast(0L) } ?: 0L
+
+        val statusText = when {
+            isCompleted -> stringResource(Res.string.admin_duplicates_completed)
+            event != null -> event.message
+            else -> "—"
         }
 
+        TaskProgressCard(
+            statusText = statusText,
+            progress = pct,
+            chips = if (state.isRunning || event != null) {
+                {
+                    MetricPillRow {
+                        if (startMs != null) {
+                            MetricPill(formatDurationSeconds(elapsedSeconds))
+                        }
+                        if (state.isRunning) {
+                            MetricPill(
+                                label = stringResource(Res.string.admin_task_chip_running),
+                                container = MaterialTheme.colorScheme.primaryContainer,
+                                content = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else if (isCompleted) {
+                            MetricPill(
+                                label = stringResource(Res.string.admin_task_chip_completed),
+                                container = MaterialTheme.colorScheme.tertiaryContainer,
+                                content = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
+            } else null
+        )
+
         event?.statistics?.let { stats ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+            val items = listOfNotNull(
+                StatGridItem(
+                    label = stringResource(Res.string.admin_duplicates_stats_total),
+                    value = (stats.totalAssets ?: 0).toString()
+                ),
+                StatGridItem(
+                    label = stringResource(Res.string.admin_duplicates_stats_groups),
+                    value = (stats.duplicateGroups ?: 0).toString(),
+                    valueColor = MaterialTheme.colorScheme.secondary
+                ),
+                StatGridItem(
+                    label = stringResource(Res.string.admin_duplicates_stats_assets),
+                    value = (stats.duplicateAssets ?: 0).toString(),
+                    valueColor = MaterialTheme.colorScheme.tertiary
+                ),
+                StatGridItem(
+                    label = stringResource(Res.string.admin_duplicates_stats_removed),
+                    value = (stats.removed ?: 0).toString()
                 )
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    StatRow(stringResource(Res.string.admin_duplicates_stats_total), stats.totalAssets?.toString())
-                    StatRow(stringResource(Res.string.admin_duplicates_stats_groups), stats.duplicateGroups?.toString())
-                    StatRow(stringResource(Res.string.admin_duplicates_stats_assets), stats.duplicateAssets?.toString())
-                    StatRow(stringResource(Res.string.admin_duplicates_stats_removed), stats.removed?.toString())
-                    StatRow(
+            )
+            StatGridCard(items = items)
+            // Bytes reclaimed and unindexed counts get their own rows so
+            // the reclaimed-string fits comfortably without truncation.
+            stats.bytesReclaimed?.let { bytes ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
                         stringResource(Res.string.admin_duplicates_stats_reclaimed),
-                        stats.bytesReclaimed?.let(::humanBytes)
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                    StatRow(stringResource(Res.string.admin_duplicates_stats_unindexed), stats.unindexedFiles?.toString())
+                    Text(humanBytes(bytes), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            stats.unindexedFiles?.let { unindexed ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(Res.string.admin_duplicates_stats_unindexed),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(unindexed.toString(), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -210,13 +290,5 @@ fun AdminDuplicatesScreen(viewModel: AdminDuplicatesViewModel) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun StatRow(label: String, value: String?) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value ?: "—", style = MaterialTheme.typography.bodyMedium)
     }
 }

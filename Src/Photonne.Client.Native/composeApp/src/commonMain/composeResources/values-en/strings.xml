@@ -531,6 +531,13 @@
     <string name="admin_system_backup">Backup</string>
     <string name="admin_system_backup_subtitle">Export and import the database</string>
 
+    <!-- Shared task UI (chips above the progress bar) -->
+    <string name="admin_task_chip_running">Running</string>
+    <string name="admin_task_chip_completed">Completed</string>
+    <string name="admin_task_chip_eta">ETA %1$s</string>
+    <string name="admin_task_speed_files">%1$s files/s</string>
+    <string name="admin_task_speed_assets">%1$s assets/s</string>
+
     <!-- Index task -->
     <string name="admin_index_action_start">Start indexing</string>
     <string name="admin_index_action_cancel">Cancel</string>
@@ -574,11 +581,26 @@
     <!-- Backfill (ML tasks) -->
     <string name="admin_backfill_pending">Pending</string>
     <string name="admin_backfill_in_queue">In queue</string>
+    <string name="admin_backfill_unprocessed">Not yet queued</string>
     <string name="admin_backfill_only_missing">Only missing items</string>
+    <string name="admin_backfill_action_start">Start</string>
+    <string name="admin_backfill_action_stop">Stop</string>
+    <string name="admin_backfill_action_refresh">Refresh</string>
     <string name="admin_backfill_action_run">Process now</string>
     <string name="admin_backfill_response">Queued %1$d of %2$d.</string>
     <string name="admin_backfill_action_clustering">Re-cluster faces</string>
     <string name="admin_backfill_clustering_result">%1$d owners processed · %2$d persons created.</string>
+    <string name="admin_backfill_batch_size_label">Batch size (this run)</string>
+    <string name="admin_backfill_batch_size_helper">Defaults to the global value (%1$d). Editable only for this run.</string>
+    <string name="admin_backfill_session_progress">Queued in this session: %1$d of %2$d</string>
+    <string name="admin_backfill_status_enqueuing">Queueing…</string>
+    <string name="admin_backfill_status_enqueuing_progress">Queued %1$d of %2$d…</string>
+    <string name="admin_backfill_empty_all_processed">No pending photos — everything is processed.</string>
+    <string name="admin_backfill_empty_all_queued">Everything pending is already in the queue. The ML engine will process it in the background; nothing new to enqueue.</string>
+    <string name="admin_backfill_summary_done">Queued %1$d. The ML engine will process them in the background.</string>
+    <string name="admin_backfill_summary_stopped">Stopped. Queued %1$d; %2$d remaining.</string>
+    <string name="admin_backfill_cancel_caption">Stopping only halts new enqueues; jobs already in the queue keep being processed in the background.</string>
+    <string name="admin_backfill_error_load">Could not load state: %1$s</string>
 
     <!-- Maintenance -->
     <string name="admin_maintenance_action_orphans">Clean orphan thumbnails</string>

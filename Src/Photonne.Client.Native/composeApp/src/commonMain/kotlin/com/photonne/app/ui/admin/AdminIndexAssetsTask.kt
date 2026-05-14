@@ -6,22 +6,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,28 +34,29 @@ import com.photonne.app.resources.admin_index_action_cancel
 import com.photonne.app.resources.admin_index_action_start
 import com.photonne.app.resources.admin_index_completed
 import com.photonne.app.resources.admin_index_started
-import com.photonne.app.resources.admin_index_stats_duplicates
-import com.photonne.app.resources.admin_index_stats_extracted
-import com.photonne.app.resources.admin_index_stats_indexed
-import com.photonne.app.resources.admin_index_stats_jobs_queued
 import com.photonne.app.resources.admin_index_stats_new
-import com.photonne.app.resources.admin_index_stats_orphans
-import com.photonne.app.resources.admin_index_stats_section
 import com.photonne.app.resources.admin_index_stats_thumbnails
 import com.photonne.app.resources.admin_index_stats_total
 import com.photonne.app.resources.admin_index_stats_updated
+import com.photonne.app.resources.admin_task_chip_completed
+import com.photonne.app.resources.admin_task_chip_eta
+import com.photonne.app.resources.admin_task_chip_running
+import com.photonne.app.resources.admin_task_speed_files
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.stringResource
 
 data class AdminIndexUiState(
     val isRunning: Boolean = false,
     val lastEvent: IndexStreamEvent? = null,
-    val statusMessage: String? = null,
+    val startedAtMs: Long? = null,
+    val finishedAtMs: Long? = null,
     val errorMessage: String? = null
 )
 
@@ -69,35 +70,67 @@ class AdminIndexAssetsViewModel(
 
     fun start() {
         if (_state.value.isRunning) return
-        _state.update { it.copy(isRunning = true, errorMessage = null, lastEvent = null) }
+        _state.update {
+            it.copy(
+                isRunning = true,
+                errorMessage = null,
+                lastEvent = null,
+                startedAtMs = Clock.System.now().toEpochMilliseconds(),
+                finishedAtMs = null
+            )
+        }
         job = viewModelScope.launch {
-            runCatching {
+            try {
                 repository.indexStream().collect { event ->
                     _state.update { it.copy(lastEvent = event) }
                 }
-            }
-                .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            isRunning = false,
-                            errorMessage = error.message ?: "Indexing failed"
-                        )
-                    }
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
                 }
-            _state.update { it.copy(isRunning = false) }
+            } catch (t: kotlinx.coroutines.CancellationException) {
+                // cancel() already updated state; rethrow so the job
+                // settles as cancelled rather than completed.
+                throw t
+            } catch (e: Throwable) {
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        errorMessage = e.message ?: "Indexing failed",
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
+                }
+            }
         }
     }
 
     fun cancel() {
         job?.cancel()
         job = null
-        _state.update { it.copy(isRunning = false) }
+        _state.update {
+            it.copy(
+                isRunning = false,
+                finishedAtMs = Clock.System.now().toEpochMilliseconds()
+            )
+        }
     }
 }
 
 @Composable
 fun AdminIndexAssetsScreen(viewModel: AdminIndexAssetsViewModel) {
     val state by viewModel.state.collectAsState()
+
+    // Tick once a second while the task is running so the elapsed / ETA
+    // chips stay live; we don't keep ticking once it's finished.
+    var nowMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
+    LaunchedEffect(state.isRunning) {
+        while (state.isRunning) {
+            nowMs = Clock.System.now().toEpochMilliseconds()
+            delay(1000L)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -111,84 +144,85 @@ fun AdminIndexAssetsScreen(viewModel: AdminIndexAssetsViewModel) {
         }
 
         val event = state.lastEvent
+        val isCompleted = event?.isCompleted == true && !state.isRunning
         val pct = (event?.percentage ?: 0.0).toFloat().coerceIn(0f, 100f) / 100f
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Text(
-                    text = when {
-                        event != null && event.isCompleted ->
-                            stringResource(Res.string.admin_index_completed)
-                        event != null -> event.message
-                        state.isRunning -> stringResource(Res.string.admin_index_started)
-                        else -> "—"
-                    },
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { pct },
-                    modifier = Modifier.fillMaxWidth().height(6.dp)
-                )
-            }
+        // Elapsed / speed / ETA — derived from start time, current tick
+        // and the latest stream event.
+        val startMs = state.startedAtMs
+        val endMs = state.finishedAtMs ?: nowMs
+        val elapsedSeconds = startMs?.let { ((endMs - it) / 1000L).coerceAtLeast(0L) } ?: 0L
+        val processed = event?.statistics?.totalFilesFound ?: 0
+        val speed = if (elapsedSeconds > 0) processed.toDouble() / elapsedSeconds else 0.0
+        val etaSeconds = if (state.isRunning && pct in 0.001f..0.999f && elapsedSeconds > 0) {
+            (elapsedSeconds / pct - elapsedSeconds).toLong()
+        } else 0L
+        val speedFmt = formatRate(speed, "")
+        val etaFmt = if (etaSeconds > 0) formatDurationSeconds(etaSeconds) else null
+
+        val statusText = when {
+            isCompleted -> stringResource(Res.string.admin_index_completed)
+            event != null -> event.message
+            state.isRunning -> stringResource(Res.string.admin_index_started)
+            else -> "—"
         }
 
-        event?.statistics?.let { stats ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(
-                        stringResource(Res.string.admin_index_stats_section),
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_total),
-                        stats.totalFilesFound
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_new),
-                        stats.newFiles
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_updated),
-                        stats.updatedFiles
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_indexed),
-                        stats.hashesCalculated
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_extracted),
-                        stats.exifExtracted
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_jobs_queued),
-                        stats.mlJobsQueued
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_thumbnails),
-                        stats.thumbnailsGenerated
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_orphans),
-                        stats.orphanedFilesRemoved
-                    )
-                    IndexStatRow(
-                        stringResource(Res.string.admin_index_stats_duplicates),
-                        stats.duplicateAssetsRemoved
-                    )
+        TaskProgressCard(
+            statusText = statusText,
+            progress = pct,
+            chips = if (state.isRunning || event != null) {
+                {
+                    MetricPillRow {
+                        if (startMs != null) {
+                            MetricPill(formatDurationSeconds(elapsedSeconds))
+                        }
+                        speedFmt?.let { v ->
+                            MetricPill(stringResource(Res.string.admin_task_speed_files, v))
+                        }
+                        etaFmt?.let { v ->
+                            MetricPill(stringResource(Res.string.admin_task_chip_eta, v))
+                        }
+                        if (state.isRunning) {
+                            MetricPill(
+                                label = stringResource(Res.string.admin_task_chip_running),
+                                container = MaterialTheme.colorScheme.primaryContainer,
+                                content = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else if (isCompleted) {
+                            MetricPill(
+                                label = stringResource(Res.string.admin_task_chip_completed),
+                                container = MaterialTheme.colorScheme.tertiaryContainer,
+                                content = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
                 }
-            }
+            } else null
+        )
+
+        event?.statistics?.let { stats ->
+            val items = listOf(
+                StatGridItem(
+                    label = stringResource(Res.string.admin_index_stats_total),
+                    value = (stats.totalFilesFound ?: 0).toString()
+                ),
+                StatGridItem(
+                    label = stringResource(Res.string.admin_index_stats_new),
+                    value = (stats.newFiles ?: 0).toString(),
+                    valueColor = MaterialTheme.colorScheme.tertiary
+                ),
+                StatGridItem(
+                    label = stringResource(Res.string.admin_index_stats_updated),
+                    value = (stats.updatedFiles ?: 0).toString(),
+                    valueColor = MaterialTheme.colorScheme.secondary
+                ),
+                StatGridItem(
+                    label = stringResource(Res.string.admin_index_stats_thumbnails),
+                    value = ((stats.thumbnailsGenerated ?: 0) +
+                        (stats.thumbnailsRegenerated ?: 0)).toString()
+                )
+            )
+            StatGridCard(items = items)
         }
 
         Row(
@@ -208,13 +242,5 @@ fun AdminIndexAssetsScreen(viewModel: AdminIndexAssetsViewModel) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun IndexStatRow(label: String, value: Int?) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value?.toString() ?: "—", style = MaterialTheme.typography.bodyMedium)
     }
 }

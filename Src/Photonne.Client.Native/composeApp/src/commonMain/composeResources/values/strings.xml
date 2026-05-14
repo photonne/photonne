@@ -531,6 +531,13 @@
     <string name="admin_system_backup">Copia de seguridad</string>
     <string name="admin_system_backup_subtitle">Exportar e importar la base de datos</string>
 
+    <!-- Shared task UI (chips above the progress bar) -->
+    <string name="admin_task_chip_running">En curso</string>
+    <string name="admin_task_chip_completed">Completado</string>
+    <string name="admin_task_chip_eta">ETA %1$s</string>
+    <string name="admin_task_speed_files">%1$s archivos/s</string>
+    <string name="admin_task_speed_assets">%1$s assets/s</string>
+
     <!-- Index task -->
     <string name="admin_index_action_start">Iniciar indexado</string>
     <string name="admin_index_action_cancel">Cancelar</string>
@@ -574,11 +581,26 @@
     <!-- Backfill (ML tasks) -->
     <string name="admin_backfill_pending">Pendientes</string>
     <string name="admin_backfill_in_queue">En cola</string>
+    <string name="admin_backfill_unprocessed">Sin encolar</string>
     <string name="admin_backfill_only_missing">Solo elementos sin procesar</string>
+    <string name="admin_backfill_action_start">Iniciar</string>
+    <string name="admin_backfill_action_stop">Detener</string>
+    <string name="admin_backfill_action_refresh">Actualizar</string>
     <string name="admin_backfill_action_run">Procesar ahora</string>
     <string name="admin_backfill_response">Encolados %1$d de %2$d.</string>
     <string name="admin_backfill_action_clustering">Reagrupar caras</string>
     <string name="admin_backfill_clustering_result">%1$d usuarios procesados · %2$d personas creadas.</string>
+    <string name="admin_backfill_batch_size_label">Tamaño de lote (esta ejecución)</string>
+    <string name="admin_backfill_batch_size_helper">Por defecto se usa el global (%1$d). Editable solo para esta tirada.</string>
+    <string name="admin_backfill_session_progress">Encolados en esta sesión: %1$d de %2$d</string>
+    <string name="admin_backfill_status_enqueuing">Encolando…</string>
+    <string name="admin_backfill_status_enqueuing_progress">Encolados %1$d de %2$d…</string>
+    <string name="admin_backfill_empty_all_processed">No hay fotos pendientes — todo está procesado.</string>
+    <string name="admin_backfill_empty_all_queued">Todo lo pendiente está ya en cola. El motor de ML lo irá procesando en segundo plano; no hay nada nuevo que encolar.</string>
+    <string name="admin_backfill_summary_done">Encolados %1$d. Los procesará el motor de ML en segundo plano.</string>
+    <string name="admin_backfill_summary_stopped">Detenido. Encolados %1$d; quedan %2$d sin encolar.</string>
+    <string name="admin_backfill_cancel_caption">Detener solo deja de encolar más; los jobs ya encolados se procesan en segundo plano.</string>
+    <string name="admin_backfill_error_load">No se pudo leer el estado: %1$s</string>
 
     <!-- Maintenance -->
     <string name="admin_maintenance_action_orphans">Limpiar miniaturas huérfanas</string>
