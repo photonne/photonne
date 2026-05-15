@@ -560,6 +560,18 @@
     <string name="admin_settings_server_max_upload_hint">0 = unlimited</string>
     <string name="admin_settings_server_session_timeout">Session timeout (min)</string>
     <string name="admin_settings_server_thumbnails_path">Thumbnails path</string>
+    <string name="admin_settings_device_section">This device connection</string>
+    <string name="admin_settings_device_section_hint">Stored only on this device. The local URL is used automatically when reachable (same WiFi as the server).</string>
+    <string name="admin_settings_device_public_url">Public URL</string>
+    <string name="admin_settings_device_local_url">Local URL (optional)</string>
+    <string name="admin_settings_device_local_url_hint">e.g. http://192.168.1.10:5000</string>
+    <string name="admin_settings_device_status_local">Connected via the local URL</string>
+    <string name="admin_settings_device_status_public">Connected via the public URL</string>
+    <string name="admin_settings_device_status_public_no_local">Connected via the public URL (no local URL configured)</string>
+    <string name="admin_settings_device_probe_button">Test local connection</string>
+    <string name="admin_settings_device_probe_reachable">Local URL responds.</string>
+    <string name="admin_settings_device_probe_unreachable">Local URL did not respond from this network.</string>
+    <string name="admin_settings_device_saved">Connection saved.</string>
 
     <string name="admin_settings_trash">Trash configuration</string>
     <string name="admin_settings_trash_subtitle">Retention, quota and current state</string>

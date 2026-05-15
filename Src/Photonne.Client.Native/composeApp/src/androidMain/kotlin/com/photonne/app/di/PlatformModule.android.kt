@@ -2,6 +2,8 @@ package com.photonne.app.di
 
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.photonne.app.data.api.AndroidNetworkMonitor
+import com.photonne.app.data.api.NetworkMonitor
 import com.photonne.app.ui.actions.AssetSharing
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
@@ -11,6 +13,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 actual fun platformModule() = module {
+    single<NetworkMonitor> { AndroidNetworkMonitor(androidContext()) }
     single<Settings> {
         val context = androidContext()
         val masterKey = MasterKey.Builder(context)

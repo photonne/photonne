@@ -100,6 +100,26 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Uri,
+            imeAction = ImeAction.Next
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    OutlinedTextField(
+        value = state.localUrl,
+        onValueChange = viewModel::onLocalUrlChange,
+        label = { Text("URL local (opcional)") },
+        placeholder = { Text("http://192.168.1.10:5000") },
+        supportingText = {
+            Text(
+                "Se usará cuando estés en la misma red WiFi que el servidor.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        },
+        enabled = !state.isSubmitting,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Uri,
             imeAction = ImeAction.Go
         ),
         modifier = Modifier.fillMaxWidth()

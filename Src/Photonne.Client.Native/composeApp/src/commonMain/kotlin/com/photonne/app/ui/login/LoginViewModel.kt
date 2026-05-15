@@ -2,6 +2,7 @@ package com.photonne.app.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.api.LocalReachabilityProbe
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.skipAuthRefresh
 import com.photonne.app.data.auth.AuthRepository
@@ -23,6 +24,7 @@ enum class LoginStep { ServerUrl, Credentials }
 data class LoginUiState(
     val step: LoginStep = LoginStep.ServerUrl,
     val serverUrl: String = "",
+    val localUrl: String = "",
     val username: String = "",
     val password: String = "",
     val rememberMe: Boolean = false,
@@ -36,6 +38,7 @@ class LoginViewModel(
     private val serverUrlStore: ServerUrlStore,
     private val rememberedCredentialsStore: RememberedCredentialsStore,
     private val httpClient: HttpClient,
+    private val reachabilityProbe: LocalReachabilityProbe,
     config: PhotonneAppConfig
 ) : ViewModel() {
 
@@ -43,12 +46,14 @@ class LoginViewModel(
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
     private fun initialState(config: PhotonneAppConfig): LoginUiState {
-        val saved = serverUrlStore.get()
+        val savedPublic = serverUrlStore.getPublic()
+        val savedLocal = serverUrlStore.getLocal().orEmpty()
         val remembered = rememberedCredentialsStore.get()
-        return if (saved != null) {
+        return if (savedPublic != null) {
             LoginUiState(
                 step = LoginStep.Credentials,
-                serverUrl = saved,
+                serverUrl = savedPublic,
+                localUrl = savedLocal,
                 username = remembered?.username.orEmpty(),
                 password = remembered?.password.orEmpty(),
                 rememberMe = remembered != null
@@ -57,6 +62,7 @@ class LoginViewModel(
             LoginUiState(
                 step = LoginStep.ServerUrl,
                 serverUrl = config.apiBaseUrl.orEmpty(),
+                localUrl = savedLocal,
                 rememberMe = rememberedCredentialsStore.isEnabled()
             )
         }
@@ -64,6 +70,10 @@ class LoginViewModel(
 
     fun onServerUrlChange(value: String) {
         _state.value = _state.value.copy(serverUrl = value, errorMessage = null)
+    }
+
+    fun onLocalUrlChange(value: String) {
+        _state.value = _state.value.copy(localUrl = value, errorMessage = null)
     }
 
     fun onUsernameChange(value: String) {
@@ -81,14 +91,21 @@ class LoginViewModel(
     fun submitServerUrl() {
         val current = _state.value
         if (current.isSubmitting) return
-        val normalized = ServerUrlStore.normalize(current.serverUrl)
-        if (!isValidUrl(normalized)) {
+        val normalizedPublic = ServerUrlStore.normalize(current.serverUrl)
+        if (!isValidUrl(normalizedPublic)) {
             _state.value = current.copy(errorMessage = "Introduce una URL válida (ej. https://photos.example.com)")
+            return
+        }
+        val normalizedLocal = current.localUrl
+            .takeIf { it.isNotBlank() }
+            ?.let(ServerUrlStore::normalize)
+        if (normalizedLocal != null && !isValidUrl(normalizedLocal)) {
+            _state.value = current.copy(errorMessage = "La URL local no es válida")
             return
         }
         _state.value = current.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
-            val reachable = probe(normalized)
+            val reachable = probe(normalizedPublic)
             if (reachable.isFailure) {
                 _state.value = _state.value.copy(
                     isSubmitting = false,
@@ -97,11 +114,16 @@ class LoginViewModel(
                 )
                 return@launch
             }
-            serverUrlStore.set(normalized)
+            serverUrlStore.setPublic(normalizedPublic)
+            serverUrlStore.setLocal(normalizedLocal)
+            // Probe the LAN URL right away so the first request after login
+            // already goes through the local address when applicable.
+            reachabilityProbe.runProbe()
             val remembered = rememberedCredentialsStore.get()
             _state.value = LoginUiState(
                 step = LoginStep.Credentials,
-                serverUrl = normalized,
+                serverUrl = normalizedPublic,
+                localUrl = normalizedLocal.orEmpty(),
                 username = remembered?.username.orEmpty(),
                 password = remembered?.password.orEmpty(),
                 rememberMe = remembered != null
@@ -112,10 +134,12 @@ class LoginViewModel(
     fun changeServer() {
         if (_state.value.isSubmitting) return
         tokenStorage.clear()
-        val previous = serverUrlStore.get().orEmpty()
+        val previousPublic = serverUrlStore.getPublic().orEmpty()
+        val previousLocal = serverUrlStore.getLocal().orEmpty()
         _state.value = LoginUiState(
             step = LoginStep.ServerUrl,
-            serverUrl = previous,
+            serverUrl = previousPublic,
+            localUrl = previousLocal,
             rememberMe = rememberedCredentialsStore.isEnabled()
         )
     }
@@ -127,7 +151,7 @@ class LoginViewModel(
             _state.value = current.copy(errorMessage = "Introduce usuario y contraseña")
             return
         }
-        if (serverUrlStore.get().isNullOrEmpty()) {
+        if (serverUrlStore.getPublic().isNullOrEmpty()) {
             _state.value = current.copy(
                 step = LoginStep.ServerUrl,
                 errorMessage = "Configura primero la URL del servidor"
@@ -146,7 +170,8 @@ class LoginViewModel(
                 }
                 LoginUiState(
                     step = LoginStep.Credentials,
-                    serverUrl = serverUrlStore.get().orEmpty(),
+                    serverUrl = serverUrlStore.getPublic().orEmpty(),
+                    localUrl = serverUrlStore.getLocal().orEmpty(),
                     username = if (current.rememberMe) username else "",
                     password = if (current.rememberMe) current.password else "",
                     rememberMe = current.rememberMe

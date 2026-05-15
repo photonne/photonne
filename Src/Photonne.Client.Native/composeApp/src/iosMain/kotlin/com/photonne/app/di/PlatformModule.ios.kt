@@ -1,5 +1,7 @@
 package com.photonne.app.di
 
+import com.photonne.app.data.api.IosNetworkMonitor
+import com.photonne.app.data.api.NetworkMonitor
 import com.photonne.app.ui.actions.AssetSharing
 import com.russhwolf.settings.NSUserDefaultsSettings
 import com.russhwolf.settings.Settings
@@ -9,6 +11,7 @@ import org.koin.dsl.module
 import platform.Foundation.NSUserDefaults
 
 actual fun platformModule() = module {
+    single<NetworkMonitor> { IosNetworkMonitor() }
     single<Settings> { NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults) }
     single<HttpClientEngine> { Darwin.create() }
     single { AssetSharing() }

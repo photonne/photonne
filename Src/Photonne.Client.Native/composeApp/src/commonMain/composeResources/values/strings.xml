@@ -560,6 +560,18 @@
     <string name="admin_settings_server_max_upload_hint">0 = sin límite</string>
     <string name="admin_settings_server_session_timeout">Tiempo de sesión (min)</string>
     <string name="admin_settings_server_thumbnails_path">Ruta de miniaturas</string>
+    <string name="admin_settings_device_section">Conexión de este dispositivo</string>
+    <string name="admin_settings_device_section_hint">Se guarda solo en este dispositivo. La URL local se usará automáticamente cuando esté disponible (misma red WiFi que el servidor).</string>
+    <string name="admin_settings_device_public_url">URL pública</string>
+    <string name="admin_settings_device_local_url">URL local (opcional)</string>
+    <string name="admin_settings_device_local_url_hint">Ej. http://192.168.1.10:5000</string>
+    <string name="admin_settings_device_status_local">Conectado usando la URL local</string>
+    <string name="admin_settings_device_status_public">Conectado usando la URL pública</string>
+    <string name="admin_settings_device_status_public_no_local">Conectado usando la URL pública (no hay URL local configurada)</string>
+    <string name="admin_settings_device_probe_button">Probar conexión local</string>
+    <string name="admin_settings_device_probe_reachable">La URL local responde.</string>
+    <string name="admin_settings_device_probe_unreachable">La URL local no responde desde esta red.</string>
+    <string name="admin_settings_device_saved">Conexión guardada.</string>
 
     <string name="admin_settings_trash">Configuración de papelera</string>
     <string name="admin_settings_trash_subtitle">Retención, cuota y estado actual</string>

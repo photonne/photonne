@@ -10,6 +10,7 @@ import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.ui.folder.FolderDetailViewModel
 import com.photonne.app.ui.folder.FolderPermissionsViewModel
 import com.photonne.app.ui.folder.FoldersViewModel
+import com.photonne.app.data.api.LocalReachabilityProbe
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.ServerUrlStore
@@ -47,6 +48,7 @@ import com.photonne.app.ui.actions.AssetSelectionActionsViewModel
 import com.photonne.app.ui.admin.AdminBackfillKind
 import com.photonne.app.ui.admin.AdminBackfillViewModel
 import com.photonne.app.ui.admin.AdminBackupViewModel
+import com.photonne.app.ui.admin.DeviceConnectionViewModel
 import com.photonne.app.ui.admin.AdminDuplicatesViewModel
 import com.photonne.app.ui.admin.AdminFaceRecognitionSettingsViewModel
 import com.photonne.app.ui.admin.AdminImageEmbeddingSettingsViewModel
@@ -115,6 +117,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
         val urlStore = get<ServerUrlStore>()
         PhotonneApiClient(get(), baseUrlProvider = { urlStore.requireBaseUrl() })
     }
+    single { LocalReachabilityProbe(get(), get(), get()) }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)
@@ -194,6 +197,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminTextRecognitionSettingsViewModel)
     viewModelOf(::AdminImageEmbeddingSettingsViewModel)
     viewModelOf(::AdminRunTasksViewModel)
+    viewModelOf(::DeviceConnectionViewModel)
     viewModel { (kind: AdminBackfillKind) ->
         AdminBackfillViewModel(get(), kind)
     }

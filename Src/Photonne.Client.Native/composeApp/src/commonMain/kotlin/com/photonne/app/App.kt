@@ -348,6 +348,12 @@ fun App() {
         buildPhotonneImageLoader(context, httpClient)
     }
 
+    val reachabilityProbe: com.photonne.app.data.api.LocalReachabilityProbe = koinInject()
+    val probeScope = rememberCoroutineScope()
+    LaunchedEffect(reachabilityProbe) {
+        reachabilityProbe.start(probeScope)
+    }
+
     val themeStore: com.photonne.app.data.settings.ThemePreferenceStore = koinInject()
     val themePreference by themeStore.value.collectAsState()
 
@@ -428,6 +434,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.admin.AdminNotificationSettingsViewModel = koinViewModel()
     val adminServerSettingsViewModel:
         com.photonne.app.ui.admin.AdminServerSettingsViewModel = koinViewModel()
+    val deviceConnectionViewModel:
+        com.photonne.app.ui.admin.DeviceConnectionViewModel = koinViewModel()
     val adminTrashSettingsViewModel:
         com.photonne.app.ui.admin.AdminTrashSettingsViewModel = koinViewModel()
     val adminUserDefaultsViewModel:
@@ -1989,7 +1997,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.AdminSettingsServer ->
                         com.photonne.app.ui.admin.AdminServerSettingsScreen(
-                            viewModel = adminServerSettingsViewModel
+                            viewModel = adminServerSettingsViewModel,
+                            deviceConnectionViewModel = deviceConnectionViewModel
                         )
                     MoreSubscreen.AdminSettingsTrash ->
                         com.photonne.app.ui.admin.AdminTrashSettingsScreen(
