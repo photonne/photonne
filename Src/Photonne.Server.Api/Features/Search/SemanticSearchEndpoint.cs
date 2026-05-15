@@ -12,6 +12,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Services.Embeddings;
 
 namespace Photonne.Server.Api.Features.Search;
@@ -53,6 +54,7 @@ public class SemanticSearchEndpoint : IEndpoint
         [FromServices] AssetVisibilityService visibility,
         [FromServices] IEmbeddingClient embeddingClient,
         [FromServices] IOptions<EmbeddingOptions> embeddingOptions,
+        [FromServices] SettingsService settings,
         ClaimsPrincipal user,
         [FromQuery] string? q,
         [FromQuery] int? limit,
@@ -71,10 +73,27 @@ public class SemanticSearchEndpoint : IEndpoint
             return Results.Unauthorized();
 
         var options = embeddingOptions.Value;
-        var maxDistance = options.MaxCosineDistance;
+
+        // DB-backed runtime overrides take precedence over appsettings.json.
+        // Reading the cosine ceiling and the active model version fresh on
+        // every search means the admin can re-tune semantic search without a
+        // restart; the static IOptions values are the fallback floor.
+        var modelVersionRaw = await settings.GetSettingAsync(
+            ImageEmbeddingService.ModelVersionKey, Guid.Empty, string.Empty);
+        var activeModelVersion = string.IsNullOrWhiteSpace(modelVersionRaw)
+            ? options.ModelVersion
+            : modelVersionRaw;
+
+        var maxDistanceRaw = await settings.GetSettingAsync(
+            ImageEmbeddingService.MaxCosineDistanceKey, Guid.Empty, string.Empty);
+        var maxDistance = !string.IsNullOrWhiteSpace(maxDistanceRaw)
+            && float.TryParse(maxDistanceRaw, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var d)
+            ? d
+            : options.MaxCosineDistance;
 
         // Encode the query (with a tiny LRU in front to amortize repeats).
-        var cacheKey = (options.ModelVersion, query.ToLowerInvariant());
+        var cacheKey = (activeModelVersion, query.ToLowerInvariant());
         if (!TextEmbeddingCache.TryGetValue(cacheKey, out Vector? queryVector) || queryVector == null)
         {
             EmbeddingResponseDto encoded;

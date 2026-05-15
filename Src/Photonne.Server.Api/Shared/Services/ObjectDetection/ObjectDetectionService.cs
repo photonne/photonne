@@ -12,6 +12,12 @@ namespace Photonne.Server.Api.Shared.Services.ObjectDetection;
 /// </summary>
 public class ObjectDetectionService
 {
+    public const string EnabledKey = "ObjectDetection.Enabled";
+    public const string MinScoreKey = "ObjectDetection.MinScore";
+    public const string MinNormalizedSizeKey = "ObjectDetection.MinNormalizedSize";
+    public const string MaxObjectsPerAssetKey = "ObjectDetection.MaxObjectsPerAsset";
+    public const string PreferThumbnailLargeKey = "ObjectDetection.PreferThumbnailLarge";
+
     private readonly ApplicationDbContext _dbContext;
     private readonly IObjectDetectionClient _client;
     private readonly SettingsService _settings;
@@ -59,6 +65,10 @@ public class ObjectDetectionService
 
         var response = await _client.DetectAsync(imagePath, assetId, cancellationToken);
 
+        var maxObjects = await ReadIntSettingAsync(MaxObjectsPerAssetKey, _options.MaxObjectsPerAsset);
+        var minScore = await ReadFloatSettingAsync(MinScoreKey, _options.MinScore);
+        var minNormalizedSize = await ReadFloatSettingAsync(MinNormalizedSizeKey, _options.MinNormalizedSize);
+
         // Idempotency: replace all prior auto-detected objects for this asset.
         // Object detections are not user-curated like Face/Person, so a full
         // refresh is the simplest correct semantics.
@@ -73,13 +83,13 @@ public class ObjectDetectionService
         var inserted = 0;
         foreach (var o in response.Objects.OrderByDescending(o => o.Score))
         {
-            if (inserted >= _options.MaxObjectsPerAsset) break;
-            if (o.Score < _options.MinScore) continue;
+            if (inserted >= maxObjects) break;
+            if (o.Score < minScore) continue;
             if (o.Bbox.Length != 4) continue;
 
             var w = o.Bbox[2];
             var h = o.Bbox[3];
-            if (w < _options.MinNormalizedSize || h < _options.MinNormalizedSize) continue;
+            if (w < minNormalizedSize || h < minNormalizedSize) continue;
             if (string.IsNullOrWhiteSpace(o.Label)) continue;
 
             _dbContext.AssetDetectedObjects.Add(new AssetDetectedObject
@@ -110,13 +120,14 @@ public class ObjectDetectionService
     /// </summary>
     private async Task<bool> IsRuntimeEnabledAsync()
     {
-        var v = await _settings.GetSettingAsync("ObjectDetection.Enabled", Guid.Empty, "true");
+        var v = await _settings.GetSettingAsync(EnabledKey, Guid.Empty, "true");
         return !v.Equals("false", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ResolveImagePathAsync(Asset asset)
     {
-        if (_options.PreferThumbnailLarge)
+        var preferLarge = await ReadBoolSettingAsync(PreferThumbnailLargeKey, _options.PreferThumbnailLarge);
+        if (preferLarge)
         {
             var large = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Large);
             if (large != null && File.Exists(large.FilePath))
@@ -127,5 +138,31 @@ public class ObjectDetectionService
 
         var physical = await _settings.ResolvePhysicalPathAsync(asset.FullPath);
         return physical;
+    }
+
+    private async Task<float> ReadFloatSettingAsync(string key, float fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<int> ReadIntSettingAsync(string key, int fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<bool> ReadBoolSettingAsync(string key, bool fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        if (bool.TryParse(raw, out var v)) return v;
+        return fallback;
     }
 }

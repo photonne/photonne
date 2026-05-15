@@ -43,6 +43,9 @@ public class FaceClusteringService
 
     public const string ClusteringThresholdKey = "FaceRecognition.ClusteringThreshold";
     public const string SuggestionThresholdKey = "FaceRecognition.SuggestionThreshold";
+    public const string MinFacesForClusterKey = "FaceRecognition.MinFacesForCluster";
+    public const string KnnSwitchoverThresholdKey = "FaceRecognition.KnnSwitchoverThreshold";
+    public const string KnnNeighborsKey = "FaceRecognition.KnnNeighbors";
 
     private readonly ApplicationDbContext _dbContext;
     private readonly FaceRecognitionOptions _options;
@@ -86,6 +89,28 @@ public class FaceClusteringService
         return float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
             ? v
             : fallback;
+    }
+
+    private async Task<int> ReadIntSettingAsync(string key, int fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    /// <summary>
+    /// Resolves the batch-clustering size and graph-build parameters, preferring
+    /// runtime overrides stored in the Settings table. Falls back to the static
+    /// <see cref="FaceRecognitionOptions"/> defaults when missing or unparseable.
+    /// </summary>
+    public async Task<(int MinFacesForCluster, int KnnSwitchoverThreshold, int KnnNeighbors)> ResolveBatchParamsAsync()
+    {
+        var minFaces = await ReadIntSettingAsync(MinFacesForClusterKey, _options.MinFacesForCluster);
+        var knnSwitch = await ReadIntSettingAsync(KnnSwitchoverThresholdKey, _options.KnnSwitchoverThreshold);
+        var knnK = await ReadIntSettingAsync(KnnNeighborsKey, _options.KnnNeighbors);
+        return (minFaces, knnSwitch, knnK);
     }
 
     /// <summary>
@@ -181,10 +206,11 @@ public class FaceClusteringService
         var scope = await _visibility.GetScopeAsync(userId, cancellationToken);
         var orphanCount = await CountOrphansForUserAsync(userId, scope, cancellationToken);
 
-        if (orphanCount < _options.MinFacesForCluster)
+        var (minFacesForCluster, _, _) = await ResolveBatchParamsAsync();
+        if (orphanCount < minFacesForCluster)
         {
             _logger.LogDebug("User {UserId}: {Orphans} orphans (< {Min}); skipping batch",
-                userId, orphanCount, _options.MinFacesForCluster);
+                userId, orphanCount, minFacesForCluster);
             return 0;
         }
 
@@ -248,7 +274,8 @@ public class FaceClusteringService
                 uf.FaceId == f.Id && uf.UserId == userId))
             .ToListAsync(cancellationToken);
 
-        if (orphans.Count < _options.MinFacesForCluster) return 0;
+        var (minFacesForCluster, knnSwitchoverThreshold, knnNeighbors) = await ResolveBatchParamsAsync();
+        if (orphans.Count < minFacesForCluster) return 0;
 
         var (threshold, _) = await ResolveThresholdsAsync(cancellationToken);
         var parent = Enumerable.Range(0, orphans.Count).ToArray();
@@ -270,7 +297,7 @@ public class FaceClusteringService
             if (ra != rb) parent[ra] = rb;
         }
 
-        if (orphans.Count > _options.KnnSwitchoverThreshold)
+        if (orphans.Count > knnSwitchoverThreshold)
         {
             // pgvector kNN path: for each orphan, ask Postgres for its top-k
             // nearest orphan neighbors (visible to U, no assignment yet) using
@@ -280,7 +307,7 @@ public class FaceClusteringService
             var idToIndex = new Dictionary<Guid, int>(orphans.Count);
             for (int i = 0; i < orphans.Count; i++) idToIndex[orphans[i].Id] = i;
 
-            var k = _options.KnnNeighbors;
+            var k = knnNeighbors;
             for (int i = 0; i < orphans.Count; i++)
             {
                 var face = orphans[i];
@@ -338,7 +365,7 @@ public class FaceClusteringService
         var personsCreated = 0;
         foreach (var (_, members) in clusters)
         {
-            if (members.Count < _options.MinFacesForCluster) continue;
+            if (members.Count < minFacesForCluster) continue;
 
             // Cover face = highest-confidence member.
             var coverIdx = members.OrderByDescending(idx => orphans[idx].Confidence).First();

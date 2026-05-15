@@ -14,6 +14,10 @@ namespace Photonne.Server.Api.Shared.Services.FaceRecognition;
 /// </summary>
 public class FaceRecognitionService
 {
+    public const string EnabledKey = "FaceRecognition.Enabled";
+    public const string MinDetectionScoreKey = "FaceRecognition.MinDetectionScore";
+    public const string PreferThumbnailLargeKey = "FaceRecognition.PreferThumbnailLarge";
+
     private readonly ApplicationDbContext _dbContext;
     private readonly IFaceRecognitionClient _client;
     private readonly FaceClusteringService _clustering;
@@ -64,6 +68,8 @@ public class FaceRecognitionService
 
         var response = await _client.DetectAsync(imagePath, assetId, cancellationToken);
 
+        var minDetectionScore = await ReadFloatSettingAsync(MinDetectionScoreKey, _options.MinDetectionScore);
+
         // Idempotency: replace previously auto-detected faces but preserve any
         // face that any user has manually assigned or rejected. Identity now
         // lives in UserFaceAssignment (per-user opinion); a face is "preserved"
@@ -84,7 +90,7 @@ public class FaceRecognitionService
         var inserted = 0;
         foreach (var f in response.Faces)
         {
-            if (f.DetScore < _options.MinDetectionScore) continue;
+            if (f.DetScore < minDetectionScore) continue;
             if (f.Embedding.Length != 512)
             {
                 _logger.LogWarning("Asset {AssetId}: face embedding has unexpected length {Len}, skipping", assetId, f.Embedding.Length);
@@ -135,13 +141,14 @@ public class FaceRecognitionService
     /// </summary>
     private async Task<bool> IsRuntimeEnabledAsync()
     {
-        var v = await _settings.GetSettingAsync("FaceRecognition.Enabled", Guid.Empty, "true");
+        var v = await _settings.GetSettingAsync(EnabledKey, Guid.Empty, "true");
         return !v.Equals("false", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ResolveImagePathAsync(Asset asset)
     {
-        if (_options.PreferThumbnailLarge)
+        var preferLarge = await ReadBoolSettingAsync(PreferThumbnailLargeKey, _options.PreferThumbnailLarge);
+        if (preferLarge)
         {
             var large = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Large);
             if (large != null && File.Exists(large.FilePath))
@@ -152,5 +159,22 @@ public class FaceRecognitionService
 
         var physical = await _settings.ResolvePhysicalPathAsync(asset.FullPath);
         return physical;
+    }
+
+    private async Task<float> ReadFloatSettingAsync(string key, float fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<bool> ReadBoolSettingAsync(string key, bool fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        if (bool.TryParse(raw, out var v)) return v;
+        return fallback;
     }
 }

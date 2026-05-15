@@ -22,7 +22,9 @@ import com.photonne.app.resources.admin_settings_nightly_object
 import com.photonne.app.resources.admin_settings_nightly_scene
 import com.photonne.app.resources.admin_settings_nightly_schedule
 import com.photonne.app.resources.admin_settings_nightly_text
+import com.photonne.app.resources.admin_settings_nightly_batch_size_hint
 import com.photonne.app.resources.admin_settings_nightly_thumbnails
+import com.photonne.app.resources.admin_settings_task_backfill_batch
 import com.photonne.app.resources.admin_settings_nightly_timezone
 import org.jetbrains.compose.resources.stringResource
 
@@ -48,7 +50,8 @@ class AdminNightlySettingsViewModel(
         "NightlyTaskSettings.TextRecognition.Mode",
         "NightlyTaskSettings.ImageEmbedding.Enabled",
         "NightlyTaskSettings.ImageEmbedding.Mode",
-        "NightlyTaskSettings.FaceClustering.Enabled"
+        "NightlyTaskSettings.FaceClustering.Enabled",
+        BACKFILL_BATCH_SIZE_KEY,
     )
 
     override val defaults = buildMap {
@@ -63,6 +66,14 @@ class AdminNightlySettingsViewModel(
             put("NightlyTaskSettings.$feature.Mode", "missing")
         }
         put("NightlyTaskSettings.FaceClustering.Enabled", "true")
+        put(BACKFILL_BATCH_SIZE_KEY, "500")
+    }
+
+    override fun normalize(key: String, value: String): String =
+        if (key == BACKFILL_BATCH_SIZE_KEY) value.filter { it.isDigit() } else value
+
+    companion object {
+        const val BACKFILL_BATCH_SIZE_KEY = "TaskSettings.BackfillBatchSize"
     }
 }
 
@@ -112,6 +123,13 @@ fun AdminNightlySettingsScreen(viewModel: AdminNightlySettingsViewModel) {
         FeatureRow(state, viewModel, "SceneClassification", stringResource(Res.string.admin_settings_nightly_scene), modeOptions)
         FeatureRow(state, viewModel, "TextRecognition", stringResource(Res.string.admin_settings_nightly_text), modeOptions)
         FeatureRow(state, viewModel, "ImageEmbedding", stringResource(Res.string.admin_settings_nightly_embedding), modeOptions)
+
+        HorizontalDivider()
+        SettingNumberField(
+            label = stringResource(Res.string.admin_settings_task_backfill_batch),
+            value = state.get(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY),
+            supporting = stringResource(Res.string.admin_settings_nightly_batch_size_hint),
+        ) { viewModel.set(AdminNightlySettingsViewModel.BACKFILL_BATCH_SIZE_KEY, it) }
 
         HorizontalDivider()
         SettingSwitch(

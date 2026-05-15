@@ -16,6 +16,11 @@ namespace Photonne.Server.Api.Shared.Services.Embeddings;
 /// </summary>
 public class ImageEmbeddingService
 {
+    public const string EnabledKey = "Embedding.Enabled";
+    public const string ModelVersionKey = "Embedding.ModelVersion";
+    public const string MaxCosineDistanceKey = "Embedding.MaxCosineDistance";
+    public const string PreferThumbnailLargeKey = "Embedding.PreferThumbnailLarge";
+
     private readonly ApplicationDbContext _dbContext;
     private readonly IEmbeddingClient _client;
     private readonly SettingsService _settings;
@@ -56,16 +61,18 @@ public class ImageEmbeddingService
             return false;
         }
 
+        var activeModelVersion = await ReadStringSettingAsync(ModelVersionKey, _options.ModelVersion);
+
         // Idempotency: skip if we already have a row for the active model
         // version. A model bump (different ModelVersion) re-encodes via the
         // backfill admin endpoint.
-        if (asset.Embedding != null && asset.Embedding.ModelVersion == _options.ModelVersion)
+        if (asset.Embedding != null && asset.Embedding.ModelVersion == activeModelVersion)
         {
             asset.ImageEmbeddingCompletedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
             _logger.LogDebug(
                 "Asset {AssetId} already has embedding for model {Model}; skipping",
-                assetId, _options.ModelVersion);
+                assetId, activeModelVersion);
             return false;
         }
 
@@ -112,13 +119,14 @@ public class ImageEmbeddingService
 
     private async Task<bool> IsRuntimeEnabledAsync()
     {
-        var v = await _settings.GetSettingAsync("Embedding.Enabled", Guid.Empty, "true");
+        var v = await _settings.GetSettingAsync(EnabledKey, Guid.Empty, "true");
         return !v.Equals("false", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ResolveImagePathAsync(Asset asset)
     {
-        if (_options.PreferThumbnailLarge)
+        var preferLarge = await ReadBoolSettingAsync(PreferThumbnailLargeKey, _options.PreferThumbnailLarge);
+        if (preferLarge)
         {
             var large = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Large);
             if (large != null && File.Exists(large.FilePath))
@@ -129,5 +137,19 @@ public class ImageEmbeddingService
 
         var physical = await _settings.ResolvePhysicalPathAsync(asset.FullPath);
         return physical;
+    }
+
+    private async Task<string> ReadStringSettingAsync(string key, string fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        return string.IsNullOrWhiteSpace(raw) ? fallback : raw;
+    }
+
+    private async Task<bool> ReadBoolSettingAsync(string key, bool fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        if (bool.TryParse(raw, out var v)) return v;
+        return fallback;
     }
 }

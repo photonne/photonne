@@ -12,6 +12,11 @@ namespace Photonne.Server.Api.Shared.Services.TextRecognition;
 /// </summary>
 public class TextRecognitionService
 {
+    public const string EnabledKey = "TextRecognition.Enabled";
+    public const string MinScoreKey = "TextRecognition.MinScore";
+    public const string MaxLinesPerAssetKey = "TextRecognition.MaxLinesPerAsset";
+    public const string PreferThumbnailLargeKey = "TextRecognition.PreferThumbnailLarge";
+
     private readonly ApplicationDbContext _dbContext;
     private readonly ITextRecognitionClient _client;
     private readonly SettingsService _settings;
@@ -59,6 +64,9 @@ public class TextRecognitionService
 
         var response = await _client.DetectAsync(imagePath, assetId, cancellationToken);
 
+        var maxLines = await ReadIntSettingAsync(MaxLinesPerAssetKey, _options.MaxLinesPerAsset);
+        var minScore = await ReadFloatSettingAsync(MinScoreKey, _options.MinScore);
+
         // Idempotency: replace all prior extracted text rows for this asset.
         // OCR output is not user-curated so a full refresh is the simplest
         // correct semantics — and matches Scene/Object behavior.
@@ -75,8 +83,8 @@ public class TextRecognitionService
         // service's even if the JSON arrived out of order.
         foreach (var line in response.Lines.OrderBy(l => l.LineIndex))
         {
-            if (inserted >= _options.MaxLinesPerAsset) break;
-            if (line.Confidence < _options.MinScore) continue;
+            if (inserted >= maxLines) break;
+            if (line.Confidence < minScore) continue;
             var text = (line.Text ?? string.Empty).Trim();
             if (string.IsNullOrEmpty(text)) continue;
 
@@ -114,13 +122,14 @@ public class TextRecognitionService
     /// </summary>
     private async Task<bool> IsRuntimeEnabledAsync()
     {
-        var v = await _settings.GetSettingAsync("TextRecognition.Enabled", Guid.Empty, "true");
+        var v = await _settings.GetSettingAsync(EnabledKey, Guid.Empty, "true");
         return !v.Equals("false", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ResolveImagePathAsync(Asset asset)
     {
-        if (_options.PreferThumbnailLarge)
+        var preferLarge = await ReadBoolSettingAsync(PreferThumbnailLargeKey, _options.PreferThumbnailLarge);
+        if (preferLarge)
         {
             var large = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Large);
             if (large != null && File.Exists(large.FilePath))
@@ -131,5 +140,31 @@ public class TextRecognitionService
 
         var physical = await _settings.ResolvePhysicalPathAsync(asset.FullPath);
         return physical;
+    }
+
+    private async Task<float> ReadFloatSettingAsync(string key, float fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<int> ReadIntSettingAsync(string key, int fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<bool> ReadBoolSettingAsync(string key, bool fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        if (bool.TryParse(raw, out var v)) return v;
+        return fallback;
     }
 }

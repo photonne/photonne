@@ -17,6 +17,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -26,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +41,11 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
+import com.photonne.app.resources.admin_face_settings_nightly_mode_all
+import com.photonne.app.resources.admin_face_settings_nightly_mode_missing
+import com.photonne.app.resources.admin_face_settings_nightly_open
+import com.photonne.app.resources.admin_face_settings_nightly_state_disabled
+import com.photonne.app.resources.admin_face_settings_nightly_state_enabled
 import org.jetbrains.compose.resources.stringResource
 
 /** Vertically scrolling form shell shared by every Ajustes subpage. */
@@ -154,6 +162,75 @@ fun SettingTextField(
         supportingText = supporting?.let { { Text(it) } },
         modifier = Modifier.fillMaxWidth()
     )
+}
+
+/** OutlinedTextField that accepts digits and a single dot — used for the
+ *  cosine-distance thresholds and similar [0.0–1.0] decimal fields shared
+ *  by every ML feature settings page. */
+@Composable
+fun SettingDecimalField(
+    label: String,
+    value: String,
+    enabled: Boolean = true,
+    supporting: String? = null,
+    onChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        label = { Text(label) },
+        singleLine = true,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        supportingText = supporting?.let { { Text(it) } },
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** Read-only summary of a feature's nightly state with a button that lets
+ *  the admin jump to the Tareas nocturnas screen to actually edit it.
+ *  Shared by every ML feature settings page; uses the `admin_face_settings_
+ *  nightly_*` string keys which read as feature-agnostic copy. */
+@Composable
+fun NightlyStateCard(
+    enabled: Boolean,
+    mode: String,
+    onOpen: () -> Unit,
+) {
+    val enabledText = stringResource(
+        if (enabled) Res.string.admin_face_settings_nightly_state_enabled
+        else Res.string.admin_face_settings_nightly_state_disabled,
+    )
+    val modeText = stringResource(
+        if (mode.equals("all", ignoreCase = true)) Res.string.admin_face_settings_nightly_mode_all
+        else Res.string.admin_face_settings_nightly_mode_missing,
+    )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(enabledText, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    modeText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onOpen) {
+                Text(stringResource(Res.string.admin_face_settings_nightly_open))
+            }
+        }
+    }
 }
 
 @Composable

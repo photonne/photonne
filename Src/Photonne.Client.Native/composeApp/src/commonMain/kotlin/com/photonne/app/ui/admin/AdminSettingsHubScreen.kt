@@ -1,7 +1,6 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Dns
@@ -35,8 +34,6 @@ import com.photonne.app.resources.admin_settings_scene_classification
 import com.photonne.app.resources.admin_settings_scene_classification_subtitle
 import com.photonne.app.resources.admin_settings_server
 import com.photonne.app.resources.admin_settings_server_subtitle
-import com.photonne.app.resources.admin_settings_tasks
-import com.photonne.app.resources.admin_settings_tasks_subtitle
 import com.photonne.app.resources.admin_settings_text_recognition
 import com.photonne.app.resources.admin_settings_text_recognition_subtitle
 import com.photonne.app.resources.admin_settings_trash
@@ -48,7 +45,6 @@ import com.photonne.app.resources.admin_settings_version_subtitle
 import org.jetbrains.compose.resources.stringResource
 
 enum class AdminSettingsEntry {
-    Tasks,
     FaceRecognition,
     ObjectDetection,
     SceneClassification,
@@ -67,12 +63,6 @@ enum class AdminSettingsEntry {
 @Composable
 fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
     val entries = listOf(
-        AdminHubEntry(
-            AdminSettingsEntry.Tasks.name,
-            stringResource(Res.string.admin_settings_tasks),
-            stringResource(Res.string.admin_settings_tasks_subtitle),
-            Icons.Outlined.Build
-        ),
         AdminHubEntry(
             AdminSettingsEntry.FaceRecognition.name,
             stringResource(Res.string.admin_settings_face_recognition),

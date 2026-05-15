@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -8,6 +9,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_face_settings_workers
+import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_settings_image_format
 import com.photonne.app.resources.admin_settings_image_format_jpeg
 import com.photonne.app.resources.admin_settings_image_format_webp
@@ -25,18 +28,24 @@ class AdminImageSettingsViewModel(
         "TaskSettings.ThumbnailFormat",
         "TaskSettings.ThumbnailQuality.Small",
         "TaskSettings.ThumbnailQuality.Medium",
-        "TaskSettings.ThumbnailQuality.Large"
+        "TaskSettings.ThumbnailQuality.Large",
+        WORKERS_KEY,
     )
 
     override val defaults = mapOf(
         "TaskSettings.ThumbnailFormat" to "jpeg",
         "TaskSettings.ThumbnailQuality.Small" to "60",
         "TaskSettings.ThumbnailQuality.Medium" to "75",
-        "TaskSettings.ThumbnailQuality.Large" to "85"
+        "TaskSettings.ThumbnailQuality.Large" to "85",
+        WORKERS_KEY to "2",
     )
 
     override fun normalize(key: String, value: String): String =
         if (key == "TaskSettings.ThumbnailFormat") value else value.filter { it.isDigit() }
+
+    companion object {
+        const val WORKERS_KEY = "TaskSettings.ThumbnailWorkers"
+    }
 }
 
 @Composable
@@ -82,5 +91,15 @@ fun AdminImageSettingsScreen(viewModel: AdminImageSettingsViewModel) {
             state.get("TaskSettings.ThumbnailQuality.Large"),
             supporting = "0 – 100"
         ) { viewModel.set("TaskSettings.ThumbnailQuality.Large", it) }
+
+        HorizontalDivider()
+        Text(
+            stringResource(Res.string.admin_face_settings_workers_section),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        SettingNumberField(
+            label = stringResource(Res.string.admin_face_settings_workers),
+            value = state.get(AdminImageSettingsViewModel.WORKERS_KEY),
+        ) { viewModel.set(AdminImageSettingsViewModel.WORKERS_KEY, it) }
     }
 }

@@ -12,6 +12,11 @@ namespace Photonne.Server.Api.Shared.Services.SceneClassification;
 /// </summary>
 public class SceneClassificationService
 {
+    public const string EnabledKey = "SceneClassification.Enabled";
+    public const string MinScoreKey = "SceneClassification.MinScore";
+    public const string MaxScenesPerAssetKey = "SceneClassification.MaxScenesPerAsset";
+    public const string PreferThumbnailLargeKey = "SceneClassification.PreferThumbnailLarge";
+
     private readonly ApplicationDbContext _dbContext;
     private readonly ISceneClassificationClient _client;
     private readonly SettingsService _settings;
@@ -59,6 +64,9 @@ public class SceneClassificationService
 
         var response = await _client.ClassifyAsync(imagePath, assetId, cancellationToken);
 
+        var maxScenes = await ReadIntSettingAsync(MaxScenesPerAssetKey, _options.MaxScenesPerAsset);
+        var minScore = await ReadFloatSettingAsync(MinScoreKey, _options.MinScore);
+
         // Idempotency: replace all prior auto-classified scenes for this asset.
         // Predictions are not user-curated so a full refresh is the simplest
         // correct semantics — and matches how AssetDetectedObjects behave.
@@ -75,11 +83,11 @@ public class SceneClassificationService
         // ranking even if the JSON arrives out of order.
         foreach (var s in response.Scenes.OrderBy(s => s.Rank))
         {
-            if (inserted >= _options.MaxScenesPerAsset) break;
+            if (inserted >= maxScenes) break;
             // Always keep rank 1 — the model's best guess is useful even when
             // the softmax is diffuse. Filter rank ≥ 2 by confidence so we
             // don't pollute the search facet with "maybe a ball pit (3%)".
-            if (s.Rank > 1 && s.Score < _options.MinScore) continue;
+            if (s.Rank > 1 && s.Score < minScore) continue;
             if (string.IsNullOrWhiteSpace(s.Label)) continue;
 
             _dbContext.AssetClassifiedScenes.Add(new AssetClassifiedScene
@@ -107,13 +115,14 @@ public class SceneClassificationService
     /// </summary>
     private async Task<bool> IsRuntimeEnabledAsync()
     {
-        var v = await _settings.GetSettingAsync("SceneClassification.Enabled", Guid.Empty, "true");
+        var v = await _settings.GetSettingAsync(EnabledKey, Guid.Empty, "true");
         return !v.Equals("false", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string?> ResolveImagePathAsync(Asset asset)
     {
-        if (_options.PreferThumbnailLarge)
+        var preferLarge = await ReadBoolSettingAsync(PreferThumbnailLargeKey, _options.PreferThumbnailLarge);
+        if (preferLarge)
         {
             var large = asset.Thumbnails.FirstOrDefault(t => t.Size == ThumbnailSize.Large);
             if (large != null && File.Exists(large.FilePath))
@@ -124,5 +133,31 @@ public class SceneClassificationService
 
         var physical = await _settings.ResolvePhysicalPathAsync(asset.FullPath);
         return physical;
+    }
+
+    private async Task<float> ReadFloatSettingAsync(string key, float fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<int> ReadIntSettingAsync(string key, int fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        return int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : fallback;
+    }
+
+    private async Task<bool> ReadBoolSettingAsync(string key, bool fallback)
+    {
+        var raw = await _settings.GetSettingAsync(key, Guid.Empty, string.Empty);
+        if (string.IsNullOrWhiteSpace(raw)) return fallback;
+        if (bool.TryParse(raw, out var v)) return v;
+        return fallback;
     }
 }

@@ -1,12 +1,16 @@
 package com.photonne.app.ui.admin
 
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_face_settings_workers
+import com.photonne.app.resources.admin_face_settings_workers_section
 import com.photonne.app.resources.admin_settings_metadata_camera
 import com.photonne.app.resources.admin_settings_metadata_datetime
 import com.photonne.app.resources.admin_settings_metadata_gps
@@ -25,7 +29,8 @@ class AdminMetadataSettingsViewModel(
         "MetadataSettings.ExtractCameraInfo",
         "MetadataSettings.ExtractIptc",
         "MetadataSettings.ReadXmpSidecar",
-        "MetadataSettings.DefaultTimezone"
+        "MetadataSettings.DefaultTimezone",
+        WORKERS_KEY,
     )
 
     override val defaults = mapOf(
@@ -34,8 +39,16 @@ class AdminMetadataSettingsViewModel(
         "MetadataSettings.ExtractCameraInfo" to "true",
         "MetadataSettings.ExtractIptc" to "true",
         "MetadataSettings.ReadXmpSidecar" to "true",
-        "MetadataSettings.DefaultTimezone" to "UTC"
+        "MetadataSettings.DefaultTimezone" to "UTC",
+        WORKERS_KEY to "2",
     )
+
+    override fun normalize(key: String, value: String): String =
+        if (key == WORKERS_KEY) value.filter { it.isDigit() } else value
+
+    companion object {
+        const val WORKERS_KEY = "TaskSettings.MetadataWorkers"
+    }
 }
 
 @Composable
@@ -78,5 +91,15 @@ fun AdminMetadataSettingsScreen(viewModel: AdminMetadataSettingsViewModel) {
             value = state.get("MetadataSettings.DefaultTimezone"),
             supporting = "IANA: UTC, Europe/Madrid, …"
         ) { viewModel.set("MetadataSettings.DefaultTimezone", it) }
+
+        HorizontalDivider()
+        Text(
+            stringResource(Res.string.admin_face_settings_workers_section),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        SettingNumberField(
+            label = stringResource(Res.string.admin_face_settings_workers),
+            value = state.get(AdminMetadataSettingsViewModel.WORKERS_KEY),
+        ) { viewModel.set(AdminMetadataSettingsViewModel.WORKERS_KEY, it) }
     }
 }

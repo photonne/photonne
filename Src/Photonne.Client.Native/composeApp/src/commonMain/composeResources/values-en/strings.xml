@@ -432,35 +432,81 @@
     <string name="admin_libraries_permissions_empty">Only you can access this library.</string>
 
     <!-- Settings hub + subpages -->
-    <string name="admin_settings_tasks">Task configuration</string>
-    <string name="admin_settings_tasks_subtitle">Parallel workers and batch sizes</string>
-    <string name="admin_settings_workers_section">Parallel workers</string>
-    <string name="admin_settings_task_workers_metadata">Metadata</string>
-    <string name="admin_settings_task_workers_thumbnails">Thumbnails</string>
-    <string name="admin_settings_task_workers_face">Face recognition</string>
-    <string name="admin_settings_task_workers_object">Object detection</string>
-    <string name="admin_settings_task_workers_scene">Scene classification</string>
-    <string name="admin_settings_task_workers_text">Text recognition (OCR)</string>
-    <string name="admin_settings_task_workers_embedding">Smart search (embeddings)</string>
     <string name="admin_settings_task_backfill_batch">Backfill batch size</string>
+    <string name="admin_settings_nightly_batch_size_hint">Default for manual backfill runs from System. Each run can override it.</string>
+
+    <string name="admin_system_run_tasks">Run tasks</string>
+    <string name="admin_system_run_tasks_subtitle">Indexing, thumbnails, duplicates, ML…</string>
+    <string name="admin_run_tasks_pending_format">%1$d unprocessed · %2$d in queue</string>
 
     <string name="admin_settings_face_recognition">Face recognition</string>
-    <string name="admin_settings_face_recognition_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_face_recognition_subtitle">Thresholds, model and workers</string>
+
+    <string name="admin_face_settings_enabled">Face recognition enabled</string>
+    <string name="admin_face_settings_enabled_description">Master switch. When off, no photo is processed by the model.</string>
+    <string name="admin_face_settings_parameters_section">Model parameters</string>
+    <string name="admin_face_settings_min_detection_score">Minimum detection score</string>
+    <string name="admin_face_settings_min_detection_score_hint">Faces with a lower score are dropped. Range 0.0 – 1.0.</string>
+    <string name="admin_face_settings_clustering_threshold">Clustering threshold</string>
+    <string name="admin_face_settings_threshold_hint">Maximum cosine distance to consider two faces the same person. Typical: 0.40 – 0.45.</string>
+    <string name="admin_face_settings_suggestion_threshold">Suggestion threshold</string>
+    <string name="admin_face_settings_suggestion_threshold_hint">Faces in [clustering threshold, this value) are recorded as suggestions. Must be ≥ clustering threshold.</string>
+    <string name="admin_face_settings_min_faces_for_cluster">Minimum faces per cluster</string>
+    <string name="admin_face_settings_knn_switchover">kNN switchover</string>
+    <string name="admin_face_settings_knn_switchover_hint">Above this orphan count, pgvector kNN replaces the in-memory O(n²) pairwise loop.</string>
+    <string name="admin_face_settings_knn_neighbors">kNN neighbours</string>
+    <string name="admin_face_settings_knn_neighbors_hint">Top-k queried per face in the kNN path.</string>
+    <string name="admin_face_settings_prefer_thumb_large">Prefer Large thumbnail</string>
+    <string name="admin_face_settings_prefer_thumb_large_description">Use the Large (1280 px) thumbnail instead of the original. Reduces I/O. ArcFace crops to 112x112 anyway.</string>
+    <string name="admin_face_settings_workers_section">Workers</string>
+    <string name="admin_face_settings_workers">Parallel processes</string>
+    <string name="admin_face_settings_nightly_section">Nightly schedule</string>
+    <string name="admin_face_settings_nightly_state_enabled">Enabled in the nightly task</string>
+    <string name="admin_face_settings_nightly_state_disabled">Disabled in the nightly task</string>
+    <string name="admin_face_settings_nightly_mode_missing">Mode: only items without results</string>
+    <string name="admin_face_settings_nightly_mode_all">Mode: all items</string>
+    <string name="admin_face_settings_nightly_open">Edit in nightly tasks ▸</string>
     <string name="admin_settings_object_detection">Object detection</string>
-    <string name="admin_settings_object_detection_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_object_detection_subtitle">Thresholds, model and workers</string>
+
+    <string name="admin_object_settings_enabled">Object detection enabled</string>
+    <string name="admin_object_settings_enabled_description">Master switch. When off, no photo is processed for objects.</string>
+    <string name="admin_object_settings_min_score">Minimum score</string>
+    <string name="admin_object_settings_min_score_hint">Objects with a lower score are dropped. Range 0.0 – 1.0.</string>
+    <string name="admin_object_settings_min_normalized_size">Minimum object size</string>
+    <string name="admin_object_settings_min_normalized_size_hint">Minimum fraction of the image side (0.02 = 2 %). Filters tiny objects out.</string>
+    <string name="admin_object_settings_max_objects">Max objects per photo</string>
+    <string name="admin_object_settings_max_objects_hint">Upper cap. Objects with the highest score win.</string>
     <string name="admin_settings_scene_classification">Scene classification</string>
-    <string name="admin_settings_scene_classification_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_scene_classification_subtitle">Thresholds, model and workers</string>
     <string name="admin_settings_text_recognition">Text recognition (OCR)</string>
-    <string name="admin_settings_text_recognition_subtitle">Nightly task activation and mode</string>
+    <string name="admin_settings_text_recognition_subtitle">Thresholds, model and workers</string>
     <string name="admin_settings_image_embedding">Smart search</string>
-    <string name="admin_settings_image_embedding_subtitle">CLIP embeddings in the nightly task</string>
-    <string name="admin_settings_feature_nightly_section">Nightly task</string>
-    <string name="admin_settings_feature_enabled">Run during the nightly task</string>
-    <string name="admin_settings_feature_enabled_description">When enabled, the nightly task processes this model.</string>
-    <string name="admin_settings_feature_mode">Mode</string>
+    <string name="admin_settings_image_embedding_subtitle">CLIP model, thresholds and workers</string>
+
+    <string name="admin_scene_settings_enabled">Scene classification enabled</string>
+    <string name="admin_scene_settings_enabled_description">Master switch. When off, no scenes are classified on any photo.</string>
+    <string name="admin_scene_settings_min_score">Minimum score (rank 2+)</string>
+    <string name="admin_scene_settings_min_score_hint">Rank 1 (best guess) is always kept. Lower ranks only if they exceed this score.</string>
+    <string name="admin_scene_settings_max_scenes">Max scenes per photo</string>
+    <string name="admin_scene_settings_max_scenes_hint">Upper cap. Stored in ranking order.</string>
+
+    <string name="admin_text_settings_enabled">OCR enabled</string>
+    <string name="admin_text_settings_enabled_description">Master switch. When off, no text is extracted from any photo.</string>
+    <string name="admin_text_settings_min_score">Minimum confidence</string>
+    <string name="admin_text_settings_min_score_hint">Lines with lower confidence are dropped. Range 0.0 – 1.0.</string>
+    <string name="admin_text_settings_max_lines">Max lines per photo</string>
+    <string name="admin_text_settings_max_lines_hint">Upper cap per image. Useful for dense documents.</string>
+
+    <string name="admin_embedding_settings_enabled">Smart search enabled</string>
+    <string name="admin_embedding_settings_enabled_description">Master switch. When off, no embeddings are generated and content search is unavailable.</string>
+    <string name="admin_embedding_settings_model_version">Model version</string>
+    <string name="admin_embedding_settings_model_version_hint">Stable identifier of the CLIP model. Default: mclip-vit-b32-v1.</string>
+    <string name="admin_embedding_settings_model_version_warning">⚠ Changing the model version invalidates every existing embedding. Until you run a backfill with "Only missing" OFF, semantic search will mix old and new vectors and results will be incoherent.</string>
+    <string name="admin_embedding_settings_max_cosine">Maximum cosine distance</string>
+    <string name="admin_embedding_settings_max_cosine_hint">Upper bound for semantic search results. Lower = stricter results. Typical range: 0.5 – 0.9.</string>
     <string name="admin_settings_feature_mode_missing">Only items without results</string>
     <string name="admin_settings_feature_mode_all">All items</string>
-    <string name="admin_settings_feature_mode_description">"Only missing" never reprocesses; "all" re-runs the model on every asset each night.</string>
 
     <string name="admin_settings_image">Image settings</string>
     <string name="admin_settings_image_subtitle">Thumbnail format and quality</string>

@@ -48,19 +48,23 @@ import com.photonne.app.ui.admin.AdminBackfillKind
 import com.photonne.app.ui.admin.AdminBackfillViewModel
 import com.photonne.app.ui.admin.AdminBackupViewModel
 import com.photonne.app.ui.admin.AdminDuplicatesViewModel
+import com.photonne.app.ui.admin.AdminFaceRecognitionSettingsViewModel
+import com.photonne.app.ui.admin.AdminImageEmbeddingSettingsViewModel
+import com.photonne.app.ui.admin.AdminObjectDetectionSettingsViewModel
+import com.photonne.app.ui.admin.AdminRunTasksViewModel
+import com.photonne.app.ui.admin.AdminSceneClassificationSettingsViewModel
+import com.photonne.app.ui.admin.AdminTextRecognitionSettingsViewModel
+
 import com.photonne.app.ui.admin.AdminImageSettingsViewModel
 import com.photonne.app.ui.admin.AdminIndexAssetsViewModel
 import com.photonne.app.ui.admin.AdminLibrariesViewModel
 import com.photonne.app.ui.admin.AdminMaintenanceViewModel
 import com.photonne.app.ui.admin.AdminMetadataSettingsViewModel
-import com.photonne.app.ui.admin.AdminMlFeature
-import com.photonne.app.ui.admin.AdminMlFeatureSettingsViewModel
 import com.photonne.app.ui.admin.AdminNightlySettingsViewModel
 import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerViewModel
 import com.photonne.app.ui.admin.AdminStatsViewModel
-import com.photonne.app.ui.admin.AdminTaskSettingsViewModel
 import com.photonne.app.ui.admin.AdminThumbnailsViewModel
 import com.photonne.app.ui.admin.AdminTrashSettingsViewModel
 import com.photonne.app.ui.admin.AdminUserDefaultsViewModel
@@ -173,7 +177,6 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminStatsViewModel)
     viewModelOf(::AdminServerViewModel)
     viewModelOf(::AdminLibrariesViewModel)
-    viewModelOf(::AdminTaskSettingsViewModel)
     viewModelOf(::AdminImageSettingsViewModel)
     viewModelOf(::AdminMetadataSettingsViewModel)
     viewModelOf(::AdminNightlySettingsViewModel)
@@ -185,9 +188,12 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminThumbnailsViewModel)
     viewModelOf(::AdminDuplicatesViewModel)
     viewModelOf(::AdminMaintenanceViewModel)
-    viewModel { (feature: AdminMlFeature) ->
-        AdminMlFeatureSettingsViewModel(get(), feature)
-    }
+    viewModelOf(::AdminFaceRecognitionSettingsViewModel)
+    viewModelOf(::AdminObjectDetectionSettingsViewModel)
+    viewModelOf(::AdminSceneClassificationSettingsViewModel)
+    viewModelOf(::AdminTextRecognitionSettingsViewModel)
+    viewModelOf(::AdminImageEmbeddingSettingsViewModel)
+    viewModelOf(::AdminRunTasksViewModel)
     viewModel { (kind: AdminBackfillKind) ->
         AdminBackfillViewModel(get(), kind)
     }

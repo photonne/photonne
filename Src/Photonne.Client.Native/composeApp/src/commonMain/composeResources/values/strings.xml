@@ -432,35 +432,81 @@
     <string name="admin_libraries_permissions_empty">Solo tú tienes acceso a esta biblioteca.</string>
 
     <!-- Settings hub + subpages -->
-    <string name="admin_settings_tasks">Configuración de tareas</string>
-    <string name="admin_settings_tasks_subtitle">Trabajadores en paralelo y tamaño de lotes</string>
-    <string name="admin_settings_workers_section">Trabajadores en paralelo</string>
-    <string name="admin_settings_task_workers_metadata">Metadatos</string>
-    <string name="admin_settings_task_workers_thumbnails">Miniaturas</string>
-    <string name="admin_settings_task_workers_face">Reconocimiento facial</string>
-    <string name="admin_settings_task_workers_object">Reconocimiento de objetos</string>
-    <string name="admin_settings_task_workers_scene">Clasificación de escenas</string>
-    <string name="admin_settings_task_workers_text">Reconocimiento de texto (OCR)</string>
-    <string name="admin_settings_task_workers_embedding">Búsqueda inteligente (embeddings)</string>
     <string name="admin_settings_task_backfill_batch">Tamaño del lote de backfill</string>
+    <string name="admin_settings_nightly_batch_size_hint">Valor por defecto para ejecuciones manuales de backfill desde Sistema. Cada ejecución puede sobreescribirlo.</string>
+
+    <string name="admin_system_run_tasks">Ejecutar tareas</string>
+    <string name="admin_system_run_tasks_subtitle">Indexar, miniaturas, duplicados, ML…</string>
+    <string name="admin_run_tasks_pending_format">%1$d sin procesar · %2$d en cola</string>
 
     <string name="admin_settings_face_recognition">Reconocimiento facial</string>
-    <string name="admin_settings_face_recognition_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_face_recognition_subtitle">Umbrales, modelo y workers</string>
+
+    <string name="admin_face_settings_enabled">Reconocimiento facial activado</string>
+    <string name="admin_face_settings_enabled_description">Interruptor maestro. Si está desactivado, ninguna foto será procesada por el modelo.</string>
+    <string name="admin_face_settings_parameters_section">Parámetros del modelo</string>
+    <string name="admin_face_settings_min_detection_score">Score mínimo de detección</string>
+    <string name="admin_face_settings_min_detection_score_hint">Caras con score por debajo se descartan. Rango 0.0 – 1.0.</string>
+    <string name="admin_face_settings_clustering_threshold">Umbral de agrupado (clustering)</string>
+    <string name="admin_face_settings_threshold_hint">Distancia coseno máxima para considerar dos caras de la misma persona. Típico: 0.40 – 0.45.</string>
+    <string name="admin_face_settings_suggestion_threshold">Umbral de sugerencias</string>
+    <string name="admin_face_settings_suggestion_threshold_hint">Caras en [umbral de agrupado, este valor) se proponen como sugerencia. Debe ser ≥ umbral de agrupado.</string>
+    <string name="admin_face_settings_min_faces_for_cluster">Caras mínimas por cluster</string>
+    <string name="admin_face_settings_knn_switchover">Switchover kNN</string>
+    <string name="admin_face_settings_knn_switchover_hint">Por encima de este número de caras huérfanas se usa pgvector kNN en lugar del O(n²) en memoria.</string>
+    <string name="admin_face_settings_knn_neighbors">Vecinos kNN</string>
+    <string name="admin_face_settings_knn_neighbors_hint">Top-k consultado por cara en el camino kNN.</string>
+    <string name="admin_face_settings_prefer_thumb_large">Preferir miniatura grande</string>
+    <string name="admin_face_settings_prefer_thumb_large_description">Usa la miniatura Large (1280 px) en vez del original. Reduce I/O. ArcFace recorta a 112x112 igualmente.</string>
+    <string name="admin_face_settings_workers_section">Workers</string>
+    <string name="admin_face_settings_workers">Procesos en paralelo</string>
+    <string name="admin_face_settings_nightly_section">Programación nocturna</string>
+    <string name="admin_face_settings_nightly_state_enabled">Activado en la tarea nocturna</string>
+    <string name="admin_face_settings_nightly_state_disabled">Desactivado en la tarea nocturna</string>
+    <string name="admin_face_settings_nightly_mode_missing">Modo: solo elementos sin procesar</string>
+    <string name="admin_face_settings_nightly_mode_all">Modo: todos los elementos</string>
+    <string name="admin_face_settings_nightly_open">Editar en nocturnas ▸</string>
     <string name="admin_settings_object_detection">Reconocimiento de objetos</string>
-    <string name="admin_settings_object_detection_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_object_detection_subtitle">Umbrales, modelo y workers</string>
+
+    <string name="admin_object_settings_enabled">Detección de objetos activada</string>
+    <string name="admin_object_settings_enabled_description">Interruptor maestro. Si está desactivado, no se detectan objetos en ninguna foto.</string>
+    <string name="admin_object_settings_min_score">Score mínimo</string>
+    <string name="admin_object_settings_min_score_hint">Objetos con score por debajo se descartan. Rango 0.0 – 1.0.</string>
+    <string name="admin_object_settings_min_normalized_size">Tamaño mínimo del objeto</string>
+    <string name="admin_object_settings_min_normalized_size_hint">Fracción mínima del lado de la imagen (0.02 = 2 %). Filtra objetos diminutos.</string>
+    <string name="admin_object_settings_max_objects">Máximo de objetos por foto</string>
+    <string name="admin_object_settings_max_objects_hint">Tope superior. Se quedan los objetos con mayor score.</string>
     <string name="admin_settings_scene_classification">Clasificación de escenas</string>
-    <string name="admin_settings_scene_classification_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_scene_classification_subtitle">Umbrales, modelo y workers</string>
     <string name="admin_settings_text_recognition">Reconocimiento de texto (OCR)</string>
-    <string name="admin_settings_text_recognition_subtitle">Activación nocturna y modo de proceso</string>
+    <string name="admin_settings_text_recognition_subtitle">Umbrales, modelo y workers</string>
     <string name="admin_settings_image_embedding">Búsqueda inteligente</string>
-    <string name="admin_settings_image_embedding_subtitle">Embeddings CLIP en la tarea nocturna</string>
-    <string name="admin_settings_feature_nightly_section">Tarea nocturna</string>
-    <string name="admin_settings_feature_enabled">Activado en la tarea nocturna</string>
-    <string name="admin_settings_feature_enabled_description">Cuando esté activado, la tarea nocturna ejecutará este modelo.</string>
-    <string name="admin_settings_feature_mode">Modo</string>
+    <string name="admin_settings_image_embedding_subtitle">Modelo CLIP, umbrales y workers</string>
+
+    <string name="admin_scene_settings_enabled">Clasificación de escenas activada</string>
+    <string name="admin_scene_settings_enabled_description">Interruptor maestro. Si está desactivado, no se clasifican escenas en ninguna foto.</string>
+    <string name="admin_scene_settings_min_score">Score mínimo (rangos 2+)</string>
+    <string name="admin_scene_settings_min_score_hint">El rango 1 (mejor predicción) siempre se guarda. Los rangos siguientes solo si superan este score.</string>
+    <string name="admin_scene_settings_max_scenes">Máximo de escenas por foto</string>
+    <string name="admin_scene_settings_max_scenes_hint">Tope superior. Se guardan en orden de ranking.</string>
+
+    <string name="admin_text_settings_enabled">OCR activado</string>
+    <string name="admin_text_settings_enabled_description">Interruptor maestro. Si está desactivado, no se extrae texto de ninguna foto.</string>
+    <string name="admin_text_settings_min_score">Confianza mínima</string>
+    <string name="admin_text_settings_min_score_hint">Líneas con menor confianza se descartan. Rango 0.0 – 1.0.</string>
+    <string name="admin_text_settings_max_lines">Máximo de líneas por foto</string>
+    <string name="admin_text_settings_max_lines_hint">Tope superior por imagen. Útil para documentos densos.</string>
+
+    <string name="admin_embedding_settings_enabled">Búsqueda inteligente activada</string>
+    <string name="admin_embedding_settings_enabled_description">Interruptor maestro. Si está desactivado, no se generan embeddings ni se puede buscar por contenido.</string>
+    <string name="admin_embedding_settings_model_version">Versión del modelo</string>
+    <string name="admin_embedding_settings_model_version_hint">Identificador estable del modelo CLIP. Por defecto: mclip-vit-b32-v1.</string>
+    <string name="admin_embedding_settings_model_version_warning">⚠ Cambiar la versión del modelo invalida todos los embeddings existentes. Hasta que ejecutes un backfill con "Solo faltantes" DESACTIVADO, la búsqueda semántica mezclará vectores antiguos y nuevos y los resultados serán incoherentes.</string>
+    <string name="admin_embedding_settings_max_cosine">Distancia coseno máxima</string>
+    <string name="admin_embedding_settings_max_cosine_hint">Tope superior en la búsqueda semántica. Más bajo = resultados más exigentes. Rango típico: 0.5 – 0.9.</string>
     <string name="admin_settings_feature_mode_missing">Solo elementos sin procesar</string>
     <string name="admin_settings_feature_mode_all">Todos los elementos</string>
-    <string name="admin_settings_feature_mode_description">"Solo sin procesar" reprocesa nada; "todos" repite el modelo sobre todos los elementos cada noche.</string>
 
     <string name="admin_settings_image">Ajustes de imagen</string>
     <string name="admin_settings_image_subtitle">Formato y calidad de miniaturas</string>
