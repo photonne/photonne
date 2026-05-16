@@ -59,7 +59,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -77,6 +82,7 @@ import com.photonne.app.resources.asset_action_open_in_maps
 import com.photonne.app.resources.asset_action_trash
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
+import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
 import kotlin.math.cos
@@ -91,7 +97,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun AssetDetailScreen(
     items: List<TimelineItem>,
@@ -103,7 +109,9 @@ fun AssetDetailScreen(
     onAddToAlbum: (TimelineItem) -> Unit = {},
     onAssetTrashed: (assetId: String) -> Unit = {},
     onAssetArchived: (assetId: String) -> Unit = {},
-    onOpenFaces: (assetId: String) -> Unit = {}
+    onOpenFaces: (assetId: String) -> Unit = {},
+    onPageChanged: (assetId: String) -> Unit = {},
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
@@ -122,7 +130,13 @@ fun AssetDetailScreen(
             .distinctUntilChanged()
             .collect { index ->
                 currentScale = 1f
-                items.getOrNull(index)?.let { viewModel.select(it.id) }
+                items.getOrNull(index)?.let {
+                    viewModel.select(it.id)
+                    // Inform the host (App.kt) which asset is now front-and-
+                    // center so the matching grid thumbnail stays hidden under
+                    // the shared-element morph until the user closes the viewer.
+                    onPageChanged(it.id)
+                }
                 if (hasMore && index >= items.size - PAGER_PREFETCH_THRESHOLD) {
                     onLoadMore()
                 }
@@ -143,13 +157,41 @@ fun AssetDetailScreen(
     Scaffold(
         containerColor = Color.Black,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.6f),
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                ),
+            // Glass effect: render a heavily blurred copy of the current
+            // photo behind the bar so the bar picks up the photo's color/
+            // lighting; then layer a dark scrim on top so the icons stay
+            // legible regardless of the underlying image.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                val currentBackdrop = currentItem
+                if (currentBackdrop != null && currentBackdrop.hasThumbnails && !currentBackdrop.isLocalOnly) {
+                    AsyncImage(
+                        model = "$apiBaseUrl/api/assets/${currentBackdrop.id}/thumbnail?size=Small",
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .blur(radius = 40.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.55f),
+                                    Color.Black.copy(alpha = 0.30f)
+                                )
+                            )
+                        )
+                )
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        actionIconContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
@@ -261,7 +303,8 @@ fun AssetDetailScreen(
                         }
                     }
                 }
-            )
+                )
+            }
         }
     ) { padding ->
         if (items.isEmpty()) {
@@ -284,7 +327,8 @@ fun AssetDetailScreen(
                 showOriginal = showOriginal[item.id] == true,
                 isCurrent = isCurrent,
                 authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
-                onScaleChange = { newScale -> if (isCurrent) currentScale = newScale }
+                onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
+                animatedVisibilityScope = animatedVisibilityScope
             )
         }
     }
@@ -327,6 +371,7 @@ fun AssetDetailScreen(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AssetPage(
     item: TimelineItem,
@@ -334,12 +379,40 @@ private fun AssetPage(
     showOriginal: Boolean,
     isCurrent: Boolean,
     authHeaders: Map<String, String>,
-    onScaleChange: (Float) -> Unit
+    onScaleChange: (Float) -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
+    val sharedScope = LocalSharedTransitionScope.current
+    // Only attach the shared-element modifier while AnimatedVisibility is
+    // actually transitioning (open or close). Keeping it on during stable
+    // display would place the page in the shared overlay and decouple it
+    // from the pager's swipe motion, making swipes feel choppy.
+    val transition = animatedVisibilityScope?.transition
+    val isTransitioning = transition != null &&
+        transition.currentState != transition.targetState
+    val sharedMod: Modifier = if (
+        sharedScope != null &&
+        animatedVisibilityScope != null &&
+        isCurrent &&
+        isTransitioning
+    ) {
+        with(sharedScope) {
+            Modifier.sharedElement(
+                state = rememberSharedContentState(key = "asset-${item.id}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = { _, _ ->
+                    androidx.compose.animation.core.tween(durationMillis = 320)
+                }
+            )
+        }
+    } else {
+        Modifier
+    }
     Box(
         modifier = Modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
+      Box(modifier = Modifier.fillMaxSize().then(sharedMod), contentAlignment = Alignment.Center) {
         // Local-only entries don't exist on the server: render directly
         // from the device URI through Coil for both photos and the
         // video poster. We deliberately don't try to play a device
@@ -402,6 +475,7 @@ private fun AssetPage(
                 )
             }
         }
+      }
     }
 }
 

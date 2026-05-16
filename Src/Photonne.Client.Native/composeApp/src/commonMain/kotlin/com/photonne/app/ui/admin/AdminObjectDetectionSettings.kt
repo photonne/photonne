@@ -1,5 +1,8 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -99,6 +102,7 @@ fun AdminObjectDetectionSettingsScreen(
         SettingSwitch(
             label = stringResource(Res.string.admin_object_settings_enabled),
             description = stringResource(Res.string.admin_object_settings_enabled_description),
+            icon = Icons.Outlined.Category,
             checked = state.get(AdminObjectDetectionSettingsViewModel.ENABLED_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -114,27 +118,54 @@ fun AdminObjectDetectionSettingsScreen(
             style = MaterialTheme.typography.titleSmall,
         )
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_object_settings_min_score),
-            value = state.get(AdminObjectDetectionSettingsViewModel.MIN_SCORE_KEY),
-            supporting = stringResource(Res.string.admin_object_settings_min_score_hint),
-        ) { viewModel.set(AdminObjectDetectionSettingsViewModel.MIN_SCORE_KEY, it) }
+            value = parseFraction(
+                state.get(AdminObjectDetectionSettingsViewModel.MIN_SCORE_KEY),
+                default = 0.25f,
+            ),
+            description = stringResource(Res.string.admin_object_settings_min_score_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminObjectDetectionSettingsViewModel.MIN_SCORE_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_object_settings_min_normalized_size),
-            value = state.get(AdminObjectDetectionSettingsViewModel.MIN_NORMALIZED_SIZE_KEY),
-            supporting = stringResource(Res.string.admin_object_settings_min_normalized_size_hint),
-        ) { viewModel.set(AdminObjectDetectionSettingsViewModel.MIN_NORMALIZED_SIZE_KEY, it) }
+            value = parseFraction(
+                state.get(AdminObjectDetectionSettingsViewModel.MIN_NORMALIZED_SIZE_KEY),
+                default = 0.02f,
+            ),
+            description = stringResource(Res.string.admin_object_settings_min_normalized_size_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminObjectDetectionSettingsViewModel.MIN_NORMALIZED_SIZE_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_object_settings_max_objects),
-            value = state.get(AdminObjectDetectionSettingsViewModel.MAX_OBJECTS_PER_ASSET_KEY),
-            supporting = stringResource(Res.string.admin_object_settings_max_objects_hint),
-        ) { viewModel.set(AdminObjectDetectionSettingsViewModel.MAX_OBJECTS_PER_ASSET_KEY, it) }
+            value = state.get(AdminObjectDetectionSettingsViewModel.MAX_OBJECTS_PER_ASSET_KEY)
+                .toIntOrNull() ?: 50,
+            range = 10..200,
+            description = stringResource(Res.string.admin_object_settings_max_objects_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminObjectDetectionSettingsViewModel.MAX_OBJECTS_PER_ASSET_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         SettingSwitch(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
+            icon = Icons.Outlined.PhotoSizeSelectLarge,
             checked = state.get(AdminObjectDetectionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -149,10 +180,18 @@ fun AdminObjectDetectionSettingsScreen(
             stringResource(Res.string.admin_face_settings_workers_section),
             style = MaterialTheme.typography.titleSmall,
         )
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminObjectDetectionSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminObjectDetectionSettingsViewModel.WORKERS_KEY, it) }
+            value = state.get(AdminObjectDetectionSettingsViewModel.WORKERS_KEY)
+                .toIntOrNull() ?: 1,
+            range = 1..8,
+            onValueChange = {
+                viewModel.set(
+                    AdminObjectDetectionSettingsViewModel.WORKERS_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         HorizontalDivider()
         Text(

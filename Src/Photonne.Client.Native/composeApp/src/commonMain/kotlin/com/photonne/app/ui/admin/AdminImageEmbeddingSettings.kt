@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ImageSearch
+import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -112,6 +114,7 @@ fun AdminImageEmbeddingSettingsScreen(
         SettingSwitch(
             label = stringResource(Res.string.admin_embedding_settings_enabled),
             description = stringResource(Res.string.admin_embedding_settings_enabled_description),
+            icon = Icons.Outlined.ImageSearch,
             checked = state.get(AdminImageEmbeddingSettingsViewModel.ENABLED_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -127,6 +130,10 @@ fun AdminImageEmbeddingSettingsScreen(
             style = MaterialTheme.typography.titleSmall,
         )
 
+        // Model version stays a free-form text field — strings like
+        // "mclip-vit-b32-v1" aren't slider-friendly, and changing it
+        // invalidates every existing embedding so we want the admin to
+        // type it deliberately, not nudge it accidentally.
         SettingTextField(
             label = stringResource(Res.string.admin_embedding_settings_model_version),
             value = currentModel,
@@ -137,15 +144,25 @@ fun AdminImageEmbeddingSettingsScreen(
             ModelVersionWarningCard()
         }
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_embedding_settings_max_cosine),
-            value = state.get(AdminImageEmbeddingSettingsViewModel.MAX_COSINE_DISTANCE_KEY),
-            supporting = stringResource(Res.string.admin_embedding_settings_max_cosine_hint),
-        ) { viewModel.set(AdminImageEmbeddingSettingsViewModel.MAX_COSINE_DISTANCE_KEY, it) }
+            value = parseFraction(
+                state.get(AdminImageEmbeddingSettingsViewModel.MAX_COSINE_DISTANCE_KEY),
+                default = 0.7f,
+            ),
+            description = stringResource(Res.string.admin_embedding_settings_max_cosine_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminImageEmbeddingSettingsViewModel.MAX_COSINE_DISTANCE_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
         SettingSwitch(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
+            icon = Icons.Outlined.PhotoSizeSelectLarge,
             checked = state.get(AdminImageEmbeddingSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -160,10 +177,18 @@ fun AdminImageEmbeddingSettingsScreen(
             stringResource(Res.string.admin_face_settings_workers_section),
             style = MaterialTheme.typography.titleSmall,
         )
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminImageEmbeddingSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminImageEmbeddingSettingsViewModel.WORKERS_KEY, it) }
+            value = state.get(AdminImageEmbeddingSettingsViewModel.WORKERS_KEY)
+                .toIntOrNull() ?: 1,
+            range = 1..8,
+            onValueChange = {
+                viewModel.set(
+                    AdminImageEmbeddingSettingsViewModel.WORKERS_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         HorizontalDivider()
         Text(

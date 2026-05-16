@@ -1,5 +1,8 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Landscape
+import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -89,6 +92,7 @@ fun AdminSceneClassificationSettingsScreen(
         SettingSwitch(
             label = stringResource(Res.string.admin_scene_settings_enabled),
             description = stringResource(Res.string.admin_scene_settings_enabled_description),
+            icon = Icons.Outlined.Landscape,
             checked = state.get(AdminSceneClassificationSettingsViewModel.ENABLED_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -104,21 +108,39 @@ fun AdminSceneClassificationSettingsScreen(
             style = MaterialTheme.typography.titleSmall,
         )
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_scene_settings_min_score),
-            value = state.get(AdminSceneClassificationSettingsViewModel.MIN_SCORE_KEY),
-            supporting = stringResource(Res.string.admin_scene_settings_min_score_hint),
-        ) { viewModel.set(AdminSceneClassificationSettingsViewModel.MIN_SCORE_KEY, it) }
+            value = parseFraction(
+                state.get(AdminSceneClassificationSettingsViewModel.MIN_SCORE_KEY),
+                default = 0.15f,
+            ),
+            description = stringResource(Res.string.admin_scene_settings_min_score_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminSceneClassificationSettingsViewModel.MIN_SCORE_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_scene_settings_max_scenes),
-            value = state.get(AdminSceneClassificationSettingsViewModel.MAX_SCENES_PER_ASSET_KEY),
-            supporting = stringResource(Res.string.admin_scene_settings_max_scenes_hint),
-        ) { viewModel.set(AdminSceneClassificationSettingsViewModel.MAX_SCENES_PER_ASSET_KEY, it) }
+            value = state.get(AdminSceneClassificationSettingsViewModel.MAX_SCENES_PER_ASSET_KEY)
+                .toIntOrNull() ?: 5,
+            range = 1..20,
+            description = stringResource(Res.string.admin_scene_settings_max_scenes_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminSceneClassificationSettingsViewModel.MAX_SCENES_PER_ASSET_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         SettingSwitch(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
+            icon = Icons.Outlined.PhotoSizeSelectLarge,
             checked = state.get(AdminSceneClassificationSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -133,10 +155,18 @@ fun AdminSceneClassificationSettingsScreen(
             stringResource(Res.string.admin_face_settings_workers_section),
             style = MaterialTheme.typography.titleSmall,
         )
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminSceneClassificationSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminSceneClassificationSettingsViewModel.WORKERS_KEY, it) }
+            value = state.get(AdminSceneClassificationSettingsViewModel.WORKERS_KEY)
+                .toIntOrNull() ?: 1,
+            range = 1..8,
+            onValueChange = {
+                viewModel.set(
+                    AdminSceneClassificationSettingsViewModel.WORKERS_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         HorizontalDivider()
         Text(

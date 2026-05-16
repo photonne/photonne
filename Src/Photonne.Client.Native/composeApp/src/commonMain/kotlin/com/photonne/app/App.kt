@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+
 package com.photonne.app
 
 import androidx.compose.foundation.layout.Box
@@ -117,7 +119,16 @@ import com.photonne.app.ui.album.InviteMemberDialog
 import com.photonne.app.ui.album.LeaveAlbumDialog
 import com.photonne.app.ui.album.ManagePermissionsDialog
 import com.photonne.app.ui.album.ManageSharesDialog
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
 import com.photonne.app.ui.asset.AssetDetailScreen
+import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
+import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.folder.DeleteFolderDialog
 import com.photonne.app.ui.folder.FolderFormDialog
 import com.photonne.app.ui.folder.FolderPermissionsViewModel
@@ -164,6 +175,14 @@ private data class AddToAlbumState(
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null
 )
+
+/**
+ * Two-state mode for the Inicio tab: the Hub (cinematic landing with
+ * memories, recents, people, explore) and the Library (the regular
+ * timeline grid). Tapping "Toda la biblioteca" in the Hub flips to
+ * Library; the Library top bar exposes a back arrow that returns here.
+ */
+private enum class HomeMode { Hub, Library }
 
 private enum class MoreSubscreen {
     Upload,
@@ -341,6 +360,7 @@ private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
         hasThumbnails = hasThumbnail
     )
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun App() {
     val httpClient: HttpClient = koinInject()
@@ -399,6 +419,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
+    val hubViewModel: com.photonne.app.ui.hub.HubViewModel = koinViewModel()
+    val hubState by hubViewModel.state.collectAsState()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
     val notificationsState by notificationsViewModel.state.collectAsState()
@@ -471,6 +493,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
+    var homeMode by remember { mutableStateOf(HomeMode.Hub) }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedFolder by remember {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
@@ -479,6 +502,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
     }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
+    // Tracks the asset shown by the viewer's pager — drives the
+    // grid → detail shared-element morph. Null when the viewer is closed
+    // so all grid thumbnails return to their normal visible state.
+    var currentDetailAssetId by remember { mutableStateOf<String?>(null) }
     var showCreateAlbum by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
     var showDeleteAlbum by remember { mutableStateOf(false) }
@@ -545,7 +572,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     val topBar: @Composable () -> Unit = {
         when {
-            selectedTab == MainTab.Timeline && timelineState.isSelectionActive ->
+            selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+                timelineState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = timelineState.selection.size,
                     isMutating = timelineState.isBulkMutating ||
@@ -968,11 +996,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
             selectedTab == MainTab.More -> MoreTopBar()
+            selectedTab == MainTab.Timeline && homeMode == HomeMode.Hub ->
+                com.photonne.app.ui.main.HubTopBar(onRefresh = hubViewModel::refresh)
             else -> TimelineTopBar(
                 onRefresh = timelineViewModel::refresh,
                 onJumpToDate = { showJumpToDate = true },
                 currentZoom = timelineZoom,
-                onZoomSelected = timelineZoomStore::update
+                onZoomSelected = timelineZoomStore::update,
+                onBack = if (selectedTab == MainTab.Timeline) {
+                    { homeMode = HomeMode.Hub }
+                } else null
             )
         }
     }
@@ -981,7 +1014,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // replaced by an action bar so the primary actions sit within thumb
     // reach on mobile. The slim selection top bar above keeps just Close + count.
     val bottomBar: (@Composable () -> Unit)? = when {
-        selectedTab == MainTab.Timeline && timelineState.isSelectionActive -> {
+        selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+            timelineState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
                     selectedCount = timelineState.selection.size,
@@ -1232,7 +1266,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // is the active tab and there's no overriding bottom bar (selection mode
     // takes the bottom bar and would crash into the FAB).
     val floatingActionButton: @Composable () -> Unit = {
-        if (selectedTab == MainTab.Timeline && bottomBar == null) {
+        if (selectedTab == MainTab.Timeline && homeMode == HomeMode.Library && bottomBar == null) {
             FloatingActionButton(
                 onClick = {
                     selectedTab = MainTab.More
@@ -1247,10 +1281,35 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
     }
 
+    // On open: pre-populate the morph target synchronously so the grid
+    // thumbnail has a sharedElement bounds source ready before the
+    // viewer's pager LaunchedEffect catches up.
+    // On close: keep the morph target alive long enough for the
+    // sharedElement exit animation to complete before clearing — otherwise
+    // the source thumbnail flips back to visible mid-morph and the photo
+    // snaps the last bit.
+    LaunchedEffect(assetDetail) {
+        val ctx = assetDetail
+        if (ctx != null) {
+            currentDetailAssetId = ctx.items.getOrNull(ctx.startIndex)?.id
+        } else {
+            kotlinx.coroutines.delay(360)
+            currentDetailAssetId = null
+        }
+    }
+
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+    CompositionLocalProvider(
+        LocalSharedTransitionScope provides this,
+        LocalCurrentDetailAssetId provides currentDetailAssetId
+    ) {
     Box(modifier = Modifier.fillMaxSize()) {
         MainScaffold(
             selectedTab = selectedTab,
             onTabSelected = { tab ->
+                if (tab == MainTab.Timeline && selectedTab == MainTab.Timeline) {
+                    homeMode = HomeMode.Hub
+                }
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
                 if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
                     selectedFolder = null
@@ -1270,34 +1329,83 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreTabUnreadCount = notificationsState.unreadCount
         ) {
             when (selectedTab) {
-                MainTab.Timeline -> TimelineScreen(
-                    state = timelineState,
-                    onOpenAsset = { mergedItems, mergedIndex ->
-                        assetDetail = AssetDetailContext(
-                            items = mergedItems,
-                            startIndex = mergedIndex,
-                            source = AssetDetailContext.Source.Timeline,
-                            hasMore = timelineState.hasMore,
-                            onLoadMore = timelineViewModel::loadMore,
-                            onFavoriteChanged = timelineViewModel::setFavorite
-                        )
-                    },
-                    onLoadMore = timelineViewModel::loadMore,
-                    onRefresh = timelineViewModel::refresh,
-                    onToggleSelection = timelineViewModel::toggleSelection,
-                    pendingJumpDate = pendingJumpDate,
-                    onJumpHandled = { pendingJumpDate = null },
-                    onMemoryClick = { items, index ->
-                        assetDetail = AssetDetailContext(
-                            items = items,
-                            startIndex = index,
-                            source = AssetDetailContext.Source.Timeline,
-                            hasMore = false,
-                            onLoadMore = {},
-                            onFavoriteChanged = timelineViewModel::setFavorite
-                        )
-                    }
-                )
+                MainTab.Timeline -> when (homeMode) {
+                    HomeMode.Hub -> com.photonne.app.ui.hub.HubScreen(
+                        state = hubState,
+                        baseUrl = apiBaseUrl,
+                        onOpenAsset = { items, index ->
+                            assetDetail = AssetDetailContext(
+                                items = items,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = timelineViewModel::setFavorite
+                            )
+                        },
+                        onOpenMemory = { items, index ->
+                            assetDetail = AssetDetailContext(
+                                items = items,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = timelineViewModel::setFavorite
+                            )
+                        },
+                        onOpenLibrary = { homeMode = HomeMode.Library },
+                        onOpenSearch = { selectedTab = MainTab.Search },
+                        onOpenMap = {
+                            selectedTab = MainTab.More
+                            moreSubscreen = MoreSubscreen.Map
+                        },
+                        onOpenAlbums = { selectedTab = MainTab.Albums },
+                        onOpenUpload = {
+                            selectedTab = MainTab.More
+                            moreSubscreen = MoreSubscreen.Upload
+                        },
+                        onOpenPeople = {
+                            selectedTab = MainTab.More
+                            moreSubscreen = MoreSubscreen.People
+                        },
+                        onOpenPerson = { person ->
+                            selectedTab = MainTab.More
+                            moreSubscreen = MoreSubscreen.People
+                            selectedPerson = person
+                        },
+                        onOpenFacet = { facet ->
+                            selectedTab = MainTab.Search
+                            when (facet.kind) {
+                                com.photonne.app.ui.hub.HubFacetKind.Scene ->
+                                    searchViewModel.toggleSceneLabel(facet.label)
+                                com.photonne.app.ui.hub.HubFacetKind.ObjectLabel ->
+                                    searchViewModel.toggleObjectLabel(facet.label)
+                            }
+                        }
+                    )
+                    HomeMode.Library -> TimelineScreen(
+                        state = timelineState,
+                        onOpenAsset = { mergedItems, mergedIndex ->
+                            assetDetail = AssetDetailContext(
+                                items = mergedItems,
+                                startIndex = mergedIndex,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = timelineState.hasMore,
+                                onLoadMore = timelineViewModel::loadMore,
+                                onFavoriteChanged = timelineViewModel::setFavorite
+                            )
+                        },
+                        onLoadMore = timelineViewModel::loadMore,
+                        onRefresh = timelineViewModel::refresh,
+                        onToggleSelection = timelineViewModel::toggleSelection,
+                        onOpenUpload = {
+                            selectedTab = MainTab.More
+                            moreSubscreen = MoreSubscreen.Upload
+                        },
+                        pendingJumpDate = pendingJumpDate,
+                        onJumpHandled = { pendingJumpDate = null }
+                    )
+                }
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
                     if (openedAlbum == null) {
@@ -1315,7 +1423,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             },
                             onAlbumLongPress = { album ->
                                 albumsViewModel.selectAlbum(album.id)
-                            }
+                            },
+                            onCreateAlbum = { showCreateAlbum = true }
                         )
                     } else {
                         AlbumDetailScreen(
@@ -2128,41 +2237,75 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
 
         val ctx = assetDetail
-        if (ctx != null && ctx.startIndex in ctx.items.indices) {
-            AssetDetailScreen(
-                items = ctx.items,
-                startIndex = ctx.startIndex,
-                hasMore = ctx.hasMore,
-                onLoadMore = ctx.onLoadMore,
-                onBack = { assetDetail = null },
-                onFavoriteChanged = ctx.onFavoriteChanged,
-                onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) },
-                onAssetTrashed = { id ->
-                    timelineViewModel.removeItemLocal(id)
-                    if (ctx.source == AssetDetailContext.Source.Album) {
-                        albumDetailViewModel.applyAssetRemovedLocal(id)
-                    }
-                    searchViewModel.removeItem(id)
-                    archivedViewModel.applyAssetRemovedLocal(id)
-                    personDetailViewModel.applyAssetRemovedLocal(id)
-                    assetDetail = null
-                },
-                onAssetArchived = { id ->
-                    timelineViewModel.removeItemLocal(id)
-                    if (ctx.source == AssetDetailContext.Source.Album) {
-                        albumDetailViewModel.applyAssetRemovedLocal(id)
-                    }
-                    searchViewModel.removeItem(id)
-                    trashViewModel.applyAssetRemovedLocal(id)
-                    personDetailViewModel.applyAssetRemovedLocal(id)
-                    assetDetail = null
-                },
-                onOpenFaces = { assetId ->
-                    assetFacesViewModel.open(assetId)
-                    showAssetFacesSheet = true
-                }
-            )
+        val isDetailVisible = ctx != null && ctx.startIndex in ctx.items.indices
+        // Keep the last visible context alive during AnimatedVisibility's
+        // exit animation so the shared-element morph has data to render
+        // after `assetDetail` has been cleared by the back tap. Critically
+        // we read the LIVE `ctx` first and only fall back to the
+        // remembered value when `ctx` is null — otherwise on re-open the
+        // AnimatedVisibility content composes with last cycle's data
+        // (the LaunchedEffect updates `rememberedCtx` one frame later)
+        // and the inner pagerState locks onto the old startIndex.
+        val rememberedCtx = remember { mutableStateOf<AssetDetailContext?>(null) }
+        LaunchedEffect(ctx) {
+            if (ctx != null) rememberedCtx.value = ctx
         }
+        val displayCtx = ctx ?: rememberedCtx.value
+        AnimatedVisibility(
+            visible = isDetailVisible,
+            // Match the shared-element morph duration so AnimatedVisibility
+            // keeps the detail composed until the morph finishes — otherwise
+            // the photo snaps the last few pixels when the content unmounts
+            // mid-spring.
+            enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(durationMillis = 320)),
+            exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(durationMillis = 320)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (displayCtx != null && displayCtx.startIndex in displayCtx.items.indices) {
+                // Force a fresh AssetDetailScreen — and therefore a fresh
+                // pagerState seeded at the new startIndex — whenever the
+                // user opens a different asset.
+                key(displayCtx) {
+                    AssetDetailScreen(
+                        items = displayCtx.items,
+                        startIndex = displayCtx.startIndex,
+                        hasMore = displayCtx.hasMore,
+                        onLoadMore = displayCtx.onLoadMore,
+                        onBack = { assetDetail = null },
+                        onPageChanged = { id -> currentDetailAssetId = id },
+                        animatedVisibilityScope = this@AnimatedVisibility,
+                        onFavoriteChanged = displayCtx.onFavoriteChanged,
+                        onAddToAlbum = { item -> addToAlbum = AddToAlbumState(asset = item) },
+                        onAssetTrashed = { id ->
+                            timelineViewModel.removeItemLocal(id)
+                            if (displayCtx.source == AssetDetailContext.Source.Album) {
+                                albumDetailViewModel.applyAssetRemovedLocal(id)
+                            }
+                            searchViewModel.removeItem(id)
+                            archivedViewModel.applyAssetRemovedLocal(id)
+                            personDetailViewModel.applyAssetRemovedLocal(id)
+                            assetDetail = null
+                        },
+                        onAssetArchived = { id ->
+                            timelineViewModel.removeItemLocal(id)
+                            if (displayCtx.source == AssetDetailContext.Source.Album) {
+                                albumDetailViewModel.applyAssetRemovedLocal(id)
+                            }
+                            searchViewModel.removeItem(id)
+                            trashViewModel.applyAssetRemovedLocal(id)
+                            personDetailViewModel.applyAssetRemovedLocal(id)
+                            assetDetail = null
+                        },
+                        onOpenFaces = { assetId ->
+                            assetFacesViewModel.open(assetId)
+                            showAssetFacesSheet = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+    }
     }
 
     if (showJumpToDate) {

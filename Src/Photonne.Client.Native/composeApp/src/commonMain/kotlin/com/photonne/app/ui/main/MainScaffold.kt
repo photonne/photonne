@@ -13,8 +13,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
@@ -31,11 +31,11 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PhotoAlbum
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.SelectAll
@@ -132,7 +132,7 @@ import com.photonne.app.resources.tab_albums
 import com.photonne.app.resources.tab_folders
 import com.photonne.app.resources.tab_search
 import com.photonne.app.resources.tab_more
-import com.photonne.app.resources.tab_timeline
+import com.photonne.app.resources.tab_home
 import com.photonne.app.resources.upload_title
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.theme.photonneLogoPainter
@@ -183,12 +183,12 @@ private fun MainNavigationBar(
             onClick = { onTabSelected(MainTab.Timeline) },
             icon = {
                 Icon(
-                    if (timelineActive) Icons.Filled.PhotoLibrary
-                    else Icons.Outlined.PhotoLibrary,
+                    if (timelineActive) Icons.Filled.Home
+                    else Icons.Outlined.Home,
                     contentDescription = null
                 )
             },
-            label = { Text(stringResource(Res.string.tab_timeline)) }
+            label = { Text(stringResource(Res.string.tab_home)) }
         )
         val searchActive = selectedTab == MainTab.Search
         NavigationBarItem(
@@ -261,9 +261,20 @@ fun TimelineTopBar(
     onRefresh: () -> Unit,
     onJumpToDate: () -> Unit,
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
-    onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit
+    onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     TopAppBar(
+        navigationIcon = {
+            if (onBack != null) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(Res.string.action_close)
+                    )
+                }
+            }
+        },
         title = {
             Image(
                 painter = photonneLogoPainter(),
@@ -282,6 +293,29 @@ fun TimelineTopBar(
                     contentDescription = stringResource(Res.string.action_jump_to_date)
                 )
             }
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Outlined.Refresh,
+                    contentDescription = stringResource(Res.string.action_refresh)
+                )
+            }
+        }
+    )
+}
+
+/** Slim top bar for the Inicio (Hub) view — just the wordmark + refresh. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HubTopBar(onRefresh: () -> Unit) {
+    TopAppBar(
+        title = {
+            Image(
+                painter = photonneLogoPainter(),
+                contentDescription = stringResource(Res.string.app_name),
+                modifier = Modifier.height(32.dp)
+            )
+        },
+        actions = {
             IconButton(onClick = onRefresh) {
                 Icon(
                     Icons.Outlined.Refresh,

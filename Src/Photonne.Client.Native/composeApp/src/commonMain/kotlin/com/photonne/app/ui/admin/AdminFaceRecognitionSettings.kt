@@ -1,5 +1,8 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -8,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.photonne.app.data.admin.AdminRepository
+import kotlin.math.roundToInt
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_face_settings_clustering_threshold
 import com.photonne.app.resources.admin_face_settings_enabled
@@ -119,6 +123,7 @@ fun AdminFaceRecognitionSettingsScreen(
         SettingSwitch(
             label = stringResource(Res.string.admin_face_settings_enabled),
             description = stringResource(Res.string.admin_face_settings_enabled_description),
+            icon = Icons.Outlined.Face,
             checked = state.get(AdminFaceRecognitionSettingsViewModel.ENABLED_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -134,44 +139,93 @@ fun AdminFaceRecognitionSettingsScreen(
             style = MaterialTheme.typography.titleSmall,
         )
 
-        SettingDecimalField(
+        // Three confidence thresholds in [0.0, 1.0] — sliders here let the
+        // admin feel out the value with the live chip, whereas the typed
+        // decimal field forced them to commit a number blind.
+        SettingSlider(
             label = stringResource(Res.string.admin_face_settings_min_detection_score),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.MIN_DETECTION_SCORE_KEY),
-            supporting = stringResource(Res.string.admin_face_settings_min_detection_score_hint),
-        ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.MIN_DETECTION_SCORE_KEY, it) }
+            value = parseFraction(
+                state.get(AdminFaceRecognitionSettingsViewModel.MIN_DETECTION_SCORE_KEY),
+                default = 0.5f,
+            ),
+            description = stringResource(Res.string.admin_face_settings_min_detection_score_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminFaceRecognitionSettingsViewModel.MIN_DETECTION_SCORE_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_face_settings_clustering_threshold),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.CLUSTERING_THRESHOLD_KEY),
-            supporting = stringResource(Res.string.admin_face_settings_threshold_hint),
-        ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.CLUSTERING_THRESHOLD_KEY, it) }
+            value = parseFraction(
+                state.get(AdminFaceRecognitionSettingsViewModel.CLUSTERING_THRESHOLD_KEY),
+                default = 0.42f,
+            ),
+            description = stringResource(Res.string.admin_face_settings_threshold_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminFaceRecognitionSettingsViewModel.CLUSTERING_THRESHOLD_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_face_settings_suggestion_threshold),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.SUGGESTION_THRESHOLD_KEY),
-            supporting = stringResource(Res.string.admin_face_settings_suggestion_threshold_hint),
-        ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.SUGGESTION_THRESHOLD_KEY, it) }
+            value = parseFraction(
+                state.get(AdminFaceRecognitionSettingsViewModel.SUGGESTION_THRESHOLD_KEY),
+                default = 0.55f,
+            ),
+            description = stringResource(Res.string.admin_face_settings_suggestion_threshold_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminFaceRecognitionSettingsViewModel.SUGGESTION_THRESHOLD_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_min_faces_for_cluster),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.MIN_FACES_FOR_CLUSTER_KEY),
-        ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.MIN_FACES_FOR_CLUSTER_KEY, it) }
+            value = state.get(AdminFaceRecognitionSettingsViewModel.MIN_FACES_FOR_CLUSTER_KEY)
+                .toIntOrNull() ?: 2,
+            range = 1..10,
+            onValueChange = {
+                viewModel.set(
+                    AdminFaceRecognitionSettingsViewModel.MIN_FACES_FOR_CLUSTER_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
+        // Switchover is unbounded (1500 default, can go much higher on big
+        // libraries) so a slider would be wrong — keep the typed field.
         SettingNumberField(
             label = stringResource(Res.string.admin_face_settings_knn_switchover),
             value = state.get(AdminFaceRecognitionSettingsViewModel.KNN_SWITCHOVER_THRESHOLD_KEY),
             supporting = stringResource(Res.string.admin_face_settings_knn_switchover_hint),
         ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.KNN_SWITCHOVER_THRESHOLD_KEY, it) }
 
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_knn_neighbors),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.KNN_NEIGHBORS_KEY),
-            supporting = stringResource(Res.string.admin_face_settings_knn_neighbors_hint),
-        ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.KNN_NEIGHBORS_KEY, it) }
+            value = state.get(AdminFaceRecognitionSettingsViewModel.KNN_NEIGHBORS_KEY)
+                .toIntOrNull() ?: 20,
+            range = 5..50,
+            description = stringResource(Res.string.admin_face_settings_knn_neighbors_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminFaceRecognitionSettingsViewModel.KNN_NEIGHBORS_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         SettingSwitch(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
+            icon = Icons.Outlined.PhotoSizeSelectLarge,
             checked = state.get(AdminFaceRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -186,10 +240,18 @@ fun AdminFaceRecognitionSettingsScreen(
             stringResource(Res.string.admin_face_settings_workers_section),
             style = MaterialTheme.typography.titleSmall,
         )
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminFaceRecognitionSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminFaceRecognitionSettingsViewModel.WORKERS_KEY, it) }
+            value = state.get(AdminFaceRecognitionSettingsViewModel.WORKERS_KEY)
+                .toIntOrNull() ?: 1,
+            range = 1..8,
+            onValueChange = {
+                viewModel.set(
+                    AdminFaceRecognitionSettingsViewModel.WORKERS_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         HorizontalDivider()
         Text(
@@ -203,6 +265,20 @@ fun AdminFaceRecognitionSettingsScreen(
             onOpen = onOpenNightly,
         )
     }
+}
+
+/** Parses a setting value to a [0,1] Float, tolerating an empty string
+ *  (returns [default]) and out-of-range overrides from the server. */
+internal fun parseFraction(raw: String, default: Float): Float =
+    raw.replace(',', '.').toFloatOrNull()?.coerceIn(0f, 1f) ?: default
+
+/** Two-decimal rendering matching what `normalizeDecimal` and the server
+ *  accept. The slider has 100 steps so values are already aligned to 0.01. */
+internal fun formatFraction(value: Float): String {
+    val rounded = (value * 100).roundToInt()
+    val whole = rounded / 100
+    val cents = rounded % 100
+    return "$whole." + cents.toString().padStart(2, '0')
 }
 
 internal fun normalizeDecimal(raw: String): String {

@@ -2,9 +2,31 @@
 <resources>
     <string name="app_name">Photonne</string>
 
+    <string name="tab_home">Inicio</string>
     <string name="tab_timeline">Fotos</string>
     <string name="tab_albums">Álbumes</string>
     <string name="tab_more">Más</string>
+
+    <string name="hub_greeting_morning">Buenos días</string>
+    <string name="hub_greeting_afternoon">Buenas tardes</string>
+    <string name="hub_greeting_evening">Buenas noches</string>
+    <string name="hub_greeting_with_name">%1$s, %2$s</string>
+    <string name="hub_totals_photos">%1$s fotos</string>
+    <string name="hub_totals_videos">%1$s vídeos</string>
+    <string name="hub_totals_storage">%1$s</string>
+    <string name="hub_section_memories">Hoy hace…</string>
+    <string name="hub_section_recents">Recientes</string>
+    <string name="hub_section_people">Personas</string>
+    <string name="hub_section_explore">Explora</string>
+    <string name="hub_section_shortcuts">Atajos</string>
+    <string name="hub_action_see_all">Ver todo</string>
+    <string name="hub_action_open_library">Toda la biblioteca</string>
+    <string name="hub_action_search">Buscar</string>
+    <string name="hub_action_map">Mapa</string>
+    <string name="hub_action_albums">Álbumes</string>
+    <string name="hub_action_upload">Subir</string>
+    <string name="hub_facet_assets">%1$d fotos</string>
+    <string name="hub_person_unnamed">Sin nombre</string>
 
     <string name="action_refresh">Refrescar</string>
     <string name="action_account">Cuenta</string>
@@ -24,7 +46,8 @@
     <string name="action_more">Más acciones</string>
 
     <string name="timeline_empty_title">No hay assets en la línea de tiempo</string>
-    <string name="timeline_empty_subtitle">Indexa una carpeta desde la app web para empezar.</string>
+    <string name="timeline_empty_subtitle">Indexa una carpeta desde la app web o sube tus primeras fotos.</string>
+    <string name="timeline_empty_action_upload">Subir fotos</string>
     <string name="timeline_memories_section">Recuerdos</string>
     <string name="timeline_memories_one_year_ago">Hace 1 año</string>
     <string name="timeline_memories_years_ago">Hace %1$d años</string>
@@ -59,7 +82,8 @@
     <string name="album_empty_title">Álbum vacío</string>
     <string name="album_empty_subtitle">Añade fotos a este álbum desde el visor.</string>
     <string name="albums_empty_title">Aún no tienes álbumes</string>
-    <string name="albums_empty_subtitle">Pulsa el botón + de la barra superior para crear el primero.</string>
+    <string name="albums_empty_subtitle">Agrupa tus recuerdos en colecciones para encontrarlos antes.</string>
+    <string name="albums_empty_action_create">Crear álbum</string>
     <string name="albums_count_format">%1$d elementos</string>
     <string name="albums_tab_mine">Míos</string>
     <string name="albums_tab_shared">Compartidos</string>
@@ -343,6 +367,8 @@
     <string name="storage_label_videos">Vídeos</string>
     <string name="storage_label_total">Total</string>
     <string name="storage_count_size_format">%1$d · %2$s</string>
+    <string name="storage_legend_used">Usado</string>
+    <string name="storage_legend_free">Libre</string>
 
     <!-- Administration -->
     <string name="administration_title">Administración</string>
@@ -438,6 +464,15 @@
     <string name="admin_system_run_tasks">Ejecutar tareas</string>
     <string name="admin_system_run_tasks_subtitle">Indexar, miniaturas, duplicados, ML…</string>
     <string name="admin_run_tasks_pending_format">%1$d sin procesar · %2$d en cola</string>
+    <string name="admin_run_tasks_summary_title">Resumen ML</string>
+    <string name="admin_run_tasks_summary_idle">Todo procesado</string>
+    <string name="admin_run_tasks_summary_pending_format">%1$d pendientes en total</string>
+    <string name="admin_run_tasks_summary_queued_format">%1$d en cola activa</string>
+    <string name="admin_run_tasks_tile_pending">Pendientes</string>
+    <string name="admin_run_tasks_tile_queued">En cola</string>
+    <string name="admin_run_tasks_tile_active">Activo</string>
+    <string name="admin_run_tasks_section_other">Otras tareas</string>
+    <string name="admin_run_tasks_section_ml">Tareas de ML</string>
 
     <string name="admin_settings_face_recognition">Reconocimiento facial</string>
     <string name="admin_settings_face_recognition_subtitle">Umbrales, modelo y workers</string>

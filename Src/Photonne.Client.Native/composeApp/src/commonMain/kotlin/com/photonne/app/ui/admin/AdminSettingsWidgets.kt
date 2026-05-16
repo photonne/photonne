@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
@@ -26,6 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,8 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
@@ -102,26 +109,69 @@ fun AdminSettingsForm(
     }
 }
 
+/**
+ * Tile-style switch row used across every admin settings form. An optional
+ * leading [icon] anchors the meaning of the toggle visually, and tapping
+ * anywhere on the tile flips the switch — matches Material 3 list-item
+ * toggle patterns without depending on `ListItem` (it doesn't surface a
+ * trailing Switch slot in this Compose version).
+ */
 @Composable
 fun SettingSwitch(
     label: String,
     description: String? = null,
     checked: Boolean,
     enabled: Boolean = true,
+    icon: ImageVector? = null,
     onChange: (Boolean) -> Unit
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            description?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onChange(!checked) },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                description?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
         }
-        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
     }
 }
 
@@ -273,5 +323,120 @@ fun SettingDropdown(
                 )
             }
         }
+    }
+}
+
+/**
+ * Slider for a continuous numeric setting. The current value is shown as a
+ * chip on the right of the label so the admin sees the live number as
+ * they drag — the "preview" pattern asked for on the ML thresholds.
+ *
+ * Wrapped in a card to match [SettingSwitch] visually; every individual
+ * setting becomes a self-contained tile inside the form.
+ */
+@Composable
+fun SettingSlider(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    range: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 99,
+    description: String? = null,
+    enabled: Boolean = true,
+    valueFormat: (Float) -> String = { ((it * 100).roundToInt() / 100f).toString() }
+) {
+    val clamped = value.coerceIn(range.start, range.endInclusive)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                ValueChip(text = valueFormat(clamped))
+            }
+            Slider(
+                value = clamped,
+                onValueChange = onValueChange,
+                valueRange = range,
+                steps = steps,
+                enabled = enabled,
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            description?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Integer-only variant of [SettingSlider]. Pass [valueSuffix] for units
+ * like "workers" or "vecinos" to render next to the number in the chip.
+ */
+@Composable
+fun SettingIntSlider(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    range: IntRange,
+    description: String? = null,
+    enabled: Boolean = true,
+    valueSuffix: String = ""
+) {
+    val span = (range.last - range.first).coerceAtLeast(1)
+    val sliderSteps = (span - 1).coerceAtLeast(0)
+    val clamped = value.coerceIn(range)
+    SettingSlider(
+        label = label,
+        value = clamped.toFloat(),
+        onValueChange = { onValueChange(it.roundToInt().coerceIn(range)) },
+        range = range.first.toFloat()..range.last.toFloat(),
+        steps = sliderSteps,
+        description = description,
+        enabled = enabled,
+        valueFormat = { f ->
+            val n = f.roundToInt()
+            if (valueSuffix.isNotBlank()) "$n $valueSuffix" else n.toString()
+        }
+    )
+}
+
+@Composable
+private fun ValueChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }

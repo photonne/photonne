@@ -1,5 +1,6 @@
 package com.photonne.app.ui.grid
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -40,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
+import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -110,7 +113,7 @@ fun AssetGrid(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun AssetGridCell(
     asset: TimelineItem,
@@ -118,17 +121,44 @@ fun AssetGridCell(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     isSelected: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * When `true` (default) the cell forces a 1:1 square shape — the
+     * legacy uniform-square grid behavior used by Trash, Favorites, etc.
+     * Pass `false` from layouts that already set size externally (e.g.
+     * the justified timeline grid where width/height come from the row's
+     * height and the cell's weight).
+     */
+    forceSquare: Boolean = true
 ) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
+    val sharedScope = LocalSharedTransitionScope.current
+    val currentDetailId = LocalCurrentDetailAssetId.current
+    // Only register the cell as a shared-element source while the asset
+    // viewer is open (or animating closed). Registering on every cell at
+    // all times made LazyGrid scrolling churn the SharedTransitionScope's
+    // internal bookkeeping on every recycle — visibly laggier scroll.
+    val thumbnailSharedMod: Modifier = if (sharedScope != null && currentDetailId != null) {
+        val sharedKey = remember(asset.id) { "asset-${asset.id}" }
+        with(sharedScope) {
+            Modifier.sharedElementWithCallerManagedVisibility(
+                sharedContentState = rememberSharedContentState(key = sharedKey),
+                visible = currentDetailId != asset.id,
+                boundsTransform = { _, _ ->
+                    androidx.compose.animation.core.tween(durationMillis = 320)
+                }
+            )
+        }
+    } else {
+        Modifier
+    }
     val selectionPadding by animateDpAsState(
         targetValue = if (isSelected) 8.dp else 0.dp,
         label = "selectionPadding"
     )
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
+            .let { base -> if (forceSquare) base.fillMaxWidth().aspectRatio(1f) else base }
             .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isSelected) 0.18f else 0f))
             .padding(selectionPadding)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
@@ -142,7 +172,7 @@ fun AssetGridCell(
                 model = thumbnailModel,
                 contentDescription = asset.fileName,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().then(thumbnailSharedMod)
             )
         }
         asset.localSyncBadge?.let { badge ->

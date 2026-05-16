@@ -60,6 +60,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_action_search
 import com.photonne.app.resources.albums_count_format
+import com.photonne.app.resources.albums_empty_action_create
 import com.photonne.app.resources.albums_empty_subtitle
 import com.photonne.app.resources.albums_empty_title
 import com.photonne.app.resources.albums_my_links_empty
@@ -79,7 +80,8 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun AlbumsListScreen(
     onAlbumClick: (AlbumSummary) -> Unit,
-    onAlbumLongPress: (AlbumSummary) -> Unit
+    onAlbumLongPress: (AlbumSummary) -> Unit,
+    onCreateAlbum: (() -> Unit)? = null
 ) {
     val viewModel: AlbumsViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
@@ -114,7 +116,10 @@ fun AlbumsListScreen(
                     }
                 visible.isEmpty() && state.hasActiveQuery ->
                     EmptySearchState(query = state.searchQuery.trim())
-                visible.isEmpty() -> EmptyAlbumsState(state.selectedTab)
+                visible.isEmpty() -> EmptyAlbumsState(
+                    tab = state.selectedTab,
+                    onCreateAlbum = onCreateAlbum
+                )
                 else -> AlbumsContent(
                     albums = visible,
                     state = state,
@@ -290,17 +295,23 @@ private fun AlbumsTabBar(selected: AlbumsTab, onSelect: (AlbumsTab) -> Unit) {
 }
 
 @Composable
-private fun EmptyAlbumsState(tab: AlbumsTab) {
+private fun EmptyAlbumsState(tab: AlbumsTab, onCreateAlbum: (() -> Unit)?) {
     val title = stringResource(Res.string.albums_empty_title)
     val subtitle = when (tab) {
         AlbumsTab.Mine -> stringResource(Res.string.albums_empty_subtitle)
         AlbumsTab.Shared -> stringResource(Res.string.albums_shared_empty)
         AlbumsTab.MyLinks -> stringResource(Res.string.albums_my_links_empty)
     }
+    // CTA only on "Mine" — Shared and MyLinks empty states depend on
+    // other people inviting/sharing, so a Create button there would
+    // promise something the user can't actually trigger.
+    val action = onCreateAlbum?.takeIf { tab == AlbumsTab.Mine }
     SharedEmptyState(
         icon = Icons.Outlined.Collections,
         title = title,
-        subtitle = subtitle
+        subtitle = subtitle,
+        actionLabel = action?.let { stringResource(Res.string.albums_empty_action_create) },
+        onAction = action
     )
 }
 

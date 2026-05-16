@@ -1,5 +1,8 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PhotoSizeSelectLarge
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -88,6 +91,7 @@ fun AdminTextRecognitionSettingsScreen(
         SettingSwitch(
             label = stringResource(Res.string.admin_text_settings_enabled),
             description = stringResource(Res.string.admin_text_settings_enabled_description),
+            icon = Icons.Outlined.TextFields,
             checked = state.get(AdminTextRecognitionSettingsViewModel.ENABLED_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -103,21 +107,39 @@ fun AdminTextRecognitionSettingsScreen(
             style = MaterialTheme.typography.titleSmall,
         )
 
-        SettingDecimalField(
+        SettingSlider(
             label = stringResource(Res.string.admin_text_settings_min_score),
-            value = state.get(AdminTextRecognitionSettingsViewModel.MIN_SCORE_KEY),
-            supporting = stringResource(Res.string.admin_text_settings_min_score_hint),
-        ) { viewModel.set(AdminTextRecognitionSettingsViewModel.MIN_SCORE_KEY, it) }
+            value = parseFraction(
+                state.get(AdminTextRecognitionSettingsViewModel.MIN_SCORE_KEY),
+                default = 0.5f,
+            ),
+            description = stringResource(Res.string.admin_text_settings_min_score_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminTextRecognitionSettingsViewModel.MIN_SCORE_KEY,
+                    formatFraction(it),
+                )
+            }
+        )
 
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_text_settings_max_lines),
-            value = state.get(AdminTextRecognitionSettingsViewModel.MAX_LINES_PER_ASSET_KEY),
-            supporting = stringResource(Res.string.admin_text_settings_max_lines_hint),
-        ) { viewModel.set(AdminTextRecognitionSettingsViewModel.MAX_LINES_PER_ASSET_KEY, it) }
+            value = state.get(AdminTextRecognitionSettingsViewModel.MAX_LINES_PER_ASSET_KEY)
+                .toIntOrNull() ?: 200,
+            range = 50..500,
+            description = stringResource(Res.string.admin_text_settings_max_lines_hint),
+            onValueChange = {
+                viewModel.set(
+                    AdminTextRecognitionSettingsViewModel.MAX_LINES_PER_ASSET_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         SettingSwitch(
             label = stringResource(Res.string.admin_face_settings_prefer_thumb_large),
             description = stringResource(Res.string.admin_face_settings_prefer_thumb_large_description),
+            icon = Icons.Outlined.PhotoSizeSelectLarge,
             checked = state.get(AdminTextRecognitionSettingsViewModel.PREFER_THUMBNAIL_LARGE_KEY)
                 .equals("true", ignoreCase = true),
         ) { v ->
@@ -132,10 +154,18 @@ fun AdminTextRecognitionSettingsScreen(
             stringResource(Res.string.admin_face_settings_workers_section),
             style = MaterialTheme.typography.titleSmall,
         )
-        SettingNumberField(
+        SettingIntSlider(
             label = stringResource(Res.string.admin_face_settings_workers),
-            value = state.get(AdminTextRecognitionSettingsViewModel.WORKERS_KEY),
-        ) { viewModel.set(AdminTextRecognitionSettingsViewModel.WORKERS_KEY, it) }
+            value = state.get(AdminTextRecognitionSettingsViewModel.WORKERS_KEY)
+                .toIntOrNull() ?: 1,
+            range = 1..8,
+            onValueChange = {
+                viewModel.set(
+                    AdminTextRecognitionSettingsViewModel.WORKERS_KEY,
+                    it.toString(),
+                )
+            }
+        )
 
         HorizontalDivider()
         Text(

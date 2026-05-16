@@ -79,6 +79,18 @@ private val PhotonneShapes = Shapes(
 )
 
 /**
+ * Asymmetric corner radius reserved for "memory" surfaces (Hub stories,
+ * memory sheets). The oversized top-left corner makes these cards read
+ * as keepsakes/clippings instead of generic content cards.
+ */
+val MemoryCardShape: RoundedCornerShape = RoundedCornerShape(
+    topStart = 24.dp,
+    topEnd = 12.dp,
+    bottomEnd = 12.dp,
+    bottomStart = 12.dp
+)
+
+/**
  * Exposes the effective dark/light state to descendants so resource pickers
  * (e.g. [photonneLogoPainter]) follow the user's in-app preference, not just
  * the OS setting — mirrors the PWA's LayoutService.IsDarkMode behavior.

@@ -80,6 +80,7 @@ import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.explore.ExploreFacetsViewModel
+import com.photonne.app.ui.hub.HubViewModel
 import com.photonne.app.ui.upload.UploadViewModel
 import com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel
 import com.photonne.app.ui.utilities.UtilitiesLargeFilesViewModel
@@ -167,6 +168,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::UtilitiesLargeFilesViewModel)
     viewModelOf(::UtilitiesLocationsViewModel)
     viewModelOf(::ExploreFacetsViewModel)
+    viewModelOf(::HubViewModel)
     viewModelOf(::MapViewModel)
     viewModelOf(::PeopleViewModel)
     viewModelOf(::PersonDetailViewModel)

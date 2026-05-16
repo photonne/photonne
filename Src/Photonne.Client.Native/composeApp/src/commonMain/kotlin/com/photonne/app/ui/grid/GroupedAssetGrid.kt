@@ -1,16 +1,22 @@
 package com.photonne.app.ui.grid
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,9 +25,16 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -200,89 +213,187 @@ internal fun findEntryIndexForMonth(entries: List<TimelineEntry>, target: LocalD
     findEntryIndexForDate(entries, target, TimelineGrouping.Month)
 
 /**
- * Same square grid as [AssetGrid] but with non-sticky month/year
- * headers between groups, used by the timeline. Headers span the full
- * row via [GridItemSpan].
+ * Renders the pre-packed [rows] as a justified Apple-Photos-style grid.
+ * Each cell in a row shares the row's height; widths are weighted by
+ * aspect ratio so the row exactly fills the container width.
+ *
+ * Month/year headers between groups are emitted via [stickyHeader] so the
+ * native sticky behavior takes over — the current section's header pins
+ * to the top until the next section's header pushes it up. This avoids
+ * the previous overlay approach occluding the first row of each new
+ * group.
+ *
+ * Internal indices stay in the original `items` order — click callbacks
+ * resolve against whatever list the caller used to build the entries.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun GroupedAssetGrid(
-    items: List<TimelineItem>,
+internal fun GroupedAssetGrid(
+    rows: List<JustifiedRowEntry>,
     baseUrl: String,
     onItemClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    gridState: LazyGridState = rememberLazyGridState(),
+    state: LazyListState = rememberLazyListState(),
     hasMore: Boolean = false,
     isAppending: Boolean = false,
     isInitialLoading: Boolean = false,
     onLoadMore: () -> Unit = {},
     selectedIds: Set<String> = emptySet(),
     onItemLongClick: ((Int) -> Unit)? = null,
-    grouping: TimelineGrouping = TimelineGrouping.Month,
-    cellMinSize: Dp = 110.dp
+    cellSpacing: Dp = 2.dp
 ) {
-    val entries = remember(items, grouping) { groupTimelineEntries(items, grouping) }
-
     val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
         derivedStateOf {
-            val total = gridState.layoutInfo.totalItemsCount
-            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = state.layoutInfo.totalItemsCount
+            val lastVisible = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             total > 0 && lastVisible >= total - PREFETCH_THRESHOLD &&
                 hasMore && !isAppending && !isInitialLoading
         }
     }
 
-    LaunchedEffect(gridState) {
+    LaunchedEffect(state) {
         snapshotFlow { shouldLoadMore }
             .distinctUntilChanged()
             .filter { it }
             .collect { onLoadMore() }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = cellMinSize),
-        state = gridState,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    LazyColumn(
+        state = state,
+        verticalArrangement = Arrangement.spacedBy(cellSpacing),
         modifier = modifier.fillMaxSize()
     ) {
-        items(
-            items = entries,
-            key = { entry ->
-                when (entry) {
-                    is TimelineEntry.Header -> "h:${entry.key}"
-                    is TimelineEntry.Cell -> assetCellKey(entry.item, entry.index)
-                }
-            },
-            span = { entry ->
-                if (entry is TimelineEntry.Header) GridItemSpan(maxLineSpan)
-                else GridItemSpan(1)
-            }
-        ) { entry ->
+        rows.forEach { entry ->
             when (entry) {
-                is TimelineEntry.Header -> MonthHeader(entry.title)
-                is TimelineEntry.Cell -> AssetGridCell(
-                    asset = entry.item,
-                    baseUrl = baseUrl,
-                    onClick = { onItemClick(entry.index) },
-                    onLongClick = onItemLongClick?.let { { it(entry.index) } },
-                    isSelected = entry.item.id in selectedIds
-                )
+                is JustifiedRowEntry.Header -> stickyHeader(key = "h:${entry.key}") {
+                    StickyMonthHeader(
+                        title = entry.title,
+                        cover = entry.cover,
+                        baseUrl = baseUrl
+                    )
+                }
+                is JustifiedRowEntry.Row -> {
+                    val first = entry.row.cells.first()
+                    item(key = "r:${assetCellKey(first.item, first.index)}") {
+                        JustifiedCellsRow(
+                            row = entry.row,
+                            baseUrl = baseUrl,
+                            spacing = cellSpacing,
+                            onItemClick = onItemClick,
+                            onItemLongClick = onItemLongClick,
+                            selectedIds = selectedIds
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+/**
+ * Cinematic sticky header: 64-dp band painting the group's first asset as
+ * backdrop + dark vertical gradient so the white title stays readable on
+ * any photo. Falls back to a translucent surface chip when no usable
+ * cover exists (group's first item lacks a thumbnail or is local-only).
+ */
 @Composable
-private fun MonthHeader(title: String) {
+private fun StickyMonthHeader(
+    title: String,
+    cover: TimelineItem?,
+    baseUrl: String
+) {
+    val usableCover = cover?.takeIf { it.hasThumbnails && !it.isLocalOnly }
+    // Swallow taps on the band itself so the user doesn't accidentally
+    // open whatever cell is scrolling behind the sticky header, and so
+    // the band reads as chrome rather than an interactive asset.
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, end = 8.dp, top = 16.dp, bottom = 4.dp)
+            .height(56.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { /* consume — header is chrome, not an asset */ }
+            )
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        if (usableCover != null) {
+            // Heavy blur turns the cover into an ambient color band
+            // instead of an openable-looking photo.
+            AsyncImage(
+                model = "$baseUrl/api/assets/${usableCover.id}/thumbnail?size=Small",
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(radius = 28.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.55f),
+                                Color.Black.copy(alpha = 0.40f)
+                            )
+                        )
+                    )
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(horizontal = 16.dp)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(horizontal = 16.dp)
+            )
+        }
     }
 }
+
+@Composable
+private fun JustifiedCellsRow(
+    row: JustifiedRow,
+    baseUrl: String,
+    spacing: Dp,
+    onItemClick: (Int) -> Unit,
+    onItemLongClick: ((Int) -> Unit)?,
+    selectedIds: Set<String>
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(row.rowHeightDp.dp)
+    ) {
+        row.cells.forEachIndexed { i, cell ->
+            if (i > 0) Spacer(Modifier.width(spacing))
+            AssetGridCell(
+                asset = cell.item,
+                baseUrl = baseUrl,
+                onClick = { onItemClick(cell.index) },
+                onLongClick = onItemLongClick?.let { { it(cell.index) } },
+                isSelected = cell.item.id in selectedIds,
+                forceSquare = false,
+                modifier = Modifier
+                    .weight(aspectRatioOf(cell.item))
+                    .fillMaxHeight()
+            )
+        }
+    }
+}
+

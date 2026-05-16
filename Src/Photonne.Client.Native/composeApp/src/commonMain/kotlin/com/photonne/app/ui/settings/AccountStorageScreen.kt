@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +33,8 @@ import com.photonne.app.resources.storage_count_size_format
 import com.photonne.app.resources.storage_label_photos
 import com.photonne.app.resources.storage_label_total
 import com.photonne.app.resources.storage_label_videos
+import com.photonne.app.resources.storage_legend_free
+import com.photonne.app.resources.storage_legend_used
 import com.photonne.app.resources.storage_no_quota
 import com.photonne.app.resources.storage_remaining_format
 import com.photonne.app.resources.storage_section_libraries
@@ -40,6 +42,13 @@ import com.photonne.app.resources.storage_section_overview
 import com.photonne.app.resources.storage_section_personal
 import com.photonne.app.resources.storage_used_percent_format
 import com.photonne.app.resources.storage_used_unbounded_format
+import com.photonne.app.ui.charts.ChartLegend
+import com.photonne.app.ui.charts.DonutChart
+import com.photonne.app.ui.charts.DonutSlice
+import com.photonne.app.ui.charts.LegendItem
+import com.photonne.app.ui.charts.StackedBar
+import com.photonne.app.ui.charts.StackedSegment
+import com.photonne.app.ui.charts.rememberChartPalette
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -90,52 +99,109 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun OverviewCard(info: StorageInfoDto, percentFraction: Float?, percentInt: Int?) {
+    val palette = rememberChartPalette()
+    val usedHuman = humanReadableBytes(info.usedBytes)
+    val quota = info.quotaBytes
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            val usedHuman = humanReadableBytes(info.usedBytes)
-            val quota = info.quotaBytes
+            // Left: a donut showing used vs free for a quota'd account, or
+            // photos vs videos when storage is unbounded. The center label
+            // mirrors the donut's "story" (percent vs total bytes).
+            val slices: List<DonutSlice>
+            val centerPrimary: String
+            val centerSecondary: String?
             if (quota != null && percentInt != null) {
-                Text(
-                    text = stringResource(
-                        Res.string.storage_used_percent_format,
-                        usedHuman,
-                        humanReadableBytes(quota),
-                        percentInt
-                    ),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { percentFraction ?: 0f },
-                    modifier = Modifier.fillMaxWidth().height(8.dp)
-                )
                 val remaining = (quota - info.usedBytes).coerceAtLeast(0L)
-                Text(
-                    stringResource(
-                        Res.string.storage_remaining_format,
-                        humanReadableBytes(remaining)
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                slices = listOf(
+                    DonutSlice(info.usedBytes.toFloat().coerceAtLeast(0f), palette.photos),
+                    DonutSlice(remaining.toFloat().coerceAtLeast(0f), palette.free)
                 )
+                centerPrimary = "$percentInt%"
+                centerSecondary = humanReadableBytes(quota)
             } else {
-                Text(
-                    text = stringResource(Res.string.storage_used_unbounded_format, usedHuman),
-                    style = MaterialTheme.typography.titleMedium
+                slices = listOf(
+                    DonutSlice(info.photoBytes.toFloat().coerceAtLeast(0f), palette.photos),
+                    DonutSlice(info.videoBytes.toFloat().coerceAtLeast(0f), palette.videos)
                 )
-                Text(
-                    stringResource(Res.string.storage_no_quota),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                centerPrimary = usedHuman
+                centerSecondary = null
+            }
+            DonutChart(
+                slices = slices,
+                modifier = Modifier.size(120.dp),
+                strokeWidth = 14.dp
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = centerPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    centerSecondary?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (quota != null && percentInt != null) {
+                    Text(
+                        text = stringResource(
+                            Res.string.storage_used_percent_format,
+                            usedHuman,
+                            humanReadableBytes(quota),
+                            percentInt
+                        ),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    val remaining = (quota - info.usedBytes).coerceAtLeast(0L)
+                    Text(
+                        stringResource(
+                            Res.string.storage_remaining_format,
+                            humanReadableBytes(remaining)
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ChartLegend(
+                        items = listOf(
+                            LegendItem(palette.photos, stringResource(Res.string.storage_legend_used)),
+                            LegendItem(palette.free, stringResource(Res.string.storage_legend_free))
+                        )
+                    )
+                } else {
+                    Text(
+                        text = stringResource(Res.string.storage_used_unbounded_format, usedHuman),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        stringResource(Res.string.storage_no_quota),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ChartLegend(
+                        items = listOf(
+                            LegendItem(palette.photos, stringResource(Res.string.storage_label_photos)),
+                            LegendItem(palette.videos, stringResource(Res.string.storage_label_videos))
+                        )
+                    )
+                }
             }
         }
     }
@@ -161,10 +227,10 @@ private fun LibraryCard(lib: StorageLibraryUsageDto) {
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(lib.name, style = MaterialTheme.typography.titleMedium)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            BreakdownChart(lib.photoBytes, lib.videoBytes)
             BreakdownRows(
                 photos = lib.photos,
                 videos = lib.videos,
@@ -185,11 +251,25 @@ private fun BreakdownCard(photos: Int, videos: Int, photoBytes: Long, videoBytes
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            BreakdownChart(photoBytes, videoBytes)
             BreakdownRows(photos, videos, photoBytes, videoBytes)
         }
     }
+}
+
+@Composable
+private fun BreakdownChart(photoBytes: Long, videoBytes: Long) {
+    val palette = rememberChartPalette()
+    StackedBar(
+        segments = listOf(
+            StackedSegment(photoBytes.toFloat().coerceAtLeast(0f), palette.photos),
+            StackedSegment(videoBytes.toFloat().coerceAtLeast(0f), palette.videos)
+        ),
+        trackColor = MaterialTheme.colorScheme.surface,
+        barHeight = 10.dp
+    )
 }
 
 @Composable

@@ -2,9 +2,31 @@
 <resources>
     <string name="app_name">Photonne</string>
 
+    <string name="tab_home">Home</string>
     <string name="tab_timeline">Photos</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_more">More</string>
+
+    <string name="hub_greeting_morning">Good morning</string>
+    <string name="hub_greeting_afternoon">Good afternoon</string>
+    <string name="hub_greeting_evening">Good evening</string>
+    <string name="hub_greeting_with_name">%1$s, %2$s</string>
+    <string name="hub_totals_photos">%1$s photos</string>
+    <string name="hub_totals_videos">%1$s videos</string>
+    <string name="hub_totals_storage">%1$s</string>
+    <string name="hub_section_memories">On this day…</string>
+    <string name="hub_section_recents">Recent</string>
+    <string name="hub_section_people">People</string>
+    <string name="hub_section_explore">Explore</string>
+    <string name="hub_section_shortcuts">Shortcuts</string>
+    <string name="hub_action_see_all">See all</string>
+    <string name="hub_action_open_library">All photos</string>
+    <string name="hub_action_search">Search</string>
+    <string name="hub_action_map">Map</string>
+    <string name="hub_action_albums">Albums</string>
+    <string name="hub_action_upload">Upload</string>
+    <string name="hub_facet_assets">%1$d photos</string>
+    <string name="hub_person_unnamed">Unnamed</string>
 
     <string name="action_refresh">Refresh</string>
     <string name="action_account">Account</string>
@@ -24,7 +46,8 @@
     <string name="action_more">More actions</string>
 
     <string name="timeline_empty_title">Your timeline is empty</string>
-    <string name="timeline_empty_subtitle">Index a folder from the web app to get started.</string>
+    <string name="timeline_empty_subtitle">Index a folder from the web app or upload your first photos.</string>
+    <string name="timeline_empty_action_upload">Upload photos</string>
     <string name="timeline_memories_section">Memories</string>
     <string name="timeline_memories_one_year_ago">1 year ago</string>
     <string name="timeline_memories_years_ago">%1$d years ago</string>
@@ -59,7 +82,8 @@
     <string name="album_empty_title">Album empty</string>
     <string name="album_empty_subtitle">Add photos to this album from the asset viewer.</string>
     <string name="albums_empty_title">No albums yet</string>
-    <string name="albums_empty_subtitle">Tap the + button in the top bar to create your first one.</string>
+    <string name="albums_empty_subtitle">Group your memories into collections so they're easier to find.</string>
+    <string name="albums_empty_action_create">Create album</string>
     <string name="albums_count_format">%1$d items</string>
     <string name="albums_tab_mine">Mine</string>
     <string name="albums_tab_shared">Shared</string>
@@ -343,6 +367,8 @@
     <string name="storage_label_videos">Videos</string>
     <string name="storage_label_total">Total</string>
     <string name="storage_count_size_format">%1$d · %2$s</string>
+    <string name="storage_legend_used">Used</string>
+    <string name="storage_legend_free">Free</string>
 
     <!-- Administration -->
     <string name="administration_title">Administration</string>
@@ -438,6 +464,15 @@
     <string name="admin_system_run_tasks">Run tasks</string>
     <string name="admin_system_run_tasks_subtitle">Indexing, thumbnails, duplicates, ML…</string>
     <string name="admin_run_tasks_pending_format">%1$d unprocessed · %2$d in queue</string>
+    <string name="admin_run_tasks_summary_title">ML overview</string>
+    <string name="admin_run_tasks_summary_idle">All caught up</string>
+    <string name="admin_run_tasks_summary_pending_format">%1$d pending in total</string>
+    <string name="admin_run_tasks_summary_queued_format">%1$d actively queued</string>
+    <string name="admin_run_tasks_tile_pending">Pending</string>
+    <string name="admin_run_tasks_tile_queued">In queue</string>
+    <string name="admin_run_tasks_tile_active">Active</string>
+    <string name="admin_run_tasks_section_other">Other tasks</string>
+    <string name="admin_run_tasks_section_ml">ML tasks</string>
 
     <string name="admin_settings_face_recognition">Face recognition</string>
     <string name="admin_settings_face_recognition_subtitle">Thresholds, model and workers</string>
