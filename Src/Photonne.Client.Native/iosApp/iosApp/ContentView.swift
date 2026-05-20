@@ -5,7 +5,7 @@ import ComposeApp
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         let baseUrl = Bundle.main.object(forInfoDictionaryKey: "PhotonneApiBaseUrl") as? String
-        return MainViewControllerKt.MainViewController(apiBaseUrl: baseUrl)
+        return MainViewControllerKt.MainViewController(apiBaseUrl: baseUrl, useFakeMemories: false)
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}

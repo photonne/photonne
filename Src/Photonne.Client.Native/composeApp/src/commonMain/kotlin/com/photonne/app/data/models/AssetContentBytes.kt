@@ -12,5 +12,5 @@ data class AssetContentBytes(
     val suggestedFileName: String
 ) {
     override fun equals(other: Any?): Boolean = this === other
-    override fun hashCode(): Int = System.identityHashCode(this)
+    override fun hashCode(): Int = mimeType.hashCode() * 31 + suggestedFileName.hashCode()
 }

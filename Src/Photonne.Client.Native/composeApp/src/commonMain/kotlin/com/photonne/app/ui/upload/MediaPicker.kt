@@ -15,7 +15,7 @@ data class PickedFile(
     val bytes: ByteArray
 ) {
     override fun equals(other: Any?): Boolean = this === other
-    override fun hashCode(): Int = System.identityHashCode(this)
+    override fun hashCode(): Int = (name.hashCode() * 31 + mimeType.hashCode()) * 31 + sizeBytes.hashCode()
 }
 
 /**

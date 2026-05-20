@@ -9,9 +9,15 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.AVURLAsset
-import platform.AVFoundation.AVURLAssetHTTPHeaderFieldsKey
+import platform.AVFoundation.pause
+import platform.AVFoundation.play
 import platform.AVKit.AVPlayerViewController
 import platform.Foundation.NSURL
+
+// AVURLAssetHTTPHeaderFieldsKey is not exposed by Kotlin/Native's
+// AVFoundation cinterop bindings (unlike sibling keys such as
+// AVURLAssetHTTPCookiesKey); fall back to the documented string value.
+private const val AVURLAssetHTTPHeaderFieldsKey = "AVURLAssetHTTPHeaderFieldsKey"
 
 actual val isVideoPlaybackSupported: Boolean = true
 
