@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +42,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
@@ -55,9 +59,15 @@ fun LoginScreen() {
     val state by viewModel.state.collectAsState()
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            contentAlignment = Alignment.Center
+        ) {
             Column(
-                modifier = Modifier.widthIn(max = 360.dp).padding(24.dp),
+                modifier = Modifier
+                    .widthIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -122,6 +132,11 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
             keyboardType = KeyboardType.Uri,
             imeAction = ImeAction.Go
         ),
+        keyboardActions = KeyboardActions(onGo = {
+            if (!state.isSubmitting && state.serverUrl.isNotBlank()) {
+                viewModel.submitServerUrl()
+            }
+        }),
         modifier = Modifier.fillMaxWidth()
     )
 
@@ -187,6 +202,9 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
             keyboardType = KeyboardType.Password,
             imeAction = ImeAction.Go
         ),
+        keyboardActions = KeyboardActions(onGo = {
+            if (!state.isSubmitting) viewModel.submit()
+        }),
         modifier = Modifier
             .fillMaxWidth()
             .autofill(
