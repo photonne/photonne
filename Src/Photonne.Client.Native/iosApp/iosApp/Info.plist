@@ -42,5 +42,9 @@
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Photonne necesita acceder a tu red local para detectar el servidor de fotos cuando estás en casa.</string>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
 </dict>
 </plist>
