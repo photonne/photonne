@@ -15,6 +15,8 @@ import platform.AVFoundation.AVURLAsset
 import platform.AVFoundation.pause
 import platform.AVKit.AVPlayerViewController
 import platform.Foundation.NSURL
+import platform.UIKit.UIViewAutoresizingFlexibleHeight
+import platform.UIKit.UIViewAutoresizingFlexibleWidth
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
 import platform.UIKit.didMoveToParentViewController
@@ -79,11 +81,13 @@ private fun configurePlaybackAudioSession() {
 }
 
 // AVPlayerViewController hosted directly through UIKitViewController doesn't
-// always relay layout changes from its parent (e.g. when the asset pager
-// swaps pages or the device rotates), leaving the video frame stuck at the
-// initial size and visibly offset. Wrapping it in a parent controller that
-// pins the child view to its own bounds on every layout pass keeps the
-// playback surface aligned with the Compose slot.
+// always relay layout changes from its parent — when entering the detail
+// screen from a shared-element transition (e.g. the home memories story
+// card) the controller's view mounts before the Compose slot has its final
+// bounds, and AVKit then leaves it offset and oversized. Wrapping it in a
+// parent controller lets us seed the initial frame, opt into UIKit's
+// autoresizing so subsequent bounds changes propagate automatically, and
+// re-pin on every layout pass as a defensive backstop.
 @OptIn(ExperimentalForeignApi::class)
 private class VideoPlayerContainerViewController(
     val playerViewController: AVPlayerViewController
@@ -92,7 +96,12 @@ private class VideoPlayerContainerViewController(
     override fun viewDidLoad() {
         super.viewDidLoad()
         addChildViewController(playerViewController)
-        view.addSubview(playerViewController.view)
+        val playerView = playerViewController.view
+        playerView.setFrame(view.bounds)
+        playerView.setAutoresizingMask(
+            UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
+        )
+        view.addSubview(playerView)
         playerViewController.didMoveToParentViewController(this)
     }
 

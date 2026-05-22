@@ -438,7 +438,7 @@ private fun AssetPage(
             return@Box
         }
         when {
-            item.isVideo && isVideoPlaybackSupported && isCurrent -> {
+            item.isVideo && isVideoPlaybackSupported && isCurrent && !isTransitioning -> {
                 VideoPlayer(
                     url = "$baseUrl/api/assets/${item.id}/content",
                     headers = authHeaders,
@@ -446,8 +446,13 @@ private fun AssetPage(
                 )
             }
             item.isVideo -> {
-                // Off-screen pages or unsupported platforms render the poster
-                // so the pager preview stays cheap and predictable.
+                // Off-screen pages, unsupported platforms, or while a
+                // shared-element transition is morphing the page bounds:
+                // render the poster so Compose can animate it cleanly, and
+                // let the platform video player mount only once the page
+                // is at its stable, final size (AVPlayerViewController on
+                // iOS bakes its initial bounds into auto-layout constraints
+                // and never recovers if mounted mid-morph).
                 AsyncImage(
                     model = "$baseUrl/api/assets/${item.id}/thumbnail?size=Large",
                     contentDescription = item.fileName,
