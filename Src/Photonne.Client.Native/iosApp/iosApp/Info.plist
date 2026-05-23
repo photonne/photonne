@@ -44,6 +44,8 @@
     </dict>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Photonne necesita acceder a tu red local para detectar el servidor de fotos cuando estás en casa.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Photonne necesita acceso a tu galería para hacer copia de seguridad de tus fotos y vídeos en el servidor.</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
 </dict>
