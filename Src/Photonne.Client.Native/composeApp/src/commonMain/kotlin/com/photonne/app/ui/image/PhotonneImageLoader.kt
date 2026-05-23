@@ -17,6 +17,7 @@ fun buildPhotonneImageLoader(
 ): ImageLoader = ImageLoader.Builder(context)
     .components {
         add(KtorNetworkFetcherFactory(httpClient = { httpClient }))
+        addPlatformImageComponents()
     }
     .crossfade(true)
     .build()
