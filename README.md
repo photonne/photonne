@@ -163,8 +163,8 @@ dotnet run
 | `PGADMIN_PORT` | Puerto expuesto de PgAdmin | `5050` |
 | `PGADMIN_EMAIL` | Email de acceso a PgAdmin | `admin@example.com` |
 | `PGADMIN_PASSWORD` | Contraseña de PgAdmin | `admin` |
-| `ASSETS_HOST_PATH` | Ruta del host montada como volumen de assets | `./data/photos` |
-| `THUMBNAILS_HOST_PATH` | Ruta del host montada como volumen de miniaturas | `./data/thumbnails` |
+| `ASSETS_HOST_PATH` | Ruta absoluta del host montada como volumen de assets (ver [Rutas en el host](#rutas-en-el-host)) | `./photonne/data/assets` |
+| `THUMBNAILS_HOST_PATH` | Ruta absoluta del host montada como volumen de miniaturas | `./photonne/data/thumbnails` |
 | `ADMIN_USERNAME` | Nombre de usuario del admin inicial | `admin` |
 | `ADMIN_EMAIL` | Email del admin inicial | `admin@photonne.local` |
 | `ADMIN_PASSWORD` | Contraseña del admin inicial | `admin123` |
@@ -206,13 +206,57 @@ POSTGRES_PASSWORD=photonne_password
 # JWT (cambiar en producción)
 JWT_KEY=clave-secreta-muy-larga-de-al-menos-32-caracteres
 
-# Rutas de datos en el host
-ASSETS_HOST_PATH=/ruta/a/tus/fotos
-THUMBNAILS_HOST_PATH=/ruta/a/tus/miniaturas
+# Rutas de datos en el host (absolutas — ver "Rutas en el host" más abajo)
+ASSETS_HOST_PATH=/home/<TuUsuario>/photonne/data/assets
+THUMBNAILS_HOST_PATH=/home/<TuUsuario>/photonne/data/thumbnails
 
 # Admin inicial
 ADMIN_PASSWORD=contraseña-segura
 ```
+
+### Rutas en el host
+
+Photonne usa un único árbol `photonne/data/` con dos subcarpetas (`assets/` y
+`thumbnails/`). Se recomienda colocarlo **bajo el home del usuario**: queda
+fuera del repo, no requiere permisos de root/admin y es accesible desde el
+explorador de archivos sin tocar la configuración de Docker.
+
+> **Importante**: Docker Compose **no expande** `~` ni `${HOME}` en los valores
+> del `.env`. Usa siempre rutas absolutas (con letra de unidad en Windows).
+
+| SO       | Rutas recomendadas                                                                                            |
+|----------|---------------------------------------------------------------------------------------------------------------|
+| Linux    | `/home/<TuUsuario>/photonne/data/assets`<br>`/home/<TuUsuario>/photonne/data/thumbnails`                      |
+| macOS    | `/Users/<TuUsuario>/photonne/data/assets`<br>`/Users/<TuUsuario>/photonne/data/thumbnails`                    |
+| Windows  | `C:/Users/<TuUsuario>/photonne/data/assets`<br>`C:/Users/<TuUsuario>/photonne/data/thumbnails`                |
+
+Si las carpetas no existen, Docker las crea al arrancar. En macOS Docker Desktop
+ya tiene autorizado `/Users` en `Settings → Resources → File Sharing` por
+defecto; en Windows ocurre lo mismo con `C:/Users` vía WSL2; en Linux el home
+es escribible sin `sudo`.
+
+### Layout en disco
+
+Dentro de `ASSETS_HOST_PATH` cada usuario tiene su propia carpeta nombrada por
+su **username** (no por UUID), lo que permite identificar a quién pertenece
+cada directorio de un vistazo:
+
+```
+<ASSETS_HOST_PATH>/
+└── users/
+    ├── alice/
+    │   ├── Uploads/
+    │   ├── DeviceBackup/
+    │   └── _trash/
+    └── bob/
+        └── Uploads/
+```
+
+El username solo admite `[a-zA-Z0-9._-]` (máx. 64 caracteres) para garantizar
+compatibilidad con cualquier sistema de archivos. Cambiar el username de un
+usuario lanza una migración atómica (renombra la carpeta y actualiza todas las
+referencias en BD); la web pide confirmación mostrando el impacto antes de
+aplicarla.
 
 ## API
 

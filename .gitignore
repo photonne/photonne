@@ -11,6 +11,11 @@
 *.sln.docstates
 *.env
 
+# Local data mounted by docker-compose (host paths for assets + thumbnails).
+# Defaults from .env.example land here; never commit user media or thumbs.
+/photonne/data/
+/data/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
