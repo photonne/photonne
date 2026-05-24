@@ -1,8 +1,15 @@
 namespace Photonne.Client.Web.Services;
 
+public enum BackupLevel
+{
+    Config,
+    Essential,
+    Full,
+}
+
 public interface IDatabaseBackupService
 {
-    Task<BackupFileResult> ExportAsync(bool includeMl);
+    Task<BackupFileResult> ExportAsync(BackupLevel level);
     Task<DatabaseRestoreResult> RestoreAsync(Stream fileStream, string fileName);
 }
 
@@ -18,4 +25,6 @@ public record DatabaseRestoreStats(
     int Faces,
     int Embeddings,
     int OcrLines,
+    bool IncludesConfig,
+    bool IncludesLibrary,
     bool IncludesMlData);

@@ -41,7 +41,7 @@
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6">Exportar copia de seguridad</MudText>
                             <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                                Descarga un archivo <strong>.json</strong> con todos los datos de la base de datos.
+                                Descarga un archivo <strong>.json</strong> con los datos seleccionados.
                             </MudText>
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -51,18 +51,25 @@
                             Debes gestionarlos por separado.
                         </MudAlert>
 
-                        <MudRadioGroup T="bool" Value="_includeMl" ValueChanged="OnIncludeMlChanged">
-                            <MudRadio T="bool" Value="false" Color="Color.Primary" Dense="true">
-                                <strong>Esencial</strong>
+                        <MudRadioGroup T="BackupLevel" Value="_level" ValueChanged="OnLevelChanged">
+                            <MudRadio T="BackupLevel" Value="BackupLevel.Config" Color="Color.Primary" Dense="true">
+                                <strong>Solo configuración</strong>
                                 <MudText Typo="Typo.caption" Class="d-block mud-text-secondary" Style="margin-left: 0;">
-                                    Usuarios, álbumes, carpetas, assets, EXIF, miniaturas, tags, permisos, tokens y notificaciones.
-                                    Más rápido y ligero. Los procesos de ML se reprocesarán al restaurar.
+                                    Ajustes del servidor, usuarios, carpetas (estructura), bibliotecas externas (definiciones)
+                                    y permisos. Ideal para migrar la instalación a otra máquina sin la biblioteca actual.
                                 </MudText>
                             </MudRadio>
-                            <MudRadio T="bool" Value="true" Color="Color.Primary" Dense="true" Class="mt-2">
+                            <MudRadio T="BackupLevel" Value="BackupLevel.Essential" Color="Color.Primary" Dense="true" Class="mt-2">
+                                <strong>Esencial</strong>
+                                <MudText Typo="Typo.caption" Class="d-block mud-text-secondary" Style="margin-left: 0;">
+                                    Lo anterior + álbumes, assets, EXIF, miniaturas, tags y enlaces compartidos.
+                                    Sin datos de ML — se reprocesarán al restaurar.
+                                </MudText>
+                            </MudRadio>
+                            <MudRadio T="BackupLevel" Value="BackupLevel.Full" Color="Color.Primary" Dense="true" Class="mt-2">
                                 <strong>Completo (con ML)</strong>
                                 <MudText Typo="Typo.caption" Class="d-block mud-text-secondary" Style="margin-left: 0;">
-                                    Incluye además caras, personas, embeddings CLIP, OCR, objetos y escenas.
+                                    Todo lo anterior + caras, personas, embeddings CLIP, OCR, objetos y escenas.
                                     Archivo notablemente mayor.
                                 </MudText>
                             </MudRadio>
@@ -82,7 +89,7 @@
                             }
                             else
                             {
-                                <span>@(_includeMl ? "Descargar copia completa" : "Descargar copia esencial")</span>
+                                <span>Descargar @LevelLabel(_level).ToLower()</span>
                             }
                         </MudButton>
                     </MudCardActions>
@@ -106,8 +113,9 @@
                     </MudCardHeader>
                     <MudCardContent>
                         <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
-                            <strong>Atención:</strong> esta operación eliminará permanentemente todos los datos actuales
-                            de la base de datos y los reemplazará con los del archivo seleccionado.
+                            <strong>Atención:</strong> la restauración borra <strong>toda</strong> la base de datos
+                            actual y la sustituye por la del archivo. Las tablas no incluidas en el backup
+                            (p. ej. assets en una copia "solo configuración") quedarán <strong>vacías</strong>.
                         </MudAlert>
 
                         <div style="@(_selectedFile != null ? "display:none" : "")">
@@ -145,22 +153,18 @@
                                         @_filePreview.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         &nbsp;·&nbsp; v@_filePreview.Version
                                         &nbsp;·&nbsp;
-                                        @if (_filePreview.IncludesMlData)
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Completo (con ML)</MudChip>
-                                        }
-                                        else
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Esencial</MudChip>
-                                        }
+                                        <MudChip T="string" Size="Size.Small" Color="@LevelChipColor(_filePreview.Level)" Variant="Variant.Outlined">@LevelLabel(_filePreview.Level)</MudChip>
                                     </MudText>
                                     <ul class="mt-1 mb-0" style="padding-left:1.2rem; font-size: 0.8rem">
                                         <li>Usuarios: <strong>@_filePreview.Users</strong></li>
-                                        <li>Assets: <strong>@_filePreview.Assets</strong></li>
-                                        <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
                                         <li>Carpetas: <strong>@_filePreview.Folders</strong></li>
                                         <li>Bibliotecas externas: <strong>@_filePreview.ExternalLibraries</strong></li>
-                                        @if (_filePreview.IncludesMlData)
+                                        @if (_filePreview.Level != BackupLevel.Config)
+                                        {
+                                            <li>Assets: <strong>@_filePreview.Assets</strong></li>
+                                            <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
+                                        }
+                                        @if (_filePreview.Level == BackupLevel.Full)
                                         {
                                             <li>Personas: <strong>@_filePreview.People</strong></li>
                                             <li>Caras: <strong>@_filePreview.Faces</strong></li>
@@ -168,10 +172,17 @@
                                             <li>Líneas OCR: <strong>@_filePreview.OcrLines</strong></li>
                                         }
                                     </ul>
-                                    @if (!_filePreview.IncludesMlData)
+                                    @if (_filePreview.Level == BackupLevel.Config)
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                                            Copia <strong>solo configuración</strong>: al restaurar, la biblioteca (assets, álbumes,
+                                            datos de ML…) quedará <strong>vacía</strong>. Pensado para una instalación nueva.
+                                        </MudAlert>
+                                    }
+                                    else if (_filePreview.Level == BackupLevel.Essential)
                                     {
                                         <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
-                                            Esta copia es <strong>esencial</strong>: el procesamiento de ML
+                                            Copia <strong>esencial</strong>: el procesamiento de ML
                                             (caras, OCR, escenas, objetos, embeddings) se ejecutará de nuevo tras restaurar.
                                         </MudAlert>
                                     }
@@ -225,10 +236,13 @@
                         {
                             <ul class="mt-2 mb-0" style="padding-left:1.2rem">
                                 <li>Usuarios: <strong>@_restoreResult.Stats.Users</strong></li>
-                                <li>Assets: <strong>@_restoreResult.Stats.Assets</strong></li>
-                                <li>Álbumes: <strong>@_restoreResult.Stats.Albums</strong></li>
                                 <li>Carpetas: <strong>@_restoreResult.Stats.Folders</strong></li>
                                 <li>Bibliotecas externas: <strong>@_restoreResult.Stats.ExternalLibraries</strong></li>
+                                @if (_restoreResult.Stats.IncludesLibrary)
+                                {
+                                    <li>Assets: <strong>@_restoreResult.Stats.Assets</strong></li>
+                                    <li>Álbumes: <strong>@_restoreResult.Stats.Albums</strong></li>
+                                }
                                 @if (_restoreResult.Stats.IncludesMlData)
                                 {
                                     <li>Personas: <strong>@_restoreResult.Stats.People</strong></li>
@@ -237,7 +251,14 @@
                                     <li>Líneas OCR: <strong>@_restoreResult.Stats.OcrLines</strong></li>
                                 }
                             </ul>
-                            @if (!_restoreResult.Stats.IncludesMlData)
+                            @if (!_restoreResult.Stats.IncludesLibrary)
+                            {
+                                <MudText Typo="Typo.caption" Class="d-block mt-2">
+                                    Backup solo configuración: la biblioteca quedó vacía. Reescanea las carpetas
+                                    desde la administración para indexar tus archivos.
+                                </MudText>
+                            }
+                            else if (!_restoreResult.Stats.IncludesMlData)
                             {
                                 <MudText Typo="Typo.caption" Class="d-block mt-2">
                                     Backup esencial: los procesos de ML se reejecutarán para regenerar caras,
@@ -269,11 +290,14 @@
         {
             <ul class="mt-2 mb-0" style="padding-left:1.2rem; font-size: 0.875rem">
                 <li>Usuarios: <strong>@_filePreview.Users</strong></li>
-                <li>Assets: <strong>@_filePreview.Assets</strong></li>
-                <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
                 <li>Carpetas: <strong>@_filePreview.Folders</strong></li>
                 <li>Bibliotecas externas: <strong>@_filePreview.ExternalLibraries</strong></li>
-                @if (_filePreview.IncludesMlData)
+                @if (_filePreview.Level != BackupLevel.Config)
+                {
+                    <li>Assets: <strong>@_filePreview.Assets</strong></li>
+                    <li>Álbumes: <strong>@_filePreview.Albums</strong></li>
+                }
+                @if (_filePreview.Level == BackupLevel.Full)
                 {
                     <li>Personas: <strong>@_filePreview.People</strong></li>
                     <li>Caras: <strong>@_filePreview.Faces</strong></li>
@@ -281,7 +305,14 @@
                     <li>Líneas OCR: <strong>@_filePreview.OcrLines</strong></li>
                 }
             </ul>
-            @if (!_filePreview.IncludesMlData)
+            @if (_filePreview.Level == BackupLevel.Config)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                    Backup <strong>solo configuración</strong>: assets, álbumes y datos de ML actuales se
+                    <strong>perderán</strong>. La biblioteca quedará vacía.
+                </MudAlert>
+            }
+            else if (_filePreview.Level == BackupLevel.Essential)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
                     Backup <strong>esencial</strong>: tras la restauración los datos de ML se borrarán y se reprocesarán.
@@ -307,7 +338,7 @@
     private record BackupFilePreview(
         string Version,
         DateTime CreatedAt,
-        bool IncludesMlData,
+        BackupLevel Level,
         int Users,
         int Assets,
         int Albums,
@@ -327,12 +358,28 @@
     private bool _previewLoading = false;
     private bool _previewError   = false;
     private bool _confirmDialogOpen = false;
-    private bool _includeMl     = false;
+    private BackupLevel _level     = BackupLevel.Essential;
     private IBrowserFile?      _selectedFile;
     private BackupFilePreview? _filePreview;
     private DatabaseRestoreResult? _restoreResult;
 
-    private void OnIncludeMlChanged(bool value) => _includeMl = value;
+    private void OnLevelChanged(BackupLevel value) => _level = value;
+
+    private static string LevelLabel(BackupLevel level) => level switch
+    {
+        BackupLevel.Config    => "Solo configuración",
+        BackupLevel.Essential => "Esencial",
+        BackupLevel.Full      => "Completo (con ML)",
+        _                     => level.ToString(),
+    };
+
+    private static Color LevelChipColor(BackupLevel level) => level switch
+    {
+        BackupLevel.Config    => Color.Default,
+        BackupLevel.Essential => Color.Info,
+        BackupLevel.Full      => Color.Success,
+        _                     => Color.Default,
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -365,17 +412,33 @@
             using var doc = await JsonDocument.ParseAsync(stream);
             var root = doc.RootElement;
 
-            // v1.0 backup files predate the IncludesMlData flag and have no ML
-            // arrays, so default to false in that case.
+            // v1.0 has no Includes* flags and always means "config + library, no ML".
+            // v2.0 has IncludesMlData only (config + library always present).
+            // v3.0+ has all three layer flags explicit.
             var version = root.TryGetProperty("version", out var v) ? v.GetString() ?? "?" : "?";
+
+            var includesConfig = version == "1.0"
+                || !root.TryGetProperty("includesConfig", out var ic)
+                || ic.ValueKind != JsonValueKind.False;
+            var includesLibrary = version == "1.0"
+                || !root.TryGetProperty("includesLibrary", out var il)
+                || il.ValueKind != JsonValueKind.False;
             var includesMl = version != "1.0"
+                && includesLibrary
                 && root.TryGetProperty("includesMlData", out var im)
                 && im.ValueKind == JsonValueKind.True;
+
+            var level = (includesLibrary, includesMl) switch
+            {
+                (false, _)     => BackupLevel.Config,
+                (true, false)  => BackupLevel.Essential,
+                (true, true)   => BackupLevel.Full,
+            };
 
             _filePreview = new BackupFilePreview(
                 Version:           version,
                 CreatedAt:         root.TryGetProperty("createdAt",                out var ca)  ? ca.GetDateTime()    : DateTime.MinValue,
-                IncludesMlData:    includesMl,
+                Level:             level,
                 Users:             root.TryGetProperty("users",                    out var u)   ? u.GetArrayLength()  : 0,
                 Assets:            root.TryGetProperty("assets",                   out var a)   ? a.GetArrayLength()  : 0,
                 Albums:            root.TryGetProperty("albums",                   out var al)  ? al.GetArrayLength() : 0,
@@ -418,7 +481,7 @@
         _exportLoading = true;
         try
         {
-            var backup = await BackupService.ExportAsync(_includeMl);
+            var backup = await BackupService.ExportAsync(_level);
             await JS.InvokeVoidAsync("downloadFileFromBytes", backup.FileName, "application/json", backup.Bytes);
             Snackbar.Add("Copia de seguridad descargada correctamente.", Severity.Success);
         }

@@ -3,6 +3,16 @@ using Photonne.Server.Api.Shared.Data;
 
 namespace Photonne.Server.Api.Features.DatabaseBackup;
 
+public record BackupSelection(bool IncludeLibrary, bool IncludeMlData)
+{
+    // ML output references Assets, so ML alone is not a valid backup.
+    public bool IsValid => !IncludeMlData || IncludeLibrary;
+
+    public static readonly BackupSelection ConfigOnly  = new(IncludeLibrary: false, IncludeMlData: false);
+    public static readonly BackupSelection Essential   = new(IncludeLibrary: true,  IncludeMlData: false);
+    public static readonly BackupSelection Full        = new(IncludeLibrary: true,  IncludeMlData: true);
+}
+
 public class DatabaseBackupService
 {
     private readonly ApplicationDbContext _dbContext;
@@ -12,33 +22,43 @@ public class DatabaseBackupService
         _dbContext = dbContext;
     }
 
-    public async Task<BackupDocument> ExportAsync(bool includeMlData, CancellationToken ct)
+    public async Task<BackupDocument> ExportAsync(BackupSelection selection, CancellationToken ct)
     {
+        if (!selection.IsValid)
+            throw new ArgumentException("ML data cannot be exported without the library layer.", nameof(selection));
+
         var doc = new BackupDocument
         {
-            CreatedAt         = DateTime.UtcNow,
-            IncludesMlData    = includeMlData,
-            Users             = await _dbContext.Users.AsNoTracking().ToListAsync(ct),
-            Folders           = await _dbContext.Folders.AsNoTracking().ToListAsync(ct),
-            FolderPermissions = await _dbContext.FolderPermissions.AsNoTracking().ToListAsync(ct),
-            Settings          = await _dbContext.Settings.AsNoTracking().ToListAsync(ct),
+            CreatedAt       = DateTime.UtcNow,
+            IncludesConfig  = true,
+            IncludesLibrary = selection.IncludeLibrary,
+            IncludesMlData  = selection.IncludeMlData,
+
+            // Config layer — always included.
+            Users                      = await _dbContext.Users.AsNoTracking().ToListAsync(ct),
+            Folders                    = await _dbContext.Folders.AsNoTracking().ToListAsync(ct),
+            FolderPermissions          = await _dbContext.FolderPermissions.AsNoTracking().ToListAsync(ct),
+            Settings                   = await _dbContext.Settings.AsNoTracking().ToListAsync(ct),
             ExternalLibraries          = await _dbContext.ExternalLibraries.AsNoTracking().ToListAsync(ct),
             ExternalLibraryPermissions = await _dbContext.ExternalLibraryPermissions.AsNoTracking().ToListAsync(ct),
-            UserTags          = await _dbContext.UserTags.AsNoTracking().ToListAsync(ct),
-            Albums            = await _dbContext.Albums.AsNoTracking().ToListAsync(ct),
-            Assets            = await _dbContext.Assets.AsNoTracking().ToListAsync(ct),
-            AssetExifs        = await _dbContext.AssetExifs.AsNoTracking().ToListAsync(ct),
-            AssetThumbnails   = await _dbContext.AssetThumbnails.AsNoTracking().ToListAsync(ct),
-            AssetTags         = await _dbContext.AssetTags.AsNoTracking().ToListAsync(ct),
-            AssetUserTags     = await _dbContext.AssetUserTags.AsNoTracking().ToListAsync(ct),
-            AlbumAssets       = await _dbContext.AlbumAssets.AsNoTracking().ToListAsync(ct),
-            AlbumPermissions  = await _dbContext.AlbumPermissions.AsNoTracking().ToListAsync(ct),
-            SharedLinks       = await _dbContext.SharedLinks.AsNoTracking().ToListAsync(ct),
-            RefreshTokens     = await _dbContext.RefreshTokens.AsNoTracking().ToListAsync(ct),
-            Notifications     = await _dbContext.Notifications.AsNoTracking().ToListAsync(ct),
+            UserTags                   = await _dbContext.UserTags.AsNoTracking().ToListAsync(ct),
         };
 
-        if (includeMlData)
+        if (selection.IncludeLibrary)
+        {
+            doc.Albums           = await _dbContext.Albums.AsNoTracking().ToListAsync(ct);
+            doc.Assets           = await _dbContext.Assets.AsNoTracking().ToListAsync(ct);
+            doc.AssetExifs       = await _dbContext.AssetExifs.AsNoTracking().ToListAsync(ct);
+            doc.AssetThumbnails  = await _dbContext.AssetThumbnails.AsNoTracking().ToListAsync(ct);
+            doc.AssetTags        = await _dbContext.AssetTags.AsNoTracking().ToListAsync(ct);
+            doc.AssetUserTags    = await _dbContext.AssetUserTags.AsNoTracking().ToListAsync(ct);
+            doc.AlbumAssets      = await _dbContext.AlbumAssets.AsNoTracking().ToListAsync(ct);
+            doc.AlbumPermissions = await _dbContext.AlbumPermissions.AsNoTracking().ToListAsync(ct);
+            doc.SharedLinks      = await _dbContext.SharedLinks.AsNoTracking().ToListAsync(ct);
+            doc.Notifications    = await _dbContext.Notifications.AsNoTracking().ToListAsync(ct);
+        }
+
+        if (selection.IncludeMlData)
         {
             doc.AssetMlJobs              = await _dbContext.AssetMlJobs.AsNoTracking().ToListAsync(ct);
             doc.People                   = await _dbContext.People.AsNoTracking().ToListAsync(ct);
@@ -55,15 +75,18 @@ public class DatabaseBackupService
 
     public async Task RestoreAsync(BackupDocument backup, CancellationToken ct)
     {
-        // A v1.0 backup predates the ML tables — treat it as essential-only no
-        // matter what IncludesMlData says, so the timestamp reset kicks in and
-        // the ML pipelines reprocess restored assets.
-        var hasMlData = backup.IncludesMlData && backup.Version != "1.0";
+        // v1.0 predates the ML tables entirely. v2.0 always carries config + library
+        // and uses IncludesMlData to gate ML. v3.0+ uses the explicit flags.
+        // Older versions deserialize with the v3.0 defaults (all true) since the
+        // flags are missing — that matches v2.0's "config + library always" promise.
+        var hasLibrary = backup.Version == "1.0" || backup.IncludesLibrary;
+        var hasMlData  = backup.Version != "1.0" && backup.IncludesLibrary && backup.IncludesMlData;
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
 
-        // CASCADE handles ordering for us, but listing every table explicitly makes
-        // it obvious at review time which ones the restore wipes.
+        // Always full-wipe: a restore replaces the database. Tables not in the
+        // backup end up empty. RefreshTokens are wiped here but never restored —
+        // session state shouldn't survive a backup/restore cycle.
         await _dbContext.Database.ExecuteSqlRawAsync(@"
             TRUNCATE TABLE
                 ""Notifications"", ""RefreshTokens"", ""SharedLinks"",
@@ -90,10 +113,10 @@ public class DatabaseBackupService
         foreach (var folder in backup.Folders) folder.ParentFolderId = null;
         foreach (var person in backup.People)  person.CoverFaceId    = null;
 
-        // When the backup didn't ship ML output, the Asset.*CompletedAt timestamps
-        // would mislead the ML pipeline into thinking work was done. Wipe them so
-        // the workers reprocess from scratch.
-        if (!hasMlData)
+        // When library is present but ML output isn't, the Asset.*CompletedAt
+        // timestamps would mislead the ML pipeline into thinking work was done.
+        // Wipe them so the workers reprocess from scratch.
+        if (hasLibrary && !hasMlData)
         {
             foreach (var asset in backup.Assets)
             {
@@ -110,29 +133,33 @@ public class DatabaseBackupService
 
         ClearNavigationProperties(backup);
 
-        // Insert in dependency order: parents → children.
-        await InsertBatchAsync(_dbContext.Users,             backup.Users,             ct);
-        await InsertBatchAsync(_dbContext.ExternalLibraries, backup.ExternalLibraries, ct);
-        await InsertBatchAsync(_dbContext.ExternalLibraryPermissions, backup.ExternalLibraryPermissions, ct);
-        await InsertBatchAsync(_dbContext.Folders,           backup.Folders,           ct);
-        await InsertBatchAsync(_dbContext.Settings,          backup.Settings,          ct);
-        await InsertBatchAsync(_dbContext.UserTags,          backup.UserTags,          ct);
-        await InsertBatchAsync(_dbContext.Albums,            backup.Albums,            ct);
-        await InsertBatchAsync(_dbContext.Assets,            backup.Assets,            ct);
-        await InsertBatchAsync(_dbContext.AssetExifs,        backup.AssetExifs,        ct);
-        await InsertBatchAsync(_dbContext.AssetThumbnails,   backup.AssetThumbnails,   ct);
-        await InsertBatchAsync(_dbContext.AssetTags,         backup.AssetTags,         ct);
-        await InsertBatchAsync(_dbContext.AssetMlJobs,       backup.AssetMlJobs,       ct);
-        await InsertBatchAsync(_dbContext.AssetUserTags,     backup.AssetUserTags,     ct);
-        await InsertBatchAsync(_dbContext.FolderPermissions, backup.FolderPermissions, ct);
-        await InsertBatchAsync(_dbContext.AlbumAssets,       backup.AlbumAssets,       ct);
-        await InsertBatchAsync(_dbContext.AlbumPermissions,  backup.AlbumPermissions,  ct);
-        await InsertBatchAsync(_dbContext.SharedLinks,       backup.SharedLinks,       ct);
-        await InsertBatchAsync(_dbContext.RefreshTokens,     backup.RefreshTokens,     ct);
-        await InsertBatchAsync(_dbContext.Notifications,     backup.Notifications,     ct);
+        // Config layer — insert in dependency order: parents → children.
+        await InsertBatchAsync(_dbContext.Users,                       backup.Users,                       ct);
+        await InsertBatchAsync(_dbContext.ExternalLibraries,           backup.ExternalLibraries,           ct);
+        await InsertBatchAsync(_dbContext.ExternalLibraryPermissions,  backup.ExternalLibraryPermissions,  ct);
+        await InsertBatchAsync(_dbContext.Folders,                     backup.Folders,                     ct);
+        await InsertBatchAsync(_dbContext.Settings,                    backup.Settings,                    ct);
+        await InsertBatchAsync(_dbContext.UserTags,                    backup.UserTags,                    ct);
+        await InsertBatchAsync(_dbContext.FolderPermissions,           backup.FolderPermissions,           ct);
+
+        if (hasLibrary)
+        {
+            await InsertBatchAsync(_dbContext.Albums,           backup.Albums,           ct);
+            await InsertBatchAsync(_dbContext.Assets,           backup.Assets,           ct);
+            await InsertBatchAsync(_dbContext.AssetExifs,       backup.AssetExifs,       ct);
+            await InsertBatchAsync(_dbContext.AssetThumbnails,  backup.AssetThumbnails,  ct);
+            await InsertBatchAsync(_dbContext.AssetTags,        backup.AssetTags,        ct);
+            await InsertBatchAsync(_dbContext.AssetUserTags,    backup.AssetUserTags,    ct);
+            await InsertBatchAsync(_dbContext.AlbumAssets,      backup.AlbumAssets,      ct);
+            await InsertBatchAsync(_dbContext.AlbumPermissions, backup.AlbumPermissions, ct);
+            await InsertBatchAsync(_dbContext.SharedLinks,      backup.SharedLinks,      ct);
+            await InsertBatchAsync(_dbContext.Notifications,    backup.Notifications,    ct);
+        }
 
         if (hasMlData)
         {
+            // AssetMlJobs need their Asset rows already inserted (above).
+            await InsertBatchAsync(_dbContext.AssetMlJobs,              backup.AssetMlJobs,              ct);
             // People must exist before Faces (Face.PersonId / SuggestedPersonId).
             await InsertBatchAsync(_dbContext.People,                   backup.People,                   ct);
             await InsertBatchAsync(_dbContext.Faces,                    backup.Faces,                    ct);
@@ -278,8 +305,7 @@ public class DatabaseBackupService
             sl.CreatedBy = null;
         }
 
-        foreach (var rt in backup.RefreshTokens) rt.User = null!;
-        foreach (var n  in backup.Notifications)  n.User  = null!;
+        foreach (var n in backup.Notifications) n.User = null!;
 
         foreach (var elp in backup.ExternalLibraryPermissions)
         {

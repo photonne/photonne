@@ -27,7 +27,7 @@ public class DatabaseBackupEndpoint : IEndpoint
 
         group.MapGet("backup", ExportBackup)
             .WithName("ExportDatabaseBackup")
-            .WithDescription("Exports the full database as a JSON backup file. Pass ?includeMl=false to skip ML output (faces, embeddings, OCR, scenes, objects).");
+            .WithDescription("Exports the database as a JSON backup. ?level=config (only settings/users/folders/ext-libs/permissions), essential (config + library), full (config + library + ML).");
 
         group.MapPost("restore", RestoreBackup)
             .WithName("RestoreDatabaseBackup")
@@ -40,22 +40,23 @@ public class DatabaseBackupEndpoint : IEndpoint
     private static async Task<IResult> ExportBackup(
         [FromServices] DatabaseBackupService backupService,
         [FromServices] INotificationService notifications,
-        [FromQuery] bool includeMl,
+        [FromQuery] string? level,
         HttpContext http,
         CancellationToken ct)
     {
         var triggeredBy = GetUserId(http);
+        var (selection, label) = ParseLevel(level);
+
         try
         {
-            var document = await backupService.ExportAsync(includeMl, ct);
+            var document = await backupService.ExportAsync(selection, ct);
             var json     = JsonSerializer.SerializeToUtf8Bytes(document, JsonOptions);
-            var suffix   = includeMl ? "full" : "essential";
-            var fileName = $"photonne_backup_{suffix}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+            var fileName = $"photonne_backup_{label}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
 
             if (triggeredBy != Guid.Empty)
                 await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
                     "Backup generado",
-                    $"Se ha generado el backup ({suffix}, {FormatBytes(json.LongLength)}).");
+                    $"Se ha generado el backup ({label}, {FormatBytes(json.LongLength)}).");
 
             return Results.File(json, "application/json", fileName);
         }
@@ -69,6 +70,14 @@ public class DatabaseBackupEndpoint : IEndpoint
             throw;
         }
     }
+
+    private static (BackupSelection Selection, string Label) ParseLevel(string? level)
+        => (level?.ToLowerInvariant()) switch
+        {
+            "config"    => (BackupSelection.ConfigOnly, "config"),
+            "full"      => (BackupSelection.Full,       "full"),
+            _           => (BackupSelection.Essential,  "essential"),
+        };
 
     private static async Task<IResult> RestoreBackup(
         [FromServices] DatabaseBackupService backupService,
@@ -117,6 +126,9 @@ public class DatabaseBackupEndpoint : IEndpoint
             throw;
         }
 
+        var includesLibrary = document.Version == "1.0" || document.IncludesLibrary;
+        var includesMlData  = document.Version != "1.0" && document.IncludesLibrary && document.IncludesMlData;
+
         if (triggeredBy != Guid.Empty)
             await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
                 "Restauración completada",
@@ -136,7 +148,9 @@ public class DatabaseBackupEndpoint : IEndpoint
                 faces             = document.Faces.Count,
                 embeddings        = document.AssetEmbeddings.Count,
                 ocrLines          = document.AssetRecognizedTextLines.Count,
-                includesMlData    = document.IncludesMlData && document.Version != "1.0",
+                includesConfig    = true,
+                includesLibrary   = includesLibrary,
+                includesMlData    = includesMlData,
             }
         });
     }

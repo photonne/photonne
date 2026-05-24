@@ -23,11 +23,18 @@ public class DatabaseBackupService : IDatabaseBackupService
             : null;
     }
 
-    public async Task<BackupFileResult> ExportAsync(bool includeMl)
+    public async Task<BackupFileResult> ExportAsync(BackupLevel level)
     {
         await SetAuthHeaderAsync();
 
-        var url      = $"/api/admin/database/backup?includeMl={(includeMl ? "true" : "false")}";
+        var levelParam = level switch
+        {
+            BackupLevel.Config => "config",
+            BackupLevel.Full   => "full",
+            _                  => "essential",
+        };
+
+        var url      = $"/api/admin/database/backup?level={levelParam}";
         var response = await _httpClient.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
@@ -71,7 +78,8 @@ public class DatabaseBackupService : IDatabaseBackupService
         var stats  = result?.Stats is { } s
             ? new DatabaseRestoreStats(
                 s.Users, s.Assets, s.Albums, s.Folders, s.ExternalLibraries,
-                s.People, s.Faces, s.Embeddings, s.OcrLines, s.IncludesMlData)
+                s.People, s.Faces, s.Embeddings, s.OcrLines,
+                s.IncludesConfig, s.IncludesLibrary, s.IncludesMlData)
             : null;
 
         return new DatabaseRestoreResult(true, result?.Message ?? "Restauración completada.", stats);
@@ -88,5 +96,7 @@ public class DatabaseBackupService : IDatabaseBackupService
         int Faces,
         int Embeddings,
         int OcrLines,
+        bool IncludesConfig,
+        bool IncludesLibrary,
         bool IncludesMlData);
 }
