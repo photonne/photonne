@@ -308,15 +308,50 @@ Accesible desde: `Admin > Colas > Indexar`
 
 ## Despliegue con Docker
 
-### Usando la imagen pre-construida (recomendado)
+### Plataformas soportadas
 
-La imagen se publica automáticamente en GitHub Container Registry con cada push a `main`:
+Las imágenes oficiales se publican como **manifest list multi-arch**, así que
+`docker pull` (y `docker compose up`) resuelven automáticamente la variante
+nativa de tu hardware. No tienes que indicar arquitectura manualmente.
+
+| Sistema operativo | Arquitectura | Estado | Notas |
+|---|---|---|---|
+| Linux | amd64 (x86_64) | ✅ Nativo | NAS Intel/AMD, servidores x86 |
+| Linux | arm64 (aarch64) | ✅ Nativo | Raspberry Pi 4/5, Synology DSM 7+ ARM, AWS Graviton |
+| macOS | amd64 (Intel) | ✅ Nativo vía Docker Desktop | |
+| macOS | arm64 (Apple Silicon) | ✅ Nativo vía Docker Desktop | |
+| Windows + WSL2 | amd64 | ✅ Nativo | |
+| Windows | arm64 | ⚠️ Compatible, menos probado | |
+
+Para verificar que tu instalación está descargando la variante correcta:
 
 ```bash
+docker manifest inspect ghcr.io/photonne/photonne:latest \
+    | grep -A1 '"architecture"'
+docker manifest inspect ghcr.io/photonne/photonne-ml:latest \
+    | grep -A1 '"architecture"'
+```
+
+Ambas deben mostrar entradas `amd64` y `arm64` en `linux`. Las líneas
+`unknown/unknown` son las attestations (SBOM + provenance) firmadas por
+Buildx — son metadata, no se ejecutan.
+
+### Usando la imagen pre-construida (recomendado)
+
+Las imágenes se publican automáticamente en GitHub Container Registry con cada
+push a `main`:
+
+```bash
+git clone https://github.com/photonne/photonne.git && cd photonne
+cp .env.example .env       # edita los 3 secretos obligatorios
 docker compose up -d
 ```
 
-La imagen `ghcr.io/photonne/photonne:latest` se descarga automáticamente.
+Las imágenes `ghcr.io/photonne/photonne:latest` y `ghcr.io/photonne/photonne-ml:latest`
+se descargan automáticamente para tu arquitectura. La primera vez puede tardar
+varios minutos en función de tu conexión (la imagen ML lleva los modelos YOLO,
+CLIP y Places365 baked-in para que el primer arranque no dependa de descargas
+externas).
 
 ### Compilando localmente
 
@@ -324,15 +359,21 @@ La imagen `ghcr.io/photonne/photonne:latest` se descarga automáticamente.
 docker compose up --build
 ```
 
-El `docker-compose.override.yml` se aplica automáticamente y compila desde el `Dockerfile` en `Src/Photonne.Server.Api/Dockerfile`.
+El `docker-compose.override.yml` se aplica automáticamente y compila desde el
+`Dockerfile` en `Src/Photonne.Server.Api/Dockerfile`. La build de
+`photonne-ml` se adapta a tu arquitectura automáticamente (`ARG TARGETARCH`):
+en `amd64` usa los wheels `+cpu` de PyTorch (slim, ~200 MB); en `arm64` usa
+los wheels nativos de PyPI, también CPU-only.
 
 ## CI/CD
 
-GitHub Actions publica automáticamente la imagen Docker en cada push a `main`:
+GitHub Actions publica automáticamente las dos imágenes Docker en cada push a
+`main`, construyendo ambas arquitecturas en paralelo:
 
-- **Registro**: `ghcr.io/photonne/photonne`
-- **Tags**: `latest` (rama main) y `sha-<commit>` por cada build
-- **Workflow**: `.github/workflows/docker-image.yml`
+- **Registros**: `ghcr.io/photonne/photonne` (API) y `ghcr.io/photonne/photonne-ml` (servicio ML).
+- **Plataformas**: `linux/amd64` (nativo en el runner) + `linux/arm64` (vía emulación QEMU).
+- **Tags**: `latest` (rama `main`) y `sha-<commit>` por cada build.
+- **Workflow**: `.github/workflows/docker-image.yml`.
 
 ## Licencia
 
