@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 using Scalar.AspNetCore;
 
 namespace Photonne.Server.Api.Features.Map;
@@ -44,9 +45,11 @@ public class MapAssetsEndpoint : IEndpoint
             {
                 return Results.Unauthorized();
             }
+            var username = user.GetUsername();
+            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
             var isAdmin = user.IsInRole("Admin");
-            var userRootPath = GetUserRootPath(userId);
+            var userRootPath = GetUserRootPath(username);
 
             // Obtener assets GPS — cachear todos los del usuario, filtrar bounds en memoria
             var cacheKey = $"map:assets:{userId}";
@@ -176,9 +179,9 @@ public class MapAssetsEndpoint : IEndpoint
         return Guid.TryParse(userIdClaim?.Value, out userId);
     }
 
-    private string GetUserRootPath(Guid userId)
+    private string GetUserRootPath(string username)
     {
-        return $"/assets/users/{userId}";
+        return $"/assets/users/{username}";
     }
 
     private async Task<HashSet<Guid>> GetAllowedFolderIdsForUserAsync(

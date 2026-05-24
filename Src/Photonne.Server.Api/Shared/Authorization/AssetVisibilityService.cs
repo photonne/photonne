@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Shared.Authorization;
 
@@ -30,10 +31,12 @@ namespace Photonne.Server.Api.Shared.Authorization;
 public class AssetVisibilityService
 {
     private readonly ApplicationDbContext _db;
+    private readonly UserStorageService _userStorage;
 
-    public AssetVisibilityService(ApplicationDbContext db)
+    public AssetVisibilityService(ApplicationDbContext db, UserStorageService userStorage)
     {
         _db = db;
+        _userStorage = userStorage;
     }
 
     /// <summary>
@@ -42,7 +45,7 @@ public class AssetVisibilityService
     public async Task<AssetVisibilityScope> GetScopeAsync(Guid userId, CancellationToken ct)
     {
         // Folder permissions (explicit grants + personal root path).
-        var userRootPath = $"/assets/users/{userId}";
+        var userRootPath = await _userStorage.GetVirtualRootAsync(userId, ct) ?? $"/assets/users/{userId}";
 
         var grantedFolderIds = await _db.FolderPermissions
             .AsNoTracking()

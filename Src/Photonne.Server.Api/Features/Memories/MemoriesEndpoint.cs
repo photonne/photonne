@@ -6,6 +6,7 @@ using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Memories;
 
@@ -29,6 +30,8 @@ public class MemoriesEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
         var today = DateTime.UtcNow;
@@ -45,7 +48,7 @@ public class MemoriesEndpoint : IEndpoint
 
             if (!isAdmin)
             {
-                var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, ct);
+                var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
                 testQuery = testQuery.Where(a => a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
             }
 
@@ -71,7 +74,7 @@ public class MemoriesEndpoint : IEndpoint
 
         if (!isAdmin)
         {
-            var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, ct);
+            var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
             query = query.Where(a => a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
         }
 
@@ -116,9 +119,9 @@ public class MemoriesEndpoint : IEndpoint
     }
 
     private static async Task<HashSet<Guid>> GetAllowedFolderIdsAsync(
-        ApplicationDbContext dbContext, Guid userId, CancellationToken ct)
+        ApplicationDbContext dbContext, Guid userId, string username, CancellationToken ct)
     {
-        var userRootPath = $"/assets/users/{userId}";
+        var userRootPath = $"/assets/users/{username}";
         var allFolders = await dbContext.Folders.ToListAsync(ct);
         var permissions = await dbContext.FolderPermissions
             .Where(p => p.UserId == userId && p.CanRead)

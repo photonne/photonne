@@ -142,20 +142,24 @@ public class AssetIndexingService
             }
             else
             {
-                // Owner from path — validate that the extracted user actually exists in the DB.
+                // Owner from path — validate that the extracted username actually exists in the DB.
                 // If not, fall back to the primary admin to avoid FK constraint violations.
-                if (TryGetOwnerIdFromVirtualPath(storedPath, out var parsedOwner))
+                if (UserStorageService.TryGetUsernameFromPath(storedPath, out var ownerUsername))
                 {
-                    var ownerExists = await _dbContext.Users.AnyAsync(u => u.Id == parsedOwner, ct);
-                    if (ownerExists)
+                    var resolvedOwner = await _dbContext.Users
+                        .AsNoTracking()
+                        .Where(u => u.Username == ownerUsername)
+                        .Select(u => (Guid?)u.Id)
+                        .FirstOrDefaultAsync(ct);
+                    if (resolvedOwner.HasValue)
                     {
-                        asset.OwnerId = parsedOwner;
+                        asset.OwnerId = resolvedOwner.Value;
                     }
                     else
                     {
                         var primaryAdmin = await GetPrimaryAdminIdAsync(ct);
                         asset.OwnerId = primaryAdmin;
-                        Console.WriteLine($"[INDEX-FILE] Owner {parsedOwner} not found, assigned to primary admin ({primaryAdmin}).");
+                        Console.WriteLine($"[INDEX-FILE] Owner '{ownerUsername}' not found, assigned to primary admin ({primaryAdmin}).");
                     }
                 }
                 else
@@ -405,22 +409,6 @@ public class AssetIndexingService
     private static bool IsPersonalUserPath(string normalizedPath) =>
         normalizedPath.StartsWith("/assets/users/", StringComparison.OrdinalIgnoreCase);
 
-    private static bool TryGetOwnerIdFromVirtualPath(string path, out Guid ownerId)
-    {
-        ownerId = Guid.Empty;
-        if (string.IsNullOrWhiteSpace(path))
-            return false;
-
-        var normalized = path.Replace('\\', '/').TrimStart('/');
-        if (!normalized.StartsWith("assets/users/", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 3)
-            return false;
-
-        return Guid.TryParse(parts[2], out ownerId);
-    }
 
     private static string NormalizeVirtualPath(string path) =>
         path.Replace('\\', '/').TrimEnd('/');

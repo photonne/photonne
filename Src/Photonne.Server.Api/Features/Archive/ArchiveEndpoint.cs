@@ -6,6 +6,7 @@ using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Archive;
 
@@ -46,9 +47,11 @@ public class ArchiveEndpoint : IEndpoint
 
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
-        var userRootPath = $"/assets/users/{userId}";
+        var userRootPath = $"/assets/users/{username}";
 
         var query = dbContext.Assets
             .Include(a => a.Exif)
@@ -136,6 +139,8 @@ public class ArchiveEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
@@ -145,7 +150,7 @@ public class ArchiveEndpoint : IEndpoint
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, userId)))
+        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
             return Results.Forbid();
 
         foreach (var asset in assets)
@@ -163,6 +168,8 @@ public class ArchiveEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
@@ -172,7 +179,7 @@ public class ArchiveEndpoint : IEndpoint
             .Where(a => request.AssetIds.Contains(a.Id) && a.IsArchived)
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, userId)))
+        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
             return Results.Forbid();
 
         foreach (var asset in assets)
@@ -189,6 +196,8 @@ public class ArchiveEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
@@ -196,7 +205,7 @@ public class ArchiveEndpoint : IEndpoint
             .ToListAsync(ct);
 
         if (!isAdmin)
-            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, userId)).ToList();
+            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
 
         if (!assets.Any())
             return Results.NoContent();
@@ -215,11 +224,11 @@ public class ArchiveEndpoint : IEndpoint
         return claim != null && Guid.TryParse(claim.Value, out userId);
     }
 
-    private static bool IsAssetInUserRoot(string assetPath, Guid userId)
+    private static bool IsAssetInUserRoot(string assetPath, string username)
     {
         var normalized = assetPath.Replace('\\', '/');
-        return normalized.StartsWith($"/assets/users/{userId}/", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Contains($"/users/{userId}/", StringComparison.OrdinalIgnoreCase);
+        return normalized.StartsWith($"/assets/users/{username}/", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<string> BuildTagList(Asset asset)

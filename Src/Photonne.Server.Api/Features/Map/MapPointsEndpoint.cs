@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Map;
 
@@ -28,9 +29,11 @@ public class MapPointsEndpoint : IEndpoint
             var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userIdClaim?.Value, out var userId))
                 return Results.Unauthorized();
+            var username = user.GetUsername();
+            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
             var isAdmin = user.IsInRole("Admin");
-            var userRootPath = $"/assets/users/{userId}";
+            var userRootPath = $"/assets/users/{username}";
 
             // Reuse the same cache key as MapAssetsEndpoint to avoid a double DB query
             // when both endpoints are called. Uses a separate typed cache key to avoid

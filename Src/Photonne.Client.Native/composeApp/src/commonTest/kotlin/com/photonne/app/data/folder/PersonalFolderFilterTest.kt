@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 class PersonalFolderFilterTest {
 
-    private val userId = "11111111-1111-1111-1111-111111111111"
+    private val username = "alice"
 
     private fun folder(path: String, id: String = path) = FolderSummary(
         id = id,
@@ -20,20 +20,20 @@ class PersonalFolderFilterTest {
     @Test
     fun keeps_only_descendants_of_user_home() {
         val input = listOf(
-            folder("/assets/users/$userId"),
-            folder("/assets/users/$userId/Uploads"),
-            folder("/assets/users/$userId/Uploads/2026"),
-            folder("/assets/users/22222222-2222-2222-2222-222222222222/Uploads"),
+            folder("/assets/users/$username"),
+            folder("/assets/users/$username/Uploads"),
+            folder("/assets/users/$username/Uploads/2026"),
+            folder("/assets/users/bob/Uploads"),
             folder("/assets/shared/Family"),
             folder("/external/library/Photos")
         )
 
-        val visible = filterPersonalFolders(input, userId)
+        val visible = filterPersonalFolders(input, username)
 
         assertEquals(
             listOf(
-                "/assets/users/$userId/Uploads",
-                "/assets/users/$userId/Uploads/2026"
+                "/assets/users/$username/Uploads",
+                "/assets/users/$username/Uploads/2026"
             ),
             visible.map { it.path }
         )
@@ -42,30 +42,30 @@ class PersonalFolderFilterTest {
     @Test
     fun hides_trash_and_archive_branches() {
         val input = listOf(
-            folder("/assets/users/$userId/Uploads"),
-            folder("/assets/users/$userId/_trash"),
-            folder("/assets/users/$userId/_trash/2026-05-10"),
-            folder("/assets/users/$userId/_archive"),
-            folder("/assets/users/$userId/_archive/old")
+            folder("/assets/users/$username/Uploads"),
+            folder("/assets/users/$username/_trash"),
+            folder("/assets/users/$username/_trash/2026-05-10"),
+            folder("/assets/users/$username/_archive"),
+            folder("/assets/users/$username/_archive/old")
         )
 
-        val visible = filterPersonalFolders(input, userId)
+        val visible = filterPersonalFolders(input, username)
 
-        assertEquals(listOf("/assets/users/$userId/Uploads"), visible.map { it.path })
+        assertEquals(listOf("/assets/users/$username/Uploads"), visible.map { it.path })
     }
 
     @Test
     fun matches_path_case_insensitively() {
-        val mixed = "/Assets/Users/$userId/Photos"
-        val visible = filterPersonalFolders(listOf(folder(mixed)), userId)
+        val mixed = "/Assets/Users/$username/Photos"
+        val visible = filterPersonalFolders(listOf(folder(mixed)), username)
         assertEquals(listOf(mixed), visible.map { it.path })
     }
 
     @Test
-    fun returns_empty_when_user_id_is_blank() {
+    fun returns_empty_when_username_is_blank() {
         val visible = filterPersonalFolders(
-            listOf(folder("/assets/users/$userId/Uploads")),
-            userId = ""
+            listOf(folder("/assets/users/$username/Uploads")),
+            username = ""
         )
         assertTrue(visible.isEmpty())
     }

@@ -3,16 +3,16 @@ package com.photonne.app.data.folder
 import com.photonne.app.data.models.FolderSummary
 
 /**
- * Keeps only folders inside the current user's home (`/assets/users/{userId}`),
+ * Keeps only folders inside the current user's home (`/assets/users/{username}`),
  * dropping the home itself plus any `_trash` / `_archive` system folders that
  * are surfaced from their dedicated menus.
  */
 fun filterPersonalFolders(
     folders: List<FolderSummary>,
-    userId: String
+    username: String
 ): List<FolderSummary> {
-    if (userId.isBlank()) return emptyList()
-    val homePrefix = "/assets/users/$userId/"
+    if (username.isBlank()) return emptyList()
+    val homePrefix = "/assets/users/$username/"
     return folders.filter { folder ->
         val normalized = folder.path.replace('\\', '/')
         if (!normalized.startsWith(homePrefix, ignoreCase = true)) return@filter false

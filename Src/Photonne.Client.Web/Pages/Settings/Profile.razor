@@ -1,6 +1,7 @@
 @page "/settings/profile"
 @inject IUserService UserService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Perfil - Photonne</PageTitle>
 
@@ -135,6 +136,38 @@
             Snackbar.Add("El email y el nombre de usuario son obligatorios", Severity.Warning);
             return;
         }
+
+        // El cambio de nombre de usuario dispara una migración de almacenamiento
+        // (carpeta física + paths en BD). Mostramos un diálogo de confirmación con
+        // el impacto antes de aplicar.
+        var usernameChanged = !string.Equals(
+            _profile.Username?.Trim(),
+            _currentUser?.Username,
+            StringComparison.Ordinal);
+
+        if (usernameChanged)
+        {
+            RenamePreviewDto preview;
+            try
+            {
+                preview = await UserService.PreviewMyRenameAsync(_profile.Username!.Trim());
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+                return;
+            }
+
+            if (!preview.IsValid)
+            {
+                Snackbar.Add(preview.ErrorMessage ?? "El nuevo nombre no es válido", Severity.Error);
+                return;
+            }
+
+            var confirmed = await ShowRenameConfirmationAsync(preview);
+            if (!confirmed) return;
+        }
+
         try
         {
             _saving = true;
@@ -147,6 +180,12 @@
             });
             RefreshDisplayName();
             Snackbar.Add("Perfil actualizado correctamente", Severity.Success);
+            if (usernameChanged)
+            {
+                Snackbar.Add(
+                    "El nombre de usuario se ha cambiado. Vuelve a iniciar sesión para refrescar la sesión.",
+                    Severity.Info);
+            }
         }
         catch (Exception ex)
         {
@@ -156,6 +195,24 @@
         {
             _saving = false;
         }
+    }
+
+    private async Task<bool> ShowRenameConfirmationAsync(RenamePreviewDto preview)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Preview"] = preview
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+        var dialog = await DialogService.ShowAsync<RenameUsernameDialog>(
+            "Confirmar cambio de nombre de usuario", parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false, Data: true };
     }
 
     private class ProfileForm

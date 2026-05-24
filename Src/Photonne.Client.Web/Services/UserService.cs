@@ -114,6 +114,34 @@ public class UserService : IUserService
         }
     }
 
+    public async Task<RenamePreviewDto> PreviewMyRenameAsync(string newUsername)
+    {
+        await SetAuthHeaderAsync();
+        var url = $"/api/users/me/rename-preview?newUsername={Uri.EscapeDataString(newUsername)}";
+        var response = await _httpClient.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception(error?.Error ?? "Error al obtener la previsualización");
+        }
+        return await response.Content.ReadFromJsonAsync<RenamePreviewDto>()
+            ?? throw new Exception("Respuesta vacía");
+    }
+
+    public async Task<RenamePreviewDto> PreviewUserRenameAsync(Guid id, string newUsername)
+    {
+        await SetAuthHeaderAsync();
+        var url = $"/api/users/{id}/rename-preview?newUsername={Uri.EscapeDataString(newUsername)}";
+        var response = await _httpClient.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception(error?.Error ?? "Error al obtener la previsualización");
+        }
+        return await response.Content.ReadFromJsonAsync<RenamePreviewDto>()
+            ?? throw new Exception("Respuesta vacía");
+    }
+
     private class ErrorResponse
     {
         public string? Error { get; set; }

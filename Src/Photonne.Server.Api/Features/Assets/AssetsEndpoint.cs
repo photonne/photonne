@@ -48,6 +48,8 @@ public class AssetsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
@@ -64,7 +66,7 @@ public class AssetsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Assets no encontrados." });
         }
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, userId)))
+        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
         {
             return Results.Forbid();
         }
@@ -81,7 +83,7 @@ public class AssetsEndpoint : IEndpoint
             return Results.NoContent();
         }
 
-        var trashVirtualRoot = $"/assets/users/{userId}/_trash";
+        var trashVirtualRoot = $"/assets/users/{username}/_trash";
         var dateFolder = DateTime.UtcNow.ToString("yyyy-MM-dd");
         var dateVirtualPath = $"{trashVirtualRoot}/{dateFolder}";
         var datePhysicalPath = await settingsService.ResolvePhysicalPathAsync(dateVirtualPath);
@@ -144,6 +146,8 @@ public class AssetsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
@@ -155,14 +159,12 @@ public class AssetsEndpoint : IEndpoint
             .Where(a => request.AssetIds.Contains(a.Id))
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => a.DeletedAt == null || !IsAssetInUserRoot(a.FullPath, userId)))
+        if (!isAdmin && assets.Any(a => a.DeletedAt == null || !IsAssetInUserRoot(a.FullPath, username)))
         {
             return Results.Forbid();
         }
 
-        var userRootVirtual = $"/assets/users/{userId}";
-
-        await RestoreAssetsInternalAsync(dbContext, settingsService, assets, userId, ct);
+        await RestoreAssetsInternalAsync(dbContext, settingsService, assets, username, ct);
 
         return Results.NoContent();
     }
@@ -177,6 +179,8 @@ public class AssetsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
@@ -185,7 +189,7 @@ public class AssetsEndpoint : IEndpoint
 
         if (!isAdmin)
         {
-            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, userId)).ToList();
+            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
         }
 
         if (!assets.Any())
@@ -193,7 +197,7 @@ public class AssetsEndpoint : IEndpoint
             return Results.NoContent();
         }
 
-        await RestoreAssetsInternalAsync(dbContext, settingsService, assets, userId, ct);
+        await RestoreAssetsInternalAsync(dbContext, settingsService, assets, username, ct);
 
         return Results.NoContent();
     }
@@ -202,10 +206,10 @@ public class AssetsEndpoint : IEndpoint
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         List<Asset> assets,
-        Guid userId,
+        string username,
         CancellationToken ct)
     {
-        var userRootVirtual = $"/assets/users/{userId}";
+        var userRootVirtual = $"/assets/users/{username}";
 
         foreach (var asset in assets)
         {
@@ -257,6 +261,8 @@ public class AssetsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
         {
@@ -274,7 +280,7 @@ public class AssetsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Assets no encontrados." });
         }
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, userId)))
+        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
         {
             return Results.Forbid();
         }
@@ -294,6 +300,8 @@ public class AssetsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
@@ -303,7 +311,7 @@ public class AssetsEndpoint : IEndpoint
 
         if (!isAdmin)
         {
-            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, userId)).ToList();
+            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
         }
 
         if (!assets.Any())
@@ -360,16 +368,16 @@ public class AssetsEndpoint : IEndpoint
         return userIdClaim != null && Guid.TryParse(userIdClaim.Value, out userId);
     }
 
-    private static bool IsAssetInUserRoot(string assetPath, Guid userId)
+    private static bool IsAssetInUserRoot(string assetPath, string username)
     {
         var normalized = assetPath.Replace('\\', '/');
-        var virtualRoot = $"/assets/users/{userId}/";
+        var virtualRoot = $"/assets/users/{username}/";
         if (normalized.StartsWith(virtualRoot, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        return normalized.Contains($"/users/{userId}/", StringComparison.OrdinalIgnoreCase);
+        return normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<Folder?> EnsureFolderRecordAsync(

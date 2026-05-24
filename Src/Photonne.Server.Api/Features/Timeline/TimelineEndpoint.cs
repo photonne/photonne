@@ -53,8 +53,10 @@ public class TimelineEndpoint : IEndpoint
             {
                 return Results.Unauthorized();
             }
+            var username = user.GetUsername();
+            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-            var userRootPath = GetUserRootPath(userId);
+            var userRootPath = GetUserRootPath(username);
             var allowedFolderIds = await GetAllowedFolderIdsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
 
             var query = dbContext.Assets
@@ -196,14 +198,14 @@ public class TimelineEndpoint : IEndpoint
                             var virtualizedPath = await settingsService.VirtualizePathAsync(file.FullPath);
                             
                             // Si no es admin, filtrar por rutas de carpetas permitidas
-                            if (TryGetOwnerUserIdFromInternalPath(normalizedFilePath, internalAssetsPath, out var ownerUserId) &&
-                                ownerUserId != userId)
+                            if (TryGetOwnerUsernameFromInternalPath(normalizedFilePath, internalAssetsPath, out var ownerUsername) &&
+                                !string.Equals(ownerUsername, username, StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
                             }
 
-                            if (TryGetOwnerUserIdFromVirtualPath(virtualizedPath, out var virtualOwnerUserId) &&
-                                virtualOwnerUserId != userId)
+                            if (TryGetOwnerUsernameFromVirtualPath(virtualizedPath, out var virtualOwnerUsername) &&
+                                !string.Equals(virtualOwnerUsername, username, StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
                             }
@@ -286,12 +288,12 @@ public class TimelineEndpoint : IEndpoint
         return path.Replace('\\', '/').TrimEnd('/') + "/";
     }
 
-    private static bool TryGetOwnerUserIdFromInternalPath(
+    private static bool TryGetOwnerUsernameFromInternalPath(
         string physicalPath,
         string internalAssetsPath,
-        out Guid ownerUserId)
+        out string ownerUsername)
     {
-        ownerUserId = Guid.Empty;
+        ownerUsername = string.Empty;
         if (string.IsNullOrWhiteSpace(physicalPath) || string.IsNullOrWhiteSpace(internalAssetsPath))
         {
             return false;
@@ -320,31 +322,12 @@ public class TimelineEndpoint : IEndpoint
             return false;
         }
 
-        return Guid.TryParse(segments[1], out ownerUserId);
+        ownerUsername = segments[1];
+        return !string.IsNullOrEmpty(ownerUsername);
     }
 
-    private static bool TryGetOwnerUserIdFromVirtualPath(string virtualPath, out Guid ownerUserId)
-    {
-        ownerUserId = Guid.Empty;
-        if (string.IsNullOrWhiteSpace(virtualPath))
-        {
-            return false;
-        }
-
-        var normalizedVirtualPath = virtualPath.Replace('\\', '/').TrimStart('/');
-        if (!normalizedVirtualPath.StartsWith("assets/users/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var segments = normalizedVirtualPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length < 3)
-        {
-            return false;
-        }
-
-        return Guid.TryParse(segments[2], out ownerUserId);
-    }
+    private static bool TryGetOwnerUsernameFromVirtualPath(string virtualPath, out string ownerUsername)
+        => UserStorageService.TryGetUsernameFromPath(virtualPath, out ownerUsername);
 
     private bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {
@@ -362,9 +345,9 @@ public class TimelineEndpoint : IEndpoint
             .ToList();
     }
 
-    private string GetUserRootPath(Guid userId)
+    private string GetUserRootPath(string username)
     {
-        return $"/assets/users/{userId}";
+        return $"/assets/users/{username}";
     }
 
     private async Task<HashSet<Guid>> GetAllowedFolderIdsForUserAsync(

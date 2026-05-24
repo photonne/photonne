@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Timeline;
 
@@ -38,11 +39,17 @@ public class TimelineGridEndpoint : IEndpoint
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
 
         try
         {
             // ── Permission check (same logic as TimelineIndexEndpoint) ──────────────
-            var userRootPath = $"/assets/users/{userId}";
+            var userRootPath = $"/assets/users/{username}";
 
             var allFolders = await dbContext.Folders.ToListAsync(cancellationToken);
             var permissions = await dbContext.FolderPermissions

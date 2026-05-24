@@ -27,6 +27,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<ThumbnailGeneratorService>();
         builder.Services.AddScoped<MediaRecognitionService>();
         builder.Services.AddScoped<SettingsService>();
+        builder.Services.AddScoped<UserStorageService>();
         builder.Services.AddSingleton<MlJobQueue>();
         builder.Services.AddScoped<IMlJobService, MlJobService>();
         builder.Services.AddHostedService<MlJobProcessorService>();

@@ -55,7 +55,7 @@ public sealed class UploadPipelineTests : IntegrationTestBase
 
             Assert.Equal(user.Id, asset.OwnerId);
             Assert.False(string.IsNullOrWhiteSpace(asset.Checksum));
-            Assert.StartsWith($"/assets/users/{user.Id}/Uploads/", asset.FullPath);
+            Assert.StartsWith($"/assets/users/{user.Username}/Uploads/", asset.FullPath);
             Assert.Equal(".jpg", asset.Extension);
             Assert.Equal("Image", asset.Type.ToString());
 
@@ -81,7 +81,7 @@ public sealed class UploadPipelineTests : IntegrationTestBase
         response.EnsureSuccessStatusCode();
 
         var expectedDir = Path.Combine(
-            Factory.InternalAssetsPath, "users", user.Id.ToString(), "Uploads");
+            Factory.InternalAssetsPath, "users", user.Username, "Uploads");
 
         Assert.True(Directory.Exists(expectedDir),
             $"expected uploads directory to exist: {expectedDir}");

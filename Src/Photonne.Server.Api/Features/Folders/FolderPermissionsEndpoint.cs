@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Folders;
 
@@ -66,8 +67,10 @@ public class FolderPermissionsEndpoint : IEndpoint
             .Where(p =>
             {
                 // Excluir la entrada del propietario: en carpetas personales el dueño se identifica
-                // por la ruta; en carpetas compartidas, el creador tiene un permiso auto-concedido.
-                var isOwnerEntry = folder.Path.Contains($"/users/{p.UserId}") ||
+                // por el segmento username de la ruta; en carpetas compartidas, el creador tiene un
+                // permiso auto-concedido.
+                var isOwnerEntry = folder.Path.Contains($"/users/{p.User.Username}/", StringComparison.OrdinalIgnoreCase) ||
+                    folder.Path.EndsWith($"/users/{p.User.Username}", StringComparison.OrdinalIgnoreCase) ||
                     (folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase) &&
                      p.GrantedByUserId == p.UserId);
                 return !isOwnerEntry;
@@ -101,6 +104,8 @@ public class FolderPermissionsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var currentUsername = user.GetUsername();
+        if (string.IsNullOrEmpty(currentUsername)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
 
@@ -115,7 +120,8 @@ public class FolderPermissionsEndpoint : IEndpoint
         }
 
         // Must be admin or have CanManagePermissions
-        var isOwner = folder.Path.Contains($"/users/{currentUserId}");
+        var isOwner = folder.Path.Contains($"/users/{currentUsername}/", StringComparison.OrdinalIgnoreCase)
+                   || folder.Path.EndsWith($"/users/{currentUsername}", StringComparison.OrdinalIgnoreCase);
         var hasAccess = isAdmin || isOwner ||
             folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
@@ -211,6 +217,8 @@ public class FolderPermissionsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var currentUsername = user.GetUsername();
+        if (string.IsNullOrEmpty(currentUsername)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
 
@@ -225,7 +233,8 @@ public class FolderPermissionsEndpoint : IEndpoint
         }
 
         // Must be admin or have CanManagePermissions
-        var isOwner = folder.Path.Contains($"/users/{currentUserId}");
+        var isOwner = folder.Path.Contains($"/users/{currentUsername}/", StringComparison.OrdinalIgnoreCase)
+                   || folder.Path.EndsWith($"/users/{currentUsername}", StringComparison.OrdinalIgnoreCase);
         var hasAccess = isAdmin || isOwner ||
             folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 

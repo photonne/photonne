@@ -6,6 +6,7 @@ using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Dtos;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Favorites;
 
@@ -33,9 +34,11 @@ public class FavoritesEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
-        var userRootPath = $"/assets/users/{userId}";
+        var userRootPath = $"/assets/users/{username}";
 
         var query = dbContext.Assets
             .Include(a => a.Exif)

@@ -7,7 +7,7 @@ namespace Photonne.Server.Api.Tests.Folders;
 
 /// <summary>
 /// Photonne's folder ACL has two paths that a user can have access by:
-///   1. Implicit: folder path starts with /assets/users/{userId} (personal space).
+///   1. Implicit: folder path starts with /assets/users/{username} (personal space).
 ///   2. Explicit: a FolderPermission row with CanRead=true.
 /// These tests lock down both branches.
 /// </summary>
@@ -37,7 +37,7 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
 
         var folderId = await CreateFolderAsync(
-            path: $"/assets/users/{alice.Id}/photos",
+            path: $"/assets/users/{alice.Username}/photos",
             name: "photos");
 
         var response = await aliceClient.GetAsync($"/api/folders/{folderId}");
@@ -52,7 +52,7 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
         var (_, bobClient) = await CreateAuthenticatedUserAsync();
 
         var aliceFolderId = await CreateFolderAsync(
-            path: $"/assets/users/{alice.Id}/private",
+            path: $"/assets/users/{alice.Username}/private",
             name: "private");
 
         var response = await bobClient.GetAsync($"/api/folders/{aliceFolderId}");
@@ -93,7 +93,7 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
 
         var (alice, _) = await CreateAuthenticatedUserAsync();
         var aliceFolderId = await CreateFolderAsync(
-            path: $"/assets/users/{alice.Id}/secrets",
+            path: $"/assets/users/{alice.Username}/secrets",
             name: "secrets");
 
         var response = await adminClient.GetAsync($"/api/folders/{aliceFolderId}");
@@ -108,10 +108,10 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
         var (bob, _) = await CreateAuthenticatedUserAsync();
 
         var aliceFolderId = await CreateFolderAsync(
-            path: $"/assets/users/{alice.Id}/travel",
+            path: $"/assets/users/{alice.Username}/travel",
             name: "travel");
         var bobFolderId = await CreateFolderAsync(
-            path: $"/assets/users/{bob.Id}/travel",
+            path: $"/assets/users/{bob.Username}/travel",
             name: "travel");
 
         var folders = await aliceClient.GetFromJsonAsync<List<FolderListItem>>("/api/folders");

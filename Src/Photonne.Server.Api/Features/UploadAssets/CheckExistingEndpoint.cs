@@ -40,7 +40,6 @@ public class CheckExistingEndpoint : IEndpoint
             StringComparer.OrdinalIgnoreCase);
 
         // Obtener los assets del usuario que coincidan por nombre
-        var userRootPath = $"/assets/users/{userId}";
         var matching = await dbContext.Assets
             .Where(a => a.DeletedAt == null
                      && a.OwnerId == userId

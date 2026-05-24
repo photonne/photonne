@@ -39,6 +39,8 @@ public class SyncAssetEndpoint : IEndpoint
             {
                 return Results.Unauthorized();
             }
+            var username = user.GetUsername();
+            if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
             // Validar que el archivo proviene de la ruta configurada por el usuario
             var userConfiguredPath = await settingsService.GetAssetsPathAsync(userId);
@@ -49,7 +51,7 @@ public class SyncAssetEndpoint : IEndpoint
                 return Results.NotFound("El archivo no existe en el disco");
 
             // Obtener la ruta interna del NAS (ASSETS_PATH)
-            var deviceBackupVirtual = $"/assets/users/{userId}/DeviceBackup";
+            var deviceBackupVirtual = $"/assets/users/{username}/DeviceBackup";
             var deviceBackupRoot = await settingsService.ResolvePhysicalPathAsync(deviceBackupVirtual);
 
             await EnsureFolderRecordAsync(dbContext, userId, deviceBackupVirtual, cancellationToken);

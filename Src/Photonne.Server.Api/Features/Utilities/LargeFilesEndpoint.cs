@@ -5,6 +5,7 @@ using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Utilities;
 
@@ -27,11 +28,13 @@ public class LargeFilesEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (count <= 0) count = 50;
         if (count > 200) count = 200;
 
-        var userRootPath = $"/assets/users/{userId}";
+        var userRootPath = $"/assets/users/{username}";
         var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, userRootPath, cancellationToken);
 
         var query = dbContext.Assets

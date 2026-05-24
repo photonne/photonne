@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Timeline;
 
@@ -25,10 +26,12 @@ public class TimelineIndexEndpoint : IEndpoint
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim?.Value, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         try
         {
-            var userRootPath = $"/assets/users/{userId}";
+            var userRootPath = $"/assets/users/{username}";
 
             var allFolders = await dbContext.Folders.ToListAsync(cancellationToken);
             var permissions = await dbContext.FolderPermissions

@@ -12,6 +12,8 @@ public interface IUserService
     Task ResetPasswordAsync(Guid id, string newPassword);
     Task<UserDto> UpdateProfileAsync(UpdateProfileRequest request);
     Task ChangePasswordAsync(ChangePasswordRequest request);
+    Task<RenamePreviewDto> PreviewMyRenameAsync(string newUsername);
+    Task<RenamePreviewDto> PreviewUserRenameAsync(Guid id, string newUsername);
 }
 
 public class UserDto
@@ -76,4 +78,25 @@ public class ChangePasswordRequest
 {
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
+}
+
+public class RenamePreviewDto
+{
+    public bool IsValid { get; set; }
+    public bool IsNoChange { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    public string CurrentUsername { get; set; } = string.Empty;
+    public string NewUsername { get; set; } = string.Empty;
+
+    public string? CurrentVirtualPath { get; set; }
+    public string? NewVirtualPath { get; set; }
+    public string? CurrentPhysicalPath { get; set; }
+    public string? NewPhysicalPath { get; set; }
+
+    public bool FolderExistsOnDisk { get; set; }
+
+    public int AssetsToUpdate { get; set; }
+    public int FoldersToUpdate { get; set; }
+    public int SettingsToUpdate { get; set; }
 }

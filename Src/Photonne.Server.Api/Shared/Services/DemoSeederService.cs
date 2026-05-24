@@ -129,7 +129,7 @@ public sealed class DemoSeederService : IHostedService
 
         var internalAssetsRoot = settingsService.GetInternalAssetsPath();
         var userAssetsRoot = Path.Combine(
-            internalAssetsRoot, "users", demoUser.Id.ToString(), DemoFolderName);
+            internalAssetsRoot, "users", demoUser.Username, DemoFolderName);
         Directory.CreateDirectory(userAssetsRoot);
 
         var copied = CopyDirectoryContents(DemoModeOptions.SeedPath, userAssetsRoot, cancellationToken);

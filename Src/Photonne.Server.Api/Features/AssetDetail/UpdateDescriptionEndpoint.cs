@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.AssetDetail;
 
@@ -26,6 +27,8 @@ public class UpdateDescriptionEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var asset = await dbContext.Assets
             .FirstOrDefaultAsync(a => a.Id == assetId && a.DeletedAt == null, ct);
@@ -34,7 +37,7 @@ public class UpdateDescriptionEndpoint : IEndpoint
             return Results.NotFound(new { error = "Asset no encontrado." });
 
         var isAdmin = user.IsInRole("Admin");
-        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, userId))
+        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, username))
             return Results.Forbid();
 
         asset.Caption = string.IsNullOrWhiteSpace(request.Caption)
@@ -52,10 +55,10 @@ public class UpdateDescriptionEndpoint : IEndpoint
         return Guid.TryParse(claim?.Value, out userId);
     }
 
-    private static bool IsAssetInUserRoot(string assetPath, Guid userId)
+    private static bool IsAssetInUserRoot(string assetPath, string username)
     {
         var normalized = assetPath.Replace('\\', '/');
-        return normalized.Contains($"/users/{userId}/", StringComparison.OrdinalIgnoreCase);
+        return normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 }
 

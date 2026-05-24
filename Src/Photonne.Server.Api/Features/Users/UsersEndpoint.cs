@@ -66,6 +66,15 @@ public class UsersEndpoint : IEndpoint
         group.MapPost("me/change-password", ChangePassword)
             .WithName("ChangePassword")
             .WithDescription("Changes the current user's password");
+
+        group.MapGet("me/rename-preview", PreviewMyRename)
+            .WithName("PreviewMyRename")
+            .WithDescription("Returns the impact of renaming the current user's username (assets/folders/settings to migrate)");
+
+        group.MapGet("{id:guid}/rename-preview", PreviewUserRename)
+            .WithName("PreviewUserRename")
+            .WithDescription("Returns the impact of renaming a user's username (Admin only)")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"));
     }
 
     private async Task<IResult> GetAllUsers(
@@ -185,6 +194,13 @@ public class UsersEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Username, email and password are required" });
         }
 
+        // Validar formato del username (chars compatibles con filesystem)
+        var usernameValidation = UserStorageService.ValidateUsername(request.Username);
+        if (!usernameValidation.IsValid)
+        {
+            return Results.BadRequest(new { error = usernameValidation.Error });
+        }
+
         // Validar contraseña
         var passwordValidation = authService.ValidatePassword(request.Password);
         if (!passwordValidation.IsValid)
@@ -239,6 +255,7 @@ public class UsersEndpoint : IEndpoint
         Guid id,
         [FromBody] UpdateUserRequest request,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] UserStorageService userStorage,
         CancellationToken cancellationToken)
     {
         var user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken);
@@ -253,11 +270,22 @@ public class UsersEndpoint : IEndpoint
                 return Results.BadRequest(new { error = "No se puede desactivar el administrador principal." });
         }
 
+        // Username rename: triggers a storage migration (carpeta física + Asset.FullPath +
+        // Folder.Path + Setting.Value). Validate, run the migration, and only then continue
+        // with the rest of the field updates so we never commit a half-migrated state.
         if (!string.IsNullOrEmpty(request.Username) && request.Username != user.Username)
         {
-            if (await dbContext.Users.AnyAsync(u => u.Username == request.Username && u.Id != id, cancellationToken))
-                return Results.BadRequest(new { error = "Username already exists" });
-            user.Username = request.Username;
+            var usernameValidation = UserStorageService.ValidateUsername(request.Username);
+            if (!usernameValidation.IsValid)
+                return Results.BadRequest(new { error = usernameValidation.Error });
+
+            var renameResult = await userStorage.RenameAsync(id, request.Username, cancellationToken);
+            if (!renameResult.Succeeded)
+                return Results.BadRequest(new { error = renameResult.ErrorMessage ?? "No se pudo renombrar el usuario" });
+
+            // RenameAsync already persisted Username + path rewrites; reload the
+            // entity so subsequent edits in this method work against fresh data.
+            user = await dbContext.Users.FindAsync(new object[] { id }, cancellationToken) ?? user;
         }
 
         if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
@@ -417,6 +445,7 @@ public class UsersEndpoint : IEndpoint
         [FromBody] UpdateProfileRequest request,
         ClaimsPrincipal user,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] UserStorageService userStorage,
         CancellationToken cancellationToken)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -427,11 +456,18 @@ public class UsersEndpoint : IEndpoint
         if (dbUser == null)
             return Results.NotFound();
 
-        if (!string.IsNullOrWhiteSpace(request.Username) && request.Username != dbUser.Username)
+        if (!string.IsNullOrWhiteSpace(request.Username) && request.Username.Trim() != dbUser.Username)
         {
-            if (await dbContext.Users.AnyAsync(u => u.Username == request.Username && u.Id != userId, cancellationToken))
-                return Results.BadRequest(new { error = "El nombre de usuario ya está en uso" });
-            dbUser.Username = request.Username.Trim();
+            var newUsername = request.Username.Trim();
+            var validation = UserStorageService.ValidateUsername(newUsername);
+            if (!validation.IsValid)
+                return Results.BadRequest(new { error = validation.Error });
+
+            var renameResult = await userStorage.RenameAsync(userId, newUsername, cancellationToken);
+            if (!renameResult.Succeeded)
+                return Results.BadRequest(new { error = renameResult.ErrorMessage ?? "No se pudo renombrar el usuario" });
+
+            dbUser = await dbContext.Users.FindAsync(new object[] { userId }, cancellationToken) ?? dbUser;
         }
 
         if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != dbUser.Email)
@@ -490,6 +526,84 @@ public class UsersEndpoint : IEndpoint
 
         return Results.Ok(new { message = "Contraseña cambiada correctamente" });
     }
+
+    private async Task<IResult> PreviewMyRename(
+        [FromQuery] string newUsername,
+        ClaimsPrincipal user,
+        [FromServices] UserStorageService userStorage,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            return Results.Unauthorized();
+
+        return await BuildRenamePreviewResultAsync(userStorage, userId, newUsername, cancellationToken);
+    }
+
+    private async Task<IResult> PreviewUserRename(
+        Guid id,
+        [FromQuery] string newUsername,
+        [FromServices] UserStorageService userStorage,
+        CancellationToken cancellationToken)
+    {
+        return await BuildRenamePreviewResultAsync(userStorage, id, newUsername, cancellationToken);
+    }
+
+    private static async Task<IResult> BuildRenamePreviewResultAsync(
+        UserStorageService userStorage,
+        Guid userId,
+        string newUsername,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(newUsername))
+            return Results.BadRequest(new { error = "newUsername es obligatorio" });
+
+        try
+        {
+            var preview = await userStorage.PreviewRenameAsync(userId, newUsername.Trim(), ct);
+            return Results.Ok(new RenamePreviewDto
+            {
+                IsValid = preview.IsValid,
+                IsNoChange = preview.IsNoChange,
+                ErrorMessage = preview.ErrorMessage,
+                CurrentUsername = preview.CurrentUsername,
+                NewUsername = preview.NewUsername,
+                CurrentVirtualPath = preview.CurrentVirtualPath,
+                NewVirtualPath = preview.NewVirtualPath,
+                CurrentPhysicalPath = preview.CurrentPhysicalPath,
+                NewPhysicalPath = preview.NewPhysicalPath,
+                FolderExistsOnDisk = preview.FolderExistsOnDisk,
+                AssetsToUpdate = preview.AssetsToUpdate,
+                FoldersToUpdate = preview.FoldersToUpdate,
+                SettingsToUpdate = preview.SettingsToUpdate
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.NotFound(new { error = ex.Message });
+        }
+    }
+}
+
+public class RenamePreviewDto
+{
+    public bool IsValid { get; set; }
+    public bool IsNoChange { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    public string CurrentUsername { get; set; } = string.Empty;
+    public string NewUsername { get; set; } = string.Empty;
+
+    public string? CurrentVirtualPath { get; set; }
+    public string? NewVirtualPath { get; set; }
+    public string? CurrentPhysicalPath { get; set; }
+    public string? NewPhysicalPath { get; set; }
+
+    public bool FolderExistsOnDisk { get; set; }
+
+    public int AssetsToUpdate { get; set; }
+    public int FoldersToUpdate { get; set; }
+    public int SettingsToUpdate { get; set; }
 }
 
 public class CreateUserRequest

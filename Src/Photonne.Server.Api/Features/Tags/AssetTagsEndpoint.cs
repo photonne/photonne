@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Tags;
 
@@ -41,6 +42,8 @@ public class AssetTagsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.Tags == null || request.Tags.Count == 0)
         {
@@ -59,7 +62,7 @@ public class AssetTagsEndpoint : IEndpoint
         }
 
         var isAdmin = user.IsInRole("Admin");
-        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, userId))
+        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, username))
         {
             return Results.Forbid();
         }
@@ -122,6 +125,8 @@ public class AssetTagsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var asset = await dbContext.Assets
             .Include(a => a.UserTags)
@@ -135,7 +140,7 @@ public class AssetTagsEndpoint : IEndpoint
         }
 
         var isAdmin = user.IsInRole("Admin");
-        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, userId))
+        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, username))
         {
             return Results.Forbid();
         }
@@ -237,16 +242,16 @@ public class AssetTagsEndpoint : IEndpoint
         return userIdClaim != null && Guid.TryParse(userIdClaim.Value, out userId);
     }
 
-    private static bool IsAssetInUserRoot(string assetPath, Guid userId)
+    private static bool IsAssetInUserRoot(string assetPath, string username)
     {
         var normalized = assetPath.Replace('\\', '/');
-        var virtualRoot = $"/assets/users/{userId}/";
+        var virtualRoot = $"/assets/users/{username}/";
         if (normalized.StartsWith(virtualRoot, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        return normalized.Contains($"/users/{userId}/", StringComparison.OrdinalIgnoreCase);
+        return normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 }
 

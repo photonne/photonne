@@ -232,12 +232,14 @@ public class FoldersEndpoint : IEndpoint
                 .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
                 .ToListAsync(cancellationToken);
 
+            var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
+
             var folderSharedCounts = sharedCounts
                 .GroupBy(p => p.FolderId)
                 .Select(g =>
                 {
                     var samplePath = g.First().Folder.Path;
-                    var hasOwner = TryGetUserIdFromPath(samplePath, out var ownerId);
+                    var hasOwner = TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
                     // Carpetas personales: excluir al dueño por ruta.
                     // Carpetas compartidas: excluir al creador (permiso auto-concedido).
                     var count = hasOwner
@@ -321,7 +323,8 @@ public class FoldersEndpoint : IEndpoint
             }
 
             var isAdmin = user.IsInRole("Admin");
-            var ownerIdFromPath = TryGetUserIdFromPath(folder.Path, out var parsedOwnerId)
+            var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
+            var ownerIdFromPath = TryGetUserIdFromPath(folder.Path, usernameToIdMap, out var parsedOwnerId)
                 ? parsedOwnerId
                 : (Guid?)null;
 
@@ -531,12 +534,14 @@ public class FoldersEndpoint : IEndpoint
                 .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
                 .ToListAsync(cancellationToken);
 
+            var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
+
             var folderSharedCounts = sharedCounts
                 .GroupBy(p => p.FolderId)
                 .Select(g =>
                 {
                     var samplePath = g.First().Folder.Path;
-                    var hasOwner = TryGetUserIdFromPath(samplePath, out var ownerId);
+                    var hasOwner = TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
                     // Carpetas personales: excluir al dueño por ruta.
                     // Carpetas compartidas: excluir al creador (permiso auto-concedido).
                     var count = hasOwner
@@ -620,6 +625,8 @@ public class FoldersEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -656,7 +663,7 @@ public class FoldersEndpoint : IEndpoint
         }
         else
         {
-            normalizedPath = NormalizePath($"{GetUserRootPath(userId)}/{name}");
+            normalizedPath = NormalizePath($"{GetUserRootPath(username)}/{name}");
         }
 
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(normalizedPath);
@@ -712,6 +719,8 @@ public class FoldersEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var folder = await dbContext.Folders
             .Include(f => f.SubFolders)
@@ -757,7 +766,7 @@ public class FoldersEndpoint : IEndpoint
         }
 
         var oldPath = folder.Path;
-        var userRootPath = GetUserRootPath(userId);
+        var userRootPath = GetUserRootPath(username);
         var newNormalizedPath = NormalizePath(newParent == null
             ? $"{userRootPath}/{newName}"
             : $"{newParent.Path.TrimEnd('/')}/{newName}");
@@ -1059,8 +1068,7 @@ public class FoldersEndpoint : IEndpoint
         if (!hasPermissions)
         {
             // Si no tiene permisos definidos, solo es accesible si es espacio personal
-            var userRootPath = GetUserRootPath(userId);
-            return folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase);
+            return await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct);
         }
 
         return await dbContext.FolderPermissions
@@ -1086,8 +1094,7 @@ public class FoldersEndpoint : IEndpoint
         if (!hasPermissions)
         {
             // Si no tiene permisos definidos, solo es escribible si es espacio personal
-            var userRootPath = GetUserRootPath(userId);
-            return folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase);
+            return await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct);
         }
 
         return await dbContext.FolderPermissions
@@ -1113,12 +1120,30 @@ public class FoldersEndpoint : IEndpoint
         if (!hasPermissions)
         {
             // Si no tiene permisos definidos, solo es eliminable si es espacio personal
-            var userRootPath = GetUserRootPath(userId);
-            return folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase);
+            return await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct);
         }
 
         return await dbContext.FolderPermissions
             .AnyAsync(p => p.UserId == userId && p.FolderId == folderId && p.CanDelete, ct);
+    }
+
+    /// <summary>
+    /// True when the folder path lives under <c>/assets/users/{username}</c> for
+    /// the given user — i.e. their personal space. Resolves the username from
+    /// the user id (one cheap indexed lookup).
+    /// </summary>
+    private static async Task<bool> IsInUserPersonalSpaceAsync(
+        ApplicationDbContext dbContext, string folderPath, Guid userId, CancellationToken ct)
+    {
+        var username = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.Username)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(username)) return false;
+
+        var userRootPath = GetUserRootPath(username);
+        return folderPath.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase);
     }
 
     internal static async Task<List<Folder>> GetFoldersForUserAsync(
@@ -1154,13 +1179,21 @@ public class FoldersEndpoint : IEndpoint
         var allowedIds = new HashSet<Guid>(readableIds);
 
         // Carpetas de espacio personal (sin permisos explícitos)
-        foreach (var folder in allFolders)
+        var username = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.Username)
+            .FirstOrDefaultAsync(ct);
+        if (!string.IsNullOrEmpty(username))
         {
-            if (!foldersWithPermissions.Contains(folder.Id) && !folder.ExternalLibraryId.HasValue)
+            var userRootPath = GetUserRootPath(username);
+            foreach (var folder in allFolders)
             {
-                var userRootPath = GetUserRootPath(userId);
-                if (folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                    allowedIds.Add(folder.Id);
+                if (!foldersWithPermissions.Contains(folder.Id) && !folder.ExternalLibraryId.HasValue)
+                {
+                    if (folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
+                        allowedIds.Add(folder.Id);
+                }
             }
         }
 
@@ -1330,9 +1363,13 @@ public class FoldersEndpoint : IEndpoint
         return path.Replace('\\', '/').TrimEnd('/');
     }
 
-    internal static bool TryGetUserIdFromPath(string path, out Guid userId)
+    /// <summary>
+    /// Extracts the username segment from a user-storage path (e.g. <c>/assets/users/alice/foo</c>
+    /// returns <c>alice</c>). Returns false for shared/external paths.
+    /// </summary>
+    internal static bool TryGetUsernameFromPath(string path, out string username)
     {
-        userId = Guid.Empty;
+        username = string.Empty;
         if (string.IsNullOrWhiteSpace(path))
         {
             return false;
@@ -1346,12 +1383,39 @@ public class FoldersEndpoint : IEndpoint
             return false;
         }
 
-        return Guid.TryParse(parts[usersIndex + 1], out userId);
+        username = parts[usersIndex + 1];
+        return !string.IsNullOrEmpty(username);
     }
 
-    internal static string GetUserRootPath(Guid userId)
+    /// <summary>
+    /// Returns the embedded user's id when <paramref name="path"/> is under the
+    /// user-storage prefix and <paramref name="usernameToIdMap"/> resolves the
+    /// username. Used by callers that need to compare against <c>FolderPermission.UserId</c>.
+    /// </summary>
+    internal static bool TryGetUserIdFromPath(
+        string path,
+        IReadOnlyDictionary<string, Guid> usernameToIdMap,
+        out Guid userId)
     {
-        return $"/assets/users/{userId}";
+        userId = Guid.Empty;
+        return TryGetUsernameFromPath(path, out var username)
+            && usernameToIdMap.TryGetValue(username, out userId);
+    }
+
+    internal static string GetUserRootPath(string username)
+    {
+        return $"/assets/users/{username}";
+    }
+
+    private static async Task<Dictionary<string, Guid>> GetUsernameToIdMapAsync(
+        ApplicationDbContext dbContext, CancellationToken ct)
+    {
+        // Used to resolve owner ids embedded as username segments in folder
+        // paths. Small (one row per user); always fully loaded.
+        return await dbContext.Users
+            .AsNoTracking()
+            .Select(u => new { u.Username, u.Id })
+            .ToDictionaryAsync(u => u.Username, u => u.Id, StringComparer.OrdinalIgnoreCase, ct);
     }
 
     private static string GetSharedRootPath()

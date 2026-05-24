@@ -32,18 +32,19 @@ public sealed class TextRecognitionTests : IntegrationTestBase
     private sealed record SearchResponse(List<SearchItem> Items, bool HasMore);
     private sealed record SearchItem(Guid Id, string FileName);
 
-    private async Task<Guid> CreateImageForUserAsync(Guid userId, string fileName)
+    private async Task<Guid> CreateImageForUserAsync(TestUser user, string fileName)
     {
+        var userId = user.Id;
         return await WithDbContextAsync(async db =>
         {
             // /api/assets/search filters by folder permissions; assets without
-            // a FolderId under the user's auto-allowed root path (/assets/users/{userId})
+            // a FolderId under the user's auto-allowed root path (/assets/users/{username})
             // are invisible. Reuse a single root folder per user across calls.
-            var rootPath = $"/assets/users/{userId}";
+            var rootPath = $"/assets/users/{user.Username}";
             var folder = await db.Folders.FirstOrDefaultAsync(f => f.Path == rootPath);
             if (folder == null)
             {
-                folder = new Folder { Path = rootPath, Name = userId.ToString() };
+                folder = new Folder { Path = rootPath, Name = user.Username };
                 db.Folders.Add(folder);
                 await db.SaveChangesAsync();
             }
@@ -93,7 +94,7 @@ public sealed class TextRecognitionTests : IntegrationTestBase
     public async Task GetText_ReturnsLines_OrderedByLineIndex()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var assetId = await CreateImageForUserAsync(alice.Id, "receipt.jpg");
+        var assetId = await CreateImageForUserAsync(alice, "receipt.jpg");
         await SeedTextLinesAsync(assetId, "CAFÉ CENTRAL", "Total 12.50 EUR", "Gracias");
 
         var response = await aliceClient.GetAsync($"/api/assets/{assetId}/text");
@@ -113,7 +114,7 @@ public sealed class TextRecognitionTests : IntegrationTestBase
         var (alice, _) = await CreateAuthenticatedUserAsync();
         var (_, bobClient) = await CreateAuthenticatedUserAsync();
 
-        var aliceAssetId = await CreateImageForUserAsync(alice.Id, "private.jpg");
+        var aliceAssetId = await CreateImageForUserAsync(alice, "private.jpg");
         await SeedTextLinesAsync(aliceAssetId, "secret note");
 
         var response = await bobClient.GetAsync($"/api/assets/{aliceAssetId}/text");
@@ -125,8 +126,8 @@ public sealed class TextRecognitionTests : IntegrationTestBase
     public async Task Search_ByOcrText_MatchesViaQ()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var receiptId = await CreateImageForUserAsync(alice.Id, "img_001.jpg");
-        var unrelatedId = await CreateImageForUserAsync(alice.Id, "img_002.jpg");
+        var receiptId = await CreateImageForUserAsync(alice, "img_001.jpg");
+        var unrelatedId = await CreateImageForUserAsync(alice, "img_002.jpg");
         await SeedTextLinesAsync(receiptId, "CARREFOUR EXPRESS", "Total 23.40 EUR");
         await SeedTextLinesAsync(unrelatedId, "Hello World");
 
@@ -143,8 +144,8 @@ public sealed class TextRecognitionTests : IntegrationTestBase
     public async Task Search_ByTextQuery_UsesFullTextIndex()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var menuId = await CreateImageForUserAsync(alice.Id, "menu.jpg");
-        var otherId = await CreateImageForUserAsync(alice.Id, "other.jpg");
+        var menuId = await CreateImageForUserAsync(alice, "menu.jpg");
+        var otherId = await CreateImageForUserAsync(alice, "other.jpg");
         await SeedTextLinesAsync(menuId, "Pizza margherita", "Spaghetti carbonara");
         await SeedTextLinesAsync(otherId, "shopping list");
 

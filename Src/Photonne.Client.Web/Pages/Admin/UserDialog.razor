@@ -9,7 +9,7 @@
                              Required="true"
                              RequiredError="El nombre de usuario es obligatorio"
                              Variant="Variant.Outlined"
-                             Disabled="@_isEdit"
+                             HelperText="@(_isEdit ? "Cambiarlo lanza una migración (carpeta física + paths en BD). Se confirmará antes de aplicar." : "Solo letras, números, puntos, guiones y guiones bajos. Máx 64 caracteres.")"
                              Class="mb-3" />
 
                 <MudTextField @bind-Value="_email"
@@ -111,6 +111,7 @@
     [Inject] public IUserService UserService { get; set; } = null!;
     [Inject] public ISettingsService SettingsService { get; set; } = null!;
     [Inject] public ISnackbar Snackbar { get; set; } = null!;
+    [Inject] public IDialogService DialogService { get; set; } = null!;
 
     private MudForm? _form;
     private bool _isValid;
@@ -204,6 +205,39 @@
 
             if (_isEdit && User != null)
             {
+                // Confirmar antes de un rename: muestra impacto (assets/folders/settings).
+                var usernameChanged = !string.Equals(_username?.Trim(), User.Username, StringComparison.Ordinal);
+                if (usernameChanged)
+                {
+                    RenamePreviewDto preview;
+                    try
+                    {
+                        preview = await UserService.PreviewUserRenameAsync(User.Id, _username!.Trim());
+                    }
+                    catch (Exception ex)
+                    {
+                        Snackbar.Add(ex.Message, Severity.Error);
+                        return;
+                    }
+                    if (!preview.IsValid)
+                    {
+                        Snackbar.Add(preview.ErrorMessage ?? "El nuevo nombre no es válido", Severity.Error);
+                        return;
+                    }
+                    var parameters = new DialogParameters { ["Preview"] = preview };
+                    var options = new DialogOptions
+                    {
+                        CloseOnEscapeKey = true,
+                        MaxWidth = MaxWidth.Small,
+                        FullWidth = true
+                    };
+                    var confirmDialog = await DialogService.ShowAsync<RenameUsernameDialog>(
+                        "Confirmar cambio de nombre de usuario", parameters, options);
+                    var confirmResult = await confirmDialog.Result;
+                    if (confirmResult is null || confirmResult.Canceled || confirmResult.Data is not true)
+                        return;
+                }
+
                 var updateRequest = new UpdateUserRequest
                 {
                     Username = _username,

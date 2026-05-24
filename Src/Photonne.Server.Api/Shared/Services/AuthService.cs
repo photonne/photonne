@@ -30,6 +30,9 @@ public class AuthService : IAuthService
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
+            // Custom "username" claim — read by endpoints to build
+            // /assets/users/{username} paths without an extra DB lookup.
+            new Claim("username", user.Username),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role)
         };

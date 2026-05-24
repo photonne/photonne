@@ -41,6 +41,8 @@ public class UploadAssetsEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         // Validar tamaño máximo global (ServerSettings.MaxUploadSizeMb). 0 = sin límite.
         var maxUploadRaw = await settingsService.GetSettingAsync(
@@ -71,7 +73,7 @@ public class UploadAssetsEndpoint : IEndpoint
         }
 
         // Guardar los uploads del usuario en su carpeta dedicada dentro del NAS
-        var uploadsVirtualPath = $"/assets/users/{userId}/Uploads";
+        var uploadsVirtualPath = $"/assets/users/{username}/Uploads";
         var uploadsRootPath = await settingsService.ResolvePhysicalPathAsync(uploadsVirtualPath);
 
         var uploadsFolder = await EnsureFolderRecordAsync(dbContext, userId, uploadsVirtualPath, cancellationToken);

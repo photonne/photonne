@@ -28,6 +28,8 @@ public class DownloadZipEndpoint : IEndpoint
     {
         if (!TryGetUserId(user, out var userId))
             return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
@@ -37,7 +39,7 @@ public class DownloadZipEndpoint : IEndpoint
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, userId)))
+        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
             return Results.Forbid();
 
         var zipName = !string.IsNullOrWhiteSpace(request.FileName)
@@ -93,12 +95,12 @@ public class DownloadZipEndpoint : IEndpoint
         return claim != null && Guid.TryParse(claim.Value, out userId);
     }
 
-    private static bool IsAssetInUserRoot(string assetPath, Guid userId)
+    private static bool IsAssetInUserRoot(string assetPath, string username)
     {
         var normalized = assetPath.Replace('\\', '/');
-        var virtualRoot = $"/assets/users/{userId}/";
+        var virtualRoot = $"/assets/users/{username}/";
         return normalized.StartsWith(virtualRoot, StringComparison.OrdinalIgnoreCase)
-            || normalized.Contains($"/users/{userId}/", StringComparison.OrdinalIgnoreCase);
+            || normalized.Contains($"/users/{username}/", StringComparison.OrdinalIgnoreCase);
     }
 }
 

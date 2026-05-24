@@ -136,7 +136,7 @@ class FoldersViewModel(
     }
 
     fun refresh() {
-        val userId = (authState.state.value as? AuthState.Authenticated)?.user?.id
+        val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching {
@@ -149,8 +149,8 @@ class FoldersViewModel(
             }
                 .onSuccess { (folders, libs) ->
                     allFolders = folders
-                    val baseScope = if (userId.isNullOrBlank()) folders
-                        else filterPersonalFolders(folders, userId)
+                    val baseScope = if (username.isNullOrBlank()) folders
+                        else filterPersonalFolders(folders, username)
                     val sort = _state.value.sort
                     val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
                     val shared = sortFolders(folders.filter { isSharedFolder(it) }, sort)
@@ -282,9 +282,9 @@ class FoldersViewModel(
     }
 
     private fun repartition() {
-        val userId = (authState.state.value as? AuthState.Authenticated)?.user?.id
-        val baseScope = if (userId.isNullOrBlank()) allFolders
-            else filterPersonalFolders(allFolders, userId)
+        val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
+        val baseScope = if (username.isNullOrBlank()) allFolders
+            else filterPersonalFolders(allFolders, username)
         val sort = _state.value.sort
         val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
         val shared = sortFolders(allFolders.filter { isSharedFolder(it) }, sort)

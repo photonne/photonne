@@ -20,21 +20,21 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
     private sealed record RestoreRequest(List<Guid> AssetIds);
     private sealed record PurgeRequest(List<Guid> AssetIds);
 
-    private async Task<Guid> CreateAssetForUserAsync(Guid userId, string fileName = "photo.jpg")
+    private async Task<Guid> CreateAssetForUserAsync(TestUser user, string fileName = "photo.jpg")
     {
         return await WithDbContextAsync(async db =>
         {
             var asset = new Asset
             {
                 FileName = fileName,
-                FullPath = $"/assets/users/{userId}/{fileName}",
+                FullPath = $"/assets/users/{user.Username}/{fileName}",
                 FileSize = 1024,
                 Checksum = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
                 Type = AssetType.Image,
                 Extension = Path.GetExtension(fileName).TrimStart('.'),
                 FileCreatedAt = DateTime.UtcNow,
                 FileModifiedAt = DateTime.UtcNow,
-                OwnerId = userId
+                OwnerId = user.Id
             };
             db.Assets.Add(asset);
             await db.SaveChangesAsync();
@@ -46,7 +46,7 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
     public async Task Delete_SetsDeletedAt_OnOwnAsset()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var assetId = await CreateAssetForUserAsync(alice.Id);
+        var assetId = await CreateAssetForUserAsync(alice);
 
         var response = await aliceClient.PostAsJsonAsync(
             "/api/assets/delete",
@@ -66,7 +66,7 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
         var (alice, _) = await CreateAuthenticatedUserAsync();
         var (_, bobClient) = await CreateAuthenticatedUserAsync();
 
-        var aliceAssetId = await CreateAssetForUserAsync(alice.Id);
+        var aliceAssetId = await CreateAssetForUserAsync(alice);
 
         var response = await bobClient.PostAsJsonAsync(
             "/api/assets/delete",
@@ -83,7 +83,7 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
     public async Task Delete_RemovesAsset_FromAllAlbums()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var assetId = await CreateAssetForUserAsync(alice.Id);
+        var assetId = await CreateAssetForUserAsync(alice);
 
         // Arrange: create album and link the asset via DbContext (bypassing API
         // lets the test stay short and independent of upload/album endpoints).
@@ -111,7 +111,7 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
     public async Task Restore_ClearsDeletedAt_AndReturnsAssetToItsFolder()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var assetId = await CreateAssetForUserAsync(alice.Id);
+        var assetId = await CreateAssetForUserAsync(alice);
 
         var deleteResp = await aliceClient.PostAsJsonAsync(
             "/api/assets/delete",
@@ -135,7 +135,7 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
     public async Task Purge_RemovesAssetFromDatabase()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
-        var assetId = await CreateAssetForUserAsync(alice.Id);
+        var assetId = await CreateAssetForUserAsync(alice);
 
         // Purge only accepts assets already in trash.
         await aliceClient.PostAsJsonAsync(
@@ -160,8 +160,8 @@ public sealed class TrashLifecycleTests : IntegrationTestBase
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
         var (bob, bobClient) = await CreateAuthenticatedUserAsync();
 
-        var aliceAssetId = await CreateAssetForUserAsync(alice.Id);
-        var bobAssetId = await CreateAssetForUserAsync(bob.Id);
+        var aliceAssetId = await CreateAssetForUserAsync(alice);
+        var bobAssetId = await CreateAssetForUserAsync(bob);
 
         // Move both assets to their respective owner's trash.
         await aliceClient.PostAsJsonAsync("/api/assets/delete",

@@ -6,6 +6,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Assets;
 
@@ -39,6 +40,8 @@ public class TrashListEndpoint : IEndpoint
         if (pageSize > 500) pageSize = 500;
 
         if (!TryGetUserId(user, out var userId)) return Results.Unauthorized();
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var isAdmin = user.IsInRole("Admin");
 
@@ -55,7 +58,7 @@ public class TrashListEndpoint : IEndpoint
             // Trash always lives under the user's root, so a prefix check on
             // the virtual path is enough — no need to chase folder
             // permissions like Archive does.
-            var virtualRoot = $"/assets/users/{userId}";
+            var virtualRoot = $"/assets/users/{username}";
             query = query.Where(a => a.FullPath.StartsWith(virtualRoot));
         }
 

@@ -1232,12 +1232,17 @@ public class IndexAssetsEndpoint : IEndpoint
             .Where(a => !string.IsNullOrEmpty(a.Checksum))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
-        
+
+        var usernameToIdMap = await dbContext.Users
+            .AsNoTracking()
+            .Select(u => new { u.Username, u.Id })
+            .ToDictionaryAsync(u => u.Username, u => u.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
         var duplicateGroups = allAssets
             .Select(a => new
             {
                 Asset = a,
-                OwnerId = TryGetOwnerIdFromVirtualPath(a.FullPath, out var parsedOwnerId) ? parsedOwnerId : (Guid?)null
+                OwnerId = TryGetOwnerIdFromVirtualPath(a.FullPath, usernameToIdMap, out var parsedOwnerId) ? parsedOwnerId : (Guid?)null
             })
             .GroupBy(a => new { a.Asset.Checksum, a.OwnerId })
             .Where(g => g.Count() > 1)
@@ -1668,11 +1673,15 @@ public class IndexAssetsEndpoint : IEndpoint
         ApplicationDbContext dbContext,
         CancellationToken ct)
     {
-        if (TryGetOwnerIdFromVirtualPath(virtualPath, out var parsedOwnerId))
+        if (UserStorageService.TryGetUsernameFromPath(virtualPath, out var username))
         {
-            var exists = await dbContext.Users.AnyAsync(u => u.Id == parsedOwnerId, ct);
-            if (exists)
-                return parsedOwnerId;
+            var ownerId = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.Username == username)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(ct);
+            if (ownerId.HasValue)
+                return ownerId;
         }
 
         // Fallback: primary admin (prevents FK violations for shared/external directories)
@@ -1691,27 +1700,19 @@ public class IndexAssetsEndpoint : IEndpoint
             .FirstOrDefaultAsync(ct);
     }
 
-    private static bool TryGetOwnerIdFromVirtualPath(string path, out Guid ownerId)
+    /// <summary>
+    /// Resolves the username segment of a virtual path to a Guid via the
+    /// caller-provided lookup. Used inside non-async LINQ projections where an
+    /// async DB lookup is not viable.
+    /// </summary>
+    private static bool TryGetOwnerIdFromVirtualPath(
+        string path,
+        IReadOnlyDictionary<string, Guid> usernameToIdMap,
+        out Guid ownerId)
     {
         ownerId = Guid.Empty;
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return false;
-        }
-
-        var normalized = path.Replace('\\', '/').TrimStart('/');
-        if (!normalized.StartsWith("assets/users/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 3)
-        {
-            return false;
-        }
-
-        return Guid.TryParse(parts[2], out ownerId);
+        return UserStorageService.TryGetUsernameFromPath(path, out var username)
+            && usernameToIdMap.TryGetValue(username, out ownerId);
     }
 
     private static string GetParentVirtualPath(string path)

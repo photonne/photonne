@@ -40,12 +40,17 @@ public class UtilityFolderTreeEndpoint : IEndpoint
             .Where(p => folderIds.Contains(p.FolderId) && p.CanRead)
             .ToListAsync(cancellationToken);
 
+        var usernameToIdMap = await dbContext.Users
+            .AsNoTracking()
+            .Select(u => new { u.Username, u.Id })
+            .ToDictionaryAsync(u => u.Username, u => u.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
         var folderSharedCounts = sharedCounts
             .GroupBy(p => p.FolderId)
             .Select(g =>
             {
                 var samplePath = g.First().Folder.Path;
-                var hasOwner = FoldersEndpoint.TryGetUserIdFromPath(samplePath, out var ownerId);
+                var hasOwner = FoldersEndpoint.TryGetUserIdFromPath(samplePath, usernameToIdMap, out var ownerId);
                 var count = hasOwner
                     ? g.Count(p => p.UserId != ownerId)
                     : g.Count(p => p.GrantedByUserId != p.UserId);
