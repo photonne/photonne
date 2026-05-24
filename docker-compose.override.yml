@@ -6,8 +6,9 @@ services:
       context: .
       dockerfile: Src/Photonne.Server.Api/Dockerfile
     pull_policy: build
-    ports:
-      - "5000:8080"
+    # Puerto único compartido con producción: ${API_PORT:-1107} viene del base
+    # compose. Cámbialo desde .env si choca con otro servicio (en macOS, evita
+    # el 5000 porque AirPlay Receiver lo ocupa por defecto).
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Jwt__Key=${JWT_KEY:-dev-secret-key-change-in-production-min-32-chars}
@@ -19,10 +20,6 @@ services:
       args:
         STRICT_CLIP_BAKE: "1"
     pull_policy: build
-
-  postgresql:
-    ports:
-      - "5432:5432"
 
 volumes:
   pgadmin_data:

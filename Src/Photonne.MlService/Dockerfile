@@ -8,27 +8,53 @@ FROM python:3.11-slim AS yolo-export
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
 
+# Provided automatically by BuildKit/buildx — used below to bifurcate the
+# pip install per architecture. `linux/amd64` -> "amd64"; `linux/arm64` -> "arm64".
+ARG TARGETARCH
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# CPU-only torch keeps the build stage light (~200 MB vs the CUDA build's ~2 GB).
-# Everything goes in a single `pip install` so the resolver sees the +cpu pin
-# at the same time as ultralytics/torchvision and doesn't silently upgrade
-# torch from PyPI. onnxscript is required by torch>=2.6's torch.onnx.export
-# even when the legacy (non-dynamo) path is selected.
-RUN pip install \
-        --extra-index-url https://download.pytorch.org/whl/cpu \
-        torch==2.4.1+cpu \
-        torchvision==0.19.1+cpu \
-        ultralytics==8.3.0 \
-        onnx==1.16.2 \
-        onnxslim==0.1.34 \
-        onnxscript==0.1.0 \
-        onnxruntime==1.19.2 \
-        transformers==4.45.2 \
-        sentence-transformers==3.1.1 \
-        tokenizers==0.20.0
+# On amd64 we install the slim CPU-only torch via download.pytorch.org's
+# /whl/cpu index (~200 MB vs the CUDA build's ~2 GB). That index does NOT
+# ship aarch64 wheels — there is no `torch==2.4.1+cpu` variant for ARM — so
+# on arm64 (and any other arch) we install the plain pinned versions from
+# PyPI. The ARM wheel is already CPU-only by default since no CUDA build of
+# torch is published for Linux ARM, so this is equivalent in size/perf to
+# the +cpu variant on amd64.
+#
+# Everything still goes in a single `pip install` so the resolver sees the
+# torch/torchvision pin at the same time as ultralytics, and doesn't silently
+# upgrade torch from a transitive dependency. onnxscript is required by
+# torch>=2.6's torch.onnx.export even when the legacy (non-dynamo) path is
+# selected.
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        pip install \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
+            torch==2.4.1+cpu \
+            torchvision==0.19.1+cpu \
+            ultralytics==8.3.0 \
+            onnx==1.16.2 \
+            onnxslim==0.1.34 \
+            onnxscript==0.1.0 \
+            onnxruntime==1.19.2 \
+            transformers==4.45.2 \
+            sentence-transformers==3.1.1 \
+            tokenizers==0.20.0 ; \
+    else \
+        pip install \
+            torch==2.4.1 \
+            torchvision==0.19.1 \
+            ultralytics==8.3.0 \
+            onnx==1.16.2 \
+            onnxslim==0.1.34 \
+            onnxscript==0.1.0 \
+            onnxruntime==1.19.2 \
+            transformers==4.45.2 \
+            sentence-transformers==3.1.1 \
+            tokenizers==0.20.0 ; \
+    fi
 
 WORKDIR /export
 RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', dynamic=False, simplify=True, opset=12)"
