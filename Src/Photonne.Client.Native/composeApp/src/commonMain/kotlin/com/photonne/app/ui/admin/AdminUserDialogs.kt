@@ -35,6 +35,9 @@ import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.admin_user_action_delete_message
 import com.photonne.app.resources.admin_user_action_delete_title
+import com.photonne.app.resources.admin_user_action_promote_confirm
+import com.photonne.app.resources.admin_user_action_promote_message
+import com.photonne.app.resources.admin_user_action_promote_title
 import com.photonne.app.resources.admin_user_action_reset_password
 import com.photonne.app.resources.admin_user_action_reset_password_message
 import com.photonne.app.resources.admin_user_action_reset_password_title
@@ -74,6 +77,44 @@ fun AdminDeleteUserDialog(
                     stringResource(Res.string.action_delete),
                     color = MaterialTheme.colorScheme.error
                 )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.action_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun AdminPromoteToPrimaryDialog(
+    targetUser: UserDto,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.admin_user_action_promote_title)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(
+                        Res.string.admin_user_action_promote_message,
+                        targetUser.username
+                    )
+                )
+                errorMessage?.let { msg ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(msg, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
+                Text(stringResource(Res.string.admin_user_action_promote_confirm))
             }
         },
         dismissButton = {

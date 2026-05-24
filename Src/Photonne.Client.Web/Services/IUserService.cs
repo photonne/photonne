@@ -14,6 +14,7 @@ public interface IUserService
     Task ChangePasswordAsync(ChangePasswordRequest request);
     Task<RenamePreviewDto> PreviewMyRenameAsync(string newUsername);
     Task<RenamePreviewDto> PreviewUserRenameAsync(Guid id, string newUsername);
+    Task PromoteToPrimaryAdminAsync(Guid id);
 }
 
 public class UserDto
@@ -25,6 +26,7 @@ public class UserDto
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public bool IsActive { get; set; }
+    public bool IsPrimaryAdmin { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public long? StorageQuotaBytes { get; set; }

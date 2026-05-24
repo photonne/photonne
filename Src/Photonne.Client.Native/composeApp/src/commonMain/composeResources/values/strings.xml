@@ -402,6 +402,11 @@
     <string name="admin_user_action_reset_password_message">Define una nueva contraseña para "%1$s". El usuario deberá iniciar sesión con la nueva contraseña.</string>
     <string name="admin_user_action_delete_title">Eliminar usuario</string>
     <string name="admin_user_action_delete_message">"%1$s" será eliminado de forma permanente. Sus fotos y datos asociados se borrarán.</string>
+    <string name="admin_user_action_promote">Transferir admin principal</string>
+    <string name="admin_user_action_promote_title">Transferir administrador principal</string>
+    <string name="admin_user_action_promote_message">Si transfieres el rol de administrador principal a "%1$s", perderás la protección que impide eliminar, desactivar o degradar tu cuenta. La acción solo puede revertirla el nuevo administrador principal.</string>
+    <string name="admin_user_action_promote_confirm">Transferir</string>
+    <string name="admin_user_promote_success">"%1$s" es ahora el administrador principal.</string>
 
     <string name="admin_stats_total_photos">Fotos totales</string>
     <string name="admin_stats_total_videos">Vídeos totales</string>

@@ -402,6 +402,11 @@
     <string name="admin_user_action_reset_password_message">Set a new password for "%1$s". The user will need to sign in with the new password.</string>
     <string name="admin_user_action_delete_title">Delete user</string>
     <string name="admin_user_action_delete_message">"%1$s" will be permanently deleted. Their photos and associated data will be removed.</string>
+    <string name="admin_user_action_promote">Transfer primary admin</string>
+    <string name="admin_user_action_promote_title">Transfer primary administrator</string>
+    <string name="admin_user_action_promote_message">If you transfer the primary administrator role to "%1$s", you will lose the protection that prevents your account from being deleted, deactivated or demoted. Only the new primary administrator can revert this.</string>
+    <string name="admin_user_action_promote_confirm">Transfer</string>
+    <string name="admin_user_promote_success">"%1$s" is now the primary administrator.</string>
 
     <string name="admin_stats_total_photos">Total photos</string>
     <string name="admin_stats_total_videos">Total videos</string>

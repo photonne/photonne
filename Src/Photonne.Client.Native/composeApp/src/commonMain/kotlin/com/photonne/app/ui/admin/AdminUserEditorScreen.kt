@@ -42,12 +42,14 @@ import com.photonne.app.resources.account_security_min_length
 import com.photonne.app.resources.action_create
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_save
+import com.photonne.app.resources.admin_user_action_promote
 import com.photonne.app.resources.admin_user_action_reset_password
 import com.photonne.app.resources.admin_user_field_active
 import com.photonne.app.resources.admin_user_field_admin
 import com.photonne.app.resources.admin_user_field_password
 import com.photonne.app.resources.admin_user_field_quota_mb
 import com.photonne.app.resources.admin_user_field_quota_mb_hint
+import com.photonne.app.resources.admin_user_promote_success
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
@@ -92,6 +94,19 @@ fun AdminUserEditorScreen(
 
     var showResetPassword by remember(existing?.id) { mutableStateOf(false) }
     var showDelete by remember(existing?.id) { mutableStateOf(false) }
+    var showPromoteToPrimary by remember(existing?.id) { mutableStateOf(false) }
+
+    val canPromoteToPrimary = isEdit
+        && existing != null
+        && state.isCurrentUserPrimaryAdmin
+        && existing.role.equals("Admin", ignoreCase = true)
+        && existing.isActive
+        && !existing.isPrimaryAdmin
+    val promoteSuccessMessage = if (existing != null) {
+        stringResource(Res.string.admin_user_promote_success, existing.username)
+    } else {
+        ""
+    }
 
     val isSubmitting = state.isMutating
     val canSubmit = !isSubmitting &&
@@ -248,6 +263,15 @@ fun AdminUserEditorScreen(
             ) {
                 Text(stringResource(Res.string.admin_user_action_reset_password))
             }
+            if (canPromoteToPrimary) {
+                OutlinedButton(
+                    onClick = { showPromoteToPrimary = true },
+                    enabled = !isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(Res.string.admin_user_action_promote))
+                }
+            }
             OutlinedButton(
                 onClick = { showDelete = true },
                 enabled = !isSubmitting && existing?.isPrimaryAdmin != true,
@@ -290,6 +314,22 @@ fun AdminUserEditorScreen(
                 viewModel.delete(existing.id) {
                     showDelete = false
                     onDone()
+                }
+            }
+        )
+    }
+    if (showPromoteToPrimary && existing != null) {
+        AdminPromoteToPrimaryDialog(
+            targetUser = existing,
+            isSubmitting = state.isMutating,
+            errorMessage = state.errorMessage,
+            onDismiss = {
+                showPromoteToPrimary = false
+                viewModel.clearMessages()
+            },
+            onConfirm = {
+                viewModel.promoteToPrimary(existing.id, promoteSuccessMessage) {
+                    showPromoteToPrimary = false
                 }
             }
         )

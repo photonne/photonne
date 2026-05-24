@@ -92,7 +92,12 @@ public class LoginEndpoint : IEndpoint
                 Email = user.Email,
                 Role = user.Role,
                 FirstName = user.FirstName,
-                LastName = user.LastName
+                LastName = user.LastName,
+                IsActive = user.IsActive,
+                IsPrimaryAdmin = user.IsPrimaryAdmin,
+                CreatedAt = user.CreatedAt,
+                LastLoginAt = user.LastLoginAt,
+                StorageQuotaBytes = user.StorageQuotaBytes
             }
         });
     }

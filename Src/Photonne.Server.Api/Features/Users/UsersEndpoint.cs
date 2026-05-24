@@ -55,6 +55,11 @@ public class UsersEndpoint : IEndpoint
             .WithDescription("Resets a user's password (Admin only)")
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
+        group.MapPost("{id:guid}/promote-to-primary", PromoteToPrimaryAdmin)
+            .WithName("PromoteToPrimaryAdmin")
+            .WithDescription("Transfers the primary-admin flag from the current primary admin to another admin user")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"));
+
         group.MapGet("me/storage", GetStorageInfo)
             .WithName("GetStorageInfo")
             .WithDescription("Gets storage usage and quota for the current user");
@@ -247,7 +252,10 @@ public class UsersEndpoint : IEndpoint
             FirstName = user.FirstName,
             LastName = user.LastName,
             IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
+            IsPrimaryAdmin = user.IsPrimaryAdmin,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt,
+            StorageQuotaBytes = user.StorageQuotaBytes
         });
     }
 
@@ -314,7 +322,8 @@ public class UsersEndpoint : IEndpoint
             IsActive = user.IsActive,
             IsPrimaryAdmin = user.IsPrimaryAdmin,
             CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt
+            LastLoginAt = user.LastLoginAt,
+            StorageQuotaBytes = user.StorageQuotaBytes
         });
     }
 
@@ -363,6 +372,69 @@ public class UsersEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return Results.Ok(new { message = "Password reset successfully" });
+    }
+
+    /// <summary>
+    /// Transfers the <c>IsPrimaryAdmin</c> flag from the calling user (current
+    /// primary admin) to <paramref name="id"/>. The destination must be an
+    /// active admin. Used when the original primary admin needs to step down
+    /// — without this endpoint they would be stuck since the primary flag
+    /// blocks delete/demote/deactivate.
+    /// </summary>
+    private async Task<IResult> PromoteToPrimaryAdmin(
+        Guid id,
+        ClaimsPrincipal caller,
+        [FromServices] ApplicationDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var callerIdClaim = caller.FindFirst(ClaimTypes.NameIdentifier);
+        if (callerIdClaim == null || !Guid.TryParse(callerIdClaim.Value, out var callerId))
+            return Results.Unauthorized();
+
+        var currentPrimary = await dbContext.Users
+            .FirstOrDefaultAsync(u => u.Id == callerId, cancellationToken);
+        if (currentPrimary == null)
+            return Results.Unauthorized();
+
+        if (!currentPrimary.IsPrimaryAdmin)
+            return Results.Forbid();
+
+        if (currentPrimary.Id == id)
+            return Results.BadRequest(new { error = "Ya eres el administrador principal." });
+
+        var target = await dbContext.Users
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (target == null)
+            return Results.NotFound(new { error = "Usuario no encontrado." });
+
+        if (target.Role != "Admin")
+            return Results.BadRequest(new { error = "El usuario destino debe tener el rol Admin." });
+
+        if (!target.IsActive)
+            return Results.BadRequest(new { error = "El usuario destino debe estar activo." });
+
+        // Both flag flips inside a single transaction so we never end up with
+        // zero primary admins (or two) if anything fails between the writes.
+        await using var tx = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            currentPrimary.IsPrimaryAdmin = false;
+            target.IsPrimaryAdmin = true;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
+
+        return Results.Ok(new
+        {
+            message = $"'{target.Username}' es ahora el administrador principal.",
+            previousPrimaryUserId = currentPrimary.Id,
+            newPrimaryUserId = target.Id
+        });
     }
 
     private async Task<IResult> GetStorageInfo(
@@ -491,8 +563,10 @@ public class UsersEndpoint : IEndpoint
             FirstName = dbUser.FirstName,
             LastName = dbUser.LastName,
             IsActive = dbUser.IsActive,
+            IsPrimaryAdmin = dbUser.IsPrimaryAdmin,
             CreatedAt = dbUser.CreatedAt,
-            LastLoginAt = dbUser.LastLoginAt
+            LastLoginAt = dbUser.LastLoginAt,
+            StorageQuotaBytes = dbUser.StorageQuotaBytes
         });
     }
 

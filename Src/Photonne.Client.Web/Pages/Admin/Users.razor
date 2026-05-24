@@ -62,6 +62,14 @@ else
                                  Class="ma-0" Style="height: 20px;">
                             @user.Role
                         </MudChip>
+                        @if (user.IsPrimaryAdmin)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning"
+                                     Variant="Variant.Filled" Icon="@Icons.Material.Filled.Shield"
+                                     Class="ma-0" Style="height: 20px;">
+                                Principal
+                            </MudChip>
+                        }
                         @if (!user.IsActive)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Error"
@@ -96,6 +104,16 @@ else
                                  OnClick="@(() => OpenResetPasswordDialog(user))">
                         Restablecer contraseña
                     </MudMenuItem>
+                    @if (_isCurrentPrimaryAdmin
+                         && user.Role == "Admin"
+                         && user.IsActive
+                         && !user.IsPrimaryAdmin)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Shield"
+                                     OnClick="@(() => PromoteToPrimary(user))">
+                            Transferir admin principal a este usuario
+                        </MudMenuItem>
+                    }
                     <MudMenuItem Icon="@Icons.Material.Filled.Delete"
                                  Style="color: var(--mud-palette-error);"
                                  OnClick="@(() => DeleteUser(user.Id))">
@@ -125,6 +143,8 @@ else
     private List<UserDto> _users = new();
     private bool _loading = true;
     private bool _isAuthorized = false;
+    private bool _isCurrentPrimaryAdmin = false;
+    private Guid _currentUserId = Guid.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,7 +156,19 @@ else
             return;
         }
 
-        var currentUser = await AuthService.GetCurrentUserAsync();
+        // Fetch a fresh /api/users/me instead of trusting the cached UserDto:
+        // pre-fix clients had IsPrimaryAdmin missing from the JSON cached in
+        // localStorage, which would hide the "Transfer primary admin" button
+        // indefinitely for sessions that started before the server fix.
+        UserDto? currentUser;
+        try
+        {
+            currentUser = await UserService.GetCurrentUserAsync();
+        }
+        catch
+        {
+            currentUser = await AuthService.GetCurrentUserAsync();
+        }
         if (currentUser == null || currentUser.Role != "Admin")
         {
             _isAuthorized = false;
@@ -144,6 +176,8 @@ else
         }
 
         _isAuthorized = true;
+        _currentUserId = currentUser.Id;
+        _isCurrentPrimaryAdmin = currentUser.IsPrimaryAdmin;
         await LoadUsers();
     }
 
@@ -251,6 +285,34 @@ else
         if (!result.Canceled)
         {
             Snackbar.Add("Contraseña restablecida correctamente", Severity.Success);
+        }
+    }
+
+    private async Task PromoteToPrimary(UserDto user)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Transferir administrador principal",
+            $"¿Seguro que quieres transferir el rol de administrador principal a '{user.Username}'?\n\n" +
+            "Tras la transferencia perderás la protección del admin principal " +
+            "(otro admin podría eliminar, desactivar o degradar tu cuenta) y el " +
+            "nuevo admin principal asumirá esa protección. La acción solo puede " +
+            "revertirla el nuevo admin principal.",
+            yesText: "Transferir",
+            cancelText: "Cancelar");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await UserService.PromoteToPrimaryAdminAsync(user.Id);
+            Snackbar.Add($"'{user.Username}' es ahora el administrador principal.", Severity.Success);
+            // El usuario actual ya no es primary — actualizar la UI sin recargar página.
+            _isCurrentPrimaryAdmin = false;
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al transferir el rol: {ex.Message}", Severity.Error);
         }
     }
 

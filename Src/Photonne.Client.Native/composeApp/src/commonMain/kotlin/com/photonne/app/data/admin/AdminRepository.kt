@@ -87,6 +87,8 @@ class AdminRepository(private val api: PhotonneApi) {
     suspend fun resetUserPassword(id: String, newPassword: String): String =
         api.adminResetUserPassword(id, AdminResetPasswordRequest(newPassword)).message
 
+    suspend fun promoteToPrimary(id: String) = api.adminPromoteToPrimary(id)
+
     // --- Stats / version ---
 
     suspend fun getStats(): AdminStatsResponse = api.adminGetStats()

@@ -2,7 +2,10 @@ package com.photonne.app.ui.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.auth.AuthState
+import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.models.UserDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,11 +18,14 @@ data class AdminUsersUiState(
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val errorMessage: String? = null,
-    val statusMessage: String? = null
+    val statusMessage: String? = null,
+    val isCurrentUserPrimaryAdmin: Boolean = false
 )
 
 class AdminUsersViewModel(
-    private val repository: AdminRepository
+    private val repository: AdminRepository,
+    private val accountRepository: AccountRepository,
+    private val authStateHolder: AuthStateHolder
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminUsersUiState())
@@ -32,8 +38,30 @@ class AdminUsersViewModel(
 
     fun refresh() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        // Seed from the cached user first so the UI never flashes the wrong
+        // state, then refresh /api/users/me below to repair any stale
+        // `isPrimaryAdmin` flag (sessions that started before the server fix
+        // had this field missing from the cached UserDto).
+        val cachedPrimary =
+            (authStateHolder.state.value as? AuthState.Authenticated)?.user?.isPrimaryAdmin == true
+        _state.update {
+            it.copy(
+                isLoading = true,
+                errorMessage = null,
+                isCurrentUserPrimaryAdmin = cachedPrimary
+            )
+        }
         viewModelScope.launch {
+            // Fire both calls and apply each result independently so a transient
+            // failure in one doesn't abort the other.
+            launch {
+                runCatching { accountRepository.refreshCurrentUser() }
+                    .onSuccess { freshUser ->
+                        _state.update {
+                            it.copy(isCurrentUserPrimaryAdmin = freshUser.isPrimaryAdmin)
+                        }
+                    }
+            }
             runCatching { repository.listUsers() }
                 .onSuccess { users ->
                     _state.update {
@@ -172,6 +200,49 @@ class AdminUsersViewModel(
                     onDone()
                 }
                 .onFailure { error -> failMutation(error.message ?: "Could not reset password") }
+        }
+    }
+
+    /**
+     * Transfers the primary-admin flag from the current logged-in user to
+     * [targetUserId]. On success, flips the flags in the cached user list and
+     * updates [authStateHolder] so the rest of the app immediately reflects
+     * that the current user is no longer primary (loses delete/demote
+     * protection in the UI).
+     */
+    fun promoteToPrimary(targetUserId: String, successMessage: String, onDone: () -> Unit) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        viewModelScope.launch {
+            runCatching { repository.promoteToPrimary(targetUserId) }
+                .onSuccess {
+                    val currentUser =
+                        (authStateHolder.state.value as? AuthState.Authenticated)?.user
+                    if (currentUser != null) {
+                        authStateHolder.update(
+                            AuthState.Authenticated(currentUser.copy(isPrimaryAdmin = false))
+                        )
+                    }
+                    _state.update { current ->
+                        val updatedUsers = current.users.map { u ->
+                            when (u.id) {
+                                currentUser?.id -> u.copy(isPrimaryAdmin = false)
+                                targetUserId -> u.copy(isPrimaryAdmin = true)
+                                else -> u
+                            }
+                        }
+                        current.copy(
+                            users = updatedUsers,
+                            isMutating = false,
+                            statusMessage = successMessage,
+                            isCurrentUserPrimaryAdmin = false
+                        )
+                    }
+                    onDone()
+                }
+                .onFailure { error ->
+                    failMutation(error.message ?: "Could not transfer primary admin")
+                }
         }
     }
 

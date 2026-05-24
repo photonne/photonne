@@ -313,6 +313,7 @@ interface PhotonneApi {
         id: String,
         request: com.photonne.app.data.models.AdminResetPasswordRequest
     ): com.photonne.app.data.models.AdminResetPasswordResponse
+    suspend fun adminPromoteToPrimary(id: String)
     suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse
     suspend fun adminGetVersion(refresh: Boolean = false): com.photonne.app.data.models.VersionInfoResponse
     suspend fun adminGetTrashStats(): com.photonne.app.data.models.TrashStatsResponse
@@ -1603,6 +1604,16 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun adminPromoteToPrimary(id: String) {
+        val response: HttpResponse = client.post("$baseUrl/api/users/$id/promote-to-primary")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Promoting user to primary admin failed"
+            )
+        }
     }
 
     override suspend fun adminGetStats(): com.photonne.app.data.models.AdminStatsResponse {

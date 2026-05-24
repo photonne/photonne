@@ -142,6 +142,17 @@ public class UserService : IUserService
             ?? throw new Exception("Respuesta vacía");
     }
 
+    public async Task PromoteToPrimaryAdminAsync(Guid id)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsync($"/api/users/{id}/promote-to-primary", content: null);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception(error?.Error ?? "No se pudo transferir el rol de administrador principal");
+        }
+    }
+
     private class ErrorResponse
     {
         public string? Error { get; set; }
