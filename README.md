@@ -189,6 +189,10 @@ El admin inicial se configura mediante variables de entorno (ver tabla anterior)
 
 El primer usuario admin creado al arrancar se marca automáticamente como **admin principal** (`IsPrimaryAdmin = true`). El admin principal no puede ser eliminado, desactivado ni degradar su rol desde la API, garantizando que siempre exista al menos un administrador en el sistema.
 
+> **Ciclo de vida**: las variables `ADMIN_*` solo se aplican en el **primer arranque sobre una BD vacía** (cuando no existe ningún usuario con rol `Admin`). A partir de ese momento, los valores del `.env` se ignoran en cada arranque siguiente — renombrar el admin, cambiar su email o resetear su contraseña desde la UI no provoca duplicados, y editar `ADMIN_*` después no tiene efecto. Para recuperar acceso si pierdes la contraseña, usa el endpoint de reset desde otro admin o (en último recurso) elimina manualmente todos los admins de la BD y reinicia el contenedor con los nuevos valores en `.env`.
+
+Además, el username del admin se valida con la misma regla que cualquier otro usuario (`^[a-zA-Z0-9._-]{1,64}$`) porque se usa como nombre de la carpeta en disco (`/assets/users/{username}/`). Si `ADMIN_USERNAME` contiene caracteres inválidos, el arranque registra un error y omite la creación en lugar de crear un admin que rompa el layout del filesystem.
+
 ### Docker Compose — variables personalizables
 
 Se recomienda crear un archivo `.env` en la raíz del proyecto:

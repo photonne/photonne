@@ -24,6 +24,13 @@ public class UserInitializationService
         _demoOptions = demoOptions;
     }
 
+    /// <summary>
+    /// One-shot bootstrap: creates the initial admin user only when the database
+    /// has no admin yet. Once any admin exists — regardless of whether their
+    /// username/email still match the values in <c>AdminUser:*</c> configuration —
+    /// the <c>ADMIN_*</c> variables are ignored, so renaming the admin from the
+    /// UI never causes a duplicate to be re-spawned on the next container start.
+    /// </summary>
     public async Task InitializeAdminUserAsync(CancellationToken cancellationToken = default)
     {
         // In demo mode the whole admin account is skipped on purpose: the demo is public,
@@ -31,7 +38,19 @@ public class UserInitializationService
         // The DemoSeederService creates the shared `demo` user instead.
         if (_demoOptions.Value.Enabled)
         {
-            Console.WriteLine("[DEMO] Modo demo activo — omitiendo creación de usuario administrador.");
+            Console.WriteLine("[INIT] Modo demo activo — omitiendo creación de usuario administrador.");
+            return;
+        }
+
+        // If any admin already exists, this is not a fresh install: do not create
+        // anything, just make sure at least one is flagged as primary and return.
+        var anyAdminExists = await _dbContext.Users
+            .AnyAsync(u => u.Role == "Admin", cancellationToken);
+
+        if (anyAdminExists)
+        {
+            Console.WriteLine("[INIT] Admin existente detectado — saltando creación inicial.");
+            await EnsurePrimaryAdminExistsAsync(cancellationToken);
             return;
         }
 
@@ -39,34 +58,27 @@ public class UserInitializationService
         var adminEmail = _configuration["AdminUser:Email"];
         var adminPassword = _configuration["AdminUser:Password"];
 
-        // Si no hay configuración, no crear usuario admin
         if (string.IsNullOrWhiteSpace(adminUsername) ||
             string.IsNullOrWhiteSpace(adminEmail) ||
             string.IsNullOrWhiteSpace(adminPassword))
         {
-            Console.WriteLine("[INFO] No se configuró usuario administrador inicial. Saltando inicialización.");
-            await EnsurePrimaryAdminExistsAsync(cancellationToken);
+            Console.WriteLine("[INIT] No hay administradores y no se configuró AdminUser:* — saltando.");
             return;
         }
 
-        // Verificar si ya existe un usuario con ese username o email
-        var existingUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Username == adminUsername || u.Email == adminEmail, cancellationToken);
-
-        if (existingUser != null)
+        // Username becomes the on-disk folder name (/assets/users/{username}/...).
+        // Reject characters that break the filesystem layout before persisting.
+        var validation = UserStorageService.ValidateUsername(adminUsername);
+        if (!validation.IsValid)
         {
-            Console.WriteLine($"[INFO] Usuario administrador '{adminUsername}' ya existe. Saltando inicialización.");
-            // Asegurarse de que esté marcado como admin principal si no lo está
-            if (!existingUser.IsPrimaryAdmin)
-            {
-                existingUser.IsPrimaryAdmin = true;
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                Console.WriteLine($"[INFO] Usuario '{adminUsername}' marcado como admin principal.");
-            }
+            Console.WriteLine(
+                $"[INIT] Username inválido para admin inicial: '{adminUsername}'. {validation.Error}. Aborto.");
             return;
         }
 
-        // Crear usuario administrador
+        Console.WriteLine(
+            $"[INIT] No hay administradores en BD. Creando admin inicial '{adminUsername}' desde la configuración.");
+
         var adminUser = new User
         {
             Username = adminUsername,
@@ -84,7 +96,8 @@ public class UserInitializationService
         _dbContext.Users.Add(adminUser);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        Console.WriteLine($"[INFO] Usuario administrador '{adminUsername}' creado exitosamente como admin principal.");
+        Console.WriteLine(
+            $"[INIT] Usuario administrador '{adminUsername}' creado exitosamente como admin principal.");
     }
 
     /// <summary>
