@@ -3,11 +3,18 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libgdiplus \
     libc6-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
+
+# Liveness check used by the Docker engine + compose `depends_on:
+# service_healthy`. `start-period` is generous because the first boot also
+# triggers EF migrations and the admin-bootstrap pass.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD curl -fsS http://localhost:8080/health | grep -q '"status":"ready"' || exit 1
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release

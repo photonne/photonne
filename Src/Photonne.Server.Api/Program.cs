@@ -255,6 +255,15 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.RegisterEndpoints();
 
+// Liveness probe consumed by the Docker HEALTHCHECK directive and by any
+// orchestrator (compose `depends_on: service_healthy`, K8s, Swarm). Returns
+// 200 with a stable JSON shape so the container is only reported healthy once
+// the request pipeline is up. Intentionally anonymous — the probe runs before
+// auth is configured for the caller.
+app.MapGet("/health", () => Results.Ok(new { status = "ready" }))
+    .AllowAnonymous()
+    .ExcludeFromDescription();
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
