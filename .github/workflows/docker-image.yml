@@ -21,6 +21,13 @@ jobs:
         with:
           swap-size-gb: 10
 
+      # QEMU enables building the arm64 leg via user-mode emulation on the
+      # amd64 runner. Needed because we publish a single manifest list with
+      # both architectures so self-hosters on Raspberry Pi / ARM NAS / Apple
+      # Silicon pull a native image instead of running amd64 under Rosetta.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -45,6 +52,7 @@ jobs:
         with:
           context: .
           file: Src/Photonne.Server.Api/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -65,6 +73,13 @@ jobs:
         uses: pierotofy/set-swap-space@master
         with:
           swap-size-gb: 10
+
+      # Same QEMU + multi-arch publish as the API job. Note: the arm64 leg of
+      # this build runs torch + ultralytics + CLIP/YOLO ONNX exports under
+      # user-mode emulation, so wall time is ~3-4× the amd64 leg (typically
+      # 25-40 min vs 8-12 min). Acceptable for a `main` push.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -90,6 +105,7 @@ jobs:
         with:
           context: Src/Photonne.MlService
           file: Src/Photonne.MlService/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
