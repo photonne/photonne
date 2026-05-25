@@ -206,8 +206,8 @@ class AdminRepository(private val api: PhotonneApi) {
 
     // --- Backup / restore ---
 
-    suspend fun downloadBackup(includeMl: Boolean): AssetContentBytes =
-        api.adminDownloadBackup(includeMl)
+    suspend fun downloadBackup(level: String): AssetContentBytes =
+        api.adminDownloadBackup(level)
 
     suspend fun restoreBackup(fileName: String, bytes: ByteArray): BackupRestoreResponse =
         api.adminRestoreBackup(fileName, bytes)

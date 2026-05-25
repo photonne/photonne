@@ -740,8 +740,14 @@
     <!-- Backup -->
     <string name="admin_backup_section_download">Download backup</string>
     <string name="admin_backup_section_restore">Restore backup</string>
-    <string name="admin_backup_explanation">Download a JSON dump of the whole database. Use it as part of your external backup routine.</string>
-    <string name="admin_backup_include_ml">Include machine-learning data</string>
+    <string name="admin_backup_explanation">Export the selected database records. The backup does not include media files; only metadata and structure.</string>
+    <string name="admin_backup_media_warning">Media files (photos and videos) are not included in the backup. You must manage them separately.</string>
+    <string name="admin_backup_level_config">Config only</string>
+    <string name="admin_backup_level_config_desc">Server settings, users, folders (structure), external libraries (definitions) and permissions. Ideal for migrating the install to another machine without the current library.</string>
+    <string name="admin_backup_level_essential">Essential</string>
+    <string name="admin_backup_level_essential_desc">Everything above + albums, assets, EXIF, thumbnails, tags and shared links. No ML data — it will be reprocessed on restore.</string>
+    <string name="admin_backup_level_full">Full (with ML)</string>
+    <string name="admin_backup_level_full_desc">Everything above + faces, people, CLIP embeddings, OCR, objects and scenes. Noticeably larger file.</string>
     <string name="admin_backup_action_download">Download backup</string>
     <string name="admin_backup_downloaded">Saved to %1$s.</string>
     <string name="admin_backup_restore_only_pwa">Backup restore is only available from the web app for now.</string>

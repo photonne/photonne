@@ -740,8 +740,14 @@
     <!-- Backup -->
     <string name="admin_backup_section_download">Descargar copia de seguridad</string>
     <string name="admin_backup_section_restore">Restaurar copia de seguridad</string>
-    <string name="admin_backup_explanation">Descarga un JSON con toda la base de datos. Inclúyelo en tu rutina de copia externa.</string>
-    <string name="admin_backup_include_ml">Incluir datos de aprendizaje automático</string>
+    <string name="admin_backup_explanation">Exporta los registros de la base de datos seleccionados. La copia no incluye los archivos multimedia; solo los metadatos y la estructura.</string>
+    <string name="admin_backup_media_warning">Los archivos multimedia (fotos y vídeos) no se incluyen en la copia de seguridad. Debes gestionarlos por separado.</string>
+    <string name="admin_backup_level_config">Solo configuración</string>
+    <string name="admin_backup_level_config_desc">Ajustes del servidor, usuarios, carpetas (estructura), bibliotecas externas (definiciones) y permisos. Ideal para migrar la instalación a otra máquina sin la biblioteca actual.</string>
+    <string name="admin_backup_level_essential">Esencial</string>
+    <string name="admin_backup_level_essential_desc">Lo anterior + álbumes, assets, EXIF, miniaturas, tags y enlaces compartidos. Sin datos de ML — se reprocesarán al restaurar.</string>
+    <string name="admin_backup_level_full">Completo (con ML)</string>
+    <string name="admin_backup_level_full_desc">Todo lo anterior + caras, personas, embeddings CLIP, OCR, objetos y escenas. Archivo notablemente mayor.</string>
     <string name="admin_backup_action_download">Descargar copia</string>
     <string name="admin_backup_downloaded">Guardado en %1$s.</string>
     <string name="admin_backup_restore_only_pwa">La restauración de copias de seguridad solo está disponible desde la aplicación web por ahora.</string>

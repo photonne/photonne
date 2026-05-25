@@ -372,7 +372,7 @@ interface PhotonneApi {
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.DuplicatesStreamEvent>
 
     // Database backup / restore --------------------------------------------
-    suspend fun adminDownloadBackup(includeMl: Boolean): com.photonne.app.data.models.AssetContentBytes
+    suspend fun adminDownloadBackup(level: String): com.photonne.app.data.models.AssetContentBytes
     suspend fun adminRestoreBackup(
         fileName: String,
         bytes: ByteArray
@@ -1926,10 +1926,10 @@ class PhotonneApiClient(
     }
 
     override suspend fun adminDownloadBackup(
-        includeMl: Boolean
+        level: String
     ): AssetContentBytes {
         val response: HttpResponse = client.get("$baseUrl/api/admin/database/backup") {
-            parameter("includeMl", includeMl)
+            parameter("level", level)
         }
         if (response.status != HttpStatusCode.OK) {
             throw PhotonneApiException(
