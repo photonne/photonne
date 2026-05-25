@@ -16,6 +16,12 @@
 /photonne/data/
 /data/
 
+# Per-developer config override for running the API outside Docker (host paths,
+# localhost connections…). The committed appsettings.json holds the Docker
+# defaults; appsettings.Development.json is each dev's personal overlay.
+# A `.example` sibling is committed so devs can copy and adjust.
+**/appsettings.Development.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

@@ -320,8 +320,6 @@ public class NightlySchedulerService : BackgroundService
         var thumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailGeneratorService>();
         var settingsService  = scope.ServiceProvider.GetRequiredService<SettingsService>();
 
-        await thumbnailService.RefreshThumbnailsPathAsync();
-
         var assets = await dbContext.Assets
             .OrderBy(a => a.FileCreatedAt)
             .Select(a => new { a.Id, a.FullPath, a.FileName })

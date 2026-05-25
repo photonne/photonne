@@ -37,14 +37,6 @@
                     Carpetas a actualizar: <strong>@Preview.FoldersToUpdate</strong>
                 </MudText>
             </MudListItem>
-            @if (Preview.SettingsToUpdate > 0)
-            {
-                <MudListItem Icon="@Icons.Material.Filled.Settings" IconColor="Color.Primary">
-                    <MudText Typo="Typo.body2">
-                        Ajustes con rutas personalizadas a actualizar: <strong>@Preview.SettingsToUpdate</strong>
-                    </MudText>
-                </MudListItem>
-            }
         </MudList>
 
         @if (Preview.AssetsToUpdate > 1000 || Preview.FoldersToUpdate > 100)

@@ -23,3 +23,7 @@
 **/values.dev.yaml
 LICENSE
 README.md
+
+# Per-developer overrides. Should never end up baked into a Docker image —
+# the deployed app gets its config from env vars (docker-compose, .env).
+**/appsettings.Development.json

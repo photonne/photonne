@@ -20,10 +20,6 @@ public class SettingsEndpoint : IEndpoint
         group.MapPost("", SaveSetting)
             .WithName("SaveSetting")
             .WithDescription("Saves or updates a setting");
-            
-        group.MapGet("/assets-path", GetAssetsPath)
-            .WithName("GetAssetsPath")
-            .WithDescription("Gets the current configured assets path");
 
         var adminGroup = app.MapGroup("/api/settings")
             .WithTags("Settings")
@@ -67,26 +63,13 @@ public class SettingsEndpoint : IEndpoint
         return Results.Ok(new { message = "Setting saved successfully" });
     }
 
-    private async Task<IResult> GetAssetsPath(
-        [FromServices] SettingsService settingsService,
-        ClaimsPrincipal user)
-    {
-        if (!TryGetUserId(user, out var userId))
-        {
-            return Results.Unauthorized();
-        }
-
-        var path = await settingsService.GetAssetsPathAsync(userId);
-        return Results.Ok(new { path });
-    }
-
     /// <summary>
     /// Returns true for keys that are server-wide globals (stored under Guid.Empty).
-    /// TaskSettings.*     — background worker counts
-    /// ServerSettings.*        — server configuration (paths, limits, public URL…)
-    /// TrashSettings.*         — trash behaviour (enabled, retention, quota)
-    /// UserSettings.*          — default values applied when creating new user accounts
-    /// MetadataSettings.*      — EXIF/IPTC extraction behaviour
+    /// TaskSettings.*             — background worker counts
+    /// ServerSettings.*           — server configuration (limits, public URL…)
+    /// TrashSettings.*            — trash behaviour (enabled, retention, quota)
+    /// UserSettings.*             — default values applied when creating new user accounts
+    /// MetadataSettings.*         — EXIF/IPTC extraction behaviour
     /// NightlyTaskSettings.*      — nightly scheduled tasks (schedule, enabled tasks, last run)
     /// NotificationSettings.*     — notification system (enabled types, retention, per-user cap)
     /// FaceRecognition.*          — face recognition runtime overrides (enable, thresholds)
@@ -94,7 +77,6 @@ public class SettingsEndpoint : IEndpoint
     /// SceneClassification.*      — scene classification runtime overrides (enable)
     /// TextRecognition.*          — text recognition runtime overrides (enable)
     /// Embedding.*                — image embedding runtime overrides (enable)
-    /// AssetsPath                 — legacy global key for the managed assets directory
     /// </summary>
     private static bool IsGlobalKey(string key) =>
         key.StartsWith("TaskSettings.", StringComparison.Ordinal) ||
@@ -108,8 +90,7 @@ public class SettingsEndpoint : IEndpoint
         key.StartsWith("ObjectDetection.", StringComparison.Ordinal) ||
         key.StartsWith("SceneClassification.", StringComparison.Ordinal) ||
         key.StartsWith("TextRecognition.", StringComparison.Ordinal) ||
-        key.StartsWith("Embedding.", StringComparison.Ordinal) ||
-        key.Equals("AssetsPath", StringComparison.Ordinal);
+        key.StartsWith("Embedding.", StringComparison.Ordinal);
 
     private static IResult GetServerInfo() =>
         Results.Ok(new { processorCount = Environment.ProcessorCount });

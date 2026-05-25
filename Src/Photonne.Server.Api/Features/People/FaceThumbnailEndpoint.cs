@@ -39,9 +39,7 @@ public class FaceThumbnailEndpoint : IEndpoint
             .FirstOrDefaultAsync(f => f.Id == id, ct);
         if (face == null) return Results.NotFound();
 
-        var thumbnailsRoot = configuration["ThumbnailsPath"]
-            ?? Environment.GetEnvironmentVariable("THUMBNAILS_PATH")
-            ?? "/data/thumbnails";
+        var thumbnailsRoot = configuration["ThumbnailsPath"] ?? "/data/thumbnails";
         var cacheDir = Path.Combine(thumbnailsRoot, "faces");
         Directory.CreateDirectory(cacheDir);
         var cachedPath = Path.Combine(cacheDir, $"{id}.jpg");

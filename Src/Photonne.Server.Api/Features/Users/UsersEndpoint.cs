@@ -648,8 +648,7 @@ public class UsersEndpoint : IEndpoint
                 NewPhysicalPath = preview.NewPhysicalPath,
                 FolderExistsOnDisk = preview.FolderExistsOnDisk,
                 AssetsToUpdate = preview.AssetsToUpdate,
-                FoldersToUpdate = preview.FoldersToUpdate,
-                SettingsToUpdate = preview.SettingsToUpdate
+                FoldersToUpdate = preview.FoldersToUpdate
             });
         }
         catch (InvalidOperationException ex)
@@ -677,7 +676,6 @@ public class RenamePreviewDto
 
     public int AssetsToUpdate { get; set; }
     public int FoldersToUpdate { get; set; }
-    public int SettingsToUpdate { get; set; }
 }
 
 public class CreateUserRequest

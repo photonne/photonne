@@ -97,7 +97,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
                 // Obtener la ruta interna del NAS (ASSETS_PATH)
-                var directoryPath = scopedSettingsService.GetInternalAssetsPath();
+                var directoryPath = scopedSettingsService.GetAssetsPath();
                 Console.WriteLine($"[SCAN] Indexando directorio interno: {directoryPath}");
 
                 if (!Directory.Exists(directoryPath))
@@ -491,7 +491,7 @@ public class IndexAssetsEndpoint : IEndpoint
         try
         {
             // Obtener la ruta interna del NAS (ASSETS_PATH)
-            var directoryPath = settingsService.GetInternalAssetsPath();
+            var directoryPath = settingsService.GetAssetsPath();
             Console.WriteLine($"[SCAN] Indexando directorio interno: {directoryPath}");
             
             if (!Directory.Exists(directoryPath))

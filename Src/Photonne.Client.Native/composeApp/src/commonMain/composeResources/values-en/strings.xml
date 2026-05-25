@@ -599,7 +599,6 @@
     <string name="admin_settings_server_max_upload">Max upload size (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = unlimited</string>
     <string name="admin_settings_server_session_timeout">Session timeout (min)</string>
-    <string name="admin_settings_server_thumbnails_path">Thumbnails path</string>
     <string name="admin_settings_device_section">This device connection</string>
     <string name="admin_settings_device_section_hint">Stored only on this device. The local URL is used automatically when reachable (same WiFi as the server).</string>
     <string name="admin_settings_device_public_url">Public URL</string>

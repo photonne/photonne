@@ -44,7 +44,6 @@ import com.photonne.app.resources.admin_settings_server_max_upload
 import com.photonne.app.resources.admin_settings_server_max_upload_hint
 import com.photonne.app.resources.admin_settings_server_public_url
 import com.photonne.app.resources.admin_settings_server_session_timeout
-import com.photonne.app.resources.admin_settings_server_thumbnails_path
 import com.photonne.app.ui.theme.actionButtonHeight
 import org.jetbrains.compose.resources.stringResource
 
@@ -55,15 +54,13 @@ class AdminServerSettingsViewModel(
     override val keys = listOf(
         "ServerSettings.PublicUrl",
         "ServerSettings.MaxUploadSizeMb",
-        "ServerSettings.SessionTimeoutMinutes",
-        "ServerSettings.ThumbnailsPath"
+        "ServerSettings.SessionTimeoutMinutes"
     )
 
     override val defaults = mapOf(
         "ServerSettings.PublicUrl" to "",
         "ServerSettings.MaxUploadSizeMb" to "0",
-        "ServerSettings.SessionTimeoutMinutes" to "60",
-        "ServerSettings.ThumbnailsPath" to "/data/thumbnails"
+        "ServerSettings.SessionTimeoutMinutes" to "60"
     )
 
     override fun normalize(key: String, value: String): String = when (key) {
@@ -110,10 +107,6 @@ fun AdminServerSettingsScreen(
             stringResource(Res.string.admin_settings_server_session_timeout),
             serverState.get("ServerSettings.SessionTimeoutMinutes")
         ) { viewModel.set("ServerSettings.SessionTimeoutMinutes", it) }
-        SettingTextField(
-            label = stringResource(Res.string.admin_settings_server_thumbnails_path),
-            value = serverState.get("ServerSettings.ThumbnailsPath")
-        ) { viewModel.set("ServerSettings.ThumbnailsPath", it) }
 
         serverState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         serverState.successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }

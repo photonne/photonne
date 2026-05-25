@@ -599,7 +599,6 @@
     <string name="admin_settings_server_max_upload">Tamaño máximo de subida (MB)</string>
     <string name="admin_settings_server_max_upload_hint">0 = sin límite</string>
     <string name="admin_settings_server_session_timeout">Tiempo de sesión (min)</string>
-    <string name="admin_settings_server_thumbnails_path">Ruta de miniaturas</string>
     <string name="admin_settings_device_section">Conexión de este dispositivo</string>
     <string name="admin_settings_device_section_hint">Se guarda solo en este dispositivo. La URL local se usará automáticamente cuando esté disponible (misma red WiFi que el servidor).</string>
     <string name="admin_settings_device_public_url">URL pública</string>

@@ -11,12 +11,11 @@ public class DemoModeOptions
     public const string SectionName = "DemoMode";
 
     /// <summary>
-    /// Fixed in-container path where the host's seed directory must be mounted.
-    /// Matches the convention used for <c>/data/assets</c> and
-    /// <c>/data/thumbnails</c> — only the host side is configurable (via the
-    /// volume binding in <c>docker-compose.demo.yml</c>).
+    /// Path where the seed media lives. In Docker this is the in-container mount
+    /// point (default <c>/data/demo-seed</c>); outside Docker, point it at a host
+    /// folder via <c>DemoMode:SeedPath</c> in appsettings.
     /// </summary>
-    public const string SeedPath = "/data/demo-seed";
+    public string SeedPath { get; set; } = "/data/demo-seed";
 
     /// <summary>
     /// Master switch. When false, demo behaviours are dormant and the app runs normally.

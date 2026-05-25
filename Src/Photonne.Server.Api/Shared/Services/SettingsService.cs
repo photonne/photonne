@@ -9,18 +9,14 @@ namespace Photonne.Server.Api.Shared.Services;
 public class SettingsService
 {
     private readonly ApplicationDbContext _dbContext;
-    private readonly string _internalAssetsPath;
-    public const string AssetsPathKey = "AssetsPath";
-    public const string DefaultInternalAssetsPath = "/data/assets";
-    // Back-compat alias — existing call sites read SettingsService.InternalAssetsPath
-    // as a literal. Kept as a const so it remains a compile-time constant.
-    public const string InternalAssetsPath = DefaultInternalAssetsPath;
+    private readonly string _assetsPath;
+    public const string DefaultAssetsPath = "/data/assets";
     private static readonly Guid GlobalUserId = Guid.Empty;
 
     public SettingsService(ApplicationDbContext dbContext, IConfiguration? configuration = null)
     {
         _dbContext = dbContext;
-        _internalAssetsPath = configuration?["InternalAssetsPath"] ?? DefaultInternalAssetsPath;
+        _assetsPath = configuration?["AssetsPath"] ?? DefaultAssetsPath;
     }
 
     public async Task<string> GetSettingAsync(string key, Guid userId, string defaultValue = "")
@@ -61,19 +57,7 @@ public class SettingsService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<string> GetAssetsPathAsync(Guid userId)
-    {
-        var path = await GetSettingAsync(AssetsPathKey, userId);
-
-        if (string.IsNullOrEmpty(path))
-        {
-            path = GetInternalAssetsPath();
-        }
-
-        return path;
-    }
-
-    public string GetInternalAssetsPath() => _internalAssetsPath;
+    public string GetAssetsPath() => _assetsPath;
 
     public async Task<string> ResolvePhysicalPathAsync(string dbPath)
     {
@@ -81,8 +65,7 @@ public class SettingsService
 
         if (dbPath.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase))
         {
-            // Usar la ruta interna del NAS para resolver rutas virtuales
-            var assetsPath = GetInternalAssetsPath();
+            var assetsPath = GetAssetsPath();
             var relativePath = dbPath.Substring("/assets/".Length);
             return Path.Combine(assetsPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         }
@@ -109,8 +92,7 @@ public class SettingsService
     {
         if (string.IsNullOrEmpty(physicalPath)) return string.Empty;
 
-        // Usar la ruta interna del NAS para virtualizar rutas
-        var managedLibraryPath = GetInternalAssetsPath();
+        var managedLibraryPath = GetAssetsPath();
         var normalizedPhysicalPath = Path.GetFullPath(physicalPath);
         var normalizedLibraryPath = Path.GetFullPath(managedLibraryPath);
 

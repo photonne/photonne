@@ -142,7 +142,7 @@ public class TimelineEndpoint : IEndpoint
 
             // Copied assets (in internal dir but not indexed) are only scanned on the first page
             // to avoid expensive filesystem scans on every pagination call.
-            var internalAssetsPath = settingsService.GetInternalAssetsPath();
+            var internalAssetsPath = settingsService.GetAssetsPath();
             int copiedCount = 0;
             var copiedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var internalScannedFiles = new List<ScannedFile>();

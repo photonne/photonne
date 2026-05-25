@@ -42,8 +42,8 @@ public class SyncAssetEndpoint : IEndpoint
             var username = user.GetUsername();
             if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-            // Validar que el archivo proviene de la ruta configurada por el usuario
-            var userConfiguredPath = await settingsService.GetAssetsPathAsync(userId);
+            // Validar que el archivo proviene de la ruta de assets configurada
+            var userConfiguredPath = settingsService.GetAssetsPath();
             if (!IsPathSafe(path, userConfiguredPath))
                 return Results.Forbid();
 

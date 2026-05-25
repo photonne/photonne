@@ -100,5 +100,4 @@ public class RenamePreviewDto
 
     public int AssetsToUpdate { get; set; }
     public int FoldersToUpdate { get; set; }
-    public int SettingsToUpdate { get; set; }
 }

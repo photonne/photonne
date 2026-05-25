@@ -32,36 +32,29 @@ public class DeviceEndpoint : IEndpoint
     {
         try
         {
-            if (!TryGetUserId(user, out var userId))
+            if (!TryGetUserId(user, out var _))
             {
                 return Results.Unauthorized();
             }
 
-            var userAssetsPath = await settingsService.GetAssetsPathAsync(userId);
-            var internalAssetsPath = settingsService.GetInternalAssetsPath();
-            
-            if (!Directory.Exists(userAssetsPath))
+            var assetsPath = settingsService.GetAssetsPath();
+
+            if (!Directory.Exists(assetsPath))
             {
-                Console.WriteLine($"[DEVICE] User device directory does not exist: {userAssetsPath}");
+                Console.WriteLine($"[DEVICE] Assets directory does not exist: {assetsPath}");
                 return Results.Ok(new List<TimelineResponse>());
             }
 
-            Console.WriteLine($"[DEVICE] Scanning user device directory: {userAssetsPath}");
-            var userScannedFiles = (await directoryScanner.ScanDirectoryAsync(userAssetsPath, cancellationToken)).ToList();
-            Console.WriteLine($"[DEVICE] Found {userScannedFiles.Count} files in user device directory");
-            
-            // Obtener nombres de archivos indexados para filtrar duplicados
-            var indexedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            
-            if (Directory.Exists(internalAssetsPath))
-            {
-                var internalScannedFiles = (await directoryScanner.ScanDirectoryAsync(internalAssetsPath, cancellationToken)).ToList();
-                foreach (var file in internalScannedFiles)
-                {
-                    indexedFileNames.Add(file.FileName);
-                }
-                Console.WriteLine($"[DEVICE] Found {indexedFileNames.Count} indexed file names to filter");
-            }
+            Console.WriteLine($"[DEVICE] Scanning assets directory: {assetsPath}");
+            var userScannedFiles = (await directoryScanner.ScanDirectoryAsync(assetsPath, cancellationToken)).ToList();
+            Console.WriteLine($"[DEVICE] Found {userScannedFiles.Count} files in assets directory");
+
+            // Filter out files already in the managed library. With user + library
+            // collapsed into a single path, this filter effectively returns nothing
+            // — kept for explicitness / parity with the legacy behaviour.
+            var indexedFileNames = new HashSet<string>(
+                userScannedFiles.Select(f => f.FileName),
+                StringComparer.OrdinalIgnoreCase);
 
             var deviceItems = new List<TimelineResponse>();
             int skippedIndexed = 0;

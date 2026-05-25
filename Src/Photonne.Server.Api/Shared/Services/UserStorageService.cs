@@ -207,11 +207,6 @@ public sealed class UserStorageService
         var foldersCount = await _db.Folders
             .CountAsync(f => f.Path == oldRoot || f.Path.StartsWith(oldRootPrefix), ct);
 
-        var settingsCount = await _db.Settings
-            .CountAsync(s => s.OwnerId == userId &&
-                             s.Key == SettingsService.AssetsPathKey &&
-                             (s.Value == oldRoot || s.Value.StartsWith(oldRootPrefix)), ct);
-
         var oldPhysical = await _settings.ResolvePhysicalPathAsync(oldRoot);
         var newPhysical = await _settings.ResolvePhysicalPathAsync(newRoot);
 
@@ -232,8 +227,7 @@ public sealed class UserStorageService
             NewPhysicalPath = newPhysical,
             FolderExistsOnDisk = folderExistsOnDisk,
             AssetsToUpdate = assetsCount,
-            FoldersToUpdate = foldersCount,
-            SettingsToUpdate = settingsCount
+            FoldersToUpdate = foldersCount
         };
     }
 
@@ -301,17 +295,6 @@ public sealed class UserStorageService
                 @"UPDATE ""Folders"" SET ""Name"" = {0} WHERE ""Path"" = {1}",
                 newUsername, newRoot);
 
-            // Update per-user Settings whose value embeds the old root.
-            await _db.Database.ExecuteSqlRawAsync(
-                @"UPDATE ""Settings"" SET ""Value"" =
-                       CASE WHEN ""Value"" = {0} THEN {1}
-                            ELSE {1} || SUBSTRING(""Value"" FROM LENGTH({2}) + 1)
-                       END
-                  WHERE ""OwnerId"" = {4} AND ""Key"" = {5}
-                    AND (""Value"" = {0} OR ""Value"" LIKE {3})",
-                oldRoot, newRoot, oldRoot, oldPrefix + "%",
-                userId, SettingsService.AssetsPathKey);
-
             // 2) Update the User row itself.
             var user = await _db.Users.FirstAsync(u => u.Id == userId, ct);
             user.Username = newUsername;
@@ -337,9 +320,9 @@ public sealed class UserStorageService
             InvalidateUserCache(userId, newUsername, oldUsername);
 
             _logger.LogInformation(
-                "[USERSTORE] Renamed user {UserId}: '{Old}' -> '{New}'. Assets={Assets}, Folders={Folders}, Settings={Settings}",
+                "[USERSTORE] Renamed user {UserId}: '{Old}' -> '{New}'. Assets={Assets}, Folders={Folders}",
                 userId, oldUsername, newUsername,
-                preview.AssetsToUpdate, preview.FoldersToUpdate, preview.SettingsToUpdate);
+                preview.AssetsToUpdate, preview.FoldersToUpdate);
 
             return RenameResult.Success(preview);
         }
@@ -389,7 +372,6 @@ public sealed class RenamePreview
 
     public int AssetsToUpdate { get; init; }
     public int FoldersToUpdate { get; init; }
-    public int SettingsToUpdate { get; init; }
 
     public static RenamePreview Invalid(string current, string requested, string error) => new()
     {

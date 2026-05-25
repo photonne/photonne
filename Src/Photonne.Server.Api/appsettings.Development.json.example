@@ -1,0 +1,16 @@
+{
+  "AssetsPath": "/Users/TU_USUARIO/photonne/data/assets",
+  "ThumbnailsPath": "/Users/TU_USUARIO/photonne/data/thumbnails",
+
+  "ConnectionStrings": {
+    "Postgres": "Host=localhost;Port=5432;Database=photonne;Username=photonne_user;Password=cambia_esto_por_password_seguro"
+  },
+
+  "DemoMode": {
+    "SeedPath": "/Users/TU_USUARIO/photonne-demo"
+  },
+
+  "Ml": {
+    "ServiceUrl": "http://localhost:8000"
+  }
+}

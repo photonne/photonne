@@ -223,7 +223,7 @@ public class DetectDuplicatesEndpoint : IEndpoint
                 var scanner = scope.ServiceProvider.GetRequiredService<DirectoryScanner>();
                 var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
-                var assetsPath = settingsService.GetInternalAssetsPath();
+                var assetsPath = settingsService.GetAssetsPath();
 
                 if (!Directory.Exists(assetsPath))
                 {

@@ -27,7 +27,10 @@
     {
         <MudText Typo="Typo.h5" Class="mb-1">Configuración del servidor</MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
-            Parámetros de red, rutas y límites del backend.
+            Parámetros de red, límites y sesión del backend.
+            Las rutas de almacenamiento son fijas dentro del contenedor
+            (<code>/data/assets</code>, <code>/data/thumbnails</code>) y se
+            controlan al desplegar vía los volúmenes de <code>docker-compose</code>.
         </MudText>
 
         <MudGrid>
@@ -57,48 +60,6 @@
                                    OnClick="SaveNetwork"
                                    Disabled="_savingNetwork">
                             @if (_savingNetwork)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            }
-                            Guardar
-                        </MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-
-            @* ── Rutas ── *@
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Rutas de almacenamiento</MudText>
-                            <MudText Typo="Typo.body2">Directorios donde el servidor guarda los archivos.</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudTextField T="string"
-                                      Label="Ruta de activos"
-                                      @bind-Value="_assetsPath"
-                                      Variant="Variant.Outlined"
-                                      FullWidth="true"
-                                      Placeholder="/data/assets"
-                                      HelperText="Directorio raíz para fotos y vídeos subidos por los usuarios."
-                                      Class="mb-3" />
-                        <MudTextField T="string"
-                                      Label="Ruta de miniaturas"
-                                      @bind-Value="_thumbnailsPath"
-                                      Variant="Variant.Outlined"
-                                      FullWidth="true"
-                                      Placeholder="/data/thumbnails"
-                                      HelperText="Directorio donde se almacenan las miniaturas generadas. El cambio tiene efecto en la próxima generación." />
-                    </MudCardContent>
-                    <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Save"
-                                   OnClick="SavePaths"
-                                   Disabled="_savingPaths">
-                            @if (_savingPaths)
                             {
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             }
@@ -188,8 +149,6 @@
 @code {
     // ── setting keys ──────────────────────────────────────────────────────────
     private const string KeyPublicUrl           = "ServerSettings.PublicUrl";
-    private const string KeyAssetsPath          = "AssetsPath";
-    private const string KeyThumbnailsPath      = "ServerSettings.ThumbnailsPath";
     private const string KeyMaxUploadMb         = "ServerSettings.MaxUploadSizeMb";
     private const string KeySessionTimeout      = "ServerSettings.SessionTimeoutMinutes";
 
@@ -198,13 +157,10 @@
     private bool _loading = true;
 
     private string _publicUrl       = "";
-    private string _assetsPath      = "/data/assets";
-    private string _thumbnailsPath  = "/data/thumbnails";
     private int    _maxUploadMb     = 500;
     private int    _sessionTimeoutMinutes = 60;
 
     private bool _savingNetwork;
-    private bool _savingPaths;
     private bool _savingLimits;
     private bool _savingSession;
 
@@ -230,8 +186,6 @@
     private async Task LoadSettings()
     {
         _publicUrl          = await SettingsService.GetSettingAsync(KeyPublicUrl, "");
-        _assetsPath         = await SettingsService.GetSettingAsync(KeyAssetsPath, "/data/assets");
-        _thumbnailsPath     = await SettingsService.GetSettingAsync(KeyThumbnailsPath, "/data/thumbnails");
         _maxUploadMb        = ParseInt(await SettingsService.GetSettingAsync(KeyMaxUploadMb, "500"), 1, 10240, 500);
         _sessionTimeoutMinutes = ParseInt(await SettingsService.GetSettingAsync(KeySessionTimeout, "60"), 5, 10080, 60);
     }
@@ -246,18 +200,6 @@
             ShowResult(ok, "Red");
         }
         finally { _savingNetwork = false; }
-    }
-
-    private async Task SavePaths()
-    {
-        _savingPaths = true;
-        try
-        {
-            var ok = await SettingsService.SaveSettingAsync(KeyAssetsPath, _assetsPath.TrimEnd('/', '\\'))
-                  && await SettingsService.SaveSettingAsync(KeyThumbnailsPath, _thumbnailsPath.TrimEnd('/', '\\'));
-            ShowResult(ok, "Rutas");
-        }
-        finally { _savingPaths = false; }
     }
 
     private async Task SaveLimits()

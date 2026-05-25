@@ -50,29 +50,17 @@ public class AssetPendingEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        var userAssetsPath = await settingsService.GetAssetsPathAsync(userId);
-        var internalAssetsPath = settingsService.GetInternalAssetsPath();
-        
-        // Determinar si el archivo está en el directorio del usuario o en el interno
+        var assetsPath = settingsService.GetAssetsPath();
         var normalizedPhysicalPath = Path.GetFullPath(physicalPath);
-        var normalizedUserPath = Path.GetFullPath(userAssetsPath);
-        var normalizedInternalPath = Path.GetFullPath(internalAssetsPath);
-        
-        AssetSyncStatus syncStatus;
-        if (normalizedPhysicalPath.StartsWith(normalizedInternalPath, StringComparison.OrdinalIgnoreCase))
-        {
-            // El archivo está en el directorio interno, está copiado pero no indexado
-            syncStatus = AssetSyncStatus.Copied;
-        }
-        else if (normalizedPhysicalPath.StartsWith(normalizedUserPath, StringComparison.OrdinalIgnoreCase))
-        {
-            // El archivo está en el directorio del usuario, está pendiente
-            syncStatus = AssetSyncStatus.Pending;
-        }
-        else
-        {
+        var normalizedAssetsPath = Path.GetFullPath(assetsPath);
+
+        if (!normalizedPhysicalPath.StartsWith(normalizedAssetsPath, StringComparison.OrdinalIgnoreCase))
             return Results.Forbid();
-        }
+
+        // The file lives inside the managed library — treat it as already copied.
+        // (The legacy "Pending" status existed for a per-user external source that
+        // no longer exists in the model.)
+        var syncStatus = AssetSyncStatus.Copied;
 
         if (!File.Exists(physicalPath))
             return Results.NotFound("File not found");
@@ -136,19 +124,12 @@ public class AssetPendingEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        var userAssetsPath = await settingsService.GetAssetsPathAsync(userId);
-        var internalAssetsPath = settingsService.GetInternalAssetsPath();
-        
-        // Verificar que el path es seguro (está en el directorio del usuario o interno)
+        var assetsPath = settingsService.GetAssetsPath();
         var normalizedPhysicalPath = Path.GetFullPath(physicalPath);
-        var normalizedUserPath = Path.GetFullPath(userAssetsPath);
-        var normalizedInternalPath = Path.GetFullPath(internalAssetsPath);
-        
-        if (!normalizedPhysicalPath.StartsWith(normalizedUserPath, StringComparison.OrdinalIgnoreCase) &&
-            !normalizedPhysicalPath.StartsWith(normalizedInternalPath, StringComparison.OrdinalIgnoreCase))
-        {
+        var normalizedAssetsPath = Path.GetFullPath(assetsPath);
+
+        if (!normalizedPhysicalPath.StartsWith(normalizedAssetsPath, StringComparison.OrdinalIgnoreCase))
             return Results.Forbid();
-        }
 
         if (!File.Exists(physicalPath))
             return Results.NotFound("File not found");
@@ -188,19 +169,12 @@ public class AssetPendingEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        var userAssetsPath = await settingsService.GetAssetsPathAsync(userId);
-        var internalAssetsPath = settingsService.GetInternalAssetsPath();
-        
-        // Verificar que el path es seguro (está en el directorio del usuario o interno)
+        var assetsPath = settingsService.GetAssetsPath();
         var normalizedPhysicalPath = Path.GetFullPath(physicalPath);
-        var normalizedUserPath = Path.GetFullPath(userAssetsPath);
-        var normalizedInternalPath = Path.GetFullPath(internalAssetsPath);
-        
-        if (!normalizedPhysicalPath.StartsWith(normalizedUserPath, StringComparison.OrdinalIgnoreCase) &&
-            !normalizedPhysicalPath.StartsWith(normalizedInternalPath, StringComparison.OrdinalIgnoreCase))
-        {
+        var normalizedAssetsPath = Path.GetFullPath(assetsPath);
+
+        if (!normalizedPhysicalPath.StartsWith(normalizedAssetsPath, StringComparison.OrdinalIgnoreCase))
             return Results.Forbid();
-        }
 
         if (!File.Exists(physicalPath))
             return Results.NotFound("File not found");

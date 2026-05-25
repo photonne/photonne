@@ -53,20 +53,6 @@ public class SettingsService : ISettingsService
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<string> GetAssetsPathAsync()
-    {
-        try
-        {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<AssetsPathResponse>("/api/settings/assets-path");
-            return response?.Path ?? "";
-        }
-        catch
-        {
-            return "";
-        }
-    }
-
     private class SettingResponse
     {
         public string Key { get; set; } = string.Empty;
@@ -85,11 +71,6 @@ public class SettingsService : ISettingsService
         {
             return 0;
         }
-    }
-
-    private class AssetsPathResponse
-    {
-        public string Path { get; set; } = string.Empty;
     }
 
     private class ServerInfoResponse

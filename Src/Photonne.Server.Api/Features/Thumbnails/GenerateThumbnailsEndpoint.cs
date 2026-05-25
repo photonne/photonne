@@ -61,9 +61,6 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                 var settingsService = scope.ServiceProvider.GetRequiredService<SettingsService>();
                 var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
-                // Reload thumbnails path in case it was changed in server settings
-                await thumbnailService.RefreshThumbnailsPathAsync();
-
                 var assets = await dbContext.Assets
                     .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new { a.Id, a.FullPath, a.FileName })

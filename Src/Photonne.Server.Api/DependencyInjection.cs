@@ -125,7 +125,7 @@ public static class DependencyInjection
     private static void ConfigureFFmpeg(IConfiguration configuration)
     {
         // Configure FFmpeg path if provided in configuration
-        var ffmpegPath = configuration["FFMPEG_PATH"];
+        var ffmpegPath = configuration["FfmpegPath"];
         if (!string.IsNullOrEmpty(ffmpegPath))
         {
             FFmpeg.SetExecutablesPath(ffmpegPath);
