@@ -15,3 +15,12 @@ data class AlbumShareLink(
     val viewCount: Int = 0,
     val shareUrl: String = ""
 )
+
+@Serializable
+data class ShareUpdateResult(
+    val token: String,
+    @Serializable(with = FlexibleInstantSerializer::class) val expiresAt: Instant? = null,
+    val hasPassword: Boolean = false,
+    val allowDownload: Boolean = true,
+    val maxViews: Int? = null
+)

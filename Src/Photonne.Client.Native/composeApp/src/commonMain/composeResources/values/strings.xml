@@ -133,9 +133,18 @@
     <string name="share_option_max_views">Limitar el número de vistas</string>
     <string name="share_option_max_views_field">Vistas máximas</string>
     <string name="share_option_allow_downloads">Permitir descargas</string>
+    <string name="share_option_expiry">Fecha de expiración</string>
+    <string name="share_option_expiry_pick">Elegir fecha</string>
+    <string name="share_option_expiry_change">Cambiar</string>
+    <string name="share_action_edit">Editar enlace</string>
+    <string name="share_edit_title">Editar enlace</string>
+    <string name="share_password_keep">Mantener contraseña actual</string>
+    <string name="share_password_remove">Quitar contraseña</string>
+    <string name="share_password_change">Cambiar contraseña</string>
     <string name="share_attribute_password">contraseña</string>
     <string name="share_attribute_no_downloads">sin descargas</string>
     <string name="share_attribute_views_format">%1$d vistas</string>
+    <string name="share_attribute_expiry_format">expira %1$s</string>
 
     <string name="permissions_title">Miembros del álbum</string>
     <string name="permissions_empty">Solo tú tienes acceso. Invita a otras personas para darles permiso de lectura o escritura.</string>
@@ -154,6 +163,12 @@
     <string name="asset_action_edit_description">Editar descripción</string>
     <string name="asset_action_open_in_maps">Abrir en Mapas</string>
     <string name="asset_action_more">Más acciones</string>
+    <string name="slideshow_start">Iniciar pase de diapositivas</string>
+    <string name="slideshow_exit">Salir del pase</string>
+    <string name="slideshow_play">Reanudar</string>
+    <string name="slideshow_pause">Pausar</string>
+    <string name="slideshow_previous">Anterior</string>
+    <string name="slideshow_next">Siguiente</string>
     <string name="asset_description_dialog_title">Editar descripción</string>
     <string name="asset_description_field">Descripción</string>
     <string name="asset_trash_title">Mover a la papelera</string>

@@ -133,9 +133,18 @@
     <string name="share_option_max_views">Limit number of views</string>
     <string name="share_option_max_views_field">Max views</string>
     <string name="share_option_allow_downloads">Allow downloads</string>
+    <string name="share_option_expiry">Expiration date</string>
+    <string name="share_option_expiry_pick">Pick a date</string>
+    <string name="share_option_expiry_change">Change</string>
+    <string name="share_action_edit">Edit link</string>
+    <string name="share_edit_title">Edit share link</string>
+    <string name="share_password_keep">Keep current password</string>
+    <string name="share_password_remove">Remove password</string>
+    <string name="share_password_change">Change password</string>
     <string name="share_attribute_password">password</string>
     <string name="share_attribute_no_downloads">no downloads</string>
     <string name="share_attribute_views_format">%1$d views</string>
+    <string name="share_attribute_expiry_format">expires %1$s</string>
 
     <string name="permissions_title">Album members</string>
     <string name="permissions_empty">Only you have access. Invite people to give them read or write access.</string>
@@ -154,6 +163,12 @@
     <string name="asset_action_edit_description">Edit description</string>
     <string name="asset_action_open_in_maps">Open in Maps</string>
     <string name="asset_action_more">More actions</string>
+    <string name="slideshow_start">Start slideshow</string>
+    <string name="slideshow_exit">Exit slideshow</string>
+    <string name="slideshow_play">Resume</string>
+    <string name="slideshow_pause">Pause</string>
+    <string name="slideshow_previous">Previous</string>
+    <string name="slideshow_next">Next</string>
     <string name="asset_description_dialog_title">Edit description</string>
     <string name="asset_description_field">Description</string>
     <string name="asset_trash_title">Move to trash</string>

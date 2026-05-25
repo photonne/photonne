@@ -113,7 +113,9 @@ import com.photonne.app.ui.album.AlbumPermissionsViewModel
 import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsListScreen
 import com.photonne.app.ui.album.AlbumsViewModel
+import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.ui.album.CreateShareDialog
+import com.photonne.app.ui.album.EditShareDialog
 import com.photonne.app.ui.album.DeleteAlbumDialog
 import com.photonne.app.ui.album.InviteMemberDialog
 import com.photonne.app.ui.album.LeaveAlbumDialog
@@ -512,6 +514,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showLeaveAlbum by remember { mutableStateOf(false) }
     var showShares by remember { mutableStateOf(false) }
     var showCreateShare by remember { mutableStateOf(false) }
+    var editingShareLink by remember { mutableStateOf<AlbumShareLink?>(null) }
     var showMembers by remember { mutableStateOf(false) }
     var showInviteMember by remember { mutableStateOf(false) }
     var addToAlbum by remember { mutableStateOf<AddToAlbumState?>(null) }
@@ -2475,6 +2478,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumSharesViewModel.clearError()
             },
             onCreate = { showCreateShare = true },
+            onEdit = { link -> editingShareLink = link },
             onRevoke = { token -> albumSharesViewModel.revoke(token) }
         )
     }
@@ -2553,14 +2557,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showCreateShare = false
                 albumSharesViewModel.clearError()
             },
-            onConfirm = { password, allowDownload, maxViews ->
+            onConfirm = { expiresAt, password, allowDownload, maxViews ->
                 albumSharesViewModel.createLink(
-                    expiresAt = null,
+                    expiresAt = expiresAt,
                     password = password,
                     allowDownload = allowDownload,
                     maxViews = maxViews
                 )
                 showCreateShare = false
+            }
+        )
+    }
+
+    editingShareLink?.let { link ->
+        EditShareDialog(
+            link = link,
+            isSubmitting = albumSharesState.isMutating,
+            errorMessage = albumSharesState.errorMessage,
+            onDismiss = {
+                editingShareLink = null
+                albumSharesViewModel.clearError()
+            },
+            onConfirm = { expiresAt, password, allowDownload, maxViews ->
+                albumSharesViewModel.editLink(
+                    token = link.token,
+                    expiresAt = expiresAt,
+                    password = password,
+                    allowDownload = allowDownload,
+                    maxViews = maxViews
+                )
+                editingShareLink = null
             }
         )
     }

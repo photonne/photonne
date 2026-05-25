@@ -80,6 +80,51 @@ class AlbumSharesViewModel(
         }
     }
 
+    fun editLink(
+        token: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            runCatching {
+                repository.updateShare(
+                    token = token,
+                    expiresAt = expiresAt,
+                    password = password,
+                    allowDownload = allowDownload,
+                    maxViews = maxViews
+                )
+            }
+                .onSuccess { result ->
+                    _state.update { current ->
+                        current.copy(
+                            links = current.links.map { link ->
+                                if (link.token == result.token) link.copy(
+                                    expiresAt = result.expiresAt,
+                                    hasPassword = result.hasPassword,
+                                    allowDownload = result.allowDownload,
+                                    maxViews = result.maxViews
+                                ) else link
+                            },
+                            isMutating = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            errorMessage = error.message ?: "Failed to update share link"
+                        )
+                    }
+                }
+        }
+    }
+
     fun revoke(token: String) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, errorMessage = null) }

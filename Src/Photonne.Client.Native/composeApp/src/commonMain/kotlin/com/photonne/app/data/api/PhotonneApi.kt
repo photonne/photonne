@@ -2,6 +2,7 @@ package com.photonne.app.data.api
 
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
+import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.AssetDetail
@@ -134,6 +135,14 @@ internal data class CreateShareRequest(
 )
 
 @Serializable
+internal data class UpdateShareRequest(
+    val expiresAt: String? = null,
+    val password: String? = null,
+    val allowDownload: Boolean = true,
+    val maxViews: Int? = null
+)
+
+@Serializable
 internal data class SetAlbumPermissionBody(
     val userId: String,
     val canRead: Boolean,
@@ -202,6 +211,13 @@ interface PhotonneApi {
         allowDownload: Boolean,
         maxViews: Int?
     ): AlbumShareLink
+    suspend fun updateShare(
+        token: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ): ShareUpdateResult
     suspend fun revokeShare(token: String)
     suspend fun getShareableUsers(): List<ShareableUser>
     suspend fun listAlbumPermissions(albumId: String): List<AlbumPermission>
@@ -933,6 +949,33 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Creating share link failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun updateShare(
+        token: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ): ShareUpdateResult {
+        val response: HttpResponse = client.patch("$baseUrl/api/share/$token") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                UpdateShareRequest(
+                    expiresAt = expiresAt?.toString(),
+                    password = password,
+                    allowDownload = allowDownload,
+                    maxViews = maxViews
+                )
+            )
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Update share link failed (${response.status.value})"
             )
         }
         return response.body()

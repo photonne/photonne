@@ -5,6 +5,7 @@ import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.datetime.Instant
@@ -56,6 +57,20 @@ class AlbumsRepository(
         maxViews: Int?
     ): AlbumShareLink = api.createAlbumShare(
         albumId = albumId,
+        expiresAt = expiresAt,
+        password = password,
+        allowDownload = allowDownload,
+        maxViews = maxViews
+    )
+
+    suspend fun updateShare(
+        token: String,
+        expiresAt: Instant?,
+        password: String?,
+        allowDownload: Boolean,
+        maxViews: Int?
+    ): ShareUpdateResult = api.updateShare(
+        token = token,
         expiresAt = expiresAt,
         password = password,
         allowDownload = allowDownload,

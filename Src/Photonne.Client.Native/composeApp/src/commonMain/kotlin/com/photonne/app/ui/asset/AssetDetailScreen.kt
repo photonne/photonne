@@ -24,8 +24,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
@@ -38,11 +44,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -55,6 +63,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -82,6 +91,12 @@ import com.photonne.app.resources.asset_action_open_in_maps
 import com.photonne.app.resources.asset_action_trash
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
+import com.photonne.app.resources.slideshow_exit
+import com.photonne.app.resources.slideshow_next
+import com.photonne.app.resources.slideshow_pause
+import com.photonne.app.resources.slideshow_play
+import com.photonne.app.resources.slideshow_previous
+import com.photonne.app.resources.slideshow_start
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
@@ -89,7 +104,9 @@ import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.tan
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -124,6 +141,24 @@ fun AssetDetailScreen(
 
     var currentScale by remember { mutableStateOf(1f) }
     val showOriginal = remember { mutableStateMapOf<String, Boolean>() }
+
+    var slideshowActive by remember { mutableStateOf(false) }
+    var slideshowPaused by remember { mutableStateOf(false) }
+    var slideshowIntervalSec by remember { mutableStateOf(5) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(
+        slideshowActive,
+        slideshowPaused,
+        slideshowIntervalSec,
+        pagerState.currentPage,
+        items.size
+    ) {
+        if (!slideshowActive || slideshowPaused || items.isEmpty()) return@LaunchedEffect
+        delay(slideshowIntervalSec * 1000L)
+        val next = (pagerState.currentPage + 1) % items.size
+        pagerState.animateScrollToPage(next)
+    }
 
     LaunchedEffect(pagerState, items) {
         snapshotFlow { pagerState.currentPage }
@@ -242,6 +277,17 @@ fun AssetDetailScreen(
                     IconButton(onClick = { showInfo = true }) {
                         Icon(Icons.Outlined.Info, contentDescription = "Detalles")
                     }
+                    if (items.size > 1 && !slideshowActive) {
+                        IconButton(onClick = {
+                            slideshowActive = true
+                            slideshowPaused = false
+                        }) {
+                            Icon(
+                                Icons.Filled.Slideshow,
+                                contentDescription = stringResource(Res.string.slideshow_start)
+                            )
+                        }
+                    }
                     if (currentItem != null && !isLocalOnly) {
                         Box {
                             IconButton(onClick = { showOverflow = true }) {
@@ -314,22 +360,51 @@ fun AssetDetailScreen(
             return@Scaffold
         }
 
-        HorizontalPager(
-            state = pagerState,
-            userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
-            modifier = Modifier.fillMaxSize().padding(padding)
-        ) { page ->
-            val item = items[page]
-            val isCurrent = page == pagerState.currentPage
-            AssetPage(
-                item = item,
-                baseUrl = apiBaseUrl,
-                showOriginal = showOriginal[item.id] == true,
-                isCurrent = isCurrent,
-                authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
-                onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
-                animatedVisibilityScope = animatedVisibilityScope
-            )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val item = items[page]
+                val isCurrent = page == pagerState.currentPage
+                AssetPage(
+                    item = item,
+                    baseUrl = apiBaseUrl,
+                    showOriginal = showOriginal[item.id] == true,
+                    isCurrent = isCurrent,
+                    authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
+                    onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
+            }
+            if (slideshowActive) {
+                SlideshowControls(
+                    isPaused = slideshowPaused,
+                    intervalSec = slideshowIntervalSec,
+                    onTogglePause = { slideshowPaused = !slideshowPaused },
+                    onPrevious = {
+                        coroutineScope.launch {
+                            val prev = (pagerState.currentPage - 1 + items.size) % items.size
+                            pagerState.animateScrollToPage(prev)
+                        }
+                    },
+                    onNext = {
+                        coroutineScope.launch {
+                            val next = (pagerState.currentPage + 1) % items.size
+                            pagerState.animateScrollToPage(next)
+                        }
+                    },
+                    onSetInterval = { slideshowIntervalSec = it },
+                    onExit = {
+                        slideshowActive = false
+                        slideshowPaused = false
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 24.dp)
+                )
+            }
         }
     }
 
@@ -687,4 +762,69 @@ private fun formatInstant(iso: String): String {
 private fun authHeadersFor(tokenStorage: TokenStorage): Map<String, String> {
     val token = tokenStorage.getAccessToken().orEmpty()
     return if (token.isBlank()) emptyMap() else mapOf("Authorization" to "Bearer $token")
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SlideshowControls(
+    isPaused: Boolean,
+    intervalSec: Int,
+    onTogglePause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSetInterval: (Int) -> Unit,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        color = Color.Black.copy(alpha = 0.7f),
+        contentColor = Color.White,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            IconButton(onClick = onTogglePause) {
+                Icon(
+                    imageVector = if (isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = stringResource(
+                        if (isPaused) Res.string.slideshow_play else Res.string.slideshow_pause
+                    ),
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = onPrevious) {
+                Icon(
+                    Icons.Filled.SkipPrevious,
+                    contentDescription = stringResource(Res.string.slideshow_previous),
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = onNext) {
+                Icon(
+                    Icons.Filled.SkipNext,
+                    contentDescription = stringResource(Res.string.slideshow_next),
+                    tint = Color.White
+                )
+            }
+            listOf(3, 5, 10).forEach { sec ->
+                FilterChip(
+                    selected = intervalSec == sec,
+                    onClick = { onSetInterval(sec) },
+                    label = { Text("${sec}s") }
+                )
+            }
+            IconButton(onClick = onExit) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(Res.string.slideshow_exit),
+                    tint = Color.White
+                )
+            }
+        }
+    }
 }
