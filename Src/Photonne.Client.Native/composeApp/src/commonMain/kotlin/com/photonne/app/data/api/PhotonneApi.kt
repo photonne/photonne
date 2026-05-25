@@ -190,7 +190,8 @@ interface PhotonneApi {
     suspend fun uploadAsset(
         fileName: String,
         mimeType: String,
-        bytes: ByteArray
+        bytes: ByteArray,
+        destination: String? = null
     ): UploadAssetResponse
     /**
      * Looks up an existing asset by SHA-256 checksum on the server.
@@ -800,7 +801,8 @@ class PhotonneApiClient(
     override suspend fun uploadAsset(
         fileName: String,
         mimeType: String,
-        bytes: ByteArray
+        bytes: ByteArray,
+        destination: String?
     ): UploadAssetResponse {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
@@ -819,6 +821,9 @@ class PhotonneApiClient(
                                 )
                             }
                         )
+                        if (!destination.isNullOrBlank()) {
+                            append("destination", destination)
+                        }
                     }
                 )
             )

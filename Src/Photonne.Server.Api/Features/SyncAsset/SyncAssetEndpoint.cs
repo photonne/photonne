@@ -51,7 +51,7 @@ public class SyncAssetEndpoint : IEndpoint
                 return Results.NotFound("El archivo no existe en el disco");
 
             // Obtener la ruta interna del NAS (ASSETS_PATH)
-            var deviceBackupVirtual = $"/assets/users/{username}/DeviceBackup";
+            var deviceBackupVirtual = $"/assets/users/{username}/MobileBackup";
             var deviceBackupRoot = await settingsService.ResolvePhysicalPathAsync(deviceBackupVirtual);
 
             await EnsureFolderRecordAsync(dbContext, userId, deviceBackupVirtual, cancellationToken);
@@ -59,7 +59,7 @@ public class SyncAssetEndpoint : IEndpoint
             if (!Directory.Exists(deviceBackupRoot))
             {
                 Directory.CreateDirectory(deviceBackupRoot);
-                Console.WriteLine($"[SYNC] Created device backup directory: {deviceBackupRoot}");
+                Console.WriteLine($"[SYNC] Created mobile backup directory: {deviceBackupRoot}");
             }
             
             Console.WriteLine($"[SYNC] Source path: {path}");

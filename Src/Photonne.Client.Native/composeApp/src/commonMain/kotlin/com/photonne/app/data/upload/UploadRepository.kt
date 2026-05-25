@@ -9,6 +9,7 @@ class UploadRepository(
     suspend fun upload(
         fileName: String,
         mimeType: String,
-        bytes: ByteArray
-    ): UploadAssetResponse = api.uploadAsset(fileName, mimeType, bytes)
+        bytes: ByteArray,
+        destination: String? = null
+    ): UploadAssetResponse = api.uploadAsset(fileName, mimeType, bytes, destination)
 }

@@ -70,6 +70,35 @@ class UploadRepositoryTest {
     }
 
     @Test
+    fun upload_with_destination_still_posts_to_upload_endpoint() = runTest {
+        // The pass-through contract: when DeviceBackupRepository calls
+        // UploadRepository with destination = "mobile-backup", the request
+        // still hits /api/assets/upload. The server-side test (UploadPipelineTests)
+        // verifies that destination form field routes to the MobileBackup folder.
+        var endpoint: String? = null
+        val engine = MockEngine { request ->
+            endpoint = request.url.encodedPath
+            respond(
+                content = ByteReadChannel(
+                    """{"message":"Asset uploaded successfully","assetId":"abc-123"}"""
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val repo = newRepo(engine)
+
+        repo.upload(
+            fileName = "phone-shot.jpg",
+            mimeType = "image/jpeg",
+            bytes = byteArrayOf(9, 8, 7),
+            destination = "mobile-backup"
+        )
+
+        assertEquals("/api/assets/upload", endpoint)
+    }
+
+    @Test
     fun upload_recognises_already_exists_response() = runTest {
         val engine = MockEngine { _ ->
             respond(

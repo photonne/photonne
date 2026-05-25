@@ -74,7 +74,8 @@ class DeviceBackupRepository(
         return uploads.upload(
             fileName = media.displayName,
             mimeType = media.mimeType,
-            bytes = bytes
+            bytes = bytes,
+            destination = MOBILE_BACKUP_DESTINATION
         )
     }
 
@@ -82,4 +83,8 @@ class DeviceBackupRepository(
 
     /** Deletes [media] from the device storage. */
     suspend fun deleteLocal(media: DeviceMedia): Boolean = gallery.deleteFile(media)
+
+    companion object {
+        const val MOBILE_BACKUP_DESTINATION = "mobile-backup"
+    }
 }

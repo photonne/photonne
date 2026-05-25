@@ -21,8 +21,12 @@ public class UploadAssetsEndpoint : IEndpoint
             .RequireRateLimiting("demo-upload");
     }
 
+    private const string DefaultDestinationFolder = "Uploads";
+    private const string MobileBackupDestinationFolder = "MobileBackup";
+
     private async Task<IResult> Handle(
         [FromForm] IFormFile file,
+        [FromForm] string? destination,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] FileHashService hashService,
         [FromServices] ExifExtractorService exifService,
@@ -72,8 +76,11 @@ public class UploadAssetsEndpoint : IEndpoint
                     statusCode: StatusCodes.Status409Conflict);
         }
 
-        // Guardar los uploads del usuario en su carpeta dedicada dentro del NAS
-        var uploadsVirtualPath = $"/assets/users/{username}/Uploads";
+        // Guardar los uploads del usuario en su carpeta dedicada dentro del NAS.
+        // El cliente puede pedir un destino distinto al por defecto (ej. el backup
+        // automático del móvil va a MobileBackup en vez de Uploads).
+        var destinationFolder = ResolveDestinationFolder(destination);
+        var uploadsVirtualPath = $"/assets/users/{username}/{destinationFolder}";
         var uploadsRootPath = await settingsService.ResolvePhysicalPathAsync(uploadsVirtualPath);
 
         var uploadsFolder = await EnsureFolderRecordAsync(dbContext, userId, uploadsVirtualPath, cancellationToken);
@@ -190,6 +197,17 @@ public class UploadAssetsEndpoint : IEndpoint
             if (File.Exists(tempPath)) File.Delete(tempPath);
             return Results.Problem(ex.Message);
         }
+    }
+
+    private static string ResolveDestinationFolder(string? destination)
+    {
+        if (string.IsNullOrWhiteSpace(destination)) return DefaultDestinationFolder;
+        return destination.Trim().ToLowerInvariant() switch
+        {
+            "mobile-backup" => MobileBackupDestinationFolder,
+            "uploads" => DefaultDestinationFolder,
+            _ => DefaultDestinationFolder
+        };
     }
 
     private AssetType GetAssetType(string extension)

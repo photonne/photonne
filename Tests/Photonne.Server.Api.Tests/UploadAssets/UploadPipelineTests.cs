@@ -89,6 +89,33 @@ public sealed class UploadPipelineTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Upload_WithMobileBackupDestination_LandsUnderMobileBackupFolder()
+    {
+        var (user, client) = await CreateAuthenticatedUserAsync();
+
+        using var form = BuildMultipart(FixturePaths.NoMetadata);
+        form.Add(new StringContent("mobile-backup"), "destination");
+        var response = await client.PostAsync("/api/assets/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<UploadResp>();
+        Assert.NotNull(body?.AssetId);
+
+        await WithDbContextAsync(async db =>
+        {
+            var asset = await db.Assets.AsNoTracking()
+                .FirstAsync(a => a.Id == body!.AssetId!.Value);
+            Assert.StartsWith($"/assets/users/{user.Username}/MobileBackup/", asset.FullPath);
+        });
+
+        var expectedDir = Path.Combine(
+            Factory.InternalAssetsPath, "users", user.Username, "MobileBackup");
+        Assert.True(Directory.Exists(expectedDir),
+            $"expected MobileBackup directory to exist: {expectedDir}");
+        Assert.NotEmpty(Directory.GetFiles(expectedDir));
+    }
+
+    [Fact]
     public async Task Upload_SameFileTwice_IsDeduplicatedByChecksum()
     {
         var (_, client) = await CreateAuthenticatedUserAsync();

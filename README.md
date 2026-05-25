@@ -250,7 +250,7 @@ cada directorio de un vistazo:
 └── users/
     ├── alice/
     │   ├── Uploads/
-    │   ├── DeviceBackup/
+    │   ├── MobileBackup/
     │   └── _trash/
     └── bob/
         └── Uploads/
