@@ -184,7 +184,12 @@ class FoldersViewModel(
     fun resolveLibraryRoot(libraryId: String): FolderSummary? =
         _state.value.libraryRoots[libraryId]
 
-    fun create(name: String, parentFolderId: String?, onCreated: (FolderSummary) -> Unit = {}) {
+    fun create(
+        name: String,
+        parentFolderId: String?,
+        isSharedSpace: Boolean = false,
+        onCreated: (FolderSummary) -> Unit = {}
+    ) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, errorMessage = null) }
         viewModelScope.launch {
@@ -192,7 +197,7 @@ class FoldersViewModel(
                 repository.create(
                     name = name.trim(),
                     parentFolderId = parentFolderId,
-                    isSharedSpace = false
+                    isSharedSpace = isSharedSpace
                 )
             }
                 .onSuccess { folder ->

@@ -2593,12 +2593,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             confirmLabel = stringResource(Res.string.action_create),
             isSubmitting = foldersState.isMutating,
             errorMessage = foldersState.errorMessage,
+            showSharedSpaceOption = true,
             onDismiss = {
                 showCreateFolder = false
                 foldersViewModel.clearError()
             },
-            onConfirm = { name ->
-                foldersViewModel.create(name, parentFolderId = null) {
+            onConfirm = { name, isSharedSpace ->
+                foldersViewModel.create(
+                    name = name,
+                    parentFolderId = null,
+                    isSharedSpace = isSharedSpace
+                ) {
                     showCreateFolder = false
                 }
             }
@@ -2617,7 +2622,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showEditFolder = false
                 folderDetailViewModel.clearError()
             },
-            onConfirm = { name ->
+            onConfirm = { name, _ ->
                 folderDetailViewModel.rename(name) { updated ->
                     showEditFolder = false
                     selectedFolder = openedFolder.copy(name = updated.name, path = updated.path)
@@ -2638,7 +2643,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 pendingActionFolder = null
                 foldersViewModel.clearError()
             },
-            onConfirm = { name ->
+            onConfirm = { name, _ ->
                 foldersViewModel.renameFolder(target.id, name) {
                     showEditFolder = false
                     pendingActionFolder = null

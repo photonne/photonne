@@ -184,6 +184,8 @@
     <string name="folder_action_edit">Edit folder</string>
     <string name="folder_action_actions">Folder actions</string>
     <string name="folder_field_name">Name</string>
+    <string name="folder_create_shared_label">Create in shared space</string>
+    <string name="folder_create_shared_hint">It will live under /assets/shared/ and stay there even if your account is removed.</string>
     <string name="folder_delete_title">Delete folder</string>
     <string name="folder_delete_message">"%1$s" will be deleted. Photos stay on disk but lose their index entry; you can re-index from the web app.</string>
     <string name="folder_permissions_title">Folder members</string>

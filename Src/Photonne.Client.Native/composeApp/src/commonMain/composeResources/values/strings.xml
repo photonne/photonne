@@ -184,6 +184,8 @@
     <string name="folder_action_edit">Editar carpeta</string>
     <string name="folder_action_actions">Acciones de la carpeta</string>
     <string name="folder_field_name">Nombre</string>
+    <string name="folder_create_shared_label">Crear en el espacio compartido</string>
+    <string name="folder_create_shared_hint">Vivirá en /assets/shared/ y persistirá aunque borres tu usuario.</string>
     <string name="folder_delete_title">Eliminar carpeta</string>
     <string name="folder_delete_message">"%1$s" se eliminará. Las fotos quedarán fuera del índice; podrás reindexarlas desde la app web.</string>
     <string name="folder_permissions_title">Miembros de la carpeta</string>
