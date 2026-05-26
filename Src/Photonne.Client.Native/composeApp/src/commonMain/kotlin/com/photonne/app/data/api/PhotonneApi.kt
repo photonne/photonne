@@ -450,10 +450,27 @@ interface PhotonneApi {
     suspend fun adminThumbnailsStream(
         regenerate: Boolean
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.ThumbnailStreamEvent>
+    suspend fun adminMetadataStream(
+        overwrite: Boolean
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
     suspend fun adminDuplicatesStream(
         cleanup: Boolean,
         physical: Boolean
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.DuplicatesStreamEvent>
+
+    // Background task registry — lets the UI reconnect to a running task
+    // after the user leaves and re-opens an admin screen (or the app).
+    suspend fun listBackgroundTasks(): List<com.photonne.app.data.models.BackgroundTaskDto>
+    suspend fun cancelBackgroundTask(id: String)
+    suspend fun resumeIndexTaskStream(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.IndexStreamEvent>
+    suspend fun resumeThumbnailsTaskStream(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.ThumbnailStreamEvent>
+    suspend fun resumeMetadataTaskStream(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
 
     // Database backup / restore --------------------------------------------
     suspend fun adminDownloadBackup(level: String): com.photonne.app.data.models.AssetContentBytes
@@ -2020,6 +2037,68 @@ class PhotonneApiClient(
             }
         }
     }
+
+    override suspend fun adminMetadataStream(
+        overwrite: Boolean
+    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
+        client.prepareGet("$baseUrl/api/assets/metadata/stream") {
+            parameter("overwrite", overwrite)
+        }.execute { response ->
+            ensureStreamSuccess(response, "Metadata stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching {
+                    streamJson.decodeFromString(
+                        com.photonne.app.data.models.MetadataStreamEvent.serializer(),
+                        line
+                    )
+                }.getOrNull()?.let { emit(it) }
+            }
+        }
+    }
+
+    override suspend fun listBackgroundTasks():
+        List<com.photonne.app.data.models.BackgroundTaskDto> {
+        val response: HttpResponse = client.get("$baseUrl/api/tasks")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Background tasks fetch failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun cancelBackgroundTask(id: String) {
+        val response: HttpResponse = client.delete("$baseUrl/api/tasks/$id")
+        // 204 NoContent on success; 404 if task already gone (race with finish
+        // + 1h cleanup) — treat as a no-op rather than surfacing an error.
+        if (response.status != HttpStatusCode.NoContent &&
+            response.status != HttpStatusCode.NotFound
+        ) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Cancel task failed"
+            )
+        }
+    }
+
+    override suspend fun resumeIndexTaskStream(
+        id: String
+    ): Flow<com.photonne.app.data.models.IndexStreamEvent> =
+        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+
+    override suspend fun resumeThumbnailsTaskStream(
+        id: String
+    ): Flow<com.photonne.app.data.models.ThumbnailStreamEvent> =
+        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+
+    override suspend fun resumeMetadataTaskStream(
+        id: String
+    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> =
+        streamJsonLines("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun adminDuplicatesStream(
         cleanup: Boolean,

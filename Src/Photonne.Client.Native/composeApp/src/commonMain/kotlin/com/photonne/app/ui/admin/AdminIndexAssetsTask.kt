@@ -44,12 +44,14 @@ import com.photonne.app.resources.admin_task_chip_running
 import com.photonne.app.resources.admin_task_speed_files
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.stringResource
 
 data class AdminIndexUiState(
@@ -57,7 +59,12 @@ data class AdminIndexUiState(
     val lastEvent: IndexStreamEvent? = null,
     val startedAtMs: Long? = null,
     val finishedAtMs: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    // Server-side task id. Set when we either start a new run (captured
+    // from the first stream event) or reconnect to a running task on
+    // init. Lets cancel() actually stop the task on the server instead
+    // of just closing the local flow.
+    val taskId: String? = null
 )
 
 class AdminIndexAssetsViewModel(
@@ -68,6 +75,39 @@ class AdminIndexAssetsViewModel(
     val state: StateFlow<AdminIndexUiState> = _state.asStateFlow()
     private var job: Job? = null
 
+    init {
+        // On first construction, check if the server has an index task
+        // already running (started in a previous session, from the PWA,
+        // or from another device) and re-attach to its buffered stream.
+        job = viewModelScope.launch { reconnectIfRunning() }
+    }
+
+    private suspend fun reconnectIfRunning() {
+        val running = repository.findRunningTaskOfType("IndexAssets") ?: return
+        if (_state.value.isRunning) return  // local run took precedence
+
+        val startMs = runCatching { Instant.parse(running.startedAt).toEpochMilliseconds() }
+            .getOrDefault(Clock.System.now().toEpochMilliseconds())
+
+        // Hydrate so the UI shows the last known message + percentage even
+        // before the first replayed event arrives.
+        _state.update {
+            it.copy(
+                isRunning = true,
+                errorMessage = null,
+                lastEvent = IndexStreamEvent(
+                    message = running.lastMessage,
+                    percentage = running.percentage,
+                    statistics = null
+                ),
+                startedAtMs = startMs,
+                finishedAtMs = null,
+                taskId = running.id
+            )
+        }
+        collectStream(repository.resumeIndexTaskStream(running.id), taskId = running.id)
+    }
+
     fun start() {
         if (_state.value.isRunning) return
         _state.update {
@@ -76,37 +116,57 @@ class AdminIndexAssetsViewModel(
                 errorMessage = null,
                 lastEvent = null,
                 startedAtMs = Clock.System.now().toEpochMilliseconds(),
-                finishedAtMs = null
+                finishedAtMs = null,
+                taskId = null
             )
         }
         job = viewModelScope.launch {
-            try {
-                repository.indexStream().collect { event ->
-                    _state.update { it.copy(lastEvent = event) }
-                }
+            collectStream(repository.indexStream(), taskId = null)
+        }
+    }
+
+    private suspend fun collectStream(stream: Flow<IndexStreamEvent>, taskId: String?) {
+        // If we're resuming, taskId is known up front; otherwise we capture
+        // it from the first event the server sends (IndexStreamEvent carries
+        // taskId on every update).
+        if (taskId != null) _state.update { it.copy(taskId = taskId) }
+        try {
+            stream.collect { event ->
                 _state.update {
                     it.copy(
-                        isRunning = false,
-                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                        lastEvent = event,
+                        taskId = it.taskId ?: event.taskId
                     )
                 }
-            } catch (t: kotlinx.coroutines.CancellationException) {
-                // cancel() already updated state; rethrow so the job
-                // settles as cancelled rather than completed.
-                throw t
-            } catch (e: Throwable) {
-                _state.update {
-                    it.copy(
-                        isRunning = false,
-                        errorMessage = e.message ?: "Indexing failed",
-                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
-                    )
-                }
+            }
+            _state.update {
+                it.copy(
+                    isRunning = false,
+                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                )
+            }
+        } catch (t: kotlinx.coroutines.CancellationException) {
+            throw t
+        } catch (e: Throwable) {
+            _state.update {
+                it.copy(
+                    isRunning = false,
+                    errorMessage = e.message ?: "Indexing failed",
+                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                )
             }
         }
     }
 
     fun cancel() {
+        // Local cancel only closes our flow subscription; the server keeps
+        // working. Hit DELETE /api/tasks/{id} so the actual task stops too.
+        val id = _state.value.taskId
+        if (id != null) {
+            viewModelScope.launch {
+                runCatching { repository.cancelBackgroundTask(id) }
+            }
+        }
         job?.cancel()
         job = null
         _state.update {

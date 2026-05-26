@@ -495,6 +495,7 @@
     <string name="admin_run_tasks_tile_active">Active</string>
     <string name="admin_run_tasks_section_other">Other tasks</string>
     <string name="admin_run_tasks_section_ml">ML tasks</string>
+    <string name="admin_run_tasks_running_title">Running tasks</string>
 
     <string name="admin_settings_face_recognition">Face recognition</string>
     <string name="admin_settings_face_recognition_subtitle">Thresholds, model and workers</string>
@@ -769,8 +770,18 @@
     <string name="admin_backup_downloaded">Saved to %1$s.</string>
     <string name="admin_backup_restore_only_pwa">Backup restore is only available from the web app for now.</string>
 
-    <!-- Metadata task (uses indexing) -->
-    <string name="admin_metadata_task_explanation">Metadata extraction is part of the server's index pipeline. Trigger an index run to re-extract EXIF, GPS and other fields.</string>
+    <!-- Metadata task -->
+    <string name="admin_metadata_task_explanation">Re-reads EXIF, GPS and other fields directly from the files.</string>
+    <string name="admin_metadata_action_start">Extract metadata</string>
+    <string name="admin_metadata_action_cancel">Cancel</string>
+    <string name="admin_metadata_completed">Extraction complete.</string>
+    <string name="admin_metadata_overwrite">Overwrite existing</string>
+    <string name="admin_metadata_stats_total">Total</string>
+    <string name="admin_metadata_stats_processed">Processed</string>
+    <string name="admin_metadata_stats_extracted">Extracted</string>
+    <string name="admin_metadata_stats_skipped">Skipped</string>
+    <string name="admin_metadata_stats_failed">Failed</string>
+    <string name="admin_task_speed_metadata">%1$s metadata/s</string>
 
     <!-- Backup (formerly Device sync) -->
     <string name="device_backup_title">Backup</string>

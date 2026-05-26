@@ -242,6 +242,24 @@ data class ThumbnailStreamEvent(
 )
 
 @Serializable
+data class MetadataStreamStatistics(
+    val totalAssets: Int? = null,
+    val processed: Int? = null,
+    val extracted: Int? = null,
+    val skipped: Int? = null,
+    val failed: Int? = null
+)
+
+@Serializable
+data class MetadataStreamEvent(
+    val message: String = "",
+    val percentage: Double = 0.0,
+    val statistics: MetadataStreamStatistics? = null,
+    val isCompleted: Boolean = false,
+    val taskId: String? = null
+)
+
+@Serializable
 data class DuplicatesStreamStatistics(
     val totalAssets: Int? = null,
     val duplicateGroups: Int? = null,
@@ -259,6 +277,24 @@ data class DuplicatesStreamEvent(
     val isCompleted: Boolean = false,
     val taskId: String? = null
 )
+
+// Mirrors the anonymous projection returned by `GET /api/tasks` on the
+// server (BackgroundTasksEndpoint.cs). The server keeps finished tasks
+// for ~1h so clients can reconnect to a buffered stream after the user
+// navigates away or relaunches the app.
+@Serializable
+data class BackgroundTaskDto(
+    val id: String,
+    val type: String,
+    val status: String,
+    val percentage: Double = 0.0,
+    val lastMessage: String = "",
+    val startedAt: String,
+    val finishedAt: String? = null,
+    val parameters: Map<String, String> = emptyMap()
+) {
+    val isRunning: Boolean get() = status == "Running"
+}
 
 // Database backup / restore ----------------------------------------------
 

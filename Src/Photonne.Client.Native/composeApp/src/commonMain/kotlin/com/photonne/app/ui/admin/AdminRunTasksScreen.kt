@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,8 +48,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.models.BackgroundTaskDto
 import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_run_tasks_running_title
 import com.photonne.app.resources.admin_run_tasks_section_ml
 import com.photonne.app.resources.admin_run_tasks_section_other
 import com.photonne.app.resources.admin_run_tasks_summary_idle
@@ -172,6 +175,10 @@ private const val PollIntervalMs = 10_000L
 
 data class AdminRunTasksUiState(
     val pending: Map<AdminRunTask, PendingCountResponse> = emptyMap(),
+    // Background admin tasks the server reports as Running. Used to render
+    // a "Tareas en curso" banner above the ML summary so the admin can see
+    // ongoing index/thumbnail/metadata work without opening each screen.
+    val runningTasks: List<BackgroundTaskDto> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -227,22 +234,51 @@ class AdminRunTasksViewModel(
      */
     private suspend fun refresh(showLoading: Boolean) {
         if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null) }
-        val results = coroutineScope {
-            AdminRunTask.values()
-                .filter { it.backfillKind != null }
-                .map { task ->
-                    async {
-                        runCatching {
-                            repository.pendingCount(task.backfillKind!!.apiPath)
-                        }.getOrNull()?.let { task to it }
+        val pendingDeferred: kotlinx.coroutines.Deferred<Map<AdminRunTask, PendingCountResponse>>
+        val runningDeferred: kotlinx.coroutines.Deferred<List<BackgroundTaskDto>>
+        coroutineScope {
+            pendingDeferred = async {
+                AdminRunTask.values()
+                    .filter { it.backfillKind != null }
+                    .map { task ->
+                        async {
+                            runCatching {
+                                repository.pendingCount(task.backfillKind!!.apiPath)
+                            }.getOrNull()?.let { task to it }
+                        }
                     }
-                }
-                .awaitAll()
-                .filterNotNull()
-                .toMap()
+                    .awaitAll()
+                    .filterNotNull()
+                    .toMap()
+            }
+            // Best-effort: a network blip on /api/tasks shouldn't blank out
+            // the ML counters or break polling. Failed fetch ⇒ keep last list.
+            runningDeferred = async {
+                runCatching { repository.listBackgroundTasks() }
+                    .getOrNull()
+                    ?.filter { it.isRunning }
+                    ?: _state.value.runningTasks
+            }
         }
-        _state.update { it.copy(pending = results, isLoading = false) }
+        _state.update {
+            it.copy(
+                pending = pendingDeferred.await(),
+                runningTasks = runningDeferred.await(),
+                isLoading = false
+            )
+        }
     }
+}
+
+/** Maps a server-side BackgroundTaskType string to the corresponding
+ *  [AdminRunTask] entry so the banner can both label and navigate. Returns
+ *  null for types without a hub destination (e.g. LibraryScan, which lives
+ *  inside the libraries screen). */
+private fun runTaskFromBackgroundType(type: String): AdminRunTask? = when (type) {
+    "IndexAssets" -> AdminRunTask.IndexAssets
+    "Thumbnails" -> AdminRunTask.GenerateThumbnails
+    "Metadata" -> AdminRunTask.ExtractMetadata
+    else -> null
 }
 
 @Composable
@@ -274,6 +310,18 @@ fun AdminRunTasksScreen(
                     msg,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        val runningInHub = state.runningTasks.mapNotNull { dto ->
+            runTaskFromBackgroundType(dto.type)?.let { task -> task to dto }
+        }
+        if (runningInHub.isNotEmpty()) {
+            item {
+                RunningTasksBanner(
+                    items = runningInHub,
+                    onOpenTask = onOpenTask
                 )
             }
         }
@@ -311,6 +359,93 @@ private fun SectionLabel(text: String) {
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurface
     )
+}
+
+/**
+ * Live status banner — one row per running background task so the admin
+ * sees ongoing index/thumbnail/metadata work at the hub level without
+ * opening each detail screen. Tapping a row navigates to the matching
+ * task screen, which then reconnects to the buffered stream.
+ */
+@Composable
+private fun RunningTasksBanner(
+    items: List<Pair<AdminRunTask, BackgroundTaskDto>>,
+    onOpenTask: (AdminRunTask) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(Res.string.admin_run_tasks_running_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                LiveDot(active = true)
+            }
+            items.forEach { (task, dto) ->
+                RunningTaskRow(task = task, dto = dto, onClick = { onOpenTask(task) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun RunningTaskRow(
+    task: AdminRunTask,
+    dto: BackgroundTaskDto,
+    onClick: () -> Unit,
+) {
+    val pct = (dto.percentage / 100.0).toFloat().coerceIn(0f, 1f)
+    val pctLabel = dto.percentage.toInt().coerceIn(0, 100)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = task.icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                stringResource(task.titleRes),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "$pctLabel%",
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+        LinearProgressIndicator(
+            progress = { pct },
+            modifier = Modifier.fillMaxWidth().height(4.dp)
+        )
+        if (dto.lastMessage.isNotBlank()) {
+            Text(
+                dto.lastMessage,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }
 
 /**

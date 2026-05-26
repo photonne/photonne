@@ -471,6 +471,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.admin.AdminIndexAssetsViewModel = koinViewModel()
     val adminThumbnailsViewModel:
         com.photonne.app.ui.admin.AdminThumbnailsViewModel = koinViewModel()
+    val adminMetadataViewModel:
+        com.photonne.app.ui.admin.AdminMetadataViewModel = koinViewModel()
     val adminDuplicatesViewModel:
         com.photonne.app.ui.admin.AdminDuplicatesViewModel = koinViewModel()
     val adminMaintenanceViewModel:
@@ -2186,7 +2188,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.AdminSystemExtractMetadata ->
                         com.photonne.app.ui.admin.AdminMetadataTaskScreen(
-                            viewModel = adminIndexAssetsViewModel
+                            viewModel = adminMetadataViewModel
                         )
                     MoreSubscreen.AdminSystemThumbnails ->
                         com.photonne.app.ui.admin.AdminThumbnailsScreen(

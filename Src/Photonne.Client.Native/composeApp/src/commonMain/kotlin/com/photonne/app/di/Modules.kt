@@ -62,6 +62,7 @@ import com.photonne.app.ui.admin.AdminIndexAssetsViewModel
 import com.photonne.app.ui.admin.AdminLibrariesViewModel
 import com.photonne.app.ui.admin.AdminMaintenanceViewModel
 import com.photonne.app.ui.admin.AdminMetadataSettingsViewModel
+import com.photonne.app.ui.admin.AdminMetadataViewModel
 import com.photonne.app.ui.admin.AdminNightlySettingsViewModel
 import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerSettingsViewModel
@@ -196,6 +197,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminUserDefaultsViewModel)
     viewModelOf(::AdminIndexAssetsViewModel)
     viewModelOf(::AdminThumbnailsViewModel)
+    viewModelOf(::AdminMetadataViewModel)
     viewModelOf(::AdminDuplicatesViewModel)
     viewModelOf(::AdminMaintenanceViewModel)
     viewModelOf(::AdminFaceRecognitionSettingsViewModel)

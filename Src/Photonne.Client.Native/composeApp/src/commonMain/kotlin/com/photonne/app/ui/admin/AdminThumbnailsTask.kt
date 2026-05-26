@@ -46,12 +46,14 @@ import com.photonne.app.resources.admin_thumbnails_stats_skipped
 import com.photonne.app.resources.admin_thumbnails_stats_total
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.stringResource
 
 data class AdminThumbnailsUiState(
@@ -60,7 +62,8 @@ data class AdminThumbnailsUiState(
     val lastEvent: ThumbnailStreamEvent? = null,
     val startedAtMs: Long? = null,
     val finishedAtMs: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val taskId: String? = null
 )
 
 class AdminThumbnailsViewModel(
@@ -69,6 +72,42 @@ class AdminThumbnailsViewModel(
     private val _state = MutableStateFlow(AdminThumbnailsUiState())
     val state: StateFlow<AdminThumbnailsUiState> = _state.asStateFlow()
     private var job: Job? = null
+
+    init {
+        // Re-attach to a server-side thumbnail task if one is still running
+        // when the screen is first opened. Mirrors AdminIndexAssetsViewModel.
+        job = viewModelScope.launch { reconnectIfRunning() }
+    }
+
+    private suspend fun reconnectIfRunning() {
+        val running = repository.findRunningTaskOfType("Thumbnails") ?: return
+        if (_state.value.isRunning) return
+
+        val startMs = runCatching { Instant.parse(running.startedAt).toEpochMilliseconds() }
+            .getOrDefault(Clock.System.now().toEpochMilliseconds())
+
+        // The "regenerate" flag is also persisted in task.parameters so the
+        // toggle stays in sync with what's actually running on the server.
+        val regenerate = running.parameters["regenerate"]?.equals("true", ignoreCase = true)
+            ?: _state.value.regenerate
+
+        _state.update {
+            it.copy(
+                isRunning = true,
+                regenerate = regenerate,
+                errorMessage = null,
+                lastEvent = ThumbnailStreamEvent(
+                    message = running.lastMessage,
+                    percentage = running.percentage,
+                    statistics = null
+                ),
+                startedAtMs = startMs,
+                finishedAtMs = null,
+                taskId = running.id
+            )
+        }
+        collectStream(repository.resumeThumbnailsTaskStream(running.id), taskId = running.id)
+    }
 
     fun setRegenerate(value: Boolean) {
         _state.update { it.copy(regenerate = value) }
@@ -83,35 +122,58 @@ class AdminThumbnailsViewModel(
                 errorMessage = null,
                 lastEvent = null,
                 startedAtMs = Clock.System.now().toEpochMilliseconds(),
-                finishedAtMs = null
+                finishedAtMs = null,
+                taskId = null
             )
         }
         job = viewModelScope.launch {
-            try {
-                repository.thumbnailsStream(regenerate = regenerate).collect { event ->
-                    _state.update { it.copy(lastEvent = event) }
-                }
+            collectStream(
+                repository.thumbnailsStream(regenerate = regenerate),
+                taskId = null
+            )
+        }
+    }
+
+    private suspend fun collectStream(
+        stream: Flow<ThumbnailStreamEvent>,
+        taskId: String?
+    ) {
+        if (taskId != null) _state.update { it.copy(taskId = taskId) }
+        try {
+            stream.collect { event ->
                 _state.update {
                     it.copy(
-                        isRunning = false,
-                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                        lastEvent = event,
+                        taskId = it.taskId ?: event.taskId
                     )
                 }
-            } catch (t: kotlinx.coroutines.CancellationException) {
-                throw t
-            } catch (e: Throwable) {
-                _state.update {
-                    it.copy(
-                        isRunning = false,
-                        errorMessage = e.message ?: "Thumbnail generation failed",
-                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
-                    )
-                }
+            }
+            _state.update {
+                it.copy(
+                    isRunning = false,
+                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                )
+            }
+        } catch (t: kotlinx.coroutines.CancellationException) {
+            throw t
+        } catch (e: Throwable) {
+            _state.update {
+                it.copy(
+                    isRunning = false,
+                    errorMessage = e.message ?: "Thumbnail generation failed",
+                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                )
             }
         }
     }
 
     fun cancel() {
+        val id = _state.value.taskId
+        if (id != null) {
+            viewModelScope.launch {
+                runCatching { repository.cancelBackgroundTask(id) }
+            }
+        }
         job?.cancel()
         job = null
         _state.update {

@@ -6,6 +6,7 @@ import com.photonne.app.data.models.AdminStatsResponse
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.BackfillRequest
 import com.photonne.app.data.models.BackfillResponse
+import com.photonne.app.data.models.BackgroundTaskDto
 import com.photonne.app.data.models.BackupRestoreResponse
 import com.photonne.app.data.models.CreateLibraryRequest
 import com.photonne.app.data.models.CreateUserRequest
@@ -16,6 +17,7 @@ import com.photonne.app.data.models.IndexStreamEvent
 import com.photonne.app.data.models.LibraryPermissionDto
 import com.photonne.app.data.models.LibraryScanProgress
 import com.photonne.app.data.models.MaintenanceTaskResult
+import com.photonne.app.data.models.MetadataStreamEvent
 import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.data.models.ThumbnailStreamEvent
 import com.photonne.app.data.models.TrashCleanupResult
@@ -199,10 +201,39 @@ class AdminRepository(private val api: PhotonneApi) {
     suspend fun thumbnailsStream(regenerate: Boolean): Flow<ThumbnailStreamEvent> =
         api.adminThumbnailsStream(regenerate)
 
+    suspend fun metadataStream(overwrite: Boolean): Flow<MetadataStreamEvent> =
+        api.adminMetadataStream(overwrite)
+
     suspend fun duplicatesStream(
         cleanup: Boolean,
         physical: Boolean
     ): Flow<DuplicatesStreamEvent> = api.adminDuplicatesStream(cleanup = cleanup, physical = physical)
+
+    // --- Background task registry ---
+
+    suspend fun listBackgroundTasks(): List<BackgroundTaskDto> = api.listBackgroundTasks()
+
+    /**
+     * Find a running background task by type name (matches the server's
+     * [BackgroundTaskType] enum: "IndexAssets", "Thumbnails", "Metadata",
+     * "LibraryScan"). Returns null on network errors so UI init code can
+     * fall through to a normal idle state instead of blocking.
+     */
+    suspend fun findRunningTaskOfType(type: String): BackgroundTaskDto? =
+        runCatching { api.listBackgroundTasks() }
+            .getOrNull()
+            ?.firstOrNull { it.type == type && it.isRunning }
+
+    suspend fun cancelBackgroundTask(id: String) = api.cancelBackgroundTask(id)
+
+    suspend fun resumeIndexTaskStream(id: String): Flow<IndexStreamEvent> =
+        api.resumeIndexTaskStream(id)
+
+    suspend fun resumeThumbnailsTaskStream(id: String): Flow<ThumbnailStreamEvent> =
+        api.resumeThumbnailsTaskStream(id)
+
+    suspend fun resumeMetadataTaskStream(id: String): Flow<MetadataStreamEvent> =
+        api.resumeMetadataTaskStream(id)
 
     // --- Backup / restore ---
 
