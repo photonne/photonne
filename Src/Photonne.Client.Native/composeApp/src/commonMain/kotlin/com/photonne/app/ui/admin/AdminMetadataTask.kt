@@ -85,6 +85,12 @@ class AdminMetadataViewModel(
     private var job: Job? = null
 
     init {
+        refresh()
+    }
+
+    /** See [AdminIndexAssetsViewModel.refresh]. */
+    fun refresh() {
+        if (_state.value.isRunning) return
         job = viewModelScope.launch { reconnectIfRunning() }
     }
 
@@ -188,6 +194,8 @@ class AdminMetadataViewModel(
 @Composable
 fun AdminMetadataTaskScreen(viewModel: AdminMetadataViewModel) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) { viewModel.refresh() }
 
     var nowMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
     LaunchedEffect(state.isRunning) {

@@ -76,6 +76,12 @@ class AdminThumbnailsViewModel(
     init {
         // Re-attach to a server-side thumbnail task if one is still running
         // when the screen is first opened. Mirrors AdminIndexAssetsViewModel.
+        refresh()
+    }
+
+    /** See [AdminIndexAssetsViewModel.refresh]. */
+    fun refresh() {
+        if (_state.value.isRunning) return
         job = viewModelScope.launch { reconnectIfRunning() }
     }
 
@@ -188,6 +194,8 @@ class AdminThumbnailsViewModel(
 @Composable
 fun AdminThumbnailsScreen(viewModel: AdminThumbnailsViewModel) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(viewModel) { viewModel.refresh() }
 
     var nowMs by remember { mutableStateOf(Clock.System.now().toEpochMilliseconds()) }
     LaunchedEffect(state.isRunning) {

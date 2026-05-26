@@ -79,6 +79,22 @@ class AdminIndexAssetsViewModel(
         // On first construction, check if the server has an index task
         // already running (started in a previous session, from the PWA,
         // or from another device) and re-attach to its buffered stream.
+        refresh()
+    }
+
+    /**
+     * Re-checks the server for a running index task and attaches if found.
+     * Called both at VM construction (covers cold start) and from the
+     * screen's `LaunchedEffect` (covers the case where a task was started
+     * from another client while the VM was already alive but the user
+     * hadn't entered this screen yet).
+     *
+     * Idempotent: skips the network round-trip when a local run is already
+     * in progress, and `reconnectIfRunning()` itself bails out before
+     * touching state when the task isn't running on the server.
+     */
+    fun refresh() {
+        if (_state.value.isRunning) return
         job = viewModelScope.launch { reconnectIfRunning() }
     }
 
@@ -181,6 +197,10 @@ class AdminIndexAssetsViewModel(
 @Composable
 fun AdminIndexAssetsScreen(viewModel: AdminIndexAssetsViewModel) {
     val state by viewModel.state.collectAsState()
+
+    // Re-check on every screen entry: if a run was started elsewhere (PWA,
+    // another device) since this VM was last active, hydrate from the server.
+    LaunchedEffect(viewModel) { viewModel.refresh() }
 
     // Tick once a second while the task is running so the elapsed / ETA
     // chips stay live; we don't keep ticking once it's finished.
