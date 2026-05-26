@@ -16,8 +16,8 @@ public record BackfillResponse(int Enqueued, int Total);
 public record GlobalReclusterResponse(int OwnersProcessed, int PersonsCreated);
 
 /// <summary>Admin-only: enqueues FaceRecognition ML jobs for all existing image
-/// assets that haven't been processed yet. The MlJobProcessorService picks them
-/// up at its normal cadence; deduplication in MlJobService prevents duplicate
+/// assets that haven't been processed yet. The EnrichmentWorker picks them
+/// up at its normal cadence; deduplication in EnrichmentService prevents duplicate
 /// pending jobs.</summary>
 public class FaceRecognitionBackfillEndpoint : IEndpoint
 {
@@ -29,16 +29,16 @@ public class FaceRecognitionBackfillEndpoint : IEndpoint
 
         group.MapPost("/face-recognition/backfill", (
             [FromServices] ApplicationDbContext db,
-            [FromServices] IMlJobService mlJobs,
+            [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromServices] INotificationService notifications,
             [FromBody] BackfillRequest? body,
             HttpContext http,
-            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
+            CancellationToken ct) => MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, notifications: notifications, triggeredBy: AdminEndpointHelpers.GetUserId(http)));
 
         group.MapGet("/face-recognition/pending-count", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, MlJobType.FaceRecognition, ct));
+            CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct));
     }
 }
 

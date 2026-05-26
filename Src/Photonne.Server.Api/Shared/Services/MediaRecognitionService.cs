@@ -122,47 +122,47 @@ public class MediaRecognitionService
                (exif.Width.Value * exif.Height.Value) > 500000; // > 500K pixels
     }
 
-    public static readonly IReadOnlyList<MlJobType> AllJobTypes = new[]
+    public static readonly IReadOnlyList<AssetEnrichmentType> AllMlTaskTypes = new[]
     {
-        MlJobType.FaceRecognition,
-        MlJobType.ObjectDetection,
-        MlJobType.SceneClassification,
-        MlJobType.TextRecognition,
-        MlJobType.ImageEmbedding,
+        AssetEnrichmentType.FaceRecognition,
+        AssetEnrichmentType.ObjectDetection,
+        AssetEnrichmentType.SceneClassification,
+        AssetEnrichmentType.TextRecognition,
+        AssetEnrichmentType.ImageEmbedding,
     };
 
     /// <summary>
-    /// Returns the ML job types that should be enqueued for an asset: gated by
-    /// <see cref="ShouldTriggerMlJob"/>, and excluding types whose corresponding
-    /// *CompletedAt timestamp is already set (i.e. previously processed
-    /// successfully). Pending/Processing duplicates are filtered later by
-    /// <see cref="IMlJobService.EnqueueMlJobAsync"/>.
+    /// Returns the ML enrichment task types that should be enqueued for an
+    /// asset: gated by <see cref="ShouldTriggerMlJob"/> and excluding types
+    /// whose corresponding *CompletedAt timestamp is already set (previously
+    /// processed successfully). Pending/Processing duplicates are filtered
+    /// later by <see cref="IEnrichmentService.EnqueueAsync"/>.
     /// </summary>
-    public IReadOnlyList<MlJobType> GetMissingMlJobTypes(Asset asset, AssetExif? exif)
+    public IReadOnlyList<AssetEnrichmentType> GetMissingMlTaskTypes(Asset asset, AssetExif? exif)
     {
         if (!ShouldTriggerMlJob(asset, exif))
-            return Array.Empty<MlJobType>();
+            return Array.Empty<AssetEnrichmentType>();
 
-        var missing = new List<MlJobType>(AllJobTypes.Count);
-        if (asset.FaceRecognitionCompletedAt == null) missing.Add(MlJobType.FaceRecognition);
-        if (asset.ObjectDetectionCompletedAt == null) missing.Add(MlJobType.ObjectDetection);
-        if (asset.SceneClassificationCompletedAt == null) missing.Add(MlJobType.SceneClassification);
-        if (asset.TextRecognitionCompletedAt == null) missing.Add(MlJobType.TextRecognition);
-        if (asset.ImageEmbeddingCompletedAt == null) missing.Add(MlJobType.ImageEmbedding);
+        var missing = new List<AssetEnrichmentType>(AllMlTaskTypes.Count);
+        if (asset.FaceRecognitionCompletedAt == null) missing.Add(AssetEnrichmentType.FaceRecognition);
+        if (asset.ObjectDetectionCompletedAt == null) missing.Add(AssetEnrichmentType.ObjectDetection);
+        if (asset.SceneClassificationCompletedAt == null) missing.Add(AssetEnrichmentType.SceneClassification);
+        if (asset.TextRecognitionCompletedAt == null) missing.Add(AssetEnrichmentType.TextRecognition);
+        if (asset.ImageEmbeddingCompletedAt == null) missing.Add(AssetEnrichmentType.ImageEmbedding);
         return missing;
     }
 
     /// <summary>
     /// EF-translatable predicate matching assets that have not yet completed
-    /// the given ML job type. Shared by the admin backfill endpoints.
+    /// the given ML task type. Shared by the admin backfill endpoints.
     /// </summary>
-    public static Expression<Func<Asset, bool>> MissingCompletionFilter(MlJobType jobType) => jobType switch
+    public static Expression<Func<Asset, bool>> MissingCompletionFilter(AssetEnrichmentType taskType) => taskType switch
     {
-        MlJobType.FaceRecognition => a => a.FaceRecognitionCompletedAt == null,
-        MlJobType.ObjectDetection => a => a.ObjectDetectionCompletedAt == null,
-        MlJobType.SceneClassification => a => a.SceneClassificationCompletedAt == null,
-        MlJobType.TextRecognition => a => a.TextRecognitionCompletedAt == null,
-        MlJobType.ImageEmbedding => a => a.ImageEmbeddingCompletedAt == null,
-        _ => throw new ArgumentOutOfRangeException(nameof(jobType), jobType, null),
+        AssetEnrichmentType.FaceRecognition     => a => a.FaceRecognitionCompletedAt == null,
+        AssetEnrichmentType.ObjectDetection     => a => a.ObjectDetectionCompletedAt == null,
+        AssetEnrichmentType.SceneClassification => a => a.SceneClassificationCompletedAt == null,
+        AssetEnrichmentType.TextRecognition     => a => a.TextRecognitionCompletedAt == null,
+        AssetEnrichmentType.ImageEmbedding      => a => a.ImageEmbeddingCompletedAt == null,
+        _ => throw new ArgumentOutOfRangeException(nameof(taskType), taskType, "Not an ML task type"),
     };
 }

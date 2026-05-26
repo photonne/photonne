@@ -24,7 +24,7 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
 
         group.MapPost("/backfill", (
             [FromServices] ApplicationDbContext db,
-            [FromServices] IMlJobService mlJobs,
+            [FromServices] IEnrichmentService mlJobs,
             [FromServices] SettingsService settings,
             [FromBody] BackfillRequest? body,
             ClaimsPrincipal user,
@@ -32,7 +32,7 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
         {
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
                 return Task.FromResult(Results.Unauthorized());
-            return MlBackfillRunner.RunAsync(db, mlJobs, settings, MlJobType.FaceRecognition, body, ct, ownerScope: userId);
+            return MlBackfillRunner.RunAsync(db, mlJobs, settings, AssetEnrichmentType.FaceRecognition, body, ct, ownerScope: userId);
         });
 
         group.MapGet("/pending-count", (
@@ -42,7 +42,7 @@ public class UserFaceRecognitionBackfillEndpoint : IEndpoint
         {
             if (!ListPeopleEndpoint.TryGetUserId(user, out var userId))
                 return Task.FromResult(Results.Unauthorized());
-            return MlBackfillRunner.GetPendingCountAsync(db, MlJobType.FaceRecognition, ct, ownerScope: userId);
+            return MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.FaceRecognition, ct, ownerScope: userId);
         });
     }
 }

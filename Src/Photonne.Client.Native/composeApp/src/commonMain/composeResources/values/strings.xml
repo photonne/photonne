@@ -814,6 +814,48 @@
     <string name="backup_pending_screen_title">Pendientes</string>
     <string name="backup_disabled_hint">Activa la copia de seguridad para empezar a subir tus fotos.</string>
 
+    <!-- Background sync preferences -->
+    <string name="background_sync_section">Sincronización en segundo plano</string>
+    <string name="background_sync_auto_label">Sync automático</string>
+    <string name="background_sync_auto_hint">Sube en segundo plano sin necesidad de abrir la app</string>
+    <string name="background_sync_wifi_label">Solo con Wi-Fi</string>
+    <string name="background_sync_wifi_hint">Evita consumir datos móviles</string>
+    <string name="background_sync_charging_label">Solo cargando</string>
+    <string name="background_sync_charging_hint">Evita gastar batería</string>
+
+    <!-- Sync summary (rendered after a backup batch completes) -->
+    <string name="backup_summary_title">Resumen de la copia</string>
+    <string name="backup_summary_counts">Subidos %1$d · Omitidos %2$d · Fallidos %3$d</string>
+    <string name="backup_failure_reason_label">%1$s: %2$d</string>
+    <string name="upload_error_quota_exceeded">Cuota de almacenamiento agotada</string>
+    <string name="upload_error_file_too_large">Archivo demasiado grande</string>
+    <string name="upload_error_not_allowed">No permitido</string>
+    <string name="upload_error_unauthorized">Sesión expirada</string>
+    <string name="upload_error_rate_limited">Servidor saturado</string>
+    <string name="upload_error_server_error">Error del servidor</string>
+    <string name="upload_error_network_error">Error de red</string>
+    <string name="upload_error_unknown">Error desconocido</string>
+
+    <!-- Enrichment status screen -->
+    <string name="enrichment_banner_title">Enriquecimiento pendiente</string>
+    <string name="enrichment_banner_subtitle">%1$d asset(s) con tareas pendientes o fallidas</string>
+    <string name="enrichment_banner_action">Ver estado</string>
+    <string name="enrichment_screen_title">Estado de enriquecimiento</string>
+    <string name="enrichment_summary">%1$d pendientes · %2$d fallidas</string>
+    <string name="enrichment_empty">Todos los assets están enriquecidos.</string>
+    <string name="enrichment_load_error">No se pudo cargar el estado: %1$s</string>
+    <string name="enrichment_retry_all">Reintentar fallidas</string>
+    <string name="enrichment_retrying_all">Reintentando…</string>
+    <string name="enrichment_card_counts">%1$d pendiente(s), %2$d en curso, %3$d fallida(s)</string>
+    <string name="enrichment_task_exif">EXIF</string>
+    <string name="enrichment_task_thumbnails">Miniaturas</string>
+    <string name="enrichment_task_media_recognition">Tipo de medio</string>
+    <string name="enrichment_task_face_recognition">Rostros</string>
+    <string name="enrichment_task_object_detection">Objetos</string>
+    <string name="enrichment_task_scene_classification">Escenas</string>
+    <string name="enrichment_task_text_recognition">Texto</string>
+    <string name="enrichment_task_image_embedding">Búsqueda IA</string>
+
     <!-- Utilities hub -->
     <string name="utilities_title">Utilidades</string>
     <string name="utilities_section_duplicates">Buscar duplicados</string>

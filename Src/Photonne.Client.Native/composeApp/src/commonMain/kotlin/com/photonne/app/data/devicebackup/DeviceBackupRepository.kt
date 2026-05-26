@@ -2,6 +2,9 @@ package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.upload.UploadRepository
+import kotlinx.coroutines.delay
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Coordinates between the local device gallery and the server. Three
@@ -42,6 +45,15 @@ class DeviceBackupRepository(
         stateStore.setBackupEnabled(enabled)
     }
 
+    // ─── Background sync passthrough ─────────────────────────────────────────
+
+    fun backgroundSyncPreferences(): BackgroundSyncPreferences =
+        stateStore.backgroundSyncPreferences()
+
+    fun setAutoBackupEnabled(enabled: Boolean) = stateStore.setAutoBackupEnabled(enabled)
+    fun setRequireWifi(value: Boolean) = stateStore.setRequireWifi(value)
+    fun setRequireCharging(value: Boolean) = stateStore.setRequireCharging(value)
+
     suspend fun restoreFolder(uri: String): DeviceFolderRef? =
         gallery.restoreFolder(uri)
 
@@ -68,15 +80,38 @@ class DeviceBackupRepository(
      * Reads [media] in full and posts it to the server. The server
      * dedupes by SHA-256 itself, so if the hash check above raced the
      * upload still ends with the right asset id.
+     *
+     * Transient failures (network, 5xx, 429) are retried with exponential
+     * backoff up to [maxAttempts] times. Permanent failures (quota, oversize,
+     * forbidden, unauthorized) bail immediately so we don't keep retrying
+     * something the server will never accept.
      */
-    suspend fun upload(media: DeviceMedia): com.photonne.app.data.api.UploadAssetResponse {
+    suspend fun upload(
+        media: DeviceMedia,
+        maxAttempts: Int = DEFAULT_MAX_ATTEMPTS
+    ): com.photonne.app.data.api.UploadAssetResponse {
         val bytes = gallery.readBytes(media)
-        return uploads.upload(
-            fileName = media.displayName,
-            mimeType = media.mimeType,
-            bytes = bytes,
-            destination = MOBILE_BACKUP_DESTINATION
-        )
+        var lastError: Throwable? = null
+        repeat(maxAttempts) { attempt ->
+            try {
+                return uploads.upload(
+                    fileName = media.displayName,
+                    mimeType = media.mimeType,
+                    bytes = bytes,
+                    destination = MOBILE_BACKUP_DESTINATION,
+                    deviceName = currentDeviceName()
+                )
+            } catch (ex: Throwable) {
+                lastError = ex
+                if (!ex.toUploadFailureReason().isRetryable) {
+                    throw ex // permanent — no point retrying
+                }
+                if (attempt < maxAttempts - 1) {
+                    delay(retryDelayFor(attempt))
+                }
+            }
+        }
+        throw lastError ?: RuntimeException("Upload failed after $maxAttempts attempts")
     }
 
     fun thumbnailModel(media: DeviceMedia): String = gallery.thumbnailModel(media)
@@ -86,5 +121,15 @@ class DeviceBackupRepository(
 
     companion object {
         const val MOBILE_BACKUP_DESTINATION = "mobile-backup"
+        const val DEFAULT_MAX_ATTEMPTS = 3
+
+        // Backoff between client-side upload retries. Index = attempt number
+        // (0-based) of the FAILED attempt — delay BEFORE the next try.
+        // Kept short on purpose: a stuck phone backup shouldn't waste 6h like
+        // server-side enrichment does.
+        private val retryDelays = listOf(1.seconds, 5.seconds, 30.seconds)
+
+        private fun retryDelayFor(attempt: Int): Duration =
+            retryDelays.getOrElse(attempt) { retryDelays.last() }
     }
 }

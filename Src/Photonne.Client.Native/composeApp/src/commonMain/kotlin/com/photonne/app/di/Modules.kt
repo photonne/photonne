@@ -79,6 +79,7 @@ import com.photonne.app.ui.notifications.NotificationsViewModel
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.TimelineViewModel
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
+import com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel
 import com.photonne.app.ui.explore.ExploreFacetsViewModel
 import com.photonne.app.ui.hub.HubViewModel
 import com.photonne.app.ui.upload.UploadViewModel
@@ -132,6 +133,9 @@ fun commonModule(config: PhotonneAppConfig) = module {
             stateStore = get()
         )
     }
+    single { com.photonne.app.data.devicebackup.EnrichmentRepository(get()) }
+    single { com.photonne.app.data.devicebackup.BackupRunner(repository = get(), gallery = get()) }
+    single { com.photonne.app.data.devicebackup.createBackgroundSyncScheduler() }
     single { ThemePreferenceStore(get()) }
     single { TimelineZoomStore(get()) }
     single { TimelineRepository(api = get()) }
@@ -164,6 +168,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
     viewModelOf(::DeviceBackupViewModel)
+    viewModelOf(::EnrichmentStatusViewModel)
     viewModelOf(::UtilitiesDuplicatesViewModel)
     viewModelOf(::UtilitiesLargeFilesViewModel)
     viewModelOf(::UtilitiesLocationsViewModel)

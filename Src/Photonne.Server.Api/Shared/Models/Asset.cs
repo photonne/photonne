@@ -81,7 +81,7 @@ public class Asset
     public ICollection<AssetThumbnail> Thumbnails { get; set; } = new List<AssetThumbnail>();
     public ICollection<AssetTag> Tags { get; set; } = new List<AssetTag>();
     public ICollection<AssetUserTag> UserTags { get; set; } = new List<AssetUserTag>();
-    public ICollection<AssetMlJob> MlJobs { get; set; } = new List<AssetMlJob>();
+    public ICollection<AssetEnrichmentTask> EnrichmentTasks { get; set; } = new List<AssetEnrichmentTask>();
     public ICollection<Face> Faces { get; set; } = new List<Face>();
     public ICollection<AssetDetectedObject> DetectedObjects { get; set; } = new List<AssetDetectedObject>();
     public ICollection<AssetClassifiedScene> ClassifiedScenes { get; set; } = new List<AssetClassifiedScene>();

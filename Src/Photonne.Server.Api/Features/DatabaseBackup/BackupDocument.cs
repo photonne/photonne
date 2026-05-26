@@ -43,7 +43,7 @@ public class BackupDocument
     public List<Notification> Notifications { get; set; } = [];
 
     // --- ML layer (only populated when IncludesMlData = true) -----------
-    public List<AssetMlJob> AssetMlJobs { get; set; } = [];
+    public List<AssetEnrichmentTask> AssetEnrichmentTasks { get; set; } = [];
     public List<Person> People { get; set; } = [];
     public List<Face> Faces { get; set; } = [];
     public List<UserFaceAssignment> UserFaceAssignments { get; set; } = [];

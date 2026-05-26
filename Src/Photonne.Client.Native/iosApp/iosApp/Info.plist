@@ -48,5 +48,19 @@
     <string>Photonne necesita acceso a tu galería para hacer copia de seguridad de tus fotos y vídeos en el servidor.</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <!--
+    Background sync (Phase F.4 / iOS): the BGTaskScheduler handler in
+    AppDelegate.swift submits BGProcessingTaskRequest for this identifier
+    after every backup batch so iOS keeps waking us up periodically.
+    Identifier must match IosBackupBridge.TASK_IDENTIFIER in Kotlin.
+    -->
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.photonne.app.backup</string>
+    </array>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>processing</string>
+    </array>
 </dict>
 </plist>

@@ -27,12 +27,10 @@ public class UploadAssetsEndpoint : IEndpoint
     private async Task<IResult> Handle(
         [FromForm] IFormFile file,
         [FromForm] string? destination,
+        [FromForm] string? deviceName,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] FileHashService hashService,
-        [FromServices] ExifExtractorService exifService,
-        [FromServices] ThumbnailGeneratorService thumbnailService,
-        [FromServices] MediaRecognitionService mediaRecognitionService,
-        [FromServices] IMlJobService mlJobService,
+        [FromServices] IEnrichmentService enrichmentService,
         [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -76,11 +74,11 @@ public class UploadAssetsEndpoint : IEndpoint
                     statusCode: StatusCodes.Status409Conflict);
         }
 
-        // Guardar los uploads del usuario en su carpeta dedicada dentro del NAS.
-        // El cliente puede pedir un destino distinto al por defecto (ej. el backup
-        // automático del móvil va a MobileBackup en vez de Uploads).
-        var destinationFolder = ResolveDestinationFolder(destination);
-        var uploadsVirtualPath = $"/assets/users/{username}/{destinationFolder}";
+        // Resolve the destination folder. Manual uploads always go to /Uploads.
+        // Mobile backups go to /MobileBackup, optionally with a per-device subfolder
+        // (/MobileBackup/{deviceName}/) so the same user backing up multiple phones
+        // keeps them visually separated.
+        var uploadsVirtualPath = ResolveDestinationVirtualPath(username, destination, deviceName);
         var uploadsRootPath = await settingsService.ResolvePhysicalPathAsync(uploadsVirtualPath);
 
         var uploadsFolder = await EnsureFolderRecordAsync(dbContext, userId, uploadsVirtualPath, cancellationToken);
@@ -121,12 +119,13 @@ public class UploadAssetsEndpoint : IEndpoint
 
             File.Move(tempPath, targetPath);
 
-            // 5. Create Asset record
+            // 5. Create Asset record with the minimum the backup contract requires:
+            // file on disk + Asset row + checksum + owner/folder. Enrichment
+            // (EXIF, thumbnails, media tags, ML) is enqueued and runs in the
+            // background — failure there does NOT fail the upload.
             var fileInfo = new FileInfo(targetPath);
             var extension = Path.GetExtension(targetPath).ToLowerInvariant();
             var assetType = GetAssetType(extension);
-
-            // Normalizar FullPath para la BD: si está en la biblioteca gestionada, usamos el prefijo /assets
             var dbPath = await settingsService.VirtualizePathAsync(targetPath);
 
             var asset = new Asset
@@ -144,51 +143,19 @@ public class UploadAssetsEndpoint : IEndpoint
                 OwnerId = userId
             };
 
-            // 6. Extract Metadata & Recognition
-            var exif = await exifService.ExtractExifAsync(targetPath, cancellationToken);
-            if (exif != null)
-            {
-                asset.Exif = exif;
-                if (exif.DateTimeOriginal != null)
-                {
-                    asset.FileCreatedAt = exif.DateTimeOriginal.Value;
-                    asset.FileModifiedAt = asset.FileCreatedAt;
-                }
-                var tags = await mediaRecognitionService.DetectMediaTypeAsync(targetPath, exif, cancellationToken);
-                if (tags.Any())
-                {
-                    asset.Tags = tags.Select(t => new AssetTag { TagType = t, DetectedAt = DateTime.UtcNow }).ToList();
-                }
-            }
-
-            try
-            {
-                File.SetCreationTimeUtc(targetPath, asset.FileCreatedAt);
-                File.SetLastWriteTimeUtc(targetPath, asset.FileModifiedAt);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[WARN] No se pudieron actualizar timestamps del archivo {targetPath}: {ex.Message}");
-            }
-
-            // 7. Save to DB
             dbContext.Assets.Add(asset);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // 8. Generate Thumbnails
-            var thumbnails = await thumbnailService.GenerateThumbnailsAsync(targetPath, asset.Id, cancellationToken);
-            if (thumbnails.Any())
+            // 6. Enqueue the full enrichment pipeline.
+            if (assetType == AssetType.Image || assetType == AssetType.Video)
             {
-                dbContext.AssetThumbnails.AddRange(thumbnails);
+                await enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.Exif, cancellationToken);
+                await enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.MediaRecognition, cancellationToken);
             }
-
-            // 9. Queue ML Jobs
-            foreach (var jobType in mediaRecognitionService.GetMissingMlJobTypes(asset, asset.Exif))
-            {
-                await mlJobService.EnqueueMlJobAsync(asset.Id, jobType, cancellationToken);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.Thumbnails, cancellationToken);
+            // ML tasks gate themselves at execution time (image type + size), so it's
+            // fine to enqueue them eagerly here — the worker dispatch will short-circuit
+            // for video or tiny assets.
 
             return Results.Ok(new { message = "Asset uploaded successfully", assetId = asset.Id });
         }
@@ -208,6 +175,24 @@ public class UploadAssetsEndpoint : IEndpoint
             "uploads" => DefaultDestinationFolder,
             _ => DefaultDestinationFolder
         };
+    }
+
+    /// <summary>
+    /// Builds the per-user virtual destination path. The optional
+    /// <paramref name="deviceName"/> only takes effect for the MobileBackup
+    /// destination — manual /Uploads is always flat. Sanitizes the device name
+    /// before using it as a path segment so a malicious or messy client can't
+    /// inject path traversal or create absurd directory names.
+    /// </summary>
+    internal static string ResolveDestinationVirtualPath(string username, string? destination, string? deviceName)
+    {
+        var folder = ResolveDestinationFolder(destination);
+        var basePath = $"/assets/users/{username}/{folder}";
+
+        if (folder != MobileBackupDestinationFolder) return basePath;
+
+        var sanitized = DeviceFolderSanitizer.Sanitize(deviceName);
+        return sanitized == null ? basePath : $"{basePath}/{sanitized}";
     }
 
     private AssetType GetAssetType(string extension)

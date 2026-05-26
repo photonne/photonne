@@ -814,6 +814,48 @@
     <string name="backup_pending_screen_title">Pending</string>
     <string name="backup_disabled_hint">Turn backup on to start uploading your photos.</string>
 
+    <!-- Background sync preferences -->
+    <string name="background_sync_section">Background sync</string>
+    <string name="background_sync_auto_label">Auto sync</string>
+    <string name="background_sync_auto_hint">Upload in the background without opening the app</string>
+    <string name="background_sync_wifi_label">Wi-Fi only</string>
+    <string name="background_sync_wifi_hint">Avoid using mobile data</string>
+    <string name="background_sync_charging_label">Only while charging</string>
+    <string name="background_sync_charging_hint">Avoid draining the battery</string>
+
+    <!-- Sync summary (rendered after a backup batch completes) -->
+    <string name="backup_summary_title">Backup summary</string>
+    <string name="backup_summary_counts">Uploaded %1$d · Skipped %2$d · Failed %3$d</string>
+    <string name="backup_failure_reason_label">%1$s: %2$d</string>
+    <string name="upload_error_quota_exceeded">Storage quota exceeded</string>
+    <string name="upload_error_file_too_large">File too large</string>
+    <string name="upload_error_not_allowed">Not allowed</string>
+    <string name="upload_error_unauthorized">Session expired</string>
+    <string name="upload_error_rate_limited">Server is busy</string>
+    <string name="upload_error_server_error">Server error</string>
+    <string name="upload_error_network_error">Network error</string>
+    <string name="upload_error_unknown">Unknown error</string>
+
+    <!-- Enrichment status screen -->
+    <string name="enrichment_banner_title">Enrichment pending</string>
+    <string name="enrichment_banner_subtitle">%1$d asset(s) with pending or failed tasks</string>
+    <string name="enrichment_banner_action">View status</string>
+    <string name="enrichment_screen_title">Enrichment status</string>
+    <string name="enrichment_summary">%1$d pending · %2$d failed</string>
+    <string name="enrichment_empty">All assets are enriched.</string>
+    <string name="enrichment_load_error">Couldn\'t load status: %1$s</string>
+    <string name="enrichment_retry_all">Retry failed</string>
+    <string name="enrichment_retrying_all">Retrying…</string>
+    <string name="enrichment_card_counts">%1$d pending, %2$d in progress, %3$d failed</string>
+    <string name="enrichment_task_exif">EXIF</string>
+    <string name="enrichment_task_thumbnails">Thumbnails</string>
+    <string name="enrichment_task_media_recognition">Media type</string>
+    <string name="enrichment_task_face_recognition">Faces</string>
+    <string name="enrichment_task_object_detection">Objects</string>
+    <string name="enrichment_task_scene_classification">Scenes</string>
+    <string name="enrichment_task_text_recognition">Text</string>
+    <string name="enrichment_task_image_embedding">AI search</string>
+
     <!-- Utilities hub -->
     <string name="utilities_title">Utilities</string>
     <string name="utilities_section_duplicates">Find duplicates</string>

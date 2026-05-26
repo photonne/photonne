@@ -19,7 +19,7 @@ public class IndexStatistics
     public int HashesCalculated { get; set; }
     public int ExifExtracted { get; set; }
     public int MediaTagsDetected { get; set; }
-    public int MlJobsQueued { get; set; }
+    public int EnrichmentTasksQueued { get; set; }
     public int ThumbnailsGenerated { get; set; }
     public int ThumbnailsRegenerated { get; set; }
     public int DuplicateAssetsRemoved { get; set; }

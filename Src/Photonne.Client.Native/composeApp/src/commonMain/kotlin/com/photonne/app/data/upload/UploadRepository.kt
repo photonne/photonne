@@ -10,6 +10,7 @@ class UploadRepository(
         fileName: String,
         mimeType: String,
         bytes: ByteArray,
-        destination: String? = null
-    ): UploadAssetResponse = api.uploadAsset(fileName, mimeType, bytes, destination)
+        destination: String? = null,
+        deviceName: String? = null
+    ): UploadAssetResponse = api.uploadAsset(fileName, mimeType, bytes, destination, deviceName)
 }

@@ -119,6 +119,57 @@ data class UploadAssetResponse(
     val assetId: String? = null
 )
 
+// Enrichment task DTOs — mirror /api/assets/{id}/enrichment shape.
+@Serializable
+data class EnrichmentTaskDto(
+    val taskType: String,
+    val status: String,
+    val errorMessage: String? = null,
+    val attemptCount: Int = 0,
+    val createdAt: String? = null,
+    val startedAt: String? = null,
+    val completedAt: String? = null,
+    val nextRetryAt: String? = null
+)
+
+@Serializable
+data class AssetEnrichmentResponse(
+    val assetId: String,
+    val fileName: String = "",
+    val tasks: List<EnrichmentTaskDto> = emptyList()
+)
+
+@Serializable
+data class PendingEnrichmentAssetDto(
+    val assetId: String,
+    val fileName: String = "",
+    val fileCreatedAt: String? = null,
+    val pending: Int = 0,
+    val processing: Int = 0,
+    val failed: Int = 0,
+    val failedTaskTypes: List<String> = emptyList()
+)
+
+@Serializable
+data class PendingEnrichmentPage(
+    val items: List<PendingEnrichmentAssetDto> = emptyList(),
+    val nextCursor: String? = null,
+    val totalAssets: Int = 0
+)
+
+@Serializable
+data class RetryTaskResponse(
+    val assetId: String,
+    val taskType: String,
+    val status: String
+)
+
+@Serializable
+data class RetryAllTasksResponse(
+    val assetId: String,
+    val retried: Int
+)
+
 @Serializable
 internal data class ExistsByChecksumBody(val assetId: String = "")
 
@@ -191,8 +242,24 @@ interface PhotonneApi {
         fileName: String,
         mimeType: String,
         bytes: ByteArray,
-        destination: String? = null
+        destination: String? = null,
+        deviceName: String? = null
     ): UploadAssetResponse
+
+    /** Lists the caller's assets with at least one Pending or Failed enrichment task. */
+    suspend fun listPendingEnrichment(
+        cursor: Instant? = null,
+        pageSize: Int = 50
+    ): PendingEnrichmentPage
+
+    /** Full enrichment-task breakdown for a single asset. */
+    suspend fun getAssetEnrichment(assetId: String): AssetEnrichmentResponse
+
+    /** Resets a single enrichment task to Pending and re-enqueues it. */
+    suspend fun retryEnrichmentTask(assetId: String, taskType: String): RetryTaskResponse
+
+    /** Resets all Failed enrichment tasks of an asset and re-enqueues them. */
+    suspend fun retryAllEnrichmentTasks(assetId: String): RetryAllTasksResponse
     /**
      * Looks up an existing asset by SHA-256 checksum on the server.
      * Returns the asset id when the user already has a matching file
@@ -802,7 +869,8 @@ class PhotonneApiClient(
         fileName: String,
         mimeType: String,
         bytes: ByteArray,
-        destination: String?
+        destination: String?,
+        deviceName: String?
     ): UploadAssetResponse {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
@@ -823,6 +891,9 @@ class PhotonneApiClient(
                         )
                         if (!destination.isNullOrBlank()) {
                             append("destination", destination)
+                        }
+                        if (!deviceName.isNullOrBlank()) {
+                            append("deviceName", deviceName)
                         }
                     }
                 )
@@ -2144,6 +2215,61 @@ class PhotonneApiClient(
                 message = "Mark all read failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun listPendingEnrichment(
+        cursor: Instant?,
+        pageSize: Int
+    ): PendingEnrichmentPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/enrichment/pending") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Pending enrichment fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAssetEnrichment(assetId: String): AssetEnrichmentResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/enrichment")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Asset enrichment fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun retryEnrichmentTask(
+        assetId: String,
+        taskType: String
+    ): RetryTaskResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/enrichment/retry") {
+            parameter("taskType", taskType)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Retry enrichment task failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun retryAllEnrichmentTasks(assetId: String): RetryAllTasksResponse {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/enrichment/retry-all")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Retry all enrichment tasks failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 
     /**

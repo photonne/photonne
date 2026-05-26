@@ -51,5 +51,13 @@ sealed class DeviceMediaSyncState {
     data object NotSynced : DeviceMediaSyncState()
     data class Synced(val assetId: String) : DeviceMediaSyncState()
     data object Uploading : DeviceMediaSyncState()
-    data class Failed(val message: String) : DeviceMediaSyncState()
+    /**
+     * The last upload attempt for this item failed. [reason] is the typed
+     * category the UI uses to pick a localized message; [detail] holds the
+     * raw server/exception text for tooltips or debug.
+     */
+    data class Failed(
+        val reason: UploadFailureReason,
+        val detail: String? = null
+    ) : DeviceMediaSyncState()
 }

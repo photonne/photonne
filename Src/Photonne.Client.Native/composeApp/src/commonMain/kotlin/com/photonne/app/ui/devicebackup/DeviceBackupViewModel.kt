@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.devicebackup.DeviceFolderRef
 import com.photonne.app.data.devicebackup.DeviceMedia
+import com.photonne.app.data.devicebackup.BackgroundSyncPreferences
+import com.photonne.app.data.devicebackup.BackgroundSyncScheduler
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
+import com.photonne.app.data.devicebackup.UploadFailureReason
+import com.photonne.app.data.devicebackup.toUploadFailureReason
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
 import com.photonne.app.data.models.LocalSyncBadge
@@ -28,6 +32,18 @@ data class DeviceBackupEntry(
     val isSelected: Boolean = false
 )
 
+/**
+ * Outcome of the last completed sync batch. Carried separately from the
+ * free-form [DeviceBackupUiState.statusMessage] so the UI can render it
+ * with proper i18n + per-reason breakdown instead of a hardcoded string.
+ */
+data class SyncSummary(
+    val completed: Int,
+    val skipped: Int,
+    val failed: Int,
+    val failuresByReason: Map<UploadFailureReason, Int> = emptyMap()
+)
+
 data class DeviceBackupUiState(
     val isSupported: Boolean = true,
     val isBackupEnabled: Boolean = false,
@@ -39,7 +55,13 @@ data class DeviceBackupUiState(
     val isFreeingSpace: Boolean = false,
     val syncProgress: SyncProgress? = null,
     val errorMessage: String? = null,
-    val statusMessage: String? = null
+    val statusMessage: String? = null,
+    val lastSyncSummary: SyncSummary? = null,
+    val backgroundSync: BackgroundSyncPreferences = BackgroundSyncPreferences(
+        enabled = false,
+        requireWifi = true,
+        requireCharging = true
+    )
 ) {
     val selectedCount: Int get() = entries.count { it.isSelected }
     val syncableSelectedCount: Int get() = entries.count {
@@ -74,18 +96,25 @@ data class SyncProgress(
 )
 
 class DeviceBackupViewModel(
-    private val repository: DeviceBackupRepository
+    private val repository: DeviceBackupRepository,
+    private val backgroundScheduler: BackgroundSyncScheduler
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         DeviceBackupUiState(
             isSupported = repository.isSupported,
-            isBackupEnabled = repository.isBackupEnabled()
+            isBackupEnabled = repository.isBackupEnabled(),
+            backgroundSync = repository.backgroundSyncPreferences()
         )
     )
     val state: StateFlow<DeviceBackupUiState> = _state.asStateFlow()
 
     init {
+        // Reconcile platform scheduler with whatever the user had configured
+        // previously — covers the case where the app was uninstalled/reinstalled
+        // and WorkManager forgot about us. Idempotent on every app start.
+        backgroundScheduler.apply(repository.backgroundSyncPreferences())
+
         // Eager-load the saved folder so the timeline merge can show
         // device-only photos as soon as the user opens the app —
         // otherwise we'd have to wait for them to visit the Backup
@@ -99,6 +128,30 @@ class DeviceBackupViewModel(
         repository.setBackupEnabled(enabled)
         _state.update { it.copy(isBackupEnabled = enabled) }
         if (enabled) ensureLoaded()
+        // Toggling the master switch off also disables auto-backup at the
+        // OS scheduler so the worker doesn't keep waking up for nothing.
+        if (!enabled) {
+            repository.setAutoBackupEnabled(false)
+            val prefs = repository.backgroundSyncPreferences()
+            _state.update { it.copy(backgroundSync = prefs) }
+            backgroundScheduler.apply(prefs)
+        }
+    }
+
+    fun setAutoBackupEnabled(enabled: Boolean) =
+        updateBackgroundPrefs { repository.setAutoBackupEnabled(enabled) }
+
+    fun setRequireWifi(value: Boolean) =
+        updateBackgroundPrefs { repository.setRequireWifi(value) }
+
+    fun setRequireCharging(value: Boolean) =
+        updateBackgroundPrefs { repository.setRequireCharging(value) }
+
+    private fun updateBackgroundPrefs(mutate: () -> Unit) {
+        mutate()
+        val prefs = repository.backgroundSyncPreferences()
+        _state.update { it.copy(backgroundSync = prefs) }
+        backgroundScheduler.apply(prefs)
     }
 
     /**
@@ -228,7 +281,10 @@ class DeviceBackupViewModel(
                 val (hash, state) = runCatching {
                     repository.checkSyncStatus(entry.media)
                 }.getOrElse {
-                    "" to DeviceMediaSyncState.Failed(it.message ?: "Hash check failed")
+                    "" to DeviceMediaSyncState.Failed(
+                        reason = it.toUploadFailureReason(),
+                        detail = it.message
+                    )
                 }
                 _state.update { current ->
                     current.copy(
@@ -279,6 +335,7 @@ class DeviceBackupViewModel(
         viewModelScope.launch {
             var completed = 0
             var skipped = 0
+            val failureReasonCounts = mutableMapOf<UploadFailureReason, Int>()
             var failed = 0
             for (entry in selected) {
                 if (!_state.value.isSyncing) break
@@ -325,13 +382,16 @@ class DeviceBackupViewModel(
                     }
                     .onFailure { error ->
                         failed++
+                        val reason = error.toUploadFailureReason()
+                        failureReasonCounts[reason] = (failureReasonCounts[reason] ?: 0) + 1
                         _state.update { current ->
                             current.copy(
                                 entries = current.entries.map { e ->
                                     if (e.media.uri == entry.media.uri) {
                                         e.copy(
                                             syncState = DeviceMediaSyncState.Failed(
-                                                error.message ?: "Upload failed"
+                                                reason = reason,
+                                                detail = error.message
                                             )
                                         )
                                     } else e
@@ -344,7 +404,12 @@ class DeviceBackupViewModel(
             _state.update {
                 it.copy(
                     isSyncing = false,
-                    statusMessage = "Subidos $completed · Omitidos $skipped · Fallidos $failed"
+                    lastSyncSummary = SyncSummary(
+                        completed = completed,
+                        skipped = skipped,
+                        failed = failed,
+                        failuresByReason = failureReasonCounts.toMap()
+                    )
                 )
             }
         }

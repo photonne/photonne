@@ -25,12 +25,12 @@ public class IndexAssetsEndpoint : IEndpoint
             [FromServices] ExifExtractorService exifService,
             [FromServices] ThumbnailGeneratorService thumbnailService,
             [FromServices] MediaRecognitionService mediaRecognitionService,
-            [FromServices] IMlJobService mlJobService,
+            [FromServices] IEnrichmentService enrichmentService,
             [FromServices] SettingsService settingsService,
             [FromServices] ApplicationDbContext dbContext,
             [FromServices] BackgroundTaskManager backgroundTaskManager,
             HttpContext httpContext,
-            CancellationToken cancellationToken) => HandleStream(directoryScanner, hashService, exifService, thumbnailService, mediaRecognitionService, mlJobService, settingsService, dbContext, serviceProvider, backgroundTaskManager,
+            CancellationToken cancellationToken) => HandleStream(directoryScanner, hashService, exifService, thumbnailService, mediaRecognitionService, enrichmentService, settingsService, dbContext, serviceProvider, backgroundTaskManager,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
         .WithName("IndexAssetsStream")
@@ -60,7 +60,7 @@ public class IndexAssetsEndpoint : IEndpoint
         ExifExtractorService exifService,
         ThumbnailGeneratorService thumbnailService,
         MediaRecognitionService mediaRecognitionService,
-        IMlJobService mlJobService,
+        IEnrichmentService enrichmentService,
         SettingsService settingsService,
         ApplicationDbContext dbContext,
         IServiceProvider serviceProvider,
@@ -93,7 +93,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 var scopedExifService = scope.ServiceProvider.GetRequiredService<ExifExtractorService>();
                 var scopedMediaRecognitionService = scope.ServiceProvider.GetRequiredService<MediaRecognitionService>();
                 var scopedThumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailGeneratorService>();
-                var scopedMlJobService = scope.ServiceProvider.GetRequiredService<IMlJobService>();
+                var scopedEnrichmentService = scope.ServiceProvider.GetRequiredService<IEnrichmentService>();
                 var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
                 // Obtener la ruta interna del NAS (ASSETS_PATH)
@@ -215,7 +215,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 // STEP 4: Database operations and thumbnail generation
                 Send(new IndexProgressUpdate { Message = "Guardando cambios y generando miniaturas...", Percentage = 50, Statistics = MapToBlazorStats(stats) });
 
-                await ProcessDatabaseOperationsWithProgressAsync(indexContext, dbContext, thumbnailService, mediaRecognitionService, mlJobService, settingsService, Send, stats, taskCt);
+                await ProcessDatabaseOperationsWithProgressAsync(indexContext, dbContext, thumbnailService, mediaRecognitionService, enrichmentService, settingsService, Send, stats, taskCt);
 
                 stats.IndexCompletedAt = DateTime.UtcNow;
                 stats.IndexDuration = stats.IndexCompletedAt - indexStartTime;
@@ -278,7 +278,7 @@ public class IndexAssetsEndpoint : IEndpoint
         ApplicationDbContext dbContext,
         ThumbnailGeneratorService thumbnailService,
         MediaRecognitionService mediaRecognitionService,
-        IMlJobService mlJobService,
+        IEnrichmentService enrichmentService,
         SettingsService settingsService,
         Action<IndexProgressUpdate> send,
         IndexStatistics apiStats,
@@ -460,11 +460,11 @@ public class IndexAssetsEndpoint : IEndpoint
         // STEP 4g: Queue missing ML jobs for every scanned asset (new, updated
         // and unchanged). The helper skips types whose *CompletedAt is already
         // set, so re-runs only enqueue what's actually missing.
-        await QueueMissingMlJobsAsync(
+        await QueueMissingEnrichmentAsync(
             context.AllScannedAssets,
             dbContext,
             mediaRecognitionService,
-            mlJobService,
+            enrichmentService,
             apiStats,
             cancellationToken);
         send(new IndexProgressUpdate { Message = "Trabajos de IA encolados.", Percentage = 96, Statistics = MapToBlazorStats(apiStats) });
@@ -480,7 +480,7 @@ public class IndexAssetsEndpoint : IEndpoint
         [FromServices] ExifExtractorService exifService,
         [FromServices] ThumbnailGeneratorService thumbnailService,
         [FromServices] MediaRecognitionService mediaRecognitionService,
-        [FromServices] IMlJobService mlJobService,
+        [FromServices] IEnrichmentService enrichmentService,
         [FromServices] SettingsService settingsService,
         [FromServices] ApplicationDbContext dbContext,
         CancellationToken cancellationToken)
@@ -547,7 +547,7 @@ public class IndexAssetsEndpoint : IEndpoint
                 dbContext,
                 thumbnailService,
                 mediaRecognitionService,
-                mlJobService,
+                enrichmentService,
                 settingsService,
                 stats,
                 cancellationToken);
@@ -865,7 +865,7 @@ public class IndexAssetsEndpoint : IEndpoint
         ApplicationDbContext dbContext,
         ThumbnailGeneratorService thumbnailService,
         MediaRecognitionService mediaRecognitionService,
-        IMlJobService mlJobService,
+        IEnrichmentService enrichmentService,
         SettingsService settingsService,
         IndexStatistics stats,
         CancellationToken cancellationToken)
@@ -932,11 +932,11 @@ public class IndexAssetsEndpoint : IEndpoint
 
             // STEP 5d: Queue missing ML jobs for every scanned asset (new,
             // updated and unchanged). The helper skips types already completed.
-            await QueueMissingMlJobsAsync(
+            await QueueMissingEnrichmentAsync(
                 context.AllScannedAssets,
                 dbContext,
                 mediaRecognitionService,
-                mlJobService,
+                enrichmentService,
                 stats,
                 cancellationToken);
 
@@ -1044,12 +1044,12 @@ public class IndexAssetsEndpoint : IEndpoint
     // Enqueues every ML job type whose *CompletedAt is null for any image asset
     // in the given list. Safe for re-indexing flows: completed types are
     // skipped via the helper, and Pending/Processing duplicates are filtered
-    // by IMlJobService.EnqueueMlJobAsync.
-    private async Task QueueMissingMlJobsAsync(
+    // by IEnrichmentService.EnqueueAsync.
+    private async Task QueueMissingEnrichmentAsync(
         IEnumerable<Asset> assets,
         ApplicationDbContext dbContext,
         MediaRecognitionService mediaRecognitionService,
-        IMlJobService mlJobService,
+        IEnrichmentService enrichmentService,
         IndexStatistics stats,
         CancellationToken cancellationToken)
     {
@@ -1063,12 +1063,12 @@ public class IndexAssetsEndpoint : IEndpoint
             if (!exifRef.IsLoaded)
                 await exifRef.LoadAsync(cancellationToken);
 
-            var missing = mediaRecognitionService.GetMissingMlJobTypes(asset, asset.Exif);
+            var missing = mediaRecognitionService.GetMissingMlTaskTypes(asset, asset.Exif);
             foreach (var jobType in missing)
             {
-                await mlJobService.EnqueueMlJobAsync(asset.Id, jobType, cancellationToken);
+                await enrichmentService.EnqueueAsync(asset.Id, jobType, cancellationToken);
             }
-            stats.MlJobsQueued += missing.Count;
+            stats.EnrichmentTasksQueued += missing.Count;
         }
     }
 

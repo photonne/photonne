@@ -28,9 +28,9 @@ public static class DependencyInjection
         builder.Services.AddScoped<MediaRecognitionService>();
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddScoped<UserStorageService>();
-        builder.Services.AddSingleton<MlJobQueue>();
-        builder.Services.AddScoped<IMlJobService, MlJobService>();
-        builder.Services.AddHostedService<MlJobProcessorService>();
+        builder.Services.AddSingleton<EnrichmentQueue>();
+        builder.Services.AddScoped<IEnrichmentService, EnrichmentService>();
+        builder.Services.AddHostedService<EnrichmentWorker>();
         builder.Services.AddScoped<ExternalLibraryScanService>();
         builder.Services.AddHostedService<ExternalLibrarySchedulerService>();
         builder.Services.AddHostedService<NightlySchedulerService>();

@@ -155,34 +155,34 @@ public class NightlySchedulerService : BackgroundService
             await RunThumbnailsAsync(serviceProvider, thumbMode == "all", ct);
 
         if (faceRecogEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-            await RunMlBackfillAsync(MlJobType.FaceRecognition, faceRecogMode == "all", "reconocimiento facial", ct);
+            await RunMlBackfillAsync(AssetEnrichmentType.FaceRecognition, faceRecogMode == "all", "reconocimiento facial", ct);
 
         if (faceClusterEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunFaceClusteringAsync(ct);
 
         if (objEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-            await RunMlBackfillAsync(MlJobType.ObjectDetection, objMode == "all", "reconocimiento de objetos", ct);
+            await RunMlBackfillAsync(AssetEnrichmentType.ObjectDetection, objMode == "all", "reconocimiento de objetos", ct);
 
         if (sceneEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-            await RunMlBackfillAsync(MlJobType.SceneClassification, sceneMode == "all", "clasificación de escenas", ct);
+            await RunMlBackfillAsync(AssetEnrichmentType.SceneClassification, sceneMode == "all", "clasificación de escenas", ct);
 
         if (textEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-            await RunMlBackfillAsync(MlJobType.TextRecognition, textMode == "all", "reconocimiento de texto", ct);
+            await RunMlBackfillAsync(AssetEnrichmentType.TextRecognition, textMode == "all", "reconocimiento de texto", ct);
 
         if (embEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-            await RunMlBackfillAsync(MlJobType.ImageEmbedding, embMode == "all", "búsqueda inteligente (CLIP)", ct);
+            await RunMlBackfillAsync(AssetEnrichmentType.ImageEmbedding, embMode == "all", "búsqueda inteligente (CLIP)", ct);
     }
 
     /// <summary>Enqueues an ML backfill batch as part of the nightly cycle. The
-    /// MlJobProcessorService drains the queue at its own configured cadence;
+    /// EnrichmentWorker drains the queue at its own configured cadence;
     /// this just makes sure new (or all) assets reach the queue.</summary>
-    private async Task RunMlBackfillAsync(MlJobType jobType, bool reprocessAll, string label, CancellationToken ct)
+    private async Task RunMlBackfillAsync(AssetEnrichmentType jobType, bool reprocessAll, string label, CancellationToken ct)
     {
         Console.WriteLine($"[NIGHTLY] {label} started (mode: {(reprocessAll ? "all" : "missing")}).");
 
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var mlJobs    = scope.ServiceProvider.GetRequiredService<IMlJobService>();
+        var mlJobs    = scope.ServiceProvider.GetRequiredService<IEnrichmentService>();
 
         try
         {

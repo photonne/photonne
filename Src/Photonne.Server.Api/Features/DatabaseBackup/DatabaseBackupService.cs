@@ -60,7 +60,7 @@ public class DatabaseBackupService
 
         if (selection.IncludeMlData)
         {
-            doc.AssetMlJobs              = await _dbContext.AssetMlJobs.AsNoTracking().ToListAsync(ct);
+            doc.AssetEnrichmentTasks              = await _dbContext.AssetEnrichmentTasks.AsNoTracking().ToListAsync(ct);
             doc.People                   = await _dbContext.People.AsNoTracking().ToListAsync(ct);
             doc.Faces                    = await _dbContext.Faces.AsNoTracking().ToListAsync(ct);
             doc.UserFaceAssignments      = await _dbContext.UserFaceAssignments.AsNoTracking().ToListAsync(ct);
@@ -91,7 +91,7 @@ public class DatabaseBackupService
             TRUNCATE TABLE
                 ""Notifications"", ""RefreshTokens"", ""SharedLinks"",
                 ""AlbumPermissions"", ""AlbumAssets"", ""FolderPermissions"",
-                ""AssetUserTags"", ""AssetMlJobs"", ""AssetThumbnails"", ""AssetTags"",
+                ""AssetUserTags"", ""AssetEnrichmentTasks"", ""AssetThumbnails"", ""AssetTags"",
                 ""UserFaceAssignments"", ""Faces"", ""AssetEmbeddings"",
                 ""AssetDetectedObjects"", ""AssetClassifiedScenes"", ""AssetRecognizedTextLines"",
                 ""AssetExifs"", ""Assets"",
@@ -128,7 +128,7 @@ public class DatabaseBackupService
             }
             // Defensive: a v1.0 file may carry MlJobs; drop them since we just
             // erased the timestamps that would've justified their Completed status.
-            backup.AssetMlJobs.Clear();
+            backup.AssetEnrichmentTasks.Clear();
         }
 
         ClearNavigationProperties(backup);
@@ -158,8 +158,8 @@ public class DatabaseBackupService
 
         if (hasMlData)
         {
-            // AssetMlJobs need their Asset rows already inserted (above).
-            await InsertBatchAsync(_dbContext.AssetMlJobs,              backup.AssetMlJobs,              ct);
+            // AssetEnrichmentTasks need their Asset rows already inserted (above).
+            await InsertBatchAsync(_dbContext.AssetEnrichmentTasks,              backup.AssetEnrichmentTasks,              ct);
             // People must exist before Faces (Face.PersonId / SuggestedPersonId).
             await InsertBatchAsync(_dbContext.People,                   backup.People,                   ct);
             await InsertBatchAsync(_dbContext.Faces,                    backup.Faces,                    ct);
@@ -239,7 +239,7 @@ public class DatabaseBackupService
             a.Thumbnails.Clear();
             a.Tags.Clear();
             a.UserTags.Clear();
-            a.MlJobs.Clear();
+            a.EnrichmentTasks.Clear();
             a.Faces.Clear();
             a.DetectedObjects.Clear();
             a.ClassifiedScenes.Clear();
@@ -270,7 +270,7 @@ public class DatabaseBackupService
         foreach (var ae in backup.AssetExifs)   ae.Asset = null!;
         foreach (var at in backup.AssetThumbnails) at.Asset = null!;
         foreach (var at in backup.AssetTags)    at.Asset = null!;
-        foreach (var am in backup.AssetMlJobs)  am.Asset = null!;
+        foreach (var am in backup.AssetEnrichmentTasks)  am.Asset = null!;
 
         foreach (var aut in backup.AssetUserTags)
         {

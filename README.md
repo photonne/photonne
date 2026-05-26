@@ -249,12 +249,23 @@ cada directorio de un vistazo:
 <ASSETS_HOST_PATH>/
 └── users/
     ├── alice/
-    │   ├── Uploads/
-    │   ├── MobileBackup/
+    │   ├── Uploads/                 ← subidas manuales (web/PWA, app móvil "compartir")
+    │   ├── MobileBackup/            ← copias de seguridad automáticas del móvil
+    │   │   ├── Pixel_8_Pro/         ← una subcarpeta por dispositivo
+    │   │   └── Marcs_iPhone/
     │   └── _trash/
     └── bob/
         └── Uploads/
 ```
+
+Distinción importante:
+- `Uploads/` — destino plano para subidas iniciadas por el usuario (drag&drop
+  en la web, botón "subir" en la app, share desde otra app).
+- `MobileBackup/{deviceName}/` — destino para la copia de seguridad
+  automática del móvil. El cliente envía un `deviceName` y el servidor lo
+  sanitiza antes de usarlo como subcarpeta (rechaza barras, traversal,
+  cualquier cosa fuera de `[a-zA-Z0-9._-]`; cap 64 chars). Permite que un
+  usuario haga backup desde varios dispositivos sin mezclarlos.
 
 El username solo admite `[a-zA-Z0-9._-]` (máx. 64 caracteres) para garantizar
 compatibilidad con cualquier sistema de archivos. Cambiar el username de un
@@ -272,8 +283,9 @@ La API sigue una estructura por features. Endpoints principales:
 | Assets | `GET /api/assets`, `GET /api/assets/{id}`, `GET /api/assets/{id}/content` |
 | Búsqueda | `GET /api/assets/search` |
 | Indexación | `GET /api/assets/index/stream` (SSE), `GET /api/assets/index` |
-| Subida | `POST /api/assets/upload` |
-| Sincronización | `POST /api/assets/sync` |
+| Subida | `POST /api/assets/upload` (form fields: `file`, `destination`=`uploads`\|`mobile-backup`, `deviceName` opcional) |
+| Sincronización | `POST /api/assets/sync?path=&deviceName=` |
+| Enriquecimiento | `GET /api/assets/{id}/enrichment`, `POST /api/assets/{id}/enrichment/retry?taskType=`, `POST /api/assets/{id}/enrichment/retry-all`, `GET /api/assets/enrichment/pending` |
 | Miniaturas | `GET /api/assets/{id}/thumbnail` |
 | Memorias | `GET /api/assets/memories` |
 | Favoritos | `GET /api/assets/favorites`, `POST /api/assets/{id}/favorite` |
@@ -305,6 +317,26 @@ El proceso de indexación es incremental y transmite progreso en tiempo real ví
 6. **Base de datos** — Persistencia y limpieza de huérfanos
 
 Accesible desde: `Admin > Colas > Indexar`
+
+## Copia de seguridad móvil
+
+El flujo de backup desde el móvil está **desacoplado del enriquecimiento**:
+
+- **Backup** (`/api/assets/upload?destination=mobile-backup` o `/api/assets/sync`):
+  garantiza síncronamente que el archivo está físicamente a salvo —
+  copiado a su ruta final, fila `Asset` en BD, checksum SHA-256 verificado
+  (en `/sync` se compara source↔destination tras el copy). Responde 200 con
+  `assetId` inmediatamente. Nunca falla por culpa del enriquecimiento.
+- **Enriquecimiento** (`AssetEnrichmentTasks` + `EnrichmentWorker`):
+  EXIF, miniaturas, detección de tipo de medio y las 5 tareas de ML
+  (rostros, objetos, escenas, OCR, embeddings CLIP) corren en segundo
+  plano. Cada tarea se reintenta con backoff exponencial
+  (`1m, 5m, 15m, 1h, 6h`) hasta 5 intentos antes de quedar Failed
+  permanente. El usuario puede consultar el estado y reintentar fallidas
+  desde la pantalla "Estado de enriquecimiento" en la app.
+
+Detalles de arquitectura, modelo de datos, configuración de workers y
+troubleshooting: [`docs/mobile-backup.md`](docs/mobile-backup.md).
 
 ## Despliegue con Docker
 

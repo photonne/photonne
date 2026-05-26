@@ -7,27 +7,21 @@ namespace Photonne.Server.Api.Shared.Services;
 public class AssetIndexingService
 {
     private readonly FileHashService _hashService;
-    private readonly ExifExtractorService _exifService;
-    private readonly ThumbnailGeneratorService _thumbnailService;
+    private readonly IEnrichmentService _enrichmentService;
     private readonly MediaRecognitionService _mediaRecognitionService;
-    private readonly IMlJobService _mlJobService;
     private readonly SettingsService _settingsService;
     private readonly ApplicationDbContext _dbContext;
 
     public AssetIndexingService(
         FileHashService hashService,
-        ExifExtractorService exifService,
-        ThumbnailGeneratorService thumbnailService,
+        IEnrichmentService enrichmentService,
         MediaRecognitionService mediaRecognitionService,
-        IMlJobService mlJobService,
         SettingsService settingsService,
         ApplicationDbContext dbContext)
     {
         _hashService = hashService;
-        _exifService = exifService;
-        _thumbnailService = thumbnailService;
+        _enrichmentService = enrichmentService;
         _mediaRecognitionService = mediaRecognitionService;
-        _mlJobService = mlJobService;
         _settingsService = settingsService;
         _dbContext = dbContext;
     }
@@ -69,7 +63,7 @@ public class AssetIndexingService
             if (existingByPath != null && existingByPath.Thumbnails.Any())
             {
                 Console.WriteLine($"[INDEX-FILE] Already indexed: {storedPath}");
-                await EnqueueMissingMlJobsAsync(existingByPath, ct);
+                await EnqueueMissingEnrichmentAsync(existingByPath, ct);
                 return existingByPath;
             }
 
@@ -86,7 +80,7 @@ public class AssetIndexingService
                 if (existingByChecksum != null && existingByChecksum.Thumbnails.Any())
                 {
                     Console.WriteLine($"[INDEX-FILE] Already indexed by checksum: {storedPath}");
-                    await EnqueueMissingMlJobsAsync(existingByChecksum, ct);
+                    await EnqueueMissingEnrichmentAsync(existingByChecksum, ct);
                     return existingByChecksum;
                 }
             }
@@ -174,43 +168,15 @@ public class AssetIndexingService
             var folder = await GetOrCreateFolderForPathAsync(folderPath, externalLibraryId, ct);
             asset.FolderId = folder?.Id;
 
-            // EXIF
-            if (assetType == AssetType.Image || assetType == AssetType.Video)
-            {
-                var exif = await _exifService.ExtractExifAsync(physicalPath, ct);
-                if (exif != null)
-                    asset.Exif = exif;
-            }
-
-            // Media tags
-            if (asset.Exif != null)
-            {
-                var detectedTags = await _mediaRecognitionService.DetectMediaTypeAsync(physicalPath, asset.Exif, ct);
-                if (detectedTags.Any())
-                {
-                    asset.Tags = detectedTags.Select(t => new AssetTag
-                    {
-                        TagType = t,
-                        DetectedAt = DateTime.UtcNow
-                    }).ToList();
-                }
-            }
-
             if (isNew)
                 _dbContext.Assets.Add(asset);
 
             await _dbContext.SaveChangesAsync(ct);
 
-            // Thumbnails
-            var thumbnails = await _thumbnailService.GenerateThumbnailsAsync(physicalPath, asset.Id, ct);
-            if (thumbnails.Any())
-            {
-                _dbContext.AssetThumbnails.AddRange(thumbnails);
-                await _dbContext.SaveChangesAsync(ct);
-            }
-
-            // ML jobs (also covers re-scans of existing assets via the early-return paths above)
-            await EnqueueMissingMlJobsAsync(asset, ct);
+            // Backup contract satisfied: file + Asset row + checksum are persisted.
+            // Enqueue the enrichment tasks; the worker runs EXIF/thumbnails/media
+            // recognition/ML in the background. We don't gate the return on them.
+            await EnqueueEnrichmentAsync(asset, ct);
 
             Console.WriteLine($"[INDEX-FILE] Indexed successfully: {storedPath} (id={asset.Id})");
             return asset;
@@ -222,15 +188,43 @@ public class AssetIndexingService
         }
     }
 
-    // Enqueues only the ML job types whose *CompletedAt is null. Safe to call on
-    // re-scans: a previously-failed job will be re-queued (the scan is a manual
-    // admin action and reintents are desirable), while completed types are skipped.
-    private async Task EnqueueMissingMlJobsAsync(Asset asset, CancellationToken ct)
+    /// <summary>
+    /// Enqueues the full enrichment pipeline (EXIF + Thumbnails + MediaRecognition
+    /// + missing ML tasks) for a freshly-indexed asset.
+    /// </summary>
+    private async Task EnqueueEnrichmentAsync(Asset asset, CancellationToken ct)
     {
-        var missing = _mediaRecognitionService.GetMissingMlJobTypes(asset, asset.Exif);
-        foreach (var jobType in missing)
+        if (asset.Type == AssetType.Image || asset.Type == AssetType.Video)
         {
-            await _mlJobService.EnqueueMlJobAsync(asset.Id, jobType, ct);
+            await _enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.Exif, ct);
+        }
+        await _enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.Thumbnails, ct);
+        if (asset.Type == AssetType.Image || asset.Type == AssetType.Video)
+        {
+            await _enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.MediaRecognition, ct);
+        }
+        await EnqueueMissingEnrichmentAsync(asset, ct);
+    }
+
+    // Enqueues only the ML task types whose *CompletedAt is null. Safe to call on
+    // re-scans: a previously-failed task will be re-queued (the scan is a manual
+    // admin action and reintents are desirable), while completed types are skipped.
+    // Note: the MediaRecognitionService is resolved from the service provider here
+    // because AssetIndexingService no longer takes it as a constructor dependency.
+    private async Task EnqueueMissingEnrichmentAsync(Asset asset, CancellationToken ct)
+    {
+        // Reload Exif if not yet attached — needed by the gating in GetMissingMlTaskTypes.
+        if (asset.Exif == null)
+        {
+            asset.Exif = await _dbContext.AssetExifs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.AssetId == asset.Id, ct);
+        }
+
+        var missing = _mediaRecognitionService.GetMissingMlTaskTypes(asset, asset.Exif);
+        foreach (var taskType in missing)
+        {
+            await _enrichmentService.EnqueueAsync(asset.Id, taskType, ct);
         }
     }
 

@@ -27,7 +27,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AssetTag> AssetTags { get; set; }
     public DbSet<UserTag> UserTags { get; set; }
     public DbSet<AssetUserTag> AssetUserTags { get; set; }
-    public DbSet<AssetMlJob> AssetMlJobs { get; set; }
+    public DbSet<AssetEnrichmentTask> AssetEnrichmentTasks { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<Folder> Folders { get; set; }
     public DbSet<FolderPermission> FolderPermissions { get; set; }
@@ -43,7 +43,7 @@ public class ApplicationDbContext : DbContext
     // ML output entities. Two naming rules at play:
     //  1) Asset* prefix when the entity is exclusively asset-scoped (only an
     //     AssetId FK, no user-curated state) — same convention as AssetExif,
-    //     AssetThumbnail, AssetTag, AssetMlJob. The DbSet/table use the prefix;
+    //     AssetThumbnail, AssetTag, AssetEnrichmentTask. The DbSet/table use the prefix;
     //     the nav property on Asset drops it (e.g. Asset.DetectedObjects).
     //  2) Participle prefix (Detected*, Classified*, Recognized*) on the entity
     //     to mark "pure model output, replaced on every re-run".
@@ -256,22 +256,27 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.UserTagId);
         });
 
-        // Configure AssetMlJob entity
-        modelBuilder.Entity<AssetMlJob>(entity =>
+        // Configure AssetEnrichmentTask entity
+        modelBuilder.Entity<AssetEnrichmentTask>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
 
             entity.HasOne(e => e.Asset)
-                .WithMany(a => a.MlJobs)
+                .WithMany(a => a.EnrichmentTasks)
                 .HasForeignKey(e => e.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.AssetId);
-            entity.HasIndex(e => new { e.AssetId, e.JobType, e.Status });
+            // Used by the dedup-when-enqueuing query and the per-asset status view.
+            entity.HasIndex(e => new { e.AssetId, e.TaskType, e.Status });
+            // Used by the worker's "due now" scan: find Pending tasks past their NextRetryAt.
+            entity.HasIndex(e => new { e.Status, e.NextRetryAt });
+
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.StartedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
             entity.Property(e => e.CompletedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
+            entity.Property(e => e.NextRetryAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });
 
         // Configure Setting entity

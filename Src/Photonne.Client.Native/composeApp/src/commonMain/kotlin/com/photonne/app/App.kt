@@ -87,6 +87,7 @@ import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.backup_pending_screen_title
+import com.photonne.app.resources.enrichment_screen_title
 import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.upload_subtitle_pending
@@ -190,6 +191,7 @@ private enum class MoreSubscreen {
     Upload,
     DeviceBackup,
     DeviceBackupPending,
+    EnrichmentStatus,
     Favorites,
     People,
     PeopleSuggestions,
@@ -411,6 +413,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
+    val enrichmentStatusViewModel: com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel = koinViewModel()
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
     val utilitiesLargeFilesViewModel:
@@ -707,6 +710,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceBackupPending ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.backup_pending_screen_title),
+                    onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
+                )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.EnrichmentStatus ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.enrichment_screen_title),
                     onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Utilities ->
@@ -1593,9 +1601,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.DeviceBackup ->
                         com.photonne.app.ui.devicebackup.BackupScreen(
                             viewModel = deviceBackupViewModel,
+                            enrichmentViewModel = enrichmentStatusViewModel,
                             gallery = deviceGallery,
                             onOpenPending = {
                                 moreSubscreen = MoreSubscreen.DeviceBackupPending
+                            },
+                            onOpenEnrichment = {
+                                moreSubscreen = MoreSubscreen.EnrichmentStatus
                             }
                         )
                     MoreSubscreen.DeviceBackupPending ->
@@ -1614,6 +1626,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     }
                                 )
                             }
+                        )
+                    MoreSubscreen.EnrichmentStatus ->
+                        com.photonne.app.ui.devicebackup.EnrichmentStatusScreen(
+                            viewModel = enrichmentStatusViewModel
                         )
                     MoreSubscreen.Utilities ->
                         com.photonne.app.ui.utilities.UtilitiesHubScreen(

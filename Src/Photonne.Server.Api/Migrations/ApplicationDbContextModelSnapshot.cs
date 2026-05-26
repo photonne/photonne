@@ -347,6 +347,54 @@ namespace Photonne.Server.Api.Migrations
                     b.ToTable("AssetEmbeddings");
                 });
 
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetEnrichmentTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TaskType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("Status", "NextRetryAt");
+
+                    b.HasIndex("AssetId", "TaskType", "Status");
+
+                    b.ToTable("AssetEnrichmentTasks");
+                });
+
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetExif", b =>
                 {
                     b.Property<Guid>("Id")
@@ -414,46 +462,6 @@ namespace Photonne.Server.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("AssetExifs");
-                });
-
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetMlJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AssetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<int>("JobType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ResultJson")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("StartedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssetId");
-
-                    b.HasIndex("AssetId", "JobType", "Status");
-
-                    b.ToTable("AssetMlJobs");
                 });
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetRecognizedTextLine", b =>
@@ -1281,22 +1289,22 @@ namespace Photonne.Server.Api.Migrations
                     b.Navigation("Asset");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetExif", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetEnrichmentTask", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
-                        .WithOne("Exif")
-                        .HasForeignKey("Photonne.Server.Api.Shared.Models.AssetExif", "AssetId")
+                        .WithMany("EnrichmentTasks")
+                        .HasForeignKey("AssetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Asset");
                 });
 
-            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetMlJob", b =>
+            modelBuilder.Entity("Photonne.Server.Api.Shared.Models.AssetExif", b =>
                 {
                     b.HasOne("Photonne.Server.Api.Shared.Models.Asset", "Asset")
-                        .WithMany("MlJobs")
-                        .HasForeignKey("AssetId")
+                        .WithOne("Exif")
+                        .HasForeignKey("Photonne.Server.Api.Shared.Models.AssetExif", "AssetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1584,11 +1592,11 @@ namespace Photonne.Server.Api.Migrations
 
                     b.Navigation("Embedding");
 
+                    b.Navigation("EnrichmentTasks");
+
                     b.Navigation("Exif");
 
                     b.Navigation("Faces");
-
-                    b.Navigation("MlJobs");
 
                     b.Navigation("RecognizedTextLines");
 

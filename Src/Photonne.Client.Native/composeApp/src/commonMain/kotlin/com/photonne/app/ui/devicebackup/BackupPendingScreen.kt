@@ -60,6 +60,9 @@ import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.backup_failure_reason_label
+import com.photonne.app.resources.backup_summary_counts
+import com.photonne.app.resources.backup_summary_title
 import com.photonne.app.resources.device_backup_action_free_space
 import com.photonne.app.resources.device_backup_action_pick_folder
 import com.photonne.app.resources.device_backup_action_refresh_states
@@ -133,6 +136,10 @@ fun BackupPendingScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
+            }
+
+            state.lastSyncSummary?.takeIf { !state.isSyncing }?.let { summary ->
+                SyncSummaryCard(summary = summary)
             }
 
             state.syncProgress?.let { progress ->
@@ -381,6 +388,52 @@ private fun ActionBar(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SyncSummaryCard(summary: SyncSummary) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                stringResource(Res.string.backup_summary_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.size(4.dp))
+            Text(
+                stringResource(
+                    Res.string.backup_summary_counts,
+                    summary.completed,
+                    summary.skipped,
+                    summary.failed
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            // Per-reason breakdown so the user sees WHY assets failed instead of a bare count.
+            if (summary.failuresByReason.isNotEmpty()) {
+                Spacer(Modifier.size(8.dp))
+                summary.failuresByReason.entries
+                    .sortedByDescending { it.value }
+                    .forEach { (reason, count) ->
+                        Text(
+                            text = stringResource(
+                                Res.string.backup_failure_reason_label,
+                                uploadErrorLabel(reason),
+                                count
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
             }
         }
     }
