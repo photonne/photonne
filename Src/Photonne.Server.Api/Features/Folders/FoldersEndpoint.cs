@@ -193,6 +193,7 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
+                    IsOwner = isAdmin,
                     IsShared = false,
                     ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()
@@ -339,6 +340,13 @@ public class FoldersEndpoint : IEndpoint
             var userPermission = await dbContext.FolderPermissions
                 .FirstOrDefaultAsync(p => p.FolderId == folderId && p.UserId == userId, cancellationToken);
 
+            var subfolderIds = folder.SubFolders.Select(sf => sf.Id).ToList();
+            var subfolderUserPerms = subfolderIds.Count > 0
+                ? await dbContext.FolderPermissions
+                    .Where(p => p.UserId == userId && subfolderIds.Contains(p.FolderId))
+                    .ToDictionaryAsync(p => p.FolderId, p => p, cancellationToken)
+                : new Dictionary<Guid, FolderPermission>();
+
             // Compute recursive asset counts for each subfolder.
             // Batch approach: fetch all descendant folders of this folder, group by
             // which immediate subfolder they belong to, and sum asset counts.
@@ -403,6 +411,7 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
+                    IsOwner = subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? isAdmin,
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()

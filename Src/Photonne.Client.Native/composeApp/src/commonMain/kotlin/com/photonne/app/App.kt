@@ -1514,10 +1514,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             },
                             onItemLongClick = { index ->
-                                if (openedFolder.isOwner) {
-                                    folderDetailState.items.getOrNull(index)?.let {
-                                        folderDetailViewModel.toggleSelection(it.id)
-                                    }
+                                folderDetailState.items.getOrNull(index)?.let {
+                                    folderDetailViewModel.toggleSelection(it.id)
                                 }
                             },
                             onSubfolderClick = { subfolder ->
