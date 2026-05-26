@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AssistChip
@@ -172,8 +173,7 @@ fun HubScreen(
                 HubRecentsRow(
                     recents = state.recents,
                     baseUrl = baseUrl,
-                    onOpenAsset = onOpenAsset,
-                    onOpenLibrary = onOpenLibrary
+                    onOpenAsset = onOpenAsset
                 )
             }
         }
@@ -201,6 +201,7 @@ fun HubScreen(
 
         HubSectionEntry(stagger++) {
             HubShortcuts(
+                onOpenLibrary = onOpenLibrary,
                 onOpenSearch = onOpenSearch,
                 onOpenMap = onOpenMap,
                 onOpenAlbums = onOpenAlbums,
@@ -549,14 +550,13 @@ private fun StorySegment(fill: Float, modifier: Modifier = Modifier) {
 private fun HubRecentsRow(
     recents: List<TimelineItem>,
     baseUrl: String,
-    onOpenAsset: (List<TimelineItem>, Int) -> Unit,
-    onOpenLibrary: () -> Unit
+    onOpenAsset: (List<TimelineItem>, Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SectionHeader(
             title = stringResource(Res.string.hub_section_recents),
-            actionLabel = stringResource(Res.string.hub_action_open_library),
-            onAction = onOpenLibrary
+            actionLabel = null,
+            onAction = null
         )
         Spacer(modifier = Modifier.height(10.dp))
         LazyRow(
@@ -836,6 +836,7 @@ private fun FacetCard(facet: HubFacet, baseUrl: String, onClick: () -> Unit) {
 
 @Composable
 private fun HubShortcuts(
+    onOpenLibrary: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenAlbums: () -> Unit,
@@ -855,6 +856,14 @@ private fun HubShortcuts(
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // "All photos" is intentionally the first shortcut: it's the
+            // primary navigation target and must always be reachable, even
+            // if recents/memories/etc. fail to load.
+            ShortcutChip(
+                label = stringResource(Res.string.hub_action_open_library),
+                icon = Icons.Outlined.PhotoLibrary,
+                onClick = onOpenLibrary
+            )
             ShortcutChip(
                 label = stringResource(Res.string.hub_action_search),
                 icon = Icons.Outlined.Search,

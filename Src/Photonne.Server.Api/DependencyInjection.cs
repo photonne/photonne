@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.DatabaseBackup;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -20,6 +21,10 @@ public static class DependencyInjection
     public static void AddApplicationServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddMemoryCache();
+        // Singleton: caches the per-user allowed-folder-ids HashSet across
+        // requests so the timeline / recent endpoints don't reload every
+        // Folder + FolderPermission + ExternalLibraryPermission row every page.
+        builder.Services.AddSingleton<AllowedFolderCache>();
         builder.Services.AddScoped<DatabaseBackupService>();
         builder.Services.AddScoped<DirectoryScanner>();
         builder.Services.AddScoped<FileHashService>();

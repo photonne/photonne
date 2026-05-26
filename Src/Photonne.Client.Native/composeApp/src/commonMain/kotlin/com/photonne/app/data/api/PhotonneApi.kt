@@ -208,6 +208,7 @@ internal data class SetAlbumPermissionBody(
 interface PhotonneApi {
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
+    suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     suspend fun getMemories(): List<TimelineItem>
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
@@ -500,6 +501,10 @@ interface PhotonneApi {
 
     companion object {
         const val DEFAULT_TIMELINE_PAGE_SIZE = 80
+
+        // Per-request timeout for /api/assets/timeline. See the timeout block
+        // inside getTimeline() for why this exists as a safety net.
+        const val TIMELINE_REQUEST_TIMEOUT_MS: Long = 180_000
     }
 }
 
@@ -529,6 +534,16 @@ class PhotonneApiClient(
 
     override suspend fun getTimeline(cursor: Instant?, pageSize: Int): TimelinePage {
         val response: HttpResponse = client.get("$baseUrl/api/assets/timeline") {
+            // Safety net for large libraries: the Darwin engine's default
+            // ~60 s socket timeout would surface as the red "Socket timeout
+            // has expired" banner the moment the server takes longer than a
+            // minute on cold cache / first page. The real fix is the server
+            // refactor (no filesystem scan, projected query, indexed sort);
+            // 3 minutes here just makes sure we never trip the banner first.
+            timeout {
+                requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+            }
             parameter("pageSize", pageSize)
             if (cursor != null) parameter("cursor", cursor.toString())
         }
@@ -536,6 +551,19 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Timeline fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getRecentAssets(limit: Int): List<TimelineItem> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/recent") {
+            parameter("limit", limit)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Recent assets fetch failed (${response.status.value})"
             )
         }
         return response.body()

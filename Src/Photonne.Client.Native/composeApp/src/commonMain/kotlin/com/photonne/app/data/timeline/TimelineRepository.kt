@@ -22,6 +22,14 @@ class TimelineRepository(
             hasMore = page.hasMore && page.nextCursor != null
         )
     }
+
+    /**
+     * Slim "give me the N most recent assets" call used by the hub's recents
+     * row. Hits a dedicated endpoint that skips the timeline's heavy
+     * filesystem scan + tag joins, so the hub stays responsive even when the
+     * full timeline query is slow.
+     */
+    suspend fun loadRecent(limit: Int = 10): List<TimelineItem> = api.getRecentAssets(limit)
 }
 
 data class TimelinePageResult(

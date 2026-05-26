@@ -5,18 +5,12 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
-using Photonne.Server.Api.Shared.Dtos;
 using Scalar.AspNetCore;
 
 namespace Photonne.Server.Api.Features.Timeline;
 
 public class TimelineEndpoint : IEndpoint
 {
-    private static List<ScannedFile> _cachedInternalScan = new();
-    private static DateTime _internalScanCachedAt = DateTime.MinValue;
-    private static readonly SemaphoreSlim _internalScanLock = new(1, 1);
-    private static readonly TimeSpan _internalScanTtl = TimeSpan.FromSeconds(60);
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/timeline", Handle)
@@ -34,10 +28,9 @@ public class TimelineEndpoint : IEndpoint
         });
     }
 
-    private async Task<IResult> Handle(
+    private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
-        [FromServices] DirectoryScanner directoryScanner,
-        [FromServices] SettingsService settingsService,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
         [FromQuery] DateTime? from,
@@ -56,15 +49,12 @@ public class TimelineEndpoint : IEndpoint
             var username = user.GetUsername();
             if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-            var userRootPath = GetUserRootPath(username);
-            var allowedFolderIds = await GetAllowedFolderIdsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
+            var userRootPath = $"/assets/users/{username}";
+            var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
+                dbContext, userId, userRootPath, cancellationToken);
 
             var query = dbContext.Assets
-                .Include(a => a.Exif)
-                .Include(a => a.Thumbnails)
-                .Include(a => a.Tags)
-                .Include(a => a.UserTags)
-                .ThenInclude(ut => ut.UserTag)
+                .AsNoTracking()
                 .Where(a => a.DeletedAt == null && !a.IsArchived
                          && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
@@ -81,195 +71,32 @@ public class TimelineEndpoint : IEndpoint
                 query = query.Where(a => a.FileCreatedAt >= fromUtc);
             }
 
-            // Fetch one extra item to determine hasMore
-            var dbItems = await query
+            // Fetch one extra item to determine hasMore. The projection itself
+            // is shared with /api/assets/recent — see TimelineProjection.
+            var page = await query
                 .OrderByDescending(a => a.FileCreatedAt)
                 .ThenByDescending(a => a.FileModifiedAt)
                 .Take(pageSize + 1)
+                .Select(TimelineProjection.ToResponse)
                 .ToListAsync(cancellationToken);
 
-            var hasMore = dbItems.Count > pageSize;
-            var assets = hasMore ? dbItems.Take(pageSize).ToList() : dbItems;
+            var hasMore = page.Count > pageSize;
+            var items = hasMore ? page.Take(pageSize).ToList() : page;
 
-            // Obtener rutas de carpetas permitidas para filtrar assets no indexados
-            // (solo se usa en el scan de filesystem, que solo ocurre en la primera página)
-            var allowedFolderPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            List<string> normalizedAllowedFolderPaths = new();
-            if (!cursor.HasValue)
+            // Tags travel separately from the main projection so we don't pay
+            // the asset×thumbnail×tag×userTag cartesian fan-out up front. Two
+            // small "WHERE AssetId IN (…)" queries are cheap and let EF stay
+            // on the indexed projection above. Skip when the page is empty.
+            if (items.Count > 0)
             {
-                allowedFolderPaths = await GetAllowedFolderPathsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
-                normalizedAllowedFolderPaths = allowedFolderPaths
-                    .Select(NormalizePathForPrefix)
-                    .ToList();
+                await HydrateTagsAsync(dbContext, items, cancellationToken);
             }
 
-            var timelineItems = assets.Select(asset => new TimelineResponse
-            {
-                Id = asset.Id,
-                FileName = asset.FileName,
-                FullPath = asset.FullPath,
-                FileSize = asset.FileSize,
-                FileCreatedAt = asset.FileCreatedAt,
-                FileModifiedAt = asset.FileModifiedAt,
-                Extension = asset.Extension,
-                ScannedAt = asset.ScannedAt,
-                Type = asset.Type.ToString(),
-                Checksum = asset.Checksum,
-                HasExif = asset.Exif != null,
-                HasThumbnails = asset.Thumbnails.Any(),
-                SyncStatus = AssetSyncStatus.Synced,
-                Width = asset.Exif?.Width,
-                Height = asset.Exif?.Height,
-                DeletedAt = asset.DeletedAt,
-                Tags = BuildTagList(asset),
-                IsFavorite = asset.IsFavorite,
-                IsArchived = asset.IsArchived,
-                IsFileMissing = asset.IsFileMissing,
-                DominantColor = asset.Thumbnails
-                    .FirstOrDefault(t => t.Size == ThumbnailSize.Small)?.DominantColor,
-                IsReadOnly = asset.ExternalLibraryId.HasValue
-            }).ToList();
-
-            // Normalizar rutas existentes en BD para comparación
-            var existingPaths = assets
-                .Select(a => a.FullPath.Replace('\\', '/').TrimEnd('/'))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            
-            // Crear un set de nombres de archivos indexados para detectar duplicados
-            var indexedFileNames = assets
-                .Select(a => a.FileName)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            // Copied assets (in internal dir but not indexed) are only scanned on the first page
-            // to avoid expensive filesystem scans on every pagination call.
-            var internalAssetsPath = settingsService.GetAssetsPath();
-            int copiedCount = 0;
-            var copiedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var internalScannedFiles = new List<ScannedFile>();
-            
-            if (!cursor.HasValue && Directory.Exists(internalAssetsPath))
-            {
-                if (DateTime.UtcNow - _internalScanCachedAt > _internalScanTtl)
-                {
-                    await _internalScanLock.WaitAsync(cancellationToken);
-                    try
-                    {
-                        if (DateTime.UtcNow - _internalScanCachedAt > _internalScanTtl)
-                        {
-                            _cachedInternalScan = (await directoryScanner.ScanDirectoryAsync(internalAssetsPath, cancellationToken)).ToList();
-                            _internalScanCachedAt = DateTime.UtcNow;
-                        }
-                    }
-                    finally
-                    {
-                        _internalScanLock.Release();
-                    }
-                }
-                internalScannedFiles = _cachedInternalScan;
-                
-                // Resolver rutas físicas de assets en BD para comparar
-                var existingPhysicalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var asset in assets)
-                {
-                    var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-                    if (!string.IsNullOrEmpty(physicalPath))
-                    {
-                        existingPhysicalPaths.Add(Path.GetFullPath(physicalPath).Replace('\\', '/'));
-                    }
-                }
-                
-                // Crear un set de rutas físicas normalizadas para comparación rápida
-                var existingPhysicalPathsNormalized = existingPhysicalPaths
-                    .Select(p => Path.GetFileName(p))
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                
-                foreach (var file in internalScannedFiles)
-                {
-                    var normalizedFilePath = Path.GetFullPath(file.FullPath).Replace('\\', '/');
-                    
-                    // Si el archivo está en el directorio interno pero no está en BD, está copiado pero no indexado
-                    if (!existingPhysicalPaths.Contains(normalizedFilePath))
-                    {
-                        // Verificar si hay un archivo con el mismo nombre ya indexado (puede tener ruta diferente)
-                        var fileName = file.FileName;
-                        if (!existingPhysicalPathsNormalized.Contains(fileName))
-                        {
-                            // Virtualizar la ruta para mostrarla en el timeline
-                            var virtualizedPath = await settingsService.VirtualizePathAsync(file.FullPath);
-                            
-                            // Si no es admin, filtrar por rutas de carpetas permitidas
-                            if (TryGetOwnerUsernameFromInternalPath(normalizedFilePath, internalAssetsPath, out var ownerUsername) &&
-                                !string.Equals(ownerUsername, username, StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-
-                            if (TryGetOwnerUsernameFromVirtualPath(virtualizedPath, out var virtualOwnerUsername) &&
-                                !string.Equals(virtualOwnerUsername, username, StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-
-                            var normalizedVirtualPath = NormalizePathForPrefix(virtualizedPath);
-                            var normalizedUserRootPath = NormalizePathForPrefix(userRootPath);
-
-                            // Si es una ruta de /assets/users/, debe pertenecer al usuario actual
-                            if (normalizedVirtualPath.StartsWith("/assets/users/", StringComparison.OrdinalIgnoreCase) &&
-                                !normalizedVirtualPath.StartsWith(normalizedUserRootPath, StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-
-                            var isAllowed = false;
-                            foreach (var allowedPath in normalizedAllowedFolderPaths)
-                            {
-                                if (normalizedVirtualPath.StartsWith(allowedPath, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    isAllowed = true;
-                                    break;
-                                }
-                            }
-
-                            if (!isAllowed) continue;
-
-                            copiedFileNames.Add(fileName);
-                            copiedCount++;
-                            timelineItems.Add(new TimelineResponse
-                            {
-                                Id = Guid.Empty,
-                                FileName = fileName,
-                                FullPath = virtualizedPath,
-                                FileSize = file.FileSize,
-                                FileCreatedAt = file.FileCreatedAt,
-                                FileModifiedAt = file.FileModifiedAt,
-                                Extension = file.Extension,
-                                ScannedAt = DateTime.MinValue,
-                                Type = file.AssetType.ToString(),
-                                SyncStatus = AssetSyncStatus.Copied,
-                                Width = null,
-                                Height = null,
-                                Tags = new List<string>()
-                            });
-                        }
-                    }
-                }
-                Console.WriteLine($"[DEBUG] Identified {copiedCount} copied but not indexed assets to show in timeline");
-            }
-
-            // Los assets pendientes del dispositivo se gestionan en la página "Mi Dispositivo" (/device)
-            // No se incluyen en el timeline principal para mantenerlo más ligero
-
-            // Re-order by most recent date (preferring CreatedDate but handles cases where only ModifiedDate is available)
-            var orderedTimeline = timelineItems
-                .OrderByDescending(a => a.SyncStatus == AssetSyncStatus.Pending || a.SyncStatus == AssetSyncStatus.Copied ? a.FileModifiedAt : a.FileCreatedAt)
-                .ThenByDescending(a => a.FileName)
-                .ToList();
-
-            var nextCursor = hasMore ? assets.Last().FileCreatedAt : (DateTime?)null;
+            var nextCursor = hasMore ? items.Last().FileCreatedAt : (DateTime?)null;
 
             return Results.Ok(new TimelinePageResponse
             {
-                Items = orderedTimeline,
+                Items = items,
                 HasMore = hasMore,
                 NextCursor = nextCursor
             });
@@ -283,173 +110,53 @@ public class TimelineEndpoint : IEndpoint
         }
     }
 
-    private static string NormalizePathForPrefix(string path)
+    /// <summary>
+    /// Stitches detected-tag types and user-tag names onto a materialized page
+    /// of <see cref="TimelineResponse"/> using two ID-bounded sub-queries. The
+    /// alternative (Include + ThenInclude on the main query) multiplies the
+    /// row count by the per-asset tag fan-out, so a 80-asset page can pull
+    /// thousands of duplicated parent rows out of Postgres.
+    /// </summary>
+    private static async Task HydrateTagsAsync(
+        ApplicationDbContext dbContext,
+        List<TimelineResponse> items,
+        CancellationToken ct)
     {
-        return path.Replace('\\', '/').TrimEnd('/') + "/";
+        var assetIds = items.Select(i => i.Id).ToList();
+
+        var autoTagRows = await dbContext.AssetTags
+            .AsNoTracking()
+            .Where(t => assetIds.Contains(t.AssetId))
+            .Select(t => new { t.AssetId, Label = t.TagType.ToString() })
+            .ToListAsync(ct);
+
+        var userTagRows = await dbContext.AssetUserTags
+            .AsNoTracking()
+            .Where(t => assetIds.Contains(t.AssetId))
+            .Select(t => new { t.AssetId, Label = t.UserTag.Name })
+            .ToListAsync(ct);
+
+        var byAsset = autoTagRows.Concat(userTagRows)
+            .GroupBy(r => r.AssetId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(r => r.Label)
+                      .Distinct(StringComparer.OrdinalIgnoreCase)
+                      .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                      .ToList());
+
+        foreach (var item in items)
+        {
+            if (byAsset.TryGetValue(item.Id, out var labels))
+            {
+                item.Tags = labels;
+            }
+        }
     }
 
-    private static bool TryGetOwnerUsernameFromInternalPath(
-        string physicalPath,
-        string internalAssetsPath,
-        out string ownerUsername)
-    {
-        ownerUsername = string.Empty;
-        if (string.IsNullOrWhiteSpace(physicalPath) || string.IsNullOrWhiteSpace(internalAssetsPath))
-        {
-            return false;
-        }
-
-        var normalizedFilePath = Path.GetFullPath(physicalPath).Replace('\\', '/');
-        var normalizedInternalPath = Path.GetFullPath(internalAssetsPath).Replace('\\', '/').TrimEnd('/');
-
-        if (!normalizedFilePath.StartsWith(normalizedInternalPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var relativePath = Path.GetRelativePath(normalizedInternalPath, normalizedFilePath)
-            .Replace('\\', '/')
-            .TrimStart('/');
-
-        if (!relativePath.StartsWith("users/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length < 2)
-        {
-            return false;
-        }
-
-        ownerUsername = segments[1];
-        return !string.IsNullOrEmpty(ownerUsername);
-    }
-
-    private static bool TryGetOwnerUsernameFromVirtualPath(string virtualPath, out string ownerUsername)
-        => UserStorageService.TryGetUsernameFromPath(virtualPath, out ownerUsername);
-
-    private bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
+    private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdClaim?.Value, out userId);
     }
-
-    private static List<string> BuildTagList(Asset asset)
-    {
-        var autoTags = asset.Tags.Select(t => t.TagType.ToString());
-        var userTags = asset.UserTags.Select(t => t.UserTag.Name);
-        return autoTags.Concat(userTags)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(t => t)
-            .ToList();
-    }
-
-    private string GetUserRootPath(string username)
-    {
-        return $"/assets/users/{username}";
-    }
-
-    private async Task<HashSet<Guid>> GetAllowedFolderIdsForUserAsync(
-        ApplicationDbContext dbContext,
-        Guid userId,
-        string userRootPath,
-        CancellationToken ct)
-    {
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-
-        var foldersWithPermissions = await dbContext.FolderPermissions
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToListAsync(ct);
-        
-        var foldersWithPermissionsSet = foldersWithPermissions.ToHashSet();
-
-        var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
-
-        foreach (var folder in allFolders)
-        {
-            if (!foldersWithPermissionsSet.Contains(folder.Id))
-            {
-                if (folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    allowedIds.Add(folder.Id);
-                }
-            }
-        }
-
-        // Carpetas de bibliotecas externas accesibles
-        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.ExternalLibraryId)
-            .ToHashSetAsync(ct);
-
-        foreach (var folder in allFolders)
-        {
-            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
-                allowedIds.Add(folder.Id);
-        }
-
-        return allowedIds;
-    }
-
-    private async Task<HashSet<string>> GetAllowedFolderPathsForUserAsync(
-        ApplicationDbContext dbContext,
-        Guid userId,
-        string userRootPath,
-        CancellationToken ct)
-    {
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-
-        var foldersWithPermissionsSet = await dbContext.FolderPermissions
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToHashSetAsync(ct);
-
-        var allowedPaths = permissions
-            .Select(p => allFolders.FirstOrDefault(f => f.Id == p.FolderId)?.Path)
-            .Where(p => p != null)
-            .Select(p => p!.Replace('\\', '/').TrimEnd('/') + "/")
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Añadir espacio personal
-        allowedPaths.Add(userRootPath.TrimEnd('/') + "/");
-
-        // Añadir carpetas que no tienen permisos explícitos pero están en espacio personal
-        foreach (var folder in allFolders)
-        {
-            if (!foldersWithPermissionsSet.Contains(folder.Id))
-            {
-                var normalizedPath = folder.Path.Replace('\\', '/').TrimEnd('/') + "/";
-                if (normalizedPath.StartsWith(userRootPath.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase))
-                {
-                    allowedPaths.Add(normalizedPath);
-                }
-            }
-        }
-
-        // Carpetas de bibliotecas externas accesibles
-        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.ExternalLibraryId)
-            .ToHashSetAsync(ct);
-
-        foreach (var folder in allFolders)
-        {
-            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
-            {
-                var normalizedPath = folder.Path.Replace('\\', '/').TrimEnd('/') + "/";
-                allowedPaths.Add(normalizedPath);
-            }
-        }
-
-        return allowedPaths;
-    }
 }
-

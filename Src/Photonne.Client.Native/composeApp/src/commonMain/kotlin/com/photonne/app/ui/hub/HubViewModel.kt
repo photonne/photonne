@@ -79,7 +79,13 @@ class HubViewModel(
                     val storageJob = async { runCatching { accountRepository.getStorageInfo() } }
                     val memoriesJob = async { runCatching { memoriesRepository.list() } }
                     val recentsJob = async {
-                        runCatching { timelineRepository.loadPage(cursor = null).items.take(RECENTS_COUNT) }
+                        // Slim hub-only endpoint: returns the N most recent
+                        // visible assets without paying the timeline's
+                        // filesystem-scan / tag-join cost. Previously the hub
+                        // re-used the full timeline call here, which meant
+                        // any first-page slowness on the library also wiped
+                        // the recents row and the library shortcut.
+                        runCatching { timelineRepository.loadRecent(limit = RECENTS_COUNT) }
                     }
                     val peopleJob = async {
                         runCatching {
