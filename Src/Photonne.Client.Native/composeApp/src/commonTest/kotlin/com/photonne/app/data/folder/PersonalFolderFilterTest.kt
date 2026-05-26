@@ -18,11 +18,12 @@ class PersonalFolderFilterTest {
     )
 
     @Test
-    fun keeps_only_descendants_of_user_home() {
+    fun keeps_only_direct_children_of_user_home() {
         val input = listOf(
             folder("/assets/users/$username"),
             folder("/assets/users/$username/Uploads"),
             folder("/assets/users/$username/Uploads/2026"),
+            folder("/assets/users/$username/AMB"),
             folder("/assets/users/bob/Uploads"),
             folder("/assets/shared/Family"),
             folder("/external/library/Photos")
@@ -33,14 +34,14 @@ class PersonalFolderFilterTest {
         assertEquals(
             listOf(
                 "/assets/users/$username/Uploads",
-                "/assets/users/$username/Uploads/2026"
+                "/assets/users/$username/AMB"
             ),
             visible.map { it.path }
         )
     }
 
     @Test
-    fun hides_trash_and_archive_branches() {
+    fun hides_trash_and_archive_direct_children() {
         val input = listOf(
             folder("/assets/users/$username/Uploads"),
             folder("/assets/users/$username/_trash"),
@@ -68,5 +69,31 @@ class PersonalFolderFilterTest {
             username = ""
         )
         assertTrue(visible.isEmpty())
+    }
+
+    @Test
+    fun shared_filter_keeps_only_direct_children_of_shared_root() {
+        val input = listOf(
+            folder("/assets/shared"),
+            folder("/assets/shared/AMB"),
+            folder("/assets/shared/AMB/2024"),
+            folder("/assets/shared/Family"),
+            folder("/assets/users/alice/AMB"),
+            folder("/assets")
+        )
+
+        val visible = filterSharedFolders(input)
+
+        assertEquals(
+            listOf("/assets/shared/AMB", "/assets/shared/Family"),
+            visible.map { it.path }
+        )
+    }
+
+    @Test
+    fun shared_filter_is_case_insensitive() {
+        val mixed = "/Assets/Shared/Family"
+        val visible = filterSharedFolders(listOf(folder(mixed)))
+        assertEquals(listOf(mixed), visible.map { it.path })
     }
 }

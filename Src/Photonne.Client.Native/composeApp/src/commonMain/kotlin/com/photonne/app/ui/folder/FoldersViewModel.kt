@@ -6,6 +6,7 @@ import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.folder.filterPersonalFolders
+import com.photonne.app.data.folder.filterSharedFolders
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.russhwolf.settings.Settings
@@ -149,11 +150,11 @@ class FoldersViewModel(
             }
                 .onSuccess { (folders, libs) ->
                     allFolders = folders
-                    val baseScope = if (username.isNullOrBlank()) folders
+                    val personalChildren = if (username.isNullOrBlank()) emptyList()
                         else filterPersonalFolders(folders, username)
                     val sort = _state.value.sort
-                    val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
-                    val shared = sortFolders(folders.filter { isSharedFolder(it) }, sort)
+                    val personal = sortFolders(personalChildren.filter { !it.isShared }, sort)
+                    val shared = sortFolders(filterSharedFolders(folders), sort)
                     val libRoots = resolveLibraryRoots(folders)
                     val libFolders = sortFolders(folders.filter { it.externalLibraryId != null }, sort)
                     _state.update {
@@ -288,11 +289,11 @@ class FoldersViewModel(
 
     private fun repartition() {
         val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
-        val baseScope = if (username.isNullOrBlank()) allFolders
+        val personalChildren = if (username.isNullOrBlank()) emptyList()
             else filterPersonalFolders(allFolders, username)
         val sort = _state.value.sort
-        val personal = sortFolders(baseScope.filter { !it.isShared }, sort)
-        val shared = sortFolders(allFolders.filter { isSharedFolder(it) }, sort)
+        val personal = sortFolders(personalChildren.filter { !it.isShared }, sort)
+        val shared = sortFolders(filterSharedFolders(allFolders), sort)
         val libFolders = sortFolders(allFolders.filter { it.externalLibraryId != null }, sort)
         _state.update {
             it.copy(
@@ -335,8 +336,3 @@ private fun resolveLibraryRoots(folders: List<FolderSummary>): Map<String, Folde
         .associateBy { it.externalLibraryId!! }
 }
 
-private fun isSharedFolder(folder: FolderSummary): Boolean {
-    if (folder.isShared) return true
-    val normalized = folder.path.replace('\\', '/')
-    return normalized.startsWith("/assets/shared", ignoreCase = true)
-}
