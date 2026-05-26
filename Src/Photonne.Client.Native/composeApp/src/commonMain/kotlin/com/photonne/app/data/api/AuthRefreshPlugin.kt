@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -63,6 +64,13 @@ fun buildPhotonneHttpClient(
     val client = HttpClient(engine) {
         expectSuccess = false
         install(ContentNegotiation) { json(photonneJson) }
+        // Required so streaming endpoints (admin task buffers, library
+        // scans, index/thumbnail/metadata) can override the per-request
+        // timeouts. The Darwin engine has a 60 s `timeoutIntervalForRequest`
+        // by default — which kills a `/api/tasks/{id}/stream` connection
+        // any time the server goes 60 s between pushes (perfectly normal
+        // during the scanning phase of a large indexing run).
+        install(HttpTimeout)
         install(Logging) {
             logger = object : Logger {
                 override fun log(message: String) {

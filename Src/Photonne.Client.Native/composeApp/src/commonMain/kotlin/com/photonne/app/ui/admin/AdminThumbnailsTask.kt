@@ -51,10 +51,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.stringResource
+
+private const val ThumbnailsPollFallbackIntervalMs = 10_000L
 
 data class AdminThumbnailsUiState(
     val isRunning: Boolean = false,
@@ -71,18 +74,15 @@ class AdminThumbnailsViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(AdminThumbnailsUiState())
     val state: StateFlow<AdminThumbnailsUiState> = _state.asStateFlow()
-    private var job: Job? = null
+    private var streamJob: Job? = null
+    private var pollJob: Job? = null
 
-    init {
-        // Re-attach to a server-side thumbnail task if one is still running
-        // when the screen is first opened. Mirrors AdminIndexAssetsViewModel.
-        refresh()
-    }
+    init { refresh() }
 
     /** See [AdminIndexAssetsViewModel.refresh]. */
     fun refresh() {
         if (_state.value.isRunning) return
-        job = viewModelScope.launch { reconnectIfRunning() }
+        streamJob = viewModelScope.launch { reconnectIfRunning() }
     }
 
     private suspend fun reconnectIfRunning() {
@@ -112,6 +112,7 @@ class AdminThumbnailsViewModel(
                 taskId = running.id
             )
         }
+        startDtoPolling(running.id)
         collectStream(repository.resumeThumbnailsTaskStream(running.id), taskId = running.id)
     }
 
@@ -132,11 +133,40 @@ class AdminThumbnailsViewModel(
                 taskId = null
             )
         }
-        job = viewModelScope.launch {
+        streamJob = viewModelScope.launch {
             collectStream(
                 repository.thumbnailsStream(regenerate = regenerate),
                 taskId = null
             )
+        }
+    }
+
+    /** See [AdminIndexAssetsViewModel.startDtoPolling]. */
+    private fun startDtoPolling(taskId: String) {
+        pollJob?.cancel()
+        pollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(ThumbnailsPollFallbackIntervalMs)
+                val dto = runCatching { repository.listBackgroundTasks() }
+                    .getOrNull()
+                    ?.firstOrNull { it.id == taskId }
+                if (dto == null) break
+                _state.update {
+                    val prev = it.lastEvent ?: ThumbnailStreamEvent()
+                    it.copy(
+                        isRunning = dto.isRunning,
+                        lastEvent = prev.copy(
+                            message = dto.lastMessage,
+                            percentage = dto.percentage
+                        ),
+                        finishedAtMs = if (!dto.isRunning && it.finishedAtMs == null)
+                            Clock.System.now().toEpochMilliseconds()
+                        else it.finishedAtMs
+                    )
+                }
+                if (!dto.isRunning) break
+            }
+            pollJob = null
         }
     }
 
@@ -153,7 +183,12 @@ class AdminThumbnailsViewModel(
                         taskId = it.taskId ?: event.taskId
                     )
                 }
+                if (pollJob == null) {
+                    _state.value.taskId?.let { startDtoPolling(it) }
+                }
             }
+            pollJob?.cancel()
+            pollJob = null
             _state.update {
                 it.copy(
                     isRunning = false,
@@ -163,12 +198,18 @@ class AdminThumbnailsViewModel(
         } catch (t: kotlinx.coroutines.CancellationException) {
             throw t
         } catch (e: Throwable) {
-            _state.update {
-                it.copy(
-                    isRunning = false,
-                    errorMessage = e.message ?: "Thumbnail generation failed",
-                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
-                )
+            if (pollJob?.isActive == true) {
+                _state.update {
+                    it.copy(errorMessage = e.message ?: "Stream disconnected; using polling fallback")
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        errorMessage = e.message ?: "Thumbnail generation failed",
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
+                }
             }
         }
     }
@@ -180,8 +221,10 @@ class AdminThumbnailsViewModel(
                 runCatching { repository.cancelBackgroundTask(id) }
             }
         }
-        job?.cancel()
-        job = null
+        streamJob?.cancel()
+        streamJob = null
+        pollJob?.cancel()
+        pollJob = null
         _state.update {
             it.copy(
                 isRunning = false,

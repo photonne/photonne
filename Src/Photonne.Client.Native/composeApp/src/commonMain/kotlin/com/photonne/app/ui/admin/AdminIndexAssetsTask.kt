@@ -49,10 +49,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.stringResource
+
+private const val PollFallbackIntervalMs = 10_000L
 
 data class AdminIndexUiState(
     val isRunning: Boolean = false,
@@ -73,40 +76,37 @@ class AdminIndexAssetsViewModel(
 
     private val _state = MutableStateFlow(AdminIndexUiState())
     val state: StateFlow<AdminIndexUiState> = _state.asStateFlow()
-    private var job: Job? = null
+    // Real-time NDJSON subscription. Provides rich `IndexStreamStatistics`
+    // when alive but may sit idle for long stretches during the scan phase.
+    private var streamJob: Job? = null
+    // Periodic GET /api/tasks fallback that keeps `lastMessage` + `percentage`
+    // moving even when the stream is silent or has dropped (proxy idle
+    // cut-off, server-side worker hung on a slow scan). Runs in parallel
+    // with the stream; whichever updates first wins.
+    private var pollJob: Job? = null
 
     init {
-        // On first construction, check if the server has an index task
-        // already running (started in a previous session, from the PWA,
-        // or from another device) and re-attach to its buffered stream.
         refresh()
     }
 
     /**
      * Re-checks the server for a running index task and attaches if found.
-     * Called both at VM construction (covers cold start) and from the
-     * screen's `LaunchedEffect` (covers the case where a task was started
-     * from another client while the VM was already alive but the user
-     * hadn't entered this screen yet).
-     *
-     * Idempotent: skips the network round-trip when a local run is already
-     * in progress, and `reconnectIfRunning()` itself bails out before
-     * touching state when the task isn't running on the server.
+     * Called from `init` (covers cold start) and from the screen's
+     * `LaunchedEffect` (covers tasks started from another client after
+     * the VM was already alive). Idempotent.
      */
     fun refresh() {
         if (_state.value.isRunning) return
-        job = viewModelScope.launch { reconnectIfRunning() }
+        streamJob = viewModelScope.launch { reconnectIfRunning() }
     }
 
     private suspend fun reconnectIfRunning() {
         val running = repository.findRunningTaskOfType("IndexAssets") ?: return
-        if (_state.value.isRunning) return  // local run took precedence
+        if (_state.value.isRunning) return
 
         val startMs = runCatching { Instant.parse(running.startedAt).toEpochMilliseconds() }
             .getOrDefault(Clock.System.now().toEpochMilliseconds())
 
-        // Hydrate so the UI shows the last known message + percentage even
-        // before the first replayed event arrives.
         _state.update {
             it.copy(
                 isRunning = true,
@@ -121,6 +121,10 @@ class AdminIndexAssetsViewModel(
                 taskId = running.id
             )
         }
+        // Start the DTO poll *before* attaching the stream so the UI keeps
+        // refreshing even if the stream connection never establishes (or
+        // dies a few seconds in to an idle network path).
+        startDtoPolling(running.id)
         collectStream(repository.resumeIndexTaskStream(running.id), taskId = running.id)
     }
 
@@ -136,15 +140,46 @@ class AdminIndexAssetsViewModel(
                 taskId = null
             )
         }
-        job = viewModelScope.launch {
+        streamJob = viewModelScope.launch {
             collectStream(repository.indexStream(), taskId = null)
         }
     }
 
+    /**
+     * Polls `/api/tasks` every 10 s and keeps the UI's message/percentage
+     * in sync with the server-side DTO. Stops itself when the task is no
+     * longer Running or has been cleaned up (>1 h after finish). Doesn't
+     * touch statistics — only the stream carries that level of detail.
+     */
+    private fun startDtoPolling(taskId: String) {
+        pollJob?.cancel()
+        pollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(PollFallbackIntervalMs)
+                val dto = runCatching { repository.listBackgroundTasks() }
+                    .getOrNull()
+                    ?.firstOrNull { it.id == taskId }
+                if (dto == null) break
+                _state.update {
+                    val prev = it.lastEvent ?: IndexStreamEvent()
+                    it.copy(
+                        isRunning = dto.isRunning,
+                        lastEvent = prev.copy(
+                            message = dto.lastMessage,
+                            percentage = dto.percentage
+                        ),
+                        finishedAtMs = if (!dto.isRunning && it.finishedAtMs == null)
+                            Clock.System.now().toEpochMilliseconds()
+                        else it.finishedAtMs
+                    )
+                }
+                if (!dto.isRunning) break
+            }
+            pollJob = null
+        }
+    }
+
     private suspend fun collectStream(stream: Flow<IndexStreamEvent>, taskId: String?) {
-        // If we're resuming, taskId is known up front; otherwise we capture
-        // it from the first event the server sends (IndexStreamEvent carries
-        // taskId on every update).
         if (taskId != null) _state.update { it.copy(taskId = taskId) }
         try {
             stream.collect { event ->
@@ -154,7 +189,16 @@ class AdminIndexAssetsViewModel(
                         taskId = it.taskId ?: event.taskId
                     )
                 }
+                // Fresh `start()` doesn't pre-launch the poll. Once we
+                // know the taskId, kick it off so the UI stays current
+                // even if this stream later drops.
+                if (pollJob == null) {
+                    _state.value.taskId?.let { startDtoPolling(it) }
+                }
             }
+            // Stream completed normally — task finished. Stop polling.
+            pollJob?.cancel()
+            pollJob = null
             _state.update {
                 it.copy(
                     isRunning = false,
@@ -164,12 +208,22 @@ class AdminIndexAssetsViewModel(
         } catch (t: kotlinx.coroutines.CancellationException) {
             throw t
         } catch (e: Throwable) {
-            _state.update {
-                it.copy(
-                    isRunning = false,
-                    errorMessage = e.message ?: "Indexing failed",
-                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
-                )
+            // If the poll fallback is running we know the server still
+            // tracks the task; keep the hydrated state visible and let
+            // the poll continue feeding updates. Otherwise this was a
+            // fresh start that never got off the ground.
+            if (pollJob?.isActive == true) {
+                _state.update {
+                    it.copy(errorMessage = e.message ?: "Stream disconnected; using polling fallback")
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        errorMessage = e.message ?: "Indexing failed",
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
+                }
             }
         }
     }
@@ -183,8 +237,10 @@ class AdminIndexAssetsViewModel(
                 runCatching { repository.cancelBackgroundTask(id) }
             }
         }
-        job?.cancel()
-        job = null
+        streamJob?.cancel()
+        streamJob = null
+        pollJob?.cancel()
+        pollJob = null
         _state.update {
             it.copy(
                 isRunning = false,

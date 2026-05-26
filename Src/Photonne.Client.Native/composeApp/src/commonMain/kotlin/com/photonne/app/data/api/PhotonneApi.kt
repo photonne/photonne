@@ -30,6 +30,9 @@ import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -2021,6 +2024,7 @@ class PhotonneApiClient(
         regenerate: Boolean
     ): Flow<com.photonne.app.data.models.ThumbnailStreamEvent> = flow {
         client.prepareGet("$baseUrl/api/assets/thumbnails/stream") {
+            disableStreamTimeouts()
             parameter("regenerate", regenerate)
         }.execute { response ->
             ensureStreamSuccess(response, "Thumbnails stream failed")
@@ -2042,6 +2046,7 @@ class PhotonneApiClient(
         overwrite: Boolean
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
         client.prepareGet("$baseUrl/api/assets/metadata/stream") {
+            disableStreamTimeouts()
             parameter("overwrite", overwrite)
         }.execute { response ->
             ensureStreamSuccess(response, "Metadata stream failed")
@@ -2105,6 +2110,7 @@ class PhotonneApiClient(
         physical: Boolean
     ): Flow<com.photonne.app.data.models.DuplicatesStreamEvent> = flow {
         client.prepareGet("$baseUrl/api/assets/duplicates/stream") {
+            disableStreamTimeouts()
             parameter("cleanup", cleanup)
             parameter("physical", physical)
         }.execute { response ->
@@ -2181,7 +2187,7 @@ class PhotonneApiClient(
     /** Shared streaming helper for endpoints that emit one JSON object
      *  per line via `IAsyncEnumerable<T>` on the server side. */
     private inline fun <reified T> streamJsonLines(url: String): Flow<T> = flow {
-        client.prepareGet(url).execute { response ->
+        client.prepareGet(url) { disableStreamTimeouts() }.execute { response ->
             ensureStreamSuccess(response, "Stream failed")
             val channel = response.bodyAsChannel()
             while (true) {
@@ -2191,6 +2197,20 @@ class PhotonneApiClient(
                     .getOrNull()
                     ?.let { emit(it) }
             }
+        }
+    }
+
+    /**
+     * Disable per-request socket / total-request timeouts for endpoints
+     * that hold a long-lived NDJSON connection open. The Darwin engine
+     * defaults to ~60 s `timeoutIntervalForRequest`, which would tear
+     * down the stream any time the server goes that long between pushes
+     * (normal during the file-scanning phase of a large indexing run).
+     */
+    private fun HttpRequestBuilder.disableStreamTimeouts() {
+        timeout {
+            requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+            socketTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
         }
     }
 

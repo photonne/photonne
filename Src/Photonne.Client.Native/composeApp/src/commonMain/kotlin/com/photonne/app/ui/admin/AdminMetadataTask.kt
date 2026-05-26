@@ -54,10 +54,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.compose.resources.stringResource
+
+private const val MetadataPollFallbackIntervalMs = 10_000L
 
 data class AdminMetadataUiState(
     val isRunning: Boolean = false,
@@ -82,16 +85,15 @@ class AdminMetadataViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(AdminMetadataUiState())
     val state: StateFlow<AdminMetadataUiState> = _state.asStateFlow()
-    private var job: Job? = null
+    private var streamJob: Job? = null
+    private var pollJob: Job? = null
 
-    init {
-        refresh()
-    }
+    init { refresh() }
 
     /** See [AdminIndexAssetsViewModel.refresh]. */
     fun refresh() {
         if (_state.value.isRunning) return
-        job = viewModelScope.launch { reconnectIfRunning() }
+        streamJob = viewModelScope.launch { reconnectIfRunning() }
     }
 
     private suspend fun reconnectIfRunning() {
@@ -118,6 +120,7 @@ class AdminMetadataViewModel(
                 taskId = running.id
             )
         }
+        startDtoPolling(running.id)
         collectStream(repository.resumeMetadataTaskStream(running.id), taskId = running.id)
     }
 
@@ -138,8 +141,37 @@ class AdminMetadataViewModel(
                 taskId = null
             )
         }
-        job = viewModelScope.launch {
+        streamJob = viewModelScope.launch {
             collectStream(repository.metadataStream(overwrite = overwrite), taskId = null)
+        }
+    }
+
+    /** See [AdminIndexAssetsViewModel.startDtoPolling]. */
+    private fun startDtoPolling(taskId: String) {
+        pollJob?.cancel()
+        pollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(MetadataPollFallbackIntervalMs)
+                val dto = runCatching { repository.listBackgroundTasks() }
+                    .getOrNull()
+                    ?.firstOrNull { it.id == taskId }
+                if (dto == null) break
+                _state.update {
+                    val prev = it.lastEvent ?: MetadataStreamEvent()
+                    it.copy(
+                        isRunning = dto.isRunning,
+                        lastEvent = prev.copy(
+                            message = dto.lastMessage,
+                            percentage = dto.percentage
+                        ),
+                        finishedAtMs = if (!dto.isRunning && it.finishedAtMs == null)
+                            Clock.System.now().toEpochMilliseconds()
+                        else it.finishedAtMs
+                    )
+                }
+                if (!dto.isRunning) break
+            }
+            pollJob = null
         }
     }
 
@@ -153,7 +185,12 @@ class AdminMetadataViewModel(
                         taskId = it.taskId ?: event.taskId
                     )
                 }
+                if (pollJob == null) {
+                    _state.value.taskId?.let { startDtoPolling(it) }
+                }
             }
+            pollJob?.cancel()
+            pollJob = null
             _state.update {
                 it.copy(
                     isRunning = false,
@@ -163,12 +200,18 @@ class AdminMetadataViewModel(
         } catch (t: kotlinx.coroutines.CancellationException) {
             throw t
         } catch (e: Throwable) {
-            _state.update {
-                it.copy(
-                    isRunning = false,
-                    errorMessage = e.message ?: "Metadata extraction failed",
-                    finishedAtMs = Clock.System.now().toEpochMilliseconds()
-                )
+            if (pollJob?.isActive == true) {
+                _state.update {
+                    it.copy(errorMessage = e.message ?: "Stream disconnected; using polling fallback")
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        isRunning = false,
+                        errorMessage = e.message ?: "Metadata extraction failed",
+                        finishedAtMs = Clock.System.now().toEpochMilliseconds()
+                    )
+                }
             }
         }
     }
@@ -180,8 +223,10 @@ class AdminMetadataViewModel(
                 runCatching { repository.cancelBackgroundTask(id) }
             }
         }
-        job?.cancel()
-        job = null
+        streamJob?.cancel()
+        streamJob = null
+        pollJob?.cancel()
+        pollJob = null
         _state.update {
             it.copy(
                 isRunning = false,
