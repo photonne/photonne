@@ -18,6 +18,7 @@ import com.photonne.app.data.models.LibraryPermissionDto
 import com.photonne.app.data.models.LibraryScanProgress
 import com.photonne.app.data.models.MaintenanceTaskResult
 import com.photonne.app.data.models.MetadataStreamEvent
+import com.photonne.app.data.models.MlPendingTotalResponse
 import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.data.models.ThumbnailStreamEvent
 import com.photonne.app.data.models.TrashCleanupResult
@@ -188,6 +189,8 @@ class AdminRepository(private val api: PhotonneApi) {
         api.adminBackfill(kind, BackfillRequest(batchSize = batchSize, onlyMissing = onlyMissing))
 
     suspend fun pendingCount(kind: String): PendingCountResponse = api.adminPendingCount(kind)
+
+    suspend fun mlPendingTotal(): MlPendingTotalResponse = api.adminMlPendingTotal()
 
     suspend fun runFaceClustering(): GlobalReclusterResponse = api.adminRunFaceClustering()
 

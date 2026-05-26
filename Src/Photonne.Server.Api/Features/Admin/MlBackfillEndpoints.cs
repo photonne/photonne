@@ -13,6 +13,13 @@ namespace Photonne.Server.Api.Features.Admin;
 /// already have a Pending/Processing job waiting on the ML processor.</summary>
 public record PendingCountResponse(int Unprocessed, int InQueue);
 
+/// <summary>Distinct count of image assets that are missing at least one ML
+/// enrichment (face / object / scene / OCR / embedding). Used by the admin
+/// dashboard so the "still to analyze" headline is honest — summing the five
+/// per-type counts would double-count assets that are missing several ML
+/// completions at once.</summary>
+public record MlPendingTotalResponse(int Count);
+
 /// <summary>Shared implementation for the per-job-type backfill endpoints.
 /// Selects image assets whose <c>*CompletedAt</c> is null (when
 /// <see cref="BackfillRequest.OnlyMissing"/> is true, the default) and enqueues
@@ -135,6 +142,25 @@ internal static class MlBackfillRunner
         var inQueue = await inQueueQuery.CountAsync(ct);
 
         return Results.Ok(new PendingCountResponse(unprocessed, inQueue));
+    }
+
+    /// <summary>How many distinct image assets are missing at least one ML
+    /// completion. Cheaper than fetching 5 per-type counts client-side and
+    /// summing them (which double-counts), and matches what the dashboard's
+    /// "N assets sin analizar" headline actually means.</summary>
+    public static async Task<IResult> GetAnyMlMissingCountAsync(
+        ApplicationDbContext db,
+        CancellationToken ct)
+    {
+        var count = await db.Assets.AsNoTracking()
+            .Where(a => a.Type == AssetType.Image && a.DeletedAt == null && !a.IsFileMissing)
+            .Where(a => a.FaceRecognitionCompletedAt == null
+                     || a.ObjectDetectionCompletedAt == null
+                     || a.SceneClassificationCompletedAt == null
+                     || a.TextRecognitionCompletedAt == null
+                     || a.ImageEmbeddingCompletedAt == null)
+            .CountAsync(ct);
+        return Results.Ok(new MlPendingTotalResponse(count));
     }
 
     private static IQueryable<Asset> BuildQuery(
@@ -275,5 +301,21 @@ public class ImageEmbeddingBackfillEndpoint : IEndpoint
         group.MapGet("/image-embedding/pending-count", (
             [FromServices] ApplicationDbContext db,
             CancellationToken ct) => MlBackfillRunner.GetPendingCountAsync(db, AssetEnrichmentType.ImageEmbedding, ct));
+    }
+}
+
+/// <summary>Admin-only: returns the dashboard headline count — how many
+/// distinct image assets are still missing at least one ML completion.
+/// Lives outside the per-feature endpoint classes because it spans all
+/// five enrichment types.</summary>
+public class MlOverviewEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/admin/maintenance/ml-pending-total", (
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) => MlBackfillRunner.GetAnyMlMissingCountAsync(db, ct))
+        .WithTags("Admin")
+        .RequireAuthorization(policy => policy.RequireRole("Admin"));
     }
 }

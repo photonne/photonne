@@ -241,6 +241,15 @@ data class ThumbnailStreamEvent(
     val taskId: String? = null
 )
 
+/**
+ * Distinct count of image assets missing at least one ML completion
+ * (face / object / scene / OCR / embedding). Powers the "N assets sin
+ * analizar" headline on the admin Run Tasks hub — summing the five
+ * per-type `PendingCountResponse.unprocessed` would double-count.
+ */
+@Serializable
+data class MlPendingTotalResponse(val count: Int)
+
 @Serializable
 data class MetadataStreamStatistics(
     val totalAssets: Int? = null,

@@ -442,6 +442,7 @@ interface PhotonneApi {
         request: com.photonne.app.data.models.BackfillRequest
     ): com.photonne.app.data.models.BackfillResponse
     suspend fun adminPendingCount(kind: String): com.photonne.app.data.models.PendingCountResponse
+    suspend fun adminMlPendingTotal(): com.photonne.app.data.models.MlPendingTotalResponse
     suspend fun adminRunFaceClustering(): com.photonne.app.data.models.GlobalReclusterResponse
     suspend fun adminMaintenanceTask(
         kind: String
@@ -1985,6 +1986,20 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = parseErrorMessage(response) ?: "Pending count $kind failed"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminMlPendingTotal():
+        com.photonne.app.data.models.MlPendingTotalResponse {
+        val response: HttpResponse = client.get(
+            "$baseUrl/api/admin/maintenance/ml-pending-total"
+        )
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "ML pending total failed"
             )
         }
         return response.body()
