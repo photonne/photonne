@@ -45,8 +45,6 @@ import com.photonne.app.ui.login.LoginViewModel
 import com.photonne.app.ui.map.MapViewModel
 import com.photonne.app.ui.search.SearchViewModel
 import com.photonne.app.ui.actions.AssetSelectionActionsViewModel
-import com.photonne.app.ui.admin.AdminBackfillKind
-import com.photonne.app.ui.admin.AdminBackfillViewModel
 import com.photonne.app.ui.admin.AdminBackupViewModel
 import com.photonne.app.ui.admin.DeviceConnectionViewModel
 import com.photonne.app.ui.admin.AdminDuplicatesViewModel
@@ -58,17 +56,14 @@ import com.photonne.app.ui.admin.AdminSceneClassificationSettingsViewModel
 import com.photonne.app.ui.admin.AdminTextRecognitionSettingsViewModel
 
 import com.photonne.app.ui.admin.AdminImageSettingsViewModel
-import com.photonne.app.ui.admin.AdminIndexAssetsViewModel
 import com.photonne.app.ui.admin.AdminLibrariesViewModel
 import com.photonne.app.ui.admin.AdminMaintenanceViewModel
 import com.photonne.app.ui.admin.AdminMetadataSettingsViewModel
-import com.photonne.app.ui.admin.AdminMetadataViewModel
 import com.photonne.app.ui.admin.AdminNightlySettingsViewModel
 import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerViewModel
 import com.photonne.app.ui.admin.AdminStatsViewModel
-import com.photonne.app.ui.admin.AdminThumbnailsViewModel
 import com.photonne.app.ui.admin.AdminTrashSettingsViewModel
 import com.photonne.app.ui.admin.AdminUserDefaultsViewModel
 import com.photonne.app.ui.admin.AdminUsersViewModel
@@ -195,9 +190,6 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminServerSettingsViewModel)
     viewModelOf(::AdminTrashSettingsViewModel)
     viewModelOf(::AdminUserDefaultsViewModel)
-    viewModelOf(::AdminIndexAssetsViewModel)
-    viewModelOf(::AdminThumbnailsViewModel)
-    viewModelOf(::AdminMetadataViewModel)
     viewModelOf(::AdminDuplicatesViewModel)
     viewModelOf(::AdminMaintenanceViewModel)
     viewModelOf(::AdminFaceRecognitionSettingsViewModel)
@@ -207,8 +199,5 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminImageEmbeddingSettingsViewModel)
     viewModelOf(::AdminRunTasksViewModel)
     viewModelOf(::DeviceConnectionViewModel)
-    viewModel { (kind: AdminBackfillKind) ->
-        AdminBackfillViewModel(get(), kind)
-    }
     viewModel { AdminBackupViewModel(get(), get<AssetSharing>()) }
 }
