@@ -5,9 +5,25 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Build strategy: each arch is built on its OWN native runner (no QEMU) in
+# parallel, then a final job assembles the multi-arch manifest list. Per-arch
+# images are pushed by digest only (no tags), so the registry isn't polluted
+# with intermediate per-arch tags — only the final :latest / :sha-... manifest
+# lists carry tags.
+
 jobs:
-  build-and-push-api:
-    runs-on: ubuntu-latest
+  build-api:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -21,12 +37,61 @@ jobs:
         with:
           swap-size-gb: 10
 
-      # QEMU enables building the arm64 leg via user-mode emulation on the
-      # amd64 runner. Needed because we publish a single manifest list with
-      # both architectures so self-hosters on Raspberry Pi / ARM NAS / Apple
-      # Silicon pull a native image instead of running amd64 under Rosetta.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (labels only)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/photonne
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Src/Photonne.Server.Api/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/photonne,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=api-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=api-${{ matrix.arch }}
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-api-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-api:
+    needs: build-api
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-api-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,20 +112,28 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Src/Photonne.Server.Api/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create multi-arch manifest and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/photonne@sha256:%s ' *)
 
-  build-and-push-ml:
-    runs-on: ubuntu-latest
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/photonne:${{ steps.meta.outputs.version }}
+
+  build-ml:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -74,12 +147,61 @@ jobs:
         with:
           swap-size-gb: 10
 
-      # Same QEMU + multi-arch publish as the API job. Note: the arm64 leg of
-      # this build runs torch + ultralytics + CLIP/YOLO ONNX exports under
-      # user-mode emulation, so wall time is ~3-4× the amd64 leg (typically
-      # 25-40 min vs 8-12 min). Acceptable for a `main` push.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (labels only)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/photonne-ml
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: Src/Photonne.MlService
+          file: Src/Photonne.MlService/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/photonne-ml,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=ml-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=ml-${{ matrix.arch }}
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-ml-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-ml:
+    needs: build-ml
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-ml-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -100,14 +222,12 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: Src/Photonne.MlService
-          file: Src/Photonne.MlService/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=ml
-          cache-to: type=gha,mode=max,scope=ml
+      - name: Create multi-arch manifest and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/photonne-ml@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/photonne-ml:${{ steps.meta.outputs.version }}
