@@ -493,7 +493,7 @@ public class FoldersEndpoint : IEndpoint
                 FileName = asset.FileName,
                 FullPath = asset.FullPath,
                 FileSize = asset.FileSize,
-                FileCreatedAt = asset.FileCreatedAt,
+                FileCreatedAt = asset.CapturedAt,
                 FileModifiedAt = asset.FileModifiedAt,
                 Extension = asset.Extension,
                 ScannedAt = asset.ScannedAt,

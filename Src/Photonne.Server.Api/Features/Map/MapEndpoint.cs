@@ -76,7 +76,9 @@ public class MapAssetsEndpoint : IEndpoint
                 allAssets = dbAssets.Select(a => new AssetLocation
                 {
                     Id = a.Id,
-                    FileCreatedAt = a.FileCreatedAt,
+                    // CapturedAt drives the date span shown on map clusters so
+                    // they match the timeline's EXIF-derived ordering.
+                    FileCreatedAt = a.CapturedAt,
                     Latitude = a.Exif!.Latitude!.Value,
                     Longitude = a.Exif.Longitude!.Value,
                     HasThumbnails = a.Thumbnails.Any()

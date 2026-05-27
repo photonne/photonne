@@ -77,7 +77,10 @@ public class AssetPendingEndpoint : IEndpoint
             FileName = fileInfo.Name,
             FullPath = path, // Mantener la ruta original (podría ser virtual) para el cliente
             FileSize = fileInfo.Length,
-            FileCreatedAt = fileInfo.CreationTimeUtc,
+            // Mirror the indexed-asset path: prefer EXIF DateTimeOriginal so the
+            // preview shows the actual capture date instead of the (often wrong
+            // on Linux) filesystem ctime.
+            FileCreatedAt = exif?.DateTimeOriginal ?? fileInfo.CreationTimeUtc,
             FileModifiedAt = fileInfo.LastWriteTimeUtc,
             Extension = extension,
             ScannedAt = DateTime.MinValue,

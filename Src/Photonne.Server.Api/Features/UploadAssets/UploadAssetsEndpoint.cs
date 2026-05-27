@@ -138,6 +138,10 @@ public class UploadAssetsEndpoint : IEndpoint
                 Extension = extension,
                 FileCreatedAt = fileInfo.CreationTimeUtc,
                 FileModifiedAt = fileInfo.LastWriteTimeUtc,
+                // Seed CapturedAt from the filesystem timestamp; the EXIF
+                // enrichment worker overwrites it with DateTimeOriginal as
+                // soon as it runs.
+                CapturedAt = fileInfo.CreationTimeUtc,
                 ScannedAt = DateTime.UtcNow,
                 FolderId = uploadsFolder?.Id,
                 OwnerId = userId

@@ -84,16 +84,18 @@ public class TimelineGridEndpoint : IEndpoint
             }
 
             // ── Layout projection — includes Id, dimensions, and dominant color ──
+            // Ordering and date grouping use CapturedAt (EXIF date with
+            // FileCreatedAt fallback), matching the main timeline endpoint.
             var rawItems = await dbContext.Assets
                 .Where(a => a.DeletedAt == null && !a.IsArchived
                          && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
-                .OrderByDescending(a => a.FileCreatedAt)
+                .OrderByDescending(a => a.CapturedAt)
                 .Select(a => new
                 {
                     a.Id,
-                    Year  = a.FileCreatedAt.Year,
-                    Month = a.FileCreatedAt.Month,
-                    Day   = a.FileCreatedAt.Day,
+                    Year  = a.CapturedAt.Year,
+                    Month = a.CapturedAt.Month,
+                    Day   = a.CapturedAt.Day,
                     Type  = a.Type,
                     ExifWidth  = a.Exif != null ? a.Exif.Width  : 0,
                     ExifHeight = a.Exif != null ? a.Exif.Height : 0,

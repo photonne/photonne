@@ -57,7 +57,7 @@ public class RecentAssetsEndpoint : IEndpoint
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived
                      && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value))
-            .OrderByDescending(a => a.FileCreatedAt)
+            .OrderByDescending(a => a.CapturedAt)
             .ThenByDescending(a => a.FileModifiedAt)
             .Take(take)
             .Select(TimelineProjection.ToResponse)

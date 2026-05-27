@@ -137,6 +137,19 @@ public class ExtractMetadataEndpoint : IEndpoint
                                             innerDb.AssetExifs.Remove(existing);
 
                                         innerDb.AssetExifs.Add(result);
+
+                                        // Keep CapturedAt in sync with the freshly-extracted EXIF
+                                        // so the admin re-extraction can fix timeline ordering on
+                                        // assets that were indexed before EXIF was processed (or
+                                        // before CapturedAt existed at all). Fall back to the
+                                        // filesystem timestamp when DateTimeOriginal is absent.
+                                        var assetRow = await innerDb.Assets
+                                            .FirstOrDefaultAsync(a => a.Id == asset.Id, ct);
+                                        if (assetRow != null)
+                                        {
+                                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.FileCreatedAt;
+                                        }
+
                                         await innerDb.SaveChangesAsync(ct);
 
                                         Interlocked.Increment(ref extracted);

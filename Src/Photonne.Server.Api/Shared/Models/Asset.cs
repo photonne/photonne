@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Photonne.Server.Api.Shared.Models;
 
@@ -32,6 +33,17 @@ public class Asset
     public DateTime FileCreatedAt { get; set; }
 
     public DateTime FileModifiedAt { get; set; }
+
+    // Display timestamp used by the timeline. Filled from EXIF DateTimeOriginal
+    // when present, otherwise falls back to FileCreatedAt. Stored on the row
+    // (rather than computed via Exif join) so the timeline index can stay on a
+    // single column and ordering doesn't require joining AssetExif. The Linux
+    // filesystem rewrites mtime/ctime when assets are moved between volumes,
+    // so FileCreatedAt is unreliable for chronological display. Column type
+    // matches FileCreatedAt / Exif.DateTimeOriginal (no timezone) so backfills
+    // and ORDER BY comparisons don't need a cast.
+    [Column(TypeName = "timestamp without time zone")]
+    public DateTime CapturedAt { get; set; }
     
     [Required]
     [MaxLength(10)]

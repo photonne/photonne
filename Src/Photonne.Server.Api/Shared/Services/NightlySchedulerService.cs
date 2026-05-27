@@ -431,6 +431,18 @@ public class NightlySchedulerService : BackgroundService
                         if (existing != null)
                             innerDb.AssetExifs.Remove(existing);
                         innerDb.AssetExifs.Add(result);
+
+                        // Mirror the EnrichmentWorker contract: keep CapturedAt
+                        // in sync with the freshly-extracted EXIF so the nightly
+                        // job can correct timeline order for assets where the
+                        // original extraction missed DateTimeOriginal.
+                        var assetRow = await innerDb.Assets
+                            .FirstOrDefaultAsync(a => a.Id == asset.Id, innerCt);
+                        if (assetRow != null)
+                        {
+                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.FileCreatedAt;
+                        }
+
                         await innerDb.SaveChangesAsync(innerCt);
                         Interlocked.Increment(ref extracted);
                     }

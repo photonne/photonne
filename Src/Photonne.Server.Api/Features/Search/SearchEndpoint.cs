@@ -88,18 +88,20 @@ public class SearchEndpoint : IEndpoint
                 (tagTypeFilter.HasValue && a.Tags.Any(t => t.TagType == tagTypeFilter.Value)));
         }
 
-        // Date range
+        // Date range — uses CapturedAt (EXIF date with FileCreatedAt fallback)
+        // so search results align with timeline order, not the Linux filesystem
+        // timestamps that get rewritten when assets move between volumes.
         if (from.HasValue)
         {
             var fromUtc = from.Value.ToUniversalTime();
-            query = query.Where(a => a.FileCreatedAt >= fromUtc);
+            query = query.Where(a => a.CapturedAt >= fromUtc);
         }
 
         if (to.HasValue)
         {
             // Include the full selected day
             var toUtc = to.Value.ToUniversalTime().Date.AddDays(1);
-            query = query.Where(a => a.FileCreatedAt < toUtc);
+            query = query.Where(a => a.CapturedAt < toUtc);
         }
 
         // Folder path substring
@@ -184,7 +186,7 @@ public class SearchEndpoint : IEndpoint
         }
 
         var dbItems = await query
-            .OrderByDescending(a => a.FileCreatedAt)
+            .OrderByDescending(a => a.CapturedAt)
             .ThenByDescending(a => a.FileModifiedAt)
             .ThenBy(a => a.Id)
             .Skip(effectiveOffset)
@@ -200,7 +202,7 @@ public class SearchEndpoint : IEndpoint
             FileName = a.FileName,
             FullPath = a.FullPath,
             FileSize = a.FileSize,
-            FileCreatedAt = a.FileCreatedAt,
+            FileCreatedAt = a.CapturedAt,
             FileModifiedAt = a.FileModifiedAt,
             Extension = a.Extension,
             ScannedAt = a.ScannedAt,

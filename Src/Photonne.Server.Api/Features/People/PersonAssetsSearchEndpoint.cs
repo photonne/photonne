@@ -59,17 +59,18 @@ public class PersonAssetsSearchEndpoint : IEndpoint
             .Take(int.MaxValue)
             .ToListAsync(ct);
 
-        // Fetch the full asset rows for the page (ordered by FileCreatedAt desc).
+        // Fetch the full asset rows for the page (ordered by CapturedAt desc to
+        // match the timeline; FileCreatedAt is unreliable on Linux hosts).
         var page = await db.Assets.AsNoTracking()
             .Where(a => pagedIds.Contains(a.Id))
-            .OrderByDescending(a => a.FileCreatedAt)
+            .OrderByDescending(a => a.CapturedAt)
             .Skip(offset ?? 0)
             .Take(Math.Clamp(limit ?? 50, 1, 200))
             .Select(a => new PersonAssetDto(
                 a.Id,
                 a.FileName,
                 a.Type == AssetType.Image ? "Image" : "Video",
-                a.FileCreatedAt,
+                a.CapturedAt,
                 a.Thumbnails.Any(),
                 a.Thumbnails
                     .Where(t => t.Size == ThumbnailSize.Small)

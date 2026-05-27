@@ -74,10 +74,10 @@ public class FavoritesEndpoint : IEndpoint
         }
 
         if (cursor.HasValue)
-            query = query.Where(a => a.FileCreatedAt < cursor.Value.ToUniversalTime());
+            query = query.Where(a => a.CapturedAt < cursor.Value.ToUniversalTime());
 
         var dbItems = await query
-            .OrderByDescending(a => a.FileCreatedAt)
+            .OrderByDescending(a => a.CapturedAt)
             .ThenByDescending(a => a.FileModifiedAt)
             .Take(pageSize + 1)
             .ToListAsync(cancellationToken);
@@ -91,7 +91,7 @@ public class FavoritesEndpoint : IEndpoint
             FileName = asset.FileName,
             FullPath = asset.FullPath,
             FileSize = asset.FileSize,
-            FileCreatedAt = asset.FileCreatedAt,
+            FileCreatedAt = asset.CapturedAt,
             FileModifiedAt = asset.FileModifiedAt,
             Extension = asset.Extension,
             ScannedAt = asset.ScannedAt,
@@ -107,7 +107,7 @@ public class FavoritesEndpoint : IEndpoint
             IsReadOnly = asset.ExternalLibraryId.HasValue
         }).ToList();
 
-        var nextCursor = hasMore ? assets.Last().FileCreatedAt : (DateTime?)null;
+        var nextCursor = hasMore ? assets.Last().CapturedAt : (DateTime?)null;
 
         return Results.Ok(new
         {

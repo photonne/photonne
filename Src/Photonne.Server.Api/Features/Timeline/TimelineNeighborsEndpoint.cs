@@ -75,20 +75,20 @@ public class TimelineNeighborsEndpoint : IEndpoint
             .Where(a => a.DeletedAt == null && !a.IsArchived
                      && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
 
-        // ── Items BEFORE in timeline (newer FileCreatedAt = appear earlier in DESC order) ──
+        // ── Items BEFORE in timeline (newer CapturedAt = appear earlier in DESC order) ──
         // Includes same-date items with newer FileModifiedAt for correct tie-breaking.
         var beforeItems = await baseQuery
             .Where(a =>
-                a.FileCreatedAt > target.FileCreatedAt
-                || (a.FileCreatedAt == target.FileCreatedAt
+                a.CapturedAt > target.CapturedAt
+                || (a.CapturedAt == target.CapturedAt
                     && a.FileModifiedAt > target.FileModifiedAt))
-            .OrderBy(a => a.FileCreatedAt)
+            .OrderBy(a => a.CapturedAt)
             .ThenBy(a => a.FileModifiedAt)
             .Select(a => new TimelineNeighborItem
             {
                 Id = a.Id,
                 FullPath = a.FullPath,
-                FileCreatedAt = a.FileCreatedAt
+                FileCreatedAt = a.CapturedAt
             })
             .Take(before + 1)
             .ToListAsync(ct);
@@ -97,19 +97,19 @@ public class TimelineNeighborsEndpoint : IEndpoint
         if (hasMoreBefore) beforeItems = beforeItems.Take(before).ToList();
         beforeItems.Reverse(); // Now in timeline (DESC) order
 
-        // ── Items AFTER in timeline (older FileCreatedAt or same-date with older FileModifiedAt) ──
+        // ── Items AFTER in timeline (older CapturedAt or same-date with older FileModifiedAt) ──
         var afterItems = await baseQuery
             .Where(a => a.Id != assetId && (
-                a.FileCreatedAt < target.FileCreatedAt
-                || (a.FileCreatedAt == target.FileCreatedAt
+                a.CapturedAt < target.CapturedAt
+                || (a.CapturedAt == target.CapturedAt
                     && a.FileModifiedAt <= target.FileModifiedAt)))
-            .OrderByDescending(a => a.FileCreatedAt)
+            .OrderByDescending(a => a.CapturedAt)
             .ThenByDescending(a => a.FileModifiedAt)
             .Select(a => new TimelineNeighborItem
             {
                 Id = a.Id,
                 FullPath = a.FullPath,
-                FileCreatedAt = a.FileCreatedAt
+                FileCreatedAt = a.CapturedAt
             })
             .Take(after + 1)
             .ToListAsync(ct);
@@ -122,7 +122,7 @@ public class TimelineNeighborsEndpoint : IEndpoint
         {
             Id = target.Id,
             FullPath = target.FullPath,
-            FileCreatedAt = target.FileCreatedAt
+            FileCreatedAt = target.CapturedAt
         };
 
         var items = new List<TimelineNeighborItem>(beforeItems.Count + 1 + afterItems.Count);

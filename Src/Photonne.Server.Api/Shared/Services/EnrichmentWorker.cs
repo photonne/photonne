@@ -280,12 +280,11 @@ public class EnrichmentWorker : BackgroundService
                 if (existing != null) dbContext.AssetExifs.Remove(existing);
                 dbContext.AssetExifs.Add(exif);
 
-                // Roll the file timestamps forward to DateTimeOriginal if EXIF has one.
-                if (exif.DateTimeOriginal != null)
-                {
-                    asset.FileCreatedAt = exif.DateTimeOriginal.Value;
-                    asset.FileModifiedAt = exif.DateTimeOriginal.Value;
-                }
+                // Set the display timestamp used by the timeline. Prefer EXIF
+                // DateTimeOriginal; fall back to FileCreatedAt for assets
+                // without EXIF date. FileCreatedAt itself stays untouched so it
+                // remains a truthful filesystem record.
+                asset.CapturedAt = exif.DateTimeOriginal ?? asset.FileCreatedAt;
                 await dbContext.SaveChangesAsync(ct);
                 return JsonSerializer.Serialize(new
                 {

@@ -65,7 +65,7 @@ public class MapPointsEndpoint : IEndpoint
                     Latitude = a.Exif!.Latitude!.Value,
                     Longitude = a.Exif.Longitude!.Value,
                     HasThumbnail = a.Thumbnails.Any(),
-                    Date = a.FileCreatedAt
+                    Date = a.CapturedAt
                 }).ToList();
 
                 cache.Set(cacheKey, points, TimeSpan.FromMinutes(5));

@@ -57,7 +57,7 @@ public class LargeFilesEndpoint : IEndpoint
             FileName = a.FileName,
             FullPath = a.FullPath,
             FileSize = a.FileSize,
-            FileCreatedAt = a.FileCreatedAt,
+            FileCreatedAt = a.CapturedAt,
             FileModifiedAt = a.FileModifiedAt,
             Extension = a.Extension,
             ScannedAt = a.ScannedAt,

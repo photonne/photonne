@@ -58,23 +58,24 @@ public class TimelineEndpoint : IEndpoint
                 .Where(a => a.DeletedAt == null && !a.IsArchived
                          && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
-            // Apply cursor (exclusive upper bound on FileCreatedAt)
+            // Apply cursor (exclusive upper bound on CapturedAt — the timeline
+            // sort key, not the filesystem mtime).
             if (cursor.HasValue)
             {
                 var cursorUtc = cursor.Value.ToUniversalTime();
-                query = query.Where(a => a.FileCreatedAt < cursorUtc);
+                query = query.Where(a => a.CapturedAt < cursorUtc);
             }
 
             if (from.HasValue)
             {
                 var fromUtc = from.Value.ToUniversalTime();
-                query = query.Where(a => a.FileCreatedAt >= fromUtc);
+                query = query.Where(a => a.CapturedAt >= fromUtc);
             }
 
             // Fetch one extra item to determine hasMore. The projection itself
             // is shared with /api/assets/recent — see TimelineProjection.
             var page = await query
-                .OrderByDescending(a => a.FileCreatedAt)
+                .OrderByDescending(a => a.CapturedAt)
                 .ThenByDescending(a => a.FileModifiedAt)
                 .Take(pageSize + 1)
                 .Select(TimelineProjection.ToResponse)

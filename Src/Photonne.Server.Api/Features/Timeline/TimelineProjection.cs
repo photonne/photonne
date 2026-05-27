@@ -27,7 +27,12 @@ internal static class TimelineProjection
         FileName = a.FileName,
         FullPath = a.FullPath,
         FileSize = a.FileSize,
-        FileCreatedAt = a.FileCreatedAt,
+        // DTO field name is preserved for client compatibility, but the value
+        // is now sourced from Asset.CapturedAt (EXIF DateTimeOriginal with a
+        // FileCreatedAt fallback). Asset.FileCreatedAt itself is no longer the
+        // timeline's notion of "when was this taken" because the Linux host
+        // rewrites filesystem timestamps when assets move between volumes.
+        FileCreatedAt = a.CapturedAt,
         FileModifiedAt = a.FileModifiedAt,
         Extension = a.Extension,
         ScannedAt = a.ScannedAt,
