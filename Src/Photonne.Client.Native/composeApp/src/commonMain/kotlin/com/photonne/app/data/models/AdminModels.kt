@@ -170,8 +170,15 @@ data class BackfillResponse(
 @Serializable
 data class PendingCountResponse(
     val unprocessed: Int = 0,
-    val inQueue: Int = 0
+    val inQueue: Int = 0,
+    // Image assets that already have a non-null `*CompletedAt` for this
+    // ML task type. Used together with [inQueue] to drive a determinate
+    // progress bar (`completed / (completed + inQueue)`).
+    val completed: Int = 0,
 )
+
+@Serializable
+data class CancelQueueResponse(val deleted: Int = 0)
 
 @Serializable
 data class GlobalReclusterResponse(

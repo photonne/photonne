@@ -8,6 +8,7 @@ import com.photonne.app.data.models.BackfillRequest
 import com.photonne.app.data.models.BackfillResponse
 import com.photonne.app.data.models.BackgroundTaskDto
 import com.photonne.app.data.models.BackupRestoreResponse
+import com.photonne.app.data.models.CancelQueueResponse
 import com.photonne.app.data.models.CreateLibraryRequest
 import com.photonne.app.data.models.CreateUserRequest
 import com.photonne.app.data.models.DuplicatesStreamEvent
@@ -191,6 +192,9 @@ class AdminRepository(private val api: PhotonneApi) {
     suspend fun pendingCount(kind: String): PendingCountResponse = api.adminPendingCount(kind)
 
     suspend fun mlPendingTotal(): MlPendingTotalResponse = api.adminMlPendingTotal()
+
+    suspend fun cancelMlQueue(kind: String): CancelQueueResponse =
+        api.adminCancelMlQueue(kind)
 
     suspend fun runFaceClustering(): GlobalReclusterResponse = api.adminRunFaceClustering()
 

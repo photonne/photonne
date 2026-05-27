@@ -53,6 +53,7 @@ import com.photonne.app.data.models.PendingCountResponse
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_run_tasks_action_cancel
 import com.photonne.app.resources.admin_run_tasks_action_start
+import com.photonne.app.resources.admin_run_tasks_ai_progress_format
 import com.photonne.app.resources.admin_run_tasks_ai_subtitle_format
 import com.photonne.app.resources.admin_run_tasks_last_run_format
 import com.photonne.app.resources.admin_run_tasks_last_run_never
@@ -336,6 +337,17 @@ class AdminRunTasksViewModel(
         }
     }
 
+    /** Clears the Pending queue for an ML task type. Jobs already
+     *  Processing are owned by workers and run to completion — there's
+     *  no safe way to abort an in-flight inference from here. */
+    fun cancelMlQueue(task: AdminRunTask) {
+        val kind = task.backfillKind?.apiPath ?: return
+        viewModelScope.launch {
+            runCatching { repository.cancelMlQueue(kind) }
+            refresh(showLoading = false)
+        }
+    }
+
     private suspend fun refresh(showLoading: Boolean) {
         if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null) }
         val pendingDeferred: kotlinx.coroutines.Deferred<Map<AdminRunTask, PendingCountResponse>>
@@ -429,12 +441,14 @@ fun AdminRunTasksScreen(
             TaskRow(
                 task = task,
                 running = task.backgroundType?.let { runningByType[it] },
+                aiInProgress = false,
                 lastFinished = task.backgroundType?.let { lastFinishedByType[it] },
                 nowMs = nowMs,
                 pending = null,
                 isTriggering = task in state.triggering,
                 onOpen = { onOpenTask(task) },
                 onStart = { viewModel.triggerTask(task) },
+                onCancelAi = null,
                 onCancel = { dto -> viewModel.cancelTask(dto.id) }
             )
         }
@@ -448,16 +462,24 @@ fun AdminRunTasksScreen(
             )
         }
         items(aiTasks) { task ->
+            val pending = state.pending[task]
             TaskRow(
                 task = task,
                 running = null,
+                // ML "running" = at least one job Pending/Processing in the
+                // enrichment queue. The row picks up the azul tint + LiveDot
+                // and shows a determinate bar driven by `completed /
+                // (completed + inQueue)` so the user sees real movement as
+                // workers drain the queue.
+                aiInProgress = (pending?.inQueue ?: 0) > 0,
                 lastFinished = null,
                 nowMs = nowMs,
-                pending = state.pending[task],
+                pending = pending,
                 isTriggering = task in state.triggering,
                 onOpen = { onOpenTask(task) },
                 onStart = { viewModel.triggerMlBackfill(task) },
-                onCancel = null  // ML backfills don't expose a cancel path
+                onCancelAi = { viewModel.cancelMlQueue(task) },
+                onCancel = null
             )
         }
 
@@ -466,12 +488,14 @@ fun AdminRunTasksScreen(
             TaskRow(
                 task = task,
                 running = task.backgroundType?.let { runningByType[it] },
+                aiInProgress = false,
                 lastFinished = task.backgroundType?.let { lastFinishedByType[it] },
                 nowMs = nowMs,
                 pending = null,
                 isTriggering = task in state.triggering,
                 onOpen = { onOpenTask(task) },
                 onStart = { viewModel.triggerTask(task) },
+                onCancelAi = null,
                 onCancel = { dto -> viewModel.cancelTask(dto.id) }
             )
         }
@@ -517,21 +541,24 @@ private fun SectionHeader(title: String, subtitle: String? = null) {
 private fun TaskRow(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
+    aiInProgress: Boolean,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
     pending: PendingCountResponse?,
     isTriggering: Boolean,
     onOpen: () -> Unit,
     onStart: () -> Unit,
+    onCancelAi: (() -> Unit)?,
     onCancel: ((BackgroundTaskDto) -> Unit)?,
 ) {
+    val isActive = running != null || aiInProgress
     val containerColor = when {
-        running != null -> MaterialTheme.colorScheme.primaryContainer
+        isActive -> MaterialTheme.colorScheme.primaryContainer
         isTriggering -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val contentColor = when {
-        running != null -> MaterialTheme.colorScheme.onPrimaryContainer
+        isActive -> MaterialTheme.colorScheme.onPrimaryContainer
         isTriggering -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -564,6 +591,7 @@ private fun TaskRow(
                     TaskRowSubtitle(
                         task = task,
                         running = running,
+                        aiInProgress = aiInProgress,
                         lastFinished = lastFinished,
                         nowMs = nowMs,
                         pending = pending,
@@ -572,9 +600,12 @@ private fun TaskRow(
                 }
                 TaskRowAction(
                     running = running,
+                    aiInProgress = aiInProgress,
+                    pending = pending,
                     isTriggering = isTriggering,
                     onStart = onStart,
-                    onCancel = onCancel
+                    onCancel = onCancel,
+                    onCancelAi = onCancelAi
                 )
             }
             if (running != null) {
@@ -582,6 +613,21 @@ private fun TaskRow(
                 val pct = (running.percentage / 100.0).toFloat().coerceIn(0f, 1f)
                 LinearProgressIndicator(
                     progress = { pct },
+                    modifier = Modifier.fillMaxWidth().height(4.dp)
+                )
+            } else if (aiInProgress && pending != null) {
+                // `completed / (completed + inQueue)` reads as "of what's
+                // in motion, fraction done". Naturally lands at 100 % when
+                // the queue drains, regardless of how many unprocessed
+                // assets remain in the library — those will only enter
+                // the metric if the admin enqueues another backfill.
+                Spacer(Modifier.size(8.dp))
+                val denom = pending.completed + pending.inQueue
+                val pct = if (denom > 0)
+                    pending.completed.toFloat() / denom.toFloat()
+                else 0f
+                LinearProgressIndicator(
+                    progress = { pct.coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(4.dp)
                 )
             }
@@ -593,21 +639,19 @@ private fun TaskRow(
 private fun TaskRowSubtitle(
     task: AdminRunTask,
     running: BackgroundTaskDto?,
+    aiInProgress: Boolean,
     lastFinished: BackgroundTaskDto?,
     nowMs: Long,
     pending: PendingCountResponse?,
     contentColor: androidx.compose.ui.graphics.Color,
 ) {
-    // Use a slightly muted variant of the row's content colour so the
-    // subtitle reads as secondary text without losing contrast against
-    // the running / triggering tints.
     val mutedColor = contentColor.copy(alpha = 0.75f)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        if (running != null) {
+        if (running != null || aiInProgress) {
             LiveDot(active = true)
         }
         val text: String = when {
@@ -616,6 +660,21 @@ private fun TaskRowSubtitle(
                 if (running.lastMessage.isNotBlank()) "$pct % — ${running.lastMessage}"
                 else stringResource(Res.string.admin_run_tasks_status_in_progress, pct)
             }
+            // ML row with workers draining the queue: lead with the
+            // computed progress percentage and the queue size; the
+            // "unprocessed" counter is omitted to keep the line short.
+            aiInProgress && pending != null -> {
+                val denom = pending.completed + pending.inQueue
+                val pct = if (denom > 0)
+                    (pending.completed * 100 / denom).coerceIn(0, 100)
+                else 0
+                stringResource(
+                    Res.string.admin_run_tasks_ai_progress_format,
+                    pct,
+                    pending.inQueue
+                )
+            }
+            // ML idle: just the pending counters.
             pending != null -> stringResource(
                 Res.string.admin_run_tasks_pending_format,
                 pending.unprocessed,
@@ -651,14 +710,30 @@ private fun TaskRowSubtitle(
 @Composable
 private fun TaskRowAction(
     running: BackgroundTaskDto?,
+    aiInProgress: Boolean,
+    pending: PendingCountResponse?,
     isTriggering: Boolean,
     onStart: () -> Unit,
     onCancel: ((BackgroundTaskDto) -> Unit)?,
+    onCancelAi: (() -> Unit)?,
 ) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
         when {
+            // Pipeline/Other running with cancel affordance.
             running != null && onCancel != null -> {
                 IconButton(onClick = { onCancel(running) }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Stop,
+                        contentDescription = stringResource(Res.string.admin_run_tasks_action_cancel),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            // ML in progress with a cancel handler: clears Pending rows
+            // server-side. In-flight Processing inferences finish on
+            // their own — we can't kill a worker mid-batch.
+            aiInProgress && onCancelAi != null -> {
+                IconButton(onClick = onCancelAi) {
                     Icon(
                         imageVector = Icons.Outlined.Stop,
                         contentDescription = stringResource(Res.string.admin_run_tasks_action_cancel),
@@ -672,6 +747,9 @@ private fun TaskRowAction(
                     strokeWidth = 2.dp
                 )
             }
+            // Idle ML row with nothing left to enqueue: hide the Play
+            // button so the user isn't tempted to fire an empty backfill.
+            pending != null && pending.unprocessed == 0 -> Unit
             running == null -> {
                 IconButton(onClick = onStart) {
                     Icon(

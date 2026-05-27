@@ -10,8 +10,12 @@ namespace Photonne.Server.Api.Features.Admin;
 /// <summary>Snapshot of how many assets remain for a given ML job type.
 /// <c>Unprocessed</c> = images with no completion AND no Pending/Processing job
 /// (the count the backfill loop will encode). <c>InQueue</c> = assets that
-/// already have a Pending/Processing job waiting on the ML processor.</summary>
-public record PendingCountResponse(int Unprocessed, int InQueue);
+/// already have a Pending/Processing job waiting on the ML processor.
+/// <c>Completed</c> = images that already have a non-null <c>*CompletedAt</c>
+/// for this task type — drives a determinate progress bar in the admin
+/// dashboard (<c>completed / (completed + inQueue)</c> = "of what's in
+/// motion, fraction done").</summary>
+public record PendingCountResponse(int Unprocessed, int InQueue, int Completed);
 
 /// <summary>Distinct count of image assets that are missing at least one ML
 /// enrichment (face / object / scene / OCR / embedding). Used by the admin
@@ -19,6 +23,11 @@ public record PendingCountResponse(int Unprocessed, int InQueue);
 /// per-type counts would double-count assets that are missing several ML
 /// completions at once.</summary>
 public record MlPendingTotalResponse(int Count);
+
+/// <summary>Result of clearing the Pending queue for an ML task type.
+/// <c>Deleted</c> is the number of <c>AssetEnrichmentTasks</c> rows that
+/// were removed; in-flight Processing rows are not affected.</summary>
+public record CancelQueueResponse(int Deleted);
 
 /// <summary>Shared implementation for the per-job-type backfill endpoints.
 /// Selects image assets whose <c>*CompletedAt</c> is null (when
@@ -141,7 +150,16 @@ internal static class MlBackfillRunner
         }
         var inQueue = await inQueueQuery.CountAsync(ct);
 
-        return Results.Ok(new PendingCountResponse(unprocessed, inQueue));
+        var completedQuery = db.Assets.AsNoTracking()
+            .Where(a => a.Type == AssetType.Image && a.DeletedAt == null && !a.IsFileMissing)
+            .Where(MediaRecognitionService.CompletedFilter(jobType));
+        if (ownerScope.HasValue)
+        {
+            completedQuery = completedQuery.Where(a => a.OwnerId == ownerScope.Value);
+        }
+        var completed = await completedQuery.CountAsync(ct);
+
+        return Results.Ok(new PendingCountResponse(unprocessed, inQueue, completed));
     }
 
     /// <summary>How many distinct image assets are missing at least one ML
@@ -161,6 +179,23 @@ internal static class MlBackfillRunner
                      || a.ImageEmbeddingCompletedAt == null)
             .CountAsync(ct);
         return Results.Ok(new MlPendingTotalResponse(count));
+    }
+
+    /// <summary>Deletes every <see cref="EnrichmentStatus.Pending"/> job for
+    /// the given task type. Jobs that are already <see cref="EnrichmentStatus.Processing"/>
+    /// are left alone — the worker that picked them up will finish (or fail)
+    /// them on its own; we don't have a safe way to abort an in-flight
+    /// inference. Returns the number of rows actually deleted so the client
+    /// can show a meaningful confirmation.</summary>
+    public static async Task<IResult> CancelQueueAsync(
+        ApplicationDbContext db,
+        AssetEnrichmentType jobType,
+        CancellationToken ct)
+    {
+        var deleted = await db.AssetEnrichmentTasks
+            .Where(j => j.TaskType == jobType && j.Status == EnrichmentStatus.Pending)
+            .ExecuteDeleteAsync(ct);
+        return Results.Ok(new CancelQueueResponse(deleted));
     }
 
     private static IQueryable<Asset> BuildQuery(
@@ -304,18 +339,44 @@ public class ImageEmbeddingBackfillEndpoint : IEndpoint
     }
 }
 
-/// <summary>Admin-only: returns the dashboard headline count — how many
-/// distinct image assets are still missing at least one ML completion.
-/// Lives outside the per-feature endpoint classes because it spans all
-/// five enrichment types.</summary>
+/// <summary>Admin-only: cross-cutting ML maintenance endpoints — the
+/// dashboard headline count and the per-type queue-clearing action.
+/// Both live outside the per-feature endpoint classes because they
+/// either span all five enrichment types or are best handled by a
+/// table-name → enum lookup in one place.</summary>
 public class MlOverviewEndpoint : IEndpoint
 {
+    private static readonly Dictionary<string, AssetEnrichmentType> KindRoutes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["face-recognition"]      = AssetEnrichmentType.FaceRecognition,
+        ["object-detection"]      = AssetEnrichmentType.ObjectDetection,
+        ["scene-classification"]  = AssetEnrichmentType.SceneClassification,
+        ["text-recognition"]      = AssetEnrichmentType.TextRecognition,
+        ["image-embedding"]       = AssetEnrichmentType.ImageEmbedding,
+    };
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/admin/maintenance/ml-pending-total", (
+        var group = app.MapGroup("/api/admin/maintenance")
+            .WithTags("Admin")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+        group.MapGet("/ml-pending-total", (
             [FromServices] ApplicationDbContext db,
-            CancellationToken ct) => MlBackfillRunner.GetAnyMlMissingCountAsync(db, ct))
-        .WithTags("Admin")
-        .RequireAuthorization(policy => policy.RequireRole("Admin"));
+            CancellationToken ct) => MlBackfillRunner.GetAnyMlMissingCountAsync(db, ct));
+
+        // Single handler for the five `/{kind}/queue` cancel routes —
+        // saves duplicating the per-feature endpoint class for an
+        // action that doesn't otherwise vary across task types.
+        group.MapDelete("/{kind}/queue", (
+            string kind,
+            [FromServices] ApplicationDbContext db,
+            CancellationToken ct) =>
+        {
+            if (!KindRoutes.TryGetValue(kind, out var jobType))
+                return Task.FromResult<IResult>(Results.NotFound());
+            return MlBackfillRunner.CancelQueueAsync(db, jobType, ct)
+                .ContinueWith(t => t.Result);
+        });
     }
 }

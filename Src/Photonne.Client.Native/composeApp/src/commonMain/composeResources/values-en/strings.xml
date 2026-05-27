@@ -490,6 +490,7 @@
     <string name="admin_run_tasks_section_ai">AI analysis</string>
     <string name="admin_run_tasks_section_other">Other</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets missing at least one AI pass</string>
+    <string name="admin_run_tasks_ai_progress_format">%1$d %% · %2$d in queue</string>
     <string name="admin_run_tasks_action_start">Start</string>
     <string name="admin_run_tasks_action_cancel">Cancel</string>
     <string name="admin_run_tasks_last_run_format">Last run %1$s ago</string>

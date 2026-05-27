@@ -490,6 +490,7 @@
     <string name="admin_run_tasks_section_ai">Análisis con IA</string>
     <string name="admin_run_tasks_section_other">Otras</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets sin analizar por alguna IA</string>
+    <string name="admin_run_tasks_ai_progress_format">%1$d %% · %2$d en cola</string>
     <string name="admin_run_tasks_action_start">Iniciar</string>
     <string name="admin_run_tasks_action_cancel">Cancelar</string>
     <string name="admin_run_tasks_last_run_format">Última ejecución hace %1$s</string>

@@ -165,4 +165,21 @@ public class MediaRecognitionService
         AssetEnrichmentType.ImageEmbedding      => a => a.ImageEmbeddingCompletedAt == null,
         _ => throw new ArgumentOutOfRangeException(nameof(taskType), taskType, "Not an ML task type"),
     };
+
+    /// <summary>
+    /// EF-translatable predicate matching assets that have already completed
+    /// the given ML task type. Used by the admin pending-count endpoint to
+    /// surface a global "done" counter alongside `unprocessed` / `inQueue`,
+    /// so the Run Tasks hub can render an honest progress bar instead of an
+    /// indeterminate one for AI rows.
+    /// </summary>
+    public static Expression<Func<Asset, bool>> CompletedFilter(AssetEnrichmentType taskType) => taskType switch
+    {
+        AssetEnrichmentType.FaceRecognition     => a => a.FaceRecognitionCompletedAt != null,
+        AssetEnrichmentType.ObjectDetection     => a => a.ObjectDetectionCompletedAt != null,
+        AssetEnrichmentType.SceneClassification => a => a.SceneClassificationCompletedAt != null,
+        AssetEnrichmentType.TextRecognition     => a => a.TextRecognitionCompletedAt != null,
+        AssetEnrichmentType.ImageEmbedding      => a => a.ImageEmbeddingCompletedAt != null,
+        _ => throw new ArgumentOutOfRangeException(nameof(taskType), taskType, "Not an ML task type"),
+    };
 }
