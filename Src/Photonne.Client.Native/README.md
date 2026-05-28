@@ -4,10 +4,11 @@ Cliente nativo de Photonne para Android, iOS y Desktop, construido con
 [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) y
 [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/).
 
-> Estado actual: **scaffold inicial**. Sólo cubre login + pantalla de "Hola"
-> y el patrón de refresh-on-401 que comparte con `Photonne.Client.Web`.
-> El resto de pantallas (Timeline, Albums, Folders, Map, Search, AssetDetail,
-> Notifications) se irá añadiendo en PRs sucesivos.
+> Estado actual: **fuente principal de consumo** de Photonne. Cubre timeline,
+> álbumes, carpetas, mapa, búsqueda, personas, favoritos, archivo, papelera,
+> notificaciones, subida, copia de seguridad del dispositivo, compartir y
+> detalle de asset, además de administración del servidor. El cliente web
+> (`Photonne.Client.Web`) queda reservado como panel de administración.
 
 ## Layout
 

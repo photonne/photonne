@@ -1,0 +1,44 @@
+@page "/use-the-app"
+@layout LoginLayout
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Usa la app de Photonne</PageTitle>
+
+<div class="d-flex flex-column align-center justify-center" style="min-height: 100svh; padding: 24px;">
+    <MudPaper Class="pa-8" Elevation="0" Outlined="true" Style="max-width: 460px; width: 100%; text-align: center;">
+        <MudIcon Icon="@Icons.Material.Outlined.PhoneIphone" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-3" />
+
+        <MudText Typo="Typo.h5" Class="mb-2">Esta web es el panel de administración</MudText>
+        <MudText Typo="Typo.body1" Class="mud-text-secondary mb-4">
+            Tu cuenta no tiene permisos de administrador. Para ver y gestionar tus
+            fotos y vídeos, usa la app de Photonne para móvil o escritorio.
+        </MudText>
+
+        <MudButton Href="https://github.com/photonne/photonne"
+                   Target="_blank"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.GetApp"
+                   FullWidth="true"
+                   Class="mb-2">
+            Descargar la app
+        </MudButton>
+
+        <MudButton OnClick="LogoutAsync"
+                   Variant="Variant.Text"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Outlined.Logout"
+                   FullWidth="true">
+            Cerrar sesión
+        </MudButton>
+    </MudPaper>
+</div>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

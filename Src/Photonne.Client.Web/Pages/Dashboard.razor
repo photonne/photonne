@@ -1,0 +1,112 @@
+@page "/"
+@page "/admin"
+@inject IAdminStatsService AdminStatsService
+@inject NavigationManager Navigation
+
+<PageTitle>Panel de administración - Photonne</PageTitle>
+
+<div class="page-pad">
+    <MudText Typo="Typo.h4" Class="mb-1">Panel de administración</MudText>
+    <MudText Typo="Typo.body1" Class="mud-text-secondary mb-6">
+        Gestiona usuarios, bibliotecas, tareas y la configuración del servidor de Photonne.
+    </MudText>
+
+    @* ── Headline stats ──────────────────────────────────────────────── *@
+    <MudGrid Class="mb-2">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline" Class="mud-text-secondary">Fotos</MudText>
+                <MudText Typo="Typo.h5">@(_stats?.TotalPhotos.ToString("N0") ?? "—")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline" Class="mud-text-secondary">Vídeos</MudText>
+                <MudText Typo="Typo.h5">@(_stats?.TotalVideos.ToString("N0") ?? "—")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline" Class="mud-text-secondary">Usuarios</MudText>
+                <MudText Typo="Typo.h5">@(_stats?.Users.Count.ToString("N0") ?? "—")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline" Class="mud-text-secondary">Almacenamiento</MudText>
+                <MudText Typo="Typo.h5">@FormatBytes(_stats?.TotalBytes)</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @if (_loadError)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Dense="true">
+            No se pudieron cargar las estadísticas del servidor.
+        </MudAlert>
+    }
+
+    @* ── Quick access ────────────────────────────────────────────────── *@
+    <MudText Typo="Typo.h6" Class="mt-6 mb-3">Accesos rápidos</MudText>
+    <MudGrid>
+        @foreach (var card in Cards)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4 dash-card" Elevation="0" Outlined="true"
+                          @onclick="@(() => Navigation.NavigateTo(card.Href))" Style="cursor: pointer; height: 100%;">
+                    <div class="d-flex align-center mb-2">
+                        <MudIcon Icon="@card.Icon" Color="Color.Primary" Class="mr-3" />
+                        <MudText Typo="Typo.subtitle1">@card.Title</MudText>
+                    </div>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@card.Description</MudText>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+</div>
+
+@code {
+    private AdminStatsResponse? _stats;
+    private bool _loadError;
+
+    private sealed record QuickCard(string Title, string Description, string Icon, string Href);
+
+    private static readonly QuickCard[] Cards =
+    [
+        new("Usuarios", "Crear, editar y gestionar roles de usuario.", Icons.Material.Outlined.People, "/admin/users"),
+        new("Bibliotecas externas", "Integrar directorios externos a la biblioteca.", Icons.Material.Outlined.FolderSpecial, "/admin/libraries"),
+        new("Estadísticas", "Uso por usuario y desglose del servidor.", Icons.Material.Outlined.QueryStats, "/admin/stats"),
+        new("Tareas y colas", "Indexación, miniaturas, metadatos e IA.", Icons.Material.Outlined.PlaylistPlay, "/admin/system/tasks"),
+        new("Utilidades", "Duplicados, archivos pesados y ubicaciones.", Icons.Material.Outlined.Build, "/utilities"),
+        new("Mantenimiento", "Limpieza de papelera y tareas del sistema.", Icons.Material.Outlined.CleaningServices, "/admin/system/maintenance"),
+        new("Copia de seguridad", "Exportar y restaurar la base de datos.", Icons.Material.Outlined.Backup, "/admin/system/backup"),
+        new("Ajustes", "Configuración del servidor y de IA.", Icons.Material.Outlined.Settings, "/admin/settings"),
+        new("Sistema", "Estado, versión y diagnóstico del servidor.", Icons.Material.Outlined.Storage, "/admin/system"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _stats = await AdminStatsService.GetStatsAsync();
+        }
+        catch
+        {
+            _loadError = true;
+        }
+    }
+
+    private static string FormatBytes(long? bytes)
+    {
+        if (bytes is null) return "—";
+        double size = bytes.Value;
+        string[] units = ["B", "KB", "MB", "GB", "TB", "PB"];
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return $"{size:0.#} {units[unit]}";
+    }
+}
