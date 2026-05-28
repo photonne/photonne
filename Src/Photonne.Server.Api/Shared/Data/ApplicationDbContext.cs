@@ -167,6 +167,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FileCreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.FileModifiedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.ScannedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.CapturedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AssetExif entity
