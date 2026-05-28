@@ -3,6 +3,8 @@ package com.photonne.app.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +19,7 @@ data class TrashUiState(
     val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
     val isBulkMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val nextCursor: Instant? = null,
     val hasMore: Boolean = true,
     val selection: Set<String> = emptySet(),
@@ -28,7 +30,8 @@ data class TrashUiState(
 }
 
 class TrashViewModel(
-    private val repository: AssetDetailRepository
+    private val repository: AssetDetailRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TrashUiState())
@@ -45,7 +48,7 @@ class TrashViewModel(
             it.copy(
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
-                errorMessage = null
+                error = null
             )
         }
         viewModelScope.launch {
@@ -68,7 +71,7 @@ class TrashViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message ?: "Failed to load trash"
+                            error = errorFactory.from(error, "Failed to load trash")
                         )
                     }
                 }
@@ -98,7 +101,7 @@ class TrashViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "Failed to load more"
+                            error = errorFactory.from(error, "Failed to load more")
                         )
                     }
                 }
@@ -131,7 +134,7 @@ class TrashViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -147,7 +150,7 @@ class TrashViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to restore"
+                            error = errorFactory.from(error, "Failed to restore")
                         )
                     }
                 }
@@ -161,7 +164,7 @@ class TrashViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -177,7 +180,7 @@ class TrashViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to delete forever"
+                            error = errorFactory.from(error, "Failed to delete forever")
                         )
                     }
                 }
@@ -186,7 +189,7 @@ class TrashViewModel(
 
     fun restoreAll(onSuccess: () -> Unit = {}) {
         if (_state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.restoreAllTrash() }
                 .onSuccess {
@@ -197,7 +200,7 @@ class TrashViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to restore all"
+                            error = errorFactory.from(error, "Failed to restore all")
                         )
                     }
                 }
@@ -206,7 +209,7 @@ class TrashViewModel(
 
     fun emptyTrash(onSuccess: () -> Unit = {}) {
         if (_state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.emptyTrash() }
                 .onSuccess {
@@ -217,7 +220,7 @@ class TrashViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to empty trash"
+                            error = errorFactory.from(error, "Failed to empty trash")
                         )
                     }
                 }
@@ -234,6 +237,6 @@ class TrashViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 }

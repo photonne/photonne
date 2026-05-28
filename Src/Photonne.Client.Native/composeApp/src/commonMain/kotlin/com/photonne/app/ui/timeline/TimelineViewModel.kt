@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.timeline.TimelineRepository
 import kotlinx.coroutines.Job
@@ -19,20 +21,21 @@ data class TimelineUiState(
     val isInitialLoading: Boolean = false,
     val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val nextCursor: Instant? = null,
     val hasMore: Boolean = true,
     val selection: Set<String> = emptySet(),
-    val isBulkMutating: Boolean = false
+    val isBulkMutating: Boolean = false,
 ) {
-    val isEmpty: Boolean get() = !isInitialLoading && items.isEmpty() && errorMessage == null
+    val isEmpty: Boolean get() = !isInitialLoading && items.isEmpty() && error == null
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
 }
 
 class TimelineViewModel(
     private val repository: TimelineRepository,
     private val assetRepository: AssetDetailRepository,
-    private val albumsRepository: AlbumsRepository
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TimelineUiState())
@@ -50,7 +53,7 @@ class TimelineViewModel(
             it.copy(
                 isRefreshing = it.items.isNotEmpty(),
                 isInitialLoading = it.items.isEmpty(),
-                errorMessage = null
+                error = null
             )
         }
         pagingJob = viewModelScope.launch {
@@ -67,7 +70,7 @@ class TimelineViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message ?: "Error al cargar la línea de tiempo"
+                            error = errorFactory.from(error, "Error al cargar la línea de tiempo")
                         )
                     }
                 }
@@ -100,7 +103,7 @@ class TimelineViewModel(
         if (current.isAppending || current.isInitialLoading || !current.hasMore) return
         val cursor = current.nextCursor ?: return
 
-        _state.update { it.copy(isAppending = true, errorMessage = null) }
+        _state.update { it.copy(isAppending = true, error = null) }
         pagingJob = viewModelScope.launch {
             runCatching { repository.loadPage(cursor = cursor) }
                 .onSuccess { result ->
@@ -117,7 +120,7 @@ class TimelineViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "Error al paginar"
+                            error = errorFactory.from(error, "Error al paginar")
                         )
                     }
                 }
@@ -159,7 +162,7 @@ class TimelineViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -167,7 +170,7 @@ class TimelineViewModel(
         viewModelScope.launch {
             runCatching { assetRepository.archive(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error.message ?: "Failed to archive") }
+                .onFailure { error -> revertBulk(previous, error, "Failed to archive") }
         }
     }
 
@@ -178,7 +181,7 @@ class TimelineViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -186,7 +189,7 @@ class TimelineViewModel(
         viewModelScope.launch {
             runCatching { assetRepository.trash(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error.message ?: "Failed to delete") }
+                .onFailure { error -> revertBulk(previous, error, "Failed to delete") }
         }
     }
 
@@ -194,7 +197,7 @@ class TimelineViewModel(
         val items = selectedItems()
         val ids = items.map { it.id }
         if (ids.isEmpty() || _state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -205,7 +208,7 @@ class TimelineViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -213,15 +216,15 @@ class TimelineViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
-    private fun revertBulk(previousItems: List<TimelineItem>, message: String) {
+    private fun revertBulk(previousItems: List<TimelineItem>, throwable: Throwable, fallback: String) {
         _state.update {
             it.copy(
                 items = previousItems,
                 isBulkMutating = false,
-                errorMessage = message
+                error = errorFactory.from(throwable, fallback)
             )
         }
     }

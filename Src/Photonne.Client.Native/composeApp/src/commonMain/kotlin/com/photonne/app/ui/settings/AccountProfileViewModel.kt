@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.UserDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,9 +21,9 @@ data class AccountProfileUiState(
     val username: String = "",
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val successMessage: String? = null,
-    val baseline: UserDto? = null
+    val baseline: UserDto? = null,
 ) {
     val canSave: Boolean
         get() {
@@ -37,7 +39,8 @@ data class AccountProfileUiState(
 
 class AccountProfileViewModel(
     private val repository: AccountRepository,
-    private val authStateHolder: AuthStateHolder
+    private val authStateHolder: AuthStateHolder,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AccountProfileUiState())
@@ -51,7 +54,7 @@ class AccountProfileViewModel(
     fun load() {
         val cached = (authStateHolder.state.value as? AuthState.Authenticated)?.user
         if (cached != null) seed(cached)
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.refreshCurrentUser() }
                 .onSuccess { user ->
@@ -62,8 +65,8 @@ class AccountProfileViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = if (cached == null) {
-                                error.message ?: "Failed to load profile"
+                            error = if (cached == null) {
+                                errorFactory.from(error, "Failed to load profile")
                             } else null
                         )
                     }
@@ -88,13 +91,13 @@ class AccountProfileViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     fun save() {
         val current = _state.value
         if (!current.canSave) return
-        _state.update { it.copy(isSubmitting = true, errorMessage = null, successMessage = null) }
+        _state.update { it.copy(isSubmitting = true, error = null, successMessage = null) }
         viewModelScope.launch {
             runCatching {
                 repository.updateProfile(
@@ -114,7 +117,7 @@ class AccountProfileViewModel(
                     _state.update {
                         it.copy(
                             isSubmitting = false,
-                            errorMessage = error.message ?: "Could not update profile"
+                            error = errorFactory.from(error, "Could not update profile")
                         )
                     }
                 }

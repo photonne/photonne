@@ -15,6 +15,8 @@ import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiClient
 import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.data.api.buildPhotonneHttpClient
+import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.version.AppVersionStore
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.asset.AssetDetailRepository
@@ -116,6 +118,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
         PhotonneApiClient(get(), baseUrlProvider = { urlStore.requireBaseUrl() })
     }
     single { LocalReachabilityProbe(get(), get(), get()) }
+    single { AppVersionStore(get()) }
+    single { UiErrorFactory(urlStore = get(), versionStore = get()) }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)

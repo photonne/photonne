@@ -3,6 +3,8 @@ package com.photonne.app.ui.album
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.ShareableUser
@@ -18,7 +20,7 @@ data class AlbumPermissionsUiState(
     val candidates: List<ShareableUser> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 ) {
     /** Users not yet members of the album, ready to be invited. */
     val invitableUsers: List<ShareableUser>
@@ -30,7 +32,8 @@ data class AlbumPermissionsUiState(
 }
 
 class AlbumPermissionsViewModel(
-    private val repository: AlbumsRepository
+    private val repository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AlbumPermissionsUiState())
@@ -44,7 +47,7 @@ class AlbumPermissionsViewModel(
 
     fun refresh() {
         val albumId = _state.value.albumId ?: return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch { reloadInternal(albumId) }
     }
 
@@ -56,7 +59,7 @@ class AlbumPermissionsViewModel(
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
         val wasMember = _state.value.members.any { it.userId == user.id }
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.grantMember(albumId, user.id, role) }
                 .onSuccess { permission ->
@@ -73,7 +76,7 @@ class AlbumPermissionsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to invite member"
+                            error = errorFactory.from(error, "Failed to invite member")
                         )
                     }
                 }
@@ -94,7 +97,7 @@ class AlbumPermissionsViewModel(
     ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.revokeMember(albumId, member.userId) }
                 .onSuccess {
@@ -110,7 +113,7 @@ class AlbumPermissionsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to remove member"
+                            error = errorFactory.from(error, "Failed to remove member")
                         )
                     }
                 }
@@ -118,7 +121,7 @@ class AlbumPermissionsViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     fun close() {
@@ -145,7 +148,7 @@ class AlbumPermissionsViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Failed to load members"
+                        error = errorFactory.from(error, "Failed to load members")
                     )
                 }
             }

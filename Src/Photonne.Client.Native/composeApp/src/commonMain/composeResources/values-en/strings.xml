@@ -919,4 +919,13 @@
     <string name="notifications_time_minutes_ago">%1$d min ago</string>
     <string name="notifications_time_hours_ago">%1$dh ago</string>
     <string name="notifications_time_days_ago">%1$dd ago</string>
+
+    <!-- Error reporting -->
+    <string name="error_banner_view_details">View details</string>
+    <string name="error_banner_retry">Retry</string>
+    <string name="error_banner_dismiss">Dismiss</string>
+    <string name="error_details_title">Error details</string>
+    <string name="error_details_copy">Copy all</string>
+    <string name="error_details_copied">Details copied to clipboard</string>
+    <string name="error_details_share_hint">Paste it into a message and send it to your admin.</string>
 </resources>

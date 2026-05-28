@@ -103,13 +103,13 @@ fun AlbumsListScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                state.errorMessage != null && state.albums.isEmpty() ->
+                state.error?.userMessage != null && state.albums.isEmpty() ->
                     Box(
                         modifier = Modifier.fillMaxSize().padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            state.errorMessage!!,
+                            state.error?.userMessage!!,
                             color = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center
                         )

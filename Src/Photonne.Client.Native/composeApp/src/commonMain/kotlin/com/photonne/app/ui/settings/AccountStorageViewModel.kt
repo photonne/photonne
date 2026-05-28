@@ -3,6 +3,8 @@ package com.photonne.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.account.AccountRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.StorageInfoDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +15,7 @@ import kotlinx.coroutines.launch
 data class AccountStorageUiState(
     val info: StorageInfoDto? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 ) {
     val usagePercent: Float?
         get() = info?.let { stored ->
@@ -24,7 +26,8 @@ data class AccountStorageUiState(
 }
 
 class AccountStorageViewModel(
-    private val repository: AccountRepository
+    private val repository: AccountRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AccountStorageUiState())
@@ -32,7 +35,7 @@ class AccountStorageViewModel(
 
     fun load() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.getStorageInfo() }
                 .onSuccess { info ->
@@ -42,7 +45,7 @@ class AccountStorageViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load storage info"
+                            error = errorFactory.from(error, "Failed to load storage info")
                         )
                     }
                 }

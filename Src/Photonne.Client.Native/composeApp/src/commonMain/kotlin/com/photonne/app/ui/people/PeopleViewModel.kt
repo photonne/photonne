@@ -2,6 +2,8 @@ package com.photonne.app.ui.people
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.Person
 import com.photonne.app.data.people.PeopleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +19,7 @@ data class PeopleUiState(
     val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val hasMore: Boolean = false,
     val loaded: Boolean = false,
     val showHidden: Boolean = false
@@ -26,7 +28,8 @@ data class PeopleUiState(
 }
 
 class PeopleViewModel(
-    private val repository: PeopleRepository
+    private val repository: PeopleRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PeopleUiState())
@@ -42,7 +45,7 @@ class PeopleViewModel(
             it.copy(
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
-                errorMessage = null
+                error = null
             )
         }
         viewModelScope.launch {
@@ -66,7 +69,7 @@ class PeopleViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message ?: "Failed to load people"
+                            error = errorFactory.from(error, "Failed to load people")
                         )
                     }
                 }
@@ -102,7 +105,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "Failed to load more"
+                            error = errorFactory.from(error, "Failed to load more")
                         )
                     }
                 }
@@ -118,7 +121,7 @@ class PeopleViewModel(
 
     fun rename(personId: String, name: String?, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.rename(personId, name) }
                 .onSuccess {
@@ -137,7 +140,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to rename"
+                            error = errorFactory.from(error, "Failed to rename")
                         )
                     }
                 }
@@ -146,7 +149,7 @@ class PeopleViewModel(
 
     fun hide(personId: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.hide(personId) }
                 .onSuccess {
@@ -170,7 +173,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to hide"
+                            error = errorFactory.from(error, "Failed to hide")
                         )
                     }
                 }
@@ -179,7 +182,7 @@ class PeopleViewModel(
 
     fun unhide(personId: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.unhide(personId) }
                 .onSuccess {
@@ -197,7 +200,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to unhide"
+                            error = errorFactory.from(error, "Failed to unhide")
                         )
                     }
                 }
@@ -205,7 +208,7 @@ class PeopleViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     /**
@@ -215,7 +218,7 @@ class PeopleViewModel(
      */
     fun recluster(onSuccess: (personsCreated: Int) -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.recluster() }
                 .onSuccess { result ->
@@ -227,7 +230,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to recluster"
+                            error = errorFactory.from(error, "Failed to recluster")
                         )
                     }
                 }

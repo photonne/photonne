@@ -3,6 +3,8 @@ package com.photonne.app.ui.asset
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AssetDetail
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +16,7 @@ import kotlinx.coroutines.launch
 data class AssetDetailUiState(
     val detail: AssetDetail? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 )
 
 /**
@@ -23,7 +25,8 @@ data class AssetDetailUiState(
  * alive. Caller invokes [select] every time the visible page changes.
  */
 class AssetDetailViewModel(
-    private val repository: AssetDetailRepository
+    private val repository: AssetDetailRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AssetDetailUiState())
@@ -49,7 +52,7 @@ class AssetDetailViewModel(
             return
         }
         currentJob?.cancel()
-        _state.update { it.copy(isLoading = true, errorMessage = null, detail = null) }
+        _state.update { it.copy(isLoading = true, error = null, detail = null) }
         currentJob = viewModelScope.launch {
             runCatching { repository.getDetail(assetId) }
                 .onSuccess { detail ->
@@ -63,7 +66,7 @@ class AssetDetailViewModel(
                         _state.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = error.message ?: "Error al cargar los detalles"
+                                error = errorFactory.from(error, "Error al cargar los detalles")
                             )
                         }
                     }
@@ -95,7 +98,7 @@ class AssetDetailViewModel(
                 .onFailure { error ->
                     applyFavorite(assetId, previous)
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "No se pudo actualizar el favorito")
+                        it.copy(error = errorFactory.from(error, "No se pudo actualizar el favorito"))
                     }
                 }
         }
@@ -120,7 +123,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Failed to archive")
+                        it.copy(error = errorFactory.from(error, "Failed to archive"))
                     }
                 }
         }
@@ -135,7 +138,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Failed to delete")
+                        it.copy(error = errorFactory.from(error, "Failed to delete"))
                     }
                 }
         }
@@ -155,13 +158,13 @@ class AssetDetailViewModel(
             runCatching { repository.updateDescription(assetId, cleaned) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Failed to update description")
+                        it.copy(error = errorFactory.from(error, "Failed to update description"))
                     }
                 }
         }
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 }

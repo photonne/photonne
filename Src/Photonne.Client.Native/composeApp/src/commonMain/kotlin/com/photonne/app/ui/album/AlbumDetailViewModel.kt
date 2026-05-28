@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,15 +22,16 @@ data class AlbumDetailUiState(
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val isBulkMutating: Boolean = false,
-    val errorMessage: String? = null,
-    val selection: Set<String> = emptySet()
+    val error: UiError? = null,
+    val selection: Set<String> = emptySet(),
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
 }
 
 class AlbumDetailViewModel(
     private val repository: AlbumsRepository,
-    private val assetRepository: AssetDetailRepository
+    private val assetRepository: AssetDetailRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AlbumDetailUiState())
@@ -54,7 +57,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load album"
+                            error = errorFactory.from(error, "Failed to load album")
                         )
                     }
                 }
@@ -73,7 +76,7 @@ class AlbumDetailViewModel(
     fun rename(name: String, description: String?, onSuccess: (AlbumSummary) -> Unit = {}) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.update(albumId, name.trim(), description?.trim()?.takeIf { it.isNotEmpty() })
@@ -92,7 +95,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to rename album"
+                            error = errorFactory.from(error, "Failed to rename album")
                         )
                     }
                 }
@@ -102,7 +105,7 @@ class AlbumDetailViewModel(
     fun delete(onDeleted: (String) -> Unit) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.delete(albumId) }
                 .onSuccess {
@@ -113,7 +116,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to delete album"
+                            error = errorFactory.from(error, "Failed to delete album")
                         )
                     }
                 }
@@ -152,7 +155,7 @@ class AlbumDetailViewModel(
         _state.update {
             it.copy(
                 isMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id == assetId }
             )
         }
@@ -167,7 +170,7 @@ class AlbumDetailViewModel(
                         it.copy(
                             isMutating = false,
                             items = previous,
-                            errorMessage = error.message ?: "Failed to remove asset"
+                            error = errorFactory.from(error, "Failed to remove asset")
                         )
                     }
                 }
@@ -177,7 +180,7 @@ class AlbumDetailViewModel(
     fun setCover(assetId: String, onSuccess: (AlbumSummary) -> Unit = {}) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.setCover(albumId, assetId) }
                 .onSuccess { album ->
@@ -188,7 +191,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to set album cover"
+                            error = errorFactory.from(error, "Failed to set album cover")
                         )
                     }
                 }
@@ -198,7 +201,7 @@ class AlbumDetailViewModel(
     fun leave(onLeft: (String) -> Unit) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.leave(albumId) }
                 .onSuccess {
@@ -209,7 +212,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to leave album"
+                            error = errorFactory.from(error, "Failed to leave album")
                         )
                     }
                 }
@@ -249,7 +252,7 @@ class AlbumDetailViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val added = _state.value.items.filter { it.id in ids }
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -260,7 +263,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -280,7 +283,7 @@ class AlbumDetailViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -298,7 +301,7 @@ class AlbumDetailViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to remove from album"
+                            error = errorFactory.from(error, "Failed to remove from album")
                         )
                     }
                 }
@@ -315,7 +318,7 @@ class AlbumDetailViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -328,7 +331,7 @@ class AlbumDetailViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: errorFallback
+                            error = errorFactory.from(error, errorFallback)
                         )
                     }
                 }
@@ -336,6 +339,7 @@ class AlbumDetailViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
+
 }

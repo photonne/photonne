@@ -274,7 +274,13 @@ fun TimelineScreen(
                     CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp))
                 }
             }
-            state.errorMessage?.let { ErrorBanner(it, modifier = Modifier.align(Alignment.TopCenter)) }
+            state.error?.let {
+                com.photonne.app.ui.error.ErrorBanner(
+                    error = it,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    onRetry = onRefresh,
+                )
+            }
         }
     }
 }
@@ -340,14 +346,3 @@ private fun TimelineEmptyState(onOpenUpload: (() -> Unit)?) {
     )
 }
 
-@Composable
-private fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.errorContainer)
-            .padding(12.dp)
-    ) {
-        Text(message, color = MaterialTheme.colorScheme.onErrorContainer)
-    }
-}

@@ -62,12 +62,14 @@ fun FolderDetailScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            state.errorMessage != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
+            state.error != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                    com.photonne.app.ui.error.ErrorBanner(
+                        error = state.error,
+                        onRetry = { state.folderId?.let { id ->
+                            viewModel.open(id, state.folderName.orEmpty(), state.parentFolderId)
+                        } },
+                    )
                 }
             state.items.isEmpty() && state.subFolders.isEmpty() ->
                 EmptyState(

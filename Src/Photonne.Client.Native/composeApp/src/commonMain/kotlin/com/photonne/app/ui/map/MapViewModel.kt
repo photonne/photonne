@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.map.MapRepository
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.TimelineItem
@@ -19,7 +21,7 @@ data class MapUiState(
     val zoom: Int = 2,
     val points: List<MapPoint> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val firstLoadComplete: Boolean = false,
     // Cluster bottom-sheet state. `sheetPoints` is null when the sheet
     // is closed; the view-model owns it so selection survives a
@@ -35,7 +37,8 @@ data class MapUiState(
 class MapViewModel(
     private val repository: MapRepository,
     private val assetRepository: AssetDetailRepository,
-    private val albumsRepository: AlbumsRepository
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -47,7 +50,7 @@ class MapViewModel(
     }
 
     fun refresh() {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.points() }
                 .onSuccess { points ->
@@ -68,7 +71,7 @@ class MapViewModel(
                         it.copy(
                             isLoading = false,
                             firstLoadComplete = true,
-                            errorMessage = error.message ?: "Failed to load map"
+                            error = errorFactory.from(error, "Failed to load map")
                         )
                     }
                 }
@@ -127,7 +130,7 @@ class MapViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     fun bulkArchive() = runBulk(
@@ -149,7 +152,7 @@ class MapViewModel(
     fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -164,7 +167,7 @@ class MapViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -177,7 +180,7 @@ class MapViewModel(
     ) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { action(ids) }
                 .onSuccess { _ ->
@@ -197,7 +200,7 @@ class MapViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: errorFallback
+                            error = errorFactory.from(error, errorFallback)
                         )
                     }
                 }

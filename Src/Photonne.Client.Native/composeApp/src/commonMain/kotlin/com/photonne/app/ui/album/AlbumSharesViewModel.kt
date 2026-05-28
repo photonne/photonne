@@ -3,6 +3,8 @@ package com.photonne.app.ui.album
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumShareLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,12 +18,13 @@ data class AlbumSharesUiState(
     val links: List<AlbumShareLink> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val createdLink: AlbumShareLink? = null
 )
 
 class AlbumSharesViewModel(
-    private val repository: AlbumsRepository
+    private val repository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AlbumSharesUiState())
@@ -37,7 +40,7 @@ class AlbumSharesViewModel(
 
     fun refresh() {
         val albumId = _state.value.albumId ?: return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch { reloadInternal(albumId) }
     }
 
@@ -49,7 +52,7 @@ class AlbumSharesViewModel(
     ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.createShare(
@@ -73,7 +76,7 @@ class AlbumSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to create share link"
+                            error = errorFactory.from(error, "Failed to create share link")
                         )
                     }
                 }
@@ -88,7 +91,7 @@ class AlbumSharesViewModel(
         maxViews: Int?
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.updateShare(
@@ -118,7 +121,7 @@ class AlbumSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to update share link"
+                            error = errorFactory.from(error, "Failed to update share link")
                         )
                     }
                 }
@@ -127,7 +130,7 @@ class AlbumSharesViewModel(
 
     fun revoke(token: String) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.revokeShare(token) }
                 .onSuccess {
@@ -142,7 +145,7 @@ class AlbumSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to revoke share link"
+                            error = errorFactory.from(error, "Failed to revoke share link")
                         )
                     }
                 }
@@ -154,7 +157,7 @@ class AlbumSharesViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     fun close() {
@@ -176,7 +179,7 @@ class AlbumSharesViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Failed to load share links"
+                        error = errorFactory.from(error, "Failed to load share links")
                     )
                 }
             }

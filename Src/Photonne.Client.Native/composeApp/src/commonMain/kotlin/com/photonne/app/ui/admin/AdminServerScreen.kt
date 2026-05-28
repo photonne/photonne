@@ -47,9 +47,9 @@ fun AdminServerScreen(viewModel: AdminServerViewModel) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        state.errorMessage != null && state.info == null ->
+        state.error?.userMessage != null && state.info == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
+                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
             }
         state.info != null -> {
             val info = state.info!!

@@ -102,7 +102,7 @@ fun MapScreen(
                 }
         }
 
-        state.errorMessage?.let { message ->
+        state.error?.userMessage?.let { message ->
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)

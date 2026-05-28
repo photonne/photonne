@@ -19,6 +19,34 @@ public class VersionEndpoint : IEndpoint
         group.MapGet("version", GetVersion)
             .WithName("GetVersion")
             .WithDescription("Gets the current application version and checks for updates on GitHub");
+
+        // Endpoint público: solo devuelve la versión actual (sin info de
+        // updates, que sigue siendo admin). Lo usan los clientes para
+        // incluir la versión del servidor en los reportes de error
+        // que un usuario normal pueda compartir con su admin.
+        app.MapGet("/api/version", GetPublicVersion)
+            .WithTags("Version")
+            .WithName("GetPublicVersion")
+            .WithDescription("Returns the current server version. Public, no auth required.")
+            .AllowAnonymous();
+    }
+
+    private static IResult GetPublicVersion()
+    {
+        return Results.Ok(new PublicVersionResponse { Version = ResolveCurrentVersion() });
+    }
+
+    private static string ResolveCurrentVersion()
+    {
+        var raw = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion
+            ?? typeof(VersionEndpoint).Assembly
+                .GetName().Version?.ToString(3)
+            ?? "desconocida";
+
+        var plusIdx = raw.IndexOf('+', StringComparison.Ordinal);
+        return plusIdx >= 0 ? raw[..plusIdx] : raw;
     }
 
     private static async Task<IResult> GetVersion(
@@ -31,17 +59,7 @@ public class VersionEndpoint : IEndpoint
         if (refresh != true && cache.TryGetValue(cacheKey, out VersionInfoResponse? cached))
             return Results.Ok(cached);
 
-        var currentVersion = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion
-            ?? typeof(VersionEndpoint).Assembly
-                .GetName().Version?.ToString(3)
-            ?? "desconocida";
-
-        // Strip build metadata (e.g. "1.0.0+abc123")
-        var plusIdx = currentVersion.IndexOf('+', StringComparison.Ordinal);
-        if (plusIdx >= 0)
-            currentVersion = currentVersion[..plusIdx];
+        var currentVersion = ResolveCurrentVersion();
 
         string? latestVersion = null;
         string? latestReleaseUrl = null;
@@ -106,6 +124,11 @@ public class VersionEndpoint : IEndpoint
         [property: JsonPropertyName("html_url")] string? HtmlUrl,
         [property: JsonPropertyName("body")] string? Body,
         [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt);
+}
+
+public sealed record PublicVersionResponse
+{
+    public string Version { get; init; } = "";
 }
 
 public sealed record VersionInfoResponse

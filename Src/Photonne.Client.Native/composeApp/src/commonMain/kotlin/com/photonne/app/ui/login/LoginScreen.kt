@@ -140,7 +140,7 @@ private fun ServerUrlStep(state: LoginUiState, viewModel: LoginViewModel) {
         modifier = Modifier.fillMaxWidth()
     )
 
-    state.errorMessage?.let {
+    state.error?.userMessage?.let {
         Text(it, color = MaterialTheme.colorScheme.error)
     }
 
@@ -232,7 +232,7 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         )
     }
 
-    state.errorMessage?.let {
+    state.error?.userMessage?.let {
         Text(it, color = MaterialTheme.colorScheme.error)
     }
 

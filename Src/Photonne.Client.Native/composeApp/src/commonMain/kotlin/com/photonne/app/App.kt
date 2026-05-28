@@ -369,6 +369,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumsRepository: AlbumsRepository = koinInject()
     val peopleRepository: com.photonne.app.data.people.PeopleRepository = koinInject()
     val apiBaseUrl = com.photonne.app.data.api.rememberApiBaseUrl()
+    val appVersionStore: com.photonne.app.data.version.AppVersionStore = koinInject()
+    // Refresca la versión del servidor cada vez que cambia el baseUrl
+    // efectivo (login, switch LAN↔público). Si falla, el reporte de error
+    // sale sin la versión del server — no es bloqueante.
+    LaunchedEffect(apiBaseUrl) {
+        if (!apiBaseUrl.isNullOrBlank()) appVersionStore.refresh()
+    }
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val timelineZoomStore: com.photonne.app.data.settings.TimelineZoomStore = koinInject()
     val timelineZoom by timelineZoomStore.value.collectAsState()
@@ -2239,7 +2246,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             title = stringResource(Res.string.album_action_new),
             confirmLabel = stringResource(Res.string.action_create),
             isSubmitting = albumsState.isMutating || timelineState.isBulkMutating,
-            errorMessage = albumsState.errorMessage,
+            errorMessage = albumsState.error?.userMessage,
             onDismiss = {
                 showCreateAlbum = false
                 pendingBulkAddOnCreate = false
@@ -2273,7 +2280,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             initialName = albumDetailState.albumName ?: openedAlbum.name,
             initialDescription = albumDetailState.albumDescription ?: openedAlbum.description,
             isSubmitting = albumDetailState.isMutating,
-            errorMessage = albumDetailState.errorMessage,
+            errorMessage = albumDetailState.error?.userMessage,
             onDismiss = {
                 showEditAlbum = false
                 albumDetailViewModel.clearError()
@@ -2294,7 +2301,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             initialName = target.name,
             initialDescription = target.description,
             isSubmitting = albumsState.isMutating,
-            errorMessage = albumsState.errorMessage,
+            errorMessage = albumsState.error?.userMessage,
             onDismiss = {
                 showEditAlbum = false
                 pendingActionAlbum = null
@@ -2313,7 +2320,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteAlbumDialog(
             albumName = albumDetailState.albumName ?: openedAlbum.name,
             isSubmitting = albumDetailState.isMutating,
-            errorMessage = albumDetailState.errorMessage,
+            errorMessage = albumDetailState.error?.userMessage,
             onDismiss = {
                 showDeleteAlbum = false
                 albumDetailViewModel.clearError()
@@ -2331,7 +2338,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteAlbumDialog(
             albumName = target.name,
             isSubmitting = albumsState.isMutating,
-            errorMessage = albumsState.errorMessage,
+            errorMessage = albumsState.error?.userMessage,
             onDismiss = {
                 showDeleteAlbum = false
                 pendingActionAlbum = null
@@ -2350,7 +2357,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         LeaveAlbumDialog(
             albumName = albumDetailState.albumName ?: openedAlbum.name,
             isSubmitting = albumDetailState.isMutating,
-            errorMessage = albumDetailState.errorMessage,
+            errorMessage = albumDetailState.error?.userMessage,
             onDismiss = {
                 showLeaveAlbum = false
                 albumDetailViewModel.clearError()
@@ -2368,7 +2375,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         LeaveAlbumDialog(
             albumName = target.name,
             isSubmitting = albumsState.isMutating,
-            errorMessage = albumsState.errorMessage,
+            errorMessage = albumsState.error?.userMessage,
             onDismiss = {
                 showLeaveAlbum = false
                 pendingActionAlbum = null
@@ -2433,7 +2440,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         InviteMemberDialog(
             candidates = albumPermissionsState.invitableUsers,
             isSubmitting = albumPermissionsState.isMutating,
-            errorMessage = albumPermissionsState.errorMessage,
+            errorMessage = albumPermissionsState.error?.userMessage,
             onDismiss = {
                 showInviteMember = false
                 albumPermissionsViewModel.clearError()
@@ -2465,7 +2472,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showCreateShare && openedAlbum != null) {
         CreateShareDialog(
             isSubmitting = albumSharesState.isMutating,
-            errorMessage = albumSharesState.errorMessage,
+            errorMessage = albumSharesState.error?.userMessage,
             onDismiss = {
                 showCreateShare = false
                 albumSharesViewModel.clearError()
@@ -2486,7 +2493,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         EditShareDialog(
             link = link,
             isSubmitting = albumSharesState.isMutating,
-            errorMessage = albumSharesState.errorMessage,
+            errorMessage = albumSharesState.error?.userMessage,
             onDismiss = {
                 editingShareLink = null
                 albumSharesViewModel.clearError()
@@ -2509,7 +2516,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = timelineState.isBulkMutating,
-            errorMessage = timelineState.errorMessage,
+            errorMessage = timelineState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbum = false
                 pendingBulkAddOnCreate = true
@@ -2531,7 +2538,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             title = stringResource(Res.string.folder_action_new),
             confirmLabel = stringResource(Res.string.action_create),
             isSubmitting = foldersState.isMutating,
-            errorMessage = foldersState.errorMessage,
+            errorMessage = foldersState.error?.userMessage,
             showSharedSpaceOption = true,
             onDismiss = {
                 showCreateFolder = false
@@ -2556,7 +2563,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             confirmLabel = stringResource(Res.string.action_save),
             initialName = folderDetailState.folderName ?: openedFolder.name,
             isSubmitting = folderDetailState.isMutating,
-            errorMessage = folderDetailState.errorMessage,
+            errorMessage = folderDetailState.error?.userMessage,
             onDismiss = {
                 showEditFolder = false
                 folderDetailViewModel.clearError()
@@ -2576,7 +2583,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             confirmLabel = stringResource(Res.string.action_save),
             initialName = target.name,
             isSubmitting = foldersState.isMutating,
-            errorMessage = foldersState.errorMessage,
+            errorMessage = foldersState.error?.userMessage,
             onDismiss = {
                 showEditFolder = false
                 pendingActionFolder = null
@@ -2595,7 +2602,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteFolderDialog(
             folderName = folderDetailState.folderName ?: openedFolder.name.ifBlank { openedFolder.path },
             isSubmitting = folderDetailState.isMutating,
-            errorMessage = folderDetailState.errorMessage,
+            errorMessage = folderDetailState.error?.userMessage,
             onDismiss = {
                 showDeleteFolder = false
                 folderDetailViewModel.clearError()
@@ -2615,7 +2622,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteFolderDialog(
             folderName = target.name.ifBlank { target.path },
             isSubmitting = foldersState.isMutating,
-            errorMessage = foldersState.errorMessage,
+            errorMessage = foldersState.error?.userMessage,
             onDismiss = {
                 showDeleteFolder = false
                 pendingActionFolder = null
@@ -2667,7 +2674,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         InviteFolderMemberDialog(
             candidates = folderPermissionsState.invitableUsers,
             isSubmitting = folderPermissionsState.isMutating,
-            errorMessage = folderPermissionsState.errorMessage,
+            errorMessage = folderPermissionsState.error?.userMessage,
             onDismiss = {
                 showInviteFolderMember = false
                 folderPermissionsViewModel.clearError()
@@ -2701,7 +2708,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             title = stringResource(Res.string.folder_move_title),
             folders = foldersState.personalFolders,
             isSubmitting = folderDetailState.isMutating,
-            errorMessage = folderDetailState.errorMessage,
+            errorMessage = folderDetailState.error?.userMessage,
             excludeFolderId = openedFolder.id,
             includeRoot = true,
             initialSelectionId = openedFolder.parentFolderId,
@@ -2759,7 +2766,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = searchState.isBulkMutating,
-            errorMessage = searchState.errorMessage,
+            errorMessage = searchState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbumFromSearch = false
                 showCreateAlbum = true
@@ -2780,7 +2787,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             title = stringResource(Res.string.folder_move_assets_title),
             folders = foldersState.personalFolders,
             isSubmitting = folderDetailState.isBulkMutating,
-            errorMessage = folderDetailState.errorMessage,
+            errorMessage = folderDetailState.error?.userMessage,
             excludeFolderId = openedFolder.id,
             includeRoot = false,
             onDismiss = {
@@ -2904,7 +2911,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = mapState.isBulkMutating,
-            errorMessage = mapState.errorMessage,
+            errorMessage = mapState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbumFromMap = false
                 showCreateAlbum = true
@@ -2925,7 +2932,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = personDetailState.isBulkMutating,
-            errorMessage = personDetailState.errorMessage,
+            errorMessage = personDetailState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbumFromPeople = false
                 showCreateAlbum = true
@@ -2946,7 +2953,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.people.RenamePersonDialog(
             initialName = personDetailState.personName ?: activePerson.name,
             isSubmitting = peopleState.isMutating,
-            errorMessage = peopleState.errorMessage,
+            errorMessage = peopleState.error?.userMessage,
             onDismiss = {
                 showRenamePerson = false
                 peopleViewModel.clearError()
@@ -2993,7 +3000,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = folderDetailState.isBulkMutating,
-            errorMessage = folderDetailState.errorMessage,
+            errorMessage = folderDetailState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbumFromFolder = false
                 showCreateAlbum = true
@@ -3014,7 +3021,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = albumDetailState.isBulkMutating,
-            errorMessage = albumDetailState.errorMessage,
+            errorMessage = albumDetailState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbumFromAlbum = false
                 showCreateAlbum = true
@@ -3034,7 +3041,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albums = albumsState.albums,
             isLoadingAlbums = albumsState.isLoading,
             isSubmitting = archivedState.isBulkMutating,
-            errorMessage = archivedState.errorMessage,
+            errorMessage = archivedState.error?.userMessage,
             onCreateNew = {
                 bulkAddToAlbumFromArchive = false
                 showCreateAlbum = true

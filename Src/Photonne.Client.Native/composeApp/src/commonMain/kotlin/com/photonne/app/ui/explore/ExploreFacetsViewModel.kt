@@ -2,6 +2,8 @@ package com.photonne.app.ui.explore
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.data.search.SearchRepository
@@ -15,12 +17,13 @@ data class ExploreFacetsUiState(
     val objects: List<ObjectLabel> = emptyList(),
     val scenes: List<SceneLabel> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val attempted: Boolean = false
+    val error: UiError? = null,
+    val attempted: Boolean = false,
 )
 
 class ExploreFacetsViewModel(
-    private val repository: SearchRepository
+    private val repository: SearchRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ExploreFacetsUiState())
@@ -33,7 +36,7 @@ class ExploreFacetsViewModel(
     }
 
     fun refresh() {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 val objects = repository.objectLabels(limit = 200)
@@ -53,7 +56,7 @@ class ExploreFacetsViewModel(
                         it.copy(
                             isLoading = false,
                             attempted = true,
-                            errorMessage = error.message ?: "Failed to load labels"
+                            error = errorFactory.from(error, "Failed to load labels")
                         )
                     }
                 }

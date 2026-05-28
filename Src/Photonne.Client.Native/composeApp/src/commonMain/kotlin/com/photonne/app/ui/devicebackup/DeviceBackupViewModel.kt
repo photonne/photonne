@@ -11,6 +11,8 @@ import com.photonne.app.data.devicebackup.UploadFailureReason
 import com.photonne.app.data.devicebackup.toUploadFailureReason
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +56,7 @@ data class DeviceBackupUiState(
     val isSyncing: Boolean = false,
     val isFreeingSpace: Boolean = false,
     val syncProgress: SyncProgress? = null,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val statusMessage: String? = null,
     val lastSyncSummary: SyncSummary? = null,
     val backgroundSync: BackgroundSyncPreferences = BackgroundSyncPreferences(
@@ -97,7 +99,8 @@ data class SyncProgress(
 
 class DeviceBackupViewModel(
     private val repository: DeviceBackupRepository,
-    private val backgroundScheduler: BackgroundSyncScheduler
+    private val backgroundScheduler: BackgroundSyncScheduler,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -190,9 +193,9 @@ class DeviceBackupViewModel(
     private fun refreshFolderContents(folder: DeviceFolderRef) {
         val showSpinner = _state.value.entries.isEmpty()
         if (showSpinner) {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            _state.update { it.copy(isLoading = true, error = null) }
         } else {
-            _state.update { it.copy(errorMessage = null) }
+            _state.update { it.copy(error = null) }
         }
         viewModelScope.launch {
             val result = runCatching { repository.listMedia(folder) }
@@ -219,7 +222,7 @@ class DeviceBackupViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not refresh folder"
+                            error = errorFactory.from(error, "Could not refresh folder")
                         )
                     }
                 }
@@ -233,7 +236,7 @@ class DeviceBackupViewModel(
     }
 
     fun clearMessages() {
-        _state.update { it.copy(errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(error = null, statusMessage = null) }
     }
 
     fun toggleSelection(uri: String) {
@@ -273,7 +276,7 @@ class DeviceBackupViewModel(
     fun refreshSyncStates() {
         val folder = _state.value.folder ?: return
         if (_state.value.isCheckingHashes) return
-        _state.update { it.copy(isCheckingHashes = true, errorMessage = null) }
+        _state.update { it.copy(isCheckingHashes = true, error = null) }
         viewModelScope.launch {
             val snapshot = _state.value.entries
             for (entry in snapshot) {
@@ -321,7 +324,7 @@ class DeviceBackupViewModel(
         _state.update {
             it.copy(
                 isSyncing = true,
-                errorMessage = null,
+                error = null,
                 statusMessage = null,
                 syncProgress = SyncProgress(
                     total = selected.size,
@@ -435,7 +438,7 @@ class DeviceBackupViewModel(
         _state.update {
             it.copy(
                 isFreeingSpace = true,
-                errorMessage = null,
+                error = null,
                 statusMessage = null
             )
         }
@@ -477,7 +480,7 @@ class DeviceBackupViewModel(
     }
 
     private fun applyFolder(folder: DeviceFolderRef) {
-        _state.update { it.copy(folder = folder, isLoading = true, errorMessage = null) }
+        _state.update { it.copy(folder = folder, isLoading = true, error = null) }
         viewModelScope.launch {
             val media = runCatching { repository.listMedia(folder) }
             media
@@ -493,7 +496,7 @@ class DeviceBackupViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not list folder"
+                            error = errorFactory.from(error, "Could not list folder")
                         )
                     }
                 }

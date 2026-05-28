@@ -73,7 +73,7 @@ fun NotificationsScreen(viewModel: NotificationsViewModel) {
             onSelect = viewModel::setUnreadOnly
         )
 
-        state.errorMessage?.let { msg ->
+        state.error?.userMessage?.let { msg ->
             Text(
                 msg,
                 color = MaterialTheme.colorScheme.error,

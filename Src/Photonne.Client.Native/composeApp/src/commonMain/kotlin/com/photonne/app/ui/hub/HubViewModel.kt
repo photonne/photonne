@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.Person
 import com.photonne.app.data.models.StorageInfoDto
 import com.photonne.app.data.models.TimelineItem
@@ -34,7 +36,7 @@ data class HubFacet(
 data class HubUiState(
     val isLoading: Boolean = false,
     val attempted: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val displayName: String? = null,
     val storage: StorageInfoDto? = null,
     val memories: List<TimelineItem> = emptyList(),
@@ -46,7 +48,7 @@ data class HubUiState(
 /**
  * Aggregates the data shown on the Inicio hub: account totals, memories,
  * recent photos, top people and top scene/object facets. Each section loads
- * in parallel; a single failure surfaces as [HubUiState.errorMessage] but
+ * in parallel; a single failure surfaces as [HubUiState.error] but
  * does not prevent the rest of the hub from rendering with what we have.
  */
 class HubViewModel(
@@ -55,7 +57,8 @@ class HubViewModel(
     private val timelineRepository: TimelineRepository,
     private val peopleRepository: PeopleRepository,
     private val searchRepository: SearchRepository,
-    private val authStateHolder: AuthStateHolder
+    private val authStateHolder: AuthStateHolder,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HubUiState())
@@ -65,7 +68,7 @@ class HubViewModel(
 
     fun refresh() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             val displayName = (authStateHolder.state.value as? AuthState.Authenticated)?.user?.let { u ->
                 val full = listOfNotNull(u.firstName, u.lastName)
@@ -123,7 +126,9 @@ class HubViewModel(
                     _state.value = HubUiState(
                         isLoading = false,
                         attempted = true,
-                        errorMessage = load.firstError?.message,
+                        error = load.firstError?.let {
+                            errorFactory.from(it, "No se pudo cargar el inicio")
+                        },
                         displayName = displayName,
                         storage = load.storage,
                         memories = load.memories,
@@ -137,7 +142,7 @@ class HubViewModel(
                         it.copy(
                             isLoading = false,
                             attempted = true,
-                            errorMessage = err.message ?: "Error cargando el inicio"
+                            error = errorFactory.from(err, "Error cargando el inicio")
                         )
                     }
                 }

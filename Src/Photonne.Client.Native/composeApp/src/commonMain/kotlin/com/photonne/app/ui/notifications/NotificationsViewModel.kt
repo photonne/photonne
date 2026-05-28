@@ -2,6 +2,8 @@ package com.photonne.app.ui.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.NotificationDto
 import com.photonne.app.data.notifications.NotificationsRepository
 import kotlinx.coroutines.delay
@@ -21,7 +23,7 @@ data class NotificationsUiState(
     val unreadOnly: Boolean = false,
     val isLoading: Boolean = false,
     val isMarkingAllRead: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val loaded: Boolean = false
 ) {
     val hasMorePages: Boolean get() = page < totalPages
@@ -39,7 +41,8 @@ data class NotificationsUiState(
  * a filter chip (All / Unread only).
  */
 class NotificationsViewModel(
-    private val repository: NotificationsRepository
+    private val repository: NotificationsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NotificationsUiState())
@@ -88,7 +91,7 @@ class NotificationsViewModel(
             runCatching { repository.markRead(id) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Failed to mark as read")
+                        it.copy(error = errorFactory.from(error, "Failed to mark as read"))
                     }
                 }
         }
@@ -97,7 +100,7 @@ class NotificationsViewModel(
     fun markAllRead() {
         val snapshot = _state.value
         if (snapshot.isMarkingAllRead || snapshot.unreadCount == 0) return
-        _state.update { it.copy(isMarkingAllRead = true, errorMessage = null) }
+        _state.update { it.copy(isMarkingAllRead = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.markAllRead() }
                 .onSuccess {
@@ -116,7 +119,7 @@ class NotificationsViewModel(
                     _state.update {
                         it.copy(
                             isMarkingAllRead = false,
-                            errorMessage = error.message ?: "Failed to mark all as read"
+                            error = errorFactory.from(error, "Failed to mark all as read")
                         )
                     }
                 }
@@ -124,11 +127,11 @@ class NotificationsViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     private fun load(page: Int) {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.list(
@@ -155,7 +158,7 @@ class NotificationsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load notifications"
+                            error = errorFactory.from(error, "Failed to load notifications")
                         )
                     }
                 }

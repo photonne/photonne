@@ -112,7 +112,7 @@ fun AccountProfileScreen(viewModel: AccountProfileViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        state.errorMessage?.let { msg ->
+        state.error?.userMessage?.let { msg ->
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
         if (state.successMessage != null) {

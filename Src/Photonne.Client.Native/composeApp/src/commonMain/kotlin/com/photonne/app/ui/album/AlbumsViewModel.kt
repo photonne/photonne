@@ -3,6 +3,8 @@ package com.photonne.app.ui.album
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +30,7 @@ data class AlbumsUiState(
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 ) {
     val isSelectionActive: Boolean get() = selectedAlbumId != null
 
@@ -57,7 +59,8 @@ data class AlbumsUiState(
 
 class AlbumsViewModel(
     private val repository: AlbumsRepository,
-    private val settings: Settings
+    private val settings: Settings,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(loadInitialState())
@@ -115,7 +118,7 @@ class AlbumsViewModel(
     }
 
     fun refresh() {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.list() }
                 .onSuccess { albums ->
@@ -123,7 +126,7 @@ class AlbumsViewModel(
                         it.copy(
                             albums = albums,
                             isLoading = false,
-                            errorMessage = null,
+                            error = null,
                             selectedAlbumId = it.selectedAlbumId?.takeIf { id ->
                                 albums.any { a -> a.id == id }
                             }
@@ -134,7 +137,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load albums"
+                            error = errorFactory.from(error, "Failed to load albums")
                         )
                     }
                 }
@@ -143,7 +146,7 @@ class AlbumsViewModel(
 
     fun create(name: String, description: String?, onCreated: (AlbumSummary) -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.create(name.trim(), description?.trim()?.takeIf { it.isNotEmpty() }) }
                 .onSuccess { album ->
@@ -156,7 +159,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to create album"
+                            error = errorFactory.from(error, "Failed to create album")
                         )
                     }
                 }
@@ -170,7 +173,7 @@ class AlbumsViewModel(
         onSuccess: (AlbumSummary) -> Unit = {}
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.update(
@@ -193,7 +196,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to rename album"
+                            error = errorFactory.from(error, "Failed to rename album")
                         )
                     }
                 }
@@ -202,7 +205,7 @@ class AlbumsViewModel(
 
     fun deleteAlbum(albumId: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.delete(albumId) }
                 .onSuccess {
@@ -219,7 +222,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to delete album"
+                            error = errorFactory.from(error, "Failed to delete album")
                         )
                     }
                 }
@@ -228,7 +231,7 @@ class AlbumsViewModel(
 
     fun leaveAlbum(albumId: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.leave(albumId) }
                 .onSuccess {
@@ -245,7 +248,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to leave album"
+                            error = errorFactory.from(error, "Failed to leave album")
                         )
                     }
                 }
@@ -321,7 +324,7 @@ class AlbumsViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     private companion object {

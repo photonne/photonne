@@ -6,6 +6,8 @@ import com.photonne.app.data.account.AccountRepository
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.UserDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,15 +19,16 @@ data class AdminUsersUiState(
     val users: List<UserDto> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val statusMessage: String? = null,
-    val isCurrentUserPrimaryAdmin: Boolean = false
+    val isCurrentUserPrimaryAdmin: Boolean = false,
 )
 
 class AdminUsersViewModel(
     private val repository: AdminRepository,
     private val accountRepository: AccountRepository,
-    private val authStateHolder: AuthStateHolder
+    private val authStateHolder: AuthStateHolder,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminUsersUiState())
@@ -47,7 +50,7 @@ class AdminUsersViewModel(
         _state.update {
             it.copy(
                 isLoading = true,
-                errorMessage = null,
+                error = null,
                 isCurrentUserPrimaryAdmin = cachedPrimary
             )
         }
@@ -72,7 +75,7 @@ class AdminUsersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not load users"
+                            error = errorFactory.from(error, "Could not load users")
                         )
                     }
                 }
@@ -80,7 +83,7 @@ class AdminUsersViewModel(
     }
 
     fun clearMessages() {
-        _state.update { it.copy(errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(error = null, statusMessage = null) }
     }
 
     fun create(
@@ -95,7 +98,7 @@ class AdminUsersViewModel(
         onDone: () -> Unit
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching {
                 repository.createUser(
@@ -119,7 +122,7 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Could not create user") }
+                .onFailure { error -> failMutation(error, "Could not create user") }
         }
     }
 
@@ -135,7 +138,7 @@ class AdminUsersViewModel(
         onDone: () -> Unit
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching {
                 repository.updateUser(
@@ -162,13 +165,13 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Could not update user") }
+                .onFailure { error -> failMutation(error, "Could not update user") }
         }
     }
 
     fun delete(userId: String, onDone: () -> Unit) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching { repository.deleteUser(userId) }
                 .onSuccess {
@@ -181,13 +184,13 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Could not delete user") }
+                .onFailure { error -> failMutation(error, "Could not delete user") }
         }
     }
 
     fun resetPassword(userId: String, newPassword: String, onDone: () -> Unit) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching { repository.resetUserPassword(userId, newPassword) }
                 .onSuccess { msg ->
@@ -199,7 +202,7 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Could not reset password") }
+                .onFailure { error -> failMutation(error, "Could not reset password") }
         }
     }
 
@@ -212,7 +215,7 @@ class AdminUsersViewModel(
      */
     fun promoteToPrimary(targetUserId: String, successMessage: String, onDone: () -> Unit) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching { repository.promoteToPrimary(targetUserId) }
                 .onSuccess {
@@ -241,12 +244,14 @@ class AdminUsersViewModel(
                     onDone()
                 }
                 .onFailure { error ->
-                    failMutation(error.message ?: "Could not transfer primary admin")
+                    failMutation(error, "Could not transfer primary admin")
                 }
         }
     }
 
-    private fun failMutation(message: String) {
-        _state.update { it.copy(isMutating = false, errorMessage = message) }
+    private fun failMutation(throwable: Throwable, fallback: String) {
+        _state.update {
+            it.copy(isMutating = false, error = errorFactory.from(throwable, fallback))
+        }
     }
 }

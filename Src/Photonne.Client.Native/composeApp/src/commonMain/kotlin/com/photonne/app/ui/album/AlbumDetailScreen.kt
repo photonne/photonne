@@ -134,14 +134,14 @@ fun AlbumDetailScreen(
                         CircularProgressIndicator()
                     }
                 }
-            state.errorMessage != null && state.items.isEmpty() ->
+            state.error?.userMessage != null && state.items.isEmpty() ->
                 Column(modifier = Modifier.fillMaxSize()) {
                     hero()
                     Box(
                         modifier = Modifier.fillMaxSize().padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
+                        Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
                     }
                 }
             state.items.isEmpty() ->

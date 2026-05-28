@@ -20,6 +20,7 @@ data class DeviceConnectionUiState(
     val localReachable: Boolean = false,
     val isProbing: Boolean = false,
     val isSaving: Boolean = false,
+    // validación local, no errores HTTP — no migrado a UiError
     val errorMessage: String? = null,
     val infoMessage: String? = null
 )

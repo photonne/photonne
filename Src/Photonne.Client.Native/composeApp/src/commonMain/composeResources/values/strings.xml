@@ -937,4 +937,13 @@
     <string name="explore_scenes_empty">Aún no hay escenas detectadas. La clasificación de escenas se ejecuta en segundo plano.</string>
     <string name="explore_objects_empty">Aún no hay objetos detectados. La detección de objetos se ejecuta en segundo plano.</string>
     <string name="explore_label_count">%1$d fotos</string>
+
+    <!-- Error reporting -->
+    <string name="error_banner_view_details">Ver detalles</string>
+    <string name="error_banner_retry">Reintentar</string>
+    <string name="error_banner_dismiss">Cerrar</string>
+    <string name="error_details_title">Detalles del error</string>
+    <string name="error_details_copy">Copiar todo</string>
+    <string name="error_details_copied">Detalles copiados al portapapeles</string>
+    <string name="error_details_share_hint">Pégalo en un mensaje y mándaselo a tu admin.</string>
 </resources>

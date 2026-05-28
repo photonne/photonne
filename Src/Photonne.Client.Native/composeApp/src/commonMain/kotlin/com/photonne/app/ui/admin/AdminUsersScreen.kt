@@ -68,7 +68,7 @@ fun AdminUsersScreen(
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }
-            state.errorMessage?.let { msg ->
+            state.error?.userMessage?.let { msg ->
                 Text(
                     msg,
                     style = MaterialTheme.typography.bodySmall,
@@ -84,7 +84,7 @@ fun AdminUsersScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                state.users.isEmpty() && state.errorMessage == null ->
+                state.users.isEmpty() && state.error?.userMessage == null ->
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,

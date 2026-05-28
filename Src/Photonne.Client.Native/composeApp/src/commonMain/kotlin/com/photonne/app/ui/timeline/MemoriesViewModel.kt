@@ -2,6 +2,8 @@ package com.photonne.app.ui.timeline
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.timeline.MemoriesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,12 +15,13 @@ import kotlinx.coroutines.launch
 data class MemoriesUiState(
     val items: List<TimelineItem> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val attempted: Boolean = false
+    val error: UiError? = null,
+    val attempted: Boolean = false,
 )
 
 class MemoriesViewModel(
-    private val repository: MemoriesRepository
+    private val repository: MemoriesRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MemoriesUiState())
@@ -27,7 +30,7 @@ class MemoriesViewModel(
     init { refresh() }
 
     fun refresh() {
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.list() }
                 .onSuccess { items ->
@@ -38,7 +41,7 @@ class MemoriesViewModel(
                         it.copy(
                             isLoading = false,
                             attempted = true,
-                            errorMessage = error.message ?: "Failed to load memories"
+                            error = errorFactory.from(error, "Failed to load memories")
                         )
                     }
                 }

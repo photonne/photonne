@@ -2,6 +2,8 @@ package com.photonne.app.ui.people
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
 import com.photonne.app.data.models.Person
@@ -17,7 +19,7 @@ data class AssetFacesUiState(
     val faces: List<Face> = emptyList(),
     val people: List<Person> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val pendingFaceIds: Set<String> = emptySet(),
     /** Face id for which the user is currently picking a person (assign or set-cover). */
     val assigningFaceId: String? = null
@@ -37,7 +39,8 @@ data class AssetFacesUiState(
  * request settles so the UI feels responsive on flaky networks.
  */
 class AssetFacesViewModel(
-    private val repository: PeopleRepository
+    private val repository: PeopleRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AssetFacesUiState())
@@ -65,7 +68,7 @@ class AssetFacesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load faces"
+                            error = errorFactory.from(error, "Failed to load faces")
                         )
                     }
                 }
@@ -77,7 +80,7 @@ class AssetFacesViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     // --- Pick-a-person flow (assign or set cover) --------------------
@@ -111,7 +114,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to assign") }
+                .onFailure { error -> setError(faceId, error, "Failed to assign") }
         }
     }
 
@@ -139,7 +142,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to create person") }
+                .onFailure { error -> setError(faceId, error, "Failed to create person") }
         }
     }
 
@@ -164,7 +167,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to accept") }
+                .onFailure { error -> setError(faceId, error, "Failed to accept") }
         }
     }
 
@@ -185,7 +188,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to dismiss") }
+                .onFailure { error -> setError(faceId, error, "Failed to dismiss") }
         }
     }
 
@@ -206,7 +209,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to unassign") }
+                .onFailure { error -> setError(faceId, error, "Failed to unassign") }
         }
     }
 
@@ -222,7 +225,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to reject") }
+                .onFailure { error -> setError(faceId, error, "Failed to reject") }
         }
     }
 
@@ -234,7 +237,7 @@ class AssetFacesViewModel(
                     _state.update { it.copy(pendingFaceIds = it.pendingFaceIds - faceId) }
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to set cover") }
+                .onFailure { error -> setError(faceId, error, "Failed to set cover") }
         }
     }
 
@@ -253,11 +256,11 @@ class AssetFacesViewModel(
         _state.update { it.copy(pendingFaceIds = it.pendingFaceIds + faceId) }
     }
 
-    private fun setError(faceId: String, message: String) {
+    private fun setError(faceId: String, throwable: Throwable, fallback: String) {
         _state.update {
             it.copy(
                 pendingFaceIds = it.pendingFaceIds - faceId,
-                errorMessage = message
+                error = errorFactory.from(throwable, fallback)
             )
         }
     }

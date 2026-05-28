@@ -58,7 +58,7 @@ fun UtilitiesLargeFilesScreen(
             onSelect = viewModel::setCount
         )
 
-        state.errorMessage?.let { msg ->
+        state.error?.userMessage?.let { msg ->
             Text(
                 msg,
                 color = MaterialTheme.colorScheme.error,

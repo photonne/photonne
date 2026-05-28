@@ -4,16 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 data class FolderDetailUiState(
     val folderId: String? = null,
@@ -23,7 +25,7 @@ data class FolderDetailUiState(
     val subFolders: List<FolderSummary> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val selection: Set<String> = emptySet(),
     val isBulkMutating: Boolean = false
 ) {
@@ -33,7 +35,8 @@ data class FolderDetailUiState(
 class FolderDetailViewModel(
     private val repository: FoldersRepository,
     private val assetRepository: AssetDetailRepository,
-    private val albumsRepository: AlbumsRepository
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FolderDetailUiState())
@@ -54,12 +57,13 @@ class FolderDetailViewModel(
         )
         viewModelScope.launch {
             runCatching {
-                val assets = async { repository.assets(folderId) }
-                val details = async {
-                    runCatching { repository.get(folderId) }.getOrNull()
+                supervisorScope {
+                    val assets = async { repository.assets(folderId) }
+                    val details = async {
+                        runCatching { repository.get(folderId) }.getOrNull()
+                    }
+                    assets.await() to details.await()
                 }
-                awaitAll(assets, details)
-                assets.await() to details.await()
             }
                 .onSuccess { (items, details) ->
                     _state.update {
@@ -74,7 +78,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load folder"
+                            error = errorFactory.from(error, "Failed to load folder")
                         )
                     }
                 }
@@ -123,7 +127,7 @@ class FolderDetailViewModel(
         val folderId = _state.value.folderId ?: return
         if (_state.value.isMutating) return
         val currentParent = _state.value.parentFolderId
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.update(folderId, name.trim(), parentFolderId = currentParent) }
                 .onSuccess { folder ->
@@ -140,7 +144,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to rename folder"
+                            error = errorFactory.from(error, "Failed to rename folder")
                         )
                     }
                 }
@@ -151,7 +155,7 @@ class FolderDetailViewModel(
         val folderId = _state.value.folderId ?: return
         val name = _state.value.folderName ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.update(folderId, name, parentFolderId = targetParentFolderId) }
                 .onSuccess { folder ->
@@ -168,7 +172,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to move folder"
+                            error = errorFactory.from(error, "Failed to move folder")
                         )
                     }
                 }
@@ -179,7 +183,7 @@ class FolderDetailViewModel(
         val sourceFolderId = _state.value.folderId ?: return
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.moveAssets(
@@ -202,7 +206,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to move assets"
+                            error = errorFactory.from(error, "Failed to move assets")
                         )
                     }
                 }
@@ -223,7 +227,7 @@ class FolderDetailViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val added = _state.value.items.filter { it.id in ids }
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -234,7 +238,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -251,7 +255,7 @@ class FolderDetailViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -264,7 +268,7 @@ class FolderDetailViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: errorFallback
+                            error = errorFactory.from(error, errorFallback)
                         )
                     }
                 }
@@ -274,7 +278,7 @@ class FolderDetailViewModel(
     fun delete(onDeleted: (String) -> Unit) {
         val folderId = _state.value.folderId ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.delete(folderId) }
                 .onSuccess {
@@ -285,7 +289,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to delete folder"
+                            error = errorFactory.from(error, "Failed to delete folder")
                         )
                     }
                 }
@@ -293,6 +297,6 @@ class FolderDetailViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 }

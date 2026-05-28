@@ -8,6 +8,8 @@ import com.photonne.app.data.api.skipAuthRefresh
 import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.RememberedCredentialsStore
 import com.photonne.app.data.auth.TokenStorage
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.di.PhotonneAppConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.request.head
@@ -29,7 +31,7 @@ data class LoginUiState(
     val password: String = "",
     val rememberMe: Boolean = false,
     val isSubmitting: Boolean = false,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 )
 
 class LoginViewModel(
@@ -39,7 +41,8 @@ class LoginViewModel(
     private val rememberedCredentialsStore: RememberedCredentialsStore,
     private val httpClient: HttpClient,
     private val reachabilityProbe: LocalReachabilityProbe,
-    config: PhotonneAppConfig
+    config: PhotonneAppConfig,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(initialState(config))
@@ -69,19 +72,19 @@ class LoginViewModel(
     }
 
     fun onServerUrlChange(value: String) {
-        _state.value = _state.value.copy(serverUrl = value, errorMessage = null)
+        _state.value = _state.value.copy(serverUrl = value, error = null)
     }
 
     fun onLocalUrlChange(value: String) {
-        _state.value = _state.value.copy(localUrl = value, errorMessage = null)
+        _state.value = _state.value.copy(localUrl = value, error = null)
     }
 
     fun onUsernameChange(value: String) {
-        _state.value = _state.value.copy(username = value, errorMessage = null)
+        _state.value = _state.value.copy(username = value, error = null)
     }
 
     fun onPasswordChange(value: String) {
-        _state.value = _state.value.copy(password = value, errorMessage = null)
+        _state.value = _state.value.copy(password = value, error = null)
     }
 
     fun onRememberMeChange(value: Boolean) {
@@ -93,24 +96,29 @@ class LoginViewModel(
         if (current.isSubmitting) return
         val normalizedPublic = ServerUrlStore.normalize(current.serverUrl)
         if (!isValidUrl(normalizedPublic)) {
-            _state.value = current.copy(errorMessage = "Introduce una URL válida (ej. https://photos.example.com)")
+            _state.value = current.copy(
+                error = UiError(userMessage = "Introduce una URL válida (ej. https://photos.example.com)")
+            )
             return
         }
         val normalizedLocal = current.localUrl
             .takeIf { it.isNotBlank() }
             ?.let(ServerUrlStore::normalize)
         if (normalizedLocal != null && !isValidUrl(normalizedLocal)) {
-            _state.value = current.copy(errorMessage = "La URL local no es válida")
+            _state.value = current.copy(
+                error = UiError(userMessage = "La URL local no es válida")
+            )
             return
         }
-        _state.value = current.copy(isSubmitting = true, errorMessage = null)
+        _state.value = current.copy(isSubmitting = true, error = null)
         viewModelScope.launch {
             val reachable = probe(normalizedPublic)
             if (reachable.isFailure) {
                 _state.value = _state.value.copy(
                     isSubmitting = false,
-                    errorMessage = reachable.exceptionOrNull()?.message
-                        ?: "No se pudo contactar con el servidor"
+                    error = reachable.exceptionOrNull()?.let {
+                        errorFactory.from(it, "No se pudo contactar con el servidor")
+                    }
                 )
                 return@launch
             }
@@ -148,17 +156,19 @@ class LoginViewModel(
         val current = _state.value
         if (current.isSubmitting) return
         if (current.username.isBlank() || current.password.isBlank()) {
-            _state.value = current.copy(errorMessage = "Introduce usuario y contraseña")
+            _state.value = current.copy(
+                error = UiError(userMessage = "Introduce usuario y contraseña")
+            )
             return
         }
         if (serverUrlStore.getPublic().isNullOrEmpty()) {
             _state.value = current.copy(
                 step = LoginStep.ServerUrl,
-                errorMessage = "Configura primero la URL del servidor"
+                error = UiError(userMessage = "Configura primero la URL del servidor")
             )
             return
         }
-        _state.value = current.copy(isSubmitting = true, errorMessage = null)
+        _state.value = current.copy(isSubmitting = true, error = null)
         viewModelScope.launch {
             val username = current.username.trim()
             val result = authRepository.login(username, current.password)
@@ -179,7 +189,9 @@ class LoginViewModel(
             } else {
                 _state.value.copy(
                     isSubmitting = false,
-                    errorMessage = result.exceptionOrNull()?.message ?: "Error desconocido"
+                    error = result.exceptionOrNull()?.let {
+                        errorFactory.from(it, "Error desconocido")
+                    }
                 )
             }
         }

@@ -103,7 +103,7 @@ fun FoldersListScreen(
                     folders = state.visiblePersonalFolders,
                     state = state,
                     isLoading = state.isLoading,
-                    errorMessage = state.errorMessage,
+                    errorMessage = state.error?.userMessage,
                     emptyTitle = stringResource(Res.string.folders_empty_title),
                     emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
                     onFolderClick = onFolderClick,
@@ -113,7 +113,7 @@ fun FoldersListScreen(
                     folders = state.visibleSharedFolders,
                     state = state,
                     isLoading = state.isLoading,
-                    errorMessage = state.errorMessage,
+                    errorMessage = state.error?.userMessage,
                     emptyTitle = stringResource(Res.string.folders_empty_title),
                     emptySubtitle = stringResource(Res.string.folders_shared_empty),
                     onFolderClick = onFolderClick,
@@ -124,7 +124,7 @@ fun FoldersListScreen(
                         folders = state.visibleLibraryFolders,
                         state = state,
                         isLoading = state.isLoading,
-                        errorMessage = state.errorMessage,
+                        errorMessage = state.error?.userMessage,
                         emptyTitle = stringResource(Res.string.folders_empty_title),
                         emptySubtitle = stringResource(Res.string.folders_libraries_empty),
                         onFolderClick = onFolderClick,
@@ -134,7 +134,7 @@ fun FoldersListScreen(
                     LibrariesContent(
                         libraries = state.visibleLibraries,
                         isLoading = state.isLoading,
-                        errorMessage = state.errorMessage,
+                        errorMessage = state.error?.userMessage,
                         onLibraryClick = { lib ->
                             viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
                         }

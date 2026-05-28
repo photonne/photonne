@@ -200,7 +200,7 @@ fun AdminUserEditorScreen(
             enabled = !isSubmitting && existing?.isPrimaryAdmin != true
         )
 
-        state.errorMessage?.let { msg ->
+        state.error?.userMessage?.let { msg ->
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
 
@@ -289,7 +289,7 @@ fun AdminUserEditorScreen(
         AdminResetPasswordDialog(
             user = existing,
             isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
+            errorMessage = state.error?.userMessage,
             onDismiss = {
                 showResetPassword = false
                 viewModel.clearMessages()
@@ -305,7 +305,7 @@ fun AdminUserEditorScreen(
         AdminDeleteUserDialog(
             user = existing,
             isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
+            errorMessage = state.error?.userMessage,
             onDismiss = {
                 showDelete = false
                 viewModel.clearMessages()
@@ -322,7 +322,7 @@ fun AdminUserEditorScreen(
         AdminPromoteToPrimaryDialog(
             targetUser = existing,
             isSubmitting = state.isMutating,
-            errorMessage = state.errorMessage,
+            errorMessage = state.error?.userMessage,
             onDismiss = {
                 showPromoteToPrimary = false
                 viewModel.clearMessages()

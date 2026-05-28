@@ -135,9 +135,9 @@ fun ManageSharesDialog(
                         }
                     }
                 }
-                if (state.errorMessage != null) {
+                state.error?.let { err ->
                     Spacer(Modifier.height(4.dp))
-                    Text(state.errorMessage, color = MaterialTheme.colorScheme.error)
+                    Text(err.userMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
             Row(

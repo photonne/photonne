@@ -255,7 +255,7 @@ fun BackupScreen(
                 )
             }
         }
-        state.errorMessage?.let { msg ->
+        state.error?.userMessage?.let { msg ->
             item("error") {
                 Text(
                     msg,

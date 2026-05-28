@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.Person
 import com.photonne.app.data.models.SceneLabel
@@ -33,7 +35,7 @@ data class SearchUiState(
     val hasMore: Boolean = false,
     val isLoading: Boolean = false,
     val isAppending: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val facetsLoaded: Boolean = false,
     val facetsLoading: Boolean = false,
     val objectLabels: List<ObjectLabel> = emptyList(),
@@ -60,7 +62,8 @@ data class SearchUiState(
 class SearchViewModel(
     private val repository: SearchRepository,
     private val assetRepository: AssetDetailRepository,
-    private val albumsRepository: AlbumsRepository
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SearchUiState())
@@ -85,7 +88,7 @@ class SearchViewModel(
                 mode = mode,
                 results = emptyList(),
                 hasMore = false,
-                errorMessage = null,
+                error = null,
                 selection = emptySet()
             )
         }
@@ -169,7 +172,7 @@ class SearchViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 results = it.results.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -177,7 +180,7 @@ class SearchViewModel(
         viewModelScope.launch {
             runCatching { assetRepository.archive(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error.message ?: "Failed to archive") }
+                .onFailure { error -> revertBulk(previous, error, "Failed to archive") }
         }
     }
 
@@ -188,7 +191,7 @@ class SearchViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 results = it.results.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -196,7 +199,7 @@ class SearchViewModel(
         viewModelScope.launch {
             runCatching { assetRepository.trash(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error.message ?: "Failed to delete") }
+                .onFailure { error -> revertBulk(previous, error, "Failed to delete") }
         }
     }
 
@@ -205,7 +208,7 @@ class SearchViewModel(
         val items = state.results.filter { it.id in state.selection }
         val ids = items.map { it.id }
         if (ids.isEmpty() || state.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -216,7 +219,7 @@ class SearchViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -236,14 +239,14 @@ class SearchViewModel(
                 selectedPersonIds = emptySet(),
                 results = emptyList(),
                 hasMore = false,
-                errorMessage = null,
+                error = null,
                 selection = emptySet()
             )
         }
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     fun loadMore() {
@@ -285,7 +288,7 @@ class SearchViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "Search failed"
+                            error = errorFactory.from(error, "Search failed")
                         )
                     }
                 }
@@ -319,7 +322,7 @@ class SearchViewModel(
                     _state.update {
                         it.copy(
                             facetsLoading = false,
-                            errorMessage = error.message ?: "Failed to load filters"
+                            error = errorFactory.from(error, "Failed to load filters")
                         )
                     }
                 }
@@ -348,7 +351,7 @@ class SearchViewModel(
 
     private suspend fun runSearch() {
         val snapshot = _state.value
-        _state.update { it.copy(isLoading = true, isAppending = false, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, isAppending = false, error = null) }
         runCatching {
             when (snapshot.mode) {
                 SearchMode.Text -> repository.textSearch(
@@ -384,18 +387,18 @@ class SearchViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Search failed"
+                        error = errorFactory.from(error, "Search failed")
                     )
                 }
             }
     }
 
-    private fun revertBulk(previousItems: List<TimelineItem>, message: String) {
+    private fun revertBulk(previousItems: List<TimelineItem>, throwable: Throwable, fallback: String) {
         _state.update {
             it.copy(
                 results = previousItems,
                 isBulkMutating = false,
-                errorMessage = message
+                error = errorFactory.from(throwable, fallback)
             )
         }
     }

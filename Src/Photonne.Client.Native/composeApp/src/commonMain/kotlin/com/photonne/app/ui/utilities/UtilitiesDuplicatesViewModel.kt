@@ -2,6 +2,8 @@ package com.photonne.app.ui.utilities
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.UserDuplicateGroup
 import com.photonne.app.data.utilities.UtilitiesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +34,7 @@ data class DuplicateGroupView(
 data class UtilitiesDuplicatesUiState(
     val isLoading: Boolean = false,
     val isDeleting: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val statusMessage: String? = null,
     val groups: List<DuplicateGroupView> = emptyList()
 ) {
@@ -46,7 +48,8 @@ data class UtilitiesDuplicatesUiState(
 }
 
 class UtilitiesDuplicatesViewModel(
-    private val repository: UtilitiesRepository
+    private val repository: UtilitiesRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UtilitiesDuplicatesUiState())
@@ -62,7 +65,7 @@ class UtilitiesDuplicatesViewModel(
     private fun load() {
         if (_state.value.isLoading) return
         _state.update {
-            it.copy(isLoading = true, errorMessage = null, statusMessage = null)
+            it.copy(isLoading = true, error = null, statusMessage = null)
         }
         viewModelScope.launch {
             runCatching { repository.duplicates() }
@@ -78,7 +81,7 @@ class UtilitiesDuplicatesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not load duplicates"
+                            error = errorFactory.from(error, "Could not load duplicates")
                         )
                     }
                 }
@@ -130,7 +133,7 @@ class UtilitiesDuplicatesViewModel(
         val selected = _state.value.groups.flatMap { it.selectedAssetIds }
         if (selected.isEmpty() || _state.value.isDeleting) return
         _state.update {
-            it.copy(isDeleting = true, errorMessage = null, statusMessage = null)
+            it.copy(isDeleting = true, error = null, statusMessage = null)
         }
         viewModelScope.launch {
             runCatching { repository.deleteAssets(selected) }
@@ -147,7 +150,7 @@ class UtilitiesDuplicatesViewModel(
                     _state.update {
                         it.copy(
                             isDeleting = false,
-                            errorMessage = error.message ?: "Could not delete"
+                            error = errorFactory.from(error, "Could not delete")
                         )
                     }
                 }
@@ -155,6 +158,6 @@ class UtilitiesDuplicatesViewModel(
     }
 
     fun clearMessages() {
-        _state.update { it.copy(errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(error = null, statusMessage = null) }
     }
 }

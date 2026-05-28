@@ -121,7 +121,7 @@ fun BackupPendingScreen(
                 onChangeFolder = pickFolder
             )
 
-            state.errorMessage?.let { msg ->
+            state.error?.userMessage?.let { msg ->
                 Text(
                     msg,
                     style = MaterialTheme.typography.bodySmall,

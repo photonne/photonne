@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,7 @@ data class FavoritesUiState(
     val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
     val isBulkMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val nextCursor: Instant? = null,
     val hasMore: Boolean = true,
     val selection: Set<String> = emptySet(),
@@ -30,7 +32,8 @@ data class FavoritesUiState(
 
 class FavoritesViewModel(
     private val assetRepository: AssetDetailRepository,
-    private val albumsRepository: AlbumsRepository
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FavoritesUiState())
@@ -47,7 +50,7 @@ class FavoritesViewModel(
             it.copy(
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
-                errorMessage = null
+                error = null
             )
         }
         viewModelScope.launch {
@@ -70,7 +73,7 @@ class FavoritesViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message ?: "Failed to load favorites"
+                            error = errorFactory.from(error, "Failed to load favorites")
                         )
                     }
                 }
@@ -100,7 +103,7 @@ class FavoritesViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "Failed to load more"
+                            error = errorFactory.from(error, "Failed to load more")
                         )
                     }
                 }
@@ -157,7 +160,7 @@ class FavoritesViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val items = _state.value.items.filter { it.id in ids }
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -168,7 +171,7 @@ class FavoritesViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -185,7 +188,7 @@ class FavoritesViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     private fun runBulk(
@@ -198,7 +201,7 @@ class FavoritesViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -211,7 +214,7 @@ class FavoritesViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: errorFallback
+                            error = errorFactory.from(error, errorFallback)
                         )
                     }
                 }

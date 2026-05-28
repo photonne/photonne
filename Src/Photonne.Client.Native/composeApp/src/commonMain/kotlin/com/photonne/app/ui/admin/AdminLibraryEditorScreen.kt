@@ -133,7 +133,7 @@ fun AdminLibraryEditorScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        state.errorMessage?.let { msg ->
+        state.error?.userMessage?.let { msg ->
             Text(msg, color = MaterialTheme.colorScheme.error)
         }
 

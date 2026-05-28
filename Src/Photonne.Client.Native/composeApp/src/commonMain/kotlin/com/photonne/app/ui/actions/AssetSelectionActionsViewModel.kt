@@ -3,6 +3,8 @@ package com.photonne.app.ui.actions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.actions.AssetActionsRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +22,7 @@ data class AssetActionsUiState(
     val createdLink: String? = null,
     /** Localized message surfaced as a toast/banner once an action settles. */
     val statusMessage: String? = null,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 ) {
     val shareChooserCount: Int get() = shareChooserIds?.size ?: 0
 }
@@ -37,7 +39,8 @@ data class AssetActionsUiState(
  */
 class AssetSelectionActionsViewModel(
     private val repository: AssetActionsRepository,
-    private val sharing: AssetSharing
+    private val sharing: AssetSharing,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AssetActionsUiState())
@@ -45,7 +48,7 @@ class AssetSelectionActionsViewModel(
 
     fun beginShare(assetIds: List<String>) {
         if (assetIds.isEmpty()) return
-        _state.update { it.copy(shareChooserIds = assetIds, errorMessage = null) }
+        _state.update { it.copy(shareChooserIds = assetIds, error = null) }
     }
 
     fun cancelShare() {
@@ -53,7 +56,7 @@ class AssetSelectionActionsViewModel(
     }
 
     fun dismissMessage() {
-        _state.update { it.copy(statusMessage = null, errorMessage = null) }
+        _state.update { it.copy(statusMessage = null, error = null) }
     }
 
     fun dismissLink() {
@@ -69,7 +72,7 @@ class AssetSelectionActionsViewModel(
     fun download(assetIds: List<String>) {
         if (assetIds.isEmpty() || _state.value.working != AssetActionWorking.Idle) return
         _state.update {
-            it.copy(working = AssetActionWorking.Downloading, errorMessage = null)
+            it.copy(working = AssetActionWorking.Downloading, error = null)
         }
         viewModelScope.launch {
             runCatching {
@@ -100,7 +103,7 @@ class AssetSelectionActionsViewModel(
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
-                            errorMessage = error.message ?: "Download failed"
+                            error = errorFactory.from(error, "Download failed")
                         )
                     }
                 }
@@ -117,7 +120,7 @@ class AssetSelectionActionsViewModel(
             it.copy(
                 working = AssetActionWorking.Sharing,
                 shareChooserIds = null,
-                errorMessage = null
+                error = null
             )
         }
         viewModelScope.launch {
@@ -145,14 +148,15 @@ class AssetSelectionActionsViewModel(
                     _state.update { it.copy(working = AssetActionWorking.Idle) }
                 }
                 .onFailure { error ->
-                    val message = when (error) {
-                        is AssetSharingUnavailable -> error.message ?: "Share not supported"
-                        else -> error.message ?: "Share failed"
+                    val uiError = when (error) {
+                        is AssetSharingUnavailable ->
+                            UiError(userMessage = error.message ?: "Share not supported")
+                        else -> errorFactory.from(error, "Share failed")
                     }
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
-                            errorMessage = message
+                            error = uiError
                         )
                     }
                 }
@@ -170,7 +174,7 @@ class AssetSelectionActionsViewModel(
             it.copy(
                 working = AssetActionWorking.CreatingLink,
                 shareChooserIds = null,
-                errorMessage = null
+                error = null
             )
         }
         viewModelScope.launch {
@@ -192,7 +196,7 @@ class AssetSelectionActionsViewModel(
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
-                            errorMessage = error.message ?: "Could not create link"
+                            error = errorFactory.from(error, "Could not create link")
                         )
                     }
                 }

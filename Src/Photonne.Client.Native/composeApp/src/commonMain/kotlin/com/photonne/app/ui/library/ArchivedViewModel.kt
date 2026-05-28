@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,7 @@ data class ArchivedUiState(
     val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
     val isBulkMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val nextCursor: Instant? = null,
     val hasMore: Boolean = true,
     val selection: Set<String> = emptySet(),
@@ -30,7 +32,8 @@ data class ArchivedUiState(
 
 class ArchivedViewModel(
     private val repository: AssetDetailRepository,
-    private val albumsRepository: AlbumsRepository
+    private val albumsRepository: AlbumsRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ArchivedUiState())
@@ -47,7 +50,7 @@ class ArchivedViewModel(
             it.copy(
                 isRefreshing = it.loaded,
                 isInitialLoading = !it.loaded,
-                errorMessage = null
+                error = null
             )
         }
         viewModelScope.launch {
@@ -70,7 +73,7 @@ class ArchivedViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message ?: "Failed to load archive"
+                            error = errorFactory.from(error, "Failed to load archive")
                         )
                     }
                 }
@@ -100,7 +103,7 @@ class ArchivedViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            errorMessage = error.message ?: "Failed to load more"
+                            error = errorFactory.from(error, "Failed to load more")
                         )
                     }
                 }
@@ -143,7 +146,7 @@ class ArchivedViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -159,7 +162,7 @@ class ArchivedViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to unarchive"
+                            error = errorFactory.from(error, "Failed to unarchive")
                         )
                     }
                 }
@@ -168,7 +171,7 @@ class ArchivedViewModel(
 
     fun unarchiveAll(onSuccess: () -> Unit = {}) {
         if (_state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.unarchiveAll() }
                 .onSuccess {
@@ -181,7 +184,7 @@ class ArchivedViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to unarchive all"
+                            error = errorFactory.from(error, "Failed to unarchive all")
                         )
                     }
                 }
@@ -195,7 +198,7 @@ class ArchivedViewModel(
         _state.update {
             it.copy(
                 isBulkMutating = true,
-                errorMessage = null,
+                error = null,
                 items = it.items.filterNot { item -> item.id in it.selection },
                 selection = emptySet()
             )
@@ -208,7 +211,7 @@ class ArchivedViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to delete"
+                            error = errorFactory.from(error, "Failed to delete")
                         )
                     }
                 }
@@ -219,7 +222,7 @@ class ArchivedViewModel(
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         val added = _state.value.items.filter { it.id in ids }
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { albumsRepository.addAssetsBatch(albumId, ids) }
                 .onSuccess {
@@ -230,7 +233,7 @@ class ArchivedViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to add to album"
+                            error = errorFactory.from(error, "Failed to add to album")
                         )
                     }
                 }
@@ -247,6 +250,6 @@ class ArchivedViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 }

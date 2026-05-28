@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.folder.filterPersonalFolders
 import com.photonne.app.data.folder.filterSharedFolders
@@ -11,12 +13,12 @@ import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 enum class FoldersTab { Personal, Shared, Libraries }
 
@@ -38,7 +40,7 @@ data class FoldersUiState(
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null
+    val error: UiError? = null,
 ) {
     val isSelectionActive: Boolean get() = selectedFolderId != null
 
@@ -82,7 +84,8 @@ private fun List<FolderSummary>.flattenFolders(): List<FolderSummary> {
 class FoldersViewModel(
     private val repository: FoldersRepository,
     private val authState: AuthStateHolder,
-    private val settings: Settings
+    private val settings: Settings,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(loadInitialState())
@@ -138,15 +141,21 @@ class FoldersViewModel(
 
     fun refresh() {
         val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching {
-                val folders = async { repository.list() }
-                val libs = async {
-                    runCatching { repository.listExternalLibraries() }.getOrDefault(emptyList())
+                // supervisorScope keeps a child failure (e.g. /folders → 500)
+                // from cancelling the parent launch and escaping runCatching
+                // via the structured-concurrency channel — without it the
+                // PhotonneApiException reaches the uncaught handler and the
+                // process dies.
+                supervisorScope {
+                    val folders = async { repository.list() }
+                    val libs = async {
+                        runCatching { repository.listExternalLibraries() }.getOrDefault(emptyList())
+                    }
+                    folders.await() to libs.await()
                 }
-                awaitAll(folders, libs)
-                folders.await() to libs.await()
             }
                 .onSuccess { (folders, libs) ->
                     allFolders = folders
@@ -175,7 +184,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Failed to load folders"
+                            error = errorFactory.from(error, "Failed to load folders")
                         )
                     }
                 }
@@ -192,7 +201,7 @@ class FoldersViewModel(
         onCreated: (FolderSummary) -> Unit = {}
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.create(
@@ -211,7 +220,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to create folder"
+                            error = errorFactory.from(error, "Failed to create folder")
                         )
                     }
                 }
@@ -225,7 +234,7 @@ class FoldersViewModel(
     ) {
         val current = allFolders.firstOrNull { it.id == folderId } ?: return
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 repository.update(
@@ -244,7 +253,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to rename folder"
+                            error = errorFactory.from(error, "Failed to rename folder")
                         )
                     }
                 }
@@ -253,7 +262,7 @@ class FoldersViewModel(
 
     fun deleteFolder(folderId: String, onSuccess: () -> Unit = {}) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.delete(folderId) }
                 .onSuccess {
@@ -266,7 +275,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            errorMessage = error.message ?: "Failed to delete folder"
+                            error = errorFactory.from(error, "Failed to delete folder")
                         )
                     }
                 }
@@ -284,7 +293,7 @@ class FoldersViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     private fun repartition() {

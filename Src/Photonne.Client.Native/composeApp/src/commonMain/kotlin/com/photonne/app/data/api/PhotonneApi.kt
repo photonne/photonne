@@ -16,6 +16,7 @@ import com.photonne.app.data.models.AssignFaceResponse
 import com.photonne.app.data.models.BulkSuggestionResult
 import com.photonne.app.data.models.Face
 import com.photonne.app.data.models.PeoplePage
+import com.photonne.app.data.models.PublicVersionResponse
 import com.photonne.app.data.models.PersonAssetsPage
 import com.photonne.app.data.models.PersonFacesPage
 import com.photonne.app.data.models.PersonSuggestionsPage
@@ -43,6 +44,8 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.request
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.http.ContentType
@@ -206,6 +209,9 @@ internal data class SetAlbumPermissionBody(
 )
 
 interface PhotonneApi {
+    /** Versión del servidor (GET /api/version, sin auth). */
+    suspend fun getServerVersion(): String
+
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
@@ -517,6 +523,14 @@ class PhotonneApiClient(
     constructor(client: HttpClient, baseUrl: String) : this(client, { baseUrl })
 
     private val baseUrl: String get() = baseUrlProvider()
+
+    override suspend fun getServerVersion(): String {
+        val response: HttpResponse = client.get("$baseUrl/api/version") {
+            skipAuthRefresh()
+        }
+        response.ensureSuccess { "Server version fetch failed ($it)" }
+        return response.body<PublicVersionResponse>().version
+    }
 
     override suspend fun login(username: String, password: String, deviceId: String): LoginResponse {
         val response: HttpResponse = client.post("$baseUrl/api/auth/login") {
@@ -2455,5 +2469,28 @@ class PhotonneApiClient(
 
 class PhotonneApiException(
     val status: Int,
-    message: String
+    message: String,
+    val method: String? = null,
+    val url: String? = null,
+    val responseBody: String? = null,
 ) : RuntimeException(message)
+
+/**
+ * Lanza un [PhotonneApiException] enriquecido (method, url, body truncado)
+ * si la respuesta no es 2xx. Reemplazo recomendado para los antiguos
+ * `if (response.status != HttpStatusCode.OK) throw PhotonneApiException(...)`.
+ */
+internal suspend inline fun HttpResponse.ensureSuccess(
+    messageBuilder: (Int) -> String,
+) {
+    val code = status.value
+    if (code in 200..299) return
+    val body = runCatching { bodyAsText().take(2048) }.getOrNull()
+    throw PhotonneApiException(
+        status = code,
+        message = messageBuilder(code),
+        method = request.method.value,
+        url = request.url.toString(),
+        responseBody = body,
+    )
+}

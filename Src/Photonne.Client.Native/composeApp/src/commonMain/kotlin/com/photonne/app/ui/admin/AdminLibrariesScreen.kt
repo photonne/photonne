@@ -82,7 +82,7 @@ fun AdminLibrariesScreen(
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }
-            state.errorMessage?.let { msg ->
+            state.error?.userMessage?.let { msg ->
                 Text(
                     msg,
                     style = MaterialTheme.typography.bodySmall,

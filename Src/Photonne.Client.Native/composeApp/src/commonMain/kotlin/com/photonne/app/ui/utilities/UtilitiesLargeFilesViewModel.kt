@@ -2,6 +2,8 @@ package com.photonne.app.ui.utilities
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.utilities.UtilitiesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,8 +15,8 @@ import kotlinx.coroutines.launch
 data class UtilitiesLargeFilesUiState(
     val items: List<TimelineItem> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val count: Int = DEFAULT_COUNT
+    val error: UiError? = null,
+    val count: Int = DEFAULT_COUNT,
 ) {
     val totalBytes: Long get() = items.sumOf { it.fileSize }
 
@@ -28,7 +30,8 @@ data class UtilitiesLargeFilesUiState(
 }
 
 class UtilitiesLargeFilesViewModel(
-    private val repository: UtilitiesRepository
+    private val repository: UtilitiesRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UtilitiesLargeFilesUiState())
@@ -49,7 +52,7 @@ class UtilitiesLargeFilesViewModel(
 
     private fun load() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         val count = _state.value.count
         viewModelScope.launch {
             runCatching { repository.largeFiles(count) }
@@ -60,7 +63,7 @@ class UtilitiesLargeFilesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not load large files"
+                            error = errorFactory.from(error, "Could not load large files")
                         )
                     }
                 }

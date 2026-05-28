@@ -417,7 +417,7 @@ fun AssetDetailScreen(
                 fallback = currentItem,
                 detail = state.detail.takeIf { it?.id == currentItem.id },
                 isLoading = state.isLoading,
-                errorMessage = state.errorMessage
+                errorMessage = state.error?.userMessage
             )
         }
     }

@@ -83,13 +83,13 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
-                state.errorMessage != null && state.results.isEmpty() ->
+                state.error?.userMessage != null && state.results.isEmpty() ->
                     Box(
                         modifier = Modifier.fillMaxSize().padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            state.errorMessage ?: "",
+                            state.error?.userMessage ?: "",
                             color = MaterialTheme.colorScheme.error
                         )
                     }

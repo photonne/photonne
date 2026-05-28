@@ -96,11 +96,10 @@ fun AssetFacesSheet(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
-                state.errorMessage != null && state.faces.isEmpty() ->
-                    Text(
-                        state.errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                state.error != null && state.faces.isEmpty() ->
+                    com.photonne.app.ui.error.ErrorBanner(
+                        error = state.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 state.faces.isEmpty() ->
                     Text(

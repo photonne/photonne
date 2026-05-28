@@ -66,9 +66,9 @@ fun ExploreMemoriesScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        state.errorMessage != null && state.items.isEmpty() ->
+        state.error?.userMessage != null && state.items.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
+                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
             }
         groups.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

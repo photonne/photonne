@@ -3,6 +3,8 @@ package com.photonne.app.ui.admin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.LibraryPermissionDto
 import com.photonne.app.data.models.LibraryScanProgress
@@ -11,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -18,7 +21,7 @@ data class AdminLibrariesUiState(
     val libraries: List<ExternalLibraryDto> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     val statusMessage: String? = null,
     val scanProgress: LibraryScanProgress? = null,
     val scanningLibraryId: String? = null,
@@ -28,7 +31,8 @@ data class AdminLibrariesUiState(
 )
 
 class AdminLibrariesViewModel(
-    private val repository: AdminRepository
+    private val repository: AdminRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminLibrariesUiState())
@@ -43,7 +47,7 @@ class AdminLibrariesViewModel(
 
     fun refresh() {
         if (_state.value.isLoading) return
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.listLibraries() }
                 .onSuccess { libs ->
@@ -53,7 +57,7 @@ class AdminLibrariesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not load libraries"
+                            error = errorFactory.from(error, "Could not load libraries")
                         )
                     }
                 }
@@ -61,7 +65,7 @@ class AdminLibrariesViewModel(
     }
 
     fun clearMessages() {
-        _state.update { it.copy(errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(error = null, statusMessage = null) }
     }
 
     fun create(
@@ -72,7 +76,7 @@ class AdminLibrariesViewModel(
         onDone: () -> Unit
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching {
                 repository.createLibrary(name, path, importSubfolders, cronSchedule)
@@ -87,7 +91,7 @@ class AdminLibrariesViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Create failed") }
+                .onFailure { error -> failMutation(error, "Create failed") }
         }
     }
 
@@ -100,7 +104,7 @@ class AdminLibrariesViewModel(
         onDone: () -> Unit
     ) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching {
                 repository.updateLibrary(id, name, path, importSubfolders, cronSchedule)
@@ -117,13 +121,13 @@ class AdminLibrariesViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Update failed") }
+                .onFailure { error -> failMutation(error, "Update failed") }
         }
     }
 
     fun delete(id: String, onDone: () -> Unit) {
         if (_state.value.isMutating) return
-        _state.update { it.copy(isMutating = true, errorMessage = null, statusMessage = null) }
+        _state.update { it.copy(isMutating = true, error = null, statusMessage = null) }
         viewModelScope.launch {
             runCatching { repository.deleteLibrary(id) }
                 .onSuccess {
@@ -136,7 +140,7 @@ class AdminLibrariesViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error.message ?: "Delete failed") }
+                .onFailure { error -> failMutation(error, "Delete failed") }
         }
     }
 
@@ -146,27 +150,27 @@ class AdminLibrariesViewModel(
             it.copy(
                 scanningLibraryId = id,
                 scanProgress = LibraryScanProgress(message = "Iniciando…"),
-                errorMessage = null,
+                error = null,
                 statusMessage = null
             )
         }
         scanJob = viewModelScope.launch {
-            runCatching {
-                repository.scanLibrary(id).collect { progress ->
+            repository.scanLibrary(id)
+                .catch { throwable ->
+                    _state.update {
+                        it.copy(
+                            scanningLibraryId = null,
+                            scanProgress = null,
+                            error = errorFactory.from(throwable, "Fallo al escanear biblioteca")
+                        )
+                    }
+                }
+                .collect { progress ->
                     _state.update { it.copy(scanProgress = progress) }
                     if (progress.isCompleted) {
                         refresh()
                     }
                 }
-            }.onFailure { error ->
-                _state.update {
-                    it.copy(
-                        scanningLibraryId = null,
-                        scanProgress = null,
-                        errorMessage = error.message ?: "Scan failed"
-                    )
-                }
-            }
             _state.update {
                 it.copy(scanningLibraryId = null)
             }
@@ -194,7 +198,7 @@ class AdminLibrariesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Could not load permissions")
+                        it.copy(error = errorFactory.from(error, "Could not load permissions"))
                     }
                 }
         }
@@ -224,7 +228,7 @@ class AdminLibrariesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Could not grant access")
+                        it.copy(error = errorFactory.from(error, "Could not grant access"))
                     }
                 }
         }
@@ -243,13 +247,15 @@ class AdminLibrariesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(errorMessage = error.message ?: "Could not revoke access")
+                        it.copy(error = errorFactory.from(error, "Could not revoke access"))
                     }
                 }
         }
     }
 
-    private fun failMutation(message: String) {
-        _state.update { it.copy(isMutating = false, errorMessage = message) }
+    private fun failMutation(throwable: Throwable, fallback: String) {
+        _state.update {
+            it.copy(isMutating = false, error = errorFactory.from(throwable, fallback))
+        }
     }
 }

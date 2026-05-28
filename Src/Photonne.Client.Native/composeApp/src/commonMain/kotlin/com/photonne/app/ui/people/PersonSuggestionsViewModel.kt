@@ -2,6 +2,8 @@ package com.photonne.app.ui.people
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.PersonSuggestion
 import com.photonne.app.data.people.PeopleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,9 +21,9 @@ data class PersonSuggestionsUiState(
     val isInitialLoading: Boolean = false,
     val isAppending: Boolean = false,
     val isBulkMutating: Boolean = false,
-    val errorMessage: String? = null,
+    val error: UiError? = null,
     /** Per-face flag while we're posting accept/dismiss for that row. */
-    val pendingFaceIds: Set<String> = emptySet()
+    val pendingFaceIds: Set<String> = emptySet(),
 ) {
     val isEmpty: Boolean get() = !isInitialLoading && items.isEmpty()
 }
@@ -33,7 +35,8 @@ data class PersonSuggestionsUiState(
  * the suggestions screen.
  */
 class PersonSuggestionsViewModel(
-    private val repository: PeopleRepository
+    private val repository: PeopleRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PersonSuggestionsUiState())
@@ -55,7 +58,7 @@ class PersonSuggestionsViewModel(
     fun refresh() {
         if (_state.value.personId == null) return
         _state.update {
-            it.copy(isInitialLoading = it.items.isEmpty(), errorMessage = null)
+            it.copy(isInitialLoading = it.items.isEmpty(), error = null)
         }
         viewModelScope.launch { loadInternal(append = false) }
     }
@@ -91,7 +94,7 @@ class PersonSuggestionsViewModel(
                     it.copy(
                         isInitialLoading = false,
                         isAppending = false,
-                        errorMessage = error.message ?: "Failed to load suggestions"
+                        error = errorFactory.from(error, "Failed to load suggestions")
                     )
                 }
             }
@@ -105,7 +108,7 @@ class PersonSuggestionsViewModel(
                     dropItem(faceId)
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to accept") }
+                .onFailure { error -> setError(faceId, error, "Failed to accept") }
         }
     }
 
@@ -117,14 +120,14 @@ class PersonSuggestionsViewModel(
                     dropItem(faceId)
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error.message ?: "Failed to dismiss") }
+                .onFailure { error -> setError(faceId, error, "Failed to dismiss") }
         }
     }
 
     fun acceptAll(onSuccess: (affected: Int) -> Unit = {}) {
         val personId = _state.value.personId ?: return
         if (_state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.acceptAllSuggestions(personId) }
                 .onSuccess { result ->
@@ -142,7 +145,7 @@ class PersonSuggestionsViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to accept all"
+                            error = errorFactory.from(error, "Failed to accept all")
                         )
                     }
                 }
@@ -152,7 +155,7 @@ class PersonSuggestionsViewModel(
     fun dismissAll(onSuccess: (affected: Int) -> Unit = {}) {
         val personId = _state.value.personId ?: return
         if (_state.value.isBulkMutating) return
-        _state.update { it.copy(isBulkMutating = true, errorMessage = null) }
+        _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
             runCatching { repository.dismissAllSuggestions(personId) }
                 .onSuccess { result ->
@@ -170,7 +173,7 @@ class PersonSuggestionsViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            errorMessage = error.message ?: "Failed to dismiss all"
+                            error = errorFactory.from(error, "Failed to dismiss all")
                         )
                     }
                 }
@@ -178,7 +181,7 @@ class PersonSuggestionsViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     private fun markPending(faceId: String, pending: Boolean) {
@@ -200,11 +203,11 @@ class PersonSuggestionsViewModel(
         }
     }
 
-    private fun setError(faceId: String, message: String) {
+    private fun setError(faceId: String, throwable: Throwable, fallback: String) {
         _state.update {
             it.copy(
                 pendingFaceIds = it.pendingFaceIds - faceId,
-                errorMessage = message
+                error = errorFactory.from(throwable, fallback)
             )
         }
     }

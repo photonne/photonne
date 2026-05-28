@@ -3,6 +3,8 @@ package com.photonne.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.account.AccountRepository
+import com.photonne.app.data.error.UiError
+import com.photonne.app.data.error.UiErrorFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,8 +16,8 @@ data class AccountSecurityUiState(
     val newPassword: String = "",
     val confirmPassword: String = "",
     val isSubmitting: Boolean = false,
-    val errorMessage: String? = null,
-    val successMessage: String? = null
+    val error: UiError? = null,
+    val successMessage: String? = null,
 ) {
     val mismatch: Boolean
         get() = newPassword.isNotEmpty() && confirmPassword.isNotEmpty() &&
@@ -36,7 +38,8 @@ data class AccountSecurityUiState(
 }
 
 class AccountSecurityViewModel(
-    private val repository: AccountRepository
+    private val repository: AccountRepository,
+    private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AccountSecurityUiState())
@@ -55,13 +58,13 @@ class AccountSecurityViewModel(
     }
 
     fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+        _state.update { it.copy(error = null) }
     }
 
     fun submit() {
         val current = _state.value
         if (!current.canSave) return
-        _state.update { it.copy(isSubmitting = true, errorMessage = null, successMessage = null) }
+        _state.update { it.copy(isSubmitting = true, error = null, successMessage = null) }
         viewModelScope.launch {
             runCatching {
                 repository.changePassword(current.currentPassword, current.newPassword)
@@ -73,7 +76,7 @@ class AccountSecurityViewModel(
                     _state.update {
                         it.copy(
                             isSubmitting = false,
-                            errorMessage = error.message ?: "Could not change password"
+                            error = errorFactory.from(error, "Could not change password")
                         )
                     }
                 }
