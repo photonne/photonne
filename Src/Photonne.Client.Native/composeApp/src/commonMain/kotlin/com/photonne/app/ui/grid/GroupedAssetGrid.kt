@@ -21,8 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -242,17 +240,38 @@ internal fun GroupedAssetGrid(
     onItemLongClick: ((Int) -> Unit)? = null,
     cellSpacing: Dp = 2.dp
 ) {
-    val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
-        derivedStateOf {
-            val total = state.layoutInfo.totalItemsCount
-            val lastVisible = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            total > 0 && lastVisible >= total - PREFETCH_THRESHOLD &&
-                hasMore && !isAppending && !isInitialLoading
+    // Re-key on hasMore so the snapshotFlow restarts when pagination state
+    // flips — the previous version keyed only on `state`, captured `shouldLoadMore`
+    // (a delegate over a derivedStateOf whose lambda closed over `hasMore` /
+    // `isAppending` / `isInitialLoading` from the FIRST composition) and
+    // silently went stale on subsequent recompositions. `isAppending` /
+    // `isInitialLoading` are intentionally NOT in the key set — the ViewModel
+    // already guards re-entry, and including them would restart the flow
+    // twice per load round-trip.
+    //
+    // Two trigger conditions, OR'd:
+    //   (a) the last laid-out row is within PREFETCH_THRESHOLD of the end —
+    //       the original "scrolling near the bottom" prefetch.
+    //   (b) the laid-out content doesn't fill the viewport — covers the case
+    //       where a page's worth of rows is shorter than the screen (large
+    //       cells, fast viewport), so the user has nothing to scroll into
+    //       and the threshold in (a) never triggers. Without this, the
+    //       timeline gets stuck on page 1 until the user pinch-zooms (which
+    //       repacks rows and accidentally satisfies (a)).
+    LaunchedEffect(state, hasMore) {
+        if (!hasMore) return@LaunchedEffect
+        snapshotFlow {
+            val info = state.layoutInfo
+            val total = info.totalItemsCount
+            val last = info.visibleItemsInfo.lastOrNull()
+            val lastIndex = last?.index ?: -1
+            val contentEnd = last?.let { it.offset + it.size } ?: 0
+            val viewportEnd = info.viewportEndOffset
+            total > 0 && (
+                lastIndex >= total - PREFETCH_THRESHOLD ||
+                (contentEnd in 1 until viewportEnd)
+            )
         }
-    }
-
-    LaunchedEffect(state) {
-        snapshotFlow { shouldLoadMore }
             .distinctUntilChanged()
             .filter { it }
             .collect { onLoadMore() }
