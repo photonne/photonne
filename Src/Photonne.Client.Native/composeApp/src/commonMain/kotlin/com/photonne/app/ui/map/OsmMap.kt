@@ -1,6 +1,7 @@
 package com.photonne.app.ui.map
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseIn
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -40,6 +42,7 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -51,15 +54,16 @@ import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Min/max zoom we ever request from the tile server. CARTO and OSM both
- * go up to 19; we stay one short so re-pinching past max never blanks out. */
+/** Min/max zoom we ever request from the tile server. CARTO and OSM
+ * both go up to 19; we stay one short so re-pinching past max never
+ * blanks out. */
 const val MIN_ZOOM = 1
 const val MAX_ZOOM = 18
 
-/** Dark CARTO basemap, same as the PWA's default. `{s}` rotates through
- * `a..d` so requests don't all hit the same subdomain. */
+/** Dark CARTO basemap, same as the PWA's default. */
 private const val TILE_URL_TEMPLATE_DARK =
     "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
 
@@ -72,11 +76,28 @@ private val ClusterBadgeColor = Color(0xFFF44336)
 private val MapBackgroundDark = Color(0xFF1A1A1A)
 private val MapBackgroundLight = Color(0xFFE6E2DA)
 
+/** How long the previous tile pyramid sticks around as a full-opacity
+ * backdrop after a zoom commit. Long enough that Coil has warmed the
+ * new zoom's cache before we drop the fallback. */
+private const val BACKDROP_HOLD_MS = 1500
+
+/** Duration of the pinchScale → 1f settle animation. Matched with the
+ * cluster animation in AnimatedMarkers.kt so both motions start and
+ * end together — the unified transition masks the discrete "click"
+ * (cluster recompute + tile zoom swap) the user otherwise perceives
+ * when the integer-zoom threshold gets crossed. */
+private const val PINCH_RESET_MS = 450
+
 /**
  * Interactive CARTO tile viewer with pinch-to-zoom and drag-to-pan,
- * plus an overlay of clickable thumbnail markers. Cluster markers
- * carry a small red badge with the photo count; single-photo markers
- * are just the thumbnail circle.
+ * plus an overlay of clickable thumbnail markers.
+ *
+ * Zoom UX: the integer level the parent owns commits at pinch release.
+ * Until then the tile layer is stretched continuously by `pinchScale`;
+ * at release the residual is glided back to 1f over 300 ms (Leaflet's
+ * settle motion). The previous tile pyramid stays rendered as a
+ * full-opacity backdrop while Coil warms the new zoom's cache so the
+ * swap never goes dark.
  */
 @Composable
 fun OsmMap(
@@ -100,31 +121,64 @@ fun OsmMap(
 
     // `pointerInput` only restarts when its keys change, so the gesture
     // lambda would otherwise close over a stale center after the first
-    // pan — every subsequent pan event would start from the original
-    // coordinates and the map would refuse to move. Reading through
-    // `rememberUpdatedState` lets the same long-lived lambda see fresh
-    // state on every event without rebuilding the gesture detector.
+    // pan. Reading through `rememberUpdatedState` lets the same
+    // long-lived lambda see fresh state on every event without
+    // rebuilding the gesture detector.
     val currentCenterLat by rememberUpdatedState(centerLat)
     val currentCenterLng by rememberUpdatedState(centerLng)
     val currentZoom by rememberUpdatedState(zoom)
     val currentOnCenterChanged by rememberUpdatedState(onCenterChanged)
     val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
 
-    // Visual scale + pivot for Leaflet-style smooth pinch zoom. The map
-    // renders at an integer zoom level but the gesture handler stretches
-    // the tile/marker layer continuously between integer steps, then
-    // snaps the residual scale back to 1f when the user lifts.
-    // `pinchScale` is written synchronously from the gesture handler so
-    // the visual tracks the pinch without a frame of latency; the
-    // snap-back animation runs in `scope.launch` and writes back into
-    // the same state.
+    // Visual scale + pivot. Lives at `1f` while the user is idle on an
+    // integer zoom; goes to the live pinch ratio during a gesture;
+    // on release a PINCH_RESET_MS glide carries it back to 1f.
     var pinchScale by remember { mutableFloatStateOf(1f) }
     var pinchPivot by remember { mutableStateOf(Offset(0.5f, 0.5f)) }
-    val snapBackJob = remember { mutableStateOf<Job?>(null) }
 
-    val markers by remember(points, zoom) {
+    // Two-stage backdrop tracking. `effectiveBackdrop` is derived in
+    // composition so the backdrop is visible from the FIRST frame at
+    // the new zoom — the LaunchedEffect runs after composition, so
+    // relying on it alone would let the new (cold-cache) layer render
+    // alone for one frame.
+    var renderedZoom by remember { mutableStateOf(zoom) }
+    var backdropZoom by remember { mutableStateOf<Int?>(null) }
+    var pinchScaleSetByGesture by remember { mutableStateOf(false) }
+    val pinchResetJob = remember { mutableStateOf<Job?>(null) }
+
+    val effectiveBackdrop: Int? = when {
+        renderedZoom != zoom -> renderedZoom
+        backdropZoom != null && backdropZoom != zoom -> backdropZoom
+        else -> null
+    }
+
+    LaunchedEffect(zoom) {
+        if (renderedZoom == zoom) return@LaunchedEffect
+        val previous = renderedZoom
+        renderedZoom = zoom
+        val wasGesture = pinchScaleSetByGesture
+        pinchScaleSetByGesture = false
+        // Programmatic zoom (FAB +/-, fitToData, double-tap) glides
+        // the residual back to 1f in parallel with the tile swap.
+        if (!wasGesture && pinchScale != 1f) {
+            pinchResetJob.value?.cancel()
+            pinchResetJob.value = scope.launch {
+                val anim = Animatable(pinchScale)
+                anim.animateTo(1f, tween(PINCH_RESET_MS, easing = EaseIn)) {
+                    pinchScale = value
+                }
+                pinchResetJob.value = null
+            }
+        }
+        backdropZoom = previous
+        delay(BACKDROP_HOLD_MS.toLong())
+        backdropZoom = null
+    }
+
+    val rawMarkers by remember(points, zoom) {
         derivedStateOf { clusterPoints(points = points, zoom = zoom) }
     }
+    val markers = rememberAnimatedMarkers(rawMarkers, zoom)
 
     Box(
         modifier = modifier
@@ -135,20 +189,15 @@ fun OsmMap(
                 val touchSlop = viewConfiguration.touchSlop
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
-                    // If the user starts a new pinch mid snap-back, cancel
-                    // the animation and pick up from the current scale so
-                    // the visual doesn't jump.
-                    snapBackJob.value?.cancel()
-                    snapBackJob.value = null
+                    // Cancel any in-flight pinch-reset animation so the
+                    // new gesture picks up from the actual current
+                    // value without competing writes to pinchScale.
+                    pinchResetJob.value?.cancel()
+                    pinchResetJob.value = null
 
                     var pastTouchSlop = false
                     var slopZoom = 1f
                     var slopPan = Offset.Zero
-                    // Freeze the integer zoom for the whole gesture. Tiles
-                    // and clusters stay at this level until the user lifts —
-                    // mirrors Leaflet's behaviour in the PWA where markers
-                    // don't reshuffle until release, so the pinch feels
-                    // continuous instead of stepped.
                     val startZoom = currentZoom
                     var localScale = pinchScale
                     var lastCentroidPx = Offset.Zero
@@ -176,26 +225,23 @@ fun OsmMap(
                         if (!pastTouchSlop) continue
 
                         val centroidPx = event.calculateCentroid(useCurrent = true)
-                        // The pinch pivot is only meaningful while two
-                        // fingers are touching — `calculateCentroid` collapses
-                        // to a single-finger position the moment one finger
-                        // lifts, which would yank `lastCentroidPx` away from
-                        // the real pinch midpoint and skew the commit math.
-                        // Freezing it while sharedPressed < 2 keeps the
-                        // pivot anchored at the last two-finger position.
                         val sharedPressedCount =
                             event.changes.count { it.pressed && it.previousPressed }
                         val isPinching = sharedPressedCount >= 2
 
-                        // Pan during the gesture is cheap (just shifts the
-                        // viewport — no clustering recompute) so we apply it
-                        // immediately for finger-tracking feel.
-                        if (panChange != Offset.Zero) {
+                        // Pan: `panChange.x` is screen pixels, the
+                        // world moves `/ localScale` to keep the
+                        // finger 1:1 with the content under a
+                        // fractional residual.
+                        if (panChange != Offset.Zero && localScale > 0f) {
                             val centerW = project(
                                 LatLng(currentCenterLat, currentCenterLng), startZoom
                             )
                             val unproj = unproject(
-                                WorldPx(centerW.x - panChange.x, centerW.y - panChange.y),
+                                WorldPx(
+                                    centerW.x - panChange.x / localScale,
+                                    centerW.y - panChange.y / localScale
+                                ),
                                 startZoom
                             )
                             currentOnCenterChanged(unproj.latitude, unproj.longitude)
@@ -209,10 +255,6 @@ fun OsmMap(
                                 centroidPx.y / size.height.coerceAtLeast(1)
                             )
 
-                            // Zoom is purely visual — the integer level
-                            // doesn't change until release, so the layer
-                            // stretches continuously across multiple zoom
-                            // steps.
                             if (zoomChange != 1f) {
                                 localScale *= zoomChange
                                 val maxScale = 2f.pow((MAX_ZOOM - startZoom).coerceAtLeast(0))
@@ -225,11 +267,6 @@ fun OsmMap(
                         event.changes.forEach { if (it.positionChanged()) it.consume() }
                     } while (event.changes.any { it.pressed })
 
-                    // Now that the gesture is over, decide the final integer
-                    // zoom and shift the center so the pivot's geographic
-                    // point lands at the same screen pixel under the new
-                    // zoom. This is the *only* point where clusters and
-                    // tiles re-evaluate.
                     val rawDelta = if (localScale > 0f) log2(localScale).roundToInt() else 0
                     val newZoom = (startZoom + rawDelta).coerceIn(MIN_ZOOM, MAX_ZOOM)
                     val zoomDelta = newZoom - startZoom
@@ -246,22 +283,33 @@ fun OsmMap(
                             y = scaleFactor * centerW.y + (scaleFactor - 1.0) * offsetY
                         )
                         val newLatLng = unproject(newCenterW, newZoom)
+                        // Tell the LaunchedEffect to skip its own
+                        // snap-back — the gesture handler launches the
+                        // same animation below so the settle starts
+                        // immediately rather than waiting for the
+                        // LaunchedEffect-zoom-change tick.
+                        pinchScaleSetByGesture = true
                         currentOnCenterChanged(newLatLng.latitude, newLatLng.longitude)
                         currentOnZoomChanged(newZoom)
                     }
 
-                    // Residual visual scale that keeps the rendered map
-                    // continuous across the integer-zoom step. Animate it
-                    // back to 1f so the final composition lands at pixel
-                    // alignment with the new tiles.
                     val residual = localScale / 2f.pow(zoomDelta)
                     pinchScale = residual
-                    if (residual != 1f) {
-                        snapBackJob.value = scope.launch {
-                            val anim = Animatable(residual)
-                            anim.animateTo(1f, animationSpec = tween(120)) {
-                                pinchScale = value
-                            }
+
+                    // Glide the residual back to 1f so the integer
+                    // zoom commit lands at a crisp natural scale.
+                    if (pinchScale != 1f) {
+                        pinchResetJob.value?.cancel()
+                        pinchResetJob.value = scope.launch {
+                            val anim = Animatable(pinchScale)
+                            anim.animateTo(
+                                targetValue = 1f,
+                                animationSpec = tween(
+                                    durationMillis = PINCH_RESET_MS,
+                                    easing = EaseIn
+                                )
+                            ) { pinchScale = value }
+                            pinchResetJob.value = null
                         }
                     }
                 }
@@ -271,10 +319,18 @@ fun OsmMap(
                     onDoubleTap = { tap ->
                         val z = currentZoom
                         if (z < MAX_ZOOM) {
+                            // Inverse-transform the tap through the
+                            // active pinchScale + pivot to find the
+                            // world point under the finger.
+                            val s = pinchScale.toDouble().coerceAtLeast(0.0001)
+                            val pivotX = pinchPivot.x * size.width
+                            val pivotY = pinchPivot.y * size.height
+                            val localX = pivotX + (tap.x - pivotX) / s
+                            val localY = pivotY + (tap.y - pivotY) / s
                             val center = project(LatLng(currentCenterLat, currentCenterLng), z)
                             val tapWorld = WorldPx(
-                                x = center.x + (tap.x - size.width / 2.0),
-                                y = center.y + (tap.y - size.height / 2.0)
+                                x = center.x + (localX - size.width / 2.0),
+                                y = center.y + (localY - size.height / 2.0)
                             )
                             val newPoint = unproject(tapWorld, z)
                             currentOnCenterChanged(newPoint.latitude, newPoint.longitude)
@@ -286,65 +342,156 @@ fun OsmMap(
     ) {
         if (size == IntSize.Zero) return@Box
 
+        // Backdrop tile pyramid (previous zoom level). Always at full
+        // opacity — sits below the new layer and fills any tile gap
+        // until Coil delivers the new ones, so the user never sees
+        // dark areas during a zoom transition. Reading
+        // `effectiveBackdrop` (computed above) instead of
+        // `backdropZoom` ensures visibility from the first commit
+        // frame, not delayed one frame for the LaunchedEffect.
+        val backdrop = effectiveBackdrop
+        if (backdrop != null) {
+            TileLayer(
+                tileZoom = backdrop,
+                centerLat = centerLat,
+                centerLng = centerLng,
+                size = size,
+                tileTemplate = tileTemplate,
+                density = density,
+                scale = pinchScale * 2f.pow(zoom - backdrop),
+                pivot = pinchPivot,
+                alpha = 1f
+            )
+        }
+
+        // Current tile layer on top — transparent where tiles are
+        // still loading, so the backdrop shows through those gaps.
+        TileLayer(
+            tileZoom = zoom,
+            centerLat = centerLat,
+            centerLng = centerLng,
+            size = size,
+            tileTemplate = tileTemplate,
+            density = density,
+            scale = pinchScale,
+            pivot = pinchPivot,
+            alpha = 1f
+        )
+
+        // Markers are NOT inside the pinchScale graphicsLayer — they
+        // stay at a constant on-screen size and their positions are
+        // composed manually with the same transform the tile layers
+        // apply. Keeping them inside the transform would shrink them
+        // ~30 % on zoom-in commit (the moment pinchScale drops from
+        // localScale to localScale/2) which the user perceives as a
+        // jolt even though the tile content stays put.
         val center = project(LatLng(centerLat, centerLng), zoom)
         val viewportLeftWorldX = center.x - size.width / 2.0
         val viewportTopWorldY = center.y - size.height / 2.0
-        val firstTileX = floor(viewportLeftWorldX / TILE_SIZE_PX).toInt()
-        val firstTileY = floor(viewportTopWorldY / TILE_SIZE_PX).toInt()
-        val tilesPerRow = (size.width / TILE_SIZE_PX) + 2
-        val tilesPerCol = (size.height / TILE_SIZE_PX) + 2
-        val tileMax = (1L shl zoom).toInt()
+        val pivotX = pinchPivot.x * size.width.toDouble()
+        val pivotY = pinchPivot.y * size.height.toDouble()
+        val sd = pinchScale.toDouble()
+        val markerPaddingPx = 160
+
+        for (animated in markers) {
+            val cluster = animated.marker
+            val localX = animated.worldX - viewportLeftWorldX
+            val localY = animated.worldY - viewportTopWorldY
+            val screenX = (pivotX + (localX - pivotX) * sd).roundToInt()
+            val screenY = (pivotY + (localY - pivotY) * sd).roundToInt()
+            if (screenX < -markerPaddingPx || screenX > size.width + markerPaddingPx) continue
+            if (screenY < -markerPaddingPx || screenY > size.height + markerPaddingPx) continue
+            ThumbnailMarker(
+                marker = cluster,
+                baseUrl = baseUrl,
+                offsetPx = IntOffset(screenX, screenY),
+                alpha = animated.alpha,
+                // Ghosts mid-fade aren't real targets — gating clicks
+                // at half-opacity stops a tap from landing on a
+                // marker the user can barely see.
+                interactive = animated.alpha >= 0.5f,
+                onClick = {
+                    if (cluster.count == 1) onPointClick(cluster.firstPoint)
+                    else onClusterClick(cluster.points)
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Renders one CARTO tile pyramid level inside its own transformed Box.
+ * Used twice during a zoom transition: once at the new [tileZoom] (the
+ * commit target) and once at the previously-displayed zoom whose layer
+ * is the backdrop. The `scale` parameter combines `pinchScale` with the
+ * extra `2^Δz` factor needed to align an old tile pyramid against the
+ * new one at the same on-screen world area.
+ */
+@Composable
+private fun TileLayer(
+    tileZoom: Int,
+    centerLat: Double,
+    centerLng: Double,
+    size: IntSize,
+    tileTemplate: String,
+    density: Density,
+    scale: Float,
+    pivot: Offset,
+    alpha: Float
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(pivot.x, pivot.y)
+                this.alpha = alpha
+            }
+    ) {
+        val center = project(LatLng(centerLat, centerLng), tileZoom)
+        val viewportLeftWorldX = center.x - size.width / 2.0
+        val viewportTopWorldY = center.y - size.height / 2.0
+
+        // Inverse-transform the screen rect to find which slice of the
+        // box's local coords ends up visible after the graphicsLayer
+        // applies `scale` around `pivot`. With `scale < 1` this rect
+        // is wider than the screen, so the loop renders extra tiles
+        // beyond the box boundary; the graphicsLayer scales them into
+        // view.
+        val invS = 1.0 / scale.toDouble().coerceAtLeast(0.0001)
+        val pivotX = pivot.x * size.width
+        val pivotY = pivot.y * size.height
+        val visibleLeft = pivotX + (0.0 - pivotX) * invS
+        val visibleTop = pivotY + (0.0 - pivotY) * invS
+        val visibleRight = pivotX + (size.width - pivotX) * invS
+        val visibleBottom = pivotY + (size.height - pivotY) * invS
+
+        val firstTileX = floor((viewportLeftWorldX + visibleLeft) / TILE_SIZE_PX).toInt()
+        val firstTileY = floor((viewportTopWorldY + visibleTop) / TILE_SIZE_PX).toInt()
+        val lastTileX = floor((viewportLeftWorldX + visibleRight) / TILE_SIZE_PX).toInt()
+        val lastTileY = floor((viewportTopWorldY + visibleBottom) / TILE_SIZE_PX).toInt()
+        val tileMax = (1L shl tileZoom).toInt()
         val tileSizeDp = with(density) { TILE_SIZE_PX.toDp() }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    val s = pinchScale
-                    scaleX = s
-                    scaleY = s
-                    transformOrigin = TransformOrigin(pinchPivot.x, pinchPivot.y)
-                }
-        ) {
-            for (row in 0 until tilesPerCol) {
-                for (col in 0 until tilesPerRow) {
-                    val tileX = firstTileX + col
-                    val tileY = firstTileY + row
-                    if (tileY < 0 || tileY >= tileMax) continue
-                    val wrappedX = ((tileX % tileMax) + tileMax) % tileMax
-                    val tilePxX = (tileX * TILE_SIZE_PX - viewportLeftWorldX).roundToInt()
-                    val tilePxY = (tileY * TILE_SIZE_PX - viewportTopWorldY).roundToInt()
-                    val subdomain = "abcd"[(((tileX + tileY) % 4) + 4) % 4]
-                    AsyncImage(
-                        model = tileTemplate
-                            .replace("{s}", subdomain.toString())
-                            .replace("{z}", zoom.toString())
-                            .replace("{x}", wrappedX.toString())
-                            .replace("{y}", tileY.toString()),
-                        contentDescription = null,
-                        contentScale = ContentScale.FillBounds,
-                        modifier = Modifier
-                            .offset { IntOffset(tilePxX, tilePxY) }
-                            .size(tileSizeDp, tileSizeDp)
-                    )
-                }
-            }
-
-            for (marker in markers) {
-                val screenX = (marker.worldX - viewportLeftWorldX).roundToInt()
-                val screenY = (marker.worldY - viewportTopWorldY).roundToInt()
-                // Generous overdraw so a half-visible marker stays on
-                // screen until it's fully gone.
-                if (screenX < -120 || screenX > size.width + 120) continue
-                if (screenY < -120 || screenY > size.height + 120) continue
-                ThumbnailMarker(
-                    marker = marker,
-                    baseUrl = baseUrl,
-                    offsetPx = IntOffset(screenX, screenY),
-                    onClick = {
-                        if (marker.count == 1) onPointClick(marker.firstPoint)
-                        else onClusterClick(marker.points)
-                    }
+        for (tileY in firstTileY..lastTileY) {
+            if (tileY < 0 || tileY >= tileMax) continue
+            for (tileX in firstTileX..lastTileX) {
+                val wrappedX = ((tileX % tileMax) + tileMax) % tileMax
+                val tilePxX = (tileX * TILE_SIZE_PX - viewportLeftWorldX).roundToInt()
+                val tilePxY = (tileY * TILE_SIZE_PX - viewportTopWorldY).roundToInt()
+                val subdomain = "abcd"[(((tileX + tileY) % 4) + 4) % 4]
+                AsyncImage(
+                    model = tileTemplate
+                        .replace("{s}", subdomain.toString())
+                        .replace("{z}", tileZoom.toString())
+                        .replace("{x}", wrappedX.toString())
+                        .replace("{y}", tileY.toString()),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .offset { IntOffset(tilePxX, tilePxY) }
+                        .size(tileSizeDp, tileSizeDp)
                 )
             }
         }
@@ -356,7 +503,9 @@ private fun ThumbnailMarker(
     marker: MapMarker,
     baseUrl: String,
     offsetPx: IntOffset,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    alpha: Float = 1f,
+    interactive: Boolean = true
 ) {
     // Same scaling rule as the PWA: 40dp floor, +2dp per asset, capped
     // at 80dp so dense regions don't take over the screen.
@@ -370,9 +519,12 @@ private fun ThumbnailMarker(
         modifier = Modifier
             .offset { IntOffset(offsetPx.x - halfPx, offsetPx.y - halfPx) }
             .size(totalDp.dp)
-            .pointerInput(marker.id) {
-                detectTapGestures(onTap = { onClick() })
-            }
+            .graphicsLayer { this.alpha = alpha }
+            .then(
+                if (interactive) Modifier.pointerInput(marker.id) {
+                    detectTapGestures(onTap = { onClick() })
+                } else Modifier
+            )
     ) {
         // Yellow ring + thumbnail centred inside the wrapper.
         Box(

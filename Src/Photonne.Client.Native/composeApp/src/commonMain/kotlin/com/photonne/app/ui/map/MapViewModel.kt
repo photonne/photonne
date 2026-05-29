@@ -209,19 +209,15 @@ class MapViewModel(
 
     private fun pickInitialView(points: List<MapPoint>): Triple<Double, Double, Int> {
         if (points.isEmpty()) return Triple(20.0, 0.0, 2)
-        val avgLat = points.sumOf { it.latitude } / points.size
-        val avgLng = points.sumOf { it.longitude } / points.size
-        val latSpan = (points.maxOf { it.latitude } - points.minOf { it.latitude })
-            .coerceAtLeast(0.01)
-        val zoom = when {
-            latSpan > 60 -> 2
-            latSpan > 20 -> 3
-            latSpan > 5 -> 5
-            latSpan > 1 -> 7
-            latSpan > 0.1 -> 10
-            else -> 12
-        }
-        return Triple(avgLat, avgLng, zoom)
+        // Anchor on the most recent photo's location — better proxy
+        // for "where the user is right now" than the global centroid,
+        // which for someone with intercontinental travel history can
+        // land in the middle of an ocean with everything visually
+        // tiny. Zoom 12 (city + suburbs) gives a useful viewport on
+        // first open; "Home" FAB (fitToData) still pans+zooms to the
+        // full extent when the user wants the global view.
+        val anchor = points.maxByOrNull { it.date } ?: points.first()
+        return Triple(anchor.latitude, anchor.longitude, 12)
     }
 }
 

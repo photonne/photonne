@@ -34,7 +34,11 @@ data class MapMarker(
 fun clusterPoints(
     points: List<MapPoint>,
     zoom: Int,
-    radiusPx: Double = 80.0,
+    // 300 px keeps the largest cluster markers (~160 px wide on a
+    // 2x-density screen) well separated and gives the user the "fewer
+    // markers per pan" feel they asked for after the PWA's default 80
+    // produced visibly stacked icons in dense regions.
+    radiusPx: Double = 300.0,
     disableAtZoom: Int = 18
 ): List<MapMarker> {
     if (points.isEmpty()) return emptyList()
@@ -94,6 +98,42 @@ fun clusterPoints(
             buckets += bucket
             val newIndex = buckets.size - 1
             grid.getOrPut(cellKey(cx, cy)) { mutableListOf() } += newIndex
+        }
+    }
+
+    // Greedy single-pass doesn't guarantee buckets end up >= radiusPx
+    // apart: a bucket's centroid drifts as items get added but its grid
+    // cell stays at the original position, so a later point can open a
+    // brand-new bucket only a few pixels away from one whose centroid
+    // has since drifted into the neighbourhood. Without this merge pass
+    // dense regions produce visibly overlapping markers. Typical input
+    // has < 500 clusters and few overlaps, so a handful of O(N^2) sweeps
+    // is fine.
+    if (!noClustering && buckets.size > 1) {
+        val radiusSq = radiusPx * radiusPx
+        var changed = true
+        while (changed) {
+            changed = false
+            outer@ for (i in 0 until buckets.size - 1) {
+                val bi = buckets[i]
+                val cix = bi.sumX / bi.items.size
+                val ciy = bi.sumY / bi.items.size
+                for (j in (i + 1) until buckets.size) {
+                    val bj = buckets[j]
+                    val cjx = bj.sumX / bj.items.size
+                    val cjy = bj.sumY / bj.items.size
+                    val ddx = cix - cjx
+                    val ddy = ciy - cjy
+                    if (ddx * ddx + ddy * ddy < radiusSq) {
+                        bi.items.addAll(bj.items)
+                        bi.sumX += bj.sumX
+                        bi.sumY += bj.sumY
+                        buckets.removeAt(j)
+                        changed = true
+                        break@outer
+                    }
+                }
+            }
         }
     }
 
