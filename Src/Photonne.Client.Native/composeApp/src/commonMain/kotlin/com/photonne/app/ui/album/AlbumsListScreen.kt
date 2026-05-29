@@ -72,6 +72,7 @@ import com.photonne.app.resources.albums_tab_mine
 import com.photonne.app.resources.albums_tab_my_links
 import com.photonne.app.resources.albums_tab_shared
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
@@ -97,36 +98,42 @@ fun AlbumsListScreen(
                 onClose = viewModel::toggleSearch
             )
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                state.isLoading && state.albums.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                state.error?.userMessage != null && state.albums.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            state.error?.userMessage!!,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                visible.isEmpty() && state.hasActiveQuery ->
-                    EmptySearchState(query = state.searchQuery.trim())
-                visible.isEmpty() -> EmptyAlbumsState(
-                    tab = state.selectedTab,
-                    onCreateAlbum = onCreateAlbum
-                )
-                else -> AlbumsContent(
-                    albums = visible,
-                    state = state,
-                    apiBaseUrl = apiBaseUrl,
-                    onClick = onAlbumClick,
-                    onLongPress = onAlbumLongPress
-                )
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading && state.albums.isNotEmpty(),
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading && state.albums.isEmpty() ->
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    state.error?.userMessage != null && state.albums.isEmpty() ->
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                state.error?.userMessage!!,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    visible.isEmpty() && state.hasActiveQuery ->
+                        EmptySearchState(query = state.searchQuery.trim())
+                    visible.isEmpty() -> EmptyAlbumsState(
+                        tab = state.selectedTab,
+                        onCreateAlbum = onCreateAlbum
+                    )
+                    else -> AlbumsContent(
+                        albums = visible,
+                        state = state,
+                        apiBaseUrl = apiBaseUrl,
+                        onClick = onAlbumClick,
+                        onLongPress = onAlbumLongPress
+                    )
+                }
             }
         }
     }

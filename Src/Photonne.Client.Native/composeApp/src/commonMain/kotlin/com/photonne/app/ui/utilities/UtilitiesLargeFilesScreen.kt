@@ -40,6 +40,7 @@ import com.photonne.app.resources.utilities_large_files_count_label
 import com.photonne.app.resources.utilities_large_files_empty
 import com.photonne.app.resources.utilities_large_files_total
 import com.photonne.app.ui.admin.humanBytes
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -67,47 +68,53 @@ fun UtilitiesLargeFilesScreen(
             )
         }
 
-        when {
-            state.isLoading && state.items.isEmpty() ->
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-            state.items.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(Res.string.utilities_large_files_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            else -> LazyColumn(
-                contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                item("total") {
-                    Text(
-                        stringResource(
-                            Res.string.utilities_large_files_total,
-                            state.items.size,
-                            humanBytes(state.totalBytes)
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-                itemsIndexed(
-                    items = state.items,
-                    key = { _, item -> item.id }
-                ) { index, item ->
-                    LargeFileRow(
-                        item = item,
-                        baseUrl = baseUrl,
-                        onClick = { onAssetClick(index, state.items) }
-                    )
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading && state.items.isNotEmpty(),
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            when {
+                state.isLoading && state.items.isEmpty() ->
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator() }
+                state.items.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            stringResource(Res.string.utilities_large_files_empty),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                else -> LazyColumn(
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    item("total") {
+                        Text(
+                            stringResource(
+                                Res.string.utilities_large_files_total,
+                                state.items.size,
+                                humanBytes(state.totalBytes)
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                    itemsIndexed(
+                        items = state.items,
+                        key = { _, item -> item.id }
+                    ) { index, item ->
+                        LargeFileRow(
+                            item = item,
+                            baseUrl = baseUrl,
+                            onClick = { onAssetClick(index, state.items) }
+                        )
+                    }
                 }
             }
         }

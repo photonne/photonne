@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_label_count
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -48,38 +49,44 @@ internal fun ExploreLabelGridScreen(
     isLoading: Boolean,
     errorMessage: String?,
     emptyText: String,
+    onRefresh: () -> Unit,
     onTileClick: (String) -> Unit
 ) {
-    when {
-        isLoading && tiles.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        errorMessage != null && tiles.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(errorMessage, color = MaterialTheme.colorScheme.error)
-            }
-        tiles.isEmpty() ->
-            Box(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                contentAlignment = Alignment.Center
+    PhotonneRefreshableScreen(
+        isRefreshing = isLoading && tiles.isNotEmpty(),
+        onRefresh = onRefresh
+    ) {
+        when {
+            isLoading && tiles.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            errorMessage != null && tiles.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                }
+            tiles.isEmpty() ->
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = emptyText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            else -> LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = emptyText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-        else -> LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(tiles, key = { it.name }) { tile ->
-                LabelTileCard(tile = tile, onClick = { onTileClick(tile.name) })
+                items(tiles, key = { it.name }) { tile ->
+                    LabelTileCard(tile = tile, onClick = { onTileClick(tile.name) })
+                }
             }
         }
     }

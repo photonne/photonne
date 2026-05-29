@@ -38,6 +38,7 @@ import com.photonne.app.resources.utilities_locations_empty
 import com.photonne.app.resources.utilities_locations_external_badge
 import com.photonne.app.resources.utilities_locations_item_count
 import com.photonne.app.resources.utilities_locations_shared_badge
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -45,36 +46,41 @@ fun UtilitiesLocationsScreen(viewModel: UtilitiesLocationsViewModel) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    when {
-        state.isLoading && state.roots.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        state.error?.userMessage != null && state.roots.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
-            }
-        state.roots.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    stringResource(Res.string.utilities_locations_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        else -> LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            state.roots.forEach { root ->
-                renderFolder(
-                    node = root,
-                    depth = 0,
-                    expanded = state.expanded,
-                    onToggle = viewModel::toggle
-                )
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isLoading && state.roots.isNotEmpty(),
+        onRefresh = viewModel::refresh
+    ) {
+        when {
+            state.isLoading && state.roots.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            state.error?.userMessage != null && state.roots.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
+                }
+            state.roots.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(Res.string.utilities_locations_empty),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                state.roots.forEach { root ->
+                    renderFolder(
+                        node = root,
+                        depth = 0,
+                        expanded = state.expanded,
+                        onToggle = viewModel::toggle
+                    )
+                }
             }
         }
     }

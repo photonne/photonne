@@ -100,6 +100,7 @@ import com.photonne.app.resources.timeline_memories_years_ago
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.theme.MemoryCardShape
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.theme.SkeletonBlock
 import com.photonne.app.ui.theme.SkeletonChip
 import com.photonne.app.ui.timeline.MemoryGroup
@@ -118,6 +119,7 @@ private val HubSectionGap = 20.dp
 fun HubScreen(
     state: HubUiState,
     baseUrl: String,
+    onRefresh: () -> Unit,
     onOpenAsset: (List<TimelineItem>, Int) -> Unit,
     onOpenMemory: (List<TimelineItem>, Int) -> Unit,
     onOpenLibrary: () -> Unit,
@@ -136,6 +138,10 @@ fun HubScreen(
         return
     }
 
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isLoading && state.attempted,
+        onRefresh = onRefresh
+    ) {
     // Column + verticalScroll (instead of LazyColumn) so each section is
     // composed exactly once. The hub has at most ~6 sections, so the
     // perf cost is trivial and it kills the "section pops in" feel
@@ -208,6 +214,7 @@ fun HubScreen(
                 onOpenUpload = onOpenUpload
             )
         }
+    }
     }
 }
 

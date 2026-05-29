@@ -40,6 +40,7 @@ import com.photonne.app.resources.people_empty_subtitle
 import com.photonne.app.resources.people_empty_title
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
@@ -49,63 +50,69 @@ fun PeopleScreen(
     state: PeopleUiState,
     onPersonClick: (Person) -> Unit,
     onLoadMore: () -> Unit,
+    onLoad: () -> Unit,
     onRefresh: () -> Unit
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
 
-    LaunchedEffect(Unit) { onRefresh() }
+    LaunchedEffect(Unit) { onLoad() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.isInitialLoading ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            state.error != null && state.people.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                    com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                }
-            state.isEmpty ->
-                EmptyState(
-                    icon = Icons.Outlined.People,
-                    title = stringResource(Res.string.people_empty_title),
-                    subtitle = stringResource(Res.string.people_empty_subtitle)
-                )
-            else -> {
-                val gridState = rememberLazyGridState()
-                val shouldLoadMore by remember(
-                    state.hasMore,
-                    state.isAppending,
-                    state.isInitialLoading
-                ) {
-                    derivedStateOf {
-                        val total = gridState.layoutInfo.totalItemsCount
-                        val lastVisible = gridState.layoutInfo
-                            .visibleItemsInfo.lastOrNull()?.index ?: 0
-                        total > 0 && lastVisible >= total - 6 &&
-                            state.hasMore && !state.isAppending && !state.isInitialLoading
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isInitialLoading ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                }
-                LaunchedEffect(gridState) {
-                    snapshotFlow { shouldLoadMore }
-                        .distinctUntilChanged()
-                        .filter { it }
-                        .collect { onLoadMore() }
-                }
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 88.dp),
-                    state = gridState,
-                    contentPadding = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(state.people, key = { it.id }) { person ->
-                        PersonCard(
-                            person = person,
-                            baseUrl = apiBaseUrl,
-                            onClick = { onPersonClick(person) }
-                        )
+                state.error != null && state.people.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                        com.photonne.app.ui.error.ErrorBanner(error = state.error)
+                    }
+                state.isEmpty ->
+                    EmptyState(
+                        icon = Icons.Outlined.People,
+                        title = stringResource(Res.string.people_empty_title),
+                        subtitle = stringResource(Res.string.people_empty_subtitle)
+                    )
+                else -> {
+                    val gridState = rememberLazyGridState()
+                    val shouldLoadMore by remember(
+                        state.hasMore,
+                        state.isAppending,
+                        state.isInitialLoading
+                    ) {
+                        derivedStateOf {
+                            val total = gridState.layoutInfo.totalItemsCount
+                            val lastVisible = gridState.layoutInfo
+                                .visibleItemsInfo.lastOrNull()?.index ?: 0
+                            total > 0 && lastVisible >= total - 6 &&
+                                state.hasMore && !state.isAppending && !state.isInitialLoading
+                        }
+                    }
+                    LaunchedEffect(gridState) {
+                        snapshotFlow { shouldLoadMore }
+                            .distinctUntilChanged()
+                            .filter { it }
+                            .collect { onLoadMore() }
+                    }
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 88.dp),
+                        state = gridState,
+                        contentPadding = PaddingValues(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(state.people, key = { it.id }) { person ->
+                            PersonCard(
+                                person = person,
+                                baseUrl = apiBaseUrl,
+                                onClick = { onPersonClick(person) }
+                            )
+                        }
                     }
                 }
             }

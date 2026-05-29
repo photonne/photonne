@@ -22,6 +22,7 @@ fun ExploreObjectsScreen(
         isLoading = state.isLoading,
         errorMessage = state.error?.userMessage,
         emptyText = stringResource(Res.string.explore_objects_empty),
+        onRefresh = viewModel::refresh,
         onTileClick = onObjectClick
     )
 }

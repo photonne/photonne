@@ -38,6 +38,7 @@ import com.photonne.app.resources.explore_memories_empty
 import com.photonne.app.resources.explore_memories_group_count
 import com.photonne.app.resources.timeline_memories_one_year_ago
 import com.photonne.app.resources.timeline_memories_years_ago
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.timeline.MemoriesViewModel
 import com.photonne.app.ui.timeline.MemoryGroup
 import com.photonne.app.ui.timeline.groupMemoriesByDay
@@ -61,38 +62,43 @@ fun ExploreMemoriesScreen(
     val currentYear = remember { Clock.System.now().toLocalDateTime(zone).date.year }
     val groups = remember(state.items) { groupMemoriesByDay(state.items, zone, currentYear) }
 
-    when {
-        state.isLoading && state.items.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        state.error?.userMessage != null && state.items.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
-            }
-        groups.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    stringResource(Res.string.explore_memories_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        else -> LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Cover ids can repeat across groups when an asset belongs to two
-            // anniversaries on the same calendar day, so the index disambiguates.
-            items(
-                items = groups,
-                key = { group -> "memory-group:${group.yearsAgo}:${group.cover.id}" }
-            ) { group ->
-                MemoryGroupRow(
-                    group = group,
-                    baseUrl = baseUrl,
-                    onClick = { onGroupClick(group.items) }
-                )
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isLoading && state.items.isNotEmpty(),
+        onRefresh = viewModel::refresh
+    ) {
+        when {
+            state.isLoading && state.items.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            state.error?.userMessage != null && state.items.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
+                }
+            groups.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(Res.string.explore_memories_empty),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Cover ids can repeat across groups when an asset belongs to two
+                // anniversaries on the same calendar day, so the index disambiguates.
+                items(
+                    items = groups,
+                    key = { group -> "memory-group:${group.yearsAgo}:${group.cover.id}" }
+                ) { group ->
+                    MemoryGroupRow(
+                        group = group,
+                        baseUrl = baseUrl,
+                        onClick = { onGroupClick(group.items) }
+                    )
+                }
             }
         }
     }

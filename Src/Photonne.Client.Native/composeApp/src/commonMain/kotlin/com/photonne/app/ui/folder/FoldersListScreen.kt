@@ -74,6 +74,7 @@ import com.photonne.app.resources.folders_tab_libraries
 import com.photonne.app.resources.folders_tab_personal
 import com.photonne.app.resources.folders_tab_shared
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -97,48 +98,54 @@ fun FoldersListScreen(
                 onClose = viewModel::toggleSearch
             )
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (state.selectedTab) {
-                FoldersTab.Personal -> FolderListContent(
-                    folders = state.visiblePersonalFolders,
-                    state = state,
-                    isLoading = state.isLoading,
-                    errorMessage = state.error?.userMessage,
-                    emptyTitle = stringResource(Res.string.folders_empty_title),
-                    emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
-                    onFolderClick = onFolderClick,
-                    onFolderLongPress = onFolderLongPress
-                )
-                FoldersTab.Shared -> FolderListContent(
-                    folders = state.visibleSharedFolders,
-                    state = state,
-                    isLoading = state.isLoading,
-                    errorMessage = state.error?.userMessage,
-                    emptyTitle = stringResource(Res.string.folders_empty_title),
-                    emptySubtitle = stringResource(Res.string.folders_shared_empty),
-                    onFolderClick = onFolderClick,
-                    onFolderLongPress = onFolderLongPress
-                )
-                FoldersTab.Libraries -> if (state.hasActiveQuery) {
-                    FolderListContent(
-                        folders = state.visibleLibraryFolders,
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading && state.personalFolders.isNotEmpty(),
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (state.selectedTab) {
+                    FoldersTab.Personal -> FolderListContent(
+                        folders = state.visiblePersonalFolders,
                         state = state,
                         isLoading = state.isLoading,
                         errorMessage = state.error?.userMessage,
                         emptyTitle = stringResource(Res.string.folders_empty_title),
-                        emptySubtitle = stringResource(Res.string.folders_libraries_empty),
+                        emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
                         onFolderClick = onFolderClick,
                         onFolderLongPress = onFolderLongPress
                     )
-                } else {
-                    LibrariesContent(
-                        libraries = state.visibleLibraries,
+                    FoldersTab.Shared -> FolderListContent(
+                        folders = state.visibleSharedFolders,
+                        state = state,
                         isLoading = state.isLoading,
                         errorMessage = state.error?.userMessage,
-                        onLibraryClick = { lib ->
-                            viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
-                        }
+                        emptyTitle = stringResource(Res.string.folders_empty_title),
+                        emptySubtitle = stringResource(Res.string.folders_shared_empty),
+                        onFolderClick = onFolderClick,
+                        onFolderLongPress = onFolderLongPress
                     )
+                    FoldersTab.Libraries -> if (state.hasActiveQuery) {
+                        FolderListContent(
+                            folders = state.visibleLibraryFolders,
+                            state = state,
+                            isLoading = state.isLoading,
+                            errorMessage = state.error?.userMessage,
+                            emptyTitle = stringResource(Res.string.folders_empty_title),
+                            emptySubtitle = stringResource(Res.string.folders_libraries_empty),
+                            onFolderClick = onFolderClick,
+                            onFolderLongPress = onFolderLongPress
+                        )
+                    } else {
+                        LibrariesContent(
+                            libraries = state.visibleLibraries,
+                            isLoading = state.isLoading,
+                            errorMessage = state.error?.userMessage,
+                            onLibraryClick = { lib ->
+                                viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
+                            }
+                        )
+                    }
                 }
             }
         }

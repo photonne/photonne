@@ -44,6 +44,7 @@ import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -76,46 +77,52 @@ fun SearchScreen(
 
         ActiveFiltersRow(state = state)
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                state.isLoading && state.results.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator() }
-                state.error?.userMessage != null && state.results.isEmpty() ->
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            state.error?.userMessage ?: "",
-                            color = MaterialTheme.colorScheme.error
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading && state.results.isNotEmpty(),
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading && state.results.isEmpty() ->
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) { CircularProgressIndicator() }
+                    state.error?.userMessage != null && state.results.isEmpty() ->
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                state.error?.userMessage ?: "",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    !state.hasAnyCriteria ->
+                        EmptyState(
+                            icon = Icons.Outlined.Search,
+                            title = stringResource(Res.string.search_idle_title),
+                            subtitle = stringResource(Res.string.search_idle_subtitle)
                         )
-                    }
-                !state.hasAnyCriteria ->
-                    EmptyState(
-                        icon = Icons.Outlined.Search,
-                        title = stringResource(Res.string.search_idle_title),
-                        subtitle = stringResource(Res.string.search_idle_subtitle)
+                    state.results.isEmpty() ->
+                        EmptyState(
+                            icon = Icons.Outlined.Search,
+                            title = stringResource(Res.string.search_empty_results)
+                        )
+                    else -> AssetGrid(
+                        items = state.results,
+                        baseUrl = apiBaseUrl,
+                        onItemClick = onItemClick,
+                        onItemLongClick = onItemLongClick,
+                        selectedIds = state.selection,
+                        hasMore = state.hasMore,
+                        isAppending = state.isAppending,
+                        isInitialLoading = state.isLoading,
+                        onLoadMore = viewModel::loadMore,
+                        modifier = Modifier.fillMaxSize()
                     )
-                state.results.isEmpty() ->
-                    EmptyState(
-                        icon = Icons.Outlined.Search,
-                        title = stringResource(Res.string.search_empty_results)
-                    )
-                else -> AssetGrid(
-                    items = state.results,
-                    baseUrl = apiBaseUrl,
-                    onItemClick = onItemClick,
-                    onItemLongClick = onItemLongClick,
-                    selectedIds = state.selection,
-                    hasMore = state.hasMore,
-                    isAppending = state.isAppending,
-                    isInitialLoading = state.isLoading,
-                    onLoadMore = viewModel::loadMore,
-                    modifier = Modifier.fillMaxSize()
-                )
+                }
             }
         }
     }

@@ -258,7 +258,6 @@ private fun MainNavigationBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineTopBar(
-    onRefresh: () -> Unit,
     onJumpToDate: () -> Unit,
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
@@ -293,20 +292,14 @@ fun TimelineTopBar(
                     contentDescription = stringResource(Res.string.action_jump_to_date)
                 )
             }
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
         }
     )
 }
 
-/** Slim top bar for the Inicio (Hub) view — just the wordmark + refresh. */
+/** Slim top bar for the Inicio (Hub) view — just the wordmark. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HubTopBar(onRefresh: () -> Unit) {
+fun HubTopBar() {
     TopAppBar(
         title = {
             Image(
@@ -314,14 +307,6 @@ fun HubTopBar(onRefresh: () -> Unit) {
                 contentDescription = stringResource(Res.string.app_name),
                 modifier = Modifier.height(32.dp)
             )
-        },
-        actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
         }
     )
 }
@@ -1189,7 +1174,6 @@ fun ArchivedTopBar(
     subtitle: String?,
     canUnarchiveAll: Boolean,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
     onUnarchiveAll: () -> Unit
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
@@ -1215,12 +1199,6 @@ fun ArchivedTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
             if (canUnarchiveAll) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
@@ -1248,7 +1226,6 @@ fun TrashTopBar(
     subtitle: String?,
     canActOnAll: Boolean,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
     onRestoreAll: () -> Unit,
     onEmptyTrash: () -> Unit
 ) {
@@ -1275,12 +1252,6 @@ fun TrashTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
             if (canActOnAll) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
@@ -1315,8 +1286,7 @@ fun TrashTopBar(
 fun FavoritesTopBar(
     title: String,
     subtitle: String?,
-    onBack: () -> Unit,
-    onRefresh: () -> Unit
+    onBack: () -> Unit
 ) {
     TopAppBar(
         navigationIcon = {
@@ -1338,14 +1308,6 @@ fun FavoritesTopBar(
                     )
                 }
             }
-        },
-        actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
         }
     )
 }
@@ -1355,7 +1317,6 @@ fun FavoritesTopBar(
 fun PeopleTopBar(
     title: String,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
     onRecluster: () -> Unit,
     showHidden: Boolean,
     onToggleHidden: () -> Unit
@@ -1372,12 +1333,6 @@ fun PeopleTopBar(
         },
         title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
         actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(

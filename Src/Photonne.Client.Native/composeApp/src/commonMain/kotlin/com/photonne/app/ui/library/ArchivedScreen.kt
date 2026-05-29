@@ -20,6 +20,7 @@ import com.photonne.app.resources.archived_empty_subtitle
 import com.photonne.app.resources.archived_empty_title
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -28,40 +29,46 @@ fun ArchivedScreen(
     onItemClick: (Int) -> Unit,
     onItemLongClick: (Int) -> Unit,
     onLoadMore: () -> Unit,
+    onLoad: () -> Unit,
     onRefresh: () -> Unit
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
 
-    LaunchedEffect(Unit) { onRefresh() }
+    LaunchedEffect(Unit) { onLoad() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.isInitialLoading ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            state.error != null && state.items.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                    com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                }
-            state.isEmpty ->
-                EmptyState(
-                    icon = Icons.Outlined.Archive,
-                    title = stringResource(Res.string.archived_empty_title),
-                    subtitle = stringResource(Res.string.archived_empty_subtitle)
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isInitialLoading ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                state.error != null && state.items.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                        com.photonne.app.ui.error.ErrorBanner(error = state.error)
+                    }
+                state.isEmpty ->
+                    EmptyState(
+                        icon = Icons.Outlined.Archive,
+                        title = stringResource(Res.string.archived_empty_title),
+                        subtitle = stringResource(Res.string.archived_empty_subtitle)
+                    )
+                else -> AssetGrid(
+                    items = state.items,
+                    baseUrl = apiBaseUrl,
+                    onItemClick = onItemClick,
+                    onItemLongClick = onItemLongClick,
+                    selectedIds = state.selection,
+                    hasMore = state.hasMore,
+                    isAppending = state.isAppending,
+                    isInitialLoading = state.isInitialLoading,
+                    onLoadMore = onLoadMore,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            else -> AssetGrid(
-                items = state.items,
-                baseUrl = apiBaseUrl,
-                onItemClick = onItemClick,
-                onItemLongClick = onItemLongClick,
-                selectedIds = state.selection,
-                hasMore = state.hasMore,
-                isAppending = state.isAppending,
-                isInitialLoading = state.isInitialLoading,
-                onLoadMore = onLoadMore,
-                modifier = Modifier.fillMaxWidth()
-            )
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ fun ExploreScenesScreen(
         isLoading = state.isLoading,
         errorMessage = state.error?.userMessage,
         emptyText = stringResource(Res.string.explore_scenes_empty),
+        onRefresh = viewModel::refresh,
         onTileClick = onSceneClick
     )
 }

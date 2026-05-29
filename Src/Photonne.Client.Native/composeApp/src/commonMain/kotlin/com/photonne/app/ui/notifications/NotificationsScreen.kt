@@ -55,6 +55,7 @@ import com.photonne.app.resources.notifications_time_just_now
 import com.photonne.app.resources.notifications_time_minutes_ago
 import com.photonne.app.resources.notifications_total
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -82,63 +83,69 @@ fun NotificationsScreen(viewModel: NotificationsViewModel) {
             )
         }
 
-        when {
-            state.isLoading && state.items.isEmpty() ->
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-            state.isEmpty -> {
-                val title = if (state.unreadOnly)
-                    stringResource(Res.string.notifications_empty_unread_title)
-                else
-                    stringResource(Res.string.notifications_empty_title)
-                EmptyState(
-                    icon = Icons.Outlined.NotificationsNone,
-                    title = title,
-                    subtitle = stringResource(Res.string.notifications_empty_subtitle)
-                )
-            }
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                items(state.items, key = { it.id }) { notification ->
-                    NotificationRow(
-                        notification = notification,
-                        onClick = { viewModel.markRead(notification.id) }
-                    )
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading && state.items.isNotEmpty(),
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            when {
+                state.isLoading && state.items.isEmpty() ->
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator() }
+                state.isEmpty -> {
+                    val title = if (state.unreadOnly)
+                        stringResource(Res.string.notifications_empty_unread_title)
+                    else
+                        stringResource(Res.string.notifications_empty_title)
+                    EmptyState(
+                        icon = Icons.Outlined.NotificationsNone,
+                        title = title,
+                        subtitle = stringResource(Res.string.notifications_empty_subtitle)
                     )
                 }
-
-                if (state.totalPages > 1) {
-                    item("pagination") {
-                        Spacer(Modifier.size(12.dp))
-                        PaginationRow(
-                            currentPage = state.page,
-                            totalPages = state.totalPages,
-                            onPrev = { viewModel.goToPage(state.page - 1) },
-                            onNext = { viewModel.goToPage(state.page + 1) }
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    items(state.items, key = { it.id }) { notification ->
+                        NotificationRow(
+                            notification = notification,
+                            onClick = { viewModel.markRead(notification.id) }
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
-                }
 
-                item("total") {
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = stringResource(
-                            Res.string.notifications_total,
-                            state.totalCount
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                    )
+                    if (state.totalPages > 1) {
+                        item("pagination") {
+                            Spacer(Modifier.size(12.dp))
+                            PaginationRow(
+                                currentPage = state.page,
+                                totalPages = state.totalPages,
+                                onPrev = { viewModel.goToPage(state.page - 1) },
+                                onNext = { viewModel.goToPage(state.page + 1) }
+                            )
+                        }
+                    }
+
+                    item("total") {
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            text = stringResource(
+                                Res.string.notifications_total,
+                                state.totalCount
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }

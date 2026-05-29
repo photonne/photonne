@@ -371,6 +371,11 @@ class SearchViewModel(
         }
     }
 
+    fun refresh() {
+        ensureFacetsLoaded()
+        if (_state.value.hasAnyCriteria) scheduleSearch(immediate = true)
+    }
+
     private fun scheduleSearch(immediate: Boolean = false) {
         pendingSearch?.cancel()
         val snapshot = _state.value

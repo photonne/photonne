@@ -64,6 +64,7 @@ import com.photonne.app.resources.utilities_duplicates_group_assets
 import com.photonne.app.resources.utilities_duplicates_open_detail
 import com.photonne.app.resources.utilities_duplicates_summary
 import com.photonne.app.ui.admin.humanBytes
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -77,6 +78,10 @@ fun UtilitiesDuplicatesScreen(
     var confirmOpen by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading && state.groups.isNotEmpty(),
+            onRefresh = viewModel::refresh
+        ) {
         Column(modifier = Modifier.fillMaxSize()) {
             state.statusMessage?.let { msg ->
                 Text(
@@ -174,6 +179,7 @@ fun UtilitiesDuplicatesScreen(
                         }
                     }
             }
+        }
         }
 
         if (state.totalSelectedCount > 0) {

@@ -807,7 +807,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.PeopleTopBar(
                     title = stringResource(Res.string.people_title),
                     onBack = { moreSubscreen = null },
-                    onRefresh = peopleViewModel::refresh,
                     onRecluster = { peopleViewModel.recluster() },
                     showHidden = peopleState.showHidden,
                     onToggleHidden = peopleViewModel::toggleShowHidden
@@ -826,8 +825,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.favorites_title),
                     subtitle = if (count > 0)
                         stringResource(Res.string.albums_count_format, count) else null,
-                    onBack = { moreSubscreen = null },
-                    onRefresh = favoritesViewModel::refresh
+                    onBack = { moreSubscreen = null }
                 )
             }
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
@@ -846,7 +844,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         stringResource(Res.string.albums_count_format, count) else null,
                     canUnarchiveAll = count > 0,
                     onBack = { moreSubscreen = null },
-                    onRefresh = archivedViewModel::refresh,
                     onUnarchiveAll = { showUnarchiveAll = true }
                 )
             }
@@ -867,7 +864,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         stringResource(Res.string.albums_count_format, count) else null,
                     canActOnAll = count > 0,
                     onBack = { moreSubscreen = null },
-                    onRefresh = trashViewModel::refresh,
                     onRestoreAll = { showRestoreAllTrash = true },
                     onEmptyTrash = { showEmptyTrash = true }
                 )
@@ -983,9 +979,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
             selectedTab == MainTab.More -> MoreTopBar()
             selectedTab == MainTab.Timeline && homeMode == HomeMode.Hub ->
-                com.photonne.app.ui.main.HubTopBar(onRefresh = hubViewModel::refresh)
+                com.photonne.app.ui.main.HubTopBar()
             else -> TimelineTopBar(
-                onRefresh = timelineViewModel::refresh,
                 onJumpToDate = { showJumpToDate = true },
                 currentZoom = timelineZoom,
                 onZoomSelected = timelineZoomStore::update,
@@ -1319,6 +1314,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     HomeMode.Hub -> com.photonne.app.ui.hub.HubScreen(
                         state = hubState,
                         baseUrl = apiBaseUrl,
+                        onRefresh = hubViewModel::refresh,
                         onOpenAsset = { items, index ->
                             assetDetail = AssetDetailContext(
                                 items = items,
@@ -1767,7 +1763,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     personDetailViewModel.open(picked.id, picked.name)
                                 },
                                 onLoadMore = peopleViewModel::loadMore,
-                                onRefresh = peopleViewModel::ensureLoaded
+                                onLoad = peopleViewModel::ensureLoaded,
+                                onRefresh = peopleViewModel::refresh
                             )
                         } else {
                             com.photonne.app.ui.people.PersonDetailScreen(
@@ -1827,7 +1824,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onLoadMore = favoritesViewModel::loadMore,
-                        onRefresh = favoritesViewModel::ensureLoaded
+                        onLoad = favoritesViewModel::ensureLoaded,
+                        onRefresh = favoritesViewModel::refresh
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
@@ -1856,7 +1854,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onLoadMore = archivedViewModel::loadMore,
-                        onRefresh = archivedViewModel::ensureLoaded
+                        onLoad = archivedViewModel::ensureLoaded,
+                        onRefresh = archivedViewModel::refresh
                     )
                     MoreSubscreen.Trash -> com.photonne.app.ui.library.TrashScreen(
                         state = trashState,
@@ -1887,7 +1886,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onLoadMore = trashViewModel::loadMore,
-                        onRefresh = trashViewModel::ensureLoaded
+                        onLoad = trashViewModel::ensureLoaded,
+                        onRefresh = trashViewModel::refresh
                     )
                     MoreSubscreen.Notifications ->
                         com.photonne.app.ui.notifications.NotificationsScreen(
