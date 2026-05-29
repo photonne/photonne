@@ -50,12 +50,18 @@
             <div class="d-flex flex-column gap-2">
                 @for (var i = 0; i < Labels.Length; i++)
                 {
-                    var pct = _total > 0 ? _data[i] / _total * 100 : 0;
+                    // Capture per-iteration to avoid MudText's deferred ChildContent
+                    // RenderFragment seeing i == Labels.Length after the loop ends.
+                    var index = i;
+                    var value = _data[index];
+                    var label = Labels[index];
+                    var swatch = ColorAt(index);
+                    var pct = _total > 0 ? value / _total * 100 : 0;
                     <div class="d-flex align-center gap-2">
-                        <span class="donut-swatch" style="@($"background:{ColorAt(i)};")"></span>
-                        <MudText Typo="Typo.body2">@Labels[i]</MudText>
+                        <span class="donut-swatch" style="@($"background:{swatch};")"></span>
+                        <MudText Typo="Typo.body2">@label</MudText>
                         <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                            @FormatValue(_data[i]) (@pct.ToString("0.#")%)
+                            @FormatValue(value) (@pct.ToString("0.#")%)
                         </MudText>
                     </div>
                 }
