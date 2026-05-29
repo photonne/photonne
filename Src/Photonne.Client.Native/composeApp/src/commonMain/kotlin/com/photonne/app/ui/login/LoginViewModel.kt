@@ -16,6 +16,7 @@ import io.ktor.client.request.head
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -112,11 +113,18 @@ class LoginViewModel(
         }
         _state.value = current.copy(isSubmitting = true, error = null)
         viewModelScope.launch {
-            val reachable = probe(normalizedPublic)
-            if (reachable.isFailure) {
+            // Probe both URLs in parallel and accept either one: on a LAN-only
+            // WiFi the public domain often won't resolve, but the local URL
+            // does — and vice versa when away from home. Blocking on the
+            // public probe alone would lock the user out in the first case.
+            val publicDeferred = async { probe(normalizedPublic) }
+            val localDeferred = normalizedLocal?.let { async { probe(it) } }
+            val publicResult = publicDeferred.await()
+            val localResult = localDeferred?.await()
+            if (publicResult.isFailure && (localResult == null || localResult.isFailure)) {
                 _state.value = _state.value.copy(
                     isSubmitting = false,
-                    error = reachable.exceptionOrNull()?.let {
+                    error = (publicResult.exceptionOrNull() ?: localResult?.exceptionOrNull())?.let {
                         errorFactory.from(it, "No se pudo contactar con el servidor")
                     }
                 )

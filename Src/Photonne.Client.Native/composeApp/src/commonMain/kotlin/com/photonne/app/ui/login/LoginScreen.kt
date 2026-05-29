@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.app_name
 import com.photonne.app.ui.theme.ButtonLoadingIndicator
@@ -164,8 +165,9 @@ private fun CredentialsStep(state: LoginUiState, viewModel: LoginViewModel) {
         "Paso 2 de 2 · Inicia sesión",
         style = MaterialTheme.typography.bodyMedium
     )
+    val effectiveUrl = rememberApiBaseUrl().ifEmpty { state.serverUrl }
     Text(
-        state.serverUrl,
+        effectiveUrl,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
