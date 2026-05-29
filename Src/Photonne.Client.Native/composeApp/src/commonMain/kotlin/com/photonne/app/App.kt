@@ -106,6 +106,7 @@ import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.navigation.PlatformBackHandler
 import com.photonne.app.ui.album.AddToAlbumDialog
 import com.photonne.app.ui.album.AlbumDetailScreen
 import com.photonne.app.ui.album.AlbumDetailViewModel
@@ -316,6 +317,63 @@ private fun adminSystemSubpageMeta(
     MoreSubscreen.AdminSystemMaintenance -> Res.string.admin_system_maintenance to Unit
     MoreSubscreen.AdminSystemBackup -> Res.string.admin_system_backup to Unit
     else -> Res.string.admin_section_system to Unit
+}
+
+/** Where the in-app "back" arrow of [subscreen]'s top bar lands. Null
+ *  means the subscreen sits at the More-tab root and back should close
+ *  the More tab itself. Mirrors the onBack mapping in [AuthenticatedApp]'s
+ *  top bar so the hardware back button can reuse the same precedence. */
+private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when (subscreen) {
+    MoreSubscreen.DeviceBackupPending -> MoreSubscreen.DeviceBackup
+    MoreSubscreen.EnrichmentStatus -> MoreSubscreen.DeviceBackup
+    MoreSubscreen.UtilitiesDuplicates,
+    MoreSubscreen.UtilitiesLargeFiles,
+    MoreSubscreen.UtilitiesLocations -> MoreSubscreen.Utilities
+    MoreSubscreen.ExploreMemories,
+    MoreSubscreen.ExplorePlaces,
+    MoreSubscreen.ExploreScenes,
+    MoreSubscreen.ExploreObjects -> MoreSubscreen.Explore
+    MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
+    MoreSubscreen.AccountProfile,
+    MoreSubscreen.AccountSecurity,
+    MoreSubscreen.AccountAppearance,
+    MoreSubscreen.AccountStorage -> MoreSubscreen.AccountSettings
+    MoreSubscreen.AdminUsers,
+    MoreSubscreen.AdminLibraries,
+    MoreSubscreen.AdminStats,
+    MoreSubscreen.AdminSettingsHub,
+    MoreSubscreen.AdminSystemHub -> MoreSubscreen.Administration
+    MoreSubscreen.AdminUserEditor -> MoreSubscreen.AdminUsers
+    MoreSubscreen.AdminLibraryEditor -> MoreSubscreen.AdminLibraries
+    MoreSubscreen.AdminSettingsFaceRecognition,
+    MoreSubscreen.AdminSettingsObjectDetection,
+    MoreSubscreen.AdminSettingsSceneClassification,
+    MoreSubscreen.AdminSettingsTextRecognition,
+    MoreSubscreen.AdminSettingsImageEmbedding,
+    MoreSubscreen.AdminSettingsImage,
+    MoreSubscreen.AdminSettingsMetadata,
+    MoreSubscreen.AdminSettingsNightly,
+    MoreSubscreen.AdminSettingsNotifications,
+    MoreSubscreen.AdminSettingsServer,
+    MoreSubscreen.AdminSettingsTrash,
+    MoreSubscreen.AdminSettingsUserDefaults,
+    MoreSubscreen.AdminSettingsVersion -> MoreSubscreen.AdminSettingsHub
+    MoreSubscreen.AdminSystemDuplicates -> MoreSubscreen.AdminSystemRunTasks
+    MoreSubscreen.AdminSystemRunTasks,
+    MoreSubscreen.AdminSystemMaintenance,
+    MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
+    MoreSubscreen.Upload,
+    MoreSubscreen.DeviceBackup,
+    MoreSubscreen.Favorites,
+    MoreSubscreen.People,
+    MoreSubscreen.Map,
+    MoreSubscreen.Archived,
+    MoreSubscreen.Trash,
+    MoreSubscreen.Utilities,
+    MoreSubscreen.Explore,
+    MoreSubscreen.AccountSettings,
+    MoreSubscreen.Notifications,
+    MoreSubscreen.Administration -> null
 }
 
 /** Build a thin TimelineItem out of a map point so the asset viewer
@@ -548,6 +606,85 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         if (openedAlbumId != null && openedAlbumId == sharedAlbumId) {
             albumsViewModel.applyShareLinkChanged(openedAlbumId, activeLinks)
             selectedAlbum = selectedAlbum?.copy(hasActiveShareLink = activeLinks)
+        }
+    }
+
+    // Hardware/gesture back: mirrors the same precedence as the in-app
+    // back arrows so the system back button feels native. Disabled at the
+    // root (Hub on Timeline tab, no overlays) so the system can finish
+    // the activity. Modal dialogs/sheets aren't enumerated here because
+    // Compose Material3 forwards back-press to their onDismissRequest.
+    val isAnySelectionActive = (
+        (selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+            timelineState.isSelectionActive) ||
+        (selectedTab == MainTab.Albums && selectedAlbum != null &&
+            albumDetailState.isSelectionActive) ||
+        (selectedTab == MainTab.Albums && albumsState.isSelectionActive) ||
+        (selectedTab == MainTab.Folders && selectedFolder != null &&
+            folderDetailState.isSelectionActive) ||
+        (selectedTab == MainTab.Folders && foldersState.isSelectionActive) ||
+        (selectedTab == MainTab.Search && searchState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.Trash && trashState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
+            personDetailState.isSelectionActive)
+    )
+    val canHandleBack = (
+        assetDetail != null ||
+        isAnySelectionActive ||
+        selectedAlbum != null ||
+        selectedFolder != null ||
+        selectedPerson != null ||
+        moreSubscreen != null ||
+        selectedTab != MainTab.Timeline ||
+        homeMode == HomeMode.Library
+    )
+    PlatformBackHandler(enabled = canHandleBack) {
+        when {
+            assetDetail != null -> { assetDetail = null }
+            selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+                timelineState.isSelectionActive -> timelineViewModel.clearSelection()
+            selectedTab == MainTab.Albums && selectedAlbum != null &&
+                albumDetailState.isSelectionActive -> albumDetailViewModel.clearSelection()
+            selectedTab == MainTab.Albums && albumsState.isSelectionActive ->
+                albumsViewModel.clearSelection()
+            selectedTab == MainTab.Folders && selectedFolder != null &&
+                folderDetailState.isSelectionActive -> folderDetailViewModel.clearSelection()
+            selectedTab == MainTab.Folders && foldersState.isSelectionActive ->
+                foldersViewModel.clearSelection()
+            selectedTab == MainTab.Search && searchState.isSelectionActive ->
+                searchViewModel.clearSelection()
+            moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive ->
+                favoritesViewModel.clearSelection()
+            moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive ->
+                archivedViewModel.clearSelection()
+            moreSubscreen == MoreSubscreen.Trash && trashState.isSelectionActive ->
+                trashViewModel.clearSelection()
+            moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
+                personDetailState.isSelectionActive -> personDetailViewModel.clearSelection()
+            selectedTab == MainTab.Albums && selectedAlbum != null -> albumBack()
+            selectedTab == MainTab.Folders && selectedFolder != null -> {
+                selectedFolder = if (folderBackStack.isNotEmpty()) {
+                    folderBackStack.removeAt(folderBackStack.lastIndex)
+                } else null
+            }
+            moreSubscreen == MoreSubscreen.People && selectedPerson != null -> {
+                selectedPerson = null
+            }
+            moreSubscreen == MoreSubscreen.AdminUserEditor -> {
+                adminUserEditorId = null
+                adminUsersViewModel.clearMessages()
+                moreSubscreen = MoreSubscreen.AdminUsers
+            }
+            moreSubscreen == MoreSubscreen.AdminLibraryEditor -> {
+                adminLibraryEditorId = null
+                adminLibrariesViewModel.clearMessages()
+                moreSubscreen = MoreSubscreen.AdminLibraries
+            }
+            moreSubscreen != null -> { moreSubscreen = parentMoreSubscreen(moreSubscreen!!) }
+            selectedTab != MainTab.Timeline -> { selectedTab = MainTab.Timeline }
+            homeMode == HomeMode.Library -> { homeMode = HomeMode.Hub }
         }
     }
 
