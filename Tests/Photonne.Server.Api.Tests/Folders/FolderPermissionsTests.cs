@@ -81,6 +81,36 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task User_WithReadPermission_OnSharedFolder_CanAccess_ItsSubfolders()
+    {
+        var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
+        var (_, bobClient) = await CreateAuthenticatedUserAsync();
+
+        var parentId = await CreateFolderAsync(
+            path: "/assets/shared/project",
+            name: "project");
+        var subfolderId = await CreateFolderAsync(
+            path: "/assets/shared/project/designs",
+            name: "designs",
+            customize: f => f.ParentFolderId = parentId);
+
+        // Permission granted only on the parent — it must propagate to the subtree.
+        await GrantFolderPermissionAsync(parentId, alice.Id, grantedByUserId: alice.Id, canRead: true);
+
+        var aliceResponse = await aliceClient.GetAsync($"/api/folders/{subfolderId}");
+        Assert.Equal(HttpStatusCode.OK, aliceResponse.StatusCode);
+
+        // Bob, without any grant, still cannot reach the subfolder.
+        var bobResponse = await bobClient.GetAsync($"/api/folders/{subfolderId}");
+        Assert.Equal(HttpStatusCode.Forbidden, bobResponse.StatusCode);
+
+        // The inherited subfolder also surfaces in the user's folder list.
+        var folders = await aliceClient.GetFromJsonAsync<List<FolderListItem>>("/api/folders");
+        Assert.NotNull(folders);
+        Assert.Contains(folders!, f => f.Id == subfolderId);
+    }
+
+    [Fact]
     public async Task Admin_CanAccess_AnyFolder()
     {
         // Admin user is seeded by the factory.

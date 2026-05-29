@@ -1045,6 +1045,8 @@ public class FoldersEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private enum FolderPermissionKind { Read, Write, Delete }
+
     private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
     {
         var folder = await dbContext.Folders
@@ -1064,17 +1066,12 @@ public class FoldersEndpoint : IEndpoint
                 .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == folder.ExternalLibraryId && p.CanRead, ct);
         }
 
-        var hasPermissions = await dbContext.FolderPermissions
-            .AnyAsync(p => p.FolderId == folderId, ct);
+        // Espacio personal: el dueño accede a todo su subárbol por ruta, sin
+        // depender de filas de permiso (que pueden existir si comparte una subcarpeta).
+        if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
 
-        if (!hasPermissions)
-        {
-            // Si no tiene permisos definidos, solo es accesible si es espacio personal
-            return await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct);
-        }
-
-        return await dbContext.FolderPermissions
-            .AnyAsync(p => p.UserId == userId && p.FolderId == folderId && p.CanRead, ct);
+        // Permiso explícito o heredado: CanRead sobre la carpeta o cualquier ancestro.
+        return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Read, ct);
     }
 
     private static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
@@ -1086,17 +1083,9 @@ public class FoldersEndpoint : IEndpoint
         if (folder == null) return false;
         if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
-        var hasPermissions = await dbContext.FolderPermissions
-            .AnyAsync(p => p.FolderId == folderId, ct);
+        if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
 
-        if (!hasPermissions)
-        {
-            // Si no tiene permisos definidos, solo es escribible si es espacio personal
-            return await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct);
-        }
-
-        return await dbContext.FolderPermissions
-            .AnyAsync(p => p.UserId == userId && p.FolderId == folderId && p.CanWrite, ct);
+        return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Write, ct);
     }
 
     private static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
@@ -1108,17 +1097,46 @@ public class FoldersEndpoint : IEndpoint
         if (folder == null) return false;
         if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
-        var hasPermissions = await dbContext.FolderPermissions
-            .AnyAsync(p => p.FolderId == folderId, ct);
+        if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
 
-        if (!hasPermissions)
+        return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Delete, ct);
+    }
+
+    /// <summary>
+    /// True when the user holds the requested permission on the folder itself or
+    /// on any ancestor folder. Sharing a folder thus grants access to its whole
+    /// subtree. Walks the ParentFolderId chain (folder depth is shallow) and
+    /// defensively skips structural containers, which must never carry per-user
+    /// permissions.
+    /// </summary>
+    private static async Task<bool> HasInheritedFolderPermissionAsync(
+        ApplicationDbContext dbContext, Guid userId, Folder folder, FolderPermissionKind kind, CancellationToken ct)
+    {
+        var chainIds = new List<Guid> { folder.Id };
+        var parentId = folder.ParentFolderId;
+        while (parentId.HasValue)
         {
-            // Si no tiene permisos definidos, solo es eliminable si es espacio personal
-            return await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct);
+            var currentId = parentId.Value;
+            var parent = await dbContext.Folders
+                .AsNoTracking()
+                .Where(f => f.Id == currentId)
+                .Select(f => new { f.ParentFolderId, f.Path })
+                .FirstOrDefaultAsync(ct);
+            if (parent == null) break;
+            if (!VirtualPath.IsStructuralContainer(parent.Path)) chainIds.Add(currentId);
+            parentId = parent.ParentFolderId;
         }
 
-        return await dbContext.FolderPermissions
-            .AnyAsync(p => p.UserId == userId && p.FolderId == folderId && p.CanDelete, ct);
+        var query = dbContext.FolderPermissions
+            .Where(p => p.UserId == userId && chainIds.Contains(p.FolderId));
+        query = kind switch
+        {
+            FolderPermissionKind.Read => query.Where(p => p.CanRead),
+            FolderPermissionKind.Write => query.Where(p => p.CanWrite),
+            FolderPermissionKind.Delete => query.Where(p => p.CanDelete),
+            _ => query
+        };
+        return await query.AnyAsync(ct);
     }
 
     /// <summary>
@@ -1173,6 +1191,10 @@ public class FoldersEndpoint : IEndpoint
             .ToHashSet();
 
         var allowedIds = new HashSet<Guid>(readableIds);
+
+        // Subcarpetas heredadas: compartir una carpeta da acceso a todo su subárbol,
+        // así que las subcarpetas de cualquier carpeta legible también son accesibles.
+        AddDescendantFolders(allFolders, readableIds, allowedIds);
 
         // Carpetas de espacio personal (sin permisos explícitos)
         var username = await dbContext.Users
@@ -1235,6 +1257,36 @@ public class FoldersEndpoint : IEndpoint
                 }
 
                 current = parent;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds every descendant of each seed folder to <paramref name="allowedIds"/>.
+    /// Used so that read access granted on a shared folder propagates to all of
+    /// its subfolders. External library folders are skipped — their access is
+    /// governed by ExternalLibraryPermissions, not folder permissions.
+    /// </summary>
+    internal static void AddDescendantFolders(List<Folder> allFolders, IEnumerable<Guid> seedIds, HashSet<Guid> allowedIds)
+    {
+        var childrenLookup = allFolders
+            .Where(f => f.ParentFolderId.HasValue)
+            .GroupBy(f => f.ParentFolderId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var stack = new Stack<Guid>(seedIds);
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            if (!childrenLookup.TryGetValue(current, out var children)) continue;
+
+            foreach (var child in children)
+            {
+                if (child.ExternalLibraryId.HasValue) continue;
+                if (allowedIds.Add(child.Id))
+                {
+                    stack.Push(child.Id);
+                }
             }
         }
     }
