@@ -34,6 +34,8 @@
         }
 
         var path = context.Path.Trim('/').ToLowerInvariant();
+
+        // Public routes: login and the anonymous shared-link viewer.
         if (path.StartsWith("login") || path.StartsWith("share"))
         {
             return;
@@ -44,6 +46,22 @@
             var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
             var loginUrl = BuildLoginUrl(returnUrl);
             Navigation.NavigateTo(loginUrl);
+            return;
+        }
+
+        // This web client is the admin console: only administrators may use it.
+        // Authenticated non-admins are redirected to a notice telling them to
+        // use the native app instead.
+        var user = await AuthService.GetCurrentUserAsync();
+        var isAdmin = string.Equals(user?.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+
+        if (!isAdmin && !path.StartsWith("use-the-app"))
+        {
+            Navigation.NavigateTo("/use-the-app");
+        }
+        else if (isAdmin && path.StartsWith("use-the-app"))
+        {
+            Navigation.NavigateTo("/");
         }
     }
 

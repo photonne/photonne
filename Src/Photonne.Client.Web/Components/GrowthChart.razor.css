@@ -1,0 +1,55 @@
+.growth-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.growth-col {
+    flex: 1 1 0;
+    min-width: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.growth-stack {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-radius: 3px 3px 0 0;
+    overflow: hidden;
+    background: var(--mud-palette-action-default-hover);
+}
+
+.growth-seg {
+    width: 100%;
+    transition: height 0.2s ease;
+}
+
+.growth-photo {
+    background: #118AB2;
+}
+
+.growth-video {
+    background: #EF476F;
+}
+
+.growth-label {
+    margin-top: 4px;
+    font-size: 0.65rem;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.growth-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+}

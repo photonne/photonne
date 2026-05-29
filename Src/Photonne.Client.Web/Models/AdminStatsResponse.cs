@@ -18,3 +18,11 @@ public class AdminUserUsage
     public long PhotoBytes { get; set; }
     public long VideoBytes { get; set; }
 }
+
+public class MonthlyGrowthPoint
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public int Photos { get; set; }
+    public int Videos { get; set; }
+}

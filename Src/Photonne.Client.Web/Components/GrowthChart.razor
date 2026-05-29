@@ -1,0 +1,99 @@
+@* Monthly growth bar chart. Renders stacked photo/video bars per month using
+   plain divs (no charting dependency), with a hover tooltip and an empty
+   state. Shows at most MaxMonths trailing buckets so long histories stay
+   readable. *@
+
+<MudPaper Class="pa-4" Elevation="0" Outlined="true" Style="height: 100%;">
+    <div class="d-flex justify-space-between align-center mb-1">
+        <MudText Typo="Typo.subtitle1">@Title</MudText>
+        <div class="d-flex align-center gap-3">
+            <span class="d-flex align-center gap-1">
+                <span class="growth-swatch" style="background:#118AB2;"></span>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Fotos</MudText>
+            </span>
+            <span class="d-flex align-center gap-1">
+                <span class="growth-swatch" style="background:#EF476F;"></span>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Vídeos</MudText>
+            </span>
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Subtitle))
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-3">@Subtitle</MudText>
+    }
+
+    @if (_bars.Count == 0)
+    {
+        <div class="d-flex align-center justify-center" style="height: 180px;">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin datos.</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="growth-chart">
+            @foreach (var bar in _bars)
+            {
+                <div class="growth-col">
+                    <MudTooltip Text="@bar.Tooltip" Arrow="true">
+                        <div class="growth-stack" style="height: 160px;">
+                            <div class="growth-seg growth-video"
+                                 style="@($"height:{bar.VideoPct.ToString(Inv)}%;")"></div>
+                            <div class="growth-seg growth-photo"
+                                 style="@($"height:{bar.PhotoPct.ToString(Inv)}%;")"></div>
+                        </div>
+                    </MudTooltip>
+                    <MudText Typo="Typo.caption" Class="growth-label">@bar.Label</MudText>
+                </div>
+            }
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<MonthlyGrowthPoint> Points { get; set; } = [];
+
+    /// <summary>How many trailing months to show. Keeps the chart readable
+    /// when the library spans many years.</summary>
+    [Parameter] public int MaxMonths { get; set; } = 24;
+
+    private static readonly System.Globalization.CultureInfo Inv =
+        System.Globalization.CultureInfo.InvariantCulture;
+
+    private static readonly string[] MonthAbbr =
+    [
+        "", "ene", "feb", "mar", "abr", "may", "jun",
+        "jul", "ago", "sep", "oct", "nov", "dic"
+    ];
+
+    private readonly List<Bar> _bars = [];
+
+    private sealed record Bar(string Label, double PhotoPct, double VideoPct, string Tooltip);
+
+    protected override void OnParametersSet()
+    {
+        _bars.Clear();
+        if (Points.Count == 0) return;
+
+        var window = Points
+            .OrderBy(p => p.Year).ThenBy(p => p.Month)
+            .TakeLast(MaxMonths)
+            .ToList();
+
+        // Scale every bar against the busiest month so heights stay comparable.
+        var max = window.Max(p => p.Photos + p.Videos);
+        if (max <= 0) return;
+
+        foreach (var p in window)
+        {
+            var month = p.Month is >= 1 and <= 12 ? MonthAbbr[p.Month] : p.Month.ToString();
+            // Only label January (and the first bar) to avoid a crowded axis.
+            var label = p.Month == 1 ? p.Year.ToString() : month;
+            var photoPct = (double)p.Photos / max * 100;
+            var videoPct = (double)p.Videos / max * 100;
+            var tooltip = $"{month} {p.Year}: {p.Photos:N0} fotos, {p.Videos:N0} vídeos";
+            _bars.Add(new Bar(label, photoPct, videoPct, tooltip));
+        }
+    }
+}

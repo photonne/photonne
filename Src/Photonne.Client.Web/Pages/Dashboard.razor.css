@@ -1,0 +1,12 @@
+.dash-card,
+.dash-widget {
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.dash-card:hover,
+.dash-widget:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}

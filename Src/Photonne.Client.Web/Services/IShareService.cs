@@ -2,17 +2,12 @@ using Photonne.Client.Web.Models;
 
 namespace Photonne.Client.Web.Services;
 
+/// <summary>
+/// Acceso público (sin autenticación) al contenido compartido mediante enlaces
+/// con token. La gestión de enlaces (crear, editar, revocar) vive en las apps
+/// nativas; el panel web solo necesita renderizar el contenido compartido.
+/// </summary>
 public interface IShareService
 {
-    // Public links
-    Task<CreateShareLinkResponse?> CreatePublicShareAsync(CreateShareLinkRequest request);
-    Task<List<CreateShareLinkResponse>> GetShareLinksAsync(Guid? assetId, Guid? albumId);
-    Task RevokeShareAsync(string token);
-
-    // Public page
     Task<SharedContentResponse?> GetSharedContentAsync(string token, string? password = null);
-
-    // Sent links
-    Task<List<SentShareLinkDto>> GetSentShareLinksAsync();
-    Task<UpdateShareLinkResponse?> UpdateShareAsync(string token, UpdateShareLinkRequest request);
 }

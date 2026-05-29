@@ -1,0 +1,106 @@
+@* Reusable donut chart card. Renders a hand-rolled SVG donut (no charting
+   dependency, so it is fully deterministic) with a legend and a centred total,
+   or an empty state when there is no data. *@
+
+<MudPaper Class="pa-4" Elevation="0" Outlined="true" Style="height: 100%;">
+    <MudText Typo="Typo.subtitle1" Class="mb-1">@Title</MudText>
+    @if (!string.IsNullOrEmpty(Subtitle))
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-2">@Subtitle</MudText>
+    }
+
+    @if (_total <= 0)
+    {
+        <div class="d-flex align-center justify-center" style="height: 160px;">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin datos.</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex align-center flex-wrap gap-4 mt-2">
+            <svg viewBox="0 0 42 42" class="donut" width="150" height="150" role="img">
+                <circle class="donut-track" cx="21" cy="21" r="@Radius" fill="transparent"
+                        stroke-width="@StrokeWidth" />
+                @{
+                    double offset = 0;
+                }
+                @for (var i = 0; i < _data.Length; i++)
+                {
+                    var fraction = _data[i] / _total;
+                    var dash = fraction * Circumference;
+                    var gap = Circumference - dash;
+                    // SVG strokes start at 3 o'clock and go clockwise; rotate -90° so
+                    // the first slice begins at the top, and offset each subsequent slice.
+                    var dashOffset = Circumference - offset;
+                    <circle cx="21" cy="21" r="@Radius" fill="transparent"
+                            stroke="@ColorAt(i)" stroke-width="@StrokeWidth"
+                            stroke-dasharray="@($"{dash.ToString(Inv)} {gap.ToString(Inv)}")"
+                            stroke-dashoffset="@dashOffset.ToString(Inv)"
+                            transform="rotate(-90 21 21)" />
+                    offset += dash;
+                }
+                <text class="donut-center-value" x="21" y="20" dominant-baseline="middle" text-anchor="middle">
+                    @CenterValue
+                </text>
+                <text class="donut-center-label" x="21" y="25" dominant-baseline="middle" text-anchor="middle">
+                    @CenterLabel
+                </text>
+            </svg>
+
+            <div class="d-flex flex-column gap-2">
+                @for (var i = 0; i < Labels.Length; i++)
+                {
+                    var pct = _total > 0 ? _data[i] / _total * 100 : 0;
+                    <div class="d-flex align-center gap-2">
+                        <span class="donut-swatch" style="@($"background:{ColorAt(i)};")"></span>
+                        <MudText Typo="Typo.body2">@Labels[i]</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            @FormatValue(_data[i]) (@pct.ToString("0.#")%)
+                        </MudText>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>Values per slice; must align with <see cref="Labels"/>.</summary>
+    [Parameter, EditorRequired] public double[] Values { get; set; } = [];
+    [Parameter, EditorRequired] public string[] Labels { get; set; } = [];
+
+    /// <summary>Big number shown in the centre of the donut.</summary>
+    [Parameter] public string CenterValue { get; set; } = string.Empty;
+    [Parameter] public string CenterLabel { get; set; } = string.Empty;
+
+    /// <summary>Optional formatter for legend values (e.g. bytes → "1,2 GiB").</summary>
+    [Parameter] public Func<double, string>? ValueFormatter { get; set; }
+
+    private const double Radius = 15.915;          // gives a circumference of ~100
+    private const double StrokeWidth = 6;
+    private static readonly double Circumference = 2 * Math.PI * Radius;
+    private static readonly System.Globalization.CultureInfo Inv =
+        System.Globalization.CultureInfo.InvariantCulture;
+
+    private double[] _data = [];
+    private double _total;
+
+    private static readonly string[] Palette =
+    [
+        "#FFD166", "#06D6A0", "#118AB2", "#EF476F", "#8338EC", "#FB5607"
+    ];
+
+    protected override void OnParametersSet()
+    {
+        _data = Values ?? [];
+        _total = _data.Sum();
+    }
+
+    private string ColorAt(int i) => Palette[i % Palette.Length];
+
+    private string FormatValue(double v) =>
+        ValueFormatter is not null ? ValueFormatter(v) : v.ToString("N0");
+}

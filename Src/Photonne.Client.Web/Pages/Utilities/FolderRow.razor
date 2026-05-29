@@ -1,10 +1,13 @@
 <MudListItem T="FolderItem" Dense="true" Style="@($"padding-left:{8 + Depth * 20}px;")">
     <div class="d-flex align-center justify-space-between w-100 py-1">
         <div class="d-flex align-center gap-2">
-            <MudIconButton Icon="@(Item.SubFolders.Count > 0 ? (_expanded ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder) : Icons.Material.Outlined.Folder)"
-                           Color="Color.Warning" Size="Size.Small"
-                           OnClick="@(() => _expanded = !_expanded)"
-                           Disabled="@(Item.SubFolders.Count == 0)" />
+            <MudIconButton Icon="@ChevronIcon"
+                           Color="Color.Default" Size="Size.Small"
+                           OnClick="Toggle"
+                           Disabled="@(!HasChildren)"
+                           Style="@(HasChildren ? "" : "visibility:hidden;")" />
+            <MudIcon Icon="@(HasChildren && _expanded ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder)"
+                     Color="Color.Warning" Size="Size.Small" />
             <div>
                 <MudText Typo="Typo.body2">@Item.Name</MudText>
                 <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="word-break:break-all;font-size:0.7rem;">
@@ -13,6 +16,10 @@
             </div>
         </div>
         <div class="d-flex align-center gap-1 flex-shrink-0 ml-2">
+            @if (HasChildren)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@Item.SubFolders.Count subcarpetas</MudChip>
+            }
             @if (Item.AssetCount > 0)
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@Item.AssetCount</MudChip>
@@ -24,17 +31,15 @@
                     Compartida
                 </MudChip>
             }
-            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small"
-                           Href="@($"/folders/{Item.Id}")" Title="Abrir carpeta" />
         </div>
     </div>
 </MudListItem>
 
-@if (_expanded && Item.SubFolders.Count > 0)
+@if (_expanded && HasChildren)
 {
     @foreach (var sub in Item.SubFolders)
     {
-        <FolderRow Item="sub" Depth="@(Depth + 1)" />
+        <FolderRow Item="sub" Depth="@(Depth + 1)" BulkSignal="@BulkSignal" BulkExpand="@BulkExpand" />
     }
 }
 
@@ -42,5 +47,32 @@
     [Parameter] public FolderItem Item { get; set; } = null!;
     [Parameter] public int Depth { get; set; }
 
-    private bool _expanded = true;
+    /// <summary>
+    /// Counter bumped by the parent page each time the user clicks "expand all" or
+    /// "collapse all". When it changes, every row adopts <see cref="BulkExpand"/>.
+    /// </summary>
+    [Parameter] public int BulkSignal { get; set; }
+
+    /// <summary>Target state applied on the latest <see cref="BulkSignal"/> change.</summary>
+    [Parameter] public bool BulkExpand { get; set; }
+
+    private bool _expanded;
+    private int _lastSignal;
+
+    private bool HasChildren => Item.SubFolders.Count > 0;
+
+    private string ChevronIcon => _expanded
+        ? Icons.Material.Filled.ExpandMore
+        : Icons.Material.Filled.ChevronRight;
+
+    protected override void OnParametersSet()
+    {
+        if (BulkSignal != _lastSignal)
+        {
+            _lastSignal = BulkSignal;
+            _expanded = BulkExpand;
+        }
+    }
+
+    private void Toggle() => _expanded = !_expanded;
 }

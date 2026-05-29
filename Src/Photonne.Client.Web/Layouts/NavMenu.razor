@@ -9,114 +9,52 @@
             Volver
         </MudNavLink>
         <MudDivider Class="my-2" />
-        <MudNavLink Href="/settings/profile"    Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person"       IconColor="Color.Inherit">Perfil</MudNavLink>
-        <MudNavLink Href="/settings/security"   Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Lock"         IconColor="Color.Inherit">Seguridad</MudNavLink>
-        <MudNavLink Href="/settings/appearance" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Palette"      IconColor="Color.Inherit">Apariencia</MudNavLink>
-        <MudNavLink Href="/settings/device"     Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhoneAndroid" IconColor="Color.Inherit">Dispositivo</MudNavLink>
+        <MudNavLink Href="/settings/profile"    Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person"   IconColor="Color.Inherit">Perfil</MudNavLink>
+        <MudNavLink Href="/settings/security"   Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Lock"     IconColor="Color.Inherit">Seguridad</MudNavLink>
+        <MudNavLink Href="/settings/appearance" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Palette"  IconColor="Color.Inherit">Apariencia</MudNavLink>
     }
     else
     {
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                @if (IsAdminSection)
-                {
-                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ArrowBack" IconColor="Color.Inherit">
-                        Volver
-                    </MudNavLink>
-                    <MudDivider Class="my-2" />
-                    <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
-                        Usuarios
-                    </MudNavLink>
-                    <MudNavLink Href="/admin/libraries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FolderSpecial" IconColor="Color.Inherit">
-                        Bibliotecas externas
-                    </MudNavLink>
-                    <MudNavLink Href="/admin/stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.QueryStats" IconColor="Color.Inherit">
-                        Estadísticas del servidor
-                    </MudNavLink>
-                    <MudNavLink Href="/admin/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Settings" IconColor="Color.Inherit">
-                        Ajustes
-                    </MudNavLink>
-                    <MudNavLink Href="/admin/system" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Storage" IconColor="Color.Inherit">
-                        Sistema
-                    </MudNavLink>
-                }
-                else
-                {
-                    @UserNavLinks
-                }
-            </Authorized>
-            <NotAuthorized>
-                @UserNavLinks
-            </NotAuthorized>
-        </AuthorizeView>
-    }
-</MudNavMenu>
-
-<AuthorizeView>
-    <Authorized>
-        @if (!IsAdminSection && !IsSettingsSection)
-        {
-            <div class="nav-spacer"></div>
-            <MudDivider />
-            <StorageWidget />
-        }
-    </Authorized>
-</AuthorizeView>
-</div>
-
-@code {
-    private RenderFragment UserNavLinks => @<text>
-        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.PhotoLibrary" IconColor="Color.Inherit">
-            Fotos
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard" IconColor="Color.Inherit">
+            Panel
         </MudNavLink>
 
-        <MudNavLink Href="/favorites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FavoriteBorder" IconColor="Color.Inherit">
-            Favoritos
+        <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
+            Usuarios
         </MudNavLink>
 
-        <MudNavLink Href="/people" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
-            Personas
+        <MudNavLink Href="/admin/libraries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FolderSpecial" IconColor="Color.Inherit">
+            Bibliotecas externas
         </MudNavLink>
 
-        <MudNavGroup Title="Álbumes" Icon="@Icons.Material.Outlined.Collections" Expanded="true">
-            <MudNavLink Href="/albums/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mis Álbumes</MudNavLink>
-            <MudNavLink Href="/albums/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.People">Compartidos</MudNavLink>
-            <MudNavLink Href="/my-shares" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Share">Links</MudNavLink>
+        <MudNavLink Href="/admin/stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.QueryStats" IconColor="Color.Inherit">
+            Estadísticas
+        </MudNavLink>
+
+        <MudNavGroup Title="Tareas" Icon="@Icons.Material.Outlined.PlaylistPlay" Expanded="true">
+            <MudNavLink Href="/admin/system/tasks" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Tune">Colas y tareas</MudNavLink>
+            <MudNavLink Href="/admin/system/maintenance" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.CleaningServices">Mantenimiento</MudNavLink>
+            <MudNavLink Href="/admin/system/backup" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Backup">Copia de seguridad</MudNavLink>
         </MudNavGroup>
 
-        <MudNavGroup Title="Carpetas" Icon="@Icons.Material.Outlined.Folder" Expanded="true">
-            <MudNavLink Href="/folders/own" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Person">Mi Espacio</MudNavLink>
-            <MudNavLink Href="/folders/shared" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Groups">Espacio Compartido</MudNavLink>
-            <MudNavLink Href="/folders/libraries" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.LibraryBooks">Bibliotecas</MudNavLink>
-        </MudNavGroup>
-
-        <MudNavLink Href="/map" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Map" IconColor="Color.Inherit">
-            Mapa
-        </MudNavLink>
-
-        <MudDivider Class="my-2" />
-
-        <MudNavLink Href="/device" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.SyncAlt" IconColor="Color.Inherit">
-            Sincronizar Dispositivo
-        </MudNavLink>
-        <MudNavLink Href="/archive" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Archive" IconColor="Color.Inherit">
-            Archivo
-        </MudNavLink>
-        <MudNavLink Href="/trash" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Inherit">
-            Papelera
-        </MudNavLink>
         <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
             Utilidades
         </MudNavLink>
+
         <MudNavLink Href="/notifications" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Notifications" IconColor="Color.Inherit">
             Notificaciones
         </MudNavLink>
 
-    </text>;
+        <MudDivider Class="my-2" />
 
-    private bool IsAdminSection
-        => new Uri(Navigation.Uri).AbsolutePath.Trim('/').StartsWith("admin", StringComparison.OrdinalIgnoreCase);
+        <MudNavLink Href="/admin/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Settings" IconColor="Color.Inherit">
+            Ajustes del servidor
+        </MudNavLink>
+    }
+</MudNavMenu>
+</div>
 
+@code {
     private bool IsSettingsSection
         => new Uri(Navigation.Uri).AbsolutePath.Trim('/').StartsWith("settings", StringComparison.OrdinalIgnoreCase);
 

@@ -30,20 +30,23 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 - **Bibliotecas externas** — Integración de directorios externos a la biblioteca principal
 - **Copia de seguridad** — Exportación y restauración de la base de datos y configuración
 
+**Clientes**
+- **Apps nativas** — Android, iOS y escritorio (Kotlin Multiplatform + Compose). Fuente principal para el consumo de la biblioteca
+- **Panel de administración web** — PWA Blazor reservada a administradores: usuarios, bibliotecas, tareas, estadísticas y ajustes del servidor
+
 **Técnico**
 - **Indexación automática** — Escanea directorios para indexar todos los assets (foto y vídeo)
 - **Miniaturas** — Generación paralela en tres tamaños (small, medium, large)
 - **Extracción de metadatos** — Lectura de datos EXIF de imágenes y vídeos (fecha, GPS, cámara, etc.)
 - **JWT + Refresh Token** — Autenticación con soporte multi-dispositivo
-- **PWA** — Instalable como app en escritorio y móvil, carga offline del app shell
 
 ## Stack tecnológico
 
 | Capa | Tecnología |
 |---|---|
 | Backend | ASP.NET Core 10, EF Core, PostgreSQL |
-| Frontend | Blazor WebAssembly (PWA) |
-| UI | MudBlazor 9 |
+| Apps nativas | Kotlin Multiplatform + Compose Multiplatform (Android, iOS, Desktop) |
+| Panel de admin | Blazor WebAssembly (PWA), MudBlazor 9 |
 | Imágenes | ImageSharp, Magick.NET |
 | Video | FFmpeg (vía Xabe.FFmpeg) |
 | EXIF | MetadataExtractor |
@@ -56,7 +59,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 Photonne.sln
 └── Src/
     ├── Photonne.Server.Api/      # API REST ASP.NET Core 10
-    ├── Photonne.Client.Web/      # Blazor WASM PWA
+    ├── Photonne.Client.Web/      # Panel de administración (Blazor WASM PWA)
     ├── Photonne.Client.Native/   # Apps nativas (Android, iOS, Desktop) en KMP + Compose
     └── Photonne.MlService/       # Servicio ML en Python (FastAPI)
 ```
@@ -69,14 +72,14 @@ Photonne.sln
 - Autenticación JWT + Refresh Tokens, gestión de usuarios y permisos
 - Migraciones de base de datos (EF Core + PostgreSQL)
 
-**`Client.Web`** — Cliente Blazor WASM completo:
-- Componentes: `AssetCard`, `ApiErrorDialog`, `EmptyState`, etc.
-- Layout: `MainLayout`, `NavMenu`, `LoginLayout`
-- Páginas: Albums, Timeline, Folders, Trash, AssetDetail, Login, etc.
-- Servicios: interfaces + implementaciones (AuthService usa `IJSRuntime`/`localStorage`)
-- PWA: `manifest.webmanifest`, `service-worker.js` con cache del app shell
+**`Client.Web`** — Panel de administración (Blazor WASM PWA):
+- Reservado a usuarios con rol `Admin`; los no administradores se redirigen a un aviso para usar la app nativa.
+- Páginas: Panel (dashboard), Usuarios, Bibliotecas externas, Estadísticas, Tareas/Colas, Mantenimiento, Copia de seguridad, Ajustes del servidor, Sistema, Utilidades y Notificaciones.
+- Layout: `MainLayout`, `NavMenu`, `LoginLayout`; servicios con interfaces + implementaciones (AuthService usa `IJSRuntime`/`localStorage`).
+- PWA: `manifest.webmanifest` («Photonne Admin»), `service-worker.js` con cache del app shell.
+- Decisión técnica documentada en [`Src/Photonne.Client.Web/docs/ADR-002-pwa-admin-console.md`](Src/Photonne.Client.Web/docs/ADR-002-pwa-admin-console.md).
 
-**`Client.Native`** — Apps nativas (scaffold inicial):
+**`Client.Native`** — Apps nativas (fuente principal de consumo):
 - Kotlin Multiplatform + Compose Multiplatform.
 - Targets Android, iOS y Desktop JVM con UI compartida.
 - Cliente Ktor con refresh-on-401 que replica `AuthRefreshHandler` del web.

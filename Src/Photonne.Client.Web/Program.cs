@@ -31,65 +31,30 @@ builder.Services.AddScoped(sp =>
 // Agregar MudBlazor
 builder.Services.AddMudServices();
 
-// Agregar servicios personalizados
-builder.Services.AddScoped<IAssetListNavigationState, AssetListNavigationState>();
+// ── Infraestructura compartida ──────────────────────────────────────────────
 builder.Services.AddScoped<BackNavigationService>();
 builder.Services.AddScoped<LayoutService>();
 builder.Services.AddScoped<ThemeService>();
+builder.Services.AddScoped<DeviceLayoutService>();
+builder.Services.AddSingleton<PwaUpdateService>();
+
+// ── Autenticación ───────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<AuthService>(sp =>
     (AuthService)sp.GetRequiredService<IAuthService>());
+
+// ── Servicios de administración ─────────────────────────────────────────────
 builder.Services.AddScoped<IAssetService>(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
     var authService = sp.GetRequiredService<AuthService>();
     return new AssetService(httpClient, async () => await authService.GetTokenAsync());
 });
-builder.Services.AddScoped<IPeopleService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new PeopleService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddScoped<IObjectsService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new ObjectsService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddScoped<IScenesService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new ScenesService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddScoped<ITextsService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new TextsService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddScoped<IIndexService, IndexService>();
-builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
-builder.Services.AddScoped<IMetadataQueueService, MetadataQueueService>();
-builder.Services.AddScoped<IDuplicatesQueueService, DuplicatesQueueService>();
 builder.Services.AddScoped<IFolderService>(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
     var authService = sp.GetRequiredService<AuthService>();
     return new FolderService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddSingleton<DeviceAssetsCache>();
-builder.Services.AddSingleton<AlbumsCache>();
-builder.Services.AddSingleton<FoldersCache>();
-builder.Services.AddScoped<ILocalFolderService, LocalFolderService>();
-builder.Services.AddScoped<IPendingAssetsProvider, WebPendingAssetsProvider>();
-builder.Services.AddScoped<IMapService, MapService>();
-builder.Services.AddScoped<IAlbumService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new AlbumService(httpClient, async () => await authService.GetTokenAsync());
 });
 builder.Services.AddScoped<ISettingsService>(sp =>
 {
@@ -103,29 +68,11 @@ builder.Services.AddScoped<IUserService>(sp =>
     var authService = sp.GetRequiredService<AuthService>();
     return new UserService(httpClient, async () => await authService.GetTokenAsync());
 });
-builder.Services.AddScoped<IAlbumPermissionService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new AlbumPermissionService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddScoped<IFolderPermissionService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new FolderPermissionService(httpClient, async () => await authService.GetTokenAsync());
-});
 builder.Services.AddScoped<IAdminStatsService>(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
     var authService = sp.GetRequiredService<AuthService>();
     return new AdminStatsService(httpClient, async () => await authService.GetTokenAsync());
-});
-builder.Services.AddScoped<IShareService>(sp =>
-{
-    var httpClient = sp.GetRequiredService<HttpClient>();
-    var authService = sp.GetRequiredService<AuthService>();
-    return new ShareService(httpClient, async () => await authService.GetTokenAsync());
 });
 builder.Services.AddScoped<INotificationService>(sp =>
 {
@@ -157,16 +104,23 @@ builder.Services.AddScoped<IMaintenanceService>(sp =>
     var authService = sp.GetRequiredService<AuthService>();
     return new MaintenanceService(httpClient, async () => await authService.GetTokenAsync());
 });
-builder.Services.AddScoped<IDemoInfoService, DemoInfoService>();
-builder.Services.AddScoped<DeviceLayoutService>();
-builder.Services.AddSingleton<TimelineCache>();
-builder.Services.AddScoped<TimelinePersistenceService>();
-builder.Services.AddSingleton<PwaUpdateService>();
-builder.Services.AddSingleton<PwaInstallService>();
+
+// ── Indexación y colas ──────────────────────────────────────────────────────
+builder.Services.AddScoped<IIndexService, IndexService>();
+builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
+builder.Services.AddScoped<IMetadataQueueService, MetadataQueueService>();
+builder.Services.AddScoped<IDuplicatesQueueService, DuplicatesQueueService>();
 builder.Services.AddScoped<BackgroundTaskStateService>(sp =>
 {
     var httpClient = sp.GetRequiredService<HttpClient>();
     return new BackgroundTaskStateService(httpClient);
 });
+
+// ── Otros ───────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IDemoInfoService, DemoInfoService>();
+
+// Visor público de enlaces compartidos (acceso anónimo por token)
+builder.Services.AddScoped<IShareService>(sp =>
+    new ShareService(sp.GetRequiredService<HttpClient>()));
 
 await builder.Build().RunAsync();
