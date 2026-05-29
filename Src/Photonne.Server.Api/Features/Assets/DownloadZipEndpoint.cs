@@ -34,12 +34,11 @@ public class DownloadZipEndpoint : IEndpoint
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
+        if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
             return Results.Forbid();
 
         var zipName = !string.IsNullOrWhiteSpace(request.FileName)

@@ -32,8 +32,7 @@ public class UpdateShareEndpoint : IEndpoint
         var link = await dbContext.SharedLinks.FirstOrDefaultAsync(l => l.Token == token, ct);
         if (link == null) return Results.NotFound();
 
-        var isAdmin = user.IsInRole("Admin");
-        if (!isAdmin && link.CreatedById != userId) return Results.Forbid();
+        if (link.CreatedById != userId) return Results.Forbid();
 
         link.ExpiresAt = request.ExpiresAt;
         link.AllowDownload = request.AllowDownload;

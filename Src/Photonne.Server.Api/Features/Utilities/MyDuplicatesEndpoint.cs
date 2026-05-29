@@ -94,6 +94,10 @@ public class MyDuplicatesEndpoint : IEndpoint
         ApplicationDbContext dbContext, Guid userId, string userRootPath, CancellationToken ct)
     {
         var allFolders = await dbContext.Folders.ToListAsync(ct);
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
         var permissions = await dbContext.FolderPermissions
             .Where(p => p.UserId == userId && p.CanRead)
             .ToListAsync(ct);
@@ -103,12 +107,14 @@ public class MyDuplicatesEndpoint : IEndpoint
             .Distinct()
             .ToHashSetAsync(ct);
 
-        var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
+        var allowedIds = permissions
+            .Select(p => p.FolderId)
+            .Where(id => !structuralIds.Contains(id))
+            .ToHashSet();
 
         foreach (var folder in allFolders)
         {
-            if (!foldersWithPermissionsSet.Contains(folder.Id) &&
-                folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
+            if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
             {
                 allowedIds.Add(folder.Id);
             }

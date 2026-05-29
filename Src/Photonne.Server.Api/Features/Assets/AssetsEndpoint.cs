@@ -56,7 +56,6 @@ public class AssetsEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id))
             .ToListAsync(ct);
@@ -66,7 +65,7 @@ public class AssetsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Assets no encontrados." });
         }
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
+        if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
         {
             return Results.Forbid();
         }
@@ -154,12 +153,11 @@ public class AssetsEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id))
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => a.DeletedAt == null || !IsAssetInUserRoot(a.FullPath, username)))
+        if (assets.Any(a => a.DeletedAt == null || !IsAssetInUserRoot(a.FullPath, username)))
         {
             return Results.Forbid();
         }
@@ -182,15 +180,11 @@ public class AssetsEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => a.DeletedAt != null)
             .ToListAsync(ct);
 
-        if (!isAdmin)
-        {
-            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
-        }
+        assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
 
         if (!assets.Any())
         {
@@ -269,7 +263,6 @@ public class AssetsEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Include(a => a.Thumbnails)
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt != null)
@@ -280,7 +273,7 @@ public class AssetsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Assets no encontrados." });
         }
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
+        if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
         {
             return Results.Forbid();
         }
@@ -303,16 +296,12 @@ public class AssetsEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Include(a => a.Thumbnails)
             .Where(a => a.DeletedAt != null)
             .ToListAsync(ct);
 
-        if (!isAdmin)
-        {
-            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
-        }
+        assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
 
         if (!assets.Any())
         {

@@ -32,7 +32,6 @@ public class MapPointsEndpoint : IEndpoint
             var username = user.GetUsername();
             if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-            var isAdmin = user.IsInRole("Admin");
             var userRootPath = $"/assets/users/{username}";
 
             // Reuse the same cache key as MapAssetsEndpoint to avoid a double DB query
@@ -41,7 +40,8 @@ public class MapPointsEndpoint : IEndpoint
             var cacheKey = $"map:points:{userId}";
             if (!cache.TryGetValue(cacheKey, out List<MapPointResponse>? points) || points == null)
             {
-                var query = dbContext.Assets
+                var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, userRootPath, cancellationToken);
+                var assets = await dbContext.Assets
                     .Include(a => a.Exif)
                     .Include(a => a.Thumbnails)
                     .Where(a => a.DeletedAt == null &&
@@ -50,15 +50,9 @@ public class MapPointsEndpoint : IEndpoint
                                a.Exif.Longitude.HasValue &&
                                // Excluir (0,0) — GPS vacío/corrupto en EXIF
                                (a.Exif.Latitude.Value > 0.0001 || a.Exif.Latitude.Value < -0.0001 ||
-                                a.Exif.Longitude.Value > 0.0001 || a.Exif.Longitude.Value < -0.0001));
-
-                if (!isAdmin)
-                {
-                    var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, userRootPath, cancellationToken);
-                    query = query.Where(a => a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
-                }
-
-                var assets = await query.ToListAsync(cancellationToken);
+                                a.Exif.Longitude.Value > 0.0001 || a.Exif.Longitude.Value < -0.0001) &&
+                               a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value))
+                    .ToListAsync(cancellationToken);
                 points = assets.Select(a => new MapPointResponse
                 {
                     Id = a.Id,
@@ -88,6 +82,10 @@ public class MapPointsEndpoint : IEndpoint
         CancellationToken ct)
     {
         var allFolders = await dbContext.Folders.ToListAsync(ct);
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
         var permissions = await dbContext.FolderPermissions
             .Where(p => p.UserId == userId && p.CanRead)
             .ToListAsync(ct);
@@ -98,16 +96,16 @@ public class MapPointsEndpoint : IEndpoint
             .ToListAsync(ct);
 
         var foldersWithPermissionsSet = foldersWithPermissions.ToHashSet();
-        var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
+        var allowedIds = permissions
+            .Select(p => p.FolderId)
+            .Where(id => !structuralIds.Contains(id))
+            .ToHashSet();
 
         foreach (var folder in allFolders)
         {
-            if (!foldersWithPermissionsSet.Contains(folder.Id))
+            if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
             {
-                if (folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    allowedIds.Add(folder.Id);
-                }
+                allowedIds.Add(folder.Id);
             }
         }
 

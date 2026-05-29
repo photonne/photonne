@@ -65,11 +65,17 @@ public class AssetVisibilityService
             .Select(f => new { f.Id, f.Path, f.ExternalLibraryId })
             .ToListAsync(ct);
 
-        var allowedFolderIds = grantedFolderIds.ToHashSet();
+        // Structural containers (/assets, /assets/users) must never grant
+        // access — they hold every user's personal space.
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
+
+        var allowedFolderIds = grantedFolderIds.Where(id => !structuralIds.Contains(id)).ToHashSet();
         foreach (var f in allFolders)
         {
-            if (!foldersWithAnyPermissionSet.Contains(f.Id) &&
-                f.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
+            if (!foldersWithAnyPermissionSet.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
             {
                 allowedFolderIds.Add(f.Id);
             }

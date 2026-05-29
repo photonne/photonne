@@ -52,6 +52,10 @@ public class TimelineGridEndpoint : IEndpoint
             var userRootPath = $"/assets/users/{username}";
 
             var allFolders = await dbContext.Folders.ToListAsync(cancellationToken);
+            var structuralIds = allFolders
+                .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+                .Select(f => f.Id)
+                .ToHashSet();
             var permissions = await dbContext.FolderPermissions
                 .Where(p => p.UserId == userId && p.CanRead)
                 .ToListAsync(cancellationToken);
@@ -61,11 +65,13 @@ public class TimelineGridEndpoint : IEndpoint
                 .Distinct()
                 .ToHashSetAsync(cancellationToken);
 
-            var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
+            var allowedIds = permissions
+                .Select(p => p.FolderId)
+                .Where(id => !structuralIds.Contains(id))
+                .ToHashSet();
             foreach (var folder in allFolders)
             {
-                if (!foldersWithPermissionsSet.Contains(folder.Id) &&
-                    folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
+                if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
                 {
                     allowedIds.Add(folder.Id);
                 }

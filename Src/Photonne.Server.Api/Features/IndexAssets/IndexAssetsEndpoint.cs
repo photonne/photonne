@@ -315,7 +315,7 @@ public class IndexAssetsEndpoint : IEndpoint
             .ToListAsync(ct);
 
         var toFix = orphaned
-            .Where(f => !IsPersonalUserPath(f.Path))
+            .Where(f => !IsPersonalUserPath(f.Path) && !VirtualPath.IsStructuralContainer(f.Path))
             .ToList();
 
         if (toFix.Count == 0) return;

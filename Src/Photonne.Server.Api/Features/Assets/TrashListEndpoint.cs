@@ -43,24 +43,18 @@ public class TrashListEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
-
+        // Trash always lives under the user's root, so a prefix check on
+        // the virtual path is enough — no need to chase folder permissions
+        // like Archive does. The trailing slash matters: without it,
+        // username "admin" would match "/assets/users/admin2/...".
+        var virtualRootPrefix = $"/assets/users/{username}/";
         var query = dbContext.Assets
             .Include(a => a.Exif)
             .Include(a => a.Thumbnails)
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt != null);
-
-        if (!isAdmin)
-        {
-            // Trash always lives under the user's root, so a prefix check on
-            // the virtual path is enough — no need to chase folder
-            // permissions like Archive does.
-            var virtualRoot = $"/assets/users/{username}";
-            query = query.Where(a => a.FullPath.StartsWith(virtualRoot));
-        }
+            .Where(a => a.DeletedAt != null && a.FullPath.StartsWith(virtualRootPrefix));
 
         // We page by DeletedAt so the user sees the most recently trashed
         // items first regardless of the file's original creation date.

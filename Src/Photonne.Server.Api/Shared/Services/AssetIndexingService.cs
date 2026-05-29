@@ -341,7 +341,7 @@ public class AssetIndexingService
                 _dbContext.Folders.Add(folder);
                 await _dbContext.SaveChangesAsync(ct);
 
-                if (!IsPersonalUserPath(path))
+                if (!IsPersonalUserPath(path) && !VirtualPath.IsStructuralContainer(path))
                     await AssignAdminOwnerAsync(folder.Id, ct);
             }
 
@@ -357,9 +357,7 @@ public class AssetIndexingService
         if (string.IsNullOrEmpty(libraryRootVirtual))
             return true; // No root info → tag everything (fallback)
 
-        var normalizedPath = path.TrimEnd('/');
-        var normalizedRoot = libraryRootVirtual.TrimEnd('/');
-        return normalizedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+        return VirtualPath.IsUnder(path, libraryRootVirtual);
     }
 
     private async Task<Guid?> GetPrimaryAdminIdAsync(CancellationToken ct)

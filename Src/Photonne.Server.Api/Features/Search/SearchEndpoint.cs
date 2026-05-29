@@ -56,7 +56,7 @@ public class SearchEndpoint : IEndpoint
         if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter)
             return Results.Ok(new SearchResponse());
 
-        var isAdmin = user.IsInRole("Admin");
+        var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
 
         var query = dbContext.Assets
             .Include(a => a.Exif)
@@ -64,13 +64,8 @@ public class SearchEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && !a.IsArchived);
-
-        if (!isAdmin)
-        {
-            var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
-            query = query.Where(a => a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
-        }
+            .Where(a => a.DeletedAt == null && !a.IsArchived
+                     && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
         // Text search: filename, full path, user tag names
         if (!string.IsNullOrWhiteSpace(q))
@@ -243,6 +238,11 @@ public class SearchEndpoint : IEndpoint
     {
         var userRootPath = $"/assets/users/{username}";
         var allFolders = await dbContext.Folders.ToListAsync(ct);
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
+
         var permissions = await dbContext.FolderPermissions
             .Where(p => p.UserId == userId && p.CanRead)
             .ToListAsync(ct);
@@ -251,11 +251,13 @@ public class SearchEndpoint : IEndpoint
             .Distinct()
             .ToHashSetAsync(ct);
 
-        var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
+        var allowedIds = permissions
+            .Select(p => p.FolderId)
+            .Where(id => !structuralIds.Contains(id))
+            .ToHashSet();
         foreach (var f in allFolders)
         {
-            if (!foldersWithPermissions.Contains(f.Id) &&
-                f.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
+            if (!foldersWithPermissions.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
             {
                 allowedIds.Add(f.Id);
             }

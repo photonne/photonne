@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Timeline;
 
@@ -58,6 +59,14 @@ public class AllowedFolderCache
             .Select(f => new { f.Id, f.Path, f.ExternalLibraryId })
             .ToListAsync(ct);
 
+        // Structural containers (/assets, /assets/users) must never grant
+        // access even if a stale FolderPermission row points at them — they
+        // contain every user's personal space.
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
+
         var grantedFolderIds = await dbContext.FolderPermissions
             .AsNoTracking()
             .Where(p => p.UserId == userId && p.CanRead)
@@ -70,12 +79,10 @@ public class AllowedFolderCache
             .Distinct()
             .ToHashSetAsync(ct);
 
-        var allowedIds = grantedFolderIds.ToHashSet();
-        var normalizedRoot = userRootPath.Replace('\\', '/');
+        var allowedIds = grantedFolderIds.Where(id => !structuralIds.Contains(id)).ToHashSet();
         foreach (var f in allFolders)
         {
-            if (!foldersWithAnyPermission.Contains(f.Id) &&
-                f.Path.Replace('\\', '/').StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+            if (!foldersWithAnyPermission.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
             {
                 allowedIds.Add(f.Id);
             }

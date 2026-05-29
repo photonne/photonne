@@ -119,7 +119,7 @@ public class SemanticSearchEndpoint : IEndpoint
             });
         }
 
-        var isAdmin = user.IsInRole("Admin");
+        var scope = await visibility.GetScopeAsync(userId, ct);
 
         // Build the EF query: visible assets joined with their embedding,
         // ordered by cosine distance to the query vector. The HNSW index is
@@ -131,13 +131,8 @@ public class SemanticSearchEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && !a.IsArchived && a.Embedding != null);
-
-        if (!isAdmin)
-        {
-            var scope = await visibility.GetScopeAsync(userId, ct);
-            assets = assets.Where(scope.AssetPredicate());
-        }
+            .Where(a => a.DeletedAt == null && !a.IsArchived && a.Embedding != null)
+            .Where(scope.AssetPredicate());
 
         var modelVersion = options.ModelVersion;
         var capturedVector = queryVector;

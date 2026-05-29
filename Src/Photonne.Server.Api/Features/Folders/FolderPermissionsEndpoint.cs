@@ -41,8 +41,6 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        var isAdmin = user.IsInRole("Admin");
-
         // Validate folder exists and user has access to manage it
         var folder = await dbContext.Folders
             .Include(f => f.Permissions)
@@ -54,9 +52,8 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Folder not found" });
         }
 
-        // Must be admin or have CanManagePermissions
-        var hasAccess = isAdmin || 
-            folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
+        // Must have CanManagePermissions
+        var hasAccess = folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
         if (!hasAccess)
         {
@@ -107,8 +104,6 @@ public class FolderPermissionsEndpoint : IEndpoint
         var currentUsername = user.GetUsername();
         if (string.IsNullOrEmpty(currentUsername)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
-
         // Validate folder exists
         var folder = await dbContext.Folders
             .Include(f => f.Permissions)
@@ -119,10 +114,10 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Folder not found" });
         }
 
-        // Must be admin or have CanManagePermissions
+        // Must be owner or have CanManagePermissions
         var isOwner = folder.Path.Contains($"/users/{currentUsername}/", StringComparison.OrdinalIgnoreCase)
                    || folder.Path.EndsWith($"/users/{currentUsername}", StringComparison.OrdinalIgnoreCase);
-        var hasAccess = isAdmin || isOwner ||
+        var hasAccess = isOwner ||
             folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
         if (!hasAccess)
@@ -220,8 +215,6 @@ public class FolderPermissionsEndpoint : IEndpoint
         var currentUsername = user.GetUsername();
         if (string.IsNullOrEmpty(currentUsername)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
-
         // Validate folder exists
         var folder = await dbContext.Folders
             .Include(f => f.Permissions)
@@ -232,10 +225,10 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Folder not found" });
         }
 
-        // Must be admin or have CanManagePermissions
+        // Must be owner or have CanManagePermissions
         var isOwner = folder.Path.Contains($"/users/{currentUsername}/", StringComparison.OrdinalIgnoreCase)
                    || folder.Path.EndsWith($"/users/{currentUsername}", StringComparison.OrdinalIgnoreCase);
-        var hasAccess = isAdmin || isOwner ||
+        var hasAccess = isOwner ||
             folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
         if (!hasAccess)

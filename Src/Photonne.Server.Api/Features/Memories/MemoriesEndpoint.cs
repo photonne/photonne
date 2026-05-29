@@ -33,26 +33,19 @@ public class MemoriesEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
         var today = DateTime.UtcNow;
+        var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
 
         if (test == true)
         {
-            var testQuery = dbContext.Assets
+            var testAssets = await dbContext.Assets
                 .Include(a => a.Exif)
                 .Include(a => a.Thumbnails)
                 .Include(a => a.Tags)
                 .Include(a => a.UserTags)
                     .ThenInclude(ut => ut.UserTag)
-                .Where(a => a.DeletedAt == null);
-
-            if (!isAdmin)
-            {
-                var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
-                testQuery = testQuery.Where(a => a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
-            }
-
-            var testAssets = await testQuery
+                .Where(a => a.DeletedAt == null
+                         && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
                 .OrderBy(_ => EF.Functions.Random())
                 .Take(15)
                 .ToListAsync(ct);
@@ -70,13 +63,8 @@ public class MemoriesEndpoint : IEndpoint
                 a.DeletedAt == null &&
                 a.CapturedAt.Month == today.Month &&
                 a.CapturedAt.Day == today.Day &&
-                a.CapturedAt.Year < today.Year);
-
-        if (!isAdmin)
-        {
-            var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
-            query = query.Where(a => a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
-        }
+                a.CapturedAt.Year < today.Year &&
+                a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
 
         var assets = await query
             .OrderByDescending(a => a.CapturedAt)
@@ -123,17 +111,24 @@ public class MemoriesEndpoint : IEndpoint
     {
         var userRootPath = $"/assets/users/{username}";
         var allFolders = await dbContext.Folders.ToListAsync(ct);
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
+
         var permissions = await dbContext.FolderPermissions
             .Where(p => p.UserId == userId && p.CanRead)
             .ToListAsync(ct);
         var foldersWithPermissions = await dbContext.FolderPermissions
             .Select(p => p.FolderId).Distinct().ToHashSetAsync(ct);
 
-        var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
+        var allowedIds = permissions
+            .Select(p => p.FolderId)
+            .Where(id => !structuralIds.Contains(id))
+            .ToHashSet();
         foreach (var f in allFolders)
         {
-            if (!foldersWithPermissions.Contains(f.Id) &&
-                f.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
+            if (!foldersWithPermissions.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
                 allowedIds.Add(f.Id);
         }
 
