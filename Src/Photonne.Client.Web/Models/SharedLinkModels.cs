@@ -1,5 +1,9 @@
 namespace Photonne.Client.Web.Models;
 
+// Modelos del visor público de enlaces compartidos (acceso anónimo por token).
+// La gestión de enlaces (crear, editar, revocar, listar enviados) vive en las
+// apps nativas, así que aquí solo se conserva lo que el visor necesita.
+
 public class SharedContentResponse
 {
     public string Token { get; set; } = string.Empty;
@@ -35,77 +39,4 @@ public class SharedAlbumInfo
     public string? Description { get; set; }
     public int AssetCount { get; set; }
     public string? CoverThumbnailUrl { get; set; }
-}
-
-// ── Public link creation ──────────────────────────────────────────────────────
-
-public class CreateShareLinkRequest
-{
-    public Guid? AssetId { get; set; }
-    public Guid? AlbumId { get; set; }
-    public DateTime? ExpiresAt { get; set; }
-    public string? Password { get; set; }
-    public bool AllowDownload { get; set; } = true;
-    public int? MaxViews { get; set; }
-}
-
-public class CreateShareLinkResponse
-{
-    public string Token { get; set; } = string.Empty;
-    public Guid? AssetId { get; set; }
-    public Guid? AlbumId { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? ExpiresAt { get; set; }
-    public bool HasPassword { get; set; }
-    public bool AllowDownload { get; set; } = true;
-    public int? MaxViews { get; set; }
-    public int ViewCount { get; set; }
-    /// <summary>
-    /// Absolute URL to open the shared content. Built from <c>ServerSettings.PublicUrl</c>
-    /// when configured, otherwise from the current request's base URL.
-    /// </summary>
-    public string ShareUrl { get; set; } = string.Empty;
-}
-
-// ── Update share link ─────────────────────────────────────────────────────────
-
-public class UpdateShareLinkRequest
-{
-    public DateTime? ExpiresAt { get; set; }
-    /// <summary>null = keep current | "" = remove | value = set new</summary>
-    public string? Password { get; set; }
-    public bool AllowDownload { get; set; } = true;
-    public int? MaxViews { get; set; }
-}
-
-public class UpdateShareLinkResponse
-{
-    public string Token { get; set; } = string.Empty;
-    public DateTime? ExpiresAt { get; set; }
-    public bool HasPassword { get; set; }
-    public bool AllowDownload { get; set; }
-    public int? MaxViews { get; set; }
-}
-
-// ── Sent share links ──────────────────────────────────────────────────────────
-
-public class SentShareLinkDto
-{
-    public string Token { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? ExpiresAt { get; set; }
-    public bool HasPassword { get; set; }
-    public bool AllowDownload { get; set; } = true;
-    public int? MaxViews { get; set; }
-    public int ViewCount { get; set; }
-    public Guid? AssetId { get; set; }
-    public string? AssetFileName { get; set; }
-    public string? AssetType { get; set; }
-    public string? AssetThumbnailUrl { get; set; }
-    public Guid? AlbumId { get; set; }
-    public string? AlbumName { get; set; }
-    public string? AlbumCoverUrl { get; set; }
-
-    public string DisplayName => AssetFileName ?? AlbumName ?? "Contenido compartido";
-    public string? ThumbnailUrl => AssetThumbnailUrl ?? AlbumCoverUrl;
 }
