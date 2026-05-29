@@ -156,6 +156,15 @@
         </MudItem>
     </MudGrid>
 
+    @* ── Library growth ──────────────────────────────────────────────── *@
+    <MudGrid Class="mb-2">
+        <MudItem xs="12">
+            <GrowthChart Title="Crecimiento de la biblioteca"
+                         Subtitle="Elementos por mes según su fecha de captura (últimos 24 meses)"
+                         Points="@_growth" />
+        </MudItem>
+    </MudGrid>
+
     @* ── Quick access ────────────────────────────────────────────────── *@
     <MudText Typo="Typo.h6" Class="mt-6 mb-3">Accesos rápidos</MudText>
     <MudGrid>
@@ -185,6 +194,7 @@
 
     private double[] _countValues = [0, 0];
     private double[] _storageValues = [0, 0];
+    private List<MonthlyGrowthPoint> _growth = [];
 
     private sealed record QuickCard(string Title, string Description, string Icon, string Href);
 
@@ -216,6 +226,9 @@
         {
             _loadError = true;
         }
+
+        try { _growth = await AdminStatsService.GetGrowthAsync(); }
+        catch { /* growth chart is best-effort */ }
 
         // Operational widgets — each is best-effort and must not break the page.
         _version = await TryGetAsync<VersionInfo>("/api/admin/version");

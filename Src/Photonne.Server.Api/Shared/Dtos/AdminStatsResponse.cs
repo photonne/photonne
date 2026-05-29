@@ -18,3 +18,14 @@ public class AdminUserUsage
     public long PhotoBytes { get; set; }
     public long VideoBytes { get; set; }
 }
+
+/// <summary>One month's worth of the library, used by the admin growth
+/// chart. Buckets are keyed by capture date so the chart mirrors how the
+/// timeline fills up over time.</summary>
+public class MonthlyGrowthPoint
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public int Photos { get; set; }
+    public int Videos { get; set; }
+}

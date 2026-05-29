@@ -19,6 +19,38 @@ public class AdminStatsEndpoint : IEndpoint
         group.MapGet("stats", GetStats)
             .WithName("GetAdminStats")
             .WithDescription("Gets usage statistics for the admin dashboard");
+
+        group.MapGet("stats/growth", GetGrowth)
+            .WithName("GetAdminGrowth")
+            .WithDescription("Gets the library's monthly growth for the admin dashboard");
+    }
+
+    private static async Task<IResult> GetGrowth(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] IMemoryCache cache,
+        CancellationToken ct)
+    {
+        const string cacheKey = "admin:stats:growth";
+        if (cache.TryGetValue(cacheKey, out List<MonthlyGrowthPoint>? cached))
+            return Results.Ok(cached);
+
+        var buckets = await dbContext.Assets
+            .AsNoTracking()
+            .Where(a => a.DeletedAt == null)
+            .GroupBy(a => new { a.CapturedAt.Year, a.CapturedAt.Month })
+            .Select(g => new MonthlyGrowthPoint
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                Photos = g.Count(a => a.Type == AssetType.Image),
+                Videos = g.Count(a => a.Type == AssetType.Video)
+            })
+            .OrderBy(p => p.Year)
+            .ThenBy(p => p.Month)
+            .ToListAsync(ct);
+
+        cache.Set(cacheKey, buckets, TimeSpan.FromMinutes(15));
+        return Results.Ok(buckets);
     }
 
     private static async Task<IResult> GetStats(

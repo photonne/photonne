@@ -39,4 +39,11 @@ public class AdminStatsService : IAdminStatsService
         var response = await _httpClient.GetFromJsonAsync<AdminStatsResponse>("/api/admin/stats");
         return response ?? new AdminStatsResponse();
     }
+
+    public async Task<List<MonthlyGrowthPoint>> GetGrowthAsync()
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.GetFromJsonAsync<List<MonthlyGrowthPoint>>("/api/admin/stats/growth");
+        return response ?? new List<MonthlyGrowthPoint>();
+    }
 }

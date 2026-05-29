@@ -96,6 +96,15 @@ else
             </MudItem>
         </MudGrid>
 
+        <MudGrid Class="mt-1">
+            <MudItem xs="12">
+                <GrowthChart Title="Crecimiento de la biblioteca"
+                             Subtitle="Elementos por mes según su fecha de captura (últimos 36 meses)"
+                             Points="@_growth"
+                             MaxMonths="36" />
+            </MudItem>
+        </MudGrid>
+
         <MudText Typo="Typo.subtitle2" Class="text-uppercase mt-8 mb-4">Detalle del uso del usuario</MudText>
 
         <MudTable Items="@_userUsage"  Elevation="0" Hover="true" Class="stats-table">
@@ -123,6 +132,7 @@ else
     private bool _isAuthorized = false;
     private bool _loadingStats = false;
     private AdminStatsResponse? _stats;
+    private List<MonthlyGrowthPoint> _growth = new();
 
     private IReadOnlyList<AdminUserUsage> _userUsage => _stats?.Users ?? new List<AdminUserUsage>();
     private int TotalPhotos => _stats?.TotalPhotos ?? 0;
@@ -153,6 +163,8 @@ else
             {
                 _loadingStats = true;
                 _stats = await AdminStatsService.GetStatsAsync();
+                try { _growth = await AdminStatsService.GetGrowthAsync(); }
+                catch { /* growth chart is best-effort */ }
             }
             catch (Exception ex)
             {
