@@ -2,11 +2,13 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -21,8 +23,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -63,6 +69,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -76,8 +83,11 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.auth.TokenStorage
@@ -101,9 +111,11 @@ import com.photonne.app.resources.slideshow_start
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.ln
+import kotlin.math.roundToInt
 import kotlin.math.tan
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -282,28 +294,46 @@ fun AssetDetailScreen(
             }
 
             if (currentItem != null && !slideshowActive) {
-                AssetActionsBottomBar(
-                    item = currentItem,
-                    isFavorite = currentIsFavorite,
-                    showOverflow = showOverflow,
-                    onShowOverflowChange = { showOverflow = it },
-                    onToggleFavorite = {
-                        viewModel.toggleFavorite(currentItem.id) { confirmed ->
-                            onFavoriteChanged(currentItem.id, confirmed)
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                ) {
+                    if (items.size > 1) {
+                        AssetThumbnailStrip(
+                            items = items,
+                            pagerState = pagerState,
+                            baseUrl = apiBaseUrl,
+                            onThumbnailClick = { index ->
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    AssetActionsBottomBar(
+                        item = currentItem,
+                        isFavorite = currentIsFavorite,
+                        showOverflow = showOverflow,
+                        onShowOverflowChange = { showOverflow = it },
+                        onToggleFavorite = {
+                            viewModel.toggleFavorite(currentItem.id) { confirmed ->
+                                onFavoriteChanged(currentItem.id, confirmed)
+                            }
+                        },
+                        onAddToAlbum = { onAddToAlbum(currentItem) },
+                        onShowInfo = { showInfo = true },
+                        onTrashRequest = { showTrashConfirm = true },
+                        onEditDescription = { showEditDescription = true },
+                        onOpenFaces = { onOpenFaces(currentItem.id) },
+                        onArchive = {
+                            viewModel.archive(currentItem.id) { id ->
+                                onAssetArchived(id)
+                            }
                         }
-                    },
-                    onAddToAlbum = { onAddToAlbum(currentItem) },
-                    onShowInfo = { showInfo = true },
-                    onTrashRequest = { showTrashConfirm = true },
-                    onEditDescription = { showEditDescription = true },
-                    onOpenFaces = { onOpenFaces(currentItem.id) },
-                    onArchive = {
-                        viewModel.archive(currentItem.id) { id ->
-                            onAssetArchived(id)
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                )
+                    )
+                }
             }
 
             if (slideshowActive) {
@@ -753,6 +783,130 @@ private fun SlideshowControls(
                     contentDescription = stringResource(Res.string.slideshow_exit),
                     tint = Color.White
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Horizontal thumbnail strip that sits above [AssetActionsBottomBar] and
+ * partially overlays the photo. The strip itself is transparent — only the
+ * thumbnails occlude the image — so the bottom of the photo bleeds through
+ * the gaps and the bar stack feels like a floating element.
+ *
+ * The strip's scroll position is driven by the pager (not the user) so the
+ * centered slot stays aligned with the currently visible photo while the
+ * user swipes. Each slot scales based on its continuous distance from
+ * `pagerState.currentPage + currentPageOffsetFraction`, producing the
+ * iOS/Android-style grow/shrink animation as items move through the center.
+ */
+@Composable
+private fun AssetThumbnailStrip(
+    items: List<TimelineItem>,
+    pagerState: PagerState,
+    baseUrl: String,
+    onThumbnailClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val stripState = rememberLazyListState()
+    val density = LocalDensity.current
+    // Narrow slots pack the strip densely (neighbours nearly touching) and let
+    // a single drag travel across many photos, so long-distance scrubbing feels
+    // fluid even though the strip stays locked 1:1 to the pager.
+    val slotWidth = 34.dp
+    val slotWidthPx = with(density) { slotWidth.toPx() }
+
+    // Pager and strip share one continuous position. Either side can drive,
+    // but never both: while the user is dragging the strip we forward its
+    // scroll to the pager; otherwise the pager's swipe drives the strip.
+    // Gating on interactionSource (rather than isScrollInProgress) avoids
+    // counting our own programmatic scrollToItem calls as user input.
+    val stripDragged by stripState.interactionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(pagerState, items.size, slotWidthPx) {
+        if (items.isEmpty()) return@LaunchedEffect
+        snapshotFlow {
+            pagerState.currentPage + pagerState.currentPageOffsetFraction
+        }.collect { pos ->
+            if (stripDragged) return@collect
+            val safe = pos.coerceIn(0f, items.lastIndex.toFloat())
+            val baseIndex = floor(safe).toInt().coerceIn(0, items.lastIndex)
+            val offset = ((safe - baseIndex) * slotWidthPx).toInt().coerceAtLeast(0)
+            stripState.scrollToItem(baseIndex, offset)
+        }
+    }
+
+    LaunchedEffect(stripState, items.size, slotWidthPx) {
+        if (items.isEmpty()) return@LaunchedEffect
+        snapshotFlow {
+            stripState.firstVisibleItemIndex to stripState.firstVisibleItemScrollOffset
+        }.collect { (idx, offset) ->
+            if (!stripDragged) return@collect
+            val pos = (idx + offset / slotWidthPx).coerceIn(0f, items.lastIndex.toFloat())
+            // Anchor to the NEAREST page so the offset fraction stays naturally
+            // within scrollToPage's valid [-0.5, 0.5] range. Anchoring to the
+            // floor instead makes the fraction climb to 1.0, get clamped at 0.5
+            // (the photo freezes mid-swipe), then snap back to ~0 when the base
+            // page ticks over — the visible "stop and jump".
+            val basePage = pos.roundToInt().coerceIn(0, items.lastIndex)
+            val frac = (pos - basePage).coerceIn(-0.5f, 0.5f)
+            pagerState.scrollToPage(basePage, frac)
+        }
+    }
+
+    val continuousPos by remember(pagerState) {
+        derivedStateOf { pagerState.currentPage + pagerState.currentPageOffsetFraction }
+    }
+
+    BoxWithConstraints(modifier = modifier) {
+        // contentPadding centers the first/last item: with slot S and
+        // viewport V, side padding = (V - S) / 2 lets index 0 sit dead
+        // center when stripState scroll is 0.
+        val sidePadding = ((maxWidth - slotWidth) / 2).coerceAtLeast(0.dp)
+        LazyRow(
+            state = stripState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(
+                start = sidePadding,
+                end = sidePadding,
+                top = 4.dp,
+                bottom = 4.dp
+            )
+        ) {
+            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                val distance = abs(index - continuousPos)
+                val proximity = 1f - distance.coerceIn(0f, 1f)
+                // High min scale keeps off-centre slots nearly touching (only a
+                // hair of gap), while the centred slot grows well past its box
+                // so the current asset reads as clearly larger than the rest.
+                val scale = lerp(0.94f, 1.38f, proximity)
+                val alpha = lerp(0.55f, 1f, proximity)
+                Box(
+                    modifier = Modifier
+                        .width(slotWidth)
+                        .height(slotWidth)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            this.alpha = alpha
+                        }
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .clickable { onThumbnailClick(index) }
+                ) {
+                    val thumbnailModel = item.localThumbnailModel
+                        ?: if (item.hasThumbnails) {
+                            "$baseUrl/api/assets/${item.id}/thumbnail?size=Small"
+                        } else null
+                    if (thumbnailModel != null) {
+                        AsyncImage(
+                            model = thumbnailModel,
+                            contentDescription = item.fileName,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
         }
     }
