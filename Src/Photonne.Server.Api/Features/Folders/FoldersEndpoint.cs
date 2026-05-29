@@ -113,15 +113,10 @@ public class FoldersEndpoint : IEndpoint
             if (library == null)
                 return Results.NotFound(new { error = $"Library {libraryId} not found" });
 
-            var isAdmin = user.IsInRole("Admin");
-
-            if (!isAdmin)
-            {
-                var hasAccess = await dbContext.ExternalLibraryPermissions
-                    .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanRead, cancellationToken);
-                if (!hasAccess)
-                    return Results.Forbid();
-            }
+            var hasAccess = await dbContext.ExternalLibraryPermissions
+                .AnyAsync(p => p.UserId == userId && p.ExternalLibraryId == libraryId && p.CanRead, cancellationToken);
+            if (!hasAccess)
+                return Results.Forbid();
 
             // Find root folder: ExternalLibraryId matches and parent does NOT belong to this library
             var rootFolder = await dbContext.Folders
@@ -174,7 +169,7 @@ public class FoldersEndpoint : IEndpoint
                     .Where(a => a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
-                IsOwner = isAdmin,
+                IsOwner = false,
                 IsShared = false,
                 ExternalLibraryId = rootFolder.ExternalLibraryId,
                 SubFolders = rootFolder.SubFolders.Select(sf => new FolderResponse
@@ -193,7 +188,7 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = isAdmin,
+                    IsOwner = false,
                     IsShared = false,
                     ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()
@@ -224,8 +219,7 @@ public class FoldersEndpoint : IEndpoint
             if (cache.TryGetValue(cacheKey, out List<FolderResponse>? cachedFolders) && cachedFolders != null)
                 return Results.Ok(cachedFolders);
 
-            var isAdmin = user.IsInRole("Admin");
-            var folders = await GetFoldersForUserAsync(dbContext, userId, isAdmin, includeAssets: true, cancellationToken);
+            var folders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, cancellationToken);
 
             var folderIds = folders.Select(f => f.Id).ToList();
             var sharedCounts = await dbContext.FolderPermissions
@@ -273,7 +267,7 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = userPerm?.CanManagePermissions ?? isAdmin,
+                    IsOwner = userPerm?.CanManagePermissions ?? false,
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     ExternalLibraryId = f.ExternalLibraryId
@@ -318,12 +312,11 @@ public class FoldersEndpoint : IEndpoint
                 return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
             }
 
-            if (!await CanReadFolderAsync(dbContext, userId, user.IsInRole("Admin"), folderId, cancellationToken))
+            if (!await CanReadFolderAsync(dbContext, userId, folderId, cancellationToken))
             {
                 return Results.Forbid();
             }
 
-            var isAdmin = user.IsInRole("Admin");
             var usernameToIdMap = await GetUsernameToIdMapAsync(dbContext, cancellationToken);
             var ownerIdFromPath = TryGetUserIdFromPath(folder.Path, usernameToIdMap, out var parsedOwnerId)
                 ? parsedOwnerId
@@ -391,7 +384,7 @@ public class FoldersEndpoint : IEndpoint
                     .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
-                IsOwner = userPermission?.CanManagePermissions ?? isAdmin,
+                IsOwner = userPermission?.CanManagePermissions ?? false,
                 IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = sharedCount,
                 ExternalLibraryId = folder.ExternalLibraryId,
@@ -411,7 +404,7 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? isAdmin,
+                    IsOwner = subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false,
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()
@@ -449,7 +442,7 @@ public class FoldersEndpoint : IEndpoint
                 return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
             }
 
-            if (!await CanReadFolderAsync(dbContext, userId, user.IsInRole("Admin"), folderId, cancellationToken))
+            if (!await CanReadFolderAsync(dbContext, userId, folderId, cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -534,8 +527,7 @@ public class FoldersEndpoint : IEndpoint
             if (cache.TryGetValue(treeCacheKey, out List<FolderResponse>? cachedTree) && cachedTree != null)
                 return Results.Ok(cachedTree);
 
-            var isAdmin = user.IsInRole("Admin");
-            var allFolders = await GetFoldersForUserAsync(dbContext, userId, isAdmin, includeAssets: true, cancellationToken);
+            var allFolders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, cancellationToken);
 
             var folderIds = allFolders.Select(f => f.Id).ToList();
             var sharedCounts = await dbContext.FolderPermissions
@@ -584,7 +576,7 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = userPerm?.CanManagePermissions ?? isAdmin,
+                    IsOwner = userPerm?.CanManagePermissions ?? false,
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     SubFolders = new List<FolderResponse>()
@@ -653,7 +645,7 @@ public class FoldersEndpoint : IEndpoint
                 return Results.NotFound(new { error = "Carpeta padre no encontrada." });
             }
 
-            if (!await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), parentFolder.Id, cancellationToken))
+            if (!await CanWriteFolderAsync(dbContext, userId, parentFolder.Id, cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -740,7 +732,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta no encontrada." });
         }
 
-        if (!await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), folderId, cancellationToken))
+        if (!await CanWriteFolderAsync(dbContext, userId, folderId, cancellationToken))
         {
             return Results.Forbid();
         }
@@ -768,7 +760,7 @@ public class FoldersEndpoint : IEndpoint
                 return Results.BadRequest(new { error = "No puedes mover una carpeta dentro de su propia subcarpeta." });
             }
 
-            if (!await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), newParent.Id, cancellationToken))
+            if (!await CanWriteFolderAsync(dbContext, userId, newParent.Id, cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -849,7 +841,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta no encontrada." });
         }
 
-        if (!await CanDeleteFolderAsync(dbContext, userId, user.IsInRole("Admin"), folderId, cancellationToken))
+        if (!await CanDeleteFolderAsync(dbContext, userId, folderId, cancellationToken))
         {
             return Results.Forbid();
         }
@@ -912,8 +904,8 @@ public class FoldersEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        if ((request.SourceFolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), request.SourceFolderId.Value, cancellationToken)) ||
-            !await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), request.TargetFolderId, cancellationToken))
+        if ((request.SourceFolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, request.SourceFolderId.Value, cancellationToken)) ||
+            !await CanWriteFolderAsync(dbContext, userId, request.TargetFolderId, cancellationToken))
         {
             return Results.Forbid();
         }
@@ -933,7 +925,7 @@ public class FoldersEndpoint : IEndpoint
         {
             foreach (var asset in assets)
             {
-                if (asset.FolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), asset.FolderId.Value, cancellationToken))
+                if (asset.FolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, asset.FolderId.Value, cancellationToken))
                 {
                     return Results.Forbid();
                 }
@@ -999,7 +991,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        if (!await CanWriteFolderAsync(dbContext, userId, user.IsInRole("Admin"), request.FolderId, cancellationToken))
+        if (!await CanWriteFolderAsync(dbContext, userId, request.FolderId, cancellationToken))
         {
             return Results.Forbid();
         }
@@ -1053,16 +1045,17 @@ public class FoldersEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, bool isAdmin, Guid folderId, CancellationToken ct)
+    private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
     {
-        if (isAdmin)
-            return true;
-
         var folder = await dbContext.Folders
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == folderId, ct);
 
         if (folder == null) return false;
+
+        // Structural containers (/assets, /assets/users) never grant access —
+        // they hold every user's personal space.
+        if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
         // Carpetas de biblioteca externa: verificar permiso de la biblioteca
         if (folder.ExternalLibraryId.HasValue)
@@ -1084,18 +1077,14 @@ public class FoldersEndpoint : IEndpoint
             .AnyAsync(p => p.UserId == userId && p.FolderId == folderId && p.CanRead, ct);
     }
 
-    private static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, bool isAdmin, Guid folderId, CancellationToken ct)
+    private static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
     {
-        if (isAdmin)
-        {
-            return true;
-        }
-
         var folder = await dbContext.Folders
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == folderId, ct);
 
         if (folder == null) return false;
+        if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
         var hasPermissions = await dbContext.FolderPermissions
             .AnyAsync(p => p.FolderId == folderId, ct);
@@ -1110,18 +1099,14 @@ public class FoldersEndpoint : IEndpoint
             .AnyAsync(p => p.UserId == userId && p.FolderId == folderId && p.CanWrite, ct);
     }
 
-    private static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, bool isAdmin, Guid folderId, CancellationToken ct)
+    private static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
     {
-        if (isAdmin)
-        {
-            return true;
-        }
-
         var folder = await dbContext.Folders
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == folderId, ct);
 
         if (folder == null) return false;
+        if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
         var hasPermissions = await dbContext.FolderPermissions
             .AnyAsync(p => p.FolderId == folderId, ct);
@@ -1152,13 +1137,12 @@ public class FoldersEndpoint : IEndpoint
         if (string.IsNullOrEmpty(username)) return false;
 
         var userRootPath = GetUserRootPath(username);
-        return folderPath.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase);
+        return VirtualPath.IsUnder(folderPath, userRootPath);
     }
 
     internal static async Task<List<Folder>> GetFoldersForUserAsync(
         ApplicationDbContext dbContext,
         Guid userId,
-        bool isAdmin,
         bool includeAssets,
         CancellationToken ct)
     {
@@ -1168,20 +1152,23 @@ public class FoldersEndpoint : IEndpoint
             query = query.Include(f => f.Assets);
         }
 
-        if (isAdmin)
-        {
-            return await query.ToListAsync(ct);
-        }
-
         var allFolders = await query.ToListAsync(ct);
         var permissions = await dbContext.FolderPermissions.ToListAsync(ct);
+
+        // Structural containers (/assets, /assets/users) never grant access —
+        // they hold every user's personal space, so a stale FolderPermission
+        // on them would leak everything to the grantee.
+        var structuralIds = allFolders
+            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
+            .Select(f => f.Id)
+            .ToHashSet();
 
         var foldersWithPermissions = permissions
             .Select(p => p.FolderId)
             .ToHashSet();
 
         var readableIds = permissions
-            .Where(p => p.UserId == userId && p.CanRead)
+            .Where(p => p.UserId == userId && p.CanRead && !structuralIds.Contains(p.FolderId))
             .Select(p => p.FolderId)
             .ToHashSet();
 
@@ -1198,10 +1185,10 @@ public class FoldersEndpoint : IEndpoint
             var userRootPath = GetUserRootPath(username);
             foreach (var folder in allFolders)
             {
-                if (!foldersWithPermissions.Contains(folder.Id) && !folder.ExternalLibraryId.HasValue)
+                if (!foldersWithPermissions.Contains(folder.Id) && !folder.ExternalLibraryId.HasValue
+                    && VirtualPath.IsUnder(folder.Path, userRootPath))
                 {
-                    if (folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                        allowedIds.Add(folder.Id);
+                    allowedIds.Add(folder.Id);
                 }
             }
         }

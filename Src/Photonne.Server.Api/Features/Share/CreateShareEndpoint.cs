@@ -37,12 +37,11 @@ public class CreateShareEndpoint : IEndpoint
         // Verify ownership / access
         if (request.AlbumId.HasValue)
         {
-            var isAdmin = user.IsInRole("Admin");
             var album = await dbContext.Albums
                 .Include(a => a.Permissions)
                 .FirstOrDefaultAsync(a => a.Id == request.AlbumId, ct);
             if (album == null) return Results.NotFound(new { error = "Album not found" });
-            var canShare = isAdmin || album.OwnerId == userId ||
+            var canShare = album.OwnerId == userId ||
                            album.Permissions.Any(p => p.UserId == userId && p.CanWrite);
             if (!canShare) return Results.Forbid();
         }

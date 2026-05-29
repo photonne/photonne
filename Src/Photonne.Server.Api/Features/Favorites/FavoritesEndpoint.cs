@@ -23,6 +23,7 @@ public class FavoritesEndpoint : IEndpoint
 
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
         [FromQuery] int pageSize,
@@ -37,8 +38,9 @@ public class FavoritesEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
         var userRootPath = $"/assets/users/{username}";
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
 
         var query = dbContext.Assets
             .Include(a => a.Exif)
@@ -46,32 +48,8 @@ public class FavoritesEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
             .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && !a.IsArchived && a.IsFavorite);
-
-        if (!isAdmin)
-        {
-            var allFolders = await dbContext.Folders.ToListAsync(cancellationToken);
-            var permissions = await dbContext.FolderPermissions
-                .Where(p => p.UserId == userId && p.CanRead)
-                .ToListAsync(cancellationToken);
-
-            var foldersWithPermissionsSet = await dbContext.FolderPermissions
-                .Select(p => p.FolderId)
-                .Distinct()
-                .ToHashSetAsync(cancellationToken);
-
-            var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
-            foreach (var folder in allFolders)
-            {
-                if (!foldersWithPermissionsSet.Contains(folder.Id) &&
-                    folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    allowedIds.Add(folder.Id);
-                }
-            }
-
-            query = query.Where(a => a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
-        }
+            .Where(a => a.DeletedAt == null && !a.IsArchived && a.IsFavorite
+                     && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
 
         if (cursor.HasValue)
             query = query.Where(a => a.CapturedAt < cursor.Value.ToUniversalTime());

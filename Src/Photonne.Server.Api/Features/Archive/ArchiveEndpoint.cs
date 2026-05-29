@@ -37,6 +37,7 @@ public class ArchiveEndpoint : IEndpoint
 
     private static async Task<IResult> GetArchived(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         [FromQuery] DateTime? cursor,
         [FromQuery] int pageSize,
@@ -50,8 +51,9 @@ public class ArchiveEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
         var userRootPath = $"/assets/users/{username}";
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, ct);
 
         var query = dbContext.Assets
             .Include(a => a.Exif)
@@ -59,32 +61,8 @@ public class ArchiveEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && a.IsArchived);
-
-        if (!isAdmin)
-        {
-            var allFolders = await dbContext.Folders.ToListAsync(ct);
-            var permissions = await dbContext.FolderPermissions
-                .Where(p => p.UserId == userId && p.CanRead)
-                .ToListAsync(ct);
-
-            var foldersWithPermissionsSet = await dbContext.FolderPermissions
-                .Select(p => p.FolderId)
-                .Distinct()
-                .ToHashSetAsync(ct);
-
-            var allowedIds = permissions.Select(p => p.FolderId).ToHashSet();
-            foreach (var folder in allFolders)
-            {
-                if (!foldersWithPermissionsSet.Contains(folder.Id) &&
-                    folder.Path.Replace('\\', '/').StartsWith(userRootPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    allowedIds.Add(folder.Id);
-                }
-            }
-
-            query = query.Where(a => a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
-        }
+            .Where(a => a.DeletedAt == null && a.IsArchived
+                     && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
 
         if (cursor.HasValue)
             query = query.Where(a => a.CapturedAt < cursor.Value.ToUniversalTime());
@@ -145,12 +123,11 @@ public class ArchiveEndpoint : IEndpoint
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.DeletedAt == null)
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
+        if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
             return Results.Forbid();
 
         foreach (var asset in assets)
@@ -174,12 +151,11 @@ public class ArchiveEndpoint : IEndpoint
         if (request.AssetIds == null || request.AssetIds.Count == 0)
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.IsArchived)
             .ToListAsync(ct);
 
-        if (!isAdmin && assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
+        if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
             return Results.Forbid();
 
         foreach (var asset in assets)
@@ -199,13 +175,11 @@ public class ArchiveEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var isAdmin = user.IsInRole("Admin");
         var assets = await dbContext.Assets
             .Where(a => a.IsArchived && a.DeletedAt == null)
             .ToListAsync(ct);
 
-        if (!isAdmin)
-            assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
+        assets = assets.Where(a => IsAssetInUserRoot(a.FullPath, username)).ToList();
 
         if (!assets.Any())
             return Results.NoContent();

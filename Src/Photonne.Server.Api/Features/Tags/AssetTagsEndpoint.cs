@@ -61,8 +61,7 @@ public class AssetTagsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Asset no encontrado." });
         }
 
-        var isAdmin = user.IsInRole("Admin");
-        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, username))
+        if (!IsAssetInUserRoot(asset.FullPath, username))
         {
             return Results.Forbid();
         }
@@ -139,8 +138,7 @@ public class AssetTagsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Asset no encontrado." });
         }
 
-        var isAdmin = user.IsInRole("Admin");
-        if (!isAdmin && !IsAssetInUserRoot(asset.FullPath, username))
+        if (!IsAssetInUserRoot(asset.FullPath, username))
         {
             return Results.Forbid();
         }

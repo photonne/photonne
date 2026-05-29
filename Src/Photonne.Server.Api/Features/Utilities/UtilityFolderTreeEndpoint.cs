@@ -29,9 +29,8 @@ public class UtilityFolderTreeEndpoint : IEndpoint
         if (!FoldersEndpoint.TryGetUserId(user, out var userId))
             return Results.Unauthorized();
 
-        // Always isAdmin=false: utilities show only the current user's folders
         var allFolders = await FoldersEndpoint.GetFoldersForUserAsync(
-            dbContext, userId, isAdmin: false, includeAssets: true, cancellationToken);
+            dbContext, userId, includeAssets: true, cancellationToken);
 
         var folderIds = allFolders.Select(f => f.Id).ToList();
 
