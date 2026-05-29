@@ -127,6 +127,48 @@ class SearchViewModel(
         scheduleSearch(immediate = true)
     }
 
+    fun showResultsForSceneLabel(label: String) {
+        pendingSearch?.cancel()
+        _state.update {
+            it.copy(
+                query = "",
+                mode = SearchMode.Text,
+                from = null,
+                to = null,
+                ocrText = "",
+                selectedPersonIds = emptySet(),
+                selectedObjectLabels = emptySet(),
+                selectedSceneLabels = setOf(label),
+                results = emptyList(),
+                hasMore = false,
+                error = null,
+                selection = emptySet()
+            )
+        }
+        scheduleSearch(immediate = true)
+    }
+
+    fun showResultsForObjectLabel(label: String) {
+        pendingSearch?.cancel()
+        _state.update {
+            it.copy(
+                query = "",
+                mode = SearchMode.Text,
+                from = null,
+                to = null,
+                ocrText = "",
+                selectedPersonIds = emptySet(),
+                selectedObjectLabels = setOf(label),
+                selectedSceneLabels = emptySet(),
+                results = emptyList(),
+                hasMore = false,
+                error = null,
+                selection = emptySet()
+            )
+        }
+        scheduleSearch(immediate = true)
+    }
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         _state.update { previous ->
             previous.copy(

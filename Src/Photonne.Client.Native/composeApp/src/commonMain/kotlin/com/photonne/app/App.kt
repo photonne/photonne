@@ -1363,9 +1363,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             selectedTab = MainTab.Search
                             when (facet.kind) {
                                 com.photonne.app.ui.hub.HubFacetKind.Scene ->
-                                    searchViewModel.toggleSceneLabel(facet.label)
+                                    searchViewModel.showResultsForSceneLabel(facet.label)
                                 com.photonne.app.ui.hub.HubFacetKind.ObjectLabel ->
-                                    searchViewModel.toggleObjectLabel(facet.label)
+                                    searchViewModel.showResultsForObjectLabel(facet.label)
                             }
                         }
                     )
@@ -1696,8 +1696,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // by that label — same flow as the PWA, where Explorar
                             // is just a deep-linking surface for the search engine.
                             onSceneClick = { label ->
-                                searchViewModel.clearAll()
-                                searchViewModel.toggleSceneLabel(label)
+                                searchViewModel.showResultsForSceneLabel(label)
                                 selectedTab = MainTab.Search
                             }
                         )
@@ -1705,8 +1704,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.explore.ExploreObjectsScreen(
                             viewModel = exploreFacetsViewModel,
                             onObjectClick = { label ->
-                                searchViewModel.clearAll()
-                                searchViewModel.toggleObjectLabel(label)
+                                searchViewModel.showResultsForObjectLabel(label)
                                 selectedTab = MainTab.Search
                             }
                         )
