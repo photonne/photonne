@@ -34,7 +34,9 @@
         }
 
         var path = context.Path.Trim('/').ToLowerInvariant();
-        if (path.StartsWith("login"))
+
+        // Public routes: login and the anonymous shared-link viewer.
+        if (path.StartsWith("login") || path.StartsWith("share"))
         {
             return;
         }

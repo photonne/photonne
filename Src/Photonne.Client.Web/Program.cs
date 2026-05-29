@@ -119,4 +119,8 @@ builder.Services.AddScoped<BackgroundTaskStateService>(sp =>
 // ── Otros ───────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDemoInfoService, DemoInfoService>();
 
+// Visor público de enlaces compartidos (acceso anónimo por token)
+builder.Services.AddScoped<IShareService>(sp =>
+    new ShareService(sp.GetRequiredService<HttpClient>()));
+
 await builder.Build().RunAsync();
