@@ -1,0 +1,77 @@
+@* Horizontal "top N" bar list. Each row shows a label, a proportional bar and
+   a formatted value. Useful for "top users by storage" style breakdowns. *@
+@typeparam TItem
+
+<MudPaper Class="pa-4" Elevation="0" Outlined="true" Style="height: 100%;">
+    <MudText Typo="Typo.subtitle1" Class="mb-1">@Title</MudText>
+    @if (!string.IsNullOrEmpty(Subtitle))
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-3">@Subtitle</MudText>
+    }
+
+    @if (_rows.Count == 0)
+    {
+        <div class="d-flex align-center justify-center" style="height: 120px;">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin datos.</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3 mt-2">
+            @foreach (var row in _rows)
+            {
+                <div>
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <MudText Typo="Typo.body2" Style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">
+                            @LabelSelector(row.Item)
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">@row.Formatted</MudText>
+                    </div>
+                    <MudProgressLinear Color="Color.Primary" Rounded="true" Size="Size.Medium"
+                                       Value="@row.Percent" />
+                </div>
+            }
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public Func<TItem, double> ValueSelector { get; set; } = _ => 0;
+    [Parameter, EditorRequired] public Func<TItem, string> LabelSelector { get; set; } = _ => string.Empty;
+
+    /// <summary>Optional value formatter (e.g. bytes → "1,2 GiB"). Defaults to N0.</summary>
+    [Parameter] public Func<double, string>? ValueFormatter { get; set; }
+
+    /// <summary>Maximum rows to display (top N by value).</summary>
+    [Parameter] public int MaxRows { get; set; } = 5;
+
+    private readonly List<Row> _rows = [];
+
+    private sealed record Row(TItem Item, double Percent, string Formatted);
+
+    protected override void OnParametersSet()
+    {
+        _rows.Clear();
+        if (Items.Count == 0) return;
+
+        var ranked = Items
+            .OrderByDescending(ValueSelector)
+            .Take(MaxRows)
+            .ToList();
+
+        var max = ranked.Max(ValueSelector);
+        if (max <= 0) return;
+
+        foreach (var item in ranked)
+        {
+            var value = ValueSelector(item);
+            var pct = value / max * 100;
+            var formatted = ValueFormatter is not null ? ValueFormatter(value) : value.ToString("N0");
+            _rows.Add(new Row(item, pct, formatted));
+        }
+    }
+}

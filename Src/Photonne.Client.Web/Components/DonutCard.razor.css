@@ -1,0 +1,29 @@
+.donut {
+    flex-shrink: 0;
+}
+
+.donut-track {
+    stroke: var(--mud-palette-lines-default);
+    opacity: 0.35;
+}
+
+.donut-center-value {
+    font-size: 6px;
+    font-weight: 700;
+    fill: var(--mud-palette-text-primary);
+}
+
+.donut-center-label {
+    font-size: 2.6px;
+    fill: var(--mud-palette-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.donut-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: inline-block;
+}

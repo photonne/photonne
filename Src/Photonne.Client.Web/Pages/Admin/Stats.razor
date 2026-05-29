@@ -65,6 +65,37 @@ else
             </MudItem>
         </MudGrid>
 
+        <MudText Typo="Typo.subtitle2" Class="text-uppercase mt-8 mb-4">Distribución</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <DonutCard Title="Fotos vs vídeos"
+                           Subtitle="Por número de elementos"
+                           Values="@(new double[] { TotalPhotos, TotalVideos })"
+                           Labels="@(["Fotos", "Vídeos"])"
+                           CenterValue="@((TotalPhotos + TotalVideos).ToString("N0"))"
+                           CenterLabel="total" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <DonutCard Title="Almacenamiento por tipo"
+                           Subtitle="Espacio ocupado"
+                           Values="@_storageValues"
+                           Labels="@(["Fotos", "Vídeos"])"
+                           CenterValue="@FormatGiB(_stats?.TotalBytes ?? 0)"
+                           CenterLabel="usado"
+                           ValueFormatter="@(v => FormatGiB((long)v))" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <TopBarsCard TItem="AdminUserUsage"
+                             Title="Top usuarios"
+                             Subtitle="Por almacenamiento usado"
+                             Items="@_userUsage"
+                             ValueSelector="@(u => u.PhotoBytes + u.VideoBytes)"
+                             LabelSelector="@(u => u.DisplayName)"
+                             ValueFormatter="@(v => FormatGiB((long)v))"
+                             MaxRows="8" />
+            </MudItem>
+        </MudGrid>
+
         <MudText Typo="Typo.subtitle2" Class="text-uppercase mt-8 mb-4">Detalle del uso del usuario</MudText>
 
         <MudTable Items="@_userUsage"  Elevation="0" Hover="true" Class="stats-table">
@@ -97,6 +128,12 @@ else
     private int TotalPhotos => _stats?.TotalPhotos ?? 0;
     private int TotalVideos => _stats?.TotalVideos ?? 0;
     private long TotalStorageGiB => BytesToGiB(_stats?.TotalBytes ?? 0);
+
+    private double[] _storageValues =>
+    [
+        _userUsage.Sum(u => (double)u.PhotoBytes),
+        _userUsage.Sum(u => (double)u.VideoBytes)
+    ];
 
     protected override async Task OnInitializedAsync()
     {

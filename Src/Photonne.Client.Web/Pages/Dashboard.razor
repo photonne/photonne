@@ -1,6 +1,7 @@
 @page "/"
 @page "/admin"
 @inject IAdminStatsService AdminStatsService
+@inject HttpClient Http
 @inject NavigationManager Navigation
 
 <PageTitle>Panel de administración - Photonne</PageTitle>
@@ -46,6 +47,115 @@
         </MudAlert>
     }
 
+    @* ── Operational widgets ─────────────────────────────────────────── *@
+    <MudGrid Class="mb-2">
+        @* Versión del servidor *@
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-4 dash-widget" Elevation="0" Outlined="true"
+                      @onclick="@(() => Navigation.NavigateTo("/admin/settings/version"))">
+                <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Outlined.SystemUpdate"
+                                 Color="@(_version?.HasUpdate == true ? Color.Warning : Color.Success)" />
+                        <MudText Typo="Typo.subtitle1">Versión</MudText>
+                    </div>
+                    @if (_version?.HasUpdate == true)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">Actualización</MudChip>
+                    }
+                </div>
+                <MudText Typo="Typo.h6" Class="mt-2">v@(_version?.CurrentVersion ?? "—")</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @if (_version?.HasUpdate == true)
+                    {
+                        @($"Disponible v{_version.LatestVersion}")
+                    }
+                    else if (_version is not null)
+                    {
+                        @("Estás al día")
+                    }
+                    else
+                    {
+                        @("—")
+                    }
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        @* Cola de IA pendiente *@
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-4 dash-widget" Elevation="0" Outlined="true"
+                      @onclick="@(() => Navigation.NavigateTo("/admin/system/tasks"))">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Outlined.Psychology"
+                             Color="@(_mlPending > 0 ? Color.Info : Color.Success)" />
+                    <MudText Typo="Typo.subtitle1">Cola de IA</MudText>
+                </div>
+                <MudText Typo="Typo.h6" Class="mt-2">
+                    @(_mlPending?.ToString("N0") ?? "—")
+                </MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @(_mlPending is > 0 ? "fotos pendientes de procesar" : "todo procesado")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        @* Papelera *@
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-4 dash-widget" Elevation="0" Outlined="true"
+                      @onclick="@(() => Navigation.NavigateTo("/admin/system/maintenance"))">
+                <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Outlined.Delete"
+                                 Color="@(_trash?.ExpiredItems > 0 ? Color.Warning : Color.Default)" />
+                        <MudText Typo="Typo.subtitle1">Papelera</MudText>
+                    </div>
+                    @if (_trash?.ExpiredItems > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                            @_trash.ExpiredItems caducados
+                        </MudChip>
+                    }
+                </div>
+                <MudText Typo="Typo.h6" Class="mt-2">@(_trash?.TotalItems.ToString("N0") ?? "—")</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @(_trash is not null ? $"{FormatBytes(_trash.TotalBytes)} en papelera" : "—")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* ── Charts ──────────────────────────────────────────────────────── *@
+    <MudGrid Class="mb-2">
+        <MudItem xs="12" md="4">
+            <DonutCard Title="Fotos vs vídeos"
+                       Subtitle="Distribución por número de elementos"
+                       Values="@_countValues"
+                       Labels="@(["Fotos", "Vídeos"])"
+                       CenterValue="@FormatCompact((_stats?.TotalPhotos ?? 0) + (_stats?.TotalVideos ?? 0))"
+                       CenterLabel="total" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <DonutCard Title="Almacenamiento por tipo"
+                       Subtitle="Espacio ocupado por fotos y vídeos"
+                       Values="@_storageValues"
+                       Labels="@(["Fotos", "Vídeos"])"
+                       CenterValue="@FormatBytes(_stats?.TotalBytes)"
+                       CenterLabel="usado"
+                       ValueFormatter="@(v => FormatBytes((long)v))" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <TopBarsCard TItem="AdminUserUsage"
+                         Title="Top usuarios por almacenamiento"
+                         Subtitle="Los que más espacio ocupan"
+                         Items="@(_stats?.Users ?? [])"
+                         ValueSelector="@(u => u.PhotoBytes + u.VideoBytes)"
+                         LabelSelector="@(u => u.DisplayName)"
+                         ValueFormatter="@(v => FormatBytes((long)v))"
+                         MaxRows="5" />
+        </MudItem>
+    </MudGrid>
+
     @* ── Quick access ────────────────────────────────────────────────── *@
     <MudText Typo="Typo.h6" Class="mt-6 mb-3">Accesos rápidos</MudText>
     <MudGrid>
@@ -69,6 +179,13 @@
     private AdminStatsResponse? _stats;
     private bool _loadError;
 
+    private VersionInfo? _version;
+    private TrashStatsResponse? _trash;
+    private int? _mlPending;
+
+    private double[] _countValues = [0, 0];
+    private double[] _storageValues = [0, 0];
+
     private sealed record QuickCard(string Title, string Description, string Icon, string Href);
 
     private static readonly QuickCard[] Cards =
@@ -88,11 +205,29 @@
         try
         {
             _stats = await AdminStatsService.GetStatsAsync();
+            _countValues = [_stats.TotalPhotos, _stats.TotalVideos];
+            _storageValues =
+            [
+                _stats.Users.Sum(u => (double)u.PhotoBytes),
+                _stats.Users.Sum(u => (double)u.VideoBytes)
+            ];
         }
         catch
         {
             _loadError = true;
         }
+
+        // Operational widgets — each is best-effort and must not break the page.
+        _version = await TryGetAsync<VersionInfo>("/api/admin/version");
+        _trash = await TryGetAsync<TrashStatsResponse>("/api/admin/trash/stats");
+        var ml = await TryGetAsync<MlPendingTotal>("/api/admin/ml-pending-total");
+        _mlPending = ml?.Count;
+    }
+
+    private async Task<T?> TryGetAsync<T>(string url)
+    {
+        try { return await Http.GetFromJsonAsync<T>(url); }
+        catch { return default; }
     }
 
     private static string FormatBytes(long? bytes)
@@ -108,4 +243,14 @@
         }
         return $"{size:0.#} {units[unit]}";
     }
+
+    private static string FormatCompact(long value)
+    {
+        if (value >= 1_000_000) return $"{value / 1_000_000d:0.#}M";
+        if (value >= 1_000) return $"{value / 1_000d:0.#}k";
+        return value.ToString("N0");
+    }
+
+    private sealed record VersionInfo(string CurrentVersion, string? LatestVersion, bool HasUpdate);
+    private sealed record MlPendingTotal(int Count);
 }
