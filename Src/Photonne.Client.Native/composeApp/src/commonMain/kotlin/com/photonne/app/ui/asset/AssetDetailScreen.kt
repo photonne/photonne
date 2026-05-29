@@ -4,19 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -70,10 +74,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -189,178 +190,25 @@ fun AssetDetailScreen(
         ?: currentItem?.isFavorite ?: false
     val currentShowingOriginal = currentItem?.let { showOriginal[it.id] == true } == true
 
+    // We deliberately do NOT use Scaffold's topBar/bottomBar slots: those
+    // constrain the content area to the space between the bars, so the photo
+    // never lives *behind* the bar — making any translucency meaningless
+    // (the bar would just blend with the Scaffold's black container, not
+    // with the photo). Instead the pager fills the whole screen and the
+    // bars are stacked on top inside the same Box. Both bars render a
+    // semi-transparent blurred backdrop unconditionally, so the real photo
+    // the pager is drawing underneath always bleeds through.
     Scaffold(
-        containerColor = Color.Black,
-        topBar = {
-            // Glass effect: render a heavily blurred copy of the current
-            // photo behind the bar so the bar picks up the photo's color/
-            // lighting; then layer a dark scrim on top so the icons stay
-            // legible regardless of the underlying image.
-            Box(modifier = Modifier.fillMaxWidth()) {
-                val currentBackdrop = currentItem
-                if (currentBackdrop != null && currentBackdrop.hasThumbnails && !currentBackdrop.isLocalOnly) {
-                    AsyncImage(
-                        model = "$apiBaseUrl/api/assets/${currentBackdrop.id}/thumbnail?size=Small",
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .blur(radius = 40.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.55f),
-                                    Color.Black.copy(alpha = 0.30f)
-                                )
-                            )
-                        )
-                )
-                TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        actionIconContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    ),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
-                    }
-                },
-                title = {
-                    Text(
-                        text = currentItem?.fileName ?: "",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White,
-                        maxLines = 1
-                    )
-                },
-                actions = {
-                    val isLocalOnly = currentItem?.isLocalOnly == true
-                    if (currentItem != null && !currentItem.isVideo && !isLocalOnly) {
-                        IconButton(onClick = {
-                            showOriginal[currentItem.id] = !currentShowingOriginal
-                        }) {
-                            Text(
-                                text = if (currentShowingOriginal) "ORIG" else "HD",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (currentShowingOriginal) Color(0xFFFFB300) else Color.White
-                            )
-                        }
-                    }
-                    if (currentItem != null && !isLocalOnly) {
-                        IconButton(onClick = {
-                            viewModel.toggleFavorite(currentItem.id) { confirmed ->
-                                onFavoriteChanged(currentItem.id, confirmed)
-                            }
-                        }) {
-                            Icon(
-                                imageVector = if (currentIsFavorite) Icons.Filled.Favorite
-                                else Icons.Outlined.FavoriteBorder,
-                                contentDescription = if (currentIsFavorite) "Quitar favorito"
-                                else "Marcar favorito",
-                                tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
-                            )
-                        }
-                        IconButton(onClick = { onAddToAlbum(currentItem) }) {
-                            Icon(
-                                Icons.Outlined.AddToPhotos,
-                                contentDescription = "Añadir a álbum"
-                            )
-                        }
-                    }
-                    IconButton(onClick = { showInfo = true }) {
-                        Icon(Icons.Outlined.Info, contentDescription = "Detalles")
-                    }
-                    if (items.size > 1 && !slideshowActive) {
-                        IconButton(onClick = {
-                            slideshowActive = true
-                            slideshowPaused = false
-                        }) {
-                            Icon(
-                                Icons.Filled.Slideshow,
-                                contentDescription = stringResource(Res.string.slideshow_start)
-                            )
-                        }
-                    }
-                    if (currentItem != null && !isLocalOnly) {
-                        Box {
-                            IconButton(onClick = { showOverflow = true }) {
-                                Icon(
-                                    Icons.Outlined.MoreVert,
-                                    contentDescription = stringResource(Res.string.asset_action_more)
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showOverflow,
-                                onDismissRequest = { showOverflow = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.asset_action_edit_description)) },
-                                    leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                                    onClick = {
-                                        showOverflow = false
-                                        showEditDescription = true
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.asset_action_faces)) },
-                                    leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
-                                    onClick = {
-                                        showOverflow = false
-                                        onOpenFaces(currentItem.id)
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.asset_action_archive)) },
-                                    leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
-                                    onClick = {
-                                        showOverflow = false
-                                        viewModel.archive(currentItem.id) { id ->
-                                            onAssetArchived(id)
-                                        }
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            stringResource(Res.string.asset_action_trash),
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Outlined.Delete,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    },
-                                    onClick = {
-                                        showOverflow = false
-                                        showTrashConfirm = true
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-                )
-            }
-        }
-    ) { padding ->
+        containerColor = Color.Black
+    ) { _ ->
         if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No hay assets", color = Color.White)
             }
             return@Scaffold
         }
 
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
@@ -378,6 +226,86 @@ fun AssetDetailScreen(
                     animatedVisibilityScope = animatedVisibilityScope
                 )
             }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+            ) {
+                ChromeBackground()
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        actionIconContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    ),
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
+                        }
+                    },
+                    title = {
+                        Text(
+                            text = currentItem?.fileName ?: "",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    },
+                    actions = {
+                        val isLocalOnly = currentItem?.isLocalOnly == true
+                        if (currentItem != null && !currentItem.isVideo && !isLocalOnly) {
+                            IconButton(onClick = {
+                                showOriginal[currentItem.id] = !currentShowingOriginal
+                            }) {
+                                Text(
+                                    text = if (currentShowingOriginal) "ORIG" else "HD",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (currentShowingOriginal) Color(0xFFFFB300) else Color.White
+                                )
+                            }
+                        }
+                        if (items.size > 1 && !slideshowActive) {
+                            IconButton(onClick = {
+                                slideshowActive = true
+                                slideshowPaused = false
+                            }) {
+                                Icon(
+                                    Icons.Filled.Slideshow,
+                                    contentDescription = stringResource(Res.string.slideshow_start)
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+
+            if (currentItem != null && !slideshowActive) {
+                AssetActionsBottomBar(
+                    item = currentItem,
+                    isFavorite = currentIsFavorite,
+                    showOverflow = showOverflow,
+                    onShowOverflowChange = { showOverflow = it },
+                    onToggleFavorite = {
+                        viewModel.toggleFavorite(currentItem.id) { confirmed ->
+                            onFavoriteChanged(currentItem.id, confirmed)
+                        }
+                    },
+                    onAddToAlbum = { onAddToAlbum(currentItem) },
+                    onShowInfo = { showInfo = true },
+                    onTrashRequest = { showTrashConfirm = true },
+                    onEditDescription = { showEditDescription = true },
+                    onOpenFaces = { onOpenFaces(currentItem.id) },
+                    onArchive = {
+                        viewModel.archive(currentItem.id) { id ->
+                            onAssetArchived(id)
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+
             if (slideshowActive) {
                 SlideshowControls(
                     isPaused = slideshowPaused,
@@ -402,6 +330,7 @@ fun AssetDetailScreen(
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(bottom = 24.dp)
                 )
             }
@@ -824,6 +753,120 @@ private fun SlideshowControls(
                     contentDescription = stringResource(Res.string.slideshow_exit),
                     tint = Color.White
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Background slot shared by the top and bottom chrome bars: a flat
+ * translucent black scrim so the photo the pager draws behind shows through
+ * directly (no blurred copy of the asset stamped on top).
+ */
+@Composable
+private fun BoxScope.ChromeBackground() {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AssetActionsBottomBar(
+    item: TimelineItem,
+    isFavorite: Boolean,
+    showOverflow: Boolean,
+    onShowOverflowChange: (Boolean) -> Unit,
+    onToggleFavorite: () -> Unit,
+    onAddToAlbum: () -> Unit,
+    onShowInfo: () -> Unit,
+    onTrashRequest: () -> Unit,
+    onEditDescription: () -> Unit,
+    onOpenFaces: () -> Unit,
+    onArchive: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        ChromeBackground()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .height(64.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (item.isLocalOnly) {
+                IconButton(onClick = onShowInfo) {
+                    Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
+                }
+            } else {
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite
+                        else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Quitar favorito" else "Marcar favorito",
+                        tint = if (isFavorite) Color(0xFFFF5252) else Color.White
+                    )
+                }
+                IconButton(onClick = onAddToAlbum) {
+                    Icon(
+                        Icons.Outlined.AddToPhotos,
+                        contentDescription = "Añadir a álbum",
+                        tint = Color.White
+                    )
+                }
+                IconButton(onClick = onShowInfo) {
+                    Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
+                }
+                IconButton(onClick = onTrashRequest) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = stringResource(Res.string.asset_action_trash),
+                        tint = Color.White
+                    )
+                }
+                Box {
+                    IconButton(onClick = { onShowOverflowChange(true) }) {
+                        Icon(
+                            Icons.Outlined.MoreVert,
+                            contentDescription = stringResource(Res.string.asset_action_more),
+                            tint = Color.White
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showOverflow,
+                        onDismissRequest = { onShowOverflowChange(false) }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_edit_description)) },
+                            leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onEditDescription()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_faces)) },
+                            leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onOpenFaces()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_archive)) },
+                            leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onArchive()
+                            }
+                        )
+                    }
+                }
             }
         }
     }
