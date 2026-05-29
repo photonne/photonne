@@ -1,8 +1,9 @@
+@page "/admin/system/tasks"
 @page "/admin/system"
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Administración - Sistema - Photonne</PageTitle>
+<PageTitle>Administración - Colas y tareas - Photonne</PageTitle>
 
 <div class="page-pad">
     @if (!_isAuthorized)
@@ -18,7 +19,10 @@
     else
     {
         <div class="mt-4 mb-4">
-            <MudText Typo="Typo.h5" Class="mb-2">Sistema</MudText>
+            <MudText Typo="Typo.h5" Class="mb-1">Colas y tareas</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">
+                Lanza y supervisa los procesos de indexación, miniaturas, metadatos e IA.
+            </MudText>
             <MudButton Variant="Variant.Text"
                        StartIcon="@Icons.Material.Filled.Settings"
                        Href="/admin/settings/tasks">
@@ -175,50 +179,6 @@
                     </MudCardHeader>
                     <MudCardActions Class="px-4 pb-4">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/image-embedding"))">
-                            Abrir
-                        </MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-
-            @* ── 10. Mantenimiento ── *@
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
-                                <MudIcon Icon="@Icons.Material.Filled.Build" />
-                            </MudAvatar>
-                        </CardHeaderAvatar>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Mantenimiento</MudText>
-                            <MudText Typo="Typo.body2">Tareas de limpieza y salud del sistema (miniaturas huérfanas, assets sin archivo, recalcular tamaños, vaciar papelera).</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/maintenance"))">
-                            Abrir
-                        </MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-
-            @* ── 11. Copia de seguridad ── *@
-            <MudItem xs="12" md="6">
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
-                                <MudIcon Icon="@Icons.Material.Filled.Backup" />
-                            </MudAvatar>
-                        </CardHeaderAvatar>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Copia de seguridad</MudText>
-                            <MudText Typo="Typo.body2">Exporta o importa los datos de la base de datos.</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardActions Class="px-4 pb-4">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/backup"))">
                             Abrir
                         </MudButton>
                     </MudCardActions>

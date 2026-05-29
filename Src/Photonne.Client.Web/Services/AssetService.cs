@@ -491,13 +491,6 @@ public class AssetService : IAssetService
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task<List<UserDuplicateGroup>> GetMyDuplicatesAsync()
-    {
-        await SetAuthHeaderAsync();
-        var result = await _httpClient.GetFromJsonAsync<List<UserDuplicateGroup>>("/api/utilities/duplicates");
-        return result ?? new List<UserDuplicateGroup>();
-    }
-
     public async Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50)
     {
         await SetAuthHeaderAsync();

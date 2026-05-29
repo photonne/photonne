@@ -29,15 +29,29 @@ else if (_rootFolders.Count == 0)
 }
 else
 {
-    <MudText Typo="Typo.caption" Class="mud-text-secondary mb-3">
-        @_totalFolders carpetas · @_totalAssets archivos en total
-    </MudText>
+    <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+            @_totalFolders carpetas · @_totalAssets archivos en total
+        </MudText>
+        <div class="d-flex align-center gap-1">
+            <MudButton Variant="Variant.Text" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.UnfoldMore"
+                       OnClick="ExpandAll">
+                Expandir todo
+            </MudButton>
+            <MudButton Variant="Variant.Text" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.UnfoldLess"
+                       OnClick="CollapseAll">
+                Contraer todo
+            </MudButton>
+        </div>
+    </div>
 
     <MudPaper Elevation="1" Class="pa-0">
         <MudList T="FolderItem" Dense="true">
             @foreach (var folder in _rootFolders)
             {
-                <FolderRow Item="folder" Depth="0" />
+                <FolderRow Item="folder" Depth="0" BulkSignal="@_bulkSignal" BulkExpand="@_bulkExpand" />
             }
         </MudList>
     </MudPaper>
@@ -49,6 +63,20 @@ else
     private bool _loading;
     private int _totalFolders;
     private int _totalAssets;
+    private int _bulkSignal;
+    private bool _bulkExpand;
+
+    private void ExpandAll()
+    {
+        _bulkExpand = true;
+        _bulkSignal++;
+    }
+
+    private void CollapseAll()
+    {
+        _bulkExpand = false;
+        _bulkSignal++;
+    }
 
     protected override async Task OnInitializedAsync()
     {
