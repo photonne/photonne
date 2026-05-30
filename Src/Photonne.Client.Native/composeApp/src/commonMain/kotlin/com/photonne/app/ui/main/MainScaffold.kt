@@ -23,7 +23,6 @@ import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Collections
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
@@ -775,11 +774,13 @@ fun AlbumCardSelectionBottomBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoldersListTopBar(
-    onCreateFolder: () -> Unit,
     onOpenFilters: () -> Unit,
     isSearchActive: Boolean = false,
     onToggleSearch: () -> Unit = {}
 ) {
+    // Folder creation lives in a floating action button (see App.kt) so it
+    // stays reachable while browsing into subfolders, where this list top bar
+    // is replaced by FolderDetailTopBar.
     TopAppBar(
         title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
         actions = {
@@ -793,12 +794,6 @@ fun FoldersListTopBar(
                 Icon(
                     Icons.Outlined.Tune,
                     contentDescription = stringResource(Res.string.folders_action_filters)
-                )
-            }
-            IconButton(onClick = onCreateFolder) {
-                Icon(
-                    Icons.Outlined.CreateNewFolder,
-                    contentDescription = stringResource(Res.string.folder_action_new)
                 )
             }
         }

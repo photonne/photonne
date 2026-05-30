@@ -85,6 +85,40 @@ class FolderDetailViewModel(
         }
     }
 
+    /**
+     * Re-fetch the open folder's assets and subfolders, bypassing [open]'s
+     * already-loaded short-circuit. Used after creating a subfolder so the new
+     * child shows up immediately.
+     */
+    fun refresh() {
+        val folderId = _state.value.folderId ?: return
+        _state.update { it.copy(error = null) }
+        viewModelScope.launch {
+            runCatching {
+                supervisorScope {
+                    val assets = async { repository.assets(folderId) }
+                    val details = async {
+                        runCatching { repository.get(folderId) }.getOrNull()
+                    }
+                    assets.await() to details.await()
+                }
+            }
+                .onSuccess { (items, details) ->
+                    _state.update {
+                        it.copy(
+                            items = items,
+                            subFolders = details?.subFolders.orEmpty()
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Failed to load folder"))
+                    }
+                }
+        }
+    }
+
     fun setFavorite(assetId: String, isFavorite: Boolean) {
         _state.update { previous ->
             previous.copy(

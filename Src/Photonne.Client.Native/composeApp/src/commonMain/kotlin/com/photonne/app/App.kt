@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -780,7 +781,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 } else {
                     FoldersListTopBar(
-                        onCreateFolder = { showCreateFolder = true },
                         onOpenFilters = { showFoldersFilters = true },
                         isSearchActive = foldersState.isSearchActive,
                         onToggleSearch = foldersViewModel::toggleSearch
@@ -789,7 +789,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
             selectedTab == MainTab.Folders ->
                 FoldersListTopBar(
-                    onCreateFolder = { showCreateFolder = true },
                     onOpenFilters = { showFoldersFilters = true },
                     isSearchActive = foldersState.isSearchActive,
                     onToggleSearch = foldersViewModel::toggleSearch
@@ -1384,18 +1383,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // is the active tab and there's no overriding bottom bar (selection mode
     // takes the bottom bar and would crash into the FAB).
     val floatingActionButton: @Composable () -> Unit = {
-        if (selectedTab == MainTab.Timeline && homeMode == HomeMode.Library && bottomBar == null) {
-            FloatingActionButton(
-                onClick = {
-                    selectedTab = MainTab.More
-                    moreSubscreen = MoreSubscreen.Upload
+        when {
+            selectedTab == MainTab.Timeline && homeMode == HomeMode.Library && bottomBar == null ->
+                FloatingActionButton(
+                    onClick = {
+                        selectedTab = MainTab.More
+                        moreSubscreen = MoreSubscreen.Upload
+                    }
+                ) {
+                    Icon(
+                        Icons.Outlined.AddPhotoAlternate,
+                        contentDescription = stringResource(Res.string.upload_title)
+                    )
                 }
-            ) {
-                Icon(
-                    Icons.Outlined.AddPhotoAlternate,
-                    contentDescription = stringResource(Res.string.upload_title)
-                )
-            }
+            // Folder creation as a FAB so it stays reachable while browsing
+            // into subfolders (where the list top bar is gone). Creates a
+            // subfolder of the currently opened folder, or a root folder at
+            // the top level. Hidden during selection (which owns the bottom
+            // bar) and for external libraries, which are read-only mirrors —
+            // their folder structure is owned by another system.
+            selectedTab == MainTab.Folders && bottomBar == null &&
+                foldersState.selectedTab != com.photonne.app.ui.folder.FoldersTab.Libraries &&
+                selectedFolder?.externalLibraryId == null ->
+                FloatingActionButton(onClick = { showCreateFolder = true }) {
+                    Icon(
+                        Icons.Outlined.CreateNewFolder,
+                        contentDescription = stringResource(Res.string.folder_action_new)
+                    )
+                }
         }
     }
 
@@ -2669,12 +2684,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
 
     if (showCreateFolder) {
+        // When a folder is open, create inside it (a subfolder); shared-space
+        // is a root-level concept only, so the option is hidden there.
+        val createParent = selectedFolder
         FolderFormDialog(
             title = stringResource(Res.string.folder_action_new),
             confirmLabel = stringResource(Res.string.action_create),
             isSubmitting = foldersState.isMutating,
             errorMessage = foldersState.error?.userMessage,
-            showSharedSpaceOption = true,
+            showSharedSpaceOption = createParent == null,
             onDismiss = {
                 showCreateFolder = false
                 foldersViewModel.clearError()
@@ -2682,10 +2700,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onConfirm = { name, isSharedSpace ->
                 foldersViewModel.create(
                     name = name,
-                    parentFolderId = null,
+                    parentFolderId = createParent?.id,
                     isSharedSpace = isSharedSpace
                 ) {
                     showCreateFolder = false
+                    if (createParent != null) folderDetailViewModel.refresh()
                 }
             }
         )
