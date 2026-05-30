@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -15,6 +14,11 @@ namespace Photonne.Server.Api.Features.IndexAssets;
 
 public class IndexAssetsEndpoint : IEndpoint
 {
+    // camelCase + case-insensitive, matching the ASP.NET response serializer so
+    // the buffered JSON we replay via /api/tasks/{id}/stream is wire-identical
+    // to the direct stream (the Native client deserializes case-sensitively).
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/assets/index/stream", (
@@ -51,22 +55,26 @@ public class IndexAssetsEndpoint : IEndpoint
         Guid userId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var channel = Channel.CreateUnbounded<IndexProgressUpdate>();
         var indexStartTime = DateTime.UtcNow;
         var stats = new IndexStatistics();
 
-        var entry = backgroundTaskManager.Register(BackgroundTaskType.IndexAssets);
+        // Dedup: attach to an already-running index pass instead of spawning a
+        // second worker (concurrent scans would both mark missing files). Only
+        // the request that creates the entry runs the work; others subscribe to
+        // the same buffered stream.
+        var entry = backgroundTaskManager.GetOrCreateRunning(BackgroundTaskType.IndexAssets, null, out var created);
         var taskCt = entry.Cts.Token;
 
         void Send(IndexProgressUpdate upd)
         {
             upd.TaskId = entry.Id;
-            channel.Writer.TryWrite(upd);
-            entry.Push(JsonSerializer.Serialize(upd), upd.Percentage, upd.Message);
+            entry.Push(JsonSerializer.Serialize(upd, _jsonOptions), upd.Percentage, upd.Message);
         }
 
-        _ = Task.Run(async () =>
+        if (created)
         {
+            _ = Task.Run(async () =>
+            {
             try
             {
                 var directoryPath = settingsService.GetAssetsPath();
@@ -279,14 +287,20 @@ public class IndexAssetsEndpoint : IEndpoint
                     catch { /* best effort */ }
                 }
             }
-            finally
-            {
-                channel.Writer.TryComplete();
-            }
-        }, taskCt);
+            }, taskCt);
+        }
 
-        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
-            yield return update;
+        // Single streaming path for both the creating request and any late
+        // subscribers: replay buffered updates from the start, then live ones
+        // until the worker calls Finish(). Dropping this connection (user leaves
+        // the screen) never touches taskCt, so the worker runs on.
+        await foreach (var json in entry.StreamAsync(0, cancellationToken))
+        {
+            IndexProgressUpdate? upd;
+            try { upd = JsonSerializer.Deserialize<IndexProgressUpdate>(json, _jsonOptions); }
+            catch { continue; }
+            if (upd != null) yield return upd;
+        }
     }
 
     // Grants the primary admin Read/Write/Delete/ManagePermissions on any

@@ -118,6 +118,7 @@ public class BackgroundTaskEntry
 public class BackgroundTaskManager
 {
     private readonly ConcurrentDictionary<Guid, BackgroundTaskEntry> _tasks = new();
+    private readonly object _registerLock = new();
 
     /// <summary>Register a new task and return its entry (with a fresh, independent CTS).</summary>
     public BackgroundTaskEntry Register(BackgroundTaskType type, Dictionary<string, string>? parameters = null)
@@ -131,6 +132,40 @@ public class BackgroundTaskManager
         };
         _tasks[entry.Id] = entry;
         return entry;
+    }
+
+    /// <summary>
+    /// Atomically returns the running task of <paramref name="type"/> if one
+    /// exists, or registers a fresh one. <paramref name="created"/> is true only
+    /// when a new entry was registered — callers use it to decide whether to
+    /// spin up the worker or merely attach to the in-flight run. The check and
+    /// the registration happen under a lock so two concurrent trigger requests
+    /// can't both start a worker for the same task type.
+    /// </summary>
+    public BackgroundTaskEntry GetOrCreateRunning(
+        BackgroundTaskType type,
+        Dictionary<string, string>? parameters,
+        out bool created)
+    {
+        lock (_registerLock)
+        {
+            var running = _tasks.Values.FirstOrDefault(e => e.Type == type && e.Status == "Running");
+            if (running != null)
+            {
+                created = false;
+                return running;
+            }
+
+            CleanupOld(TimeSpan.FromHours(1));
+            var entry = new BackgroundTaskEntry
+            {
+                Type = type,
+                Parameters = parameters ?? new Dictionary<string, string>()
+            };
+            _tasks[entry.Id] = entry;
+            created = true;
+            return entry;
+        }
     }
 
     public BackgroundTaskEntry? Get(Guid id) => _tasks.TryGetValue(id, out var e) ? e : null;

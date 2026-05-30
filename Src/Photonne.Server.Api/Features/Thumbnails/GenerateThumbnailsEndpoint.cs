@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Client.Web.Models;
@@ -15,6 +14,11 @@ namespace Photonne.Server.Api.Features.Thumbnails;
 
 public class GenerateThumbnailsEndpoint : IEndpoint
 {
+    // camelCase + case-insensitive, matching the ASP.NET response serializer so
+    // the buffered JSON we replay via /api/tasks/{id}/stream is wire-identical
+    // to the direct stream (the Native client deserializes case-sensitively).
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var serviceProvider = app.ServiceProvider;
@@ -39,20 +43,34 @@ public class GenerateThumbnailsEndpoint : IEndpoint
         Guid userId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var channel = Channel.CreateUnbounded<ThumbnailProgressUpdate>();
-
-        var entry = backgroundTaskManager.Register(BackgroundTaskType.Thumbnails,
-            new Dictionary<string, string> { ["regenerate"] = regenerate.ToString() });
+        // Dedup: attach to an already-running thumbnail pass instead of spawning
+        // a second worker (e.g. the user re-triggers after navigating away and
+        // back). Only the request that actually creates the entry runs the work;
+        // every other caller just subscribes to the same buffered stream.
+        var entry = backgroundTaskManager.GetOrCreateRunning(BackgroundTaskType.Thumbnails,
+            new Dictionary<string, string> { ["regenerate"] = regenerate.ToString() }, out var created);
         var taskCt = entry.Cts.Token;
         void Send(ThumbnailProgressUpdate upd)
         {
             upd.TaskId = entry.Id;
-            channel.Writer.TryWrite(upd);
-            entry.Push(JsonSerializer.Serialize(upd), upd.Percentage, upd.Message);
+            entry.Push(JsonSerializer.Serialize(upd, _jsonOptions), upd.Percentage, upd.Message);
         }
 
-        _ = Task.Run(async () =>
+        if (created)
         {
+            // Emit an immediate first event carrying the TaskId BEFORE the
+            // asset-table scan below, so the task surfaces instantly instead of
+            // after the scan (the client's fire-and-forget trigger otherwise
+            // times out on a silent 0%).
+            Send(new ThumbnailProgressUpdate
+            {
+                Message = "Escaneando biblioteca…",
+                Percentage = 0,
+                Statistics = new ThumbnailJobStatistics()
+            });
+
+            _ = Task.Run(async () =>
+            {
             try
             {
                 using var scope = serviceProvider.CreateScope();
@@ -187,15 +205,19 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                     catch { /* best effort */ }
                 }
             }
-            finally
-            {
-                channel.Writer.TryComplete();
-            }
-        }, taskCt);
+            }, taskCt);
+        }
 
-        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
+        // Single streaming path for both the creating request and any late
+        // subscribers: replay buffered updates from the start, then live ones
+        // until the worker calls Finish(). Dropping this connection (user leaves
+        // the screen) never touches taskCt, so the worker runs on.
+        await foreach (var json in entry.StreamAsync(0, cancellationToken))
         {
-            yield return update;
+            ThumbnailProgressUpdate? upd;
+            try { upd = JsonSerializer.Deserialize<ThumbnailProgressUpdate>(json, _jsonOptions); }
+            catch { continue; }
+            if (upd != null) yield return upd;
         }
     }
 

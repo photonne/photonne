@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Client.Web.Models;
@@ -15,6 +14,11 @@ namespace Photonne.Server.Api.Features.Metadata;
 
 public class ExtractMetadataEndpoint : IEndpoint
 {
+    // camelCase + case-insensitive, matching the ASP.NET response serializer so
+    // the buffered JSON we replay via /api/tasks/{id}/stream is wire-identical
+    // to the direct stream (the Native client deserializes case-sensitively).
+    private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var serviceProvider = app.ServiceProvider;
@@ -39,20 +43,34 @@ public class ExtractMetadataEndpoint : IEndpoint
         Guid userId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var channel = Channel.CreateUnbounded<MetadataProgressUpdate>();
-
-        var entry = backgroundTaskManager.Register(BackgroundTaskType.Metadata,
-            new Dictionary<string, string> { ["overwrite"] = overwrite.ToString() });
+        // Dedup: attach to an already-running metadata pass instead of spawning
+        // a second worker (e.g. the user re-triggers after navigating away and
+        // back). Only the request that actually creates the entry runs the work;
+        // every other caller just subscribes to the same buffered stream.
+        var entry = backgroundTaskManager.GetOrCreateRunning(BackgroundTaskType.Metadata,
+            new Dictionary<string, string> { ["overwrite"] = overwrite.ToString() }, out var created);
         var taskCt = entry.Cts.Token;
         void Send(MetadataProgressUpdate upd)
         {
             upd.TaskId = entry.Id;
-            channel.Writer.TryWrite(upd);
-            entry.Push(JsonSerializer.Serialize(upd), upd.Percentage, upd.Message);
+            entry.Push(JsonSerializer.Serialize(upd, _jsonOptions), upd.Percentage, upd.Message);
         }
 
-        _ = Task.Run(async () =>
+        if (created)
         {
+            // Emit an immediate first event carrying the TaskId BEFORE the heavy
+            // asset-table scan below — otherwise the task surfaces only after the
+            // scan (many seconds on a real library) and the client's fire-and-
+            // forget trigger times out on a silent 0%.
+            Send(new MetadataProgressUpdate
+            {
+                Message = "Escaneando biblioteca…",
+                Percentage = 0,
+                Statistics = new MetadataJobStatistics()
+            });
+
+            _ = Task.Run(async () =>
+            {
             try
             {
                 using var scope = serviceProvider.CreateScope();
@@ -220,15 +238,19 @@ public class ExtractMetadataEndpoint : IEndpoint
                     catch { /* best effort */ }
                 }
             }
-            finally
-            {
-                channel.Writer.TryComplete();
-            }
-        }, taskCt);
+            }, taskCt);
+        }
 
-        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
+        // Single streaming path for both the creating request and any late
+        // subscribers: replay the buffered updates from the start, then live
+        // ones until the worker calls Finish(). Dropping this connection (user
+        // leaves the screen) never touches taskCt, so the worker runs on.
+        await foreach (var json in entry.StreamAsync(0, cancellationToken))
         {
-            yield return update;
+            MetadataProgressUpdate? upd;
+            try { upd = JsonSerializer.Deserialize<MetadataProgressUpdate>(json, _jsonOptions); }
+            catch { continue; }
+            if (upd != null) yield return upd;
         }
     }
 

@@ -95,9 +95,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -237,6 +239,13 @@ data class AdminRunTasksUiState(
      *  Used to derive both "running now" rows and "Última ejecución hace X"
      *  subtitles. */
     val backgroundTasks: List<BackgroundTaskDto> = emptyList(),
+    /** Live progress for running pipeline tasks, keyed by server task-type
+     *  ("IndexAssets" / "Metadata" / "Thumbnails"). Fed by a per-task
+     *  follower that subscribes to `/api/tasks/{id}/stream`, so the row
+     *  updates per-asset instead of waiting on the 10s poll. Overrides the
+     *  polled entry for the same type while present; cleared when the
+     *  follower's stream ends. */
+    val liveTasks: Map<String, BackgroundTaskDto> = emptyMap(),
     /** Snapshot of `pending.completed` for each AI task at the moment
      *  the user kicked off a backfill from the hub. Used to compute a
      *  session-scoped progress bar (`(now.completed - baseline) /
@@ -276,6 +285,16 @@ data class EnqueuingProgress(
     val enqueuedSoFar: Int,
 )
 
+/** Normalized progress event used by the live-follow plumbing — the three
+ *  pipeline resume streams (index / metadata / thumbnails) all map onto this
+ *  shared shape so a single follower can drive any of them. */
+private data class LiveProgress(
+    val percentage: Double,
+    val message: String,
+    val isCompleted: Boolean,
+    val taskId: String?,
+)
+
 /**
  * Drives the hub. Polls three pieces of state every [PollIntervalMs]:
  * per-ML pending counters, the global ML "any missing" total, and the
@@ -300,6 +319,19 @@ class AdminRunTasksViewModel(
     // server-side cancellation alone can't, because the loop would
     // otherwise immediately refill the queue we just cleared.
     private val mlBackfillJobs = mutableMapOf<AdminRunTask, Job>()
+
+    // Active live-progress followers keyed by server task-type string. Each
+    // subscribes to `/api/tasks/{id}/stream` for one running pipeline task and
+    // pushes per-asset updates into `liveTasks`. Re-attached automatically by
+    // [refresh] whenever a running pipeline task has no follower yet, so
+    // progress resumes after the user navigates back.
+    private val liveJobs = mutableMapOf<String, Job>()
+
+    // server task-type → pipeline AdminRunTask, for re-attaching followers.
+    private val pipelineByType: Map<String, AdminRunTask> =
+        AdminRunTask.values()
+            .filter { it.section == AdminRunTaskSection.Pipeline && it.backgroundType != null }
+            .associateBy { it.backgroundType!! }
 
     fun load() {
         if (_state.value.isLoading) return
@@ -508,6 +540,76 @@ class AdminRunTasksViewModel(
         }
     }
 
+    /** Subscribes to a running pipeline task's live stream and mirrors it into
+     *  [AdminRunTasksUiState.liveTasks] so the row animates per-asset. Idempotent
+     *  per task-type. The follower lives in [viewModelScope], so it survives
+     *  navigation within the session and is torn down on [onCleared]. */
+    private fun followLiveTask(task: AdminRunTask, type: String, taskId: String, startPct: Double) {
+        if (liveJobs[type]?.isActive == true) return
+        liveJobs[type] = viewModelScope.launch {
+            var completed = false
+            // The resume stream replays buffered events from the start, so clamp
+            // the bar to where polling already had it — otherwise (re)attaching
+            // would visibly reset the percentage to 0 and re-climb.
+            var maxPct = startPct
+            runCatching {
+                val flow = resumeFlow(task, taskId) ?: return@runCatching
+                flow.collect { p ->
+                    if (p.isCompleted) {
+                        completed = true
+                        return@collect
+                    }
+                    maxPct = maxOf(maxPct, p.percentage)
+                    _state.update {
+                        it.copy(
+                            liveTasks = it.liveTasks + (type to BackgroundTaskDto(
+                                id = p.taskId ?: taskId,
+                                type = type,
+                                status = "Running",
+                                percentage = maxPct,
+                                lastMessage = p.message,
+                                startedAt = "",
+                                finishedAt = null,
+                            ))
+                        )
+                    }
+                }
+            }
+            liveJobs.remove(type)
+            _state.update { it.copy(liveTasks = it.liveTasks - type) }
+            // Re-poll immediately only on a clean finish; on a dropped stream we
+            // let the 10s poll loop re-attach so a broken connection can't
+            // hot-loop refresh ↔ re-attach.
+            if (completed) refresh(showLoading = false)
+        }
+    }
+
+    private suspend fun resumeFlow(task: AdminRunTask, id: String): Flow<LiveProgress>? =
+        when (task) {
+            AdminRunTask.ExtractMetadata ->
+                repository.resumeMetadataTaskStream(id)
+                    .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
+            AdminRunTask.GenerateThumbnails ->
+                repository.resumeThumbnailsTaskStream(id)
+                    .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
+            AdminRunTask.IndexAssets ->
+                repository.resumeIndexTaskStream(id)
+                    .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
+            else -> null
+        }
+
+    /** Attach a live follower to every running pipeline task that lacks one.
+     *  Called after each poll so freshly-triggered tasks AND tasks already
+     *  running when the screen opens (e.g. started on the PWA, or before
+     *  navigating away) both get smooth progress. */
+    private fun attachLiveFollowers(tasks: List<BackgroundTaskDto>) {
+        for (dto in tasks) {
+            if (!dto.isRunning) continue
+            val task = pipelineByType[dto.type] ?: continue
+            followLiveTask(task, dto.type, dto.id, dto.percentage)
+        }
+    }
+
     private suspend fun refresh(showLoading: Boolean) {
         if (showLoading) _state.update { it.copy(isLoading = true, errorMessage = null) }
         val pendingDeferred: kotlinx.coroutines.Deferred<Map<AdminRunTask, PendingCountResponse>>
@@ -534,6 +636,7 @@ class AdminRunTasksViewModel(
             }
         }
         val pending = pendingDeferred.await()
+        val tasks = tasksDeferred.await()
         _state.update { current ->
             // Drop any session baseline whose queue is now empty AND
             // isn't actively enqueueing — the session is done, so further
@@ -546,11 +649,14 @@ class AdminRunTasksViewModel(
             }
             current.copy(
                 pending = pending,
-                backgroundTasks = tasksDeferred.await(),
+                backgroundTasks = tasks,
                 aiSessionBaseline = pruned,
                 isLoading = false
             )
         }
+        // Keep a live follower attached to every running pipeline task so the
+        // row updates per-asset and resumes after navigating back.
+        attachLiveFollowers(tasks)
     }
 }
 
@@ -578,8 +684,11 @@ fun AdminRunTasksScreen(
     val aiTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Ai } }
     val otherTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Other } }
 
-    // Index server-side task DTOs by type for O(1) lookup per row.
-    val runningByType = state.backgroundTasks.filter { it.isRunning }.associateBy { it.type }
+    // Index server-side task DTOs by type for O(1) lookup per row. Live
+    // followers (per-asset stream) override the coarser 10s-poll entry for the
+    // same type while active.
+    val runningByType = state.backgroundTasks.filter { it.isRunning }.associateBy { it.type } +
+        state.liveTasks
     val lastFinishedByType = state.backgroundTasks
         .filter { !it.isRunning && it.finishedAt != null }
         .groupBy { it.type }
