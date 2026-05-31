@@ -7,7 +7,13 @@ public enum AssetTagType
     Panorama,
     Screenshot,
     HDR,
-    Portrait
+    Portrait,
+    // The motion (.mov) half of an iOS Live Photo. Stored so the timeline can
+    // hide it — the clip should never surface as a standalone video next to its
+    // still; the still owns the pairing and serves the clip via /motion.
+    // Appended last on purpose: TagType persists as an int, so existing rows
+    // keep their values.
+    MotionPhotoPart
 }
 
 public class AssetTag

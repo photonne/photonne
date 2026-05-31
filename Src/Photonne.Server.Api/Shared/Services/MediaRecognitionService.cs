@@ -8,16 +8,51 @@ public class MediaRecognitionService
     /// <summary>
     /// Detects media type tags based on EXIF metadata and file characteristics
     /// </summary>
+    // Sibling extensions used for Live Photo pairing. Matched case-insensitively
+    // against the on-disk directory listing so a `.MOV` next to a `.HEIC` pairs
+    // correctly even on a case-sensitive host filesystem (Linux).
+    private static readonly string[] MotionSiblingExtensions = { ".mov", ".mp4", ".qt" };
+    private static readonly string[] StillSiblingExtensions =
+        { ".heic", ".heif", ".jpg", ".jpeg", ".png", ".dng", ".tiff", ".tif" };
+
     public async Task<List<AssetTagType>> DetectMediaTypeAsync(
-        string filePath, 
-        AssetExif? exif, 
+        string filePath,
+        AssetExif? exif,
         CancellationToken cancellationToken = default)
     {
         var tags = new List<AssetTagType>();
-        
-        if (exif == null) 
+
+        // Live Photo pairing is independent of EXIF — it only depends on whether
+        // a sibling motion/still file exists on disk — so it must run BEFORE the
+        // `exif == null` guard below. (A still whose EXIF failed to extract would
+        // otherwise never be tagged, and the .mov never gets MotionPhotoPart.)
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        var isStill = StillSiblingExtensions.Contains(ext);
+        var isMotion = MotionSiblingExtensions.Contains(ext);
+
+        if (isStill && HasSibling(filePath, MotionSiblingExtensions))
+        {
+            // A still with a paired motion clip — the Live Photo the client
+            // animates on press-and-hold.
+            tags.Add(AssetTagType.LivePhoto);
+        }
+        else if (isMotion && HasSibling(filePath, StillSiblingExtensions))
+        {
+            // The motion half of a Live Photo. Tagged so the timeline can hide
+            // it: it should never appear as a standalone video next to its still.
+            tags.Add(AssetTagType.MotionPhotoPart);
+        }
+
+        // Detect Burst (multiple files with same base name pattern)
+        if (await IsBurstPhotoAsync(filePath, cancellationToken))
+        {
+            tags.Add(AssetTagType.Burst);
+        }
+
+        // Everything below needs EXIF dimensions/metadata.
+        if (exif == null)
             return tags;
-        
+
         // Detect Panorama (very wide or very tall aspect ratio)
         if (exif.Width.HasValue && exif.Height.HasValue)
         {
@@ -27,32 +62,52 @@ public class MediaRecognitionService
                 tags.Add(AssetTagType.Panorama);
             }
         }
-        
+
         // Detect Screenshot (common screen resolutions)
         if (IsScreenshot(exif))
         {
             tags.Add(AssetTagType.Screenshot);
         }
-        
-        // Detect Live Photo (look for related .mov file)
-        if (await IsLivePhotoAsync(filePath, cancellationToken))
-        {
-            tags.Add(AssetTagType.LivePhoto);
-        }
-        
-        // Detect Burst (multiple files with same base name pattern)
-        if (await IsBurstPhotoAsync(filePath, cancellationToken))
-        {
-            tags.Add(AssetTagType.Burst);
-        }
-        
+
         // Detect HDR (specific metadata)
         if (IsHDR(exif))
         {
             tags.Add(AssetTagType.HDR);
         }
-        
+
         return tags;
+    }
+
+    /// <summary>
+    /// True when a file sharing <paramref name="filePath"/>'s base name but with
+    /// one of <paramref name="extensions"/> exists in the same directory. Matches
+    /// case-insensitively on both base name and extension by listing the
+    /// directory once, so pairing survives a case-sensitive filesystem (a `.MOV`
+    /// recorded by iOS next to an `IMG_1234.HEIC`).
+    /// </summary>
+    private static bool HasSibling(string filePath, string[] extensions)
+    {
+        var directory = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+            return false;
+
+        var baseName = Path.GetFileNameWithoutExtension(filePath);
+
+        foreach (var sibling in Directory.EnumerateFiles(directory))
+        {
+            if (string.Equals(sibling, filePath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.Equals(Path.GetFileNameWithoutExtension(sibling), baseName,
+                    StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var siblingExt = Path.GetExtension(sibling).ToLowerInvariant();
+            if (extensions.Contains(siblingExt))
+                return true;
+        }
+
+        return false;
     }
     
     private bool IsScreenshot(AssetExif exif)
@@ -72,19 +127,6 @@ public class MediaRecognitionService
         }
         
         return false;
-    }
-    
-    private async Task<bool> IsLivePhotoAsync(string filePath, CancellationToken cancellationToken)
-    {
-        // iOS Live Photos: look for .mov file with same base name
-        var directory = Path.GetDirectoryName(filePath);
-        if (string.IsNullOrEmpty(directory))
-            return false;
-            
-        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
-        var movPath = Path.Combine(directory, $"{fileNameWithoutExt}.mov");
-        
-        return await Task.Run(() => File.Exists(movPath), cancellationToken);
     }
     
     private async Task<bool> IsBurstPhotoAsync(string filePath, CancellationToken cancellationToken)

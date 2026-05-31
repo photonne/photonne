@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Timeline;
@@ -56,7 +57,9 @@ public class RecentAssetsEndpoint : IEndpoint
         var items = await dbContext.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived
-                     && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value))
+                     && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value)
+                     // Hide the motion (.mov) half of a Live Photo — same as the timeline.
+                     && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
             .OrderByDescending(a => a.CapturedAt)
             .ThenByDescending(a => a.FileModifiedAt)
             .Take(take)
