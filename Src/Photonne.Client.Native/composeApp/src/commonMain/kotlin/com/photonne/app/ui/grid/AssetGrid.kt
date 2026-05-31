@@ -36,11 +36,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
@@ -165,16 +164,12 @@ fun AssetGridCell(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .let { base -> if (onLongClick != null) base.onSecondaryClick(onLongClick) else base }
     ) {
-        val thumbnailModel = asset.localThumbnailModel
-            ?: if (asset.hasThumbnails) "$baseUrl/api/assets/${asset.id}/thumbnail?size=Small" else null
-        if (thumbnailModel != null) {
-            AsyncImage(
-                model = thumbnailModel,
-                contentDescription = asset.fileName,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().then(thumbnailSharedMod)
-            )
-        }
+        AssetThumbnailImage(
+            item = asset,
+            baseUrl = baseUrl,
+            size = "Small",
+            modifier = Modifier.fillMaxSize().then(thumbnailSharedMod)
+        )
         asset.localSyncBadge?.let { badge ->
             // BottomStart so we don't collide with the video glyph
             // (TopEnd) or the favorite heart (BottomEnd).

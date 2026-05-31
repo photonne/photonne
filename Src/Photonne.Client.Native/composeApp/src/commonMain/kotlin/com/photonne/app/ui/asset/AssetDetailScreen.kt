@@ -93,6 +93,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_edit_description
@@ -492,9 +493,10 @@ private fun AssetPage(
                 // is at its stable, final size (AVPlayerViewController on
                 // iOS bakes its initial bounds into auto-layout constraints
                 // and never recovers if mounted mid-morph).
-                AsyncImage(
-                    model = "$baseUrl/api/assets/${item.id}/thumbnail?size=Large",
-                    contentDescription = item.fileName,
+                AssetThumbnailImage(
+                    item = item,
+                    baseUrl = baseUrl,
+                    size = "Large",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -917,18 +919,12 @@ private fun AssetThumbnailStrip(
                         .background(Color.Black.copy(alpha = 0.35f))
                         .clickable { onThumbnailClick(index) }
                 ) {
-                    val thumbnailModel = item.localThumbnailModel
-                        ?: if (item.hasThumbnails) {
-                            "$baseUrl/api/assets/${item.id}/thumbnail?size=Small"
-                        } else null
-                    if (thumbnailModel != null) {
-                        AsyncImage(
-                            model = thumbnailModel,
-                            contentDescription = item.fileName,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                    AssetThumbnailImage(
+                        item = item,
+                        baseUrl = baseUrl,
+                        size = "Small",
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }

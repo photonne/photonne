@@ -1,3 +1,4 @@
+using System.Globalization;
 using Photonne.Server.Api.Shared.Models;
 using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
@@ -132,69 +133,23 @@ public class ThumbnailGeneratorService
                     // Ensure FFmpeg path is set if we have it in env or default
                     await EnsureFFmpegConfigured();
 
-                    Console.WriteLine($"[INFO] Extracting frame from video: {sourceFilePath} (Extension: {extension})");
-                    
-                    // Xabe.FFmpeg requires the output file extension to be .jpg for Snapshot
-                    // Check if source file exists
                     if (!File.Exists(sourceFilePath))
                     {
                         Console.WriteLine($"[ERROR] Source video file not found: {sourceFilePath}");
                         return thumbnails;
                     }
 
-                    // FFmpeg.Conversions.FromSnippet.Snapshot might be what I'm looking for or custom conversion
-                    // If snapshot at 1s fails, try at 0s which is more likely to exist
-                    IConversion conversion;
-                    try 
-                    {
-                        Console.WriteLine($"[DEBUG] Starting FFmpeg snapshot at 1s for {assetId}: {sourceFilePath}");
-                        conversion = await FFmpeg.Conversions.FromSnippet.Snapshot(sourceFilePath, tempFramePath, TimeSpan.FromSeconds(1));
-                        await conversion.Start(cancellationToken);
-                    }
-                    catch (Exception ex1)
-                    {
-                        Console.WriteLine($"[WARNING] FFmpeg snapshot at 1s failed for {assetId}: {ex1.Message}. Trying at 0s");
-                        try
-                        {
-                            conversion = await FFmpeg.Conversions.FromSnippet.Snapshot(sourceFilePath, tempFramePath, TimeSpan.FromSeconds(0));
-                            await conversion.Start(cancellationToken);
-                        }
-                        catch (Exception ex2)
-                        {
-                            Console.WriteLine($"[ERROR] FFmpeg snapshot at 0s also failed for {assetId}: {ex2.Message}");
-                            
-                            // Fallback: try to use a more manual approach if snippet fails
-                            // Sometimes snapshots fail if the video is too short or has issues at the start
-                            Console.WriteLine($"[DEBUG] Trying manual FFmpeg command for {assetId}");
-                            string ffmpegExe = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
-                            string ffmpegPath = string.IsNullOrEmpty(FFmpeg.ExecutablesPath) ? ffmpegExe : Path.Combine(FFmpeg.ExecutablesPath, ffmpegExe);
-                            
-                            var process = new System.Diagnostics.Process
-                            {
-                                StartInfo = new System.Diagnostics.ProcessStartInfo
-                                {
-                                    FileName = ffmpegPath,
-                                    Arguments = $"-i \"{sourceFilePath}\" -ss 00:00:00.500 -vframes 1 \"{tempFramePath}\" -y",
-                                    RedirectStandardOutput = true,
-                                    RedirectStandardError = true,
-                                    UseShellExecute = false,
-                                    CreateNoWindow = true
-                                }
-                            };
-                            process.Start();
-                            await process.WaitForExitAsync(cancellationToken);
-                        }
-                    }
-                    
-                    Console.WriteLine($"[DEBUG] FFmpeg conversion finished for {assetId}");
+                    Console.WriteLine($"[INFO] Extracting frame from video: {sourceFilePath} (Extension: {extension})");
 
-                    if (File.Exists(tempFramePath))
+                    var extracted = await ExtractVideoFrameAsync(sourceFilePath, tempFramePath, assetId, cancellationToken);
+
+                    if (extracted && File.Exists(tempFramePath))
                     {
                         var frameInfo = new FileInfo(tempFramePath);
                         Console.WriteLine($"[INFO] Frame extracted successfully, size: {frameInfo.Length} bytes, generating thumbnails for {assetId}");
-                        
+
                         using var sourceImage = await Image.LoadAsync(tempFramePath, cancellationToken);
-                        
+
                         var sizes = new[] { ThumbnailSize.Small, ThumbnailSize.Medium, ThumbnailSize.Large };
                         foreach (var size in sizes)
                         {
@@ -205,7 +160,7 @@ public class ThumbnailGeneratorService
                                 1, // FFmpeg snapshot usually doesn't need orientation fix as it processes the stream
                                 options,
                                 cancellationToken);
-                            
+
                             if (thumbnail != null)
                             {
                                 thumbnails.Add(thumbnail);
@@ -214,19 +169,12 @@ public class ThumbnailGeneratorService
                     }
                     else
                     {
-                        Console.WriteLine($"[ERROR] Frame file was NOT created for {sourceFilePath} after FFmpeg execution. Checking FFmpeg.ExecutablesPath: {FFmpeg.ExecutablesPath}");
+                        Console.WriteLine($"[ERROR] Could not extract any frame from video {sourceFilePath} for {assetId}. FFmpeg.ExecutablesPath: {FFmpeg.ExecutablesPath}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[ERROR] Video snapshot failed for {sourceFilePath}: {ex.Message}");
-                    Console.WriteLine($"[DEBUG] Exception Type: {ex.GetType().FullName}");
-                    Console.WriteLine($"[DEBUG] StackTrace: {ex.StackTrace}");
-                    if (ex.InnerException != null)
-                    {
-                        Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.Message}");
-                        Console.WriteLine($"[DEBUG] Inner StackTrace: {ex.InnerException.StackTrace}");
-                    }
+                    Console.WriteLine($"[ERROR] Video thumbnail generation failed for {sourceFilePath}: {ex.Message}");
                 }
                 finally
                 {
@@ -286,6 +234,116 @@ public class ThumbnailGeneratorService
         catch (Exception ex)
         {
             Console.WriteLine($"[ERROR] Error checking FFmpeg configuration: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Extracts a single representative frame from a video into <paramref name="outputPath"/>.
+    /// Probes the duration so the seek lands on a frame that actually exists, then walks a
+    /// small ladder of timestamps — a fixed 1s offset overshoots sub-second clips and often
+    /// lands on a black leader frame in others. Returns true once a non-empty frame is written.
+    /// </summary>
+    private async Task<bool> ExtractVideoFrameAsync(string sourceFilePath, string outputPath, Guid assetId, CancellationToken cancellationToken)
+    {
+        var seekPoints = await ComputeSeekPointsAsync(sourceFilePath, cancellationToken);
+
+        foreach (var seconds in seekPoints)
+        {
+            var ok = await TryExtractFrameAtAsync(sourceFilePath, outputPath, seconds, cancellationToken);
+            if (ok && File.Exists(outputPath) && new FileInfo(outputPath).Length > 0)
+            {
+                Console.WriteLine($"[DEBUG] Extracted video frame at {seconds:0.###}s for {assetId}");
+                return true;
+            }
+
+            // Clear an empty/partial output before the next attempt so a stale
+            // zero-byte file doesn't get mistaken for a successful extraction.
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns candidate seek timestamps (seconds) ordered by preference. When the duration
+    /// is known we prefer a frame ~10% in (skipping intros/black leaders) and widen to a few
+    /// fractions so a decode failure at one point can retry elsewhere. Falls back to a fixed
+    /// ladder when probing fails (e.g. ffprobe missing or an unparsable container).
+    /// </summary>
+    private static async Task<IReadOnlyList<double>> ComputeSeekPointsAsync(string sourceFilePath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var info = await FFmpeg.GetMediaInfo(sourceFilePath, cancellationToken);
+            var duration = info.Duration.TotalSeconds;
+            if (duration > 0)
+            {
+                var tenPercent = Math.Min(duration * 0.1, 3.0);
+                return new[] { tenPercent, duration * 0.25, duration * 0.5, 0.0 }
+                    .Select(s => Math.Clamp(s, 0.0, Math.Max(0.0, duration - 0.05)))
+                    .Distinct()
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] Could not probe video duration for {sourceFilePath}: {ex.Message}. Falling back to fixed seek ladder.");
+        }
+
+        return new[] { 1.0, 0.5, 0.0 };
+    }
+
+    /// <summary>
+    /// Runs ffmpeg to grab a single frame at <paramref name="seconds"/>. Uses fast (keyframe)
+    /// seeking with <c>-ss</c> placed before <c>-i</c>: thumbnails don't need frame-accurate
+    /// seeking, and this avoids decoding the whole clip up to the offset.
+    /// </summary>
+    private static async Task<bool> TryExtractFrameAtAsync(string sourceFilePath, string outputPath, double seconds, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var ffmpegExe = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
+            var ffmpegPath = string.IsNullOrEmpty(FFmpeg.ExecutablesPath)
+                ? ffmpegExe
+                : Path.Combine(FFmpeg.ExecutablesPath, ffmpegExe);
+
+            var timestamp = seconds.ToString("0.000", CultureInfo.InvariantCulture);
+            var arguments = $"-ss {timestamp} -i \"{sourceFilePath}\" -frames:v 1 -an -y \"{outputPath}\"";
+
+            using var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = ffmpegPath,
+                    Arguments = arguments,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            // Drain stderr so a chatty ffmpeg can't deadlock on a full pipe buffer.
+            var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken);
+            await stderr;
+
+            if (process.ExitCode != 0)
+            {
+                Console.WriteLine($"[WARNING] ffmpeg exited {process.ExitCode} extracting frame at {seconds:0.###}s from {sourceFilePath}");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] ffmpeg frame extraction at {seconds:0.###}s failed for {sourceFilePath}: {ex.Message}");
+            return false;
         }
     }
 
