@@ -35,6 +35,17 @@ data class TimelineItem(
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
     val isLocalOnly: Boolean get() = localUri != null
+
+    /**
+     * iOS Live Photo: a still paired with a short motion clip. The server
+     * tags these (sibling `.mov` next to the image) and the tag rides along
+     * in [tags]; a server asset can offer its motion clip at
+     * `/api/assets/{id}/motion`. Device-local entries can't be played in
+     * place, so they never count as Live here.
+     */
+    val isLivePhoto: Boolean
+        get() = !isLocalOnly && !isVideo &&
+            tags.any { it.equals("LivePhoto", ignoreCase = true) }
 }
 
 /** Sync state surfaced as a small badge over a device-pending thumbnail. */

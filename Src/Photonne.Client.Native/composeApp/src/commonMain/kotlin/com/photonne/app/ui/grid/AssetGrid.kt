@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -190,6 +191,24 @@ fun AssetGridCell(
                 Icon(
                     imageVector = Icons.Filled.PlayArrow,
                     contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        } else if (asset.isLivePhoto) {
+            // Same TopEnd slot as the video glyph (they're mutually exclusive):
+            // a Live Photo badge mirroring the iOS Photos affordance.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(20.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), shape = androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.MotionPhotosOn,
+                    contentDescription = "Live Photo",
                     tint = Color.White,
                     modifier = Modifier.size(14.dp)
                 )

@@ -2,6 +2,8 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +53,7 @@ import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -84,6 +88,9 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -121,6 +128,7 @@ import kotlin.math.tan
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -508,6 +516,16 @@ private fun AssetPage(
                     )
                 }
             }
+            item.isLivePhoto && isVideoPlaybackSupported -> {
+                LivePhotoPage(
+                    item = item,
+                    baseUrl = baseUrl,
+                    showOriginal = showOriginal,
+                    enabled = isCurrent && !isTransitioning,
+                    authHeaders = authHeaders,
+                    onScaleChange = onScaleChange
+                )
+            }
             else -> {
                 val imageUrl = if (showOriginal) {
                     "$baseUrl/api/assets/${item.id}/content"
@@ -522,6 +540,156 @@ private fun AssetPage(
             }
         }
       }
+    }
+}
+
+/**
+ * A Live Photo still that comes alive on press-and-hold, mirroring iOS
+ * Photos. The zoomable still is always present; while the user holds, the
+ * looping motion clip is mounted on top and a brief "LIVE" pill confirms the
+ * affordance. Releasing (or the gesture cancelling) tears the clip back down.
+ *
+ * The hold detector lives in its own [pointerInput] layered over the image.
+ * It only claims the gesture once the press survives [LIVE_HOLD_THRESHOLD_MS]
+ * without moving past touch slop, so quick taps, double-tap-zoom and pinch
+ * still reach [ZoomablePagerImage] underneath.
+ */
+@Composable
+private fun LivePhotoPage(
+    item: TimelineItem,
+    baseUrl: String,
+    showOriginal: Boolean,
+    enabled: Boolean,
+    authHeaders: Map<String, String>,
+    onScaleChange: (Float) -> Unit
+) {
+    var playing by remember(item.id) { mutableStateOf(false) }
+
+    // Stop playing the moment the page stops being the active/stable one.
+    LaunchedEffect(enabled) {
+        if (!enabled) playing = false
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val imageUrl = if (showOriginal) {
+            "$baseUrl/api/assets/${item.id}/content"
+        } else {
+            "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
+        }
+        ZoomablePagerImage(
+            model = imageUrl,
+            contentDescription = item.fileName,
+            onScaleChange = onScaleChange
+        )
+
+        if (enabled) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .pointerInput(item.id) {
+                        detectLivePhotoHold(
+                            onHoldStart = { playing = true },
+                            onHoldEnd = { playing = false }
+                        )
+                    }
+            )
+        }
+
+        if (playing && enabled) {
+            MotionPhotoPlayer(
+                url = "$baseUrl/api/assets/${item.id}/motion",
+                headers = authHeaders,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        LivePhotoBadge(
+            active = playing,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = 12.dp, top = 56.dp)
+        )
+    }
+}
+
+private const val LIVE_HOLD_THRESHOLD_MS = 180L
+
+/**
+ * Waits for a press that is held (without panning past touch slop) for
+ * [LIVE_HOLD_THRESHOLD_MS], fires [onHoldStart], then [onHoldEnd] once the
+ * finger lifts or the gesture cancels. Never consumes the pointer, so the
+ * underlying zoom/pan/tap detectors keep working.
+ */
+private suspend fun PointerInputScope.detectLivePhotoHold(
+    onHoldStart: () -> Unit,
+    onHoldEnd: () -> Unit
+) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val slop = viewConfiguration.touchSlop
+        var started = false
+
+        try {
+            // Hold gate: poll for the threshold while watching for movement.
+            // withTimeout returns null-ish via cancellation if the finger
+            // lifts/moves first, so we model it by hand with a deadline.
+            val holdResult = withTimeoutOrNull(LIVE_HOLD_THRESHOLD_MS) {
+                var totalPan = 0f
+                while (true) {
+                    val event = awaitPointerEvent()
+                    if (event.changes.any { !it.pressed }) return@withTimeoutOrNull false
+                    totalPan += event.changes.sumOf { it.positionChange().getDistance().toDouble() }.toFloat()
+                    if (totalPan > slop) return@withTimeoutOrNull false
+                }
+                @Suppress("UNREACHABLE_CODE")
+                true
+            }
+
+            // Timed out *still pressed and steady* → treat as a hold.
+            if (holdResult == null && down.pressed) {
+                started = true
+                onHoldStart()
+            } else {
+                return@awaitEachGesture
+            }
+
+            // Hold active: wait for release/cancel.
+            while (true) {
+                val event = awaitPointerEvent()
+                if (event.changes.all { !it.pressed }) break
+            }
+        } finally {
+            if (started) onHoldEnd()
+        }
+    }
+}
+
+@Composable
+private fun LivePhotoBadge(active: Boolean, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = Color.Black.copy(alpha = if (active) 0.55f else 0.4f),
+        contentColor = Color.White
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.MotionPhotosOn,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = "LIVE",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White
+            )
+        }
     }
 }
 
