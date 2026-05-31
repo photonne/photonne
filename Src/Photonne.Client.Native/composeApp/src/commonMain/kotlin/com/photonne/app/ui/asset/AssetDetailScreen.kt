@@ -126,6 +126,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
+private val PAGER_PAGE_SPACING = 16.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -224,6 +225,10 @@ fun AssetDetailScreen(
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
+                // Gutter between pages so neighbours don't touch mid-swipe: a
+                // strip of black breathing room slides in between the outgoing
+                // and incoming photo, echoing the gaps in the thumbnail strip.
+                pageSpacing = PAGER_PAGE_SPACING,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val item = items[page]
@@ -810,11 +815,14 @@ private fun AssetThumbnailStrip(
 ) {
     val stripState = rememberLazyListState()
     val density = LocalDensity.current
-    // Narrow slots pack the strip densely (neighbours nearly touching) and let
-    // a single drag travel across many photos, so long-distance scrubbing feels
-    // fluid even though the strip stays locked 1:1 to the pager.
+    // Narrow slots pack the strip densely and let a single drag travel across
+    // many photos, so long-distance scrubbing feels fluid. A small gap keeps
+    // neighbours visually separated; the per-item pitch (slot + gap) is what
+    // the pager<->strip sync uses to convert between scroll offset and pages.
     val slotWidth = 34.dp
+    val itemSpacing = 2.dp
     val slotWidthPx = with(density) { slotWidth.toPx() }
+    val pitchPx = slotWidthPx + with(density) { itemSpacing.toPx() }
 
     // Pager and strip share one continuous position. Either side can drive,
     // but never both: while the user is dragging the strip we forward its
@@ -823,7 +831,7 @@ private fun AssetThumbnailStrip(
     // counting our own programmatic scrollToItem calls as user input.
     val stripDragged by stripState.interactionSource.collectIsDraggedAsState()
 
-    LaunchedEffect(pagerState, items.size, slotWidthPx) {
+    LaunchedEffect(pagerState, items.size, pitchPx) {
         if (items.isEmpty()) return@LaunchedEffect
         snapshotFlow {
             pagerState.currentPage + pagerState.currentPageOffsetFraction
@@ -831,26 +839,27 @@ private fun AssetThumbnailStrip(
             if (stripDragged) return@collect
             val safe = pos.coerceIn(0f, items.lastIndex.toFloat())
             val baseIndex = floor(safe).toInt().coerceIn(0, items.lastIndex)
-            val offset = ((safe - baseIndex) * slotWidthPx).toInt().coerceAtLeast(0)
+            val offset = ((safe - baseIndex) * pitchPx).toInt().coerceAtLeast(0)
             stripState.scrollToItem(baseIndex, offset)
         }
     }
 
-    LaunchedEffect(stripState, items.size, slotWidthPx) {
+    LaunchedEffect(stripState, items.size, pitchPx) {
         if (items.isEmpty()) return@LaunchedEffect
         snapshotFlow {
             stripState.firstVisibleItemIndex to stripState.firstVisibleItemScrollOffset
         }.collect { (idx, offset) ->
             if (!stripDragged) return@collect
-            val pos = (idx + offset / slotWidthPx).coerceIn(0f, items.lastIndex.toFloat())
-            // Anchor to the NEAREST page so the offset fraction stays naturally
-            // within scrollToPage's valid [-0.5, 0.5] range. Anchoring to the
-            // floor instead makes the fraction climb to 1.0, get clamped at 0.5
-            // (the photo freezes mid-swipe), then snap back to ~0 when the base
-            // page ticks over — the visible "stop and jump".
-            val basePage = pos.roundToInt().coerceIn(0, items.lastIndex)
-            val frac = (pos - basePage).coerceIn(-0.5f, 0.5f)
-            pagerState.scrollToPage(basePage, frac)
+            val pos = (idx + offset / pitchPx).coerceIn(0f, items.lastIndex.toFloat())
+            // Scrubbing the strip should make the main photo SNAP to whichever
+            // asset is nearest the centre — not slide with a fractional offset
+            // the way a finger swipe does. So we forward only the integer page
+            // (offset 0) and fire just when it changes, leaving the filmstrip
+            // itself to scroll continuously under the finger.
+            val targetPage = pos.roundToInt().coerceIn(0, items.lastIndex)
+            if (targetPage != pagerState.currentPage) {
+                pagerState.scrollToPage(targetPage, 0f)
+            }
         }
     }
 
@@ -863,24 +872,37 @@ private fun AssetThumbnailStrip(
         // viewport V, side padding = (V - S) / 2 lets index 0 sit dead
         // center when stripState scroll is 0.
         val sidePadding = ((maxWidth - slotWidth) / 2).coerceAtLeast(0.dp)
+        // Centre slot peaks at this scale; the surrounding vertical padding is
+        // sized to fit it so the enlarged thumbnail isn't clipped top/bottom.
+        val centerScale = 1.5f
+        val verticalPadding = 10.dp
+        // How far the centred thumbnail bulges past its slot on each side. We
+        // translate the neighbours outward by this much so the bigger centre
+        // parts them aside instead of overlapping them.
+        val centerBulgePx = (centerScale - 1f) * slotWidthPx / 2f
         LazyRow(
             state = stripState,
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(itemSpacing),
             contentPadding = PaddingValues(
                 start = sidePadding,
                 end = sidePadding,
-                top = 4.dp,
-                bottom = 4.dp
+                top = verticalPadding,
+                bottom = verticalPadding
             )
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                val distance = abs(index - continuousPos)
-                val proximity = 1f - distance.coerceIn(0f, 1f)
-                // High min scale keeps off-centre slots nearly touching (only a
-                // hair of gap), while the centred slot grows well past its box
-                // so the current asset reads as clearly larger than the rest.
-                val scale = lerp(0.94f, 1.38f, proximity)
+                val signed = index - continuousPos
+                val proximity = 1f - abs(signed).coerceIn(0f, 1f)
+                // High min scale keeps off-centre slots nearly touching, while
+                // the centred slot grows well past its box so the current asset
+                // reads as clearly larger than the rest.
+                val scale = lerp(0.94f, centerScale, proximity)
                 val alpha = lerp(0.55f, 1f, proximity)
+                // Push each side rigidly away from the centre by the bulge so
+                // the grown centre opens a gap instead of covering its
+                // neighbours; clamped to ±1 slot it tapers smoothly mid-scrub.
+                val push = signed.coerceIn(-1f, 1f) * centerBulgePx
                 Box(
                     modifier = Modifier
                         .width(slotWidth)
@@ -889,6 +911,7 @@ private fun AssetThumbnailStrip(
                             scaleX = scale
                             scaleY = scale
                             this.alpha = alpha
+                            translationX = push
                         }
                         .clip(RoundedCornerShape(5.dp))
                         .background(Color.Black.copy(alpha = 0.35f))
