@@ -109,6 +109,7 @@ builder.Services.AddScoped<IMaintenanceService>(sp =>
 builder.Services.AddScoped<IIndexService, IndexService>();
 builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
 builder.Services.AddScoped<IMetadataQueueService, MetadataQueueService>();
+builder.Services.AddScoped<IDateRestoreService, DateRestoreService>();
 builder.Services.AddScoped<IDuplicatesQueueService, DuplicatesQueueService>();
 builder.Services.AddScoped<BackgroundTaskStateService>(sp =>
 {

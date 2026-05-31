@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Photonne.Server.Api.Shared.Services;
 
-public enum BackgroundTaskType { IndexAssets, Thumbnails, Metadata, LibraryScan }
+public enum BackgroundTaskType { IndexAssets, Thumbnails, Metadata, LibraryScan, DateRestore }
 
 /// <summary>
 /// Tracks a single background admin task that survives HTTP disconnections.

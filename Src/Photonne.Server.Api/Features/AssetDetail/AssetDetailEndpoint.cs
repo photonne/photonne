@@ -55,6 +55,7 @@ public class AssetDetailEndpoint : IEndpoint
                 FileSize = asset.FileSize,
                 FileCreatedAt = asset.CapturedAt,
                 FileModifiedAt = asset.FileModifiedAt,
+                CapturedAt = asset.CapturedAt,
                 Extension = asset.Extension,
                 ScannedAt = asset.ScannedAt,
                 Type = asset.Type.ToString(),

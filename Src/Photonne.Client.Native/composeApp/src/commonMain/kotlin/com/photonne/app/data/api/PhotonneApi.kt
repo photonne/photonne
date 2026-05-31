@@ -76,6 +76,9 @@ internal data class BatchAssetIdsRequest(val assetIds: List<String>)
 internal data class UpdateDescriptionBody(val caption: String?)
 
 @Serializable
+internal data class UpdateCaptureDateBody(val dateTaken: String, val writeToFile: Boolean)
+
+@Serializable
 internal data class CreateFolderBody(
     val name: String,
     val parentFolderId: String? = null,
@@ -219,6 +222,11 @@ interface PhotonneApi {
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
     suspend fun updateAssetDescription(assetId: String, description: String?)
+    suspend fun updateAssetCaptureDate(
+        assetId: String,
+        dateTaken: Instant,
+        writeToFile: Boolean
+    ): com.photonne.app.data.models.CaptureDateUpdateResponse
     suspend fun getAlbums(): List<AlbumSummary>
     suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
     suspend fun createAlbum(name: String, description: String?): AlbumSummary
@@ -465,6 +473,9 @@ interface PhotonneApi {
     suspend fun adminMetadataStream(
         overwrite: Boolean
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
+    suspend fun adminDateRestoreStream(
+        fromFile: Boolean
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
     suspend fun adminDuplicatesStream(
         cleanup: Boolean,
         physical: Boolean
@@ -481,6 +492,9 @@ interface PhotonneApi {
         id: String
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.ThumbnailStreamEvent>
     suspend fun resumeMetadataTaskStream(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
+    suspend fun resumeDateRestoreTaskStream(
         id: String
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
 
@@ -794,6 +808,26 @@ class PhotonneApiClient(
                 message = "Update description failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun updateAssetCaptureDate(
+        assetId: String,
+        dateTaken: Instant,
+        writeToFile: Boolean
+    ): com.photonne.app.data.models.CaptureDateUpdateResponse {
+        val response: HttpResponse = client.patch("$baseUrl/api/assets/$assetId/date") {
+            contentType(ContentType.Application.Json)
+            // Instant.toString() yields ISO-8601 with 'Z'; the server parses it as
+            // a DateTimeOffset and persists UTC.
+            setBody(UpdateCaptureDateBody(dateTaken = dateTaken.toString(), writeToFile = writeToFile))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Update capture date failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 
     override suspend fun addAssetsToAlbumBatch(albumId: String, assetIds: List<String>) {
@@ -2137,6 +2171,28 @@ class PhotonneApiClient(
         }
     }
 
+    override suspend fun adminDateRestoreStream(
+        fromFile: Boolean
+    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
+        client.prepareGet("$baseUrl/api/assets/dates/restore/stream") {
+            disableStreamTimeouts()
+            parameter("fromFile", fromFile)
+        }.execute { response ->
+            ensureStreamSuccess(response, "Date restore stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching {
+                    streamJson.decodeFromString(
+                        com.photonne.app.data.models.MetadataStreamEvent.serializer(),
+                        line
+                    )
+                }.getOrNull()?.let { emit(it) }
+            }
+        }
+    }
+
     override suspend fun listBackgroundTasks():
         List<com.photonne.app.data.models.BackgroundTaskDto> {
         val response: HttpResponse = client.get("$baseUrl/api/tasks")
@@ -2174,6 +2230,11 @@ class PhotonneApiClient(
         streamJsonLines("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun resumeMetadataTaskStream(
+        id: String
+    ): Flow<com.photonne.app.data.models.MetadataStreamEvent> =
+        streamJsonLines("$baseUrl/api/tasks/$id/stream")
+
+    override suspend fun resumeDateRestoreTaskStream(
         id: String
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> =
         streamJsonLines("$baseUrl/api/tasks/$id/stream")

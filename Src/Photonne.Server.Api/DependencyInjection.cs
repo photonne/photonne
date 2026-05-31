@@ -29,6 +29,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<DirectoryScanner>();
         builder.Services.AddScoped<FileHashService>();
         builder.Services.AddScoped<ExifExtractorService>();
+        builder.Services.AddScoped<ExifWriterService>();
         builder.Services.AddScoped<ThumbnailGeneratorService>();
         builder.Services.AddScoped<MediaRecognitionService>();
         builder.Services.AddScoped<SettingsService>();

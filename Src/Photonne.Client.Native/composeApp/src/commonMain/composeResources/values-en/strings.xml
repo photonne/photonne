@@ -161,6 +161,7 @@
     <string name="asset_action_archive">Archive</string>
     <string name="asset_action_trash">Move to trash</string>
     <string name="asset_action_edit_description">Edit description</string>
+    <string name="asset_action_edit_date">Edit capture date</string>
     <string name="asset_action_open_in_maps">Open in Maps</string>
     <string name="asset_action_more">More actions</string>
     <string name="slideshow_start">Start slideshow</string>
@@ -171,6 +172,9 @@
     <string name="slideshow_next">Next</string>
     <string name="asset_description_dialog_title">Edit description</string>
     <string name="asset_description_field">Description</string>
+    <string name="asset_date_dialog_title">Edit capture date</string>
+    <string name="asset_date_write_to_file">Also modify the original file</string>
+    <string name="asset_date_readonly_note">Read-only external library: the file can\'t be modified.</string>
     <string name="asset_trash_title">Move to trash</string>
     <string name="asset_trash_message">"%1$s" will be moved to the trash. You can restore it from the web app.</string>
     <string name="asset_metadata_location">Location</string>
@@ -659,6 +663,8 @@
     <string name="admin_system_index_subtitle">Scan folders and process files</string>
     <string name="admin_system_metadata">Extract metadata</string>
     <string name="admin_system_metadata_subtitle">Re-extract EXIF / IPTC data</string>
+    <string name="admin_system_restore_dates">Restore dates</string>
+    <string name="admin_system_restore_dates_subtitle">Restore the capture date from EXIF</string>
     <string name="admin_system_thumbnails">Generate thumbnails</string>
     <string name="admin_system_thumbnails_subtitle">Create or regenerate thumbnails</string>
     <string name="admin_system_duplicates">Detect duplicates</string>
@@ -781,6 +787,7 @@
     <string name="admin_metadata_action_cancel">Cancel</string>
     <string name="admin_metadata_completed">Extraction complete.</string>
     <string name="admin_metadata_overwrite">Overwrite existing</string>
+    <string name="admin_restore_dates_from_file">Re-read EXIF from file</string>
     <string name="admin_metadata_stats_total">Total</string>
     <string name="admin_metadata_stats_processed">Processed</string>
     <string name="admin_metadata_stats_extracted">Extracted</string>

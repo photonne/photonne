@@ -211,6 +211,9 @@ class AdminRepository(private val api: PhotonneApi) {
     suspend fun metadataStream(overwrite: Boolean): Flow<MetadataStreamEvent> =
         api.adminMetadataStream(overwrite)
 
+    suspend fun dateRestoreStream(fromFile: Boolean): Flow<MetadataStreamEvent> =
+        api.adminDateRestoreStream(fromFile)
+
     suspend fun duplicatesStream(
         cleanup: Boolean,
         physical: Boolean
@@ -241,6 +244,9 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun resumeMetadataTaskStream(id: String): Flow<MetadataStreamEvent> =
         api.resumeMetadataTaskStream(id)
+
+    suspend fun resumeDateRestoreTaskStream(id: String): Flow<MetadataStreamEvent> =
+        api.resumeDateRestoreTaskStream(id)
 
     // --- Backup / restore ---
 

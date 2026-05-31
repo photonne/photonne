@@ -6,7 +6,9 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AssetDetail
+import com.photonne.app.data.models.ExifData
 import kotlinx.coroutines.Job
+import kotlinx.datetime.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -159,6 +161,42 @@ class AssetDetailViewModel(
                 .onFailure { error ->
                     _state.update {
                         it.copy(error = errorFactory.from(error, "Failed to update description"))
+                    }
+                }
+        }
+    }
+
+    /**
+     * Overrides the capture date of [assetId]. Updates the visible EXIF date
+     * optimistically, then reconciles with the server's authoritative value
+     * (it persists UTC and may differ by sub-second). When [writeToFile] is
+     * true the server also writes the date into the physical file's EXIF.
+     */
+    fun updateCaptureDate(assetId: String, dateTaken: Instant, writeToFile: Boolean) {
+        fun withDate(d: AssetDetail, date: Instant): AssetDetail =
+            d.copy(exif = (d.exif ?: ExifData()).copy(dateTaken = date))
+
+        // Optimistic local update — both cache and visible state.
+        cache[assetId]?.let { cache[assetId] = withDate(it, dateTaken) }
+        _state.update { current ->
+            val detail = current.detail
+            if (detail != null && detail.id == assetId) current.copy(detail = withDate(detail, dateTaken))
+            else current
+        }
+        viewModelScope.launch {
+            runCatching { repository.updateCaptureDate(assetId, dateTaken, writeToFile) }
+                .onSuccess { resp ->
+                    val confirmed = resp.dateTaken ?: return@onSuccess
+                    cache[assetId]?.let { cache[assetId] = withDate(it, confirmed) }
+                    _state.update { current ->
+                        val detail = current.detail
+                        if (detail != null && detail.id == assetId) current.copy(detail = withDate(detail, confirmed))
+                        else current
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Failed to update capture date"))
                     }
                 }
         }
