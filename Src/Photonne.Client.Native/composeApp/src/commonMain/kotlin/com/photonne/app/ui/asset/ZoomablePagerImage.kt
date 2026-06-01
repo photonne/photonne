@@ -41,7 +41,8 @@ fun ZoomablePagerImage(
     model: Any?,
     contentDescription: String?,
     onScaleChange: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTap: (() -> Unit)? = null
 ) {
     var scale by remember { mutableStateOf(MIN_SCALE) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -63,15 +64,22 @@ fun ZoomablePagerImage(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { size = it }
-            .pointerInput(Unit) {
+            .pointerInput(onTap) {
                 detectTapGestures(
-                    onDoubleTap = {
+                    onTap = onTap?.let { { _ -> it() } },
+                    onDoubleTap = { tap ->
                         if (scale > 1f) {
                             scale = MIN_SCALE
                             offset = Offset.Zero
                         } else {
-                            scale = DOUBLE_TAP_SCALE
-                            offset = Offset.Zero
+                            // Zoom toward the tapped point (not the centre): shift
+                            // the content so the pixel under the finger stays put.
+                            // For centre-anchored scaling, the required translation
+                            // is (centre - tap) * (scale - 1).
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            val target = DOUBLE_TAP_SCALE
+                            scale = target
+                            offset = clampOffset((center - tap) * (target - 1f), currentScale = target)
                         }
                     }
                 )

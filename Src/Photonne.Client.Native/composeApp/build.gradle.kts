@@ -109,6 +109,9 @@ kotlin {
             implementation(libs.androidx.media3.ui)
             implementation(libs.androidx.media3.datasource.okhttp)
             implementation(libs.androidx.work.runtime)
+            // Decodes a poster frame from a content:// / file:// video so device
+            // videos pending upload show a thumbnail instead of a fallback icon.
+            implementation(libs.coil.video)
         }
 
         iosMain.dependencies {

@@ -2,6 +2,8 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -39,6 +41,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ScreenLockPortrait
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -71,6 +75,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -85,6 +90,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -92,7 +98,9 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImage
@@ -101,6 +109,7 @@ import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.ui.image.AssetThumbnailImage
+import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_edit_description
@@ -136,6 +145,9 @@ import org.koin.compose.viewmodel.koinViewModel
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
 private val PAGER_PAGE_SPACING = 16.dp
+// In portrait the bottom chrome floats slightly OVER the asset (covering a few
+// of its pixels) instead of butting up against it edge-to-edge.
+private val STRIP_PORTRAIT_OVERLAP = 8.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -169,6 +181,25 @@ fun AssetDetailScreen(
     var slideshowPaused by remember { mutableStateOf(false) }
     var slideshowIntervalSec by remember { mutableStateOf(5) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Swipe-to-dismiss: vertical drag offset of the whole pager. Driven by an
+    // Animatable so a sub-threshold release can spring back smoothly.
+    val density = LocalDensity.current
+    val dismissOffsetY = remember { Animatable(0f) }
+
+    // Immersive mode: a single tap on the asset toggles all chrome (top bar +
+    // bottom strip/actions) so the asset can be viewed edge to edge, matching
+    // the iOS Photos / Google Photos gallery. Starts visible.
+    var chromeVisible by remember { mutableStateOf(true) }
+    // Measured height of the bottom chrome column, fed back as bottom padding to
+    // the video player so its native controls (scrubber/timeline) render ABOVE
+    // the actions bar instead of behind it.
+    var bottomChromeHeightPx by remember { mutableStateOf(0) }
+    val bottomChromeHeight = with(density) { bottomChromeHeightPx.toDp() }
+    // Same for the top bar, so a portrait video is letterboxed BELOW it instead
+    // of running up behind it.
+    var topChromeHeightPx by remember { mutableStateOf(0) }
+    val topChromeHeight = with(density) { topChromeHeightPx.toDp() }
 
     LaunchedEffect(
         slideshowActive,
@@ -212,6 +243,20 @@ fun AssetDetailScreen(
         ?: currentItem?.isFavorite ?: false
     val currentShowingOriginal = currentItem?.let { showOriginal[it.id] == true } == true
 
+    // Orientation: the app is portrait-locked everywhere. The viewer offers an
+    // explicit landscape mode, entered ONLY via the rotate button in the top bar
+    // (turning the phone does nothing — we never auto-rotate). It works for both
+    // photos and videos: the asset and the chrome (thumbnail strip + bars + back)
+    // fill the screen, and a tap hides/shows the chrome, like the native gallery.
+    var landscapeMode by remember { mutableStateOf(false) }
+    LaunchedEffect(landscapeMode) {
+        if (landscapeMode) OrientationController.forceLandscape()
+        else OrientationController.lockPortrait()
+    }
+    DisposableEffect(Unit) {
+        onDispose { OrientationController.lockPortrait() }
+    }
+
     // We deliberately do NOT use Scaffold's topBar/bottomBar slots: those
     // constrain the content area to the space between the bars, so the photo
     // never lives *behind* the bar — making any translucency meaningless
@@ -220,43 +265,123 @@ fun AssetDetailScreen(
     // bars are stacked on top inside the same Box. Both bars render a
     // semi-transparent blurred backdrop unconditionally, so the real photo
     // the pager is drawing underneath always bleeds through.
+    // Containing the viewer in a Transparent Scaffold (rather than an opaque
+    // black one) lets the dismiss drag fade the backdrop and reveal the grid
+    // sitting behind this overlay — the iOS/Google Photos swipe-down effect.
     Scaffold(
-        containerColor = Color.Black
+        containerColor = Color.Transparent
     ) { _ ->
         if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("No hay assets", color = Color.White)
             }
             return@Scaffold
         }
 
+        // Distance that maps to a full fade; threshold past which release closes.
+        val dismissDistancePx = with(density) { 240.dp.toPx() }
+        val dismissThresholdPx = with(density) { 110.dp.toPx() }
+        val dismissProgress = (abs(dismissOffsetY.value) / dismissDistancePx).coerceIn(0f, 1f)
+        val backgroundAlpha = 1f - dismissProgress * 0.9f
+        val pageScale = 1f - dismissProgress * 0.15f
+        // Chrome fades out both while dragging to dismiss AND when the user
+        // toggles immersive mode with a tap. animateFloatAsState gives the tap a
+        // smooth cross-fade; the drag contribution stays frame-accurate.
+        val chromeToggleAlpha by animateFloatAsState(
+            targetValue = if (chromeVisible) 1f else 0f,
+            label = "chromeToggleAlpha"
+        )
+        val chromeAlpha = (1f - dismissProgress) * chromeToggleAlpha
+
         Box(modifier = Modifier.fillMaxSize()) {
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
-                // Gutter between pages so neighbours don't touch mid-swipe: a
-                // strip of black breathing room slides in between the outgoing
-                // and incoming photo, echoing the gaps in the thumbnail strip.
-                pageSpacing = PAGER_PAGE_SPACING,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                val item = items[page]
-                val isCurrent = page == pagerState.currentPage
-                AssetPage(
-                    item = item,
-                    baseUrl = apiBaseUrl,
-                    showOriginal = showOriginal[item.id] == true,
-                    isCurrent = isCurrent,
-                    authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
-                    onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
-                    animatedVisibilityScope = animatedVisibilityScope
-                )
+            // The fading black backdrop. Everything else stacks on top.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Color.Black.copy(alpha = backgroundAlpha))
+            )
+
+            // Wrapper that owns the vertical-dismiss gesture. It's the PARENT of
+            // the pager, so by the time it inspects an event the pager (child)
+            // has already claimed any horizontal swipe; only unclaimed vertical
+            // motion — and only while not zoomed — is taken for dismissal.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(items.size) {
+                        detectVerticalDismiss(
+                            isEnabled = { currentScale <= PAGER_DISABLE_THRESHOLD && !slideshowActive },
+                            onDragDelta = { dy ->
+                                coroutineScope.launch { dismissOffsetY.snapTo(dismissOffsetY.value + dy) }
+                            },
+                            onRelease = { totalY ->
+                                if (abs(totalY) > dismissThresholdPx) {
+                                    onBack()
+                                } else {
+                                    coroutineScope.launch { dismissOffsetY.animateTo(0f) }
+                                }
+                            }
+                        )
+                    }
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
+                    // Gutter between pages so neighbours don't touch mid-swipe: a
+                    // strip of black breathing room slides in between the outgoing
+                    // and incoming photo, echoing the gaps in the thumbnail strip.
+                    pageSpacing = PAGER_PAGE_SPACING,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset { IntOffset(0, dismissOffsetY.value.roundToInt()) }
+                        .graphicsLayer {
+                            scaleX = pageScale
+                            scaleY = pageScale
+                        }
+                ) { page ->
+                    val item = items[page]
+                    val isCurrent = page == pagerState.currentPage
+                    AssetPage(
+                        item = item,
+                        baseUrl = apiBaseUrl,
+                        showOriginal = showOriginal[item.id] == true,
+                        isCurrent = isCurrent,
+                        authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
+                        onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
+                        onToggleChrome = { chromeVisible = !chromeVisible },
+                        // A tap on the video toggles its native controls; mirror
+                        // that into the chrome so both move together.
+                        onVideoControlsVisibilityChanged = { chromeVisible = it },
+                        // Video bottom inset keeps the player's scrubber ABOVE the
+                        // thumbnail strip so it stays draggable:
+                        //  - landscape + chrome shown: end the video right above the
+                        //    whole bottom column (scrubber sits over the strip).
+                        //  - portrait + chrome shown: same, minus a small overlap so
+                        //    the strip floats a few px over the asset.
+                        //  - chrome hidden (either): full-bleed, no inset.
+                        videoTopInset = if (chromeVisible && !landscapeMode) topChromeHeight else 0.dp,
+                        videoBottomInset = when {
+                            !chromeVisible -> 0.dp
+                            landscapeMode -> bottomChromeHeight
+                            else -> (bottomChromeHeight - STRIP_PORTRAIT_OVERLAP).coerceAtLeast(0.dp)
+                        },
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+                }
             }
 
+            // Skip the top bar entirely once faded out so it can't intercept
+            // taps meant for the asset underneath (immersive mode).
+            if (chromeAlpha > 0.01f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
+                    .graphicsLayer { alpha = chromeAlpha }
+                    .onSizeChanged { topChromeHeightPx = it.height }
             ) {
                 ChromeBackground()
                 TopAppBar(
@@ -281,6 +406,24 @@ fun AssetDetailScreen(
                     },
                     actions = {
                         val isLocalOnly = currentItem?.isLocalOnly == true
+                        // Landscape toggle (photos and videos): the ONLY way in
+                        // or out of landscape — turning the phone does nothing.
+                        // The asset and chrome fill the screen; a tap hides/shows
+                        // the bars, like the native gallery.
+                        IconButton(onClick = { landscapeMode = !landscapeMode }) {
+                            Icon(
+                                imageVector = if (landscapeMode) {
+                                    Icons.Filled.ScreenLockPortrait
+                                } else {
+                                    Icons.Filled.ScreenRotation
+                                },
+                                contentDescription = if (landscapeMode) {
+                                    "Volver a vertical"
+                                } else {
+                                    "Girar a horizontal"
+                                }
+                            )
+                        }
                         if (currentItem != null && !currentItem.isVideo && !isLocalOnly) {
                             IconButton(onClick = {
                                 showOriginal[currentItem.id] = !currentShowingOriginal
@@ -303,15 +446,78 @@ fun AssetDetailScreen(
                                 )
                             }
                         }
+                        // Landscape: the bottom action bar is hidden, so its
+                        // actions live here as a floating overflow on the right —
+                        // favourite / album / info inline, the rest under ⋮.
+                        if (landscapeMode && currentItem != null && !isLocalOnly) {
+                            IconButton(onClick = {
+                                viewModel.toggleFavorite(currentItem.id) { confirmed ->
+                                    onFavoriteChanged(currentItem.id, confirmed)
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = if (currentIsFavorite) Icons.Filled.Favorite
+                                    else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = if (currentIsFavorite) "Quitar favorito" else "Marcar favorito",
+                                    tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
+                                )
+                            }
+                            IconButton(onClick = { onAddToAlbum(currentItem) }) {
+                                Icon(Icons.Outlined.AddToPhotos, contentDescription = "Añadir a álbum", tint = Color.White)
+                            }
+                            IconButton(onClick = { showInfo = true }) {
+                                Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
+                            }
+                            Box {
+                                IconButton(onClick = { showOverflow = true }) {
+                                    Icon(
+                                        Icons.Outlined.MoreVert,
+                                        contentDescription = stringResource(Res.string.asset_action_more),
+                                        tint = Color.White
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showOverflow,
+                                    onDismissRequest = { showOverflow = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.asset_action_edit_description)) },
+                                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                                        onClick = { showOverflow = false; showEditDescription = true }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.asset_action_faces)) },
+                                        leadingIcon = { Icon(Icons.Outlined.Face, contentDescription = null) },
+                                        onClick = { showOverflow = false; onOpenFaces(currentItem.id) }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.asset_action_archive)) },
+                                        leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
+                                        onClick = {
+                                            showOverflow = false
+                                            viewModel.archive(currentItem.id) { id -> onAssetArchived(id) }
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.asset_action_trash)) },
+                                        leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                                        onClick = { showOverflow = false; showTrashConfirm = true }
+                                    )
+                                }
+                            }
+                        }
                     }
                 )
             }
+            }
 
-            if (currentItem != null && !slideshowActive) {
+            if (currentItem != null && !slideshowActive && chromeAlpha > 0.01f) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
+                        .graphicsLayer { alpha = chromeAlpha }
+                        .onSizeChanged { bottomChromeHeightPx = it.height }
                 ) {
                     if (items.size > 1) {
                         AssetThumbnailStrip(
@@ -326,27 +532,32 @@ fun AssetDetailScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    AssetActionsBottomBar(
-                        item = currentItem,
-                        isFavorite = currentIsFavorite,
-                        showOverflow = showOverflow,
-                        onShowOverflowChange = { showOverflow = it },
-                        onToggleFavorite = {
-                            viewModel.toggleFavorite(currentItem.id) { confirmed ->
-                                onFavoriteChanged(currentItem.id, confirmed)
+                    // Portrait keeps the full action bar at the bottom. In
+                    // landscape these actions move UP into the top bar's floating
+                    // overflow, leaving only the thumbnail strip down here.
+                    if (!landscapeMode) {
+                        AssetActionsBottomBar(
+                            item = currentItem,
+                            isFavorite = currentIsFavorite,
+                            showOverflow = showOverflow,
+                            onShowOverflowChange = { showOverflow = it },
+                            onToggleFavorite = {
+                                viewModel.toggleFavorite(currentItem.id) { confirmed ->
+                                    onFavoriteChanged(currentItem.id, confirmed)
+                                }
+                            },
+                            onAddToAlbum = { onAddToAlbum(currentItem) },
+                            onShowInfo = { showInfo = true },
+                            onTrashRequest = { showTrashConfirm = true },
+                            onEditDescription = { showEditDescription = true },
+                            onOpenFaces = { onOpenFaces(currentItem.id) },
+                            onArchive = {
+                                viewModel.archive(currentItem.id) { id ->
+                                    onAssetArchived(id)
+                                }
                             }
-                        },
-                        onAddToAlbum = { onAddToAlbum(currentItem) },
-                        onShowInfo = { showInfo = true },
-                        onTrashRequest = { showTrashConfirm = true },
-                        onEditDescription = { showEditDescription = true },
-                        onOpenFaces = { onOpenFaces(currentItem.id) },
-                        onArchive = {
-                            viewModel.archive(currentItem.id) { id ->
-                                onAssetArchived(id)
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
             }
 
@@ -428,6 +639,10 @@ private fun AssetPage(
     isCurrent: Boolean,
     authHeaders: Map<String, String>,
     onScaleChange: (Float) -> Unit,
+    onToggleChrome: () -> Unit = {},
+    onVideoControlsVisibilityChanged: (Boolean) -> Unit = {},
+    videoTopInset: androidx.compose.ui.unit.Dp = 0.dp,
+    videoBottomInset: androidx.compose.ui.unit.Dp = 0.dp,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val sharedScope = LocalSharedTransitionScope.current
@@ -461,27 +676,40 @@ private fun AssetPage(
         contentAlignment = Alignment.Center
     ) {
       Box(modifier = Modifier.fillMaxSize().then(sharedMod), contentAlignment = Alignment.Center) {
-        // Local-only entries don't exist on the server: render directly
-        // from the device URI through Coil for both photos and the
-        // video poster. We deliberately don't try to play a device
-        // video here — it pulls in platform players that the regular
-        // server pipeline avoids, and the existing
-        // DeviceAssetPreviewScreen already covers that case if needed.
+        // Local-only entries don't exist on the server: render directly from
+        // the device URI. Photos go through Coil; videos play in place off the
+        // same local URI (content:// on Android, photokit:/asset on iOS) using
+        // the shared platform player — mirroring DeviceAssetPreviewScreen so the
+        // interleaved timeline behaves like the device-folder preview.
         val localUri = item.localUri
         if (localUri != null) {
-            val model = item.localThumbnailModel ?: localUri
-            ZoomablePagerImage(
-                model = model,
-                contentDescription = item.fileName,
-                onScaleChange = onScaleChange
-            )
-            if (item.isVideo) {
-                Text(
-                    text = "Vídeo del dispositivo — abre Copia de seguridad para reproducirlo",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(16.dp)
-                )
+            when {
+                item.isVideo && isVideoPlaybackSupported && isCurrent && !isTransitioning -> {
+                    VideoPlayer(
+                        url = localUri,
+                        headers = emptyMap(),
+                        onControlsVisibilityChanged = onVideoControlsVisibilityChanged,
+                        modifier = Modifier.fillMaxSize()
+                            .padding(top = videoTopInset, bottom = videoBottomInset)
+                    )
+                }
+                else -> {
+                    val model = item.localThumbnailModel ?: localUri
+                    ZoomablePagerImage(
+                        model = model,
+                        contentDescription = item.fileName,
+                        onScaleChange = onScaleChange,
+                        onTap = onToggleChrome
+                    )
+                    if (item.isVideo && !isVideoPlaybackSupported) {
+                        Text(
+                            text = "Reproducción de vídeo no disponible en este sistema",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
             }
             return@Box
         }
@@ -490,7 +718,9 @@ private fun AssetPage(
                 VideoPlayer(
                     url = "$baseUrl/api/assets/${item.id}/content",
                     headers = authHeaders,
+                    onControlsVisibilityChanged = onVideoControlsVisibilityChanged,
                     modifier = Modifier.fillMaxSize()
+                        .padding(top = videoTopInset, bottom = videoBottomInset)
                 )
             }
             item.isVideo -> {
@@ -523,7 +753,8 @@ private fun AssetPage(
                     showOriginal = showOriginal,
                     enabled = isCurrent && !isTransitioning,
                     authHeaders = authHeaders,
-                    onScaleChange = onScaleChange
+                    onScaleChange = onScaleChange,
+                    onTap = onToggleChrome
                 )
             }
             else -> {
@@ -535,7 +766,8 @@ private fun AssetPage(
                 ZoomablePagerImage(
                     model = imageUrl,
                     contentDescription = item.fileName,
-                    onScaleChange = onScaleChange
+                    onScaleChange = onScaleChange,
+                    onTap = onToggleChrome
                 )
             }
         }
@@ -561,7 +793,8 @@ private fun LivePhotoPage(
     showOriginal: Boolean,
     enabled: Boolean,
     authHeaders: Map<String, String>,
-    onScaleChange: (Float) -> Unit
+    onScaleChange: (Float) -> Unit,
+    onTap: (() -> Unit)? = null
 ) {
     var playing by remember(item.id) { mutableStateOf(false) }
 
@@ -579,7 +812,8 @@ private fun LivePhotoPage(
         ZoomablePagerImage(
             model = imageUrl,
             contentDescription = item.fileName,
-            onScaleChange = onScaleChange
+            onScaleChange = onScaleChange,
+            onTap = onTap
         )
 
         if (enabled) {
@@ -610,6 +844,66 @@ private fun LivePhotoPage(
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(start = 12.dp, top = 56.dp)
         )
+    }
+}
+
+/**
+ * Detects a vertical drag for swipe-to-dismiss without stealing the
+ * HorizontalPager's left/right swipes or the zoom/pan gestures.
+ *
+ * Strategy: accumulate movement from the first touch; the first axis to cross
+ * touch slop wins. If horizontal wins (or a second finger lands, i.e. a pinch),
+ * we bow out and never consume, leaving the pager/zoom in control. If vertical
+ * wins — and [isEnabled] still holds — we claim the gesture, forward each dy to
+ * [onDragDelta], and report the total to [onRelease] on lift so the caller can
+ * decide between dismissing and springing back.
+ */
+private suspend fun PointerInputScope.detectVerticalDismiss(
+    isEnabled: () -> Boolean,
+    onDragDelta: (Float) -> Unit,
+    onRelease: (totalDragY: Float) -> Unit
+) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        val slop = viewConfiguration.touchSlop
+        var claimed = false
+        var accumX = 0f
+        var accumY = 0f
+
+        while (true) {
+            val event = awaitPointerEvent()
+
+            // A second finger means the user is pinching to zoom — never dismiss.
+            if (event.changes.count { it.pressed } > 1) {
+                if (claimed) onRelease(accumY)
+                return@awaitEachGesture
+            }
+
+            val change = event.changes.firstOrNull() ?: break
+            val delta = change.positionChange()
+            accumX += delta.x
+            accumY += delta.y
+
+            if (!claimed) {
+                if (!isEnabled()) return@awaitEachGesture
+                if (abs(accumX) > slop && abs(accumX) >= abs(accumY)) {
+                    // Horizontal intent — hand off to the pager.
+                    return@awaitEachGesture
+                }
+                if (abs(accumY) > slop && abs(accumY) > abs(accumX)) {
+                    claimed = true
+                }
+            }
+
+            if (claimed) {
+                onDragDelta(delta.y)
+                change.consume()
+            }
+
+            if (event.changes.all { !it.pressed }) break
+        }
+
+        if (claimed) onRelease(accumY)
     }
 }
 

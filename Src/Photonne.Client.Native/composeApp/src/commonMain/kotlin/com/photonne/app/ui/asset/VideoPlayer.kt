@@ -17,11 +17,19 @@ import androidx.compose.ui.Modifier
  * The composable owns the player lifecycle: start paused, release in
  * the dispose effect when the page leaves composition.
  */
+/**
+ * @param onControlsVisibilityChanged fires when the player's transport controls
+ * show or hide (driven by a tap on the video). The detail screen syncs its own
+ * chrome (top/bottom bars) to this so a single tap toggles everything at once,
+ * matching the iOS Photos / Google Photos viewer. The player letterboxes the
+ * video (aspect-fit) so a portrait clip never overflows behind the chrome.
+ */
 @Composable
 expect fun VideoPlayer(
     url: String,
     headers: Map<String, String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onControlsVisibilityChanged: (Boolean) -> Unit = {}
 )
 
 /**

@@ -21,7 +21,8 @@ actual val isVideoPlaybackSupported: Boolean = false
 actual fun VideoPlayer(
     url: String,
     headers: Map<String, String>,
-    modifier: Modifier
+    modifier: Modifier,
+    onControlsVisibilityChanged: (Boolean) -> Unit
 ) {
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black),
