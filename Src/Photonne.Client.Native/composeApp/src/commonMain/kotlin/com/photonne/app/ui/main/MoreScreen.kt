@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
@@ -61,6 +62,7 @@ import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.resources.trash_title
+import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.upload_title
 import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
@@ -92,6 +94,7 @@ fun MoreScreen(
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
+    onOpenUnsupportedFiles: () -> Unit,
     onOpenDeviceBackup: () -> Unit,
     onOpenNotifications: () -> Unit,
     notificationsUnreadCount: Int = 0,
@@ -107,6 +110,7 @@ fun MoreScreen(
         onOpenArchived,
         onOpenTrash,
         onOpenUtilities,
+        onOpenUnsupportedFiles,
         onOpenNotifications,
         notificationsUnreadCount
     ) {
@@ -131,7 +135,8 @@ fun MoreScreen(
                 onOpenNotifications,
                 badgeCount = notificationsUnreadCount
             ),
-            MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities)
+            MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities),
+            MoreShortcut("unsupported-files", Res.string.unsupported_files_title, Icons.Outlined.FolderOff, onOpenUnsupportedFiles)
         )
     }
 

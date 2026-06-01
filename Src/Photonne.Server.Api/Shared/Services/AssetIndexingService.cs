@@ -240,6 +240,44 @@ public class AssetIndexingService
         _ => AssetType.Image
     };
 
+    /// <summary>
+    /// Resolves the owner and folder for a file at <paramref name="physicalPath"/>
+    /// using the same rules as <see cref="IndexFileAsync"/> — owner from the
+    /// personal-path username (or primary admin), folder via
+    /// <see cref="GetOrCreateFolderForPathAsync"/>. Shared so the parallel
+    /// "unsupported files" catalogue assigns ownership/scoping identically.
+    /// <paramref name="storedPath"/> is the virtual/stored path of the file.
+    /// </summary>
+    public async Task<(Guid? OwnerId, Guid? FolderId)> ResolveOwnerAndFolderAsync(
+        string physicalPath,
+        string storedPath,
+        Guid userId,
+        Guid? externalLibraryId,
+        CancellationToken ct)
+    {
+        Guid? ownerId;
+        if (externalLibraryId.HasValue)
+        {
+            ownerId = userId;
+        }
+        else if (UserStorageService.TryGetUsernameFromPath(storedPath, out var ownerUsername))
+        {
+            ownerId = await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.Username == ownerUsername)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(ct)
+                ?? await GetPrimaryAdminIdAsync(ct);
+        }
+        else
+        {
+            ownerId = await GetPrimaryAdminIdAsync(ct);
+        }
+
+        var folder = await GetOrCreateFolderForPathAsync(Path.GetDirectoryName(physicalPath), externalLibraryId, ct);
+        return (ownerId, folder?.Id);
+    }
+
     private async Task<Folder?> GetOrCreateFolderForPathAsync(string? folderPath, Guid? externalLibraryId, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(folderPath))

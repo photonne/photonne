@@ -28,6 +28,7 @@ import com.photonne.app.data.models.SemanticSearchResponse
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
+import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -214,6 +215,8 @@ interface PhotonneApi {
 
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
+    suspend fun listUnsupportedFiles(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): UnsupportedFilesPage
+    suspend fun getUnsupportedFileContent(id: String): AssetContentBytes
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     suspend fun getMemories(): List<TimelineItem>
     suspend fun getAssetDetail(assetId: String): AssetDetail
@@ -569,6 +572,41 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun listUnsupportedFiles(cursor: Instant?, pageSize: Int): UnsupportedFilesPage {
+        val response: HttpResponse = client.get("$baseUrl/api/unsupported-files") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Unsupported files fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getUnsupportedFileContent(id: String): AssetContentBytes {
+        val response: HttpResponse =
+            client.get("$baseUrl/api/unsupported-files/$id/content")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Unsupported file content fetch failed (${response.status.value})"
+            )
+        }
+        val contentType = response.headers[HttpHeaders.ContentType]
+            ?: "application/octet-stream"
+        val suggested = response.headers[HttpHeaders.ContentDisposition]
+            ?.let(::parseContentDispositionFilename)
+            ?: "photonne_$id"
+        return AssetContentBytes(
+            bytes = response.body(),
+            mimeType = contentType,
+            suggestedFileName = suggested
+        )
     }
 
     override suspend fun getRecentAssets(limit: Int): List<TimelineItem> {

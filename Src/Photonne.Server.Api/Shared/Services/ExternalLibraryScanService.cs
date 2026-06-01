@@ -126,18 +126,20 @@ public class ExternalLibraryScanService
             workers = Math.Clamp(int.TryParse(raw, out var n) ? n : 2, 1, 16);
         }
 
-        // Discover files
-        var scannedFiles = (await _scanner.ScanDirectoryAsync(library.Path, ct)).ToList();
+        // Discover files (media + unsupported)
+        var scanResult = await _scanner.ScanDirectoryWithUnsupportedAsync(library.Path, ct);
+        var scannedFiles = scanResult.Allowed.ToList();
+        var unsupportedFiles = scanResult.Unsupported.ToList();
 
         if (!library.ImportSubfolders)
         {
             var normalizedRoot = library.Path.TrimEnd(Path.DirectorySeparatorChar, '/');
-            scannedFiles = scannedFiles
-                .Where(f => string.Equals(
-                    Path.GetDirectoryName(f.FullPath)?.TrimEnd(Path.DirectorySeparatorChar, '/'),
-                    normalizedRoot,
-                    StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            bool AtRoot(ScannedFile f) => string.Equals(
+                Path.GetDirectoryName(f.FullPath)?.TrimEnd(Path.DirectorySeparatorChar, '/'),
+                normalizedRoot,
+                StringComparison.OrdinalIgnoreCase);
+            scannedFiles = scannedFiles.Where(AtRoot).ToList();
+            unsupportedFiles = unsupportedFiles.Where(AtRoot).ToList();
         }
 
         var total = scannedFiles.Count;
@@ -177,6 +179,20 @@ public class ExternalLibraryScanService
                     send(new ScanProgressUpdate($"Indexed {current}/{total}: {file.FileName}", pct, total, indexed, 0, false));
                 }
             });
+
+        // Catalogue unsupported files (own DI scope per file, same as media).
+        if (unsupportedFiles.Count > 0)
+        {
+            await Parallel.ForEachAsync(
+                unsupportedFiles,
+                new ParallelOptions { MaxDegreeOfParallelism = workers, CancellationToken = ct },
+                async (file, innerCt) =>
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var unsupportedIndexer = scope.ServiceProvider.GetRequiredService<UnsupportedFileIndexingService>();
+                    await unsupportedIndexer.IndexUnsupportedFileAsync(file, library.OwnerId, innerCt, libraryId);
+                });
+        }
 
         // Mark assets whose physical file is missing on disk
         var scannedPathsSet = new HashSet<string>(scannedPaths, StringComparer.OrdinalIgnoreCase);

@@ -21,10 +21,23 @@ public class DirectoryScanner
         StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Recursively scans a directory and returns all media files (images and videos)
-    /// Ignores hidden files and unsupported formats
+    /// Recursively scans a directory and returns all media files (images and videos).
+    /// Ignores hidden files and unsupported formats. Kept for callers that only
+    /// care about indexable media; delegates to <see cref="ScanDirectoryWithUnsupportedAsync"/>.
     /// </summary>
     public async Task<IEnumerable<ScannedFile>> ScanDirectoryAsync(string directoryPath, CancellationToken cancellationToken = default)
+    {
+        var result = await ScanDirectoryWithUnsupportedAsync(directoryPath, cancellationToken);
+        return result.Allowed;
+    }
+
+    /// <summary>
+    /// Recursively scans a directory and returns BOTH the indexable media files
+    /// and the unsupported files (anything whose extension isn't a known image /
+    /// video). The unsupported list is what feeds the "Otros archivos" catalogue;
+    /// previously these were silently dropped.
+    /// </summary>
+    public async Task<ScanResult> ScanDirectoryWithUnsupportedAsync(string directoryPath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(directoryPath))
         {
@@ -37,6 +50,7 @@ public class DirectoryScanner
         }
 
         var files = new List<ScannedFile>();
+        var unsupported = new List<ScannedFile>();
 
         await Task.Run(() =>
         {
@@ -133,14 +147,32 @@ public class DirectoryScanner
                     else
                     {
                         rejectedFiles++;
-                        // Log archivos rechazados para debugging
-                        if (normalizedExtension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || 
-                            normalizedExtension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                            normalizedExtension.Equals(".heic", StringComparison.OrdinalIgnoreCase) || 
-                            normalizedExtension.Equals(".mov", StringComparison.OrdinalIgnoreCase))
+                        // Not an indexable media file — catalogue it as unsupported
+                        // (was previously discarded) so the user can still see it.
+                        try
                         {
-                            Console.WriteLine($"[WARNING] File rejected - Extension not in allowed list: {filePath}, Extension: '{extension}' (normalized: '{normalizedExtension}')");
-                            Console.WriteLine($"[WARNING] Allowed extensions include: {string.Join(", ", AllowedExtensions.Take(10))}...");
+                            var fileInfo = new FileInfo(filePath);
+                            if (fileInfo.Exists)
+                            {
+                                var createdUtc = fileInfo.CreationTimeUtc;
+                                var modifiedUtc = fileInfo.LastWriteTimeUtc;
+                                var effectiveCreatedUtc = createdUtc > modifiedUtc ? modifiedUtc : createdUtc;
+
+                                unsupported.Add(new ScannedFile
+                                {
+                                    FileName = fileInfo.Name,
+                                    FullPath = fileInfo.FullName,
+                                    FileSize = fileInfo.Length,
+                                    FileCreatedAt = effectiveCreatedUtc,
+                                    FileModifiedAt = modifiedUtc,
+                                    Extension = normalizedExtension,
+                                    AssetType = AssetType.Image // unused for unsupported
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[WARNING] Could not catalogue unsupported file {filePath}: {ex.Message}");
                         }
                     }
                 }
@@ -148,7 +180,7 @@ public class DirectoryScanner
                 Console.WriteLine($"[DEBUG] DirectoryScanner summary for {directoryPath}:");
                 Console.WriteLine($"[DEBUG]   Total files found: {totalFilesFound}");
                 Console.WriteLine($"[DEBUG]   Allowed files: {allowedFilesFound}");
-                Console.WriteLine($"[DEBUG]   Rejected files: {rejectedFiles}");
+                Console.WriteLine($"[DEBUG]   Rejected files: {rejectedFiles} (unsupported catalogued: {unsupported.Count})");
             }
             catch (Exception ex)
             {
@@ -156,7 +188,7 @@ public class DirectoryScanner
             }
         }, cancellationToken);
 
-        return files;
+        return new ScanResult(files, unsupported);
     }
 
     private static bool IsInBinFolder(string filePath)
@@ -165,6 +197,14 @@ public class DirectoryScanner
         return normalized.Contains("/_trash/", StringComparison.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>
+/// Outcome of a directory scan: indexable media (<see cref="Allowed"/>) and the
+/// non-media files catalogued separately (<see cref="Unsupported"/>).
+/// </summary>
+public sealed record ScanResult(
+    IReadOnlyList<ScannedFile> Allowed,
+    IReadOnlyList<ScannedFile> Unsupported);
 
 /// <summary>
 /// Represents a scanned media file from the filesystem

@@ -946,4 +946,10 @@
     <string name="error_details_copy">Copiar todo</string>
     <string name="error_details_copied">Detalles copiados al portapapeles</string>
     <string name="error_details_share_hint">Pégalo en un mensaje y mándaselo a tu admin.</string>
+    <string name="unsupported_files_title">Otros archivos</string>
+    <string name="unsupported_files_empty_title">No hay archivos sin soporte</string>
+    <string name="unsupported_files_empty_subtitle">Todos los archivos detectados en tu almacenamiento tienen un tipo compatible.</string>
+    <string name="unsupported_files_unsupported_label">Tipo de archivo no soportado por la aplicación.</string>
+    <string name="unsupported_files_supported_types">Tipos compatibles: .jpg, .png, .heic, .gif, .webp, .mp4, .mov, .mkv, etc.</string>
+    <string name="unsupported_files_download">Descargar</string>
 </resources>

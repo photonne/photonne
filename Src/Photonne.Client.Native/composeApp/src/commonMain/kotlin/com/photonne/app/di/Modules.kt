@@ -38,6 +38,7 @@ import com.photonne.app.ui.album.AlbumsViewModel
 import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.library.ArchivedViewModel
 import com.photonne.app.ui.library.FavoritesViewModel
+import com.photonne.app.ui.library.UnsupportedFilesViewModel
 import com.photonne.app.ui.library.TrashViewModel
 import com.photonne.app.ui.people.AssetFacesViewModel
 import com.photonne.app.ui.people.PeopleViewModel
@@ -149,6 +150,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::UploadRepository)
     singleOf(::MapRepository)
     singleOf(::PeopleRepository)
+    single { com.photonne.app.data.library.UnsupportedFilesRepository(get()) }
     viewModelOf(::LoginViewModel)
     viewModelOf(::TimelineViewModel)
     viewModelOf(::MemoriesViewModel)
@@ -165,6 +167,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::ArchivedViewModel)
     viewModelOf(::TrashViewModel)
     viewModelOf(::FavoritesViewModel)
+    viewModelOf(::UnsupportedFilesViewModel)
     viewModelOf(::AssetSelectionActionsViewModel)
     viewModelOf(::UploadViewModel)
     viewModelOf(::DeviceBackupViewModel)
