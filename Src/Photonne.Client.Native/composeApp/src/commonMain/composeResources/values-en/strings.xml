@@ -935,4 +935,13 @@
     <string name="error_details_copy">Copy all</string>
     <string name="error_details_copied">Details copied to clipboard</string>
     <string name="error_details_share_hint">Paste it into a message and send it to your admin.</string>
+    <string name="unsupported_files_title">Other files</string>
+    <string name="unsupported_files_empty_title">No unsupported files</string>
+    <string name="unsupported_files_empty_subtitle">Every file found in your storage has a supported type.</string>
+    <string name="unsupported_files_unsupported_label">File type not supported by the app.</string>
+    <string name="unsupported_files_supported_types">Supported types: .jpg, .png, .heic, .gif, .webp, .mp4, .mov, .mkv, etc.</string>
+    <string name="unsupported_files_download">Download</string>
+    <string name="more_section_discover">Discover</string>
+    <string name="more_section_manage">Manage</string>
+    <string name="more_section_actions">Actions</string>
 </resources>

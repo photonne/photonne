@@ -112,7 +112,9 @@ public class IndexAssetsEndpoint : IEndpoint
                     Statistics = stats
                 });
 
-                var scannedFiles = (await directoryScanner.ScanDirectoryAsync(directoryPath, taskCt)).ToList();
+                var scanResult = await directoryScanner.ScanDirectoryWithUnsupportedAsync(directoryPath, taskCt);
+                var scannedFiles = scanResult.Allowed.ToList();
+                var unsupportedFiles = scanResult.Unsupported.ToList();
                 stats.TotalFilesFound = scannedFiles.Count;
 
                 int workers;
@@ -189,6 +191,21 @@ public class IndexAssetsEndpoint : IEndpoint
 
                 stats.NewFiles = newCount;
                 stats.UpdatedFiles = existingCount;
+
+                // Catalogue unsupported files (internal mode: Guid.Empty owner;
+                // resolved from the path's username, primary-admin fallback).
+                if (unsupportedFiles.Count > 0)
+                {
+                    await Parallel.ForEachAsync(
+                        unsupportedFiles,
+                        new ParallelOptions { MaxDegreeOfParallelism = workers, CancellationToken = taskCt },
+                        async (file, innerCt) =>
+                        {
+                            using var fileScope = scopeFactory.CreateScope();
+                            var unsupportedIndexer = fileScope.ServiceProvider.GetRequiredService<UnsupportedFileIndexingService>();
+                            await unsupportedIndexer.IndexUnsupportedFileAsync(file, Guid.Empty, innerCt);
+                        });
+                }
 
                 Send(new IndexProgressUpdate
                 {

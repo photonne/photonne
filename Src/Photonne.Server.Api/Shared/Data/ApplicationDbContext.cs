@@ -40,6 +40,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<ExternalLibrary> ExternalLibraries { get; set; }
     public DbSet<ExternalLibraryPermission> ExternalLibraryPermissions { get; set; }
+    public DbSet<UnsupportedFile> UnsupportedFiles { get; set; }
     // ML output entities. Two naming rules at play:
     //  1) Asset* prefix when the entity is exclusively asset-scoped (only an
     //     AssetId FK, no user-curated state) — same convention as AssetExif,
@@ -168,6 +169,40 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FileModifiedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.ScannedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.CapturedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure UnsupportedFile entity — parallel catalogue of non-media
+        // files found on disk. FKs use WithMany() (no inverse nav) so Folder /
+        // ExternalLibrary / User don't need an UnsupportedFiles collection.
+        modelBuilder.Entity<UnsupportedFile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FileName).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.FullPath).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Extension).HasMaxLength(40);
+            entity.HasIndex(e => e.FullPath).IsUnique();
+            entity.HasIndex(e => e.FolderId);
+            entity.HasIndex(e => e.OwnerId);
+            entity.HasIndex(e => e.ExternalLibraryId);
+
+            entity.HasOne(e => e.Owner)
+                .WithMany()
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Folder)
+                .WithMany()
+                .HasForeignKey(e => e.FolderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ExternalLibrary)
+                .WithMany()
+                .HasForeignKey(e => e.ExternalLibraryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.FileCreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.FileModifiedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.DiscoveredAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AssetExif entity

@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.photonne.app.ui.platform.OrientationController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -12,6 +13,15 @@ class MainActivity : ComponentActivity() {
         // / TopAppBar / NavigationBar apply the system-bar insets automatically.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Let commonMain flip orientation (the video viewer relaxes the
+        // manifest's portrait lock). Cleared in onDestroy to avoid leaking
+        // this Activity past recreation.
+        OrientationController.attach(this)
         setContent { App() }
+    }
+
+    override fun onDestroy() {
+        OrientationController.detach(this)
+        super.onDestroy()
     }
 }

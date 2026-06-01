@@ -36,6 +36,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    /// The app is portrait-only except inside the video viewer, which relaxes
+    /// the lock via OrientationController. The current allowed set lives in the
+    /// Kotlin IosOrientationBridge as a raw UIInterfaceOrientationMask value.
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        return UIInterfaceOrientationMask(
+            rawValue: UInt(IosOrientationBridge.shared.currentMask)
+        )
+    }
+
     private func handle(task: BGTask) {
         // Always submit the next request before doing anything else — even
         // if this run is aborted, iOS will still come back to us later.

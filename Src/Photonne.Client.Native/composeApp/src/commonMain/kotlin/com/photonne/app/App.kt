@@ -97,6 +97,7 @@ import com.photonne.app.resources.utilities_section_duplicates
 import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_title
+import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.explore_section_memories
 import com.photonne.app.resources.explore_section_places
@@ -204,6 +205,7 @@ private enum class MoreSubscreen {
     UtilitiesDuplicates,
     UtilitiesLargeFiles,
     UtilitiesLocations,
+    UnsupportedFiles,
     Explore,
     ExploreMemories,
     ExplorePlaces,
@@ -333,7 +335,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.ExploreMemories,
     MoreSubscreen.ExplorePlaces,
     MoreSubscreen.ExploreScenes,
-    MoreSubscreen.ExploreObjects -> MoreSubscreen.Explore
+    MoreSubscreen.ExploreObjects -> null
     MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
     MoreSubscreen.AccountProfile,
     MoreSubscreen.AccountSecurity,
@@ -371,6 +373,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.Archived,
     MoreSubscreen.Trash,
     MoreSubscreen.Utilities,
+    MoreSubscreen.UnsupportedFiles,
     MoreSubscreen.Explore,
     MoreSubscreen.AccountSettings,
     MoreSubscreen.Notifications,
@@ -449,6 +452,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val archivedViewModel: com.photonne.app.ui.library.ArchivedViewModel = koinViewModel()
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
+    val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
     val enrichmentStatusViewModel: com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel = koinViewModel()
@@ -523,6 +527,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val archivedState by archivedViewModel.state.collectAsState()
     val trashState by trashViewModel.state.collectAsState()
     val favoritesState by favoritesViewModel.state.collectAsState()
+    val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsState()
     val peopleState by peopleViewModel.state.collectAsState()
     val personDetailState by personDetailViewModel.state.collectAsState()
     val suggestionsState by personSuggestionsViewModel.state.collectAsState()
@@ -833,6 +838,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.utilities_title),
                     onBack = { moreSubscreen = null }
                 )
+            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UnsupportedFiles ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.unsupported_files_title),
+                    onBack = { moreSubscreen = null }
+                )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_section_duplicates),
@@ -856,22 +866,22 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreMemories ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_memories),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExplorePlaces ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_places),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreScenes ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_scenes),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreObjects ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_objects),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
                 com.photonne.app.ui.main.MapTopBar(
@@ -1685,10 +1695,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
-                        onOpenExplore = { moreSubscreen = MoreSubscreen.Explore },
+                        onOpenExploreMemories = { moreSubscreen = MoreSubscreen.ExploreMemories },
+                        onOpenExplorePlaces = { moreSubscreen = MoreSubscreen.ExplorePlaces },
+                        onOpenExploreScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
+                        onOpenExploreObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
+                        onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
                         onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
                         onOpenNotifications = {
                             moreSubscreen = MoreSubscreen.Notifications
@@ -1751,6 +1765,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.EnrichmentStatus ->
                         com.photonne.app.ui.devicebackup.EnrichmentStatusScreen(
                             viewModel = enrichmentStatusViewModel
+                        )
+                    MoreSubscreen.UnsupportedFiles ->
+                        com.photonne.app.ui.library.UnsupportedFilesScreen(
+                            state = unsupportedFilesState,
+                            onLoad = unsupportedFilesViewModel::ensureLoaded,
+                            onRefresh = unsupportedFilesViewModel::refresh,
+                            onLoadMore = unsupportedFilesViewModel::loadMore,
+                            onDownload = unsupportedFilesViewModel::download
                         )
                     MoreSubscreen.Utilities ->
                         com.photonne.app.ui.utilities.UtilitiesHubScreen(
