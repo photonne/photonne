@@ -56,4 +56,11 @@ class AssetDetailRepository(
     suspend fun updateDescription(assetId: String, description: String?) {
         api.updateAssetDescription(assetId, description)
     }
+
+    suspend fun updateCaptureDate(
+        assetId: String,
+        dateTaken: Instant,
+        writeToFile: Boolean
+    ): com.photonne.app.data.models.CaptureDateUpdateResponse =
+        api.updateAssetCaptureDate(assetId, dateTaken, writeToFile)
 }

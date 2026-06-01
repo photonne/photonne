@@ -41,6 +41,7 @@ public interface IAssetService
     Task UnarchiveAllAsync();
     Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50);
     Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption);
+    Task<CaptureDateUpdateResult?> UpdateCaptureDateAsync(Guid assetId, DateTimeOffset dateTaken, bool writeToFile);
     Task<TimelineNeighborsResult> GetTimelineNeighborsAsync(Guid assetId, int before = 50, int after = 50);
 }
 

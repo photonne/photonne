@@ -507,6 +507,15 @@ public class AssetService : IAssetService
         return result?.Caption;
     }
 
+    public async Task<CaptureDateUpdateResult?> UpdateCaptureDateAsync(Guid assetId, DateTimeOffset dateTaken, bool writeToFile)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PatchAsJsonAsync(
+            $"/api/assets/{assetId}/date", new { dateTaken, writeToFile });
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CaptureDateUpdateResult>();
+    }
+
     public async Task<TimelineNeighborsResult> GetTimelineNeighborsAsync(Guid assetId, int before = 50, int after = 50)
     {
         await SetAuthHeaderAsync();
@@ -558,6 +567,14 @@ public class AssetService : IAssetService
 file class DescriptionUpdateResult
 {
     public string? Caption { get; set; }
+}
+
+public class CaptureDateUpdateResult
+{
+    public DateTime DateTaken { get; set; }
+    public DateTime CapturedAt { get; set; }
+    public bool FileWritten { get; set; }
+    public string? Reason { get; set; }
 }
 
 file class CheckExistingResult

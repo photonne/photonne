@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Face
@@ -112,6 +113,7 @@ import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.asset_action_archive
+import com.photonne.app.resources.asset_action_edit_date
 import com.photonne.app.resources.asset_action_edit_description
 import com.photonne.app.resources.asset_action_faces
 import com.photonne.app.resources.asset_action_more
@@ -235,6 +237,7 @@ fun AssetDetailScreen(
     var showInfo by remember { mutableStateOf(false) }
     var showOverflow by remember { mutableStateOf(false) }
     var showEditDescription by remember { mutableStateOf(false) }
+    var showEditDate by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
     val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val currentItem = items.getOrNull(pagerState.currentPage)
@@ -550,6 +553,7 @@ fun AssetDetailScreen(
                             onShowInfo = { showInfo = true },
                             onTrashRequest = { showTrashConfirm = true },
                             onEditDescription = { showEditDescription = true },
+                            onEditDate = { showEditDate = true },
                             onOpenFaces = { onOpenFaces(currentItem.id) },
                             onArchive = {
                                 viewModel.archive(currentItem.id) { id ->
@@ -614,6 +618,22 @@ fun AssetDetailScreen(
             onConfirm = { value ->
                 viewModel.updateDescription(currentItem.id, value)
                 showEditDescription = false
+            }
+        )
+    }
+
+    if (showEditDate && currentItem != null) {
+        val detail = state.detail.takeIf { it?.id == currentItem.id }
+        // Prefer the stored capture date; fall back to the filesystem creation
+        // date so an asset with no EXIF date can still be given one.
+        val initial = detail?.exif?.dateTaken ?: detail?.fileCreatedAt ?: currentItem.fileCreatedAt
+        EditCaptureDateDialog(
+            initialDate = initial,
+            isReadOnly = detail?.isReadOnly ?: false,
+            onDismiss = { showEditDate = false },
+            onConfirm = { instant, writeToFile ->
+                viewModel.updateCaptureDate(currentItem.id, instant, writeToFile)
+                showEditDate = false
             }
         )
     }
@@ -1419,6 +1439,7 @@ private fun AssetActionsBottomBar(
     onShowInfo: () -> Unit,
     onTrashRequest: () -> Unit,
     onEditDescription: () -> Unit,
+    onEditDate: () -> Unit,
     onOpenFaces: () -> Unit,
     onArchive: () -> Unit,
     modifier: Modifier = Modifier
@@ -1482,6 +1503,14 @@ private fun AssetActionsBottomBar(
                             onClick = {
                                 onShowOverflowChange(false)
                                 onEditDescription()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_edit_date)) },
+                            leadingIcon = { Icon(Icons.Outlined.DateRange, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onEditDate()
                             }
                         )
                         DropdownMenuItem(

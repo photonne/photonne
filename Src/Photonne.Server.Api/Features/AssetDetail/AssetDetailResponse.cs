@@ -8,6 +8,9 @@ public class AssetDetailResponse
     public long FileSize { get; set; }
     public DateTime FileCreatedAt { get; set; }
     public DateTime FileModifiedAt { get; set; }
+    // Capture date used by the timeline (EXIF DateTimeOriginal, else filesystem).
+    // Editable per-asset via PATCH /api/assets/{id}/date.
+    public DateTime CapturedAt { get; set; }
     public string Extension { get; set; } = string.Empty;
     public DateTime ScannedAt { get; set; }
     public string Type { get; set; } = string.Empty;

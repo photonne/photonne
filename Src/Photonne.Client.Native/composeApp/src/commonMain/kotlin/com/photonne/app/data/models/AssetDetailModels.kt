@@ -58,6 +58,14 @@ data class ExifData(
 }
 
 @Serializable
+data class CaptureDateUpdateResponse(
+    @Serializable(with = FlexibleInstantSerializer::class) val dateTaken: Instant? = null,
+    @Serializable(with = FlexibleInstantSerializer::class) val capturedAt: Instant? = null,
+    val fileWritten: Boolean = false,
+    val reason: String? = null
+)
+
+@Serializable
 data class ThumbnailInfo(
     val id: String,
     val size: String,

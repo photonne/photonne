@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
@@ -70,6 +71,9 @@ import com.photonne.app.resources.admin_run_tasks_time_m_format
 import com.photonne.app.resources.admin_run_tasks_time_now
 import com.photonne.app.resources.admin_backfill_action_clustering
 import com.photonne.app.resources.admin_metadata_overwrite
+import com.photonne.app.resources.admin_restore_dates_from_file
+import com.photonne.app.resources.admin_system_restore_dates
+import com.photonne.app.resources.admin_system_restore_dates_subtitle
 import com.photonne.app.resources.admin_system_duplicates
 import com.photonne.app.resources.admin_thumbnails_regenerate
 import com.photonne.app.resources.admin_system_duplicates_subtitle
@@ -175,6 +179,14 @@ enum class AdminRunTask(
         section = AdminRunTaskSection.Pipeline,
         backgroundType = "Thumbnails",
     ),
+    RestoreDates(
+        titleRes = Res.string.admin_system_restore_dates,
+        subtitleRes = Res.string.admin_system_restore_dates_subtitle,
+        icon = Icons.Outlined.DateRange,
+        backfillKind = null,
+        section = AdminRunTaskSection.Pipeline,
+        backgroundType = "DateRestore",
+    ),
     FaceRecognition(
         titleRes = Res.string.admin_system_face,
         subtitleRes = Res.string.admin_system_face_subtitle,
@@ -274,6 +286,10 @@ data class AdminRunTasksUiState(
      *  `triggerTask(ExtractMetadata)` re-reads EXIF for every asset
      *  regardless of existing data. */
     val metadataOverwrite: Boolean = false,
+    /** Same for date restoration: when ON, the next
+     *  `triggerTask(RestoreDates)` re-reads EXIF from each file on disk
+     *  before restoring; otherwise it uses the EXIF stored in the DB. */
+    val dateRestoreFromFile: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -393,6 +409,9 @@ class AdminRunTasksViewModel(
                         AdminRunTask.GenerateThumbnails ->
                             repository.thumbnailsStream(regenerate = snapshot.thumbnailsRegenerate)
                                 .take(1).collect {}
+                        AdminRunTask.RestoreDates ->
+                            repository.dateRestoreStream(fromFile = snapshot.dateRestoreFromFile)
+                                .take(1).collect {}
                         AdminRunTask.DetectDuplicates ->
                             repository.duplicatesStream(cleanup = false, physical = false).take(1).collect {}
                         else -> {}
@@ -410,6 +429,10 @@ class AdminRunTasksViewModel(
 
     fun setMetadataOverwrite(value: Boolean) {
         _state.update { it.copy(metadataOverwrite = value) }
+    }
+
+    fun setDateRestoreFromFile(value: Boolean) {
+        _state.update { it.copy(dateRestoreFromFile = value) }
     }
 
     /** Triggers the face-recognition clustering pass server-side
@@ -589,6 +612,9 @@ class AdminRunTasksViewModel(
             AdminRunTask.ExtractMetadata ->
                 repository.resumeMetadataTaskStream(id)
                     .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
+            AdminRunTask.RestoreDates ->
+                repository.resumeDateRestoreTaskStream(id)
+                    .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
             AdminRunTask.GenerateThumbnails ->
                 repository.resumeThumbnailsTaskStream(id)
                     .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
@@ -742,6 +768,11 @@ fun AdminRunTasksScreen(
                         label = stringResource(Res.string.admin_metadata_overwrite),
                         checked = state.metadataOverwrite,
                         onCheckedChange = viewModel::setMetadataOverwrite
+                    )
+                    AdminRunTask.RestoreDates -> InlineToggle(
+                        label = stringResource(Res.string.admin_restore_dates_from_file),
+                        checked = state.dateRestoreFromFile,
+                        onCheckedChange = viewModel::setDateRestoreFromFile
                     )
                     else -> Unit
                 }
