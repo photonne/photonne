@@ -1439,6 +1439,7 @@ private fun AssetActionsBottomBar(
     onShowInfo: () -> Unit,
     onTrashRequest: () -> Unit,
     onEditDescription: () -> Unit,
+    onEditDate: () -> Unit,
     onOpenFaces: () -> Unit,
     onArchive: () -> Unit,
     modifier: Modifier = Modifier
@@ -1502,6 +1503,14 @@ private fun AssetActionsBottomBar(
                             onClick = {
                                 onShowOverflowChange(false)
                                 onEditDescription()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_edit_date)) },
+                            leadingIcon = { Icon(Icons.Outlined.DateRange, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onEditDate()
                             }
                         )
                         DropdownMenuItem(
