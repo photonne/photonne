@@ -24,16 +24,20 @@ import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FolderOff
+import androidx.compose.material.icons.outlined.HistoryEdu
+import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.PhotonneVersion
 import com.photonne.app.data.models.UserDto
@@ -57,7 +62,14 @@ import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.explore_title
+import com.photonne.app.resources.explore_section_memories
+import com.photonne.app.resources.explore_section_places
+import com.photonne.app.resources.explore_section_scenes
+import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.map_title
+import com.photonne.app.resources.more_section_actions
+import com.photonne.app.resources.more_section_discover
+import com.photonne.app.resources.more_section_manage
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.people_title
@@ -82,6 +94,15 @@ private data class MoreShortcut(
     val badgeCount: Int = 0
 )
 
+/** A titled group of [MoreShortcut]s rendered as its own card grid with a
+ *  fixed number of [columns] (so each section can balance its own row). */
+private data class MoreSection(
+    val key: String,
+    val titleRes: StringResource,
+    val columns: Int,
+    val shortcuts: List<MoreShortcut>
+)
+
 @Composable
 fun MoreScreen(
     user: UserDto,
@@ -90,7 +111,10 @@ fun MoreScreen(
     onOpenMap: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenPeople: () -> Unit,
-    onOpenExplore: () -> Unit,
+    onOpenExploreMemories: () -> Unit,
+    onOpenExplorePlaces: () -> Unit,
+    onOpenExploreScenes: () -> Unit,
+    onOpenExploreObjects: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
@@ -101,50 +125,72 @@ fun MoreScreen(
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null
 ) {
-    val shortcuts = remember(
-        onOpenUpload,
+    // Shortcuts grouped into titled sections so the grid reads as
+    // "Discover / Manage / Actions" instead of one ragged 3×N block. Each
+    // section lays its own cards out 3-per-row (or fewer), so symmetry is
+    // per-section, not global. Upload is promoted to a primary button in the
+    // header (it's an action, not a destination).
+    val sections = remember(
         onOpenMap,
         onOpenFavorites,
         onOpenPeople,
-        onOpenExplore,
+        onOpenExploreMemories,
+        onOpenExplorePlaces,
+        onOpenExploreScenes,
+        onOpenExploreObjects,
         onOpenArchived,
         onOpenTrash,
         onOpenUtilities,
         onOpenUnsupportedFiles,
+        onOpenDeviceBackup,
         onOpenNotifications,
         notificationsUnreadCount
     ) {
-        // 3×3 destination grid. Configuration entries (Copia de seguridad,
-        // Configuración cuenta, Administración) live as rows below — that
-        // keeps "grid = content destinations, list = configuration".
         listOf(
-            // Row 1: discovery / collections
-            MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
-            MoreShortcut("people", Res.string.people_title, Icons.Outlined.People, onOpenPeople),
-            MoreShortcut("map", Res.string.map_title, Icons.Outlined.Map, onOpenMap),
-            // Row 2: library buckets
-            MoreShortcut("explore", Res.string.explore_title, Icons.Outlined.Explore, onOpenExplore),
-            MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
-            MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash),
-            // Row 3: ingestion / awareness
-            MoreShortcut("upload", Res.string.upload_title, Icons.Outlined.AddPhotoAlternate, onOpenUpload),
-            MoreShortcut(
-                "notifications",
-                Res.string.notifications_title,
-                Icons.Outlined.Notifications,
-                onOpenNotifications,
-                badgeCount = notificationsUnreadCount
+            // Explore facets surfaced directly (the old "Explorar" hub is
+            // flattened): Recuerdos / Personas / Mapa / Lugares / Escenas / Objetos.
+            MoreSection(
+                key = "explore",
+                titleRes = Res.string.explore_title,
+                columns = 3,
+                shortcuts = listOf(
+                    MoreShortcut("memories", Res.string.explore_section_memories, Icons.Outlined.HistoryEdu, onOpenExploreMemories),
+                    MoreShortcut("people", Res.string.people_title, Icons.Outlined.People, onOpenPeople),
+                    MoreShortcut("map", Res.string.map_title, Icons.Outlined.Map, onOpenMap),
+                    MoreShortcut("places", Res.string.explore_section_places, Icons.Outlined.Public, onOpenExplorePlaces),
+                    MoreShortcut("scenes", Res.string.explore_section_scenes, Icons.Outlined.Landscape, onOpenExploreScenes),
+                    MoreShortcut("objects", Res.string.explore_section_objects, Icons.Outlined.Category, onOpenExploreObjects)
+                )
             ),
-            MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities),
-            MoreShortcut("unsupported-files", Res.string.unsupported_files_title, Icons.Outlined.FolderOff, onOpenUnsupportedFiles)
+            MoreSection(
+                key = "manage",
+                titleRes = Res.string.more_section_manage,
+                columns = 4,
+                shortcuts = listOf(
+                    MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
+                    MoreShortcut("unsupported-files", Res.string.unsupported_files_title, Icons.Outlined.FolderOff, onOpenUnsupportedFiles),
+                    MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
+                    MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
+                )
+            ),
+            MoreSection(
+                key = "actions",
+                titleRes = Res.string.more_section_actions,
+                columns = 3,
+                shortcuts = listOf(
+                    MoreShortcut("device-backup", Res.string.device_backup_title, Icons.Outlined.CloudUpload, onOpenDeviceBackup),
+                    MoreShortcut(
+                        "notifications",
+                        Res.string.notifications_title,
+                        Icons.Outlined.Notifications,
+                        onOpenNotifications,
+                        badgeCount = notificationsUnreadCount
+                    ),
+                    MoreShortcut("utilities", Res.string.utilities_title, Icons.Outlined.Build, onOpenUtilities)
+                )
+            )
         )
     }
-
-    // Lay the shortcuts out three-per-row by hand so the whole screen lives in
-    // a single LazyColumn — otherwise a nested LazyVerticalGrid swallows the
-    // page scroll and the logout/version footer is unreachable on small
-    // screens.
-    val shortcutRows = remember(shortcuts) { shortcuts.chunked(3) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -169,41 +215,65 @@ fun MoreScreen(
                 )
             }
             Spacer(Modifier.height(12.dp))
+            // Upload promoted to a primary action button.
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Button(
+                    onClick = onOpenUpload,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text(stringResource(Res.string.upload_title))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
         }
 
-        items(shortcutRows, key = { row -> row.joinToString { it.key } }) { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                row.forEach { shortcut ->
-                    MoreShortcutCard(
-                        label = stringResource(shortcut.labelRes),
-                        icon = shortcut.icon,
-                        onClick = shortcut.onClick,
-                        badgeCount = shortcut.badgeCount,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                // Keep the last row balanced when the number of shortcuts doesn't fill it.
-                repeat(3 - row.size) {
-                    Spacer(Modifier.weight(1f))
+        sections.forEach { section ->
+            item("section-${section.key}") {
+                Text(
+                    text = stringResource(section.titleRes),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, top = 8.dp, bottom = 4.dp)
+                )
+            }
+            val columns = section.columns
+            val rows = section.shortcuts.chunked(columns)
+            items(rows, key = { row -> row.joinToString { it.key } }) { row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { shortcut ->
+                        MoreShortcutCard(
+                            label = stringResource(shortcut.labelRes),
+                            icon = shortcut.icon,
+                            onClick = shortcut.onClick,
+                            badgeCount = shortcut.badgeCount,
+                            // 4+ columns make the cards narrow, so shrink the label
+                            // typography/padding to keep words from being clipped.
+                            compact = columns >= 4,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Balance the last row when it doesn't fill all columns.
+                    repeat(columns - row.size) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
 
-        item("devicebackup") {
-            Spacer(Modifier.height(4.dp))
-            SettingsLikeRow(
-                icon = Icons.Outlined.CloudUpload,
-                label = stringResource(Res.string.device_backup_title),
-                onClick = onOpenDeviceBackup
-            )
-        }
-
         item("account-settings") {
+            Spacer(Modifier.height(4.dp))
             SettingsLikeRow(
                 icon = Icons.Outlined.Settings,
                 label = stringResource(Res.string.account_settings_title),
@@ -285,7 +355,8 @@ private fun MoreShortcutCard(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    badgeCount: Int = 0
+    badgeCount: Int = 0,
+    compact: Boolean = false
 ) {
     Card(
         modifier = modifier
@@ -297,7 +368,9 @@ private fun MoreShortcutCard(
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = if (compact) 4.dp else 8.dp, vertical = if (compact) 8.dp else 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -309,18 +382,20 @@ private fun MoreShortcutCard(
                         }
                     }
                 ) {
-                    IconPill(icon = icon)
+                    IconPill(icon = icon, compact = compact)
                 }
             } else {
-                IconPill(icon = icon)
+                IconPill(icon = icon, compact = compact)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
+                style = if (compact) MaterialTheme.typography.labelSmall
+                        else MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
-                maxLines = 2
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -328,10 +403,10 @@ private fun MoreShortcutCard(
 
 /** Circular tinted badge for shortcut and settings icons — mirrors the PWA's brand-accented icons. */
 @Composable
-private fun IconPill(icon: ImageVector, modifier: Modifier = Modifier) {
+private fun IconPill(icon: ImageVector, modifier: Modifier = Modifier, compact: Boolean = false) {
     Box(
         modifier = modifier
-            .size(40.dp)
+            .size(if (compact) 34.dp else 40.dp)
             .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
         contentAlignment = Alignment.Center
     ) {
@@ -339,7 +414,7 @@ private fun IconPill(icon: ImageVector, modifier: Modifier = Modifier) {
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(if (compact) 18.dp else 22.dp)
         )
     }
 }

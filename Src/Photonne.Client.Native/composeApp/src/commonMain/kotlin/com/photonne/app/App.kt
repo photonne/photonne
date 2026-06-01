@@ -335,7 +335,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.ExploreMemories,
     MoreSubscreen.ExplorePlaces,
     MoreSubscreen.ExploreScenes,
-    MoreSubscreen.ExploreObjects -> MoreSubscreen.Explore
+    MoreSubscreen.ExploreObjects -> null
     MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
     MoreSubscreen.AccountProfile,
     MoreSubscreen.AccountSecurity,
@@ -866,22 +866,22 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreMemories ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_memories),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExplorePlaces ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_places),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreScenes ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_scenes),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreObjects ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_objects),
-                    onBack = { moreSubscreen = MoreSubscreen.Explore }
+                    onBack = { moreSubscreen = null }
                 )
             selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
                 com.photonne.app.ui.main.MapTopBar(
@@ -1695,7 +1695,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenPeople = { moreSubscreen = MoreSubscreen.People },
-                        onOpenExplore = { moreSubscreen = MoreSubscreen.Explore },
+                        onOpenExploreMemories = { moreSubscreen = MoreSubscreen.ExploreMemories },
+                        onOpenExplorePlaces = { moreSubscreen = MoreSubscreen.ExplorePlaces },
+                        onOpenExploreScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
+                        onOpenExploreObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
