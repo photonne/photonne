@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddBox
@@ -34,7 +34,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.SelectAll
@@ -131,7 +131,7 @@ import com.photonne.app.resources.tab_albums
 import com.photonne.app.resources.tab_folders
 import com.photonne.app.resources.tab_search
 import com.photonne.app.resources.tab_more
-import com.photonne.app.resources.tab_home
+import com.photonne.app.resources.tab_timeline
 import com.photonne.app.resources.upload_title
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.theme.photonneLogoPainter
@@ -182,12 +182,12 @@ private fun MainNavigationBar(
             onClick = { onTabSelected(MainTab.Timeline) },
             icon = {
                 Icon(
-                    if (timelineActive) Icons.Filled.Home
-                    else Icons.Outlined.Home,
+                    if (timelineActive) Icons.Filled.PhotoLibrary
+                    else Icons.Outlined.PhotoLibrary,
                     contentDescription = null
                 )
             },
-            label = { Text(stringResource(Res.string.tab_home)) }
+            label = { Text(stringResource(Res.string.tab_timeline)) }
         )
         val searchActive = selectedTab == MainTab.Search
         NavigationBarItem(
