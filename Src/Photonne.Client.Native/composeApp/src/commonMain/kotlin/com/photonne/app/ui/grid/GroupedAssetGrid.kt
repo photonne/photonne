@@ -238,7 +238,8 @@ internal fun GroupedAssetGrid(
     onLoadMore: () -> Unit = {},
     selectedIds: Set<String> = emptySet(),
     onItemLongClick: ((Int) -> Unit)? = null,
-    cellSpacing: Dp = 2.dp
+    cellSpacing: Dp = 2.dp,
+    header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
     // Re-key on hasMore so the snapshotFlow restarts when pagination state
     // flips — the previous version keyed only on `state`, captured `shouldLoadMore`
@@ -282,6 +283,7 @@ internal fun GroupedAssetGrid(
         verticalArrangement = Arrangement.spacedBy(cellSpacing),
         modifier = modifier.fillMaxSize()
     ) {
+        header?.invoke(this)
         rows.forEach { entry ->
             when (entry) {
                 is JustifiedRowEntry.Header -> stickyHeader(key = "h:${entry.key}") {
