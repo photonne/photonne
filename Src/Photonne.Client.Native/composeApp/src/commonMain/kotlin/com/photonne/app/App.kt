@@ -182,14 +182,6 @@ private data class AddToAlbumState(
     val errorMessage: String? = null
 )
 
-/**
- * Two-state mode for the Inicio tab: the Hub (cinematic landing with
- * memories, recents, people, explore) and the Library (the regular
- * timeline grid). Tapping "Toda la biblioteca" in the Hub flips to
- * Library; the Library top bar exposes a back arrow that returns here.
- */
-private enum class HomeMode { Hub, Library }
-
 private enum class MoreSubscreen {
     Upload,
     DeviceBackup,
@@ -466,8 +458,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
-    val hubViewModel: com.photonne.app.ui.hub.HubViewModel = koinViewModel()
-    val hubState by hubViewModel.state.collectAsState()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
     val notificationsState by notificationsViewModel.state.collectAsState()
@@ -537,7 +527,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainTab.Timeline) }
-    var homeMode by remember { mutableStateOf(HomeMode.Hub) }
     var selectedAlbum by remember { mutableStateOf<AlbumSummary?>(null) }
     var selectedFolder by remember {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
@@ -621,8 +610,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // the activity. Modal dialogs/sheets aren't enumerated here because
     // Compose Material3 forwards back-press to their onDismissRequest.
     val isAnySelectionActive = (
-        (selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
-            timelineState.isSelectionActive) ||
+        (selectedTab == MainTab.Timeline && timelineState.isSelectionActive) ||
         (selectedTab == MainTab.Albums && selectedAlbum != null &&
             albumDetailState.isSelectionActive) ||
         (selectedTab == MainTab.Albums && albumsState.isSelectionActive) ||
@@ -643,13 +631,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedFolder != null ||
         selectedPerson != null ||
         moreSubscreen != null ||
-        selectedTab != MainTab.Timeline ||
-        homeMode == HomeMode.Library
+        selectedTab != MainTab.Timeline
     )
     PlatformBackHandler(enabled = canHandleBack) {
         when {
             assetDetail != null -> { assetDetail = null }
-            selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+            selectedTab == MainTab.Timeline &&
                 timelineState.isSelectionActive -> timelineViewModel.clearSelection()
             selectedTab == MainTab.Albums && selectedAlbum != null &&
                 albumDetailState.isSelectionActive -> albumDetailViewModel.clearSelection()
@@ -690,13 +677,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
             moreSubscreen != null -> { moreSubscreen = parentMoreSubscreen(moreSubscreen!!) }
             selectedTab != MainTab.Timeline -> { selectedTab = MainTab.Timeline }
-            homeMode == HomeMode.Library -> { homeMode = HomeMode.Hub }
         }
     }
 
     val topBar: @Composable () -> Unit = {
         when {
-            selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+            selectedTab == MainTab.Timeline &&
                 timelineState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = timelineState.selection.size,
@@ -1124,15 +1110,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
             selectedTab == MainTab.More -> MoreTopBar()
-            selectedTab == MainTab.Timeline && homeMode == HomeMode.Hub ->
-                com.photonne.app.ui.main.HubTopBar()
             else -> TimelineTopBar(
                 onJumpToDate = { showJumpToDate = true },
                 currentZoom = timelineZoom,
-                onZoomSelected = timelineZoomStore::update,
-                onBack = if (selectedTab == MainTab.Timeline) {
-                    { homeMode = HomeMode.Hub }
-                } else null
+                onZoomSelected = timelineZoomStore::update
             )
         }
     }
@@ -1141,7 +1122,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // replaced by an action bar so the primary actions sit within thumb
     // reach on mobile. The slim selection top bar above keeps just Close + count.
     val bottomBar: (@Composable () -> Unit)? = when {
-        selectedTab == MainTab.Timeline && homeMode == HomeMode.Library &&
+        selectedTab == MainTab.Timeline &&
             timelineState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -1394,7 +1375,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // takes the bottom bar and would crash into the FAB).
     val floatingActionButton: @Composable () -> Unit = {
         when {
-            selectedTab == MainTab.Timeline && homeMode == HomeMode.Library && bottomBar == null ->
+            selectedTab == MainTab.Timeline && bottomBar == null ->
                 FloatingActionButton(
                     onClick = {
                         selectedTab = MainTab.More
@@ -1450,9 +1431,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MainScaffold(
             selectedTab = selectedTab,
             onTabSelected = { tab ->
-                if (tab == MainTab.Timeline && selectedTab == MainTab.Timeline) {
-                    homeMode = HomeMode.Hub
-                }
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
                 if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
                     selectedFolder = null
@@ -1472,62 +1450,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreTabUnreadCount = notificationsState.unreadCount
         ) {
             when (selectedTab) {
-                MainTab.Timeline -> when (homeMode) {
-                    HomeMode.Hub -> com.photonne.app.ui.hub.HubScreen(
-                        state = hubState,
-                        baseUrl = apiBaseUrl,
-                        onRefresh = hubViewModel::refresh,
-                        onOpenAsset = { items, index ->
-                            assetDetail = AssetDetailContext(
-                                items = items,
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
-                                onFavoriteChanged = timelineViewModel::setFavorite
-                            )
-                        },
-                        onOpenMemory = { items, index ->
-                            assetDetail = AssetDetailContext(
-                                items = items,
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
-                                onFavoriteChanged = timelineViewModel::setFavorite
-                            )
-                        },
-                        onOpenLibrary = { homeMode = HomeMode.Library },
-                        onOpenSearch = { selectedTab = MainTab.Search },
-                        onOpenMap = {
-                            selectedTab = MainTab.More
-                            moreSubscreen = MoreSubscreen.Map
-                        },
-                        onOpenAlbums = { selectedTab = MainTab.Albums },
-                        onOpenUpload = {
-                            selectedTab = MainTab.More
-                            moreSubscreen = MoreSubscreen.Upload
-                        },
-                        onOpenPeople = {
-                            selectedTab = MainTab.More
-                            moreSubscreen = MoreSubscreen.People
-                        },
-                        onOpenPerson = { person ->
-                            selectedTab = MainTab.More
-                            moreSubscreen = MoreSubscreen.People
-                            selectedPerson = person
-                        },
-                        onOpenFacet = { facet ->
-                            selectedTab = MainTab.Search
-                            when (facet.kind) {
-                                com.photonne.app.ui.hub.HubFacetKind.Scene ->
-                                    searchViewModel.showResultsForSceneLabel(facet.label)
-                                com.photonne.app.ui.hub.HubFacetKind.ObjectLabel ->
-                                    searchViewModel.showResultsForObjectLabel(facet.label)
-                            }
-                        }
-                    )
-                    HomeMode.Library -> TimelineScreen(
+                MainTab.Timeline -> TimelineScreen(
                         state = timelineState,
                         onOpenAsset = { mergedItems, mergedIndex ->
                             assetDetail = AssetDetailContext(
@@ -1549,7 +1472,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         pendingJumpDate = pendingJumpDate,
                         onJumpHandled = { pendingJumpDate = null }
                     )
-                }
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
                     if (openedAlbum == null) {
