@@ -458,6 +458,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
+    val memoriesState by memoriesViewModel.state.collectAsState()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
     val notificationsState by notificationsViewModel.state.collectAsState()
@@ -1470,7 +1471,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             moreSubscreen = MoreSubscreen.Upload
                         },
                         pendingJumpDate = pendingJumpDate,
-                        onJumpHandled = { pendingJumpDate = null }
+                        onJumpHandled = { pendingJumpDate = null },
+                        memories = memoriesState.items,
+                        onOpenMemory = { items, index ->
+                            assetDetail = AssetDetailContext(
+                                items = items,
+                                startIndex = index,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = timelineViewModel::setFavorite
+                            )
+                        }
                     )
                 MainTab.Albums -> {
                     val openedAlbum = selectedAlbum
