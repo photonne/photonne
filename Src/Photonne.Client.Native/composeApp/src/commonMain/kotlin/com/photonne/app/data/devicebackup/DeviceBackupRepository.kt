@@ -39,6 +39,18 @@ class DeviceBackupRepository(
         stateStore.clearFolder()
     }
 
+    /** Last scanned media for the saved folder, persisted so the timeline can
+     *  show device-only photos instantly on launch before the fresh re-scan
+     *  completes. Empty if nothing cached or the saved folder changed. */
+    fun cachedMedia(): List<DeviceMedia> {
+        val folder = savedFolder() ?: return emptyList()
+        return stateStore.cachedMedia(folder.uri)
+    }
+
+    fun saveCachedMedia(folderUri: String, media: List<DeviceMedia>) {
+        stateStore.saveCachedMedia(folderUri, media)
+    }
+
     fun isBackupEnabled(): Boolean = stateStore.isBackupEnabled()
 
     fun setBackupEnabled(enabled: Boolean) {

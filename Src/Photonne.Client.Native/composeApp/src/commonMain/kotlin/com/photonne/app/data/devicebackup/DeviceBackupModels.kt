@@ -25,6 +25,7 @@ enum class DeviceMediaType { Image, Video }
  * the bytes back later; `sha256` is filled in lazily once we hash the
  * file to check it against the server.
  */
+@Serializable
 data class DeviceMedia(
     val uri: String,
     val displayName: String,
