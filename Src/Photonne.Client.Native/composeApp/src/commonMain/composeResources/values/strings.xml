@@ -48,6 +48,7 @@
     <string name="timeline_empty_title">No hay assets en la línea de tiempo</string>
     <string name="timeline_empty_subtitle">Indexa una carpeta desde la app web o sube tus primeras fotos.</string>
     <string name="timeline_empty_action_upload">Subir fotos</string>
+    <string name="timeline_device_loading">Buscando fotos del dispositivo…</string>
     <string name="timeline_memories_section">Recuerdos</string>
     <string name="timeline_memories_one_year_ago">Hace 1 año</string>
     <string name="timeline_memories_years_ago">Hace %1$d años</string>

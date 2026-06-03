@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -20,6 +23,7 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -41,6 +45,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.settings.TimelineZoomLevel
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.timeline_device_loading
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
@@ -105,6 +110,10 @@ fun TimelineScreen(
     val mergedItems = remember(state.items, localItems) {
         mergeTimelineWithLocal(state.items, localItems)
     }
+    // Subtle "finding device photos" hint shown only during the first device
+    // scan (no cache yet → entries still empty). Cached launches seed the
+    // grid instantly and never flip isLoading, so the hint stays hidden.
+    val deviceLoading = deviceBackupState.isBackupEnabled && deviceBackupState.isLoading
     val entries = remember(mergedItems, zoomLevel) {
         groupTimelineEntries(mergedItems, zoomLevel.grouping)
     }
@@ -299,6 +308,40 @@ fun TimelineScreen(
                     onRetry = onRefresh,
                 )
             }
+            if (deviceLoading && state.error == null) {
+                DeviceScanIndicator(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 12.dp)
+                )
+            }
+        }
+    }
+}
+
+/** Small pill shown over the grid while the first device-gallery scan runs. */
+@Composable
+private fun DeviceScanIndicator(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = stringResource(Res.string.timeline_device_loading),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
