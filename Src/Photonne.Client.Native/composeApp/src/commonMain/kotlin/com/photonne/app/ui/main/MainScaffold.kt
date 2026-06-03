@@ -1031,9 +1031,19 @@ fun SearchTopBar() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoreTopBar() {
+fun MoreTopBar(onOpenUpload: (() -> Unit)? = null) {
     TopAppBar(
-        title = { Text("Más", style = MaterialTheme.typography.titleMedium) }
+        title = { Text("Más", style = MaterialTheme.typography.titleMedium) },
+        actions = {
+            if (onOpenUpload != null) {
+                IconButton(onClick = onOpenUpload) {
+                    Icon(
+                        Icons.Outlined.AddPhotoAlternate,
+                        contentDescription = stringResource(Res.string.upload_title)
+                    )
+                }
+            }
+        }
     )
 }
 
