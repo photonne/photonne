@@ -3,6 +3,7 @@ package com.photonne.app.ui.album
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -29,7 +31,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Landscape
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,6 +56,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +78,11 @@ import com.photonne.app.resources.albums_shared_empty
 import com.photonne.app.resources.albums_tab_mine
 import com.photonne.app.resources.albums_tab_my_links
 import com.photonne.app.resources.albums_tab_shared
+import com.photonne.app.resources.explore_section_objects
+import com.photonne.app.resources.explore_section_scenes
+import com.photonne.app.resources.explore_title
+import com.photonne.app.resources.map_title
+import com.photonne.app.resources.people_title
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.TimeZone
@@ -82,7 +94,11 @@ import org.koin.compose.viewmodel.koinViewModel
 fun AlbumsListScreen(
     onAlbumClick: (AlbumSummary) -> Unit,
     onAlbumLongPress: (AlbumSummary) -> Unit,
-    onCreateAlbum: (() -> Unit)? = null
+    onCreateAlbum: (() -> Unit)? = null,
+    onOpenPeople: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    onOpenScenes: () -> Unit = {},
+    onOpenObjects: () -> Unit = {}
 ) {
     val viewModel: AlbumsViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
@@ -90,6 +106,16 @@ fun AlbumsListScreen(
     val visible = state.visibleAlbums
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Automatic asset groupings (People / Map / Scenes / Objects) sit
+        // above the manual-album tabs: both are "collections of assets", so
+        // the Albums tab is the single home for browsing by grouping. Tapping
+        // a card opens its full screen as a modal layer over this tab.
+        ExploreRow(
+            onOpenPeople = onOpenPeople,
+            onOpenMap = onOpenMap,
+            onOpenScenes = onOpenScenes,
+            onOpenObjects = onOpenObjects
+        )
         AlbumsTabBar(selected = state.selectedTab, onSelect = viewModel::selectTab)
         if (state.isSearchActive) {
             AlbumsSearchField(
@@ -276,6 +302,94 @@ private fun YearHeader(year: Int, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(top = 8.dp, bottom = 4.dp)
     )
+}
+
+@Composable
+private fun ExploreRow(
+    onOpenPeople: () -> Unit,
+    onOpenMap: () -> Unit,
+    onOpenScenes: () -> Unit,
+    onOpenObjects: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)
+    ) {
+        Text(
+            text = stringResource(Res.string.explore_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExploreCard(
+                label = stringResource(Res.string.people_title),
+                icon = Icons.Outlined.People,
+                onClick = onOpenPeople,
+                modifier = Modifier.weight(1f)
+            )
+            ExploreCard(
+                label = stringResource(Res.string.map_title),
+                icon = Icons.Outlined.Map,
+                onClick = onOpenMap,
+                modifier = Modifier.weight(1f)
+            )
+            ExploreCard(
+                label = stringResource(Res.string.explore_section_scenes),
+                icon = Icons.Outlined.Landscape,
+                onClick = onOpenScenes,
+                modifier = Modifier.weight(1f)
+            )
+            ExploreCard(
+                label = stringResource(Res.string.explore_section_objects),
+                icon = Icons.Outlined.Category,
+                onClick = onOpenObjects,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreCard(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
