@@ -217,7 +217,7 @@ private fun AlbumsContent(
     val groups = if (state.groupByYear) groupByYear(albums) else emptyList()
     when (state.viewMode) {
         AlbumViewMode.Grid -> LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 160.dp),
+            columns = GridCells.Adaptive(minSize = 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(16.dp),
@@ -312,7 +312,7 @@ private fun ExploreRow(
     onOpenObjects: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp)
     ) {
         Text(
             text = stringResource(Res.string.explore_title),
