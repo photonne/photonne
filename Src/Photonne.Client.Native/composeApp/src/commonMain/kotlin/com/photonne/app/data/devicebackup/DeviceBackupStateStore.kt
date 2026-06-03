@@ -1,6 +1,7 @@
 package com.photonne.app.data.devicebackup
 
 import com.russhwolf.settings.Settings
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -30,6 +31,30 @@ class DeviceBackupStateStore(private val settings: Settings) {
 
     fun clearFolder() {
         settings.remove(KEY_FOLDER)
+        clearCachedMedia()
+    }
+
+    // ─── Media metadata cache ────────────────────────────────────────────────
+    // The last folder scan, cached so the timeline can show device-only photos
+    // instantly on the next launch instead of waiting for a full SAF/PhotoKit
+    // re-enumeration. Only the [DeviceMedia] metadata is stored (never sync
+    // verdicts — those are still recomputed against the server), and it's
+    // tagged with the folder URI so a stale scan from a different folder is
+    // never served.
+
+    fun cachedMedia(folderUri: String): List<DeviceMedia> {
+        val raw = settings.getStringOrNull(KEY_MEDIA_CACHE) ?: return emptyList()
+        val cached = runCatching { json.decodeFromString<CachedMedia>(raw) }.getOrNull()
+            ?: return emptyList()
+        return if (cached.folderUri == folderUri) cached.media else emptyList()
+    }
+
+    fun saveCachedMedia(folderUri: String, media: List<DeviceMedia>) {
+        settings.putString(KEY_MEDIA_CACHE, json.encodeToString(CachedMedia(folderUri, media)))
+    }
+
+    fun clearCachedMedia() {
+        settings.remove(KEY_MEDIA_CACHE)
     }
 
     fun isBackupEnabled(): Boolean = settings.getBoolean(KEY_BACKUP_ENABLED, false)
@@ -65,12 +90,21 @@ class DeviceBackupStateStore(private val settings: Settings) {
 
     private companion object {
         const val KEY_FOLDER = "device_backup.folder"
+        const val KEY_MEDIA_CACHE = "device_backup.media_cache"
         const val KEY_BACKUP_ENABLED = "device_backup.backup_enabled"
         const val KEY_AUTO_BACKUP = "device_backup.auto_enabled"
         const val KEY_REQUIRE_WIFI = "device_backup.require_wifi"
         const val KEY_REQUIRE_CHARGING = "device_backup.require_charging"
     }
 }
+
+/** Persisted device-scan cache: the media list tagged with the folder it
+ *  came from, so a scan from a different folder is never served stale. */
+@Serializable
+private data class CachedMedia(
+    val folderUri: String,
+    val media: List<DeviceMedia>
+)
 
 /** Immutable snapshot of the user's background-sync configuration. */
 data class BackgroundSyncPreferences(

@@ -292,7 +292,11 @@ internal fun GroupedAssetGrid(
                             spacing = cellSpacing,
                             onItemClick = onItemClick,
                             onItemLongClick = onItemLongClick,
-                            selectedIds = selectedIds
+                            selectedIds = selectedIds,
+                            // Device-only rows are merged in after the gallery
+                            // scan finishes; animateItem fades them in and
+                            // slides their neighbours instead of hard-popping.
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }
@@ -341,10 +345,11 @@ private fun JustifiedCellsRow(
     spacing: Dp,
     onItemClick: (Int) -> Unit,
     onItemLongClick: ((Int) -> Unit)?,
-    selectedIds: Set<String>
+    selectedIds: Set<String>,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(row.rowHeightDp.dp)
     ) {

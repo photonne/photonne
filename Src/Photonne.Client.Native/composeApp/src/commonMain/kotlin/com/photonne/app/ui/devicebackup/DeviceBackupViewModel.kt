@@ -15,11 +15,13 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 
 /**
@@ -123,7 +125,28 @@ class DeviceBackupViewModel(
         // otherwise we'd have to wait for them to visit the Backup
         // screen before pending items become visible.
         if (repository.isSupported && repository.savedFolder() != null) {
+            // Show the last scan instantly (cache), then re-scan to reconcile.
+            seedFromCache()
             ensureLoaded()
+        }
+    }
+
+    /**
+     * Populate [entries] from the last persisted scan so the timeline can
+     * surface device-only photos immediately on launch, instead of waiting
+     * for the full folder re-enumeration. Runs off the main thread and bails
+     * if a fresh scan has already filled entries; the subsequent
+     * [refreshFolderContents] reconciles by URI.
+     */
+    private fun seedFromCache() {
+        if (_state.value.entries.isNotEmpty()) return
+        viewModelScope.launch {
+            val cached = withContext(Dispatchers.Default) { repository.cachedMedia() }
+            if (cached.isEmpty()) return@launch
+            _state.update { current ->
+                if (current.entries.isNotEmpty()) current
+                else current.copy(entries = cached.map { DeviceBackupEntry(media = it) })
+            }
         }
     }
 
@@ -216,6 +239,11 @@ class DeviceBackupViewModel(
                                 }
                             }
                         )
+                    }
+                    // Persist the fresh scan so the next launch can seed the
+                    // timeline instantly from cache.
+                    withContext(Dispatchers.Default) {
+                        repository.saveCachedMedia(folder.uri, items)
                     }
                 }
                 .onFailure { error ->
