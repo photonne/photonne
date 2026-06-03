@@ -1114,7 +1114,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             else -> TimelineTopBar(
                 onJumpToDate = { showJumpToDate = true },
                 currentZoom = timelineZoom,
-                onZoomSelected = timelineZoomStore::update
+                onZoomSelected = timelineZoomStore::update,
+                onOpenSearch = { selectedTab = MainTab.Search }
             )
         }
     }
