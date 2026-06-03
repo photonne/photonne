@@ -114,6 +114,8 @@ fun TimelineScreen(
     // scan (no cache yet → entries still empty). Cached launches seed the
     // grid instantly and never flip isLoading, so the hint stays hidden.
     val deviceLoading = deviceBackupState.isBackupEnabled && deviceBackupState.isLoading
+    val showMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null &&
+        !state.isSelectionActive
     val entries = remember(mergedItems, zoomLevel) {
         groupTimelineEntries(mergedItems, zoomLevel.grouping)
     }
@@ -274,17 +276,30 @@ fun TimelineScreen(
                                     }
                                 }
                             },
-                            header = if (memories.isNotEmpty() && onOpenMemory != null &&
-                                !state.isSelectionActive
-                            ) {
+                            header = if (showMemoriesHeader) {
                                 {
                                     item(key = "memories-strip") {
                                         MemoriesStrip(
                                             memories = memories,
                                             baseUrl = apiBaseUrl,
-                                            onOpenMemory = onOpenMemory,
+                                            onOpenMemory = onOpenMemory!!,
                                             onSeeAll = onSeeAllMemories
                                         )
+                                    }
+                                    // With memories present the floating pill
+                                    // would overlap the strip, so the scan hint
+                                    // sits inline between memories and the grid.
+                                    if (deviceLoading && state.error == null) {
+                                        item(key = "device-scan-indicator") {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 12.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                DeviceScanIndicator()
+                                            }
+                                        }
                                     }
                                 }
                             } else null,
@@ -308,7 +323,9 @@ fun TimelineScreen(
                     onRetry = onRefresh,
                 )
             }
-            if (deviceLoading && state.error == null) {
+            // Floating pill only when there's no memories header to host it
+            // inline (otherwise the inline header item above is used).
+            if (deviceLoading && state.error == null && !showMemoriesHeader) {
                 DeviceScanIndicator(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
