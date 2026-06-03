@@ -85,7 +85,8 @@ fun TimelineScreen(
     onJumpHandled: () -> Unit = {},
     /** On-this-day memories shown as a carousel pinned above the grid. */
     memories: List<com.photonne.app.data.models.TimelineItem> = emptyList(),
-    onOpenMemory: ((items: List<com.photonne.app.data.models.TimelineItem>, index: Int) -> Unit)? = null
+    onOpenMemory: ((items: List<com.photonne.app.data.models.TimelineItem>, index: Int) -> Unit)? = null,
+    onSeeAllMemories: (() -> Unit)? = null
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
@@ -272,7 +273,8 @@ fun TimelineScreen(
                                         MemoriesStrip(
                                             memories = memories,
                                             baseUrl = apiBaseUrl,
-                                            onOpenMemory = onOpenMemory
+                                            onOpenMemory = onOpenMemory,
+                                            onSeeAll = onSeeAllMemories
                                         )
                                     }
                                 }

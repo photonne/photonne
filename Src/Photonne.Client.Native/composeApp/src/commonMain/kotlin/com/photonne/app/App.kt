@@ -198,9 +198,7 @@ private enum class MoreSubscreen {
     UtilitiesLargeFiles,
     UtilitiesLocations,
     UnsupportedFiles,
-    Explore,
     ExploreMemories,
-    ExplorePlaces,
     ExploreScenes,
     ExploreObjects,
     AccountSettings,
@@ -325,7 +323,6 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.UtilitiesLargeFiles,
     MoreSubscreen.UtilitiesLocations -> MoreSubscreen.Utilities
     MoreSubscreen.ExploreMemories,
-    MoreSubscreen.ExplorePlaces,
     MoreSubscreen.ExploreScenes,
     MoreSubscreen.ExploreObjects -> null
     MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
@@ -366,7 +363,6 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.Trash,
     MoreSubscreen.Utilities,
     MoreSubscreen.UnsupportedFiles,
-    MoreSubscreen.Explore,
     MoreSubscreen.AccountSettings,
     MoreSubscreen.Notifications,
     MoreSubscreen.Administration -> null
@@ -845,19 +841,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.utilities_section_locations),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
-            moreSubscreen == MoreSubscreen.Explore ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.explore_title),
-                    onBack = { moreSubscreen = null }
-                )
             moreSubscreen == MoreSubscreen.ExploreMemories ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_memories),
-                    onBack = { moreSubscreen = null }
-                )
-            moreSubscreen == MoreSubscreen.ExplorePlaces ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.explore_section_places),
                     onBack = { moreSubscreen = null }
                 )
             moreSubscreen == MoreSubscreen.ExploreScenes ->
@@ -1490,7 +1476,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onLoadMore = {},
                                 onFavoriteChanged = timelineViewModel::setFavorite
                             )
-                        }
+                        },
+                        onSeeAllMemories = { moreSubscreen = MoreSubscreen.ExploreMemories }
                     )
                 selectedTab == MainTab.Albums && moreSubscreen == null -> {
                     val openedAlbum = selectedAlbum
@@ -1645,13 +1632,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         user = user.user,
                         onLogout = onLogout,
                         onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
-                        onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
-                        onOpenPeople = { moreSubscreen = MoreSubscreen.People },
-                        onOpenExploreMemories = { moreSubscreen = MoreSubscreen.ExploreMemories },
-                        onOpenExplorePlaces = { moreSubscreen = MoreSubscreen.ExplorePlaces },
-                        onOpenExploreScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
-                        onOpenExploreObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
@@ -1778,21 +1759,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
                             viewModel = utilitiesLocationsViewModel
                         )
-                    MoreSubscreen.Explore ->
-                        com.photonne.app.ui.explore.ExploreHubScreen(
-                            onOpen = { entry ->
-                                moreSubscreen = when (entry) {
-                                    com.photonne.app.ui.explore.ExploreEntry.Memories ->
-                                        MoreSubscreen.ExploreMemories
-                                    com.photonne.app.ui.explore.ExploreEntry.Places ->
-                                        MoreSubscreen.ExplorePlaces
-                                    com.photonne.app.ui.explore.ExploreEntry.Scenes ->
-                                        MoreSubscreen.ExploreScenes
-                                    com.photonne.app.ui.explore.ExploreEntry.Objects ->
-                                        MoreSubscreen.ExploreObjects
-                                }
-                            }
-                        )
                     MoreSubscreen.ExploreMemories ->
                         com.photonne.app.ui.explore.ExploreMemoriesScreen(
                             viewModel = memoriesViewModel,
@@ -1810,8 +1776,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 )
                             }
                         )
-                    MoreSubscreen.ExplorePlaces ->
-                        com.photonne.app.ui.explore.ExplorePlacesScreen()
                     MoreSubscreen.ExploreScenes ->
                         com.photonne.app.ui.explore.ExploreScenesScreen(
                             viewModel = exploreFacetsViewModel,
