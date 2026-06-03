@@ -25,14 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -287,11 +281,7 @@ internal fun GroupedAssetGrid(
         rows.forEach { entry ->
             when (entry) {
                 is JustifiedRowEntry.Header -> stickyHeader(key = "h:${entry.key}") {
-                    StickyMonthHeader(
-                        title = entry.title,
-                        cover = entry.cover,
-                        baseUrl = baseUrl
-                    )
+                    StickyMonthHeader(title = entry.title)
                 }
                 is JustifiedRowEntry.Row -> {
                     val first = entry.row.cells.first()
@@ -312,18 +302,12 @@ internal fun GroupedAssetGrid(
 }
 
 /**
- * Cinematic sticky header: 64-dp band painting the group's first asset as
- * backdrop + dark vertical gradient so the white title stays readable on
- * any photo. Falls back to a translucent surface chip when no usable
- * cover exists (group's first item lacks a thumbnail or is local-only).
+ * Solid sticky date header: an opaque surface band with the group title.
+ * Uniform across server-indexed and on-device groups (no photo backdrop /
+ * gradient) so the timeline reads cleanly while scrolling.
  */
 @Composable
-private fun StickyMonthHeader(
-    title: String,
-    cover: TimelineItem?,
-    baseUrl: String
-) {
-    val usableCover = cover?.takeIf { it.hasThumbnails && !it.isLocalOnly }
+private fun StickyMonthHeader(title: String) {
     // Swallow taps on the band itself so the user doesn't accidentally
     // open whatever cell is scrolling behind the sticky header, and so
     // the band reads as chrome rather than an interactive asset.
@@ -332,58 +316,21 @@ private fun StickyMonthHeader(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = { /* consume — header is chrome, not an asset */ }
             )
     ) {
-        if (usableCover != null) {
-            // Heavy blur turns the cover into an ambient color band
-            // instead of an openable-looking photo.
-            AsyncImage(
-                model = "$baseUrl/api/assets/${usableCover.id}/thumbnail?size=Small",
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(radius = 28.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.55f),
-                                Color.Black.copy(alpha = 0.40f)
-                            )
-                        )
-                    )
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(horizontal = 16.dp)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(horizontal = 16.dp)
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(horizontal = 16.dp)
+        )
     }
 }
 
