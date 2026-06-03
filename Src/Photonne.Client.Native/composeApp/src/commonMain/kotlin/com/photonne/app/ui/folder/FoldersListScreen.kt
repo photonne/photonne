@@ -254,7 +254,7 @@ private fun FolderListContent(
                 }
             }
             FolderViewMode.Grid -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 140.dp),
+                columns = GridCells.Adaptive(minSize = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(16.dp),
