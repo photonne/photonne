@@ -189,18 +189,6 @@ private fun MainNavigationBar(
             },
             label = { Text(stringResource(Res.string.tab_timeline)) }
         )
-        val searchActive = selectedTab == MainTab.Search
-        NavigationBarItem(
-            selected = searchActive,
-            onClick = { onTabSelected(MainTab.Search) },
-            icon = {
-                Icon(
-                    if (searchActive) Icons.Filled.Search else Icons.Outlined.Search,
-                    contentDescription = null
-                )
-            },
-            label = { Text(stringResource(Res.string.tab_search)) }
-        )
         val albumsActive = selectedTab == MainTab.Albums
         NavigationBarItem(
             selected = albumsActive,
@@ -260,7 +248,8 @@ fun TimelineTopBar(
     onJumpToDate: () -> Unit,
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    onOpenSearch: (() -> Unit)? = null
 ) {
     TopAppBar(
         navigationIcon = {
@@ -281,6 +270,14 @@ fun TimelineTopBar(
             )
         },
         actions = {
+            if (onOpenSearch != null) {
+                IconButton(onClick = onOpenSearch) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = stringResource(Res.string.tab_search)
+                    )
+                }
+            }
             com.photonne.app.ui.timeline.TimelineZoomMenuAction(
                 current = currentZoom,
                 onSelect = onZoomSelected
