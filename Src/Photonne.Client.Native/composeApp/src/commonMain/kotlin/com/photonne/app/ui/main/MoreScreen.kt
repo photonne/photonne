@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,7 +59,6 @@ import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.unsupported_files_title
-import com.photonne.app.resources.upload_title
 import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -93,7 +90,6 @@ private data class MoreSection(
 fun MoreScreen(
     user: UserDto,
     onLogout: () -> Unit,
-    onOpenUpload: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
@@ -105,17 +101,15 @@ fun MoreScreen(
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null
 ) {
-    // Shortcuts grouped into titled sections so the grid reads as
-    // "Discover / Manage / Actions" instead of one ragged 3×N block. Each
-    // section lays its own cards out 3-per-row (or fewer), so symmetry is
-    // per-section, not global. Upload is promoted to a primary button in the
-    // header (it's an action, not a destination).
+    // Shortcuts grouped into titled sections (Gestión / Acciones) so the grid
+    // reads cleanly instead of one ragged block; each section lays its own
+    // cards 3-per-row. Upload lives in the top bar (it's an action, not a
+    // destination), and "Otros archivos" is a link under the Gestión grid.
     val sections = remember(
         onOpenFavorites,
         onOpenArchived,
         onOpenTrash,
         onOpenUtilities,
-        onOpenUnsupportedFiles,
         onOpenDeviceBackup,
         onOpenNotifications,
         notificationsUnreadCount
@@ -127,10 +121,9 @@ fun MoreScreen(
             MoreSection(
                 key = "manage",
                 titleRes = Res.string.more_section_manage,
-                columns = 4,
+                columns = 3,
                 shortcuts = listOf(
                     MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
-                    MoreShortcut("unsupported-files", Res.string.unsupported_files_title, Icons.Outlined.FolderOff, onOpenUnsupportedFiles),
                     MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
                     MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
                 )
@@ -176,21 +169,6 @@ fun MoreScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            // Upload promoted to a primary action button.
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Button(
-                    onClick = onOpenUpload,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text(stringResource(Res.string.upload_title))
-                }
-            }
             Spacer(Modifier.height(8.dp))
         }
 
@@ -230,6 +208,14 @@ fun MoreScreen(
                     repeat(columns - row.size) {
                         Spacer(Modifier.weight(1f))
                     }
+                }
+            }
+            // "Otros archivos" reads as a lightweight link tucked under the
+            // Gestión grid — it's a rarely-visited diagnostics view, not a
+            // primary destination, so it doesn't earn a full tile.
+            if (section.key == "manage") {
+                item("unsupported-files-link") {
+                    UnsupportedFilesLink(onClick = onOpenUnsupportedFiles)
                 }
             }
         }
@@ -274,6 +260,36 @@ fun MoreScreen(
                     .padding(horizontal = 24.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun UnsupportedFilesLink(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.FolderOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.size(10.dp))
+        Text(
+            text = stringResource(Res.string.unsupported_files_title),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

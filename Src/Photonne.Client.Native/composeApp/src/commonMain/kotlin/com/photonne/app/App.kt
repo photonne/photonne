@@ -1096,7 +1096,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = { moreSubscreen = parent },
                 )
             }
-            selectedTab == MainTab.More -> MoreTopBar()
+            selectedTab == MainTab.More -> MoreTopBar(
+                onOpenUpload = { moreSubscreen = MoreSubscreen.Upload }
+            )
             else -> TimelineTopBar(
                 onJumpToDate = { showJumpToDate = true },
                 currentZoom = timelineZoom,
@@ -1631,7 +1633,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     null -> MoreScreen(
                         user = user.user,
                         onLogout = onLogout,
-                        onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
                         onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
