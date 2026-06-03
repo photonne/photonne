@@ -722,7 +722,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 }
             }
-            selectedTab == MainTab.Albums -> AlbumsListTopBar(
+            selectedTab == MainTab.Albums && moreSubscreen == null -> AlbumsListTopBar(
                 onCreateAlbum = { showCreateAlbum = true },
                 onOpenFilters = { showAlbumsFilters = true },
                 isSearchActive = albumsState.isSearchActive,
@@ -794,7 +794,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             selectedTab == MainTab.Search ->
                 com.photonne.app.ui.main.SearchTopBar()
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Upload ->
+            moreSubscreen == MoreSubscreen.Upload ->
                 com.photonne.app.ui.main.UploadTopBar(
                     title = stringResource(Res.string.upload_title),
                     subtitle = if (uploadState.pendingCount > 0)
@@ -805,78 +805,78 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     else null,
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceBackup ->
+            moreSubscreen == MoreSubscreen.DeviceBackup ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.device_backup_title),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.DeviceBackupPending ->
+            moreSubscreen == MoreSubscreen.DeviceBackupPending ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.backup_pending_screen_title),
                     onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.EnrichmentStatus ->
+            moreSubscreen == MoreSubscreen.EnrichmentStatus ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.enrichment_screen_title),
                     onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Utilities ->
+            moreSubscreen == MoreSubscreen.Utilities ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_title),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UnsupportedFiles ->
+            moreSubscreen == MoreSubscreen.UnsupportedFiles ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.unsupported_files_title),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
+            moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_section_duplicates),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesLargeFiles ->
+            moreSubscreen == MoreSubscreen.UtilitiesLargeFiles ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_section_large_files),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.UtilitiesLocations ->
+            moreSubscreen == MoreSubscreen.UtilitiesLocations ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_section_locations),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Explore ->
+            moreSubscreen == MoreSubscreen.Explore ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_title),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreMemories ->
+            moreSubscreen == MoreSubscreen.ExploreMemories ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_memories),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExplorePlaces ->
+            moreSubscreen == MoreSubscreen.ExplorePlaces ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_places),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreScenes ->
+            moreSubscreen == MoreSubscreen.ExploreScenes ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_scenes),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.ExploreObjects ->
+            moreSubscreen == MoreSubscreen.ExploreObjects ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_objects),
                     onBack = { moreSubscreen = null }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Map ->
+            moreSubscreen == MoreSubscreen.Map ->
                 com.photonne.app.ui.main.MapTopBar(
                     title = stringResource(Res.string.map_title),
                     onBack = { moreSubscreen = null },
                     onRefresh = mapViewModel::refresh
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.PeopleSuggestions ->
+            moreSubscreen == MoreSubscreen.PeopleSuggestions ->
                 com.photonne.app.ui.main.PersonSuggestionsTopBar(
                     title = (suggestionsState.personName ?: selectedPerson?.name)
                         ?.takeIf { it.isNotBlank() }
@@ -897,7 +897,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onDismissAll = { personSuggestionsViewModel.dismissAll() }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
+            moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null && personDetailState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = personDetailState.selection.size,
@@ -905,7 +905,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = personDetailViewModel::clearSelection
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
+            moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null -> {
                 val person = selectedPerson!!
                 val resolvedName = personDetailState.personName ?: person.name
@@ -936,7 +936,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 )
             }
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People ->
+            moreSubscreen == MoreSubscreen.People ->
                 com.photonne.app.ui.main.PeopleTopBar(
                     title = stringResource(Res.string.people_title),
                     onBack = { moreSubscreen = null },
@@ -944,7 +944,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     showHidden = peopleState.showHidden,
                     onToggleHidden = peopleViewModel::toggleShowHidden
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites &&
+            moreSubscreen == MoreSubscreen.Favorites &&
                 favoritesState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = favoritesState.selection.size,
@@ -952,7 +952,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = favoritesViewModel::clearSelection
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites -> {
+            moreSubscreen == MoreSubscreen.Favorites -> {
                 val count = favoritesState.items.size
                 com.photonne.app.ui.main.FavoritesTopBar(
                     title = stringResource(Res.string.favorites_title),
@@ -961,7 +961,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = { moreSubscreen = null }
                 )
             }
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
+            moreSubscreen == MoreSubscreen.Archived &&
                 archivedState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = archivedState.selection.size,
@@ -969,7 +969,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = archivedViewModel::clearSelection
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived -> {
+            moreSubscreen == MoreSubscreen.Archived -> {
                 val count = archivedState.items.size
                 com.photonne.app.ui.main.ArchivedTopBar(
                     title = stringResource(Res.string.archive_title),
@@ -980,7 +980,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onUnarchiveAll = { showUnarchiveAll = true }
                 )
             }
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Trash &&
+            moreSubscreen == MoreSubscreen.Trash &&
                 trashState.isSelectionActive ->
                 com.photonne.app.ui.main.TrashSelectionTopBar(
                     selectedCount = trashState.selection.size,
@@ -989,7 +989,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onRestore = { trashViewModel.bulkRestore() },
                     onPurge = { showPurgeSelected = true }
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Trash -> {
+            moreSubscreen == MoreSubscreen.Trash -> {
                 val count = trashState.items.size
                 com.photonne.app.ui.main.TrashTopBar(
                     title = stringResource(Res.string.trash_title),
@@ -1001,7 +1001,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onEmptyTrash = { showEmptyTrash = true }
                 )
             }
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Notifications ->
+            moreSubscreen == MoreSubscreen.Notifications ->
                 com.photonne.app.ui.main.NotificationsTopBar(
                     title = stringResource(Res.string.notifications_title),
                     canMarkAllRead = notificationsState.unreadCount > 0 &&
@@ -1009,42 +1009,42 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = { moreSubscreen = null },
                     onMarkAllRead = notificationsViewModel::markAllRead
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSettings ->
+            moreSubscreen == MoreSubscreen.AccountSettings ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_settings_title),
                     onBack = { moreSubscreen = null },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountProfile ->
+            moreSubscreen == MoreSubscreen.AccountProfile ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_profile),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountSecurity ->
+            moreSubscreen == MoreSubscreen.AccountSecurity ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_security),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountAppearance ->
+            moreSubscreen == MoreSubscreen.AccountAppearance ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_appearance),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AccountStorage ->
+            moreSubscreen == MoreSubscreen.AccountStorage ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_section_storage),
                     onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Administration ->
+            moreSubscreen == MoreSubscreen.Administration ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.administration_title),
                     onBack = { moreSubscreen = null },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminUsers ->
+            moreSubscreen == MoreSubscreen.AdminUsers ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_users),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminUserEditor ->
+            moreSubscreen == MoreSubscreen.AdminUserEditor ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(
                         if (adminUserEditorId == null) Res.string.admin_user_action_new
@@ -1056,12 +1056,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         moreSubscreen = MoreSubscreen.AdminUsers
                     },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminLibraries ->
+            moreSubscreen == MoreSubscreen.AdminLibraries ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_libraries),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminLibraryEditor ->
+            moreSubscreen == MoreSubscreen.AdminLibraryEditor ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(
                         if (adminLibraryEditorId == null) Res.string.admin_libraries_action_new
@@ -1073,29 +1073,29 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         moreSubscreen = MoreSubscreen.AdminLibraries
                     },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminStats ->
+            moreSubscreen == MoreSubscreen.AdminStats ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_stats),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminSettingsHub ->
+            moreSubscreen == MoreSubscreen.AdminSettingsHub ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_settings),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
                 )
-            selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.AdminSystemHub ->
+            moreSubscreen == MoreSubscreen.AdminSystemHub ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_system),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
                 )
-            selectedTab == MainTab.More && isAdminSettingsSubpage(moreSubscreen) -> {
+            isAdminSettingsSubpage(moreSubscreen) -> {
                 val (titleRes, _) = adminSettingsSubpageMeta(moreSubscreen!!)
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(titleRes),
                     onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
                 )
             }
-            selectedTab == MainTab.More && isAdminSystemSubpage(moreSubscreen) -> {
+            isAdminSystemSubpage(moreSubscreen) -> {
                 val (titleRes, _) = adminSystemSubpageMeta(moreSubscreen!!)
                 // The 9 task detail screens are reached via "Ejecutar tareas",
                 // so back from there should land back on the consolidated list
@@ -1234,7 +1234,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.People &&
+        moreSubscreen == MoreSubscreen.People &&
             selectedPerson != null && personDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -1265,7 +1265,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Favorites &&
+        moreSubscreen == MoreSubscreen.Favorites &&
             favoritesState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -1286,7 +1286,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
         }
-        selectedTab == MainTab.More && moreSubscreen == MoreSubscreen.Archived &&
+        moreSubscreen == MoreSubscreen.Archived &&
             archivedState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -1432,14 +1432,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MainScaffold(
             selectedTab = selectedTab,
             onTabSelected = { tab ->
+                // Tapping any bottom-nav tab dismisses an open subscreen layer
+                // (People / Map / Explore facets, or any More destination) so
+                // it never lingers over the newly selected tab.
+                moreSubscreen = null
+                selectedPerson = null
                 if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
                 if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
                     selectedFolder = null
                     folderBackStack.clear()
-                }
-                if (tab == MainTab.More && selectedTab == MainTab.More) {
-                    moreSubscreen = null
-                    selectedPerson = null
                 }
                 if (tab != MainTab.Albums) albumsViewModel.clearSelection()
                 if (tab != MainTab.Folders) foldersViewModel.clearSelection()
@@ -1450,8 +1451,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             floatingActionButton = floatingActionButton,
             moreTabUnreadCount = notificationsState.unreadCount
         ) {
-            when (selectedTab) {
-                MainTab.Timeline -> TimelineScreen(
+            // Subscreens (People/Map/Explore facets, plus all the More-menu
+            // destinations) render as a modal layer over whatever tab is
+            // active: opening "Personas" from the Albums tab keeps the bottom
+            // nav on Álbumes and returns there on back. Each primary tab is
+            // therefore guarded with `moreSubscreen == null`, and the `else`
+            // renders the active subscreen (or the More grid when null).
+            when {
+                selectedTab == MainTab.Timeline && moreSubscreen == null -> TimelineScreen(
                         state = timelineState,
                         onOpenAsset = { mergedItems, mergedIndex ->
                             assetDetail = AssetDetailContext(
@@ -1484,7 +1491,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                         }
                     )
-                MainTab.Albums -> {
+                selectedTab == MainTab.Albums && moreSubscreen == null -> {
                     val openedAlbum = selectedAlbum
                     if (openedAlbum == null) {
                         AlbumsListScreen(
@@ -1502,7 +1509,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onAlbumLongPress = { album ->
                                 albumsViewModel.selectAlbum(album.id)
                             },
-                            onCreateAlbum = { showCreateAlbum = true }
+                            onCreateAlbum = { showCreateAlbum = true },
+                            // Explorar cards open their screen as a modal layer
+                            // over the Albums tab (no tab switch) so back returns
+                            // here and the bottom nav stays on Álbumes.
+                            onOpenPeople = {
+                                selectedPerson = null
+                                moreSubscreen = MoreSubscreen.People
+                            },
+                            onOpenMap = { moreSubscreen = MoreSubscreen.Map },
+                            onOpenScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
+                            onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects }
                         )
                     } else {
                         AlbumDetailScreen(
@@ -1536,7 +1553,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     }
                 }
-                MainTab.Folders -> {
+                selectedTab == MainTab.Folders && moreSubscreen == null -> {
                     val openedFolder = selectedFolder
                     if (openedFolder == null) {
                         com.photonne.app.ui.folder.FoldersListScreen(
@@ -1593,7 +1610,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     }
                 }
-                MainTab.Search -> com.photonne.app.ui.search.SearchScreen(
+                selectedTab == MainTab.Search && moreSubscreen == null ->
+                    com.photonne.app.ui.search.SearchScreen(
                     viewModel = searchViewModel,
                     onOpenFilters = { showSearchFilters = true },
                     onItemClick = { index ->
@@ -1621,7 +1639,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     }
                 )
-                MainTab.More -> when (moreSubscreen) {
+                else -> when (moreSubscreen) {
                     null -> MoreScreen(
                         user = user.user,
                         onLogout = onLogout,
@@ -1801,6 +1819,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             // is just a deep-linking surface for the search engine.
                             onSceneClick = { label ->
                                 searchViewModel.showResultsForSceneLabel(label)
+                                moreSubscreen = null
                                 selectedTab = MainTab.Search
                             }
                         )
@@ -1809,6 +1828,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             viewModel = exploreFacetsViewModel,
                             onObjectClick = { label ->
                                 searchViewModel.showResultsForObjectLabel(label)
+                                moreSubscreen = null
                                 selectedTab = MainTab.Search
                             }
                         )
