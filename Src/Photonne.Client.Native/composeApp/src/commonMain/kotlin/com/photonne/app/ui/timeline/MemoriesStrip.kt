@@ -23,6 +23,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.hub_action_see_all
 import com.photonne.app.resources.hub_section_memories
 import com.photonne.app.resources.timeline_memories_one_year_ago
 import com.photonne.app.resources.timeline_memories_years_ago
@@ -66,7 +68,8 @@ private const val StoryDurationMs = 5000L
 fun MemoriesStrip(
     memories: List<TimelineItem>,
     baseUrl: String,
-    onOpenMemory: (List<TimelineItem>, Int) -> Unit
+    onOpenMemory: (List<TimelineItem>, Int) -> Unit,
+    onSeeAll: (() -> Unit)? = null
 ) {
     val zone = TimeZone.currentSystemDefault()
     val currentYear = Clock.System.now().toLocalDateTime(zone).date.year
@@ -75,14 +78,20 @@ fun MemoriesStrip(
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 20.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(Res.string.hub_section_memories),
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
             )
+            if (onSeeAll != null) {
+                TextButton(onClick = onSeeAll) {
+                    Text(stringResource(Res.string.hub_action_see_all))
+                }
+            }
         }
         Spacer(modifier = Modifier.height(10.dp))
 

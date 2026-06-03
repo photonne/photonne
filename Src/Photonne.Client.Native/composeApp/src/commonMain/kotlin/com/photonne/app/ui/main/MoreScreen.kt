@@ -24,16 +24,10 @@ import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FolderOff
-import androidx.compose.material.icons.outlined.HistoryEdu
-import androidx.compose.material.icons.outlined.Landscape
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -61,18 +55,10 @@ import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.device_backup_title
-import com.photonne.app.resources.explore_title
-import com.photonne.app.resources.explore_section_memories
-import com.photonne.app.resources.explore_section_places
-import com.photonne.app.resources.explore_section_scenes
-import com.photonne.app.resources.explore_section_objects
-import com.photonne.app.resources.map_title
 import com.photonne.app.resources.more_section_actions
-import com.photonne.app.resources.more_section_discover
 import com.photonne.app.resources.more_section_manage
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.favorites_title
-import com.photonne.app.resources.people_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.upload_title
@@ -108,13 +94,7 @@ fun MoreScreen(
     user: UserDto,
     onLogout: () -> Unit,
     onOpenUpload: () -> Unit,
-    onOpenMap: () -> Unit,
     onOpenFavorites: () -> Unit,
-    onOpenPeople: () -> Unit,
-    onOpenExploreMemories: () -> Unit,
-    onOpenExplorePlaces: () -> Unit,
-    onOpenExploreScenes: () -> Unit,
-    onOpenExploreObjects: () -> Unit,
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
@@ -131,13 +111,7 @@ fun MoreScreen(
     // per-section, not global. Upload is promoted to a primary button in the
     // header (it's an action, not a destination).
     val sections = remember(
-        onOpenMap,
         onOpenFavorites,
-        onOpenPeople,
-        onOpenExploreMemories,
-        onOpenExplorePlaces,
-        onOpenExploreScenes,
-        onOpenExploreObjects,
         onOpenArchived,
         onOpenTrash,
         onOpenUtilities,
@@ -147,21 +121,9 @@ fun MoreScreen(
         notificationsUnreadCount
     ) {
         listOf(
-            // Explore facets surfaced directly (the old "Explorar" hub is
-            // flattened): Recuerdos / Personas / Mapa / Lugares / Escenas / Objetos.
-            MoreSection(
-                key = "explore",
-                titleRes = Res.string.explore_title,
-                columns = 3,
-                shortcuts = listOf(
-                    MoreShortcut("memories", Res.string.explore_section_memories, Icons.Outlined.HistoryEdu, onOpenExploreMemories),
-                    MoreShortcut("people", Res.string.people_title, Icons.Outlined.People, onOpenPeople),
-                    MoreShortcut("map", Res.string.map_title, Icons.Outlined.Map, onOpenMap),
-                    MoreShortcut("places", Res.string.explore_section_places, Icons.Outlined.Public, onOpenExplorePlaces),
-                    MoreShortcut("scenes", Res.string.explore_section_scenes, Icons.Outlined.Landscape, onOpenExploreScenes),
-                    MoreShortcut("objects", Res.string.explore_section_objects, Icons.Outlined.Category, onOpenExploreObjects)
-                )
-            ),
+            // Browsing by grouping (People / Map / Scenes / Objects) now lives
+            // in the Albums tab's "Explorar" row, so the More menu is just
+            // management + actions + settings.
             MoreSection(
                 key = "manage",
                 titleRes = Res.string.more_section_manage,
