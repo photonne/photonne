@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -79,6 +80,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
         Guid libraryId,
         [FromBody] SetExternalLibraryPermissionRequest request,
         [FromServices] ApplicationDbContext db,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -123,6 +125,10 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
 
         await db.SaveChangesAsync(ct);
 
+        // Library folders feed the same per-user folder-visibility cache as
+        // folder grants — drop the grantee's entry so timelines update now.
+        allowedFolders.Invalidate(request.UserId);
+
         return Results.Ok(new ExternalLibraryPermissionDto(
             permission.Id,
             permission.UserId,
@@ -138,6 +144,7 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
         Guid libraryId,
         Guid userId,
         [FromServices] ApplicationDbContext db,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -156,6 +163,8 @@ public class ExternalLibraryPermissionsEndpoint : IEndpoint
 
         db.ExternalLibraryPermissions.Remove(permission);
         await db.SaveChangesAsync(ct);
+
+        allowedFolders.Invalidate(userId);
 
         return Results.NoContent();
     }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -93,6 +94,7 @@ public class FolderPermissionsEndpoint : IEndpoint
         Guid folderId,
         [FromBody] SetFolderPermissionRequest request,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -112,6 +114,15 @@ public class FolderPermissionsEndpoint : IEndpoint
         if (folder == null)
         {
             return Results.NotFound(new { error = "Folder not found" });
+        }
+
+        // Los contenedores estructurales (/assets, /assets/users, /assets/shared)
+        // nunca llevan permisos: un grant ahí daría acceso a TODO lo que
+        // contienen. Los permisos viven en la carpeta compartida concreta
+        // (/assets/shared/{nombre}) y su subárbol los hereda.
+        if (VirtualPath.IsStructuralContainer(folder.Path))
+        {
+            return Results.BadRequest(new { error = "No se pueden asignar permisos a un contenedor estructural. Comparte la carpeta concreta (p. ej. /assets/shared/{nombre})." });
         }
 
         // Must be owner or have CanManagePermissions
@@ -178,6 +189,10 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // The grantee's visible-folder set just changed — drop their cached
+        // entry so the timeline reflects the grant immediately (not after TTL).
+        allowedFolders.Invalidate(request.UserId);
+
         // Load related data for response
         await dbContext.Entry(permission)
             .Reference(p => p.User)
@@ -204,6 +219,7 @@ public class FolderPermissionsEndpoint : IEndpoint
         Guid folderId,
         Guid userId,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -254,6 +270,10 @@ public class FolderPermissionsEndpoint : IEndpoint
 
         dbContext.FolderPermissions.Remove(permission);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Revoking a grant hides the whole inherited subtree — drop the
+        // revoked user's cached folder set immediately.
+        allowedFolders.Invalidate(userId);
 
         return Results.NoContent();
     }

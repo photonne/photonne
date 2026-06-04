@@ -28,6 +28,7 @@ public class TimelineNeighborsEndpoint : IEndpoint
         [FromQuery] int before,
         [FromQuery] int after,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -48,33 +49,12 @@ public class TimelineNeighborsEndpoint : IEndpoint
         if (target == null)
             return Results.NotFound();
 
-        // ── Permission check (same logic as other timeline endpoints) ──
+        // ── Permission check — shared with every timeline endpoint. Using the
+        // cache also fixes a divergence: this inline copy never included
+        // external-library folders, so library assets had no neighbors. ──
         var userRootPath = $"/assets/users/{username}";
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var structuralIds = allFolders
-            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-            .Select(f => f.Id)
-            .ToHashSet();
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-
-        var foldersWithPermissionsSet = await dbContext.FolderPermissions
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToHashSetAsync(ct);
-
-        var allowedIds = permissions
-            .Select(p => p.FolderId)
-            .Where(id => !structuralIds.Contains(id))
-            .ToHashSet();
-        foreach (var folder in allFolders)
-        {
-            if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
-            {
-                allowedIds.Add(folder.Id);
-            }
-        }
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, ct);
 
         // Base query: visible, non-archived, non-deleted assets in allowed folders
         var baseQuery = dbContext.Assets

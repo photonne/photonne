@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Features.Timeline;
@@ -1032,6 +1033,13 @@ public class FoldersEndpoint : IEndpoint
             return;
         }
 
+        // Inherited semantics: personal-space folders and folders already
+        // covered by an ancestor grant don't need their own row.
+        if (await FolderPermissionGuard.IsRedundantFullGrantAsync(dbContext, userId, folderId, cancellationToken))
+        {
+            return;
+        }
+
         dbContext.FolderPermissions.Add(new FolderPermission
         {
             UserId = userId,
@@ -1181,10 +1189,6 @@ public class FoldersEndpoint : IEndpoint
             .Select(f => f.Id)
             .ToHashSet();
 
-        var foldersWithPermissions = permissions
-            .Select(p => p.FolderId)
-            .ToHashSet();
-
         var readableIds = permissions
             .Where(p => p.UserId == userId && p.CanRead && !structuralIds.Contains(p.FolderId))
             .Select(p => p.FolderId)
@@ -1196,7 +1200,9 @@ public class FoldersEndpoint : IEndpoint
         // así que las subcarpetas de cualquier carpeta legible también son accesibles.
         AddDescendantFolders(allFolders, readableIds, allowedIds);
 
-        // Carpetas de espacio personal (sin permisos explícitos)
+        // Carpetas de espacio personal — incondicional: una fila de permisos
+        // espuria sobre una carpeta personal no debe ocultársela a su dueño
+        // (misma prioridad que CanReadFolderAsync y AllowedFolderCache).
         var username = await dbContext.Users
             .AsNoTracking()
             .Where(u => u.Id == userId)
@@ -1207,7 +1213,8 @@ public class FoldersEndpoint : IEndpoint
             var userRootPath = GetUserRootPath(username);
             foreach (var folder in allFolders)
             {
-                if (!foldersWithPermissions.Contains(folder.Id) && !folder.ExternalLibraryId.HasValue
+                if (!folder.ExternalLibraryId.HasValue
+                    && !structuralIds.Contains(folder.Id)
                     && VirtualPath.IsUnder(folder.Path, userRootPath))
                 {
                     allowedIds.Add(folder.Id);

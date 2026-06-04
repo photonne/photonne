@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
@@ -31,6 +32,7 @@ public class MapAssetsEndpoint : IEndpoint
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] IMemoryCache cache,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         [FromQuery] int? zoom,
         [FromQuery] double? minLat,
@@ -54,7 +56,8 @@ public class MapAssetsEndpoint : IEndpoint
             var cacheKey = $"map:assets:{userId}";
             if (!cache.TryGetValue(cacheKey, out List<AssetLocation>? allAssets) || allAssets == null)
             {
-                var allowedFolderIds = await GetAllowedFolderIdsForUserAsync(dbContext, userId, userRootPath, cancellationToken);
+                var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
+                    dbContext, userId, userRootPath, cancellationToken);
                 var dbAssets = await dbContext.Assets
                     .Include(a => a.Exif)
                     .Include(a => a.Thumbnails)
@@ -178,55 +181,6 @@ public class MapAssetsEndpoint : IEndpoint
     private string GetUserRootPath(string username)
     {
         return $"/assets/users/{username}";
-    }
-
-    private async Task<HashSet<Guid>> GetAllowedFolderIdsForUserAsync(
-        ApplicationDbContext dbContext,
-        Guid userId,
-        string userRootPath,
-        CancellationToken ct)
-    {
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var structuralIds = allFolders
-            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-            .Select(f => f.Id)
-            .ToHashSet();
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-
-        var foldersWithPermissions = await dbContext.FolderPermissions
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var foldersWithPermissionsSet = foldersWithPermissions.ToHashSet();
-        var allowedIds = permissions
-            .Select(p => p.FolderId)
-            .Where(id => !structuralIds.Contains(id))
-            .ToHashSet();
-
-        foreach (var folder in allFolders)
-        {
-            if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
-            {
-                allowedIds.Add(folder.Id);
-            }
-        }
-
-        // Carpetas de bibliotecas externas accesibles
-        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.ExternalLibraryId)
-            .ToHashSetAsync(ct);
-
-        foreach (var folder in allFolders)
-        {
-            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
-                allowedIds.Add(folder.Id);
-        }
-
-        return allowedIds;
     }
 
     private double GetClusterDistance(int zoom)

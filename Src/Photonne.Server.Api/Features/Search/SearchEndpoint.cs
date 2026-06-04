@@ -23,6 +23,7 @@ public class SearchEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         [FromQuery] string? q,
         [FromQuery] DateTime? from,
@@ -56,7 +57,8 @@ public class SearchEndpoint : IEndpoint
         if (string.IsNullOrWhiteSpace(q) && from == null && to == null && string.IsNullOrWhiteSpace(folder) && !hasPersonFilter && !hasObjectFilter && !hasSceneFilter && !hasTextFilter)
             return Results.Ok(new SearchResponse());
 
-        var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
+        var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, $"/assets/users/{username}", ct);
 
         var query = dbContext.Assets
             .Include(a => a.Exif)
@@ -233,50 +235,6 @@ public class SearchEndpoint : IEndpoint
         return Guid.TryParse(claim?.Value, out userId);
     }
 
-    private static async Task<HashSet<Guid>> GetAllowedFolderIdsAsync(
-        ApplicationDbContext dbContext, Guid userId, string username, CancellationToken ct)
-    {
-        var userRootPath = $"/assets/users/{username}";
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var structuralIds = allFolders
-            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-            .Select(f => f.Id)
-            .ToHashSet();
-
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-        var foldersWithPermissions = await dbContext.FolderPermissions
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToHashSetAsync(ct);
-
-        var allowedIds = permissions
-            .Select(p => p.FolderId)
-            .Where(id => !structuralIds.Contains(id))
-            .ToHashSet();
-        foreach (var f in allFolders)
-        {
-            if (!foldersWithPermissions.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
-            {
-                allowedIds.Add(f.Id);
-            }
-        }
-
-        // Carpetas de bibliotecas externas accesibles
-        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.ExternalLibraryId)
-            .ToHashSetAsync(ct);
-
-        foreach (var f in allFolders)
-        {
-            if (f.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(f.ExternalLibraryId.Value))
-                allowedIds.Add(f.Id);
-        }
-
-        return allowedIds;
-    }
 }
 
 public class SearchResponse

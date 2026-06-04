@@ -320,10 +320,13 @@ public class IndexAssetsEndpoint : IEndpoint
         }
     }
 
-    // Grants the primary admin Read/Write/Delete/ManagePermissions on any
-    // non-personal folder that has zero FolderPermission rows. Runs once per
-    // scan to recover folders created outside the app (legacy app versions,
-    // raw filesystem operations, restored backups).
+    // Grants the primary admin Read/Write/Delete/ManagePermissions on
+    // non-personal SUBTREE ROOTS that nobody can reach. Runs once per scan to
+    // recover folders created outside the app (legacy app versions, raw
+    // filesystem operations, restored backups). With inherited permissions a
+    // folder is orphaned only when neither it NOR any non-structural ancestor
+    // carries a permission row — and one row on the topmost orphan covers its
+    // whole subtree, so descendants are skipped.
     private static async Task AssignAdminToOrphanedFoldersAsync(
         ApplicationDbContext dbContext,
         CancellationToken ct)
@@ -341,22 +344,46 @@ public class IndexAssetsEndpoint : IEndpoint
             .ToListAsync(ct))
             .ToHashSet();
 
-        var orphaned = await dbContext.Folders
-            .Where(f => !foldersWithPermissions.Contains(f.Id))
+        var allFolders = await dbContext.Folders
+            .Select(f => new { f.Id, f.Path, f.ParentFolderId })
             .ToListAsync(ct);
+        var byId = allFolders.ToDictionary(f => f.Id);
 
-        var toFix = orphaned
-            .Where(f => !IsPersonalUserPath(f.Path) && !VirtualPath.IsStructuralContainer(f.Path))
-            .ToList();
+        bool IsCovered(Guid? parentId)
+        {
+            while (parentId.HasValue && byId.TryGetValue(parentId.Value, out var parent))
+            {
+                if (!VirtualPath.IsStructuralContainer(parent.Path) &&
+                    foldersWithPermissions.Contains(parent.Id))
+                {
+                    return true;
+                }
+                parentId = parent.ParentFolderId;
+            }
+            return false;
+        }
+
+        // Parents before children, so granting a subtree root marks its
+        // descendants as covered before they're evaluated.
+        var toFix = new List<Guid>();
+        foreach (var folder in allFolders.OrderBy(f => f.Path.Length))
+        {
+            if (foldersWithPermissions.Contains(folder.Id)) continue;
+            if (IsPersonalUserPath(folder.Path) || VirtualPath.IsStructuralContainer(folder.Path)) continue;
+            if (IsCovered(folder.ParentFolderId)) continue;
+
+            toFix.Add(folder.Id);
+            foldersWithPermissions.Add(folder.Id);
+        }
 
         if (toFix.Count == 0) return;
 
-        foreach (var folder in toFix)
+        foreach (var folderId in toFix)
         {
             dbContext.FolderPermissions.Add(new FolderPermission
             {
                 UserId = primaryAdmin.Id,
-                FolderId = folder.Id,
+                FolderId = folderId,
                 CanRead = true,
                 CanWrite = true,
                 CanDelete = true,
@@ -366,7 +393,7 @@ public class IndexAssetsEndpoint : IEndpoint
         }
 
         await dbContext.SaveChangesAsync(ct);
-        Console.WriteLine($"[INDEX] Auto-asignado admin '{primaryAdmin.Username}' como propietario de {toFix.Count} carpeta(s) huérfana(s).");
+        Console.WriteLine($"[INDEX] Auto-asignado admin '{primaryAdmin.Username}' como propietario de {toFix.Count} raíz/raíces huérfana(s).");
     }
 
     private static bool IsPersonalUserPath(string normalizedPath) =>

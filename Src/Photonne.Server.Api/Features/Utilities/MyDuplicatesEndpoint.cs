@@ -21,6 +21,7 @@ public class MyDuplicatesEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         ApplicationDbContext dbContext,
+        AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -30,7 +31,8 @@ public class MyDuplicatesEndpoint : IEndpoint
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var userRootPath = $"/assets/users/{username}";
-        var allowedFolderIds = await GetAllowedFolderIdsAsync(dbContext, userId, userRootPath, cancellationToken);
+        var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, userRootPath, cancellationToken);
 
         var query = dbContext.Assets
             .Include(a => a.Exif)
@@ -88,51 +90,6 @@ public class MyDuplicatesEndpoint : IEndpoint
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(t => t)
             .ToList();
-    }
-
-    private static async Task<HashSet<Guid>> GetAllowedFolderIdsAsync(
-        ApplicationDbContext dbContext, Guid userId, string userRootPath, CancellationToken ct)
-    {
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var structuralIds = allFolders
-            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-            .Select(f => f.Id)
-            .ToHashSet();
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-
-        var foldersWithPermissionsSet = await dbContext.FolderPermissions
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToHashSetAsync(ct);
-
-        var allowedIds = permissions
-            .Select(p => p.FolderId)
-            .Where(id => !structuralIds.Contains(id))
-            .ToHashSet();
-
-        foreach (var folder in allFolders)
-        {
-            if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
-            {
-                allowedIds.Add(folder.Id);
-            }
-        }
-
-        // Carpetas de bibliotecas externas accesibles
-        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.ExternalLibraryId)
-            .ToHashSetAsync(ct);
-
-        foreach (var folder in allFolders)
-        {
-            if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
-                allowedIds.Add(folder.Id);
-        }
-
-        return allowedIds;
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)

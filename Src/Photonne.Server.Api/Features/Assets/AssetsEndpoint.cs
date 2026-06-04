@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -393,9 +394,12 @@ public class AssetsEndpoint : IEndpoint
         dbContext.Folders.Add(folder);
         await dbContext.SaveChangesAsync(ct);
 
+        // Inherited semantics: personal-space folders and folders already
+        // covered by an ancestor grant don't need their own row.
         var hasPermission = await dbContext.FolderPermissions
             .AnyAsync(p => p.UserId == userId && p.FolderId == folder.Id, ct);
-        if (!hasPermission)
+        if (!hasPermission &&
+            !await FolderPermissionGuard.IsRedundantFullGrantAsync(dbContext, userId, folder.Id, ct))
         {
             dbContext.FolderPermissions.Add(new FolderPermission
             {

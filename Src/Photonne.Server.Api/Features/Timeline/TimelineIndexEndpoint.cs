@@ -20,6 +20,7 @@ public class TimelineIndexEndpoint : IEndpoint
 
     private async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -32,44 +33,8 @@ public class TimelineIndexEndpoint : IEndpoint
         try
         {
             var userRootPath = $"/assets/users/{username}";
-
-            var allFolders = await dbContext.Folders.ToListAsync(cancellationToken);
-            var structuralIds = allFolders
-                .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-                .Select(f => f.Id)
-                .ToHashSet();
-            var permissions = await dbContext.FolderPermissions
-                .Where(p => p.UserId == userId && p.CanRead)
-                .ToListAsync(cancellationToken);
-
-            var foldersWithPermissionsSet = await dbContext.FolderPermissions
-                .Select(p => p.FolderId)
-                .Distinct()
-                .ToHashSetAsync(cancellationToken);
-
-            var allowedIds = permissions
-                .Select(p => p.FolderId)
-                .Where(id => !structuralIds.Contains(id))
-                .ToHashSet();
-            foreach (var folder in allFolders)
-            {
-                if (!foldersWithPermissionsSet.Contains(folder.Id) && VirtualPath.IsUnder(folder.Path, userRootPath))
-                {
-                    allowedIds.Add(folder.Id);
-                }
-            }
-
-            // Carpetas de bibliotecas externas accesibles
-            var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-                .Where(p => p.UserId == userId && p.CanRead)
-                .Select(p => p.ExternalLibraryId)
-                .ToHashSetAsync(cancellationToken);
-
-            foreach (var folder in allFolders)
-            {
-                if (folder.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(folder.ExternalLibraryId.Value))
-                    allowedIds.Add(folder.Id);
-            }
+            var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+                dbContext, userId, userRootPath, cancellationToken);
 
             // Group by date (UTC day), return descending. Grouping key is
             // CapturedAt (the timeline sort key) so the scrubber positions

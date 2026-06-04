@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -15,10 +16,10 @@ namespace Photonne.Server.Api.Shared.Authorization;
 ///
 /// The four buckets that grant visibility are unioned:
 ///   * <see cref="Asset.OwnerId"/> equals the requesting user;
-///   * the asset lives in a <see cref="Folder"/> the user has explicit
-///     <see cref="FolderPermission"/> with <c>CanRead</c>, OR a folder under
-///     their personal root <c>/assets/users/{userId}</c> (the convention used
-///     by <see cref="Features.Search.SearchEndpoint"/>);
+///   * the asset lives in a <see cref="Folder"/> the user can read per
+///     <see cref="Features.Timeline.AllowedFolderCache"/> (explicit grants
+///     inherited across the subtree + unconditional personal root +
+///     external-library folders);
 ///   * the asset lives in an <see cref="ExternalLibrary"/> the user has an
 ///     <see cref="ExternalLibraryPermission"/> for;
 ///   * the asset is included in any <see cref="Album"/> the user has an
@@ -32,11 +33,16 @@ public class AssetVisibilityService
 {
     private readonly ApplicationDbContext _db;
     private readonly UserStorageService _userStorage;
+    private readonly AllowedFolderCache _allowedFolders;
 
-    public AssetVisibilityService(ApplicationDbContext db, UserStorageService userStorage)
+    public AssetVisibilityService(
+        ApplicationDbContext db,
+        UserStorageService userStorage,
+        AllowedFolderCache allowedFolders)
     {
         _db = db;
         _userStorage = userStorage;
+        _allowedFolders = allowedFolders;
     }
 
     /// <summary>
@@ -44,57 +50,34 @@ public class AssetVisibilityService
     /// </summary>
     public async Task<AssetVisibilityScope> GetScopeAsync(Guid userId, CancellationToken ct)
     {
-        // Folder permissions (explicit grants + personal root path).
-        var userRootPath = await _userStorage.GetVirtualRootAsync(userId, ct) ?? $"/assets/users/{userId}";
-
-        var grantedFolderIds = await _db.FolderPermissions
-            .AsNoTracking()
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.FolderId)
-            .ToListAsync(ct);
-
-        var foldersWithAnyPermission = await _db.FolderPermissions
-            .AsNoTracking()
-            .Select(p => p.FolderId)
-            .Distinct()
-            .ToListAsync(ct);
-        var foldersWithAnyPermissionSet = foldersWithAnyPermission.ToHashSet();
-
-        var allFolders = await _db.Folders
-            .AsNoTracking()
-            .Select(f => new { f.Id, f.Path, f.ExternalLibraryId })
-            .ToListAsync(ct);
-
-        // Structural containers (/assets, /assets/users) must never grant
-        // access — they hold every user's personal space.
-        var structuralIds = allFolders
-            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-            .Select(f => f.Id)
-            .ToHashSet();
-
-        var allowedFolderIds = grantedFolderIds.Where(id => !structuralIds.Contains(id)).ToHashSet();
-        foreach (var f in allFolders)
+        // Personal-root semantics key on the USERNAME path, so the fallback
+        // must resolve it from the Users table — the previous
+        // "/assets/users/{userId}" GUID fallback silently disabled the
+        // personal-space rule whenever GetVirtualRootAsync returned null.
+        var userRootPath = await _userStorage.GetVirtualRootAsync(userId, ct);
+        if (string.IsNullOrEmpty(userRootPath))
         {
-            if (!foldersWithAnyPermissionSet.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
-            {
-                allowedFolderIds.Add(f.Id);
-            }
+            var username = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => u.Username)
+                .FirstOrDefaultAsync(ct);
+            userRootPath = $"/assets/users/{username}";
         }
 
-        // External libraries the user can read.
+        // Folder visibility — single source of truth shared with the timeline
+        // endpoints (explicit grants inherited across the subtree +
+        // unconditional personal space + external-library folders).
+        var allowedFolderIds = await _allowedFolders.GetAllowedFolderIdsAsync(
+            _db, userId, userRootPath, ct);
+
+        // External libraries the user can read (also exposed independently on
+        // the scope for the ExternalLibraryId leg of the predicate).
         var allowedExternalLibraryIds = await _db.ExternalLibraryPermissions
             .AsNoTracking()
             .Where(p => p.UserId == userId && p.CanRead)
             .Select(p => p.ExternalLibraryId)
             .ToHashSetAsync(ct);
-
-        // Folders inside a readable external library are also allowed (even if
-        // no explicit FolderPermission exists). Mirrors SearchEndpoint.
-        foreach (var f in allFolders)
-        {
-            if (f.ExternalLibraryId.HasValue && allowedExternalLibraryIds.Contains(f.ExternalLibraryId.Value))
-                allowedFolderIds.Add(f.Id);
-        }
 
         // Assets reachable through a readable Album. Pre-fetch the AssetIds so
         // the runtime predicate is a simple IN clause.

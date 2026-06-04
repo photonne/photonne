@@ -434,6 +434,14 @@ public class AssetIndexingService
 
         if (exists) return;
 
+        // Inherited semantics: indexing /assets/shared/A/B/C materializes one
+        // row on the share root (A) only — the rest of the subtree inherits.
+        if (await Authorization.FolderPermissionGuard.IsRedundantFullGrantAsync(
+                _dbContext, primaryAdminId.Value, folderId, ct))
+        {
+            return;
+        }
+
         _dbContext.FolderPermissions.Add(new FolderPermission
         {
             UserId = primaryAdminId.Value,

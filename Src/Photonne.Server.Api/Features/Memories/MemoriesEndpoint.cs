@@ -23,6 +23,7 @@ public class MemoriesEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] AllowedFolderCache allowedFolders,
         ClaimsPrincipal user,
         [FromQuery] bool? test,
         CancellationToken ct)
@@ -34,7 +35,8 @@ public class MemoriesEndpoint : IEndpoint
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var today = DateTime.UtcNow;
-        var allowedIds = await GetAllowedFolderIdsAsync(dbContext, userId, username, ct);
+        var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
+            dbContext, userId, $"/assets/users/{username}", ct);
 
         if (test == true)
         {
@@ -106,44 +108,4 @@ public class MemoriesEndpoint : IEndpoint
             .ToList();
     }
 
-    private static async Task<HashSet<Guid>> GetAllowedFolderIdsAsync(
-        ApplicationDbContext dbContext, Guid userId, string username, CancellationToken ct)
-    {
-        var userRootPath = $"/assets/users/{username}";
-        var allFolders = await dbContext.Folders.ToListAsync(ct);
-        var structuralIds = allFolders
-            .Where(f => VirtualPath.IsStructuralContainer(f.Path))
-            .Select(f => f.Id)
-            .ToHashSet();
-
-        var permissions = await dbContext.FolderPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .ToListAsync(ct);
-        var foldersWithPermissions = await dbContext.FolderPermissions
-            .Select(p => p.FolderId).Distinct().ToHashSetAsync(ct);
-
-        var allowedIds = permissions
-            .Select(p => p.FolderId)
-            .Where(id => !structuralIds.Contains(id))
-            .ToHashSet();
-        foreach (var f in allFolders)
-        {
-            if (!foldersWithPermissions.Contains(f.Id) && VirtualPath.IsUnder(f.Path, userRootPath))
-                allowedIds.Add(f.Id);
-        }
-
-        // Carpetas de bibliotecas externas accesibles
-        var accessibleLibraryIds = await dbContext.ExternalLibraryPermissions
-            .Where(p => p.UserId == userId && p.CanRead)
-            .Select(p => p.ExternalLibraryId)
-            .ToHashSetAsync(ct);
-
-        foreach (var f in allFolders)
-        {
-            if (f.ExternalLibraryId.HasValue && accessibleLibraryIds.Contains(f.ExternalLibraryId.Value))
-                allowedIds.Add(f.Id);
-        }
-
-        return allowedIds;
-    }
 }

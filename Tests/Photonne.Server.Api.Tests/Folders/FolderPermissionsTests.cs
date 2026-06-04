@@ -7,9 +7,12 @@ namespace Photonne.Server.Api.Tests.Folders;
 
 /// <summary>
 /// Photonne's folder ACL has two paths that a user can have access by:
-///   1. Implicit: folder path starts with /assets/users/{username} (personal space).
-///   2. Explicit: a FolderPermission row with CanRead=true.
-/// These tests lock down both branches.
+///   1. Implicit: folder path starts with /assets/users/{username} (personal
+///      space) — unconditional, even if spurious permission rows exist.
+///   2. Explicit: a FolderPermission row with CanRead=true, inherited by the
+///      folder's whole subtree.
+/// There is NO admin bypass for app content: the Admin role only gates admin
+/// endpoints. These tests lock down all branches.
 /// </summary>
 public sealed class FolderPermissionsTests : IntegrationTestBase
 {
@@ -111,7 +114,7 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Admin_CanAccess_AnyFolder()
+    public async Task Admin_HasNoBypass_ForOtherUsersFolders()
     {
         // Admin user is seeded by the factory.
         var admin = new TestUser(
@@ -126,9 +129,111 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
             path: $"/assets/users/{alice.Username}/secrets",
             name: "secrets");
 
+        // App-level visibility is permission-driven for EVERYONE: the Admin
+        // role only gates admin endpoints (indexing, metadata, users). For
+        // browsing content, an admin behaves like any other user.
         var response = await adminClient.GetAsync($"/api/folders/{aliceFolderId}");
 
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Owner_SeesPersonalFolder_EvenWith_SpuriousPermissionRow()
+    {
+        var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
+        var (bob, _) = await CreateAuthenticatedUserAsync();
+
+        var folderId = await CreateFolderAsync(
+            path: $"/assets/users/{alice.Username}/photos",
+            name: "photos");
+
+        // A stray permission row (e.g. legacy auto-grant noise) on a personal
+        // folder must NOT hide it from its owner: personal space is
+        // unconditional, permission rows only ADD access for others.
+        await GrantFolderPermissionAsync(folderId, bob.Id, grantedByUserId: bob.Id, canRead: true);
+
+        var detail = await aliceClient.GetAsync($"/api/folders/{folderId}");
+        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+
+        var folders = await aliceClient.GetFromJsonAsync<List<FolderListItem>>("/api/folders");
+        Assert.NotNull(folders);
+        Assert.Contains(folders!, f => f.Id == folderId);
+    }
+
+    [Fact]
+    public async Task RevokingParentGrant_HidesSubtree()
+    {
+        var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
+        var (bob, bobClient) = await CreateAuthenticatedUserAsync();
+
+        var parentId = await CreateFolderAsync(
+            path: "/assets/shared/project",
+            name: "project");
+        var subfolderId = await CreateFolderAsync(
+            path: "/assets/shared/project/designs",
+            name: "designs",
+            customize: f => f.ParentFolderId = parentId);
+
+        // Alice manages the share; Bob reads via the inherited parent grant.
+        await GrantFolderPermissionAsync(parentId, alice.Id, grantedByUserId: alice.Id,
+            canRead: true, canWrite: true, canDelete: true, canManagePermissions: true);
+        await GrantFolderPermissionAsync(parentId, bob.Id, grantedByUserId: alice.Id, canRead: true);
+
+        var visible = await bobClient.GetAsync($"/api/folders/{subfolderId}");
+        Assert.Equal(HttpStatusCode.OK, visible.StatusCode);
+
+        // Revoke through the endpoint (it also invalidates Bob's cached
+        // folder-visibility set) — the whole subtree must disappear for Bob.
+        var revoke = await aliceClient.DeleteAsync($"/api/folders/{parentId}/permissions/{bob.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, revoke.StatusCode);
+
+        var hidden = await bobClient.GetAsync($"/api/folders/{subfolderId}");
+        Assert.Equal(HttpStatusCode.Forbidden, hidden.StatusCode);
+    }
+
+    [Fact]
+    public async Task Timeline_ShowsAssetsInSubfolder_WhenOnlyParentIsGranted()
+    {
+        var (alice, _) = await CreateAuthenticatedUserAsync();
+        var (bob, bobClient) = await CreateAuthenticatedUserAsync();
+
+        var parentId = await CreateFolderAsync(
+            path: "/assets/shared/family",
+            name: "family");
+        var subfolderId = await CreateFolderAsync(
+            path: "/assets/shared/family/2010",
+            name: "2010",
+            customize: f => f.ParentFolderId = parentId);
+
+        var assetId = await WithDbContextAsync(async db =>
+        {
+            var asset = new Asset
+            {
+                FileName = "old-photo.jpg",
+                FullPath = "/assets/shared/family/2010/old-photo.jpg",
+                FileSize = 1234,
+                Checksum = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+                Type = AssetType.Image,
+                Extension = "jpg",
+                FileCreatedAt = DateTime.UtcNow.AddYears(-16),
+                FileModifiedAt = DateTime.UtcNow.AddYears(-16),
+                CapturedAt = DateTime.UtcNow.AddYears(-16),
+                FolderId = subfolderId,
+                OwnerId = alice.Id
+            };
+            db.Assets.Add(asset);
+            await db.SaveChangesAsync();
+            return asset.Id;
+        });
+
+        // Grant CanRead on the PARENT only — the timeline must surface the
+        // asset that lives in the subfolder (read-time inheritance).
+        await GrantFolderPermissionAsync(parentId, bob.Id, grantedByUserId: alice.Id, canRead: true);
+
+        var response = await bobClient.GetAsync("/api/assets/timeline?pageSize=150");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains(assetId.ToString(), body);
     }
 
     [Fact]
