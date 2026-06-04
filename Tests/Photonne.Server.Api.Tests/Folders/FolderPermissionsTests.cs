@@ -138,6 +138,37 @@ public sealed class FolderPermissionsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Admin_CanManagePermissions_OnAnySharedFolder()
+    {
+        var admin = new TestUser(
+            Guid.Empty,
+            PhotonneApiFactory.AdminUsername,
+            PhotonneApiFactory.AdminPassword,
+            "Admin");
+        var adminClient = await LoginAsClientAsync(admin);
+
+        var (bob, bobClient) = await CreateAuthenticatedUserAsync();
+
+        // Shared folder with ZERO permission rows (legacy / indexed outside
+        // the app). Content has no admin bypass, but permission MANAGEMENT is
+        // an administration task — the admin must be able to grant access.
+        var sharedId = await CreateFolderAsync("/assets/shared/legacy", "legacy");
+
+        var grant = await adminClient.PostAsJsonAsync($"/api/folders/{sharedId}/permissions", new
+        {
+            UserId = bob.Id,
+            CanRead = true,
+            CanWrite = false,
+            CanDelete = false,
+            CanManagePermissions = false
+        });
+        Assert.Equal(HttpStatusCode.OK, grant.StatusCode);
+
+        var visible = await bobClient.GetAsync($"/api/folders/{sharedId}");
+        Assert.Equal(HttpStatusCode.OK, visible.StatusCode);
+    }
+
+    [Fact]
     public async Task Owner_SeesPersonalFolder_EvenWith_SpuriousPermissionRow()
     {
         var (alice, aliceClient) = await CreateAuthenticatedUserAsync();

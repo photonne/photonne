@@ -53,8 +53,12 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Folder not found" });
         }
 
-        // Must have CanManagePermissions
-        var hasAccess = folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
+        // Must have CanManagePermissions — or be an admin: managing who can
+        // see what IS administration, unlike browsing content (which has no
+        // admin bypass). Without this, a share whose rows were never granted
+        // to the admin would be unmanageable.
+        var hasAccess = user.IsInRole("Admin") ||
+            folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
         if (!hasAccess)
         {
@@ -125,10 +129,11 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.BadRequest(new { error = "No se pueden asignar permisos a un contenedor estructural. Comparte la carpeta concreta (p. ej. /assets/shared/{nombre})." });
         }
 
-        // Must be owner or have CanManagePermissions
+        // Must be owner, have CanManagePermissions, or be an admin (permission
+        // management is an administration task — content browsing is not).
         var isOwner = folder.Path.Contains($"/users/{currentUsername}/", StringComparison.OrdinalIgnoreCase)
                    || folder.Path.EndsWith($"/users/{currentUsername}", StringComparison.OrdinalIgnoreCase);
-        var hasAccess = isOwner ||
+        var hasAccess = isOwner || user.IsInRole("Admin") ||
             folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
         if (!hasAccess)
@@ -241,10 +246,11 @@ public class FolderPermissionsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Folder not found" });
         }
 
-        // Must be owner or have CanManagePermissions
+        // Must be owner, have CanManagePermissions, or be an admin (permission
+        // management is an administration task — content browsing is not).
         var isOwner = folder.Path.Contains($"/users/{currentUsername}/", StringComparison.OrdinalIgnoreCase)
                    || folder.Path.EndsWith($"/users/{currentUsername}", StringComparison.OrdinalIgnoreCase);
-        var hasAccess = isOwner ||
+        var hasAccess = isOwner || user.IsInRole("Admin") ||
             folder.Permissions.Any(p => p.UserId == currentUserId && p.CanManagePermissions);
 
         if (!hasAccess)
