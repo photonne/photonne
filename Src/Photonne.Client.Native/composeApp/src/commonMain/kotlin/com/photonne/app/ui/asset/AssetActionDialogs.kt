@@ -131,12 +131,12 @@ fun EditCaptureDateDialog(
     // inlined it ate the whole sheet height and pushed Save off-screen.
     var selectedDate by remember(initialDate) { mutableStateOf(initialLdt.date) }
     var showDatePicker by remember { mutableStateOf(false) }
-    // Time lives in a recreatable seed so "use suggestion" can overwrite it
-    // (TimePickerState's hour/minute aren't externally settable).
-    var timeSeed by remember(initialDate) { mutableStateOf(initialLdt.hour to initialLdt.minute) }
-    val timeState = remember(timeSeed) {
-        TimePickerState(initialHour = timeSeed.first, initialMinute = timeSeed.second, is24Hour = true)
-    }
+    // Time defaults to noon — when fixing a wrong date, the stored time is
+    // meaningless anyway (it matches the bulk-inference convention). The user
+    // can still tap the compact time chip to set an exact one; "use
+    // suggestion" overwrites it with the candidate's time.
+    var timeSeed by remember(initialDate) { mutableStateOf(12 to 0) }
+    var showTimePicker by remember { mutableStateOf(false) }
     var writeToFile by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
@@ -164,19 +164,26 @@ fun EditCaptureDateDialog(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            // Date as a tappable field that opens the calendar in a dialog.
+            // Date + time on one row, each opening its picker in a dialog.
             val dateLabel = selectedDate.dayOfMonth.toString().padStart(2, '0') + "/" +
                 selectedDate.monthNumber.toString().padStart(2, '0') + "/" +
                 selectedDate.year
-            OutlinedButton(
-                onClick = { showDatePicker = true },
-                modifier = Modifier.fillMaxWidth()
+            val timeLabel = timeSeed.first.toString().padStart(2, '0') + ":" +
+                timeSeed.second.toString().padStart(2, '0')
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(dateLabel, style = MaterialTheme.typography.bodyLarge)
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(dateLabel, style = MaterialTheme.typography.bodyLarge)
+                }
+                OutlinedButton(onClick = { showTimePicker = true }) {
+                    Text(timeLabel, style = MaterialTheme.typography.bodyLarge)
+                }
             }
-
-            // Compact keyboard time entry (two small fields, not the clock face).
-            TimeInput(state = timeState)
 
             // "What would the server recover?" — per-asset preview of the EXIF
             // re-read and the name/folder inference; tapping a candidate fills
@@ -268,7 +275,7 @@ fun EditCaptureDateDialog(
                 Button(onClick = {
                     val combined = LocalDateTime(
                         selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth,
-                        timeState.hour, timeState.minute, 0
+                        timeSeed.first, timeSeed.second, 0
                     ).toInstant(TimeZone.UTC)
                     onConfirm(combined, writeToFile && !isReadOnly)
                 }) {
@@ -307,6 +314,29 @@ fun EditCaptureDateDialog(
         ) {
             DatePicker(state = dateState, title = null, showModeToggle = false)
         }
+    }
+
+    if (showTimePicker) {
+        val dialogTimeState = remember {
+            TimePickerState(initialHour = timeSeed.first, initialMinute = timeSeed.second, is24Hour = true)
+        }
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            text = { TimeInput(state = dialogTimeState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    timeSeed = dialogTimeState.hour to dialogTimeState.minute
+                    showTimePicker = false
+                }) {
+                    Text(stringResource(Res.string.action_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+            }
+        )
     }
 }
 
