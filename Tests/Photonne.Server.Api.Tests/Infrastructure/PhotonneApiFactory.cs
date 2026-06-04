@@ -64,7 +64,10 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
         builder.UseSetting("AdminUser:Email", AdminEmail);
         builder.UseSetting("AdminUser:Password", AdminPassword);
         builder.UseSetting("InternalAssetsPath", _internalAssetsPath);
-        builder.UseSetting("THUMBNAILS_PATH", _thumbnailsPath);
+        // Key renamed from THUMBNAILS_PATH in the /data/* lock-down refactor;
+        // without the new key the host falls back to /data/thumbnails, which
+        // isn't writable on a macOS dev machine.
+        builder.UseSetting("ThumbnailsPath", _thumbnailsPath);
 
         builder.ConfigureServices(services =>
         {
