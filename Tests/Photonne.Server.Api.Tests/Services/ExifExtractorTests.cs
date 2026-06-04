@@ -130,4 +130,34 @@ public sealed class ExifExtractorTests : IntegrationTestBase
         Assert.Equal(64, exif!.Width);
         Assert.Equal(64, exif.Height);
     }
+
+    [Fact]
+    public async Task DateFallback_UsesIfd0DateTime_WhenDateTimeOriginalMissing()
+    {
+        // Edited/exported images often carry ONLY the IFD0 DateTime ("modify
+        // date") — Finder/Preview show it, so the extractor must fall back to
+        // it instead of reporting "no EXIF date".
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.jpg");
+        File.Copy(FixturePaths.NoMetadata, path, overwrite: true);
+        try
+        {
+            using (var image = new ImageMagick.MagickImage(path))
+            {
+                var profile = image.GetExifProfile() ?? new ImageMagick.ExifProfile();
+                profile.SetValue(ImageMagick.ExifTag.DateTime, "2008:03:21 17:45:00");
+                image.SetProfile(profile);
+                image.Write(path);
+            }
+
+            var exif = await ResolveAndRunAsync(e => e.ExtractExifAsync(path));
+
+            Assert.NotNull(exif);
+            // Default timezone is UTC in tests.
+            Assert.Equal(new DateTime(2008, 3, 21, 17, 45, 0), exif!.DateTimeOriginal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

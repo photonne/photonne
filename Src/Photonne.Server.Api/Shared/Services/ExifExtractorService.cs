@@ -92,6 +92,18 @@ public class ExifExtractorService
                 ExtractDirectoryMetadata(directory, exif, options, tzInfo);
             }
 
+            // Fallback EXIF date tags when DateTimeOriginal (0x9003) is absent:
+            // scanners write DateTimeDigitized, and editors/exporters often keep
+            // only the IFD0 DateTime ("modify date"). Finder/Preview read these
+            // too, so to the user "the file has EXIF" while we saw no date.
+            // Priority: Digitized (capture-adjacent) over IFD0 DateTime.
+            if (exif.DateTimeOriginal == null && options.DateTime)
+            {
+                exif.DateTimeOriginal =
+                    ParseExifDateTag(directories, ExifDirectoryBase.TagDateTimeDigitized, tzInfo)
+                    ?? ParseExifDateTag(directories, ExifDirectoryBase.TagDateTime, tzInfo);
+            }
+
             // Dimensions
             if (IsImageFile(extension))
             {
@@ -303,6 +315,33 @@ public class ExifExtractorService
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Scans every EXIF directory for <paramref name="tag"/> and returns the
+    /// first parseable "yyyy:MM:dd HH:mm:ss" value converted from the
+    /// configured timezone to UTC. Mirrors the DateTimeOriginal handling in
+    /// <see cref="ExtractDirectoryMetadata"/>.
+    /// </summary>
+    private static System.DateTime? ParseExifDateTag(
+        IEnumerable<MetadataExtractor.Directory> directories,
+        int tag,
+        TimeZoneInfo tzInfo)
+    {
+        foreach (var directory in directories)
+        {
+            if (directory is not ExifDirectoryBase exifDir) continue;
+
+            var raw = exifDir.GetDescription(tag);
+            if (!string.IsNullOrEmpty(raw) &&
+                System.DateTime.TryParseExact(raw, "yyyy:MM:dd HH:mm:ss", null,
+                    System.Globalization.DateTimeStyles.None, out var dt))
+            {
+                return System.TimeZoneInfo.ConvertTimeToUtc(
+                    System.DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), tzInfo);
+            }
+        }
+        return null;
+    }
 
     private static TimeZoneInfo ResolveTimezone(string tzId)
     {
