@@ -394,7 +394,11 @@ public class NightlySchedulerService : BackgroundService
             .Include(a => a.Exif)
             .Where(a => a.Type == AssetType.Image || a.Type == AssetType.Video)
             .OrderBy(a => a.FileCreatedAt)
-            .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
+            .Select(a => new
+            {
+                a.Id, a.FullPath, a.FileName, a.Type, a.CapturedAt,
+                ExifDate = a.Exif != null ? a.Exif.DateTimeOriginal : null
+            })
             .ToListAsync(ct);
 
         await Parallel.ForEachAsync(
@@ -409,8 +413,22 @@ public class NightlySchedulerService : BackgroundService
 
                 try
                 {
-                    if (!overwriteAll && asset.HasExif)
+                    if (!overwriteAll && asset.ExifDate != null)
                     {
+                        // Same contract as the admin extraction endpoint: even
+                        // when skipping re-extraction, re-sync CapturedAt with
+                        // the EXIF already stored so a divergence introduced by
+                        // a later re-index gets healed by the nightly pass.
+                        if (asset.CapturedAt != asset.ExifDate.Value)
+                        {
+                            var skippedRow = await innerDb.Assets
+                                .FirstOrDefaultAsync(a => a.Id == asset.Id, innerCt);
+                            if (skippedRow != null)
+                            {
+                                skippedRow.CapturedAt = asset.ExifDate.Value;
+                                await innerDb.SaveChangesAsync(innerCt);
+                            }
+                        }
                         Interlocked.Increment(ref skipped);
                         return;
                     }
@@ -440,7 +458,7 @@ public class NightlySchedulerService : BackgroundService
                             .FirstOrDefaultAsync(a => a.Id == asset.Id, innerCt);
                         if (assetRow != null)
                         {
-                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.FileCreatedAt;
+                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.EffectiveFileCreatedAt;
                         }
 
                         await innerDb.SaveChangesAsync(innerCt);

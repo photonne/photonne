@@ -87,7 +87,11 @@ public class ExtractMetadataEndpoint : IEndpoint
                     .Include(a => a.Exif)
                     .Where(a => a.Type == AssetType.Image || a.Type == AssetType.Video)
                     .OrderBy(a => a.FileCreatedAt)
-                    .Select(a => new { a.Id, a.FullPath, a.FileName, a.Type, HasExif = a.Exif != null && a.Exif.DateTimeOriginal != null })
+                    .Select(a => new
+                    {
+                        a.Id, a.FullPath, a.FileName, a.Type, a.CapturedAt,
+                        ExifDate = a.Exif != null ? a.Exif.DateTimeOriginal : null
+                    })
                     .ToListAsync(taskCt);
 
                 var totalAssets = assets.Count;
@@ -123,8 +127,24 @@ public class ExtractMetadataEndpoint : IEndpoint
 
                         try
                         {
-                            if (!overwrite && asset.HasExif)
+                            if (!overwrite && asset.ExifDate != null)
                             {
+                                // Skipping re-extraction, but still re-sync the
+                                // timeline date with the EXIF already stored —
+                                // a re-index can re-seed CapturedAt from a
+                                // polluted filesystem date AFTER the EXIF was
+                                // extracted, and the skip path used to leave
+                                // that divergence in place forever.
+                                if (asset.CapturedAt != asset.ExifDate.Value)
+                                {
+                                    var skippedRow = await innerDb.Assets
+                                        .FirstOrDefaultAsync(a => a.Id == asset.Id, ct);
+                                    if (skippedRow != null)
+                                    {
+                                        skippedRow.CapturedAt = asset.ExifDate.Value;
+                                        await innerDb.SaveChangesAsync(ct);
+                                    }
+                                }
                                 Interlocked.Increment(ref skipped);
                             }
                             else
@@ -160,12 +180,13 @@ public class ExtractMetadataEndpoint : IEndpoint
                                         // so the admin re-extraction can fix timeline ordering on
                                         // assets that were indexed before EXIF was processed (or
                                         // before CapturedAt existed at all). Fall back to the
-                                        // filesystem timestamp when DateTimeOriginal is absent.
+                                        // effective filesystem timestamp (min of created/modified)
+                                        // when DateTimeOriginal is absent.
                                         var assetRow = await innerDb.Assets
                                             .FirstOrDefaultAsync(a => a.Id == asset.Id, ct);
                                         if (assetRow != null)
                                         {
-                                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.FileCreatedAt;
+                                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.EffectiveFileCreatedAt;
                                         }
 
                                         await innerDb.SaveChangesAsync(ct);

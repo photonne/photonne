@@ -3,6 +3,7 @@ using Photonne.Server.Api.Shared.Services;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.Iptc;
+using MetadataExtractor.Formats.QuickTime;
 using MetadataExtractor.Formats.Xmp;
 using Xabe.FFmpeg;
 
@@ -217,6 +218,22 @@ public class ExifExtractorService
                 // not a number. Orientation is a uint16 — read the raw value directly.
                 if (exifDir.TryGetInt32(ExifDirectoryBase.TagOrientation, out var orVal))
                     exif.Orientation = orVal;
+            }
+        }
+        else if (directory is QuickTimeMovieHeaderDirectory qtMovieDir && options.DateTime)
+        {
+            // Videos (MP4/MOV/M4V/3GP): creation time from the QuickTime
+            // "mvhd" atom, which is UTC per spec — no timezone conversion.
+            // Previously videos never got a DateTimeOriginal, so their
+            // CapturedAt fell back to the filesystem date and they piled up
+            // on whatever day the files were last copied. Guard against the
+            // 1904/1970 epoch placeholders cameras write when the clock was
+            // never set, and never overwrite an EXIF-provided date.
+            if (exif.DateTimeOriginal == null &&
+                qtMovieDir.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated, out var qtCreated) &&
+                qtCreated.Year > 1970)
+            {
+                exif.DateTimeOriginal = System.DateTime.SpecifyKind(qtCreated, DateTimeKind.Utc);
             }
         }
         else if (directory is IptcDirectory iptcDir && options.Iptc)

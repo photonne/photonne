@@ -281,10 +281,11 @@ public class EnrichmentWorker : BackgroundService
                 dbContext.AssetExifs.Add(exif);
 
                 // Set the display timestamp used by the timeline. Prefer EXIF
-                // DateTimeOriginal; fall back to FileCreatedAt for assets
-                // without EXIF date. FileCreatedAt itself stays untouched so it
-                // remains a truthful filesystem record.
-                asset.CapturedAt = exif.DateTimeOriginal ?? asset.FileCreatedAt;
+                // DateTimeOriginal; fall back to the effective filesystem date
+                // (min of created/modified — rsync rewrites the birthtime) for
+                // assets without EXIF date. FileCreatedAt itself stays
+                // untouched so it remains a truthful filesystem record.
+                asset.CapturedAt = exif.DateTimeOriginal ?? asset.EffectiveFileCreatedAt;
                 await dbContext.SaveChangesAsync(ct);
                 return JsonSerializer.Serialize(new
                 {

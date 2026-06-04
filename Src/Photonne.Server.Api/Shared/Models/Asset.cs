@@ -44,7 +44,17 @@ public class Asset
     // and ORDER BY comparisons don't need a cast.
     [Column(TypeName = "timestamp without time zone")]
     public DateTime CapturedAt { get; set; }
-    
+
+    // Older of FileCreatedAt/FileModifiedAt — the truthful "file existed by
+    // then" timestamp. Linux hosts rewrite the birthtime when files are copied
+    // between volumes (rsync preserves only mtime), so a creation date newer
+    // than the modification date is always bogus. Same guard as
+    // DirectoryScanner. Used as the CapturedAt fallback when EXIF has no date.
+    [NotMapped]
+    public DateTime EffectiveFileCreatedAt =>
+        FileCreatedAt <= FileModifiedAt ? FileCreatedAt : FileModifiedAt;
+
+
     [Required]
     [MaxLength(10)]
     public string Extension { get; set; } = string.Empty;

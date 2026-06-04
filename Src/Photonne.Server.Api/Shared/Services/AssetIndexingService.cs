@@ -89,6 +89,14 @@ public class AssetIndexingService
             var extension = fileInfo.Extension.TrimStart('.').ToLowerInvariant();
             var assetType = DetermineAssetType(extension);
 
+            // Linux hosts rewrite the birthtime when files are copied between
+            // volumes (rsync preserves only mtime), so clamp the creation date
+            // to the older of the two timestamps — same guard as
+            // DirectoryScanner, which this path previously ignored.
+            var createdUtc = fileInfo.CreationTimeUtc;
+            var modifiedUtc = fileInfo.LastWriteTimeUtc;
+            var effectiveCreatedUtc = createdUtc > modifiedUtc ? modifiedUtc : createdUtc;
+
             Asset asset;
             bool isNew;
 
@@ -121,12 +129,12 @@ public class AssetIndexingService
                     Checksum = checksum,
                     Type = assetType,
                     Extension = extension,
-                    FileCreatedAt = fileInfo.CreationTimeUtc,
-                    FileModifiedAt = fileInfo.LastWriteTimeUtc,
+                    FileCreatedAt = effectiveCreatedUtc,
+                    FileModifiedAt = modifiedUtc,
                     // Seed CapturedAt from the filesystem timestamp; the EXIF
                     // enrichment worker overwrites it with DateTimeOriginal as
                     // soon as it runs.
-                    CapturedAt = fileInfo.CreationTimeUtc,
+                    CapturedAt = effectiveCreatedUtc,
                     ScannedAt = DateTime.UtcNow,
                 };
                 isNew = true;
