@@ -88,6 +88,20 @@ public class Asset
             ? source == CaptureDateSource.Manual
             : source >= CapturedAtSource;
 
+    /// <summary>
+    /// Refreshes the filesystem date columns from a live stat of the physical
+    /// file, with the same birthtime clamp the indexer applies. The DB
+    /// snapshot goes stale (re-index early-returns on already-indexed assets),
+    /// so any fallback that derives CapturedAt from file dates must re-stat
+    /// first — e.g. a later rsync may have restored a correct mtime that the
+    /// row predates.
+    /// </summary>
+    public void RefreshFileDates(DateTime createdUtc, DateTime modifiedUtc)
+    {
+        FileCreatedAt = createdUtc <= modifiedUtc ? createdUtc : modifiedUtc;
+        FileModifiedAt = modifiedUtc;
+    }
+
     [Required]
     [MaxLength(10)]
     public string Extension { get; set; } = string.Empty;

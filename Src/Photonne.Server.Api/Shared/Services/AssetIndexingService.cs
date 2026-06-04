@@ -63,6 +63,7 @@ public class AssetIndexingService
             if (existingByPath != null && existingByPath.Thumbnails.Any())
             {
                 Console.WriteLine($"[INDEX-FILE] Already indexed: {storedPath}");
+                await RefreshFileSnapshotIfChangedAsync(existingByPath, physicalPath, ct);
                 await EnqueueMissingEnrichmentAsync(existingByPath, ct);
                 return existingByPath;
             }
@@ -80,6 +81,7 @@ public class AssetIndexingService
                 if (existingByChecksum != null && existingByChecksum.Thumbnails.Any())
                 {
                     Console.WriteLine($"[INDEX-FILE] Already indexed by checksum: {storedPath}");
+                    await RefreshFileSnapshotIfChangedAsync(existingByChecksum, physicalPath, ct);
                     await EnqueueMissingEnrichmentAsync(existingByChecksum, ct);
                     return existingByChecksum;
                 }
@@ -198,6 +200,37 @@ public class AssetIndexingService
             Console.WriteLine($"[INDEX-FILE] Error indexing {physicalPath}: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Keeps the cheap filesystem facts (dates, size) of an already-indexed
+    /// asset in sync with the disk — no re-hash, one UPDATE only when something
+    /// actually changed. Without this, the early-return above left the date
+    /// columns frozen at first-index time forever, so a later rsync that
+    /// restored correct mtimes never reached the DB and every
+    /// CapturedAt-from-file fallback kept using stale dates.
+    /// </summary>
+    private async Task RefreshFileSnapshotIfChangedAsync(Asset asset, string physicalPath, CancellationToken ct)
+    {
+        var fileInfo = new FileInfo(physicalPath);
+        var createdUtc = fileInfo.CreationTimeUtc;
+        var modifiedUtc = fileInfo.LastWriteTimeUtc;
+        var effectiveCreatedUtc = createdUtc > modifiedUtc ? modifiedUtc : createdUtc;
+
+        // Sub-second tolerance: Postgres stores microseconds while FileInfo
+        // reports 100ns ticks — strict equality would force a no-op UPDATE on
+        // every single scan.
+        static bool SameInstant(DateTime a, DateTime b) => Math.Abs((a - b).TotalSeconds) < 1;
+        if (SameInstant(asset.FileModifiedAt, modifiedUtc) &&
+            SameInstant(asset.FileCreatedAt, effectiveCreatedUtc) &&
+            asset.FileSize == fileInfo.Length)
+        {
+            return;
+        }
+
+        asset.RefreshFileDates(createdUtc, modifiedUtc);
+        asset.FileSize = fileInfo.Length;
+        await _dbContext.SaveChangesAsync(ct);
     }
 
     /// <summary>

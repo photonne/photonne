@@ -200,6 +200,11 @@ public class ExtractMetadataEndpoint : IEndpoint
                                             }
                                             else if (assetRow.CanOverwriteCapturedAt(CaptureDateSource.FileSystem))
                                             {
+                                                // Re-stat the file: the DB date columns can be
+                                                // stale (re-index skips already-indexed assets),
+                                                // while the disk may hold the rsync-preserved mtime.
+                                                var fileInfo = new FileInfo(physicalPath);
+                                                assetRow.RefreshFileDates(fileInfo.CreationTimeUtc, fileInfo.LastWriteTimeUtc);
                                                 assetRow.CapturedAt = assetRow.EffectiveFileCreatedAt;
                                             }
                                         }

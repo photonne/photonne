@@ -296,6 +296,11 @@ public class EnrichmentWorker : BackgroundService
                 }
                 else if (asset.CanOverwriteCapturedAt(CaptureDateSource.FileSystem))
                 {
+                    // Re-stat the file: the DB date columns can be stale
+                    // (re-index skips already-indexed assets), while the disk
+                    // may hold the rsync-preserved mtime.
+                    var fileInfo = new FileInfo(physicalPath);
+                    asset.RefreshFileDates(fileInfo.CreationTimeUtc, fileInfo.LastWriteTimeUtc);
                     asset.CapturedAt = asset.EffectiveFileCreatedAt;
                 }
                 await dbContext.SaveChangesAsync(ct);
