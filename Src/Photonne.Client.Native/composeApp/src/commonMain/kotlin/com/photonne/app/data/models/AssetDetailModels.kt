@@ -65,6 +65,20 @@ data class CaptureDateUpdateResponse(
     val reason: String? = null
 )
 
+/**
+ * Server preview of the date recoverable for one asset: from the physical
+ * file's EXIF and/or inferred from the file name / folder path. Nothing is
+ * applied — the user picks a candidate in the edit-date sheet.
+ */
+@Serializable
+data class CaptureDateSuggestion(
+    @Serializable(with = FlexibleInstantSerializer::class) val currentDate: Instant,
+    val currentSource: String = "",
+    @Serializable(with = FlexibleInstantSerializer::class) val exifDate: Instant? = null,
+    @Serializable(with = FlexibleInstantSerializer::class) val inferredDate: Instant? = null,
+    val inferredOrigin: String? = null
+)
+
 @Serializable
 data class ThumbnailInfo(
     val id: String,

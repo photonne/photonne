@@ -147,6 +147,33 @@ public sealed class RestoreDatesInferenceTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Suggestion_PreviewsInferredDate_WithoutApplying()
+    {
+        var (alice, aliceClient) = await CreateAuthenticatedUserAsync();
+        var seeded = new DateTime(2026, 6, 4, 10, 0, 0, DateTimeKind.Utc);
+        var assetId = await AddAssetAsync(
+            "IMG-20100815-WA0001.jpg",
+            $"/assets/users/{alice.Username}/2010/2010-08-15 Vacaciones/IMG-20100815-WA0001.jpg",
+            seeded,
+            CaptureDateSource.FileSystem);
+
+        var response = await aliceClient.GetAsync($"/api/assets/{assetId}/date/suggestion");
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        // Filename (noon, from the WhatsApp date) wins over the folder; no
+        // physical file exists so there is no EXIF candidate.
+        Assert.Contains("2010-08-15T12:00:00", body);
+        Assert.Contains("FileName", body);
+        Assert.Contains("\"exifDate\":null", body);
+
+        // Preview only — nothing changed.
+        var after = await LoadAsync(assetId);
+        Assert.Equal(seeded, after.CapturedAt);
+        Assert.Equal(CaptureDateSource.FileSystem, after.Source);
+    }
+
+    [Fact]
     public async Task ExifDate_IsNotReplaced_ByInference()
     {
         var client = await AdminClientAsync();

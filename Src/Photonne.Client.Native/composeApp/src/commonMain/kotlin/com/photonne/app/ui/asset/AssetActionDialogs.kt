@@ -21,29 +21,39 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.data.models.CaptureDateSuggestion
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.asset_date_dialog_title
 import com.photonne.app.resources.asset_date_readonly_note
+import com.photonne.app.resources.asset_date_suggestion_button
+import com.photonne.app.resources.asset_date_suggestion_exif
+import com.photonne.app.resources.asset_date_suggestion_filename
+import com.photonne.app.resources.asset_date_suggestion_folder
+import com.photonne.app.resources.asset_date_suggestion_loading
+import com.photonne.app.resources.asset_date_suggestion_none
+import com.photonne.app.resources.asset_date_suggestion_use
 import com.photonne.app.resources.asset_date_write_to_file
 import com.photonne.app.resources.asset_date_write_to_file_caption
 import com.photonne.app.resources.asset_description_dialog_title
 import com.photonne.app.resources.asset_description_field
 import com.photonne.app.resources.asset_trash_message
 import com.photonne.app.resources.asset_trash_title
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -112,7 +122,8 @@ fun EditCaptureDateDialog(
     initialDate: Instant,
     isReadOnly: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (Instant, Boolean) -> Unit
+    onConfirm: (Instant, Boolean) -> Unit,
+    onRequestSuggestion: (suspend () -> CaptureDateSuggestion?)? = null
 ) {
     val initialLdt = remember(initialDate) { initialDate.toLocalDateTime(TimeZone.UTC) }
     // The selected day lives in its own state so the sheet stays compact: the
@@ -120,12 +131,24 @@ fun EditCaptureDateDialog(
     // inlined it ate the whole sheet height and pushed Save off-screen.
     var selectedDate by remember(initialDate) { mutableStateOf(initialLdt.date) }
     var showDatePicker by remember { mutableStateOf(false) }
-    val timeState = rememberTimePickerState(
-        initialHour = initialLdt.hour,
-        initialMinute = initialLdt.minute,
-        is24Hour = true
-    )
+    // Time lives in a recreatable seed so "use suggestion" can overwrite it
+    // (TimePickerState's hour/minute aren't externally settable).
+    var timeSeed by remember(initialDate) { mutableStateOf(initialLdt.hour to initialLdt.minute) }
+    val timeState = remember(timeSeed) {
+        TimePickerState(initialHour = timeSeed.first, initialMinute = timeSeed.second, is24Hour = true)
+    }
     var writeToFile by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+    var suggestionLoading by remember { mutableStateOf(false) }
+    var suggestionRequested by remember { mutableStateOf(false) }
+    var suggestion by remember { mutableStateOf<CaptureDateSuggestion?>(null) }
+
+    fun applyCandidate(instant: Instant) {
+        val ldt = instant.toLocalDateTime(TimeZone.UTC)
+        selectedDate = ldt.date
+        timeSeed = ldt.hour to ldt.minute
+    }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -154,6 +177,56 @@ fun EditCaptureDateDialog(
 
             // Compact keyboard time entry (two small fields, not the clock face).
             TimeInput(state = timeState)
+
+            // "What would the server recover?" — per-asset preview of the EXIF
+            // re-read and the name/folder inference; tapping a candidate fills
+            // the pickers, the user still confirms with Save.
+            if (onRequestSuggestion != null) {
+                TextButton(
+                    enabled = !suggestionLoading,
+                    onClick = {
+                        scope.launch {
+                            suggestionLoading = true
+                            suggestion = onRequestSuggestion()
+                            suggestionRequested = true
+                            suggestionLoading = false
+                        }
+                    }
+                ) {
+                    Text(
+                        if (suggestionLoading) stringResource(Res.string.asset_date_suggestion_loading)
+                        else stringResource(Res.string.asset_date_suggestion_button)
+                    )
+                }
+
+                suggestion?.let { s ->
+                    s.exifDate?.let { exif ->
+                        SuggestionRow(
+                            label = stringResource(Res.string.asset_date_suggestion_exif),
+                            instant = exif,
+                            onUse = { applyCandidate(exif) }
+                        )
+                    }
+                    s.inferredDate?.let { inferred ->
+                        SuggestionRow(
+                            label = if (s.inferredOrigin == "FileName")
+                                stringResource(Res.string.asset_date_suggestion_filename)
+                            else stringResource(Res.string.asset_date_suggestion_folder),
+                            instant = inferred,
+                            onUse = { applyCandidate(inferred) }
+                        )
+                    }
+                }
+                if (suggestionRequested && !suggestionLoading &&
+                    suggestion?.exifDate == null && suggestion?.inferredDate == null
+                ) {
+                    Text(
+                        stringResource(Res.string.asset_date_suggestion_none),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -233,6 +306,31 @@ fun EditCaptureDateDialog(
             }
         ) {
             DatePicker(state = dateState, title = null, showModeToggle = false)
+        }
+    }
+}
+
+/** One recoverable-date candidate: source label + formatted date + "use". */
+@Composable
+private fun SuggestionRow(label: String, instant: Instant, onUse: () -> Unit) {
+    val ldt = instant.toLocalDateTime(TimeZone.UTC)
+    val formatted = ldt.dayOfMonth.toString().padStart(2, '0') + "/" +
+        ldt.monthNumber.toString().padStart(2, '0') + "/" + ldt.year + " " +
+        ldt.hour.toString().padStart(2, '0') + ":" + ldt.minute.toString().padStart(2, '0')
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(formatted, style = MaterialTheme.typography.bodyMedium)
+        }
+        TextButton(onClick = onUse) {
+            Text(stringResource(Res.string.asset_date_suggestion_use))
         }
     }
 }

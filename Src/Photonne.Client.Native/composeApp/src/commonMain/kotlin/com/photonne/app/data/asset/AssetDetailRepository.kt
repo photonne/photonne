@@ -63,4 +63,9 @@ class AssetDetailRepository(
         writeToFile: Boolean
     ): com.photonne.app.data.models.CaptureDateUpdateResponse =
         api.updateAssetCaptureDate(assetId, dateTaken, writeToFile)
+
+    suspend fun getCaptureDateSuggestion(
+        assetId: String
+    ): com.photonne.app.data.models.CaptureDateSuggestion =
+        api.getCaptureDateSuggestion(assetId)
 }

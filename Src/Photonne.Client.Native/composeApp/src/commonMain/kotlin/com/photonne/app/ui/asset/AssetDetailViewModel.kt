@@ -167,6 +167,14 @@ class AssetDetailViewModel(
     }
 
     /**
+     * Asks the server what date it could recover for [assetId] (EXIF re-read
+     * from the file and/or inferred from name/folder) WITHOUT applying it.
+     * Returns null on failure — the sheet shows a "nothing found" hint.
+     */
+    suspend fun captureDateSuggestion(assetId: String): com.photonne.app.data.models.CaptureDateSuggestion? =
+        runCatching { repository.getCaptureDateSuggestion(assetId) }.getOrNull()
+
+    /**
      * Overrides the capture date of [assetId]. Updates the visible EXIF date
      * optimistically, then reconciles with the server's authoritative value
      * (it persists UTC and may differ by sub-second). When [writeToFile] is

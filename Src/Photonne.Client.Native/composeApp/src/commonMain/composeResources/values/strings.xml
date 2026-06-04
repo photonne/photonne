@@ -176,6 +176,13 @@
     <string name="asset_date_dialog_title">Editar fecha de captura</string>
     <string name="asset_date_write_to_file">Escribir la fecha en el archivo original (EXIF)</string>
     <string name="asset_date_write_to_file_caption">Modifica el archivo físico; los vídeos solo se actualizan en Photonne.</string>
+    <string name="asset_date_suggestion_button">Recuperar automáticamente</string>
+    <string name="asset_date_suggestion_loading">Buscando…</string>
+    <string name="asset_date_suggestion_exif">EXIF del archivo</string>
+    <string name="asset_date_suggestion_filename">Nombre del archivo</string>
+    <string name="asset_date_suggestion_folder">Carpeta</string>
+    <string name="asset_date_suggestion_none">No se encontró ninguna fecha recuperable.</string>
+    <string name="asset_date_suggestion_use">Usar</string>
     <string name="asset_date_readonly_note">Biblioteca externa de solo lectura: no se puede escribir en el archivo.</string>
     <string name="asset_trash_title">Mover a la papelera</string>
     <string name="asset_trash_message">"%1$s" se moverá a la papelera. Podrás restaurarlo desde la app web.</string>

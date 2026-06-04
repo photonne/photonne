@@ -230,6 +230,9 @@ interface PhotonneApi {
         dateTaken: Instant,
         writeToFile: Boolean
     ): com.photonne.app.data.models.CaptureDateUpdateResponse
+    suspend fun getCaptureDateSuggestion(
+        assetId: String
+    ): com.photonne.app.data.models.CaptureDateSuggestion
     suspend fun getAlbums(): List<AlbumSummary>
     suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
     suspend fun createAlbum(name: String, description: String?): AlbumSummary
@@ -866,6 +869,19 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = parseErrorMessage(response) ?: "Update capture date failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getCaptureDateSuggestion(
+        assetId: String
+    ): com.photonne.app.data.models.CaptureDateSuggestion {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/date/suggestion")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response) ?: "Capture date suggestion failed (${response.status.value})"
             )
         }
         return response.body()

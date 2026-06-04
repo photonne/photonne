@@ -634,7 +634,8 @@ fun AssetDetailScreen(
             onConfirm = { instant, writeToFile ->
                 viewModel.updateCaptureDate(currentItem.id, instant, writeToFile)
                 showEditDate = false
-            }
+            },
+            onRequestSuggestion = { viewModel.captureDateSuggestion(currentItem.id) }
         )
     }
 
