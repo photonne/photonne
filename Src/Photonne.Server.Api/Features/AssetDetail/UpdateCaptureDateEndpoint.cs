@@ -78,20 +78,26 @@ public class UpdateCaptureDateEndpoint : IEndpoint
             }
             else
             {
+                // EXIF where the format supports it; the file mtime ALWAYS
+                // (videos/RAW included) so the physical file carries the date
+                // even where EXIF can't be written.
                 var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-                var result = await exifWriter.WriteDateTakenAsync(physicalPath, dateUtc, ct);
-                fileWritten = result.FileWritten;
+                var result = await exifWriter.ApplyDateToFileAsync(physicalPath, dateUtc, ct);
+                fileWritten = result.FileTouched;
                 reason = result.Reason;
 
                 // The file changed on disk: keep checksum/size/mtime in sync so the
                 // next library scan doesn't flag it and duplicate detection stays
-                // coherent.
-                if (fileWritten && File.Exists(physicalPath))
+                // coherent. The checksum only changes when EXIF was embedded.
+                if (result.FileTouched && File.Exists(physicalPath))
                 {
                     var info = new FileInfo(physicalPath);
                     asset.FileSize = info.Length;
                     asset.FileModifiedAt = info.LastWriteTimeUtc;
-                    asset.Checksum = await fileHashService.CalculateFileHashAsync(physicalPath, ct);
+                    if (result.ExifWritten)
+                    {
+                        asset.Checksum = await fileHashService.CalculateFileHashAsync(physicalPath, ct);
+                    }
                 }
             }
         }

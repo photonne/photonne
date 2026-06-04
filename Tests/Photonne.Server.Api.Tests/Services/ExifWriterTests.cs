@@ -24,6 +24,59 @@ public sealed class ExifWriterTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task ApplyDateToFile_OnVideo_SetsModifiedTime_WithoutExif()
+    {
+        var path = CopyToTemp(FixturePaths.Video);
+        try
+        {
+            var date = new DateTime(2012, 9, 1, 8, 0, 0, DateTimeKind.Utc);
+
+            using var scope = Factory.Services.CreateScope();
+            var writer = scope.ServiceProvider.GetRequiredService<ExifWriterService>();
+
+            var result = await writer.ApplyDateToFileAsync(path, date);
+
+            // Videos can't carry EXIF, but the mtime becomes the date carrier —
+            // the file itself now holds the capture date.
+            Assert.False(result.ExifWritten);
+            Assert.True(result.ModifiedTimeSet);
+            Assert.True(result.FileTouched);
+            Assert.Equal(date, File.GetLastWriteTimeUtc(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyDateToFile_OnJpeg_WritesExif_AndModifiedTime()
+    {
+        var path = CopyToTemp(FixturePaths.WithExif);
+        try
+        {
+            var date = new DateTime(2015, 2, 14, 18, 30, 0, DateTimeKind.Utc);
+
+            using var scope = Factory.Services.CreateScope();
+            var writer = scope.ServiceProvider.GetRequiredService<ExifWriterService>();
+            var extractor = scope.ServiceProvider.GetRequiredService<ExifExtractorService>();
+
+            var result = await writer.ApplyDateToFileAsync(path, date);
+
+            Assert.True(result.ExifWritten);
+            Assert.True(result.ModifiedTimeSet);
+            Assert.Equal(date, File.GetLastWriteTimeUtc(path));
+
+            var exif = await extractor.ExtractExifAsync(path);
+            Assert.Equal(date, exif!.DateTimeOriginal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task WriteDateTaken_RoundTrips_ThroughExtractor()
     {
         var path = CopyToTemp(FixturePaths.WithExif);

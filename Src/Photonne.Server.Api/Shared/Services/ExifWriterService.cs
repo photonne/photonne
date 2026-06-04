@@ -12,6 +12,16 @@ namespace Photonne.Server.Api.Shared.Services;
 public record ExifWriteResult(bool FileWritten, string? Reason = null);
 
 /// <summary>
+/// Result of <see cref="ExifWriterService.ApplyDateToFileAsync"/>: EXIF written
+/// (images only) and/or the file's mtime set to the capture date (every type,
+/// videos included — the universal carrier that survives copies and rebuilds).
+/// </summary>
+public record PhysicalDateResult(bool ExifWritten, bool ModifiedTimeSet, string? Reason = null)
+{
+    public bool FileTouched => ExifWritten || ModifiedTimeSet;
+}
+
+/// <summary>
 /// Writes the capture date (EXIF DateTimeOriginal / DateTimeDigitized / DateTime)
 /// back into the physical image file using Magick.NET. The complementary
 /// <see cref="ExifExtractorService"/> reads the same tags. Both sides interpret
@@ -87,6 +97,44 @@ public class ExifWriterService
             Console.WriteLine($"[EXIF-WRITE] No se pudo escribir la fecha en {filePath}: {ex.Message}");
             return new ExifWriteResult(false, $"No se pudo escribir el EXIF en el archivo ({ex.Message}); solo se actualizó la base de datos.");
         }
+    }
+
+    /// <summary>
+    /// Makes the physical file itself carry <paramref name="dateTakenUtc"/>:
+    /// writes the EXIF tags where supported (JPEG/PNG/HEIC/WebP/TIFF) and sets
+    /// the filesystem mtime on EVERY type — videos and RAW included, where
+    /// EXIF writing isn't possible. The mtime is the lossless universal
+    /// fallback: rsync preserves it, every photo tool reads it, and a future
+    /// re-index would re-derive the correct date even from a fresh database.
+    /// </summary>
+    public async Task<PhysicalDateResult> ApplyDateToFileAsync(
+        string filePath,
+        DateTime dateTakenUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (!File.Exists(filePath))
+            return new PhysicalDateResult(false, false, "El archivo físico no existe; solo se actualizó la base de datos.");
+
+        var exif = await WriteDateTakenAsync(filePath, dateTakenUtc, cancellationToken);
+
+        bool mtimeSet = false;
+        try
+        {
+            File.SetLastWriteTimeUtc(filePath, DateTime.SpecifyKind(dateTakenUtc, DateTimeKind.Utc));
+            mtimeSet = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EXIF-WRITE] No se pudo ajustar el mtime de {filePath}: {ex.Message}");
+        }
+
+        var reason = exif.FileWritten
+            ? null
+            : mtimeSet
+                ? "Sin escritura EXIF para este formato; se ajustó la fecha de modificación del archivo."
+                : exif.Reason;
+
+        return new PhysicalDateResult(exif.FileWritten, mtimeSet, reason);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -175,7 +175,7 @@
     <string name="asset_description_field">Descripción</string>
     <string name="asset_date_dialog_title">Editar fecha de captura</string>
     <string name="asset_date_write_to_file">Escribir la fecha en el archivo original (EXIF)</string>
-    <string name="asset_date_write_to_file_caption">Modifica el archivo físico; los vídeos solo se actualizan en Photonne.</string>
+    <string name="asset_date_write_to_file_caption">Escribe el EXIF en imágenes y ajusta la fecha de modificación del archivo en todos los formatos, vídeos incluidos.</string>
     <string name="asset_date_suggestion_button">Recuperar automáticamente</string>
     <string name="asset_date_suggestion_loading">Buscando…</string>
     <string name="asset_date_suggestion_exif">EXIF del archivo</string>

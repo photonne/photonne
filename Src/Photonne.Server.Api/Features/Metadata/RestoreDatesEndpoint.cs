@@ -234,16 +234,22 @@ public class RestoreDatesEndpoint : IEndpoint
                                         }
                                         exifRow.DateTimeOriginal = newDate.Value;
 
-                                        if (writeToFile && asset.Type == AssetType.Image && asset.ExternalLibraryId == null)
+                                        if (writeToFile && asset.ExternalLibraryId == null)
                                         {
+                                            // EXIF for images, mtime for every type
+                                            // (videos included) — the physical file
+                                            // carries the date from here on.
                                             var physicalPath = await innerSettings.ResolvePhysicalPathAsync(asset.FullPath);
-                                            var writeResult = await innerWriter.WriteDateTakenAsync(physicalPath, newDate.Value, ct);
-                                            if (writeResult.FileWritten && File.Exists(physicalPath))
+                                            var writeResult = await innerWriter.ApplyDateToFileAsync(physicalPath, newDate.Value, ct);
+                                            if (writeResult.FileTouched && File.Exists(physicalPath))
                                             {
                                                 var info = new FileInfo(physicalPath);
                                                 assetRow.FileSize = info.Length;
                                                 assetRow.FileModifiedAt = info.LastWriteTimeUtc;
-                                                assetRow.Checksum = await innerHash.CalculateFileHashAsync(physicalPath, ct);
+                                                if (writeResult.ExifWritten)
+                                                {
+                                                    assetRow.Checksum = await innerHash.CalculateFileHashAsync(physicalPath, ct);
+                                                }
                                             }
                                         }
                                     }

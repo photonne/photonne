@@ -65,10 +65,11 @@ else
                     @if (_inferFromPath)
                     {
                         <MudSwitch T="bool" @bind-Value="_writeToFile" Color="Color.Primary" Class="mt-2">
-                            <MudText Typo="Typo.body1"><strong>Escribir la fecha en el archivo original (EXIF)</strong></MudText>
+                            <MudText Typo="Typo.body1"><strong>Escribir la fecha en el archivo original</strong></MudText>
                             <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
-                                Hace la fecha inferida permanente dentro de la imagen (modifica el archivo;
-                                los vídeos y bibliotecas externas solo se actualizan en la base de datos).
+                                Hace la fecha inferida permanente: EXIF en imágenes y fecha de modificación
+                                del archivo en todos los formatos, vídeos incluidos (las bibliotecas externas
+                                solo se actualizan en la base de datos).
                             </MudText>
                         </MudSwitch>
                     }
