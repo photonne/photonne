@@ -76,7 +76,10 @@ data class CaptureDateSuggestion(
     val currentSource: String = "",
     @Serializable(with = FlexibleInstantSerializer::class) val exifDate: Instant? = null,
     @Serializable(with = FlexibleInstantSerializer::class) val inferredDate: Instant? = null,
-    val inferredOrigin: String? = null
+    val inferredOrigin: String? = null,
+    /** Effective filesystem date (older of birthtime/mtime) — for EXIF-less
+     *  files like PNGs, the mtime is often the only surviving real date. */
+    @Serializable(with = FlexibleInstantSerializer::class) val fileDate: Instant? = null
 )
 
 @Serializable

@@ -53,12 +53,28 @@ public class CaptureDateSuggestionEndpoint : IEndpoint
         }
 
         // EXIF candidate — re-read from disk (tolerant to missing files).
+        // The filesystem candidate is the effective file date: the OLDER of
+        // birthtime/mtime, because copies (rsync) rewrite the birthtime while
+        // preserving mtime — for EXIF-less files (PNGs!) mtime is usually the
+        // only surviving trace of the real date.
         DateTime? exifDate = null;
+        DateTime? fileDate;
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
         if (File.Exists(physicalPath))
         {
             var exif = await exifExtractor.ExtractExifAsync(physicalPath, ct);
             exifDate = exif?.DateTimeOriginal;
+
+            var info = new FileInfo(physicalPath);
+            fileDate = info.CreationTimeUtc <= info.LastWriteTimeUtc
+                ? info.CreationTimeUtc
+                : info.LastWriteTimeUtc;
+        }
+        else
+        {
+            // File unreachable from this process — fall back to the dates
+            // captured at index time.
+            fileDate = asset.EffectiveFileCreatedAt;
         }
 
         // Inference candidate — file name first, folder path second.
@@ -70,7 +86,8 @@ public class CaptureDateSuggestionEndpoint : IEndpoint
             CurrentSource = asset.CapturedAtSource.ToString(),
             ExifDate = exifDate,
             InferredDate = inferred?.DateUtc,
-            InferredOrigin = inferred?.Origin.ToString()
+            InferredOrigin = inferred?.Origin.ToString(),
+            FileDate = fileDate
         });
     }
 }
@@ -85,4 +102,8 @@ public class CaptureDateSuggestionResponse
     public DateTime? InferredDate { get; set; }
     /// <summary>"FileName" or "FolderPath" when <see cref="InferredDate"/> is set.</summary>
     public string? InferredOrigin { get; set; }
+
+    /// <summary>Effective filesystem date — the older of birthtime/mtime,
+    /// re-read live from disk (DB snapshot when the file is unreachable).</summary>
+    public DateTime? FileDate { get; set; }
 }

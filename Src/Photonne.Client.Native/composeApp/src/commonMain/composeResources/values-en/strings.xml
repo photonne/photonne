@@ -179,6 +179,7 @@
     <string name="asset_date_suggestion_button">Recover automatically</string>
     <string name="asset_date_suggestion_loading">Searching…</string>
     <string name="asset_date_suggestion_exif">File EXIF</string>
+    <string name="asset_date_suggestion_file">File date (modified)</string>
     <string name="asset_date_suggestion_filename">File name</string>
     <string name="asset_date_suggestion_folder">Folder</string>
     <string name="asset_date_suggestion_none">No recoverable date was found.</string>

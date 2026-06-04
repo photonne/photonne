@@ -42,6 +42,7 @@ import com.photonne.app.resources.asset_date_dialog_title
 import com.photonne.app.resources.asset_date_readonly_note
 import com.photonne.app.resources.asset_date_suggestion_button
 import com.photonne.app.resources.asset_date_suggestion_exif
+import com.photonne.app.resources.asset_date_suggestion_file
 import com.photonne.app.resources.asset_date_suggestion_filename
 import com.photonne.app.resources.asset_date_suggestion_folder
 import com.photonne.app.resources.asset_date_suggestion_loading
@@ -214,6 +215,13 @@ fun EditCaptureDateDialog(
                             onUse = { applyCandidate(exif) }
                         )
                     }
+                    s.fileDate?.let { fileDate ->
+                        SuggestionRow(
+                            label = stringResource(Res.string.asset_date_suggestion_file),
+                            instant = fileDate,
+                            onUse = { applyCandidate(fileDate) }
+                        )
+                    }
                     s.inferredDate?.let { inferred ->
                         SuggestionRow(
                             label = if (s.inferredOrigin == "FileName")
@@ -225,7 +233,8 @@ fun EditCaptureDateDialog(
                     }
                 }
                 if (suggestionRequested && !suggestionLoading &&
-                    suggestion?.exifDate == null && suggestion?.inferredDate == null
+                    suggestion?.exifDate == null && suggestion?.inferredDate == null &&
+                    suggestion?.fileDate == null
                 ) {
                     Text(
                         stringResource(Res.string.asset_date_suggestion_none),
