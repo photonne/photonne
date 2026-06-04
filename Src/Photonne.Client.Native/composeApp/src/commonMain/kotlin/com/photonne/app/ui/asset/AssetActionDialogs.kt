@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -37,6 +39,7 @@ import com.photonne.app.resources.action_save
 import com.photonne.app.resources.asset_date_dialog_title
 import com.photonne.app.resources.asset_date_readonly_note
 import com.photonne.app.resources.asset_date_write_to_file
+import com.photonne.app.resources.asset_date_write_to_file_caption
 import com.photonne.app.resources.asset_description_dialog_title
 import com.photonne.app.resources.asset_description_field
 import com.photonne.app.resources.asset_trash_message
@@ -112,7 +115,11 @@ fun EditCaptureDateDialog(
     onConfirm: (Instant, Boolean) -> Unit
 ) {
     val initialLdt = remember(initialDate) { initialDate.toLocalDateTime(TimeZone.UTC) }
-    val dateState = rememberDatePickerState(initialSelectedDateMillis = initialDate.toEpochMilliseconds())
+    // The selected day lives in its own state so the sheet stays compact: the
+    // full DatePicker only appears on demand inside a DatePickerDialog —
+    // inlined it ate the whole sheet height and pushed Save off-screen.
+    var selectedDate by remember(initialDate) { mutableStateOf(initialLdt.date) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val timeState = rememberTimePickerState(
         initialHour = initialLdt.hour,
         initialMinute = initialLdt.minute,
@@ -122,8 +129,6 @@ fun EditCaptureDateDialog(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        // NOTE: do not wrap the DatePicker in a verticalScroll — the picker has
-        // its own scrollable year list and infinite height constraints crash it.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -135,19 +140,36 @@ fun EditCaptureDateDialog(
                 stringResource(Res.string.asset_date_dialog_title),
                 style = MaterialTheme.typography.titleLarge
             )
-            DatePicker(state = dateState, title = null, showModeToggle = false)
+
+            // Date as a tappable field that opens the calendar in a dialog.
+            val dateLabel = selectedDate.dayOfMonth.toString().padStart(2, '0') + "/" +
+                selectedDate.monthNumber.toString().padStart(2, '0') + "/" +
+                selectedDate.year
+            OutlinedButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(dateLabel, style = MaterialTheme.typography.bodyLarge)
+            }
+
+            // Compact keyboard time entry (two small fields, not the clock face).
             TimeInput(state = timeState)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    stringResource(Res.string.asset_date_write_to_file),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(Res.string.asset_date_write_to_file),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        stringResource(Res.string.asset_date_write_to_file_caption),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Switch(
                     checked = writeToFile && !isReadOnly,
                     enabled = !isReadOnly,
@@ -171,11 +193,8 @@ fun EditCaptureDateDialog(
                 }
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = {
-                    val millis = dateState.selectedDateMillis ?: return@Button
-                    val date = Instant.fromEpochMilliseconds(millis)
-                        .toLocalDateTime(TimeZone.UTC).date
                     val combined = LocalDateTime(
-                        date.year, date.monthNumber, date.dayOfMonth,
+                        selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth,
                         timeState.hour, timeState.minute, 0
                     ).toInstant(TimeZone.UTC)
                     onConfirm(combined, writeToFile && !isReadOnly)
@@ -183,6 +202,37 @@ fun EditCaptureDateDialog(
                     Text(stringResource(Res.string.action_save))
                 }
             }
+        }
+    }
+
+    if (showDatePicker) {
+        // Anchor the picker at noon UTC of the current selection so the
+        // epoch→date round-trip can't drift a day across timezones.
+        val dateState = rememberDatePickerState(
+            initialSelectedDateMillis = LocalDateTime(
+                selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth, 12, 0, 0
+            ).toInstant(TimeZone.UTC).toEpochMilliseconds()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    dateState.selectedDateMillis?.let { millis ->
+                        selectedDate = Instant.fromEpochMilliseconds(millis)
+                            .toLocalDateTime(TimeZone.UTC).date
+                    }
+                    showDatePicker = false
+                }) {
+                    Text(stringResource(Res.string.action_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+            }
+        ) {
+            DatePicker(state = dateState, title = null, showModeToggle = false)
         }
     }
 }

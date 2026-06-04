@@ -174,7 +174,8 @@
     <string name="asset_description_dialog_title">Edit description</string>
     <string name="asset_description_field">Description</string>
     <string name="asset_date_dialog_title">Edit capture date</string>
-    <string name="asset_date_write_to_file">Also modify the original file</string>
+    <string name="asset_date_write_to_file">Write the date into the original file (EXIF)</string>
+    <string name="asset_date_write_to_file_caption">Modifies the physical file; videos are only updated inside Photonne.</string>
     <string name="asset_date_readonly_note">Read-only external library: the file can\'t be modified.</string>
     <string name="asset_trash_title">Move to trash</string>
     <string name="asset_trash_message">"%1$s" will be moved to the trash. You can restore it from the web app.</string>
@@ -789,6 +790,9 @@
     <string name="admin_metadata_completed">Extraction complete.</string>
     <string name="admin_metadata_overwrite">Overwrite existing</string>
     <string name="admin_restore_dates_from_file">Re-read EXIF from file</string>
+    <string name="admin_restore_dates_infer">Infer dates from name or folder</string>
+    <string name="admin_restore_dates_write_file">Write the date into the file (EXIF)</string>
+    <string name="admin_restore_dates_dry_run">Simulate only</string>
     <string name="admin_metadata_stats_total">Total</string>
     <string name="admin_metadata_stats_processed">Processed</string>
     <string name="admin_metadata_stats_extracted">Extracted</string>

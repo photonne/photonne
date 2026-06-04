@@ -71,7 +71,10 @@ import com.photonne.app.resources.admin_run_tasks_time_m_format
 import com.photonne.app.resources.admin_run_tasks_time_now
 import com.photonne.app.resources.admin_backfill_action_clustering
 import com.photonne.app.resources.admin_metadata_overwrite
+import com.photonne.app.resources.admin_restore_dates_dry_run
 import com.photonne.app.resources.admin_restore_dates_from_file
+import com.photonne.app.resources.admin_restore_dates_infer
+import com.photonne.app.resources.admin_restore_dates_write_file
 import com.photonne.app.resources.admin_system_restore_dates
 import com.photonne.app.resources.admin_system_restore_dates_subtitle
 import com.photonne.app.resources.admin_system_duplicates
@@ -290,6 +293,11 @@ data class AdminRunTasksUiState(
      *  `triggerTask(RestoreDates)` re-reads EXIF from each file on disk
      *  before restoring; otherwise it uses the EXIF stored in the DB. */
     val dateRestoreFromFile: Boolean = false,
+    val dateRestoreInferFromPath: Boolean = false,
+    // Write-back defaults ON: an inferred date stored only in the DB is lost
+    // on a rebuild, while EXIF inside the image survives anything.
+    val dateRestoreWriteToFile: Boolean = true,
+    val dateRestoreDryRun: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -410,8 +418,12 @@ class AdminRunTasksViewModel(
                             repository.thumbnailsStream(regenerate = snapshot.thumbnailsRegenerate)
                                 .take(1).collect {}
                         AdminRunTask.RestoreDates ->
-                            repository.dateRestoreStream(fromFile = snapshot.dateRestoreFromFile)
-                                .take(1).collect {}
+                            repository.dateRestoreStream(
+                                fromFile = snapshot.dateRestoreFromFile,
+                                inferFromPath = snapshot.dateRestoreInferFromPath,
+                                writeToFile = snapshot.dateRestoreInferFromPath && snapshot.dateRestoreWriteToFile,
+                                dryRun = snapshot.dateRestoreDryRun
+                            ).take(1).collect {}
                         AdminRunTask.DetectDuplicates ->
                             repository.duplicatesStream(cleanup = false, physical = false).take(1).collect {}
                         else -> {}
@@ -433,6 +445,18 @@ class AdminRunTasksViewModel(
 
     fun setDateRestoreFromFile(value: Boolean) {
         _state.update { it.copy(dateRestoreFromFile = value) }
+    }
+
+    fun setDateRestoreInferFromPath(value: Boolean) {
+        _state.update { it.copy(dateRestoreInferFromPath = value) }
+    }
+
+    fun setDateRestoreWriteToFile(value: Boolean) {
+        _state.update { it.copy(dateRestoreWriteToFile = value) }
+    }
+
+    fun setDateRestoreDryRun(value: Boolean) {
+        _state.update { it.copy(dateRestoreDryRun = value) }
     }
 
     /** Triggers the face-recognition clustering pass server-side
@@ -769,11 +793,30 @@ fun AdminRunTasksScreen(
                         checked = state.metadataOverwrite,
                         onCheckedChange = viewModel::setMetadataOverwrite
                     )
-                    AdminRunTask.RestoreDates -> InlineToggle(
-                        label = stringResource(Res.string.admin_restore_dates_from_file),
-                        checked = state.dateRestoreFromFile,
-                        onCheckedChange = viewModel::setDateRestoreFromFile
-                    )
+                    AdminRunTask.RestoreDates -> Column {
+                        InlineToggle(
+                            label = stringResource(Res.string.admin_restore_dates_from_file),
+                            checked = state.dateRestoreFromFile,
+                            onCheckedChange = viewModel::setDateRestoreFromFile
+                        )
+                        InlineToggle(
+                            label = stringResource(Res.string.admin_restore_dates_infer),
+                            checked = state.dateRestoreInferFromPath,
+                            onCheckedChange = viewModel::setDateRestoreInferFromPath
+                        )
+                        if (state.dateRestoreInferFromPath) {
+                            InlineToggle(
+                                label = stringResource(Res.string.admin_restore_dates_write_file),
+                                checked = state.dateRestoreWriteToFile,
+                                onCheckedChange = viewModel::setDateRestoreWriteToFile
+                            )
+                        }
+                        InlineToggle(
+                            label = stringResource(Res.string.admin_restore_dates_dry_run),
+                            checked = state.dateRestoreDryRun,
+                            onCheckedChange = viewModel::setDateRestoreDryRun
+                        )
+                    }
                     else -> Unit
                 }
             }

@@ -211,8 +211,13 @@ class AdminRepository(private val api: PhotonneApi) {
     suspend fun metadataStream(overwrite: Boolean): Flow<MetadataStreamEvent> =
         api.adminMetadataStream(overwrite)
 
-    suspend fun dateRestoreStream(fromFile: Boolean): Flow<MetadataStreamEvent> =
-        api.adminDateRestoreStream(fromFile)
+    suspend fun dateRestoreStream(
+        fromFile: Boolean,
+        inferFromPath: Boolean = false,
+        writeToFile: Boolean = false,
+        dryRun: Boolean = false
+    ): Flow<MetadataStreamEvent> =
+        api.adminDateRestoreStream(fromFile, inferFromPath, writeToFile, dryRun)
 
     suspend fun duplicatesStream(
         cleanup: Boolean,

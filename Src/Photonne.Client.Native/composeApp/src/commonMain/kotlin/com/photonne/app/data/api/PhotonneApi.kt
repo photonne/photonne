@@ -477,7 +477,10 @@ interface PhotonneApi {
         overwrite: Boolean
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
     suspend fun adminDateRestoreStream(
-        fromFile: Boolean
+        fromFile: Boolean,
+        inferFromPath: Boolean = false,
+        writeToFile: Boolean = false,
+        dryRun: Boolean = false
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
     suspend fun adminDuplicatesStream(
         cleanup: Boolean,
@@ -2210,11 +2213,17 @@ class PhotonneApiClient(
     }
 
     override suspend fun adminDateRestoreStream(
-        fromFile: Boolean
+        fromFile: Boolean,
+        inferFromPath: Boolean,
+        writeToFile: Boolean,
+        dryRun: Boolean
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
         client.prepareGet("$baseUrl/api/assets/dates/restore/stream") {
             disableStreamTimeouts()
             parameter("fromFile", fromFile)
+            parameter("inferFromPath", inferFromPath)
+            parameter("writeToFile", writeToFile)
+            parameter("dryRun", dryRun)
         }.execute { response ->
             ensureStreamSuccess(response, "Date restore stream failed")
             val channel = response.bodyAsChannel()
