@@ -89,7 +89,7 @@ public class ExtractMetadataEndpoint : IEndpoint
                     .OrderBy(a => a.FileCreatedAt)
                     .Select(a => new
                     {
-                        a.Id, a.FullPath, a.FileName, a.Type, a.CapturedAt,
+                        a.Id, a.FullPath, a.FileName, a.Type, a.CapturedAt, a.CapturedAtSource,
                         ExifDate = a.Exif != null ? a.Exif.DateTimeOriginal : null
                     })
                     .ToListAsync(taskCt);
@@ -134,14 +134,17 @@ public class ExtractMetadataEndpoint : IEndpoint
                                 // a re-index can re-seed CapturedAt from a
                                 // polluted filesystem date AFTER the EXIF was
                                 // extracted, and the skip path used to leave
-                                // that divergence in place forever.
-                                if (asset.CapturedAt != asset.ExifDate.Value)
+                                // that divergence in place forever. Manual
+                                // dates stay untouched (provenance gate).
+                                if (asset.CapturedAt != asset.ExifDate.Value &&
+                                    asset.CapturedAtSource != CaptureDateSource.Manual)
                                 {
                                     var skippedRow = await innerDb.Assets
                                         .FirstOrDefaultAsync(a => a.Id == asset.Id, ct);
-                                    if (skippedRow != null)
+                                    if (skippedRow != null && skippedRow.CanOverwriteCapturedAt(CaptureDateSource.Exif))
                                     {
                                         skippedRow.CapturedAt = asset.ExifDate.Value;
+                                        skippedRow.CapturedAtSource = CaptureDateSource.Exif;
                                         await innerDb.SaveChangesAsync(ct);
                                     }
                                 }
@@ -179,14 +182,26 @@ public class ExtractMetadataEndpoint : IEndpoint
                                         // Keep CapturedAt in sync with the freshly-extracted EXIF
                                         // so the admin re-extraction can fix timeline ordering on
                                         // assets that were indexed before EXIF was processed (or
-                                        // before CapturedAt existed at all). Fall back to the
-                                        // effective filesystem timestamp (min of created/modified)
-                                        // when DateTimeOriginal is absent.
+                                        // before CapturedAt existed at all). Provenance-gated:
+                                        // real EXIF replaces FileSystem/Inferred but never Manual,
+                                        // and the filesystem fallback only applies while the row
+                                        // still carries its FileSystem placeholder.
                                         var assetRow = await innerDb.Assets
                                             .FirstOrDefaultAsync(a => a.Id == asset.Id, ct);
                                         if (assetRow != null)
                                         {
-                                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.EffectiveFileCreatedAt;
+                                            if (result.DateTimeOriginal != null)
+                                            {
+                                                if (assetRow.CanOverwriteCapturedAt(CaptureDateSource.Exif))
+                                                {
+                                                    assetRow.CapturedAt = result.DateTimeOriginal.Value;
+                                                    assetRow.CapturedAtSource = CaptureDateSource.Exif;
+                                                }
+                                            }
+                                            else if (assetRow.CanOverwriteCapturedAt(CaptureDateSource.FileSystem))
+                                            {
+                                                assetRow.CapturedAt = assetRow.EffectiveFileCreatedAt;
+                                            }
                                         }
 
                                         await innerDb.SaveChangesAsync(ct);

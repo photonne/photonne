@@ -19,9 +19,13 @@ public class DateRestoreService : IDateRestoreService
 
     public IAsyncEnumerable<MetadataProgressUpdate> RestoreDatesAsync(
         bool fromFile = false,
+        bool inferFromPath = false,
+        bool writeToFile = false,
+        bool dryRun = false,
         CancellationToken cancellationToken = default)
     {
-        var url = $"/api/assets/dates/restore/stream?fromFile={fromFile}";
+        var url = $"/api/assets/dates/restore/stream?fromFile={fromFile}" +
+                  $"&inferFromPath={inferFromPath}&writeToFile={writeToFile}&dryRun={dryRun}";
         return _httpClient.GetFromJsonAsAsyncEnumerable<MetadataProgressUpdate>(url, _jsonOptions, cancellationToken)!;
     }
 

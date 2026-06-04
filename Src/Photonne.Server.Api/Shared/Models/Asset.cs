@@ -9,6 +9,27 @@ public enum AssetType
     Video
 }
 
+/// <summary>
+/// Where <see cref="Asset.CapturedAt"/> came from. Writers may only overwrite
+/// the date when their source ranks equal-or-higher than the stored one —
+/// with one exception: NOTHING overwrites <see cref="Manual"/> except another
+/// manual edit. This is what keeps user-set and inferred dates alive across
+/// metadata re-extractions (which rebuild the EXIF row from the file and
+/// would otherwise clobber CapturedAt with the filesystem fallback).
+/// </summary>
+public enum CaptureDateSource
+{
+    /// <summary>Filesystem timestamp placeholder seeded at index/upload time.</summary>
+    FileSystem = 0,
+    /// <summary>Inferred from the file name or folder path (date-restore task).
+    /// Real EXIF data found later replaces an inference.</summary>
+    Inferred = 1,
+    /// <summary>EXIF DateTimeOriginal read from the file.</summary>
+    Exif = 2,
+    /// <summary>Explicitly set by the user via the edit-date UI.</summary>
+    Manual = 3
+}
+
 public class Asset
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -45,6 +66,9 @@ public class Asset
     [Column(TypeName = "timestamp without time zone")]
     public DateTime CapturedAt { get; set; }
 
+    // Provenance of CapturedAt — gates who may overwrite it (see the enum).
+    public CaptureDateSource CapturedAtSource { get; set; } = CaptureDateSource.FileSystem;
+
     // Older of FileCreatedAt/FileModifiedAt — the truthful "file existed by
     // then" timestamp. Linux hosts rewrite the birthtime when files are copied
     // between volumes (rsync preserves only mtime), so a creation date newer
@@ -54,6 +78,15 @@ public class Asset
     public DateTime EffectiveFileCreatedAt =>
         FileCreatedAt <= FileModifiedAt ? FileCreatedAt : FileModifiedAt;
 
+    /// <summary>
+    /// True when a writer with the given <paramref name="source"/> may
+    /// overwrite <see cref="CapturedAt"/>: equal-or-higher rank wins, and
+    /// Manual is only ever replaced by another manual edit.
+    /// </summary>
+    public bool CanOverwriteCapturedAt(CaptureDateSource source) =>
+        CapturedAtSource == CaptureDateSource.Manual
+            ? source == CaptureDateSource.Manual
+            : source >= CapturedAtSource;
 
     [Required]
     [MaxLength(10)]

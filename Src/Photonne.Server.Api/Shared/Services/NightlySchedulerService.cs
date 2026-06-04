@@ -396,7 +396,7 @@ public class NightlySchedulerService : BackgroundService
             .OrderBy(a => a.FileCreatedAt)
             .Select(a => new
             {
-                a.Id, a.FullPath, a.FileName, a.Type, a.CapturedAt,
+                a.Id, a.FullPath, a.FileName, a.Type, a.CapturedAt, a.CapturedAtSource,
                 ExifDate = a.Exif != null ? a.Exif.DateTimeOriginal : null
             })
             .ToListAsync(ct);
@@ -419,13 +419,16 @@ public class NightlySchedulerService : BackgroundService
                         // when skipping re-extraction, re-sync CapturedAt with
                         // the EXIF already stored so a divergence introduced by
                         // a later re-index gets healed by the nightly pass.
-                        if (asset.CapturedAt != asset.ExifDate.Value)
+                        // Manual dates stay untouched (provenance gate).
+                        if (asset.CapturedAt != asset.ExifDate.Value &&
+                            asset.CapturedAtSource != CaptureDateSource.Manual)
                         {
                             var skippedRow = await innerDb.Assets
                                 .FirstOrDefaultAsync(a => a.Id == asset.Id, innerCt);
-                            if (skippedRow != null)
+                            if (skippedRow != null && skippedRow.CanOverwriteCapturedAt(CaptureDateSource.Exif))
                             {
                                 skippedRow.CapturedAt = asset.ExifDate.Value;
+                                skippedRow.CapturedAtSource = CaptureDateSource.Exif;
                                 await innerDb.SaveChangesAsync(innerCt);
                             }
                         }
@@ -453,12 +456,25 @@ public class NightlySchedulerService : BackgroundService
                         // Mirror the EnrichmentWorker contract: keep CapturedAt
                         // in sync with the freshly-extracted EXIF so the nightly
                         // job can correct timeline order for assets where the
-                        // original extraction missed DateTimeOriginal.
+                        // original extraction missed DateTimeOriginal. Gated by
+                        // provenance — EXIF never clobbers Manual; the filesystem
+                        // fallback never clobbers Inferred/Manual.
                         var assetRow = await innerDb.Assets
                             .FirstOrDefaultAsync(a => a.Id == asset.Id, innerCt);
                         if (assetRow != null)
                         {
-                            assetRow.CapturedAt = result.DateTimeOriginal ?? assetRow.EffectiveFileCreatedAt;
+                            if (result.DateTimeOriginal != null)
+                            {
+                                if (assetRow.CanOverwriteCapturedAt(CaptureDateSource.Exif))
+                                {
+                                    assetRow.CapturedAt = result.DateTimeOriginal.Value;
+                                    assetRow.CapturedAtSource = CaptureDateSource.Exif;
+                                }
+                            }
+                            else if (assetRow.CanOverwriteCapturedAt(CaptureDateSource.FileSystem))
+                            {
+                                assetRow.CapturedAt = assetRow.EffectiveFileCreatedAt;
+                            }
                         }
 
                         await innerDb.SaveChangesAsync(innerCt);

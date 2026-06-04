@@ -51,6 +51,36 @@ else
                         </MudRadio>
                     </MudRadioGroup>
 
+                    <MudDivider Class="my-4" />
+
+                    <MudSwitch T="bool" @bind-Value="_inferFromPath" Color="Color.Primary">
+                        <MudText Typo="Typo.body1"><strong>Inferir fechas del nombre o la carpeta</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                            Para assets sin fecha EXIF: la deduce del nombre del archivo
+                            (<em>IMG_20100815_123456.jpg</em>, WhatsApp) o de carpetas con fecha
+                            (<em>/2010/2010-08-15 Vacaciones/</em>). Nunca toca fechas EXIF reales ni manuales.
+                        </MudText>
+                    </MudSwitch>
+
+                    @if (_inferFromPath)
+                    {
+                        <MudSwitch T="bool" @bind-Value="_writeToFile" Color="Color.Primary" Class="mt-2">
+                            <MudText Typo="Typo.body1"><strong>Escribir la fecha en el archivo original (EXIF)</strong></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                Hace la fecha inferida permanente dentro de la imagen (modifica el archivo;
+                                los vídeos y bibliotecas externas solo se actualizan en la base de datos).
+                            </MudText>
+                        </MudSwitch>
+                    }
+
+                    <MudSwitch T="bool" @bind-Value="_dryRun" Color="Color.Secondary" Class="mt-2">
+                        <MudText Typo="Typo.body1"><strong>Solo simular</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                            Cuenta cuántos assets se actualizarían sin cambiar nada. Revisa el resultado
+                            y vuelve a lanzar sin este interruptor para aplicar.
+                        </MudText>
+                    </MudSwitch>
+
                     <div class="mt-4 d-flex gap-3 align-center">
                         @if (!_running)
                         {
@@ -172,6 +202,11 @@ else
 @code {
     private bool _isAuthorized;
     private bool _fromFile;
+    private bool _inferFromPath;
+    // Write-back defaults ON: an inferred date stored only in the DB is lost
+    // on a rebuild, while EXIF inside the image survives anything.
+    private bool _writeToFile = true;
+    private bool _dryRun;
     private bool _running;
     private bool _runningInBackground;
     private double _progress;
@@ -231,7 +266,8 @@ else
         _etaSeconds = 0;
         _currentStatus = "Iniciando...";
 
-        await ConsumeStreamAsync(DateRestoreService.RestoreDatesAsync(_fromFile, _cts.Token));
+        await ConsumeStreamAsync(DateRestoreService.RestoreDatesAsync(
+            _fromFile, _inferFromPath, _inferFromPath && _writeToFile, _dryRun, _cts.Token));
     }
 
     private async Task ConsumeStreamAsync(IAsyncEnumerable<MetadataProgressUpdate> stream)

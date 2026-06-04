@@ -280,12 +280,24 @@ public class EnrichmentWorker : BackgroundService
                 if (existing != null) dbContext.AssetExifs.Remove(existing);
                 dbContext.AssetExifs.Add(exif);
 
-                // Set the display timestamp used by the timeline. Prefer EXIF
-                // DateTimeOriginal; fall back to the effective filesystem date
-                // (min of created/modified — rsync rewrites the birthtime) for
-                // assets without EXIF date. FileCreatedAt itself stays
-                // untouched so it remains a truthful filesystem record.
-                asset.CapturedAt = exif.DateTimeOriginal ?? asset.EffectiveFileCreatedAt;
+                // Set the display timestamp used by the timeline, gated by
+                // provenance: real EXIF replaces FileSystem/Inferred dates but
+                // never a Manual edit; the filesystem fallback (min of
+                // created/modified — rsync rewrites the birthtime) only
+                // applies while the row still carries its FileSystem
+                // placeholder, so it can't clobber inferred/manual dates.
+                if (exif.DateTimeOriginal != null)
+                {
+                    if (asset.CanOverwriteCapturedAt(CaptureDateSource.Exif))
+                    {
+                        asset.CapturedAt = exif.DateTimeOriginal.Value;
+                        asset.CapturedAtSource = CaptureDateSource.Exif;
+                    }
+                }
+                else if (asset.CanOverwriteCapturedAt(CaptureDateSource.FileSystem))
+                {
+                    asset.CapturedAt = asset.EffectiveFileCreatedAt;
+                }
                 await dbContext.SaveChangesAsync(ct);
                 return JsonSerializer.Serialize(new
                 {

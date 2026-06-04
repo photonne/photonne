@@ -62,6 +62,9 @@ public class UpdateCaptureDateEndpoint : IEndpoint
         }
         asset.Exif.DateTimeOriginal = dateUtc;
         asset.CapturedAt = dateUtc;
+        // Manual is the top of the provenance ladder: no automated pass
+        // (extraction fallback, restore, inference) may overwrite it.
+        asset.CapturedAtSource = CaptureDateSource.Manual;
 
         // ── Optional physical-file write ──────────────────────────────────────
         bool fileWritten = false;
