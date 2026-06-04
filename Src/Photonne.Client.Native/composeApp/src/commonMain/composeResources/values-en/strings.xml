@@ -799,6 +799,7 @@
     <string name="admin_metadata_overwrite">Overwrite existing</string>
     <string name="admin_restore_dates_from_file">Re-read EXIF from file</string>
     <string name="admin_restore_dates_infer">Infer dates from name or folder</string>
+    <string name="admin_restore_dates_use_file_date">Use the file date (modified)</string>
     <string name="admin_restore_dates_write_file">Write the date into the file (EXIF)</string>
     <string name="admin_restore_dates_dry_run">Simulate only</string>
     <string name="admin_metadata_stats_total">Total</string>

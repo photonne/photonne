@@ -62,12 +62,21 @@ else
                         </MudText>
                     </MudSwitch>
 
-                    @if (_inferFromPath)
+                    <MudSwitch T="bool" @bind-Value="_useFileDate" Color="Color.Primary" Class="mt-2">
+                        <MudText Typo="Typo.body1"><strong>Usar la fecha del archivo (modificación)</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                            Para assets sin fecha EXIF: usa la fecha más antigua del propio archivo
+                            (creación/modificación, leída del disco) — el equivalente masivo del candidato
+                            "Fecha del archivo" de la sugerencia por asset. Nunca toca fechas EXIF ni manuales.
+                        </MudText>
+                    </MudSwitch>
+
+                    @if (_inferFromPath || _useFileDate)
                     {
                         <MudSwitch T="bool" @bind-Value="_writeToFile" Color="Color.Primary" Class="mt-2">
                             <MudText Typo="Typo.body1"><strong>Escribir la fecha en el archivo original</strong></MudText>
                             <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
-                                Hace la fecha inferida permanente: EXIF en imágenes y fecha de modificación
+                                Hace la fecha permanente: EXIF en imágenes y fecha de modificación
                                 del archivo en todos los formatos, vídeos incluidos (las bibliotecas externas
                                 solo se actualizan en la base de datos).
                             </MudText>
@@ -204,6 +213,7 @@ else
     private bool _isAuthorized;
     private bool _fromFile;
     private bool _inferFromPath;
+    private bool _useFileDate;
     // Write-back defaults ON: an inferred date stored only in the DB is lost
     // on a rebuild, while EXIF inside the image survives anything.
     private bool _writeToFile = true;
@@ -268,7 +278,8 @@ else
         _currentStatus = "Iniciando...";
 
         await ConsumeStreamAsync(DateRestoreService.RestoreDatesAsync(
-            _fromFile, _inferFromPath, _inferFromPath && _writeToFile, _dryRun, _cts.Token));
+            _fromFile, _inferFromPath, _useFileDate,
+            (_inferFromPath || _useFileDate) && _writeToFile, _dryRun, _cts.Token));
     }
 
     private async Task ConsumeStreamAsync(IAsyncEnumerable<MetadataProgressUpdate> stream)

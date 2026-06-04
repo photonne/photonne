@@ -74,6 +74,7 @@ import com.photonne.app.resources.admin_metadata_overwrite
 import com.photonne.app.resources.admin_restore_dates_dry_run
 import com.photonne.app.resources.admin_restore_dates_from_file
 import com.photonne.app.resources.admin_restore_dates_infer
+import com.photonne.app.resources.admin_restore_dates_use_file_date
 import com.photonne.app.resources.admin_restore_dates_write_file
 import com.photonne.app.resources.admin_system_restore_dates
 import com.photonne.app.resources.admin_system_restore_dates_subtitle
@@ -294,6 +295,7 @@ data class AdminRunTasksUiState(
      *  before restoring; otherwise it uses the EXIF stored in the DB. */
     val dateRestoreFromFile: Boolean = false,
     val dateRestoreInferFromPath: Boolean = false,
+    val dateRestoreUseFileDate: Boolean = false,
     // Write-back defaults ON: an inferred date stored only in the DB is lost
     // on a rebuild, while EXIF inside the image survives anything.
     val dateRestoreWriteToFile: Boolean = true,
@@ -421,7 +423,9 @@ class AdminRunTasksViewModel(
                             repository.dateRestoreStream(
                                 fromFile = snapshot.dateRestoreFromFile,
                                 inferFromPath = snapshot.dateRestoreInferFromPath,
-                                writeToFile = snapshot.dateRestoreInferFromPath && snapshot.dateRestoreWriteToFile,
+                                useFileDate = snapshot.dateRestoreUseFileDate,
+                                writeToFile = (snapshot.dateRestoreInferFromPath || snapshot.dateRestoreUseFileDate) &&
+                                    snapshot.dateRestoreWriteToFile,
                                 dryRun = snapshot.dateRestoreDryRun
                             ).take(1).collect {}
                         AdminRunTask.DetectDuplicates ->
@@ -449,6 +453,10 @@ class AdminRunTasksViewModel(
 
     fun setDateRestoreInferFromPath(value: Boolean) {
         _state.update { it.copy(dateRestoreInferFromPath = value) }
+    }
+
+    fun setDateRestoreUseFileDate(value: Boolean) {
+        _state.update { it.copy(dateRestoreUseFileDate = value) }
     }
 
     fun setDateRestoreWriteToFile(value: Boolean) {
@@ -804,7 +812,12 @@ fun AdminRunTasksScreen(
                             checked = state.dateRestoreInferFromPath,
                             onCheckedChange = viewModel::setDateRestoreInferFromPath
                         )
-                        if (state.dateRestoreInferFromPath) {
+                        InlineToggle(
+                            label = stringResource(Res.string.admin_restore_dates_use_file_date),
+                            checked = state.dateRestoreUseFileDate,
+                            onCheckedChange = viewModel::setDateRestoreUseFileDate
+                        )
+                        if (state.dateRestoreInferFromPath || state.dateRestoreUseFileDate) {
                             InlineToggle(
                                 label = stringResource(Res.string.admin_restore_dates_write_file),
                                 checked = state.dateRestoreWriteToFile,

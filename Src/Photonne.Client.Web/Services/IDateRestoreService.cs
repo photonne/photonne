@@ -7,6 +7,7 @@ public interface IDateRestoreService
     IAsyncEnumerable<MetadataProgressUpdate> RestoreDatesAsync(
         bool fromFile = false,
         bool inferFromPath = false,
+        bool useFileDate = false,
         bool writeToFile = false,
         bool dryRun = false,
         CancellationToken cancellationToken = default);

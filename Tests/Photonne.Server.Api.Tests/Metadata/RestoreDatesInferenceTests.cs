@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Tests.Infrastructure;
@@ -144,6 +145,56 @@ public sealed class RestoreDatesInferenceTests : IntegrationTestBase
         var after = await LoadAsync(assetId);
         Assert.Equal(manualDate, after.CapturedAt);
         Assert.Equal(CaptureDateSource.Manual, after.Source);
+    }
+
+    [Fact]
+    public async Task UseFileDate_AppliesMtime_AndWritesItIntoTheFile()
+    {
+        var client = await AdminClientAsync();
+
+        // Physical EXIF-less JPEG whose mtime holds the real date.
+        var realDate = new DateTime(2006, 7, 15, 15, 13, 17, DateTimeKind.Utc);
+        var dir = Path.Combine(Factory.InternalAssetsPath, "users", "u1");
+        Directory.CreateDirectory(dir);
+        var physicalPath = Path.Combine(dir, "old-file.jpg");
+        File.Copy(Fixtures.FixturePaths.NoMetadata, physicalPath, overwrite: true);
+        File.SetLastWriteTimeUtc(physicalPath, realDate);
+
+        var staleDate = new DateTime(2026, 5, 26, 10, 0, 0, DateTimeKind.Utc);
+        var assetId = await AddAssetAsync(
+            "old-file.jpg",
+            "/assets/users/u1/old-file.jpg",
+            staleDate,
+            CaptureDateSource.FileSystem);
+
+        try
+        {
+            await client.GetStringAsync(
+                "/api/assets/dates/restore/stream?useFileDate=true&writeToFile=true");
+
+            var after = await LoadAsync(assetId);
+            Assert.Equal(realDate, after.CapturedAt);
+            Assert.Equal(CaptureDateSource.FileSystem, after.Source);
+            // The date is now durable: stored EXIF row AND embedded in the file.
+            Assert.Equal(realDate, after.ExifDate);
+
+            using var scope = Factory.Services.CreateScope();
+            var extractor = scope.ServiceProvider
+                .GetRequiredService<Photonne.Server.Api.Shared.Services.ExifExtractorService>();
+            var exif = await extractor.ExtractExifAsync(physicalPath);
+            Assert.Equal(realDate, exif!.DateTimeOriginal);
+            // mtime survives the EXIF rewrite (ApplyDateToFileAsync re-sets it).
+            Assert.Equal(realDate, File.GetLastWriteTimeUtc(physicalPath));
+
+            // Idempotent: a second run finds the stored EXIF date and skips.
+            var second = await client.GetStringAsync(
+                "/api/assets/dates/restore/stream?useFileDate=true&writeToFile=true");
+            Assert.DoesNotContain("actualizados", second);
+        }
+        finally
+        {
+            File.Delete(physicalPath);
+        }
     }
 
     [Fact]

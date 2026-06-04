@@ -436,3 +436,4 @@ FodyWeavers.xsd
 
 # Visual Code
 .vscode/
+.DS_Store

@@ -20,8 +20,11 @@ namespace Photonne.Server.Api.Features.Metadata;
 ///     before metadata extraction ran);
 ///   • inferFromPath=true: for assets with NO EXIF date, infers it from the file
 ///     name (IMG_yyyyMMdd…, WhatsApp) or the folder path (/2010/2010-08-15 Nombre/);
-///   • writeToFile=true: writes inferred dates back into the image's EXIF so they
-///     survive re-scans (videos and external libraries stay DB-only);
+///   • useFileDate=true: for assets with NO EXIF date, uses the file's own
+///     effective date (older of birthtime/mtime, re-stat live) — the bulk
+///     version of the per-asset "Fecha del archivo" suggestion;
+///   • writeToFile=true: makes derived dates durable in the physical file
+///     (EXIF for images, mtime for everything; external libraries stay DB-only);
 ///   • dryRun=true: counts what WOULD change without persisting anything.
 /// Reuses the streaming / dedup / notification plumbing of the metadata extractor.
 /// </summary>
@@ -38,20 +41,22 @@ public class RestoreDatesEndpoint : IEndpoint
             CancellationToken cancellationToken,
             [FromQuery] bool fromFile = false,
             [FromQuery] bool inferFromPath = false,
+            [FromQuery] bool useFileDate = false,
             [FromQuery] bool writeToFile = false,
             [FromQuery] bool dryRun = false) =>
-            HandleStream(fromFile, inferFromPath, writeToFile, dryRun, serviceProvider, backgroundTaskManager,
+            HandleStream(fromFile, inferFromPath, useFileDate, writeToFile, dryRun, serviceProvider, backgroundTaskManager,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
         .WithName("RestoreDatesStream")
         .WithTags("Assets")
-        .WithDescription("Streams date-restoration progress. fromFile re-reads EXIF from disk; inferFromPath infers missing dates from file names/folders; writeToFile persists inferred dates into the image EXIF; dryRun only counts.")
+        .WithDescription("Streams date-restoration progress. fromFile re-reads EXIF from disk; inferFromPath infers missing dates from file names/folders; useFileDate falls back to the file's own date; writeToFile persists derived dates into the physical file; dryRun only counts.")
         .RequireAuthorization(policy => policy.RequireRole("Admin"));
     }
 
     private async IAsyncEnumerable<MetadataProgressUpdate> HandleStream(
         bool fromFile,
         bool inferFromPath,
+        bool useFileDate,
         bool writeToFile,
         bool dryRun,
         IServiceProvider serviceProvider,
@@ -64,6 +69,7 @@ public class RestoreDatesEndpoint : IEndpoint
             {
                 ["fromFile"] = fromFile.ToString(),
                 ["inferFromPath"] = inferFromPath.ToString(),
+                ["useFileDate"] = useFileDate.ToString(),
                 ["writeToFile"] = writeToFile.ToString(),
                 ["dryRun"] = dryRun.ToString()
             }, out var created);
@@ -193,6 +199,27 @@ public class RestoreDatesEndpoint : IEndpoint
                                 }
                             }
 
+                            // Still nothing → the file's own effective date
+                            // (older of birthtime/mtime, re-stat live). Bulk
+                            // version of the per-asset "Fecha del archivo"
+                            // suggestion.
+                            if (newDate == null && useFileDate && !fileMissing)
+                            {
+                                var physicalPath = await innerSettings.ResolvePhysicalPathAsync(asset.FullPath);
+                                if (!File.Exists(physicalPath))
+                                {
+                                    fileMissing = true;
+                                }
+                                else
+                                {
+                                    var info = new FileInfo(physicalPath);
+                                    newDate = info.CreationTimeUtc <= info.LastWriteTimeUtc
+                                        ? info.CreationTimeUtc
+                                        : info.LastWriteTimeUtc;
+                                    newSource = CaptureDateSource.FileSystem;
+                                }
+                            }
+
                             if (fileMissing)
                             {
                                 Interlocked.Increment(ref failed);
@@ -205,26 +232,44 @@ public class RestoreDatesEndpoint : IEndpoint
                             {
                                 var assetRow = await innerDb.Assets
                                     .FirstOrDefaultAsync(a => a.Id == asset.Id, ct);
-                                var wouldChange = assetRow != null
-                                    && assetRow.CapturedAt != newDate.Value
-                                    && assetRow.CanOverwriteCapturedAt(newSource);
+                                var canApply = assetRow != null && assetRow.CanOverwriteCapturedAt(newSource);
+                                var dbChange = canApply && assetRow!.CapturedAt != newDate.Value;
+                                // Derived dates (inference / file date) still need
+                                // persisting into the EXIF row — and optionally the
+                                // physical file — even when CapturedAt already
+                                // matches (e.g. the extraction pass set it first):
+                                // that's what makes them durable outside this DB.
+                                // Stored-EXIF dates are durable already, so re-runs
+                                // land in the skip branch (idempotent).
+                                var needsPersist = canApply && newSource != CaptureDateSource.Exif;
 
-                                if (wouldChange && dryRun)
+                                if (!canApply || (!dbChange && !needsPersist))
+                                {
+                                    // CapturedAt already correct (or protected by a
+                                    // higher-ranked source); still flush any EXIF-row
+                                    // change made above in fromFile mode.
+                                    if (fromFile && !dryRun) await innerDb.SaveChangesAsync(ct);
+                                    Interlocked.Increment(ref skipped);
+                                }
+                                else if (dryRun)
                                 {
                                     Interlocked.Increment(ref updated);
                                 }
-                                else if (wouldChange)
+                                else
                                 {
-                                    assetRow!.CapturedAt = newDate.Value;
-                                    assetRow.CapturedAtSource = newSource;
+                                    if (dbChange)
+                                    {
+                                        assetRow!.CapturedAt = newDate.Value;
+                                        assetRow.CapturedAtSource = newSource;
+                                    }
 
-                                    if (newSource == CaptureDateSource.Inferred)
+                                    if (needsPersist)
                                     {
                                         // Mirror the manual-edit endpoint: keep the
                                         // stored EXIF row in sync, and optionally make
-                                        // the inference durable by writing it into the
-                                        // image file itself (videos / external
-                                        // libraries stay DB-only).
+                                        // the date durable inside the physical file
+                                        // (EXIF for images, mtime for everything;
+                                        // external libraries stay DB-only).
                                         var exifRow = await innerDb.AssetExifs
                                             .FirstOrDefaultAsync(e => e.AssetId == asset.Id, ct);
                                         if (exifRow == null)
@@ -236,15 +281,12 @@ public class RestoreDatesEndpoint : IEndpoint
 
                                         if (writeToFile && asset.ExternalLibraryId == null)
                                         {
-                                            // EXIF for images, mtime for every type
-                                            // (videos included) — the physical file
-                                            // carries the date from here on.
                                             var physicalPath = await innerSettings.ResolvePhysicalPathAsync(asset.FullPath);
                                             var writeResult = await innerWriter.ApplyDateToFileAsync(physicalPath, newDate.Value, ct);
                                             if (writeResult.FileTouched && File.Exists(physicalPath))
                                             {
                                                 var info = new FileInfo(physicalPath);
-                                                assetRow.FileSize = info.Length;
+                                                assetRow!.FileSize = info.Length;
                                                 assetRow.FileModifiedAt = info.LastWriteTimeUtc;
                                                 if (writeResult.ExifWritten)
                                                 {
@@ -256,14 +298,6 @@ public class RestoreDatesEndpoint : IEndpoint
 
                                     await innerDb.SaveChangesAsync(ct);
                                     Interlocked.Increment(ref updated);
-                                }
-                                else
-                                {
-                                    // CapturedAt already correct (or protected by a
-                                    // higher-ranked source); still flush any EXIF-row
-                                    // change made above in fromFile mode.
-                                    if (fromFile && !dryRun) await innerDb.SaveChangesAsync(ct);
-                                    Interlocked.Increment(ref skipped);
                                 }
                             }
                         }

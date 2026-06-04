@@ -482,6 +482,7 @@ interface PhotonneApi {
     suspend fun adminDateRestoreStream(
         fromFile: Boolean,
         inferFromPath: Boolean = false,
+        useFileDate: Boolean = false,
         writeToFile: Boolean = false,
         dryRun: Boolean = false
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
@@ -2231,6 +2232,7 @@ class PhotonneApiClient(
     override suspend fun adminDateRestoreStream(
         fromFile: Boolean,
         inferFromPath: Boolean,
+        useFileDate: Boolean,
         writeToFile: Boolean,
         dryRun: Boolean
     ): Flow<com.photonne.app.data.models.MetadataStreamEvent> = flow {
@@ -2238,6 +2240,7 @@ class PhotonneApiClient(
             disableStreamTimeouts()
             parameter("fromFile", fromFile)
             parameter("inferFromPath", inferFromPath)
+            parameter("useFileDate", useFileDate)
             parameter("writeToFile", writeToFile)
             parameter("dryRun", dryRun)
         }.execute { response ->

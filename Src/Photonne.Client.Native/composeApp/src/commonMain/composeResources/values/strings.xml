@@ -799,6 +799,7 @@
     <string name="admin_metadata_overwrite">Sobrescribir los existentes</string>
     <string name="admin_restore_dates_from_file">Releer EXIF del archivo</string>
     <string name="admin_restore_dates_infer">Inferir fechas del nombre o carpeta</string>
+    <string name="admin_restore_dates_use_file_date">Usar la fecha del archivo (modificación)</string>
     <string name="admin_restore_dates_write_file">Escribir la fecha en el archivo (EXIF)</string>
     <string name="admin_restore_dates_dry_run">Solo simular</string>
     <string name="admin_metadata_stats_total">Total</string>
