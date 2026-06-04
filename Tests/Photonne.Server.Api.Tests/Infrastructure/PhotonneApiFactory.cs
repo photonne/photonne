@@ -63,10 +63,13 @@ public sealed class PhotonneApiFactory : WebApplicationFactory<Program>, IAsyncL
         builder.UseSetting("AdminUser:Username", AdminUsername);
         builder.UseSetting("AdminUser:Email", AdminEmail);
         builder.UseSetting("AdminUser:Password", AdminPassword);
+        // Keys renamed in the /data/* lock-down refactor (InternalAssetsPath →
+        // AssetsPath, THUMBNAILS_PATH → ThumbnailsPath); without them the host
+        // falls back to /data/assets and /data/thumbnails, which aren't
+        // writable on a macOS dev machine. AssetsPath is what SettingsService
+        // uses to resolve every /assets/* virtual path to disk.
+        builder.UseSetting("AssetsPath", _internalAssetsPath);
         builder.UseSetting("InternalAssetsPath", _internalAssetsPath);
-        // Key renamed from THUMBNAILS_PATH in the /data/* lock-down refactor;
-        // without the new key the host falls back to /data/thumbnails, which
-        // isn't writable on a macOS dev machine.
         builder.UseSetting("ThumbnailsPath", _thumbnailsPath);
 
         builder.ConfigureServices(services =>
