@@ -252,13 +252,20 @@ fun TimelineScreen(
                         }
                     }
 
+                    // Set by the Year-view click-to-zoom; consumed by the
+                    // zoom re-anchor effect below.
+                    var pendingZoomAnchor by remember { mutableStateOf<LocalDate?>(null) }
+
                     var isFirstZoomComposition by remember { mutableStateOf(true) }
                     LaunchedEffect(zoomLevel) {
                         if (isFirstZoomComposition) {
                             isFirstZoomComposition = false
                             return@LaunchedEffect
                         }
-                        val target = anchorDate ?: return@LaunchedEffect
+                        // A click-to-zoom (Year → Month) wants to land on the
+                        // clicked month, not on whatever was topmost.
+                        val target = pendingZoomAnchor ?: anchorDate ?: return@LaunchedEffect
+                        pendingZoomAnchor = null
                         val newIdx = findRowIndexForDate(rows, target, zoomLevel.grouping)
                         if (newIdx >= 0) {
                             runCatching { gridState.animateScrollToItem(newIdx) }
@@ -310,6 +317,16 @@ fun TimelineScreen(
                                 )
                             }
                     ) {
+                        val isYearView = zoomLevel.grouping ==
+                            com.photonne.app.data.settings.TimelineGrouping.Year
+                        // Year view is navigation, not detail (Apple-Photos
+                        // semantics): clicking dives into the month. 35dp
+                        // cells were a misclick-sized target for "open
+                        // detail" anyway.
+                        fun zoomIntoMonth(anchor: LocalDate) {
+                            pendingZoomAnchor = anchor
+                            zoomStore.update(TimelineZoomLevel.Month)
+                        }
                         GroupedAssetGrid(
                             rows = rows,
                             baseUrl = apiBaseUrl,
@@ -317,31 +334,52 @@ fun TimelineScreen(
                                 val item = mergedItems.getOrNull(mergedIndex)
                                     ?: return@GroupedAssetGrid
                                 val toggler = onToggleSelection
-                                if (state.isSelectionActive && !item.isLocalOnly &&
-                                    toggler != null) {
-                                    // Tap-to-multi-select only applies to
-                                    // server assets — local-only items
-                                    // aren't part of the timeline's bulk
-                                    // operations.
-                                    toggler(item.id)
-                                } else {
-                                    // The pager gets the contiguous loaded
-                                    // run around the click, so swiping never
-                                    // silently skips an unloaded month.
-                                    val run = contiguousRunAround(mergedIndex, bucketEntries)
-                                    if (run != null) {
-                                        val (runItems, runStart) = run
-                                        onOpenAsset(runItems, mergedIndex - runStart)
+                                when {
+                                    isYearView -> zoomIntoMonth(
+                                        item.fileCreatedAt
+                                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                                            .date
+                                    )
+                                    state.isSelectionActive && !item.isLocalOnly &&
+                                        toggler != null ->
+                                        // Tap-to-multi-select only applies to
+                                        // server assets — local-only items
+                                        // aren't part of the timeline's bulk
+                                        // operations.
+                                        toggler(item.id)
+                                    else -> {
+                                        // The pager gets the contiguous loaded
+                                        // run around the click, so swiping never
+                                        // silently skips an unloaded month.
+                                        val run = contiguousRunAround(mergedIndex, bucketEntries)
+                                        if (run != null) {
+                                            val (runItems, runStart) = run
+                                            onOpenAsset(runItems, mergedIndex - runStart)
+                                        }
                                     }
                                 }
                             },
                             state = gridState,
                             selectedIds = state.selection,
-                            onItemLongClick = onToggleSelection?.let { toggler ->
-                                { mergedIndex ->
-                                    val item = mergedItems.getOrNull(mergedIndex)
-                                    if (item != null && !item.isLocalOnly) {
-                                        toggler(item.id)
+                            // No long-press selection in Year view: with
+                            // click = navigate, selecting over a sea of
+                            // skeletons would be ambiguous about what's
+                            // actually selected.
+                            onItemLongClick = onToggleSelection?.takeIf { !isYearView }
+                                ?.let { toggler ->
+                                    { mergedIndex ->
+                                        val item = mergedItems.getOrNull(mergedIndex)
+                                        if (item != null && !item.isLocalOnly) {
+                                            toggler(item.id)
+                                        }
+                                    }
+                                },
+                            onSkeletonClick = { bucketKey ->
+                                if (isYearView) {
+                                    val year = bucketKey.substringBefore('-').toIntOrNull()
+                                    val month = bucketKey.substringAfter('-').toIntOrNull()
+                                    if (year != null && month != null) {
+                                        zoomIntoMonth(LocalDate(year, month, 1))
                                     }
                                 }
                             },
