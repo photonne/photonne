@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
-using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Timeline;
@@ -56,10 +55,9 @@ public class TimelineNeighborsEndpoint : IEndpoint
         var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, userRootPath, ct);
 
-        // Base query: visible, non-archived, non-deleted assets in allowed folders
-        var baseQuery = dbContext.Assets
-            .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
-                     && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
+        // Base query: the canonical timeline visibility predicate, so the
+        // pager never navigates onto an asset the grid doesn't show.
+        var baseQuery = TimelineQuery.VisibleAssets(dbContext, allowedIds);
 
         // ── Items BEFORE in timeline (newer CapturedAt = appear earlier in DESC order) ──
         // Includes same-date items with newer FileModifiedAt for correct tie-breaking.
