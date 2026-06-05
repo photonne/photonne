@@ -774,6 +774,8 @@
     <string name="admin_maintenance_desc_recalculate">Vuelve a leer el tamaño de cada fichero del disco para corregir contadores de cuota.</string>
     <string name="admin_maintenance_action_empty_trash">Vaciar papeleras</string>
     <string name="admin_maintenance_desc_empty_trash">Elimina de forma permanente todos los elementos en la papelera de cualquier usuario.</string>
+    <string name="admin_maintenance_action_purge_missing">Purgar assets sin archivo</string>
+    <string name="admin_maintenance_desc_purge_missing">Elimina de la base de datos los assets marcados como ausentes y las carpetas cuyo directorio ya no existe en disco.</string>
     <string name="admin_maintenance_result">Procesados %1$d · Afectados %2$d</string>
 
     <!-- Backup -->

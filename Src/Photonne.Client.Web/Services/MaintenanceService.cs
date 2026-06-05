@@ -36,6 +36,9 @@ public class MaintenanceService : IMaintenanceService
     public async Task<MaintenanceTaskResult> EmptyGlobalTrashAsync(CancellationToken ct = default)
         => await PostAsync("empty-trash", ct);
 
+    public async Task<MaintenanceTaskResult> PurgeMissingAsync(bool dryRun, CancellationToken ct = default)
+        => await PostAsync($"purge-missing?dryRun={(dryRun ? "true" : "false")}", ct);
+
     private async Task<MaintenanceTaskResult> PostAsync(string task, CancellationToken ct)
     {
         await SetAuthHeaderAsync();

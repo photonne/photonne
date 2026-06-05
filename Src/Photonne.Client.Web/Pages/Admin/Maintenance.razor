@@ -247,6 +247,99 @@
                 </MudCard>
             </MudItem>
 
+            @* ── Purgar assets sin archivo ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                                <MudIcon Icon="@Icons.Material.Filled.AutoDelete" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Purgar assets sin archivo</MudText>
+                            <MudText Typo="Typo.body2">
+                                Elimina de la base de datos los assets marcados como faltantes (con sus miniaturas, caras,
+                                metadatos y referencias en álbumes) y las carpetas cuyo directorio ya no existe en disco.
+                                Usa "Simular" para ver qué se eliminaría sin tocar nada.
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_purgeResult != null)
+                        {
+                            <MudAlert Severity="@(_purgeResult.Success ? Severity.Success : Severity.Error)"
+                                      Dense="true" Class="mb-0">
+                                @_purgeResult.Message
+                                @if (_purgeResult.Affected > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Class="d-block mt-1">
+                                        @_purgeResult.Processed revisados · @_purgeResult.Affected afectados
+                                    </MudText>
+                                }
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        @if (!_confirmPurge)
+                        {
+                            <div class="d-flex gap-2">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Visibility"
+                                           OnClick="@(() => RunPurgeMissing(dryRun: true))"
+                                           Disabled="_purgeRunning">
+                                    @if (_purgeRunning)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Analizando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Simular</span>
+                                    }
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           StartIcon="@Icons.Material.Filled.AutoDelete"
+                                           OnClick="@(() => _confirmPurge = true)"
+                                           Disabled="_purgeRunning">
+                                    Purgar
+                                </MudButton>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-2 w-100">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">¿Confirmar? Esta acción es irreversible.</MudText>
+                                <div class="d-flex gap-2">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.AutoDelete"
+                                               OnClick="@(() => RunPurgeMissing(dryRun: false))"
+                                               Disabled="_purgeRunning">
+                                        @if (_purgeRunning)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                            <span>Purgando...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Sí, purgar</span>
+                                        }
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               OnClick="@(() => _confirmPurge = false)"
+                                               Disabled="_purgeRunning">
+                                        Cancelar
+                                    </MudButton>
+                                </div>
+                            </div>
+                        }
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
         </MudGrid>
     }
 </div>
@@ -259,11 +352,14 @@
     private bool _sizesRunning;
     private bool _trashRunning;
     private bool _confirmTrash;
+    private bool _purgeRunning;
+    private bool _confirmPurge;
 
     private MaintenanceTaskResult? _orphanResult;
     private MaintenanceTaskResult? _missingResult;
     private MaintenanceTaskResult? _sizesResult;
     private MaintenanceTaskResult? _trashResult;
+    private MaintenanceTaskResult? _purgeResult;
 
     protected override async Task OnInitializedAsync()
     {
@@ -355,6 +451,27 @@
         finally
         {
             _trashRunning = false;
+        }
+    }
+
+    private async Task RunPurgeMissing(bool dryRun)
+    {
+        _purgeRunning = true;
+        _purgeResult = null;
+        _confirmPurge = false;
+        try
+        {
+            _purgeResult = await MaintenanceService.PurgeMissingAsync(dryRun);
+            Snackbar.Add(_purgeResult.Message, _purgeResult.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _purgeResult = new MaintenanceTaskResult { Success = false, Message = $"Error: {ex.Message}" };
+            Snackbar.Add(_purgeResult.Message, Severity.Error);
+        }
+        finally
+        {
+            _purgeRunning = false;
         }
     }
 }

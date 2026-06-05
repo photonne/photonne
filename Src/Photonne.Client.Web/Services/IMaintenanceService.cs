@@ -8,4 +8,5 @@ public interface IMaintenanceService
     Task<MaintenanceTaskResult> MarkMissingFilesAsync(CancellationToken ct = default);
     Task<MaintenanceTaskResult> RecalculateSizesAsync(CancellationToken ct = default);
     Task<MaintenanceTaskResult> EmptyGlobalTrashAsync(CancellationToken ct = default);
+    Task<MaintenanceTaskResult> PurgeMissingAsync(bool dryRun, CancellationToken ct = default);
 }

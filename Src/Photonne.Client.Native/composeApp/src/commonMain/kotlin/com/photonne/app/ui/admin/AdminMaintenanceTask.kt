@@ -30,10 +30,12 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_maintenance_action_empty_trash
 import com.photonne.app.resources.admin_maintenance_action_missing
 import com.photonne.app.resources.admin_maintenance_action_orphans
+import com.photonne.app.resources.admin_maintenance_action_purge_missing
 import com.photonne.app.resources.admin_maintenance_action_recalculate
 import com.photonne.app.resources.admin_maintenance_desc_empty_trash
 import com.photonne.app.resources.admin_maintenance_desc_missing
 import com.photonne.app.resources.admin_maintenance_desc_orphans
+import com.photonne.app.resources.admin_maintenance_desc_purge_missing
 import com.photonne.app.resources.admin_maintenance_desc_recalculate
 import com.photonne.app.resources.admin_maintenance_result
 import com.photonne.app.resources.action_refresh
@@ -111,6 +113,11 @@ fun AdminMaintenanceScreen(viewModel: AdminMaintenanceViewModel) {
             "empty-trash",
             Res.string.admin_maintenance_action_empty_trash,
             Res.string.admin_maintenance_desc_empty_trash
+        ),
+        MaintenanceAction(
+            "purge-missing",
+            Res.string.admin_maintenance_action_purge_missing,
+            Res.string.admin_maintenance_desc_purge_missing
         )
     )
 

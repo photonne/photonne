@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
@@ -39,6 +40,10 @@ public class MaintenanceEndpoint : IEndpoint
         group.MapPost("empty-trash", EmptyGlobalTrash)
             .WithName("EmptyGlobalTrash")
             .WithDescription("Permanently deletes all assets currently in the trash for all users.");
+
+        group.MapPost("purge-missing", PurgeMissing)
+            .WithName("PurgeMissingAssets")
+            .WithDescription("Permanently deletes assets marked as missing and folder records whose physical directory no longer exists. Pass ?dryRun=true to preview without deleting.");
     }
 
     // ─── Orphan thumbnails ────────────────────────────────────────────────────
@@ -267,5 +272,203 @@ public class MaintenanceEndpoint : IEndpoint
             Processed = deleted,
             Affected = deleted
         });
+    }
+
+    // ─── Purge missing assets & orphan folders ────────────────────────────────
+
+    private static async Task<IResult> PurgeMissing(
+        [FromServices] ApplicationDbContext dbContext,
+        [FromServices] SettingsService settingsService,
+        CancellationToken ct,
+        [FromQuery] bool dryRun = false)
+    {
+        // Guardarraíl: si una raíz entera no está disponible (volumen sin montar),
+        // todo su contenido parece faltante — omitir esos assets en vez de purgar
+        // una biblioteca que simplemente está offline.
+        var assetsRoot = settingsService.GetAssetsPath();
+        var assetsRootOnline = Directory.Exists(assetsRoot);
+        var offlineLibraryIds = (await dbContext.ExternalLibraries
+            .AsNoTracking()
+            .Select(l => new { l.Id, l.Path })
+            .ToListAsync(ct))
+            .Where(l => !Directory.Exists(l.Path))
+            .Select(l => l.Id)
+            .ToHashSet();
+
+        var missingAssets = await dbContext.Assets
+            .AsNoTracking()
+            .Where(a => a.IsFileMissing)
+            .Select(a => new { a.Id, a.FullPath, a.ExternalLibraryId })
+            .ToListAsync(ct);
+
+        var purgeIds = new List<Guid>();
+        int skippedOffline = 0;
+        int healed = 0;
+
+        foreach (var asset in missingAssets)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var rootOnline = asset.ExternalLibraryId.HasValue
+                ? !offlineLibraryIds.Contains(asset.ExternalLibraryId.Value)
+                : assetsRootOnline;
+            if (!rootOnline)
+            {
+                skippedOffline++;
+                continue;
+            }
+
+            // Doble comprobación: si el archivo reapareció, sanar el flag en vez de purgar
+            var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
+            if (File.Exists(physicalPath))
+            {
+                if (!dryRun)
+                    await dbContext.Assets
+                        .Where(a => a.Id == asset.Id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsFileMissing, false), ct);
+                healed++;
+                continue;
+            }
+
+            purgeIds.Add(asset.Id);
+        }
+
+        if (!dryRun && purgeIds.Count > 0)
+        {
+            // El borrado en BD cascada a exif, miniaturas, tags, caras, embeddings,
+            // entradas de álbum, enlaces compartidos y tareas de enriquecimiento.
+            foreach (var chunk in purgeIds.Chunk(500))
+            {
+                await dbContext.Assets
+                    .Where(a => chunk.Contains(a.Id))
+                    .ExecuteDeleteAsync(ct);
+            }
+
+            // Miniaturas en disco (best effort)
+            foreach (var id in purgeIds)
+            {
+                var thumbDir = Path.Combine(ThumbnailsBasePath, id.ToString());
+                if (Directory.Exists(thumbDir))
+                {
+                    try { Directory.Delete(thumbDir, recursive: true); }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[MAINTENANCE] Error deleting thumbnail dir {thumbDir}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        // ── Carpetas huérfanas: registro en BD cuyo directorio ya no existe ──
+
+        var folders = await dbContext.Folders
+            .AsNoTracking()
+            .Select(f => new { f.Id, f.Path, f.ParentFolderId, f.ExternalLibraryId })
+            .ToListAsync(ct);
+
+        // Carpetas que seguirán teniendo assets tras la purga (incluida la papelera).
+        // Los assets omitidos por raíz offline también cuentan: protegen su carpeta.
+        var foldersWithRemainingAssets = (await dbContext.Assets
+            .Where(a => a.FolderId != null && (
+                !a.IsFileMissing
+                || (a.ExternalLibraryId == null && !assetsRootOnline)
+                || (a.ExternalLibraryId != null && offlineLibraryIds.Contains(a.ExternalLibraryId.Value))))
+            .Select(a => a.FolderId!.Value)
+            .Distinct()
+            .ToListAsync(ct))
+            .ToHashSet();
+
+        var candidateIds = new HashSet<Guid>();
+        foreach (var folder in folders)
+        {
+            var rootOnline = folder.ExternalLibraryId.HasValue
+                ? !offlineLibraryIds.Contains(folder.ExternalLibraryId.Value)
+                : assetsRootOnline;
+            if (rootOnline && !PhysicalDirectoryExists(folder.Path, assetsRoot))
+                candidateIds.Add(folder.Id);
+        }
+
+        var childrenByParent = folders
+            .Where(f => f.ParentFolderId.HasValue)
+            .GroupBy(f => f.ParentFolderId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(f => f.Id).ToList());
+
+        // Una carpeta es purgable si su directorio falta, no le quedan assets y
+        // todas sus subcarpetas también lo son (la FK del padre es Restrict).
+        var deletableCache = new Dictionary<Guid, bool>();
+        bool IsDeletable(Guid id)
+        {
+            if (deletableCache.TryGetValue(id, out var cached)) return cached;
+            deletableCache[id] = false; // corta ciclos defensivamente
+            var deletable = candidateIds.Contains(id)
+                            && !foldersWithRemainingAssets.Contains(id)
+                            && (!childrenByParent.TryGetValue(id, out var children)
+                                || children.All(IsDeletable));
+            deletableCache[id] = deletable;
+            return deletable;
+        }
+
+        var foldersToDelete = folders
+            .Where(f => IsDeletable(f.Id))
+            .Select(f => new { f.Id, f.Path })
+            .ToList();
+
+        if (!dryRun && foldersToDelete.Count > 0)
+        {
+            // Hijos antes que padres: borrar por profundidad descendente
+            foreach (var depthGroup in foldersToDelete
+                         .GroupBy(f => f.Path.Count(c => c == '/'))
+                         .OrderByDescending(g => g.Key))
+            {
+                var ids = depthGroup.Select(f => f.Id).ToList();
+                await dbContext.Folders
+                    .Where(f => ids.Contains(f.Id))
+                    .ExecuteDeleteAsync(ct);
+            }
+        }
+
+        var extras = new List<string>();
+        if (healed > 0)
+            extras.Add($"{healed} assets recuperados (el archivo volvió a existir)");
+        if (skippedOffline > 0)
+            extras.Add($"{skippedOffline} assets omitidos (biblioteca sin montar)");
+        var extraNote = extras.Count > 0 ? $" {string.Join(". ", extras)}." : "";
+
+        var message = dryRun
+            ? $"Simulación: se purgarían {purgeIds.Count} assets y {foldersToDelete.Count} carpetas huérfanas.{extraNote}"
+            : $"Purgados {purgeIds.Count} assets y {foldersToDelete.Count} carpetas huérfanas.{extraNote}";
+
+        return Results.Ok(new MaintenanceTaskResult
+        {
+            Success = true,
+            Message = message,
+            Processed = missingAssets.Count + folders.Count,
+            Affected = purgeIds.Count + foldersToDelete.Count
+        });
+    }
+
+    // Equivalente a SettingsService.ResolvePhysicalPathAsync pero para directorios:
+    // resuelve la raíz interna /assets y prueba la normalización Unicode opuesta
+    // (NFC ↔ NFD) en rutas externas.
+    private static bool PhysicalDirectoryExists(string dbPath, string assetsRoot)
+    {
+        if (string.IsNullOrEmpty(dbPath)) return false;
+
+        if (dbPath.Equals("/assets", StringComparison.OrdinalIgnoreCase))
+            return Directory.Exists(assetsRoot);
+
+        if (dbPath.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            var relativePath = dbPath.Substring("/assets/".Length);
+            return Directory.Exists(Path.Combine(assetsRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        }
+
+        if (Directory.Exists(dbPath)) return true;
+
+        var nfcPath = dbPath.Normalize(NormalizationForm.FormC);
+        if (nfcPath != dbPath && Directory.Exists(nfcPath)) return true;
+
+        var nfdPath = dbPath.Normalize(NormalizationForm.FormD);
+        return nfdPath != dbPath && Directory.Exists(nfdPath);
     }
 }
