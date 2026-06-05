@@ -57,3 +57,16 @@ data class TimelinePage(
     val hasMore: Boolean = false,
     @Serializable(with = FlexibleInstantSerializer::class) val nextCursor: Instant? = null
 )
+
+/**
+ * One calendar month of the timeline skeleton, as served by
+ * `GET /api/assets/timeline/buckets`. [count] is the server-side contract
+ * for how many assets `GET /api/assets/timeline/buckets/{key}` returns —
+ * the grid reserves scroll height from it before any asset data arrives.
+ */
+@Serializable
+data class TimelineBucket(
+    /** Calendar month key, "yyyy-MM" (e.g. "2026-06"). */
+    val key: String,
+    val count: Int
+)

@@ -139,6 +139,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { ThemePreferenceStore(get()) }
     single { TimelineZoomStore(get()) }
     single { TimelineRepository(api = get()) }
+    single { com.photonne.app.data.timeline.TimelineBucketStore(api = get()) }
     singleOf(::MemoriesRepository)
     singleOf(::NotificationsRepository)
     singleOf(::AssetDetailRepository)

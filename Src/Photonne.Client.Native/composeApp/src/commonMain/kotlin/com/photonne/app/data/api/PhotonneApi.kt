@@ -26,6 +26,7 @@ import com.photonne.app.data.models.SceneLabel
 import com.photonne.app.data.models.SearchResponse
 import com.photonne.app.data.models.SemanticSearchResponse
 import com.photonne.app.data.models.ShareableUser
+import com.photonne.app.data.models.TimelineBucket
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.UnsupportedFilesPage
@@ -218,6 +219,12 @@ interface PhotonneApi {
 
     suspend fun login(username: String, password: String, deviceId: String): LoginResponse
     suspend fun getTimeline(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
+
+    /** Timeline skeleton: per-month visible-asset counts, newest first. */
+    suspend fun getTimelineBuckets(): List<TimelineBucket>
+
+    /** Full content of one timeline bucket ("yyyy-MM"), newest first. */
+    suspend fun getTimelineBucketItems(key: String): List<TimelineItem>
     suspend fun listUnsupportedFiles(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): UnsupportedFilesPage
     suspend fun getUnsupportedFileContent(id: String): AssetContentBytes
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
@@ -590,6 +597,35 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Timeline fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getTimelineBuckets(): List<TimelineBucket> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/timeline/buckets")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Timeline buckets fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getTimelineBucketItems(key: String): List<TimelineItem> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/timeline/buckets/$key") {
+            // A dense month (trip, wedding) can be thousands of items on a
+            // cold server cache — same safety net as getTimeline().
+            timeout {
+                requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+            }
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Timeline bucket fetch failed (${response.status.value})"
             )
         }
         return response.body()
