@@ -29,6 +29,7 @@ import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineBucket
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
+import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
@@ -225,6 +226,9 @@ interface PhotonneApi {
 
     /** Full content of one timeline bucket ("yyyy-MM"), newest first. */
     suspend fun getTimelineBucketItems(key: String): List<TimelineItem>
+
+    /** Compressed yearly view: per-year counts + evenly-sampled items. */
+    suspend fun getTimelineYears(sample: Int): List<TimelineYearSummary>
     suspend fun listUnsupportedFiles(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): UnsupportedFilesPage
     suspend fun getUnsupportedFileContent(id: String): AssetContentBytes
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
@@ -626,6 +630,25 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Timeline bucket fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getTimelineYears(sample: Int): List<TimelineYearSummary> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/timeline/years") {
+            // The sampling pass walks the whole visible library server-side —
+            // same safety net as getTimeline() for large cold-cache runs.
+            timeout {
+                requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+            }
+            parameter("sample", sample)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Timeline years fetch failed (${response.status.value})"
             )
         }
         return response.body()

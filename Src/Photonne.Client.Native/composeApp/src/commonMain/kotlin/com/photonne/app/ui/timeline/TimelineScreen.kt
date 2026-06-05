@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.settings.TimelineZoomLevel
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
@@ -56,10 +57,12 @@ import com.photonne.app.ui.grid.JustifiedRowEntry
 import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.grid.bucketKeyOf
 import com.photonne.app.ui.grid.buildBucketEntries
+import com.photonne.app.ui.grid.buildYearSummaryEntries
 import com.photonne.app.ui.grid.contiguousRunAround
 import com.photonne.app.ui.grid.expandWithNeighborBuckets
 import com.photonne.app.ui.grid.findRowIndexForDate
 import com.photonne.app.ui.grid.packJustifiedRows
+import com.photonne.app.ui.grid.truncateRowsPerGroup
 import androidx.compose.foundation.layout.aspectRatio
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.SkeletonBlock
@@ -93,6 +96,11 @@ fun TimelineScreen(
      * cursor-pagination onLoadMore.
      */
     onBucketsVisible: (List<String>) -> Unit,
+    /**
+     * The Year zoom level asks for per-year summaries with at least this
+     * many sampled items per year (rows × columns at the current width).
+     */
+    onEnsureYearSummaries: (sample: Int) -> Unit = {},
     onRefresh: () -> Unit = {},
     onToggleSelection: ((assetId: String) -> Unit)? = null,
     onOpenUpload: (() -> Unit)? = null,
@@ -123,10 +131,13 @@ fun TimelineScreen(
     val deviceLoading = deviceBackupState.isBackupEnabled && deviceBackupState.isLoading
     val showMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null &&
         !state.isSelectionActive
-    // Skeleton + loaded buckets flattened into headers/cells/skeletons, plus
-    // the flat merged-items list cell indices point into.
-    val bucketEntries = remember(state.buckets, localItems, zoomLevel) {
-        buildBucketEntries(state.buckets, localItems, zoomLevel.grouping)
+    // Year view renders the compressed per-year summaries (a few sampled
+    // rows per year, count in the header); every other zoom level renders
+    // the full bucket timeline. Both flatten into the same entries shape.
+    val isYearView = zoomLevel.grouping == TimelineGrouping.Year
+    val bucketEntries = remember(state.buckets, state.yearSummaries, localItems, zoomLevel) {
+        if (isYearView) buildYearSummaryEntries(state.yearSummaries.orEmpty())
+        else buildBucketEntries(state.buckets, localItems, zoomLevel.grouping)
     }
     val mergedItems = bucketEntries.mergedItems
 
@@ -160,10 +171,23 @@ fun TimelineScreen(
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize()
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            // Year view needs enough sampled items per year to fill its
+            // capped rows at the current width. Fires while the skeleton is
+            // still up (it must — that's what resolves the skeleton) and
+            // re-fires on rotation/resize; the store dedups and caches.
+            val yearSample = (maxWidth.value / TimelineZoomLevel.Year.cellMinSizeDp)
+                .toInt().coerceAtLeast(1) * YEAR_VIEW_MAX_ROWS
+            LaunchedEffect(isYearView, yearSample) {
+                if (isYearView) onEnsureYearSummaries(yearSample)
+            }
             when {
                 state.isInitialLoading -> TimelineSkeleton(cellMinSize = effectiveRowHeight)
                 state.isEmpty -> TimelineEmptyState(onOpenUpload = onOpenUpload)
+                // Year view before its summaries arrive: full-screen skeleton
+                // (the ensure effect below fires the fetch).
+                isYearView && state.yearSummaries == null ->
+                    TimelineSkeleton(cellMinSize = effectiveRowHeight)
                 else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val containerWidthDp = maxWidth
                     // Justify entries into rows. Re-packs whenever the user
@@ -172,12 +196,17 @@ fun TimelineScreen(
                     // and runs at ~1ms — cheap enough to keep inside a
                     // remember-keyed block.
                     val rows = remember(bucketEntries, containerWidthDp, effectiveRowHeight) {
-                        packJustifiedRows(
+                        val packed = packJustifiedRows(
                             entries = bucketEntries.entries,
                             containerWidthDp = containerWidthDp.value,
                             targetRowHeightDp = effectiveRowHeight.value,
                             spacingDp = 2f
                         )
+                        // Year view: cap every year to a fixed number of
+                        // rows — the header count says how much more there
+                        // is, and clicking dives into the month.
+                        if (isYearView) truncateRowsPerGroup(packed, YEAR_VIEW_MAX_ROWS)
+                        else packed
                     }
 
                     // LazyColumn item key → bucket key, so the visibility
@@ -207,7 +236,11 @@ fun TimelineScreen(
                     // Drives bucket loading: visible months (± one neighbour
                     // per side) get their contents fetched. The store dedups
                     // and caches, so emitting on every scroll frame is fine.
-                    LaunchedEffect(gridState, keyToBucket) {
+                    // Year view opts out — its summaries are self-contained
+                    // and loading month buckets for sampled cells would be
+                    // wasted requests.
+                    LaunchedEffect(gridState, keyToBucket, isYearView) {
+                        if (isYearView) return@LaunchedEffect
                         snapshotFlow {
                             gridState.layoutInfo.visibleItemsInfo
                                 .mapNotNull { keyToBucket[it.key] }
@@ -317,8 +350,6 @@ fun TimelineScreen(
                                 )
                             }
                     ) {
-                        val isYearView = zoomLevel.grouping ==
-                            com.photonne.app.data.settings.TimelineGrouping.Year
                         // Year view is navigation, not detail (Apple-Photos
                         // semantics): clicking dives into the month. 35dp
                         // cells were a misclick-sized target for "open
@@ -511,6 +542,9 @@ private fun TimelineSkeleton(cellMinSize: androidx.compose.ui.unit.Dp) {
 }
 
 private const val SKELETON_TILE_COUNT = 36
+
+/** Max justified rows per year in the compressed Year view. */
+private const val YEAR_VIEW_MAX_ROWS = 5
 
 @Composable
 private fun TimelineEmptyState(onOpenUpload: (() -> Unit)?) {

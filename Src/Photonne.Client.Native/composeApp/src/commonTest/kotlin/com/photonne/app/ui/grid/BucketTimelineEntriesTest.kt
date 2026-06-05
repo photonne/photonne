@@ -199,6 +199,72 @@ class BucketTimelineEntriesTest {
     }
 
     @Test
+    fun year_summaries_build_one_header_per_year_with_count() {
+        val result = buildYearSummaryEntries(
+            listOf(
+                com.photonne.app.data.models.TimelineYearSummary(
+                    year = 2025, // out of order on purpose — builder re-pins desc
+                    count = 1,
+                    items = listOf(item("dec-1", "2025-12-25T10:00:00Z"))
+                ),
+                com.photonne.app.data.models.TimelineYearSummary(
+                    year = 2026,
+                    count = 8214,
+                    items = listOf(
+                        item("feb-1", "2026-02-20T10:00:00Z"),
+                        item("ene-1", "2026-01-10T10:00:00Z")
+                    )
+                )
+            )
+        )
+
+        val headers = result.entries.filterIsInstance<TimelineEntry.Header>()
+        assertEquals(listOf("2026", "2025"), headers.map { it.key })
+        assertEquals(listOf(8214, 1), headers.map { it.count })
+        assertEquals(listOf("feb-1", "ene-1", "dec-1"), result.mergedItems.map { it.id })
+        // Year view has no bucket plumbing: no detail pager, no bucket loads.
+        assertTrue(result.loadedRanges.isEmpty())
+        assertTrue(result.bucketOrder.isEmpty())
+    }
+
+    @Test
+    fun truncate_caps_rows_per_group_but_keeps_headers() {
+        val rows = listOf(
+            JustifiedRowEntry.Header(key = "2026", title = "2026"),
+            row("a"), row("b"), row("c"),
+            JustifiedRowEntry.Header(key = "2025", title = "2025"),
+            row("d")
+        )
+
+        val truncated = truncateRowsPerGroup(rows, maxRows = 2)
+
+        assertEquals(
+            listOf("2026", "r:a", "r:b", "2025", "r:d"),
+            truncated.map {
+                when (it) {
+                    is JustifiedRowEntry.Header -> it.key
+                    is JustifiedRowEntry.Row -> "r:${it.row.cells.first().item.id}"
+                    is JustifiedRowEntry.SkeletonRow -> "s"
+                }
+            }
+        )
+    }
+
+    @Test
+    fun grouped_count_formats_with_thousands_separator() {
+        assertEquals("999", formatGroupedCount(999))
+        assertEquals("8 214", formatGroupedCount(8214))
+        assertEquals("1 234 567", formatGroupedCount(1234567))
+    }
+
+    private fun row(id: String) = JustifiedRowEntry.Row(
+        JustifiedRow(
+            cells = listOf(TimelineEntry.Cell(item(id, "2026-01-01T10:00:00Z"), index = 0)),
+            rowHeightDp = 35f
+        )
+    )
+
+    @Test
     fun skeleton_buckets_pack_into_deterministic_row_count() {
         val entries = listOf(
             TimelineEntry.Header(key = "2026-01", title = "enero de 2026"),

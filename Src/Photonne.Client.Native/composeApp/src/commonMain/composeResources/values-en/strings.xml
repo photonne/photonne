@@ -53,6 +53,7 @@
     <string name="timeline_memories_one_year_ago">1 year ago</string>
     <string name="timeline_memories_years_ago">%1$d years ago</string>
 
+    <string name="timeline_year_count">%1$s photos</string>
     <string name="timeline_zoom_action">Grid size</string>
     <string name="timeline_zoom_year">Year</string>
     <string name="timeline_zoom_month">Month</string>

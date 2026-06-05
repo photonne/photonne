@@ -1462,6 +1462,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                         },
                         onBucketsVisible = timelineViewModel::ensureVisible,
+                        onEnsureYearSummaries = timelineViewModel::ensureYearSummaries,
                         onRefresh = timelineViewModel::refresh,
                         onToggleSelection = timelineViewModel::toggleSelection,
                         onOpenUpload = {

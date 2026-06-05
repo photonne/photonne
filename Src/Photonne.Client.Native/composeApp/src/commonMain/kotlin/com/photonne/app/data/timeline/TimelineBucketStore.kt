@@ -3,6 +3,7 @@ package com.photonne.app.data.timeline
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.TimelineBucket
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.data.models.TimelineYearSummary
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,9 +45,20 @@ class TimelineBucketStore(
     private val _buckets = MutableStateFlow<List<TimelineBucketState>>(emptyList())
     val buckets: StateFlow<List<TimelineBucketState>> = _buckets.asStateFlow()
 
-    /** Guards [inFlight], [lastTouched] and the eviction pass. */
+    /**
+     * Compressed yearly view: per-year counts + evenly-sampled items, newest
+     * first. Null until first fetched; cleared by [refresh].
+     */
+    private val _yearSummaries = MutableStateFlow<List<TimelineYearSummary>?>(null)
+    val yearSummaries: StateFlow<List<TimelineYearSummary>?> = _yearSummaries.asStateFlow()
+
+    /** Guards [inFlight], [lastTouched], year-fetch state and eviction. */
     private val mutex = Mutex()
     private val inFlight = mutableSetOf<String>()
+
+    /** Sample size of the cached/in-flight year summaries (0 = none). */
+    private var yearSampleSize = 0
+    private var yearSampleInFlight = 0
 
     /** Monotonic recency stamps for LRU eviction. */
     private val lastTouched = mutableMapOf<String, Long>()
@@ -62,6 +74,37 @@ class TimelineBucketStore(
         mutex.withLock {
             lastTouched.clear()
             _buckets.value = skeleton.map { TimelineBucketState(key = it.key, count = it.count) }
+            // Year summaries are a snapshot of the same library — refetch on
+            // demand after a refresh (the Year view's ensure effect re-asks).
+            _yearSummaries.value = null
+            yearSampleSize = 0
+        }
+    }
+
+    /**
+     * Fetches the compressed yearly view with at least [sample] items per
+     * year. Cached summaries with an equal-or-larger sample are reused
+     * (callers truncate client-side); a smaller cache triggers a refetch.
+     * Concurrent calls dedup against the in-flight sample size.
+     */
+    suspend fun ensureYearSummaries(sample: Int) {
+        val needed = sample.coerceIn(1, MAX_YEAR_SAMPLE)
+        mutex.withLock {
+            val cached = _yearSummaries.value != null && yearSampleSize >= needed
+            val inFlightCovers = yearSampleInFlight >= needed
+            if (cached || inFlightCovers) return
+            yearSampleInFlight = needed
+        }
+        try {
+            val summaries = api.getTimelineYears(needed)
+            mutex.withLock {
+                _yearSummaries.value = summaries
+                yearSampleSize = needed
+            }
+        } finally {
+            mutex.withLock {
+                if (yearSampleInFlight == needed) yearSampleInFlight = 0
+            }
         }
     }
 
@@ -199,5 +242,8 @@ class TimelineBucketStore(
          * cache-warm.
          */
         const val DEFAULT_MAX_LOADED_BUCKETS = 12
+
+        /** Mirrors the server-side clamp on /timeline/years?sample. */
+        const val MAX_YEAR_SAMPLE = 100
     }
 }

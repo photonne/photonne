@@ -18,7 +18,9 @@ internal sealed interface JustifiedRowEntry {
     data class Header(
         val key: String,
         val title: String,
-        val cover: TimelineItem? = null
+        val cover: TimelineItem? = null,
+        /** Group total shown trailing the title (Year view). */
+        val count: Int? = null
     ) : JustifiedRowEntry
     data class Row(val row: JustifiedRow) : JustifiedRowEntry
 
@@ -100,7 +102,7 @@ internal fun packJustifiedRows(
                 flushPartial()
                 // Cover left null here; filled in by the second pass
                 // below once we know the next emitted cell.
-                out += JustifiedRowEntry.Header(entry.key, entry.title)
+                out += JustifiedRowEntry.Header(entry.key, entry.title, count = entry.count)
             }
             is TimelineEntry.SkeletonBucket -> {
                 flushPartial()
@@ -165,6 +167,36 @@ internal fun packJustifiedRows(
         }
         entry.copy(cover = cover)
     }
+}
+
+/**
+ * Caps every header group to [maxRows] row entries, dropping the rest. The
+ * Year view uses this so a 10.000-photo year occupies the same height as a
+ * 50-photo one — the per-year count in the header tells the user the group
+ * is a sample, and clicking dives into the Month view for the full content.
+ */
+internal fun truncateRowsPerGroup(
+    rows: List<JustifiedRowEntry>,
+    maxRows: Int
+): List<JustifiedRowEntry> {
+    if (maxRows <= 0) return rows.filterIsInstance<JustifiedRowEntry.Header>()
+    val out = ArrayList<JustifiedRowEntry>(rows.size)
+    var rowsInGroup = 0
+    rows.forEach { entry ->
+        when (entry) {
+            is JustifiedRowEntry.Header -> {
+                rowsInGroup = 0
+                out += entry
+            }
+            else -> {
+                if (rowsInGroup < maxRows) {
+                    out += entry
+                    rowsInGroup++
+                }
+            }
+        }
+    }
+    return out
 }
 
 /**

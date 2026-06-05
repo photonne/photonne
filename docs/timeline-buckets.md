@@ -133,7 +133,29 @@ Mejora posterior: extender el pager con `/api/assets/{id}/timeline-neighbors`
 - Ya no hace falta cap de N filas: la vista anual es barata porque solo
   carga lo visible.
 
-## Fase 5 (opcional) — Scrubber lateral
+## Fase 5 — Vista anual comprimida (muestreo en servidor)
+
+Los buckets resuelven el coste de *datos* de la vista anual, pero no su
+*longitud*: cada asset sigue ocupando celda (real o skeleton), así que un año
+de 8.000 fotos mide ~50 pantallas. La compresión:
+
+**`GET /api/assets/timeline/years?sample=N`** — por año (descendente):
+`{ year, count, items[≤N] }`, donde `items` es una muestra distribuida
+uniformemente sobre el timeline del año (cada ⌈count/N⌉-ésimo item, más
+recientes primero). Dos fases: pasada ligera `(Id, CapturedAt)` sobre toda la
+biblioteca visible (misma clase de coste que el grid endpoint) + hidratación
+ID-bounded vía la proyección compartida.
+
+**Cliente**: `TimelineBucketStore.ensureYearSummaries(sample)` (cache por
+tamaño de muestra, dedup en vuelo, se invalida en `refresh()`); el nivel de
+zoom `Year` renderiza `buildYearSummaryEntries` + `truncateRowsPerGroup`
+(máx. 5 filas por año) con el **total del año en el header** ("8 214 fotos")
+para que la muestra nunca parezca "todas mis fotos". `sample` = columnas × 5
+según el ancho actual. La carga de buckets por visibilidad se desactiva en
+vista anual (las summaries son autocontenidas); el click sigue navegando al
+mes (Fase 4).
+
+## Fase 6 (opcional) — Scrubber lateral
 
 Con alturas deterministas por mes, un scrubber con marcas de año estilo
 Google Photos sale casi gratis (solo necesita `/buckets`). Fuera de alcance.

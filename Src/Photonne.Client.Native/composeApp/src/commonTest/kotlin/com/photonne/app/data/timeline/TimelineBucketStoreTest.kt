@@ -62,9 +62,17 @@ class TimelineBucketStoreTest {
         "2025-12" to "[${itemJson("dec-1", "2025-12-25T10:00:00Z")}]"
     )
 
+    private val yearsJson = """
+        [
+          { "year": 2026, "count": 3, "items": [${itemJson("feb-1", "2026-02-20T10:00:00Z")}] },
+          { "year": 2025, "count": 1, "items": [${itemJson("dec-1", "2025-12-25T10:00:00Z")}] }
+        ]
+    """.trimIndent()
+
     /**
-     * Routes /timeline/buckets to the skeleton and /timeline/buckets/{key}
-     * to that month's content, recording every request path.
+     * Routes /timeline/buckets to the skeleton, /timeline/buckets/{key} to
+     * that month's content and /timeline/years to the year summaries,
+     * recording every request path (years requests include the sample size).
      */
     private fun buildStore(
         maxLoadedBuckets: Int = TimelineBucketStore.DEFAULT_MAX_LOADED_BUCKETS,
@@ -72,9 +80,12 @@ class TimelineBucketStoreTest {
     ): Pair<TimelineBucketStore, MutableList<String>> {
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
-            requests += path
+            requests += if (path.endsWith("/timeline/years")) {
+                "$path?sample=${request.url.parameters["sample"]}"
+            } else path
             val body = when {
                 path.endsWith("/timeline/buckets") -> skeletonJson
+                path.endsWith("/timeline/years") -> yearsJson
                 else -> {
                     val key = path.substringAfterLast('/')
                     bucketBodies[key] ?: error("Unexpected bucket request: $path")
@@ -217,6 +228,45 @@ class TimelineBucketStoreTest {
         store.refresh()
 
         assertTrue(store.buckets.value.none { it.isLoaded })
+    }
+
+    @Test
+    fun yearSummaries_fetch_once_and_reuse_for_equal_or_smaller_samples() = runTest {
+        val (store, requests) = buildStore()
+        store.refresh()
+
+        store.ensureYearSummaries(40)
+        store.ensureYearSummaries(40)
+        store.ensureYearSummaries(25) // smaller — cache covers it
+
+        val summaries = store.yearSummaries.value
+        assertEquals(listOf(2026, 2025), summaries?.map { it.year })
+        assertEquals(listOf(3, 1), summaries?.map { it.count })
+        assertEquals(1, requests.count { it.contains("/timeline/years") })
+        assertTrue(requests.any { it.endsWith("/timeline/years?sample=40") })
+    }
+
+    @Test
+    fun yearSummaries_refetch_when_a_larger_sample_is_needed() = runTest {
+        val (store, requests) = buildStore()
+        store.refresh()
+
+        store.ensureYearSummaries(20)
+        store.ensureYearSummaries(60)
+
+        assertEquals(2, requests.count { it.contains("/timeline/years") })
+        assertTrue(requests.any { it.endsWith("/timeline/years?sample=60") })
+    }
+
+    @Test
+    fun refresh_clears_yearSummaries() = runTest {
+        val (store, _) = buildStore()
+        store.refresh()
+        store.ensureYearSummaries(20)
+
+        store.refresh()
+
+        assertNull(store.yearSummaries.value)
     }
 
     @Test

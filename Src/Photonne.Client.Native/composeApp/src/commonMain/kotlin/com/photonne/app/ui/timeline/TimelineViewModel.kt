@@ -7,6 +7,7 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.timeline.TimelineBucketState
 import com.photonne.app.data.timeline.TimelineBucketStore
 import kotlinx.coroutines.Job
@@ -19,6 +20,8 @@ import kotlinx.coroutines.launch
 data class TimelineUiState(
     /** Skeleton + loaded contents, newest first — see TimelineBucketStore. */
     val buckets: List<TimelineBucketState> = emptyList(),
+    /** Compressed yearly view; null until the Year zoom level requests it. */
+    val yearSummaries: List<TimelineYearSummary>? = null,
     val isInitialLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: UiError? = null,
@@ -47,6 +50,11 @@ class TimelineViewModel(
         viewModelScope.launch {
             store.buckets.collect { buckets ->
                 _state.update { it.copy(buckets = buckets) }
+            }
+        }
+        viewModelScope.launch {
+            store.yearSummaries.collect { summaries ->
+                _state.update { it.copy(yearSummaries = summaries) }
             }
         }
         refresh()
@@ -88,6 +96,22 @@ class TimelineViewModel(
         if (bucketKeys.isEmpty()) return
         viewModelScope.launch {
             runCatching { store.ensureLoaded(bucketKeys) }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Error al cargar la línea de tiempo"))
+                    }
+                }
+        }
+    }
+
+    /**
+     * Fetches the compressed yearly view with at least [sample] items per
+     * year — called by the Year zoom level with rows×columns. The store
+     * caches and dedups, so repeated calls are cheap.
+     */
+    fun ensureYearSummaries(sample: Int) {
+        viewModelScope.launch {
+            runCatching { store.ensureYearSummaries(sample) }
                 .onFailure { error ->
                     _state.update {
                         it.copy(error = errorFactory.from(error, "Error al cargar la línea de tiempo"))

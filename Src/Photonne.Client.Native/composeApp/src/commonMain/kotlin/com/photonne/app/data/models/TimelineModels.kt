@@ -70,3 +70,16 @@ data class TimelineBucket(
     val key: String,
     val count: Int
 )
+
+/**
+ * One year of the compressed yearly view (`GET /api/assets/timeline/years`):
+ * total visible-asset count plus a sample distributed evenly across the
+ * year, newest first. The Year zoom level renders a fixed number of rows
+ * per year from [items] and shows [count] in the header.
+ */
+@Serializable
+data class TimelineYearSummary(
+    val year: Int,
+    val count: Int,
+    val items: List<TimelineItem> = emptyList()
+)

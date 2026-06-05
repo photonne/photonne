@@ -27,7 +27,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.timeline_year_count
 import com.photonne.app.ui.theme.SkeletonBlock
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -47,7 +50,8 @@ internal fun assetCellKey(item: TimelineItem, index: Int): String =
     } else item.id
 
 internal sealed interface TimelineEntry {
-    data class Header(val key: String, val title: String) : TimelineEntry
+    /** [count] is shown trailing the title (Year view's per-year total). */
+    data class Header(val key: String, val title: String, val count: Int? = null) : TimelineEntry
     data class Cell(val item: TimelineItem, val index: Int) : TimelineEntry
 
     /**
@@ -252,7 +256,7 @@ internal fun GroupedAssetGrid(
         rows.forEach { entry ->
             when (entry) {
                 is JustifiedRowEntry.Header -> stickyHeader(key = "h:${entry.key}") {
-                    StickyMonthHeader(title = entry.title)
+                    StickyMonthHeader(title = entry.title, count = entry.count)
                 }
                 is JustifiedRowEntry.SkeletonRow -> {
                     item(key = "s:${entry.bucketKey}:${entry.rowIndex}") {
@@ -327,7 +331,7 @@ private fun SkeletonCellsRow(
  * gradient) so the timeline reads cleanly while scrolling.
  */
 @Composable
-private fun StickyMonthHeader(title: String) {
+private fun StickyMonthHeader(title: String, count: Int? = null) {
     // Swallow taps on the band itself so the user doesn't accidentally
     // open whatever cell is scrolling behind the sticky header, and so
     // the band reads as chrome rather than an interactive asset.
@@ -351,7 +355,35 @@ private fun StickyMonthHeader(title: String) {
                 .align(Alignment.CenterStart)
                 .padding(horizontal = 16.dp)
         )
+        if (count != null) {
+            // Year view: the group's TOTAL, so the truncated sample below
+            // never reads as "these are all my photos of 2019".
+            Text(
+                text = stringResource(Res.string.timeline_year_count, formatGroupedCount(count)),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(horizontal = 16.dp)
+            )
+        }
     }
+}
+
+/**
+ * Locale-neutral thousands grouping with a space ("8 214") — common code
+ * has no NumberFormat, and a hardcoded '.' or ',' would be wrong in half
+ * the locales.
+ */
+internal fun formatGroupedCount(n: Int): String {
+    val digits = n.toString()
+    if (digits.length <= 3) return digits
+    val sb = StringBuilder()
+    digits.forEachIndexed { i, c ->
+        if (i > 0 && (digits.length - i) % 3 == 0) sb.append(' ')
+        sb.append(c)
+    }
+    return sb.toString()
 }
 
 @Composable

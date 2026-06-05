@@ -149,6 +149,41 @@ internal fun buildBucketEntries(
 }
 
 /**
+ * Builds the compressed Year-view entry list from per-year summaries: one
+ * header per year (carrying the year's total count) followed by the sampled
+ * items as cells. No skeletons and no bucket plumbing — the summaries are
+ * self-contained, so [BucketEntriesResult.loadedRanges]/[BucketEntriesResult.bucketOrder]
+ * stay empty (Year-view clicks navigate to the Month view, never open the
+ * detail pager, and bucket visibility loading is disabled at that level).
+ */
+internal fun buildYearSummaryEntries(
+    summaries: List<com.photonne.app.data.models.TimelineYearSummary>
+): BucketEntriesResult {
+    val entries = ArrayList<TimelineEntry>()
+    val merged = ArrayList<TimelineItem>()
+    summaries
+        .sortedByDescending { it.year } // newest first, defensively re-pinned
+        .forEach { summary ->
+            if (summary.items.isEmpty()) return@forEach
+            entries += TimelineEntry.Header(
+                key = summary.year.toString(),
+                title = summary.year.toString(),
+                count = summary.count
+            )
+            summary.items.forEach { item ->
+                merged += item
+                entries += TimelineEntry.Cell(item = item, index = merged.size - 1)
+            }
+        }
+    return BucketEntriesResult(
+        entries = entries,
+        mergedItems = merged,
+        loadedRanges = emptyList(),
+        bucketOrder = emptyList()
+    )
+}
+
+/**
  * The contiguous loaded slice of `mergedItems` around [mergedIndex]: all
  * ranges sharing the clicked range's run. Returns the slice plus its start
  * offset so callers can rebase the clicked index; null when the index isn't
