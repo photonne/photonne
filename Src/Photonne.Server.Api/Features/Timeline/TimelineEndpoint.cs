@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
-using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
 using Scalar.AspNetCore;
 
@@ -53,13 +52,7 @@ public class TimelineEndpoint : IEndpoint
             var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
                 dbContext, userId, userRootPath, cancellationToken);
 
-            var query = dbContext.Assets
-                .AsNoTracking()
-                .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
-                         && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value)
-                         // Hide the motion (.mov) half of a Live Photo: it's served
-                         // through the still's /motion endpoint, not as its own item.
-                         && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart));
+            var query = TimelineQuery.VisibleAssets(dbContext, allowedFolderIds);
 
             // Apply cursor (exclusive upper bound on CapturedAt — the timeline
             // sort key, not the filesystem mtime).
@@ -90,11 +83,8 @@ public class TimelineEndpoint : IEndpoint
             // Tags travel separately from the main projection so we don't pay
             // the asset×thumbnail×tag×userTag cartesian fan-out up front. Two
             // small "WHERE AssetId IN (…)" queries are cheap and let EF stay
-            // on the indexed projection above. Skip when the page is empty.
-            if (items.Count > 0)
-            {
-                await HydrateTagsAsync(dbContext, items, cancellationToken);
-            }
+            // on the indexed projection above.
+            await TimelineQuery.HydrateTagsAsync(dbContext, items, cancellationToken);
 
             var nextCursor = hasMore ? items.Last().FileCreatedAt : (DateTime?)null;
 
@@ -111,50 +101,6 @@ public class TimelineEndpoint : IEndpoint
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError
             );
-        }
-    }
-
-    /// <summary>
-    /// Stitches detected-tag types and user-tag names onto a materialized page
-    /// of <see cref="TimelineResponse"/> using two ID-bounded sub-queries. The
-    /// alternative (Include + ThenInclude on the main query) multiplies the
-    /// row count by the per-asset tag fan-out, so a 80-asset page can pull
-    /// thousands of duplicated parent rows out of Postgres.
-    /// </summary>
-    private static async Task HydrateTagsAsync(
-        ApplicationDbContext dbContext,
-        List<TimelineResponse> items,
-        CancellationToken ct)
-    {
-        var assetIds = items.Select(i => i.Id).ToList();
-
-        var autoTagRows = await dbContext.AssetTags
-            .AsNoTracking()
-            .Where(t => assetIds.Contains(t.AssetId))
-            .Select(t => new { t.AssetId, Label = t.TagType.ToString() })
-            .ToListAsync(ct);
-
-        var userTagRows = await dbContext.AssetUserTags
-            .AsNoTracking()
-            .Where(t => assetIds.Contains(t.AssetId))
-            .Select(t => new { t.AssetId, Label = t.UserTag.Name })
-            .ToListAsync(ct);
-
-        var byAsset = autoTagRows.Concat(userTagRows)
-            .GroupBy(r => r.AssetId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(r => r.Label)
-                      .Distinct(StringComparer.OrdinalIgnoreCase)
-                      .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
-                      .ToList());
-
-        foreach (var item in items)
-        {
-            if (byAsset.TryGetValue(item.Id, out var labels))
-            {
-                item.Tags = labels;
-            }
         }
     }
 

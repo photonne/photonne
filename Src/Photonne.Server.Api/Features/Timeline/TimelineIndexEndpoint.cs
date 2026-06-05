@@ -39,9 +39,7 @@ public class TimelineIndexEndpoint : IEndpoint
             // Group by date (UTC day), return descending. Grouping key is
             // CapturedAt (the timeline sort key) so the scrubber positions
             // match the asset order shown in the timeline.
-            var index = await dbContext.Assets
-                .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
-                         && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
+            var index = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
                 .GroupBy(a => a.CapturedAt.Date)
                 .Select(g => new TimelineIndexItemResponse
                 {
