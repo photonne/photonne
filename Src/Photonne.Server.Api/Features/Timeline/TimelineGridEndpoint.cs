@@ -59,7 +59,7 @@ public class TimelineGridEndpoint : IEndpoint
             // Ordering and date grouping use CapturedAt (EXIF date with
             // FileCreatedAt fallback), matching the main timeline endpoint.
             var rawItems = await dbContext.Assets
-                .Where(a => a.DeletedAt == null && !a.IsArchived
+                .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                          && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
                 .OrderByDescending(a => a.CapturedAt)
                 .Select(a => new

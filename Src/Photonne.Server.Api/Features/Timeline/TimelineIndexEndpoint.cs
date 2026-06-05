@@ -40,7 +40,7 @@ public class TimelineIndexEndpoint : IEndpoint
             // CapturedAt (the timeline sort key) so the scrubber positions
             // match the asset order shown in the timeline.
             var index = await dbContext.Assets
-                .Where(a => a.DeletedAt == null && !a.IsArchived
+                .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                          && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
                 .GroupBy(a => a.CapturedAt.Date)
                 .Select(g => new TimelineIndexItemResponse

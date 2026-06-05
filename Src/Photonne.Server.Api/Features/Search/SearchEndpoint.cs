@@ -66,7 +66,7 @@ public class SearchEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && !a.IsArchived
+            .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
         // Text search: filename, full path, user tag names

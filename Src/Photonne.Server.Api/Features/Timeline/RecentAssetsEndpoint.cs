@@ -56,7 +56,7 @@ public class RecentAssetsEndpoint : IEndpoint
 
         var items = await dbContext.Assets
             .AsNoTracking()
-            .Where(a => a.DeletedAt == null && !a.IsArchived
+            .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value)
                      // Hide the motion (.mov) half of a Live Photo — same as the timeline.
                      && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))

@@ -46,7 +46,7 @@ public class MemoriesEndpoint : IEndpoint
                 .Include(a => a.Tags)
                 .Include(a => a.UserTags)
                     .ThenInclude(ut => ut.UserTag)
-                .Where(a => a.DeletedAt == null
+                .Where(a => a.DeletedAt == null && !a.IsFileMissing
                          && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value))
                 .OrderBy(_ => EF.Functions.Random())
                 .Take(15)
@@ -63,6 +63,7 @@ public class MemoriesEndpoint : IEndpoint
                 .ThenInclude(ut => ut.UserTag)
             .Where(a =>
                 a.DeletedAt == null &&
+                !a.IsFileMissing &&
                 a.CapturedAt.Month == today.Month &&
                 a.CapturedAt.Day == today.Day &&
                 a.CapturedAt.Year < today.Year &&

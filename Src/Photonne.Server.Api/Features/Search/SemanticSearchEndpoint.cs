@@ -131,7 +131,7 @@ public class SemanticSearchEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && !a.IsArchived && a.Embedding != null)
+            .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing && a.Embedding != null)
             .Where(scope.AssetPredicate());
 
         var modelVersion = options.ModelVersion;

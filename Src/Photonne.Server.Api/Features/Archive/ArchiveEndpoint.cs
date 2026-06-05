@@ -61,7 +61,7 @@ public class ArchiveEndpoint : IEndpoint
             .Include(a => a.Tags)
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && a.IsArchived
+            .Where(a => a.DeletedAt == null && a.IsArchived && !a.IsFileMissing
                      && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
 
         if (cursor.HasValue)

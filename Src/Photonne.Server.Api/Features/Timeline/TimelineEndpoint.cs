@@ -55,7 +55,7 @@ public class TimelineEndpoint : IEndpoint
 
             var query = dbContext.Assets
                 .AsNoTracking()
-                .Where(a => a.DeletedAt == null && !a.IsArchived
+                .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                          && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value)
                          // Hide the motion (.mov) half of a Live Photo: it's served
                          // through the still's /motion endpoint, not as its own item.

@@ -48,6 +48,7 @@ public class MapPointsEndpoint : IEndpoint
                     .Include(a => a.Exif)
                     .Include(a => a.Thumbnails)
                     .Where(a => a.DeletedAt == null &&
+                               !a.IsFileMissing &&
                                a.Exif != null &&
                                a.Exif.Latitude.HasValue &&
                                a.Exif.Longitude.HasValue &&

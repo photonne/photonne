@@ -58,7 +58,7 @@ public class TimelineNeighborsEndpoint : IEndpoint
 
         // Base query: visible, non-archived, non-deleted assets in allowed folders
         var baseQuery = dbContext.Assets
-            .Where(a => a.DeletedAt == null && !a.IsArchived
+            .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && a.FolderId.HasValue && allowedIds.Contains(a.FolderId.Value));
 
         // ── Items BEFORE in timeline (newer CapturedAt = appear earlier in DESC order) ──
