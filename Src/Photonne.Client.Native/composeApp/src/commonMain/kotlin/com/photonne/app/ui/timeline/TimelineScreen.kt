@@ -40,6 +40,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.photonne.app.data.api.rememberApiBaseUrl
@@ -60,6 +61,7 @@ import com.photonne.app.ui.grid.buildBucketEntries
 import com.photonne.app.ui.grid.buildYearSummaryEntries
 import com.photonne.app.ui.grid.contiguousRunAround
 import com.photonne.app.ui.grid.expandWithNeighborBuckets
+import com.photonne.app.ui.grid.findRowIndexForAsset
 import com.photonne.app.ui.grid.findRowIndexForDate
 import com.photonne.app.ui.grid.packJustifiedRows
 import com.photonne.app.ui.grid.truncateRowsPerGroup
@@ -288,6 +290,14 @@ fun TimelineScreen(
                     // Set by the Year-view click-to-zoom; consumed by the
                     // zoom re-anchor effect below.
                     var pendingZoomAnchor by remember { mutableStateOf<LocalDate?>(null) }
+                    // Second, finer stage of the same click: once the asset's
+                    // bucket content is in the rows, scroll to the asset's
+                    // exact row (the month header is just the coarse anchor
+                    // while the bucket loads).
+                    var pendingAssetAnchor by remember {
+                        mutableStateOf<PendingAssetAnchor?>(null)
+                    }
+                    val density = LocalDensity.current
 
                     var isFirstZoomComposition by remember { mutableStateOf(true) }
                     LaunchedEffect(zoomLevel) {
@@ -296,12 +306,32 @@ fun TimelineScreen(
                             return@LaunchedEffect
                         }
                         // A click-to-zoom (Year → Month) wants to land on the
-                        // clicked month, not on whatever was topmost.
+                        // clicked month, not on whatever was topmost. A manual
+                        // zoom change (pinch/menu) invalidates any pending
+                        // asset jump from an earlier click.
+                        if (pendingZoomAnchor == null) pendingAssetAnchor = null
                         val target = pendingZoomAnchor ?: anchorDate ?: return@LaunchedEffect
                         pendingZoomAnchor = null
                         val newIdx = findRowIndexForDate(rows, target, zoomLevel.grouping)
                         if (newIdx >= 0) {
                             runCatching { gridState.animateScrollToItem(newIdx) }
+                        }
+                    }
+
+                    LaunchedEffect(rows, pendingAssetAnchor) {
+                        val anchor = pendingAssetAnchor ?: return@LaunchedEffect
+                        if (isYearView) return@LaunchedEffect
+                        val idx = findRowIndexForAsset(rows, anchor.assetId)
+                        if (idx >= 0) {
+                            // Land the row just below the pinned sticky header.
+                            val headerPx = with(density) { 56.dp.roundToPx() }
+                            runCatching { gridState.animateScrollToItem(idx, -headerPx) }
+                            pendingAssetAnchor = null
+                        } else {
+                            // Bucket loaded but the asset isn't there (gone
+                            // server-side) — stay at the month header.
+                            val bucket = state.buckets.firstOrNull { it.key == anchor.bucketKey }
+                            if (bucket == null || bucket.isLoaded) pendingAssetAnchor = null
                         }
                     }
 
@@ -351,11 +381,14 @@ fun TimelineScreen(
                             }
                     ) {
                         // Year view is navigation, not detail (Apple-Photos
-                        // semantics): clicking dives into the month. 35dp
+                        // semantics): clicking dives into the month — and,
+                        // when a concrete asset was clicked, onto that asset
+                        // as soon as its bucket content is available. 35dp
                         // cells were a misclick-sized target for "open
                         // detail" anyway.
-                        fun zoomIntoMonth(anchor: LocalDate) {
+                        fun zoomIntoMonth(anchor: LocalDate, asset: PendingAssetAnchor? = null) {
                             pendingZoomAnchor = anchor
+                            pendingAssetAnchor = asset
                             zoomStore.update(TimelineZoomLevel.Month)
                         }
                         GroupedAssetGrid(
@@ -367,9 +400,13 @@ fun TimelineScreen(
                                 val toggler = onToggleSelection
                                 when {
                                     isYearView -> zoomIntoMonth(
-                                        item.fileCreatedAt
+                                        anchor = item.fileCreatedAt
                                             .toLocalDateTime(TimeZone.currentSystemDefault())
-                                            .date
+                                            .date,
+                                        asset = PendingAssetAnchor(
+                                            assetId = item.id,
+                                            bucketKey = bucketKeyOf(item.fileCreatedAt)
+                                        )
                                     )
                                     state.isSelectionActive && !item.isLocalOnly &&
                                         toggler != null ->
@@ -444,6 +481,15 @@ fun TimelineScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+
+                    TimelineScrubber(
+                        gridState = gridState,
+                        rows = rows,
+                        headerItemCount = if (showMemoriesHeader) {
+                            1 + (if (deviceLoading && state.error == null) 1 else 0)
+                        } else 0,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
                 }
             }
             state.error?.let {
@@ -545,6 +591,13 @@ private const val SKELETON_TILE_COUNT = 36
 
 /** Max justified rows per year in the compressed Year view. */
 private const val YEAR_VIEW_MAX_ROWS = 5
+
+/**
+ * The asset half of a Year-view click: which asset to land on (and which
+ * bucket carries it, for the give-up check) once the Month view has the
+ * bucket's content in its rows.
+ */
+private data class PendingAssetAnchor(val assetId: String, val bucketKey: String)
 
 @Composable
 private fun TimelineEmptyState(onOpenUpload: (() -> Unit)?) {

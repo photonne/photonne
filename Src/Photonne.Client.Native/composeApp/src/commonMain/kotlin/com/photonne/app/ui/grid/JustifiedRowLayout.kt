@@ -223,6 +223,20 @@ internal fun findRowIndexForDate(
     return fallback
 }
 
+/**
+ * Index of the row containing [assetId], or -1. Used by the Year→Month
+ * click-to-zoom to land exactly on the clicked asset once its bucket's
+ * content is in the rows (until then the month header is the anchor).
+ */
+internal fun findRowIndexForAsset(rows: List<JustifiedRowEntry>, assetId: String): Int {
+    rows.forEachIndexed { index, entry ->
+        if (entry is JustifiedRowEntry.Row && entry.row.cells.any { it.item.id == assetId }) {
+            return index
+        }
+    }
+    return -1
+}
+
 private fun targetKeyForRow(target: LocalDate, grouping: TimelineGrouping): String {
     val mm = target.monthNumber.toString().padStart(2, '0')
     val dd = target.dayOfMonth.toString().padStart(2, '0')
