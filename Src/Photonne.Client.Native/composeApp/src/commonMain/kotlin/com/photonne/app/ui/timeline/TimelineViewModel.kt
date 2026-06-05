@@ -7,32 +7,32 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
-import com.photonne.app.data.timeline.TimelineRepository
+import com.photonne.app.data.timeline.TimelineBucketState
+import com.photonne.app.data.timeline.TimelineBucketStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 
 data class TimelineUiState(
-    val items: List<TimelineItem> = emptyList(),
+    /** Skeleton + loaded contents, newest first — see TimelineBucketStore. */
+    val buckets: List<TimelineBucketState> = emptyList(),
     val isInitialLoading: Boolean = false,
-    val isAppending: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: UiError? = null,
-    val nextCursor: Instant? = null,
-    val hasMore: Boolean = true,
     val selection: Set<String> = emptySet(),
     val isBulkMutating: Boolean = false,
 ) {
-    val isEmpty: Boolean get() = !isInitialLoading && items.isEmpty() && error == null
+    /** Flat view of every loaded bucket's items, display order. */
+    val loadedItems: List<TimelineItem> get() = buckets.flatMap { it.items.orEmpty() }
+    val isEmpty: Boolean get() = !isInitialLoading && buckets.none { it.count > 0 } && error == null
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
 }
 
 class TimelineViewModel(
-    private val repository: TimelineRepository,
+    private val store: TimelineBucketStore,
     private val assetRepository: AssetDetailRepository,
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
@@ -41,29 +41,31 @@ class TimelineViewModel(
     private val _state = MutableStateFlow(TimelineUiState())
     val state: StateFlow<TimelineUiState> = _state.asStateFlow()
 
-    private var pagingJob: Job? = null
+    private var refreshJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            store.buckets.collect { buckets ->
+                _state.update { it.copy(buckets = buckets) }
+            }
+        }
         refresh()
     }
 
+    /** Re-fetches the skeleton; visible buckets reload via [ensureVisible]. */
     fun refresh() {
-        pagingJob?.cancel()
+        refreshJob?.cancel()
         _state.update {
             it.copy(
-                isRefreshing = it.items.isNotEmpty(),
-                isInitialLoading = it.items.isEmpty(),
+                isRefreshing = it.buckets.isNotEmpty(),
+                isInitialLoading = it.buckets.isEmpty(),
                 error = null
             )
         }
-        pagingJob = viewModelScope.launch {
-            runCatching { repository.loadPage(cursor = null) }
-                .onSuccess { result ->
-                    _state.value = TimelineUiState(
-                        items = result.items,
-                        nextCursor = result.nextCursor,
-                        hasMore = result.hasMore
-                    )
+        refreshJob = viewModelScope.launch {
+            runCatching { store.refresh() }
+                .onSuccess {
+                    _state.update { it.copy(isInitialLoading = false, isRefreshing = false) }
                 }
                 .onFailure { error ->
                     _state.update {
@@ -77,53 +79,34 @@ class TimelineViewModel(
         }
     }
 
+    /**
+     * Loads the given buckets' contents (the grid reports which keys are on
+     * or near the viewport). Already-loaded and in-flight keys are no-ops
+     * inside the store, so this is safe to call on every scroll frame.
+     */
+    fun ensureVisible(bucketKeys: List<String>) {
+        if (bucketKeys.isEmpty()) return
+        viewModelScope.launch {
+            runCatching { store.ensureLoaded(bucketKeys) }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Error al cargar la línea de tiempo"))
+                    }
+                }
+        }
+    }
+
     /** Removes the given asset id from the local timeline state without
      *  hitting the API. Used by the AssetDetail viewer after a single-asset
      *  trash/archive so the grid updates immediately. */
     fun removeItemLocal(assetId: String) {
-        _state.update { previous ->
-            previous.copy(
-                items = previous.items.filterNot { it.id == assetId },
-                selection = previous.selection - assetId
-            )
-        }
+        _state.update { it.copy(selection = it.selection - assetId) }
+        viewModelScope.launch { store.removeItem(assetId) }
     }
 
     fun setFavorite(assetId: String, isFavorite: Boolean) {
-        _state.update { previous ->
-            val updated = previous.items.map { item ->
-                if (item.id == assetId) item.copy(isFavorite = isFavorite) else item
-            }
-            previous.copy(items = updated)
-        }
-    }
-
-    fun loadMore() {
-        val current = _state.value
-        if (current.isAppending || current.isInitialLoading || !current.hasMore) return
-        val cursor = current.nextCursor ?: return
-
-        _state.update { it.copy(isAppending = true, error = null) }
-        pagingJob = viewModelScope.launch {
-            runCatching { repository.loadPage(cursor = cursor) }
-                .onSuccess { result ->
-                    _state.update { previous ->
-                        previous.copy(
-                            items = previous.items + result.items,
-                            nextCursor = result.nextCursor,
-                            hasMore = result.hasMore,
-                            isAppending = false
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            isAppending = false,
-                            error = errorFactory.from(error, "Error al paginar")
-                        )
-                    }
-                }
+        viewModelScope.launch {
+            store.updateItem(assetId) { it.copy(isFavorite = isFavorite) }
         }
     }
 
@@ -141,55 +124,56 @@ class TimelineViewModel(
         _state.update { it.copy(selection = emptySet()) }
     }
 
+    /**
+     * Selects every LOADED item (or clears, when they're all selected
+     * already). Unloaded buckets can't be selected — there's nothing local
+     * to select yet — which keeps "select all" honest about what it acts on.
+     */
     fun toggleSelectAll() {
         _state.update { previous ->
-            val all = previous.items.mapTo(HashSet()) { it.id }
+            val all = previous.loadedItems.mapTo(HashSet()) { it.id }
             previous.copy(selection = if (previous.selection == all) emptySet() else all)
         }
     }
 
     fun selectedItems(): List<TimelineItem> {
         val state = _state.value
-        return state.items.filter { it.id in state.selection }
+        return state.loadedItems.filter { it.id in state.selection }
     }
 
     private fun selectedIds(): List<String> = _state.value.selection.toList()
 
     fun bulkArchive() {
-        val ids = selectedIds()
-        if (ids.isEmpty() || _state.value.isBulkMutating) return
-        val previous = _state.value.items
-        _state.update {
-            it.copy(
-                isBulkMutating = true,
-                error = null,
-                items = it.items.filterNot { item -> item.id in it.selection },
-                selection = emptySet()
-            )
-        }
-        viewModelScope.launch {
-            runCatching { assetRepository.archive(ids) }
-                .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error, "Failed to archive") }
-        }
+        bulkRemove(fallbackMessage = "Failed to archive") { assetRepository.archive(it) }
     }
 
     fun bulkTrash() {
+        bulkRemove(fallbackMessage = "Failed to delete") { assetRepository.trash(it) }
+    }
+
+    /**
+     * Shared shape of archive/trash: optimistically drop the items from
+     * their buckets, call the API, and on failure re-sync from the server —
+     * the store has no snapshot to roll back to, and a refresh both reverts
+     * the optimistic removal and reflects any partial server success.
+     */
+    private fun bulkRemove(fallbackMessage: String, action: suspend (List<String>) -> Unit) {
         val ids = selectedIds()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
-        val previous = _state.value.items
-        _state.update {
-            it.copy(
-                isBulkMutating = true,
-                error = null,
-                items = it.items.filterNot { item -> item.id in it.selection },
-                selection = emptySet()
-            )
-        }
+        _state.update { it.copy(isBulkMutating = true, error = null, selection = emptySet()) }
         viewModelScope.launch {
-            runCatching { assetRepository.trash(ids) }
+            store.removeItems(ids)
+            runCatching { action(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error, "Failed to delete") }
+                .onFailure { error ->
+                    runCatching { store.refresh() }
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            error = errorFactory.from(error, fallbackMessage)
+                        )
+                    }
+                }
         }
     }
 
@@ -217,15 +201,5 @@ class TimelineViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
-    }
-
-    private fun revertBulk(previousItems: List<TimelineItem>, throwable: Throwable, fallback: String) {
-        _state.update {
-            it.copy(
-                items = previousItems,
-                isBulkMutating = false,
-                error = errorFactory.from(throwable, fallback)
-            )
-        }
     }
 }

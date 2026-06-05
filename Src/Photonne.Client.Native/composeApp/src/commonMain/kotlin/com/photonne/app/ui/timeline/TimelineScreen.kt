@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -52,9 +53,12 @@ import com.photonne.app.resources.timeline_empty_title
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.JustifiedRowEntry
+import com.photonne.app.ui.grid.assetCellKey
+import com.photonne.app.ui.grid.bucketKeyOf
+import com.photonne.app.ui.grid.buildBucketEntries
+import com.photonne.app.ui.grid.contiguousRunAround
+import com.photonne.app.ui.grid.expandWithNeighborBuckets
 import com.photonne.app.ui.grid.findRowIndexForDate
-import com.photonne.app.ui.grid.groupTimelineEntries
-import com.photonne.app.ui.grid.mergeTimelineWithLocal
 import com.photonne.app.ui.grid.packJustifiedRows
 import androidx.compose.foundation.layout.aspectRatio
 import com.photonne.app.ui.theme.EmptyState
@@ -62,6 +66,7 @@ import com.photonne.app.ui.theme.SkeletonBlock
 import com.photonne.app.ui.theme.SkeletonChip
 import kotlin.math.abs
 import kotlin.math.ln
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -82,7 +87,12 @@ fun TimelineScreen(
      * fields, so the same viewer covers both kinds.
      */
     onOpenAsset: (items: List<com.photonne.app.data.models.TimelineItem>, mergedIndex: Int) -> Unit,
-    onLoadMore: () -> Unit,
+    /**
+     * The grid reports which bucket keys ("yyyy-MM") are on or near the
+     * viewport; the ViewModel loads their contents. Replaces the old
+     * cursor-pagination onLoadMore.
+     */
+    onBucketsVisible: (List<String>) -> Unit,
     onRefresh: () -> Unit = {},
     onToggleSelection: ((assetId: String) -> Unit)? = null,
     onOpenUpload: (() -> Unit)? = null,
@@ -107,18 +117,18 @@ fun TimelineScreen(
         if (!deviceBackupState.isBackupEnabled) emptyList()
         else deviceBackupViewModel.deviceTimelineItems()
     }
-    val mergedItems = remember(state.items, localItems) {
-        mergeTimelineWithLocal(state.items, localItems)
-    }
     // Subtle "finding device photos" hint shown only during the first device
     // scan (no cache yet → entries still empty). Cached launches seed the
     // grid instantly and never flip isLoading, so the hint stays hidden.
     val deviceLoading = deviceBackupState.isBackupEnabled && deviceBackupState.isLoading
     val showMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null &&
         !state.isSelectionActive
-    val entries = remember(mergedItems, zoomLevel) {
-        groupTimelineEntries(mergedItems, zoomLevel.grouping)
+    // Skeleton + loaded buckets flattened into headers/cells/skeletons, plus
+    // the flat merged-items list cell indices point into.
+    val bucketEntries = remember(state.buckets, localItems, zoomLevel) {
+        buildBucketEntries(state.buckets, localItems, zoomLevel.grouping)
     }
+    val mergedItems = bucketEntries.mergedItems
 
     // Pinch state: during a two-finger zoom the target row height lerps
     // toward the next zoom level for visual feedback, then snaps to a
@@ -161,28 +171,81 @@ fun TimelineScreen(
                     // the window (yes). For 1000s of items this is O(n)
                     // and runs at ~1ms — cheap enough to keep inside a
                     // remember-keyed block.
-                    val rows = remember(entries, containerWidthDp, effectiveRowHeight) {
+                    val rows = remember(bucketEntries, containerWidthDp, effectiveRowHeight) {
                         packJustifiedRows(
-                            entries = entries,
+                            entries = bucketEntries.entries,
                             containerWidthDp = containerWidthDp.value,
                             targetRowHeightDp = effectiveRowHeight.value,
                             spacingDp = 2f
                         )
                     }
 
+                    // LazyColumn item key → bucket key, so the visibility
+                    // effect below can tell which months are on screen
+                    // without fighting the memories-header index offset.
+                    val keyToBucket: Map<Any, String> = remember(rows) {
+                        buildMap {
+                            rows.forEach { entry ->
+                                when (entry) {
+                                    is JustifiedRowEntry.Row -> {
+                                        val first = entry.row.cells.firstOrNull()
+                                        if (first != null) {
+                                            put(
+                                                "r:${assetCellKey(first.item, first.index)}",
+                                                bucketKeyOf(first.item.fileCreatedAt)
+                                            )
+                                        }
+                                    }
+                                    is JustifiedRowEntry.SkeletonRow ->
+                                        put("s:${entry.bucketKey}:${entry.rowIndex}", entry.bucketKey)
+                                    is JustifiedRowEntry.Header -> Unit
+                                }
+                            }
+                        }
+                    }
+
+                    // Drives bucket loading: visible months (± one neighbour
+                    // per side) get their contents fetched. The store dedups
+                    // and caches, so emitting on every scroll frame is fine.
+                    LaunchedEffect(gridState, keyToBucket) {
+                        snapshotFlow {
+                            gridState.layoutInfo.visibleItemsInfo
+                                .mapNotNull { keyToBucket[it.key] }
+                                .distinct()
+                        }
+                            .distinctUntilChanged()
+                            .collect { visible ->
+                                if (visible.isNotEmpty()) {
+                                    onBucketsVisible(
+                                        expandWithNeighborBuckets(visible, bucketEntries.bucketOrder)
+                                    )
+                                }
+                            }
+                    }
+
                     // Topmost visible cell drives both the sticky header
-                    // overlay and the zoom-level re-anchor logic.
+                    // overlay and the zoom-level re-anchor logic. Skeleton
+                    // rows anchor to the first day of their month.
                     val anchorDate: LocalDate? by remember(rows) {
                         derivedStateOf {
                             val idx = gridState.firstVisibleItemIndex
                             if (rows.isEmpty()) return@derivedStateOf null
                             val end = minOf(idx + 8, rows.size - 1)
                             for (i in idx..end) {
-                                val e = rows.getOrNull(i)
-                                if (e is JustifiedRowEntry.Row) {
-                                    val first = e.row.cells.firstOrNull() ?: continue
-                                    return@derivedStateOf first.item.fileCreatedAt
-                                        .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                when (val e = rows.getOrNull(i)) {
+                                    is JustifiedRowEntry.Row -> {
+                                        val first = e.row.cells.firstOrNull() ?: continue
+                                        return@derivedStateOf first.item.fileCreatedAt
+                                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                    }
+                                    is JustifiedRowEntry.SkeletonRow -> {
+                                        val year = e.bucketKey.substringBefore('-').toIntOrNull()
+                                            ?: continue
+                                        val month = e.bucketKey.substringAfter('-').toIntOrNull()
+                                            ?: continue
+                                        return@derivedStateOf LocalDate(year, month, 1)
+                                    }
+                                    else -> Unit
                                 }
                             }
                             null
@@ -202,10 +265,13 @@ fun TimelineScreen(
                         }
                     }
 
-                    LaunchedEffect(pendingJumpDate, state.items, rows) {
+                    LaunchedEffect(pendingJumpDate, rows) {
                         val target = pendingJumpDate ?: return@LaunchedEffect
-                        if (state.items.isEmpty()) {
-                            onJumpHandled()
+                        if (rows.isEmpty()) {
+                            // Still waiting for the skeleton — the effect
+                            // re-fires when rows arrive. Only a truly empty
+                            // timeline swallows the jump.
+                            if (!state.isInitialLoading) onJumpHandled()
                             return@LaunchedEffect
                         }
                         val targetDate = target.toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -259,14 +325,17 @@ fun TimelineScreen(
                                     // operations.
                                     toggler(item.id)
                                 } else {
-                                    onOpenAsset(mergedItems, mergedIndex)
+                                    // The pager gets the contiguous loaded
+                                    // run around the click, so swiping never
+                                    // silently skips an unloaded month.
+                                    val run = contiguousRunAround(mergedIndex, bucketEntries)
+                                    if (run != null) {
+                                        val (runItems, runStart) = run
+                                        onOpenAsset(runItems, mergedIndex - runStart)
+                                    }
                                 }
                             },
                             state = gridState,
-                            hasMore = state.hasMore,
-                            isAppending = state.isAppending,
-                            isInitialLoading = state.isInitialLoading,
-                            onLoadMore = onLoadMore,
                             selectedIds = state.selection,
                             onItemLongClick = onToggleSelection?.let { toggler ->
                                 { mergedIndex ->
@@ -306,14 +375,6 @@ fun TimelineScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                }
-            }
-            if (state.isAppending) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp).align(Alignment.BottomCenter),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp))
                 }
             }
             state.error?.let {

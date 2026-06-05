@@ -1117,7 +1117,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             {
                 AssetSelectionBottomBar(
                     selectedCount = timelineState.selection.size,
-                    totalCount = timelineState.items.size,
+                    totalCount = timelineState.loadedItems.size,
                     isMutating = timelineState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onSelectAll = timelineViewModel::toggleSelectAll,
@@ -1452,14 +1452,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenAsset = { mergedItems, mergedIndex ->
                             assetDetail = AssetDetailContext(
                                 items = mergedItems,
+                                // The pager is bounded to the contiguous
+                                // loaded bucket run TimelineScreen handed us.
                                 startIndex = mergedIndex,
                                 source = AssetDetailContext.Source.Timeline,
-                                hasMore = timelineState.hasMore,
-                                onLoadMore = timelineViewModel::loadMore,
+                                hasMore = false,
+                                onLoadMore = {},
                                 onFavoriteChanged = timelineViewModel::setFavorite
                             )
                         },
-                        onLoadMore = timelineViewModel::loadMore,
+                        onBucketsVisible = timelineViewModel::ensureVisible,
                         onRefresh = timelineViewModel::refresh,
                         onToggleSelection = timelineViewModel::toggleSelection,
                         onOpenUpload = {

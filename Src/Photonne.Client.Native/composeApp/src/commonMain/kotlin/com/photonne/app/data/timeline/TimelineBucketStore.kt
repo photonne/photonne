@@ -110,16 +110,19 @@ class TimelineBucketStore(
      * the skeleton with count 0 — the grid simply renders nothing for them;
      * the next [refresh] drops them.
      */
-    suspend fun removeItem(assetId: String) {
+    suspend fun removeItem(assetId: String) = removeItems(setOf(assetId))
+
+    /** Bulk variant of [removeItem] — one state pass for the whole set. */
+    suspend fun removeItems(assetIds: Collection<String>) {
+        if (assetIds.isEmpty()) return
+        val ids = assetIds.toSet()
         mutex.withLock {
             _buckets.update { buckets ->
                 buckets.map { bucket ->
                     val items = bucket.items ?: return@map bucket
-                    if (items.none { it.id == assetId }) return@map bucket
-                    bucket.copy(
-                        items = items.filterNot { it.id == assetId },
-                        count = (bucket.count - 1).coerceAtLeast(0)
-                    )
+                    val remaining = items.filterNot { it.id in ids }
+                    if (remaining.size == items.size) return@map bucket
+                    bucket.copy(items = remaining, count = remaining.size)
                 }
             }
         }

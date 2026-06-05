@@ -21,6 +21,20 @@ internal sealed interface JustifiedRowEntry {
         val cover: TimelineItem? = null
     ) : JustifiedRowEntry
     data class Row(val row: JustifiedRow) : JustifiedRowEntry
+
+    /**
+     * One row of an unloaded bucket's skeleton. [cellCount] of [cellsPerRow]
+     * slots are filled (the last row of a month may be partial); height
+     * equals the target row height so the reserved space matches what the
+     * real justified rows will occupy, give or take aspect-ratio variance.
+     */
+    data class SkeletonRow(
+        val bucketKey: String,
+        val rowIndex: Int,
+        val cellCount: Int,
+        val cellsPerRow: Int,
+        val rowHeightDp: Float
+    ) : JustifiedRowEntry
 }
 
 internal data class JustifiedRow(
@@ -88,6 +102,24 @@ internal fun packJustifiedRows(
                 // below once we know the next emitted cell.
                 out += JustifiedRowEntry.Header(entry.key, entry.title)
             }
+            is TimelineEntry.SkeletonBucket -> {
+                flushPartial()
+                // Square-cell estimate: how many target-height cells fit a
+                // row. The real justified layout will differ a little per
+                // row (aspect ratios), but stays deterministic per count.
+                val cellsPerRow = (containerWidthDp / (targetRowHeightDp + spacingDp))
+                    .toInt().coerceAtLeast(1)
+                val rowCount = (entry.count + cellsPerRow - 1) / cellsPerRow
+                repeat(rowCount) { i ->
+                    out += JustifiedRowEntry.SkeletonRow(
+                        bucketKey = entry.bucketKey,
+                        rowIndex = i,
+                        cellCount = minOf(cellsPerRow, entry.count - i * cellsPerRow),
+                        cellsPerRow = cellsPerRow,
+                        rowHeightDp = targetRowHeightDp
+                    )
+                }
+            }
             is TimelineEntry.Cell -> {
                 pending += entry
                 val totalAspect = pending.fold(0f) { acc, c -> acc + aspectRatioOf(c.item) }
@@ -119,12 +151,17 @@ internal fun packJustifiedRows(
         var j = idx + 1
         var cover: TimelineItem? = null
         while (j < out.size) {
-            val next = out[j]
-            if (next is JustifiedRowEntry.Row) {
-                cover = next.row.cells.firstOrNull()?.item
-                break
+            when (val next = out[j]) {
+                is JustifiedRowEntry.Row -> {
+                    cover = next.row.cells.firstOrNull()?.item
+                    break
+                }
+                // Don't walk into the next group looking for a cover.
+                is JustifiedRowEntry.Header -> break
+                // Skeleton rows have no cover; a later loaded bucket in the
+                // same group (Year mode) can still provide one.
+                is JustifiedRowEntry.SkeletonRow -> j++
             }
-            j++
         }
         entry.copy(cover = cover)
     }

@@ -20,23 +20,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
+import com.photonne.app.ui.theme.SkeletonBlock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-
-private const val PREFETCH_THRESHOLD = 12
 
 /**
  * Sentinel returned by the server for assets that exist on disk but
@@ -54,6 +49,13 @@ internal fun assetCellKey(item: TimelineItem, index: Int): String =
 internal sealed interface TimelineEntry {
     data class Header(val key: String, val title: String) : TimelineEntry
     data class Cell(val item: TimelineItem, val index: Int) : TimelineEntry
+
+    /**
+     * Stand-in for an unloaded bucket (docs/timeline-buckets.md): packs into
+     * [count]-many square skeleton cells so the month's scroll height is
+     * reserved deterministically before its content arrives.
+     */
+    data class SkeletonBucket(val bucketKey: String, val count: Int) : TimelineEntry
 }
 
 internal fun monthKeyOf(instant: Instant): String {
@@ -226,52 +228,15 @@ internal fun GroupedAssetGrid(
     onItemClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
-    hasMore: Boolean = false,
-    isAppending: Boolean = false,
-    isInitialLoading: Boolean = false,
-    onLoadMore: () -> Unit = {},
     selectedIds: Set<String> = emptySet(),
     onItemLongClick: ((Int) -> Unit)? = null,
     cellSpacing: Dp = 2.dp,
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
-    // Re-key on hasMore so the snapshotFlow restarts when pagination state
-    // flips — the previous version keyed only on `state`, captured `shouldLoadMore`
-    // (a delegate over a derivedStateOf whose lambda closed over `hasMore` /
-    // `isAppending` / `isInitialLoading` from the FIRST composition) and
-    // silently went stale on subsequent recompositions. `isAppending` /
-    // `isInitialLoading` are intentionally NOT in the key set — the ViewModel
-    // already guards re-entry, and including them would restart the flow
-    // twice per load round-trip.
-    //
-    // Two trigger conditions, OR'd:
-    //   (a) the last laid-out row is within PREFETCH_THRESHOLD of the end —
-    //       the original "scrolling near the bottom" prefetch.
-    //   (b) the laid-out content doesn't fill the viewport — covers the case
-    //       where a page's worth of rows is shorter than the screen (large
-    //       cells, fast viewport), so the user has nothing to scroll into
-    //       and the threshold in (a) never triggers. Without this, the
-    //       timeline gets stuck on page 1 until the user pinch-zooms (which
-    //       repacks rows and accidentally satisfies (a)).
-    LaunchedEffect(state, hasMore) {
-        if (!hasMore) return@LaunchedEffect
-        snapshotFlow {
-            val info = state.layoutInfo
-            val total = info.totalItemsCount
-            val last = info.visibleItemsInfo.lastOrNull()
-            val lastIndex = last?.index ?: -1
-            val contentEnd = last?.let { it.offset + it.size } ?: 0
-            val viewportEnd = info.viewportEndOffset
-            total > 0 && (
-                lastIndex >= total - PREFETCH_THRESHOLD ||
-                (contentEnd in 1 until viewportEnd)
-            )
-        }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect { onLoadMore() }
-    }
-
+    // No load-more plumbing here anymore: with the bucket model every month
+    // is laid out up front (skeleton or real rows) and content loading is
+    // driven by which bucket keys are visible — see TimelineScreen's
+    // visibility effect.
     LazyColumn(
         state = state,
         verticalArrangement = Arrangement.spacedBy(cellSpacing),
@@ -282,6 +247,11 @@ internal fun GroupedAssetGrid(
             when (entry) {
                 is JustifiedRowEntry.Header -> stickyHeader(key = "h:${entry.key}") {
                     StickyMonthHeader(title = entry.title)
+                }
+                is JustifiedRowEntry.SkeletonRow -> {
+                    item(key = "s:${entry.bucketKey}:${entry.rowIndex}") {
+                        SkeletonCellsRow(entry = entry, spacing = cellSpacing)
+                    }
                 }
                 is JustifiedRowEntry.Row -> {
                     val first = entry.row.cells.first()
@@ -301,6 +271,38 @@ internal fun GroupedAssetGrid(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * One row of an unloaded bucket: [JustifiedRowEntry.SkeletonRow.cellCount]
+ * square shimmer tiles; a partial last row leaves its remaining slots empty
+ * so cells keep the same size as full rows.
+ */
+@Composable
+private fun SkeletonCellsRow(
+    entry: JustifiedRowEntry.SkeletonRow,
+    spacing: Dp,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(entry.rowHeightDp.dp)
+    ) {
+        repeat(entry.cellCount) { i ->
+            if (i > 0) Spacer(Modifier.width(spacing))
+            SkeletonBlock(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                cornerRadius = 0.dp
+            )
+        }
+        val emptySlots = entry.cellsPerRow - entry.cellCount
+        if (emptySlots > 0) {
+            Spacer(Modifier.weight(emptySlots.toFloat()))
         }
     }
 }
