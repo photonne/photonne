@@ -230,6 +230,12 @@ internal fun GroupedAssetGrid(
     state: LazyListState = rememberLazyListState(),
     selectedIds: Set<String> = emptySet(),
     onItemLongClick: ((Int) -> Unit)? = null,
+    /**
+     * Tap on an unloaded month's skeleton area, reported with its bucket
+     * key. The Year view uses this to dive into the month — most of the
+     * yearly grid is skeletons, so cells alone would leave it half-inert.
+     */
+    onSkeletonClick: ((bucketKey: String) -> Unit)? = null,
     cellSpacing: Dp = 2.dp,
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
@@ -250,7 +256,13 @@ internal fun GroupedAssetGrid(
                 }
                 is JustifiedRowEntry.SkeletonRow -> {
                     item(key = "s:${entry.bucketKey}:${entry.rowIndex}") {
-                        SkeletonCellsRow(entry = entry, spacing = cellSpacing)
+                        SkeletonCellsRow(
+                            entry = entry,
+                            spacing = cellSpacing,
+                            onClick = onSkeletonClick?.let { handler ->
+                                { handler(entry.bucketKey) }
+                            }
+                        )
                     }
                 }
                 is JustifiedRowEntry.Row -> {
@@ -284,12 +296,14 @@ internal fun GroupedAssetGrid(
 private fun SkeletonCellsRow(
     entry: JustifiedRowEntry.SkeletonRow,
     spacing: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(entry.rowHeightDp.dp)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
     ) {
         repeat(entry.cellCount) { i ->
             if (i > 0) Spacer(Modifier.width(spacing))
