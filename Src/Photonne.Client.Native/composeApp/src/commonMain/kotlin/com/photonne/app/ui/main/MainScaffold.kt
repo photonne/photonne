@@ -2,6 +2,7 @@ package com.photonne.app.ui.main
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -382,7 +383,8 @@ enum class ArchiveMode { Archive, Unarchive }
 fun AssetSelectionTopBar(
     selectedCount: Int,
     isMutating: Boolean,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         navigationIcon = {
@@ -402,7 +404,8 @@ fun AssetSelectionTopBar(
                 ),
                 style = MaterialTheme.typography.titleMedium
             )
-        }
+        },
+        actions = actions
     )
 }
 

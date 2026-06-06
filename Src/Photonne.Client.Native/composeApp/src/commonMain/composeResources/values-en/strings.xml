@@ -817,11 +817,9 @@
     <string name="device_backup_intro">Pick a folder from your device and you'll see every photo and video inside it. Then sync the ones you want into your account.</string>
     <string name="device_backup_action_pick_folder">Pick folder</string>
     <string name="device_backup_folder_label">Folder</string>
-    <string name="device_backup_change_folder">Change</string>
     <string name="device_backup_total">%1$d items</string>
     <string name="device_backup_empty_folder">No photos or videos in this folder.</string>
     <string name="device_backup_not_supported">Device backup is not available on this platform yet.</string>
-    <string name="device_backup_action_refresh_states">Check sync state</string>
     <string name="device_backup_action_select_all">Select all</string>
     <string name="device_backup_action_sync">Sync (%1$d)</string>
     <string name="device_backup_progress">%1$d / %2$d</string>

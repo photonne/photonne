@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -63,19 +62,10 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_failure_reason_label
 import com.photonne.app.resources.backup_summary_counts
 import com.photonne.app.resources.backup_summary_title
-import com.photonne.app.resources.device_backup_action_free_space
 import com.photonne.app.resources.device_backup_action_pick_folder
-import com.photonne.app.resources.device_backup_action_refresh_states
-import com.photonne.app.resources.device_backup_action_select_all
 import com.photonne.app.resources.device_backup_action_sync
-import com.photonne.app.resources.device_backup_change_folder
 import com.photonne.app.resources.device_backup_empty_folder
 import com.photonne.app.resources.device_backup_folder_label
-import com.photonne.app.resources.device_backup_free_space_cancel
-import com.photonne.app.resources.device_backup_free_space_confirm
-import com.photonne.app.resources.device_backup_free_space_dialog_message
-import com.photonne.app.resources.device_backup_free_space_dialog_title
-import com.photonne.app.resources.device_backup_free_space_in_progress
 import com.photonne.app.resources.device_backup_intro
 import com.photonne.app.resources.device_backup_not_supported
 import com.photonne.app.resources.device_backup_progress
@@ -95,7 +85,6 @@ fun BackupPendingScreen(
         gallery = gallery,
         onPicked = viewModel::onFolderPicked
     )
-    var showFreeSpaceConfirm by remember { mutableStateOf(false) }
     var previewStartUri by remember { mutableStateOf<String?>(null) }
 
     if (!state.isSupported) {
@@ -117,8 +106,7 @@ fun BackupPendingScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             FolderHeader(
                 folder = folder,
-                totalCount = state.entries.size,
-                onChangeFolder = pickFolder
+                totalCount = state.entries.size
             )
 
             state.error?.userMessage?.let { msg ->
@@ -149,15 +137,6 @@ fun BackupPendingScreen(
             if (state.isCheckingHashes) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
             }
-
-            ActionBar(
-                state = state,
-                onRefreshSyncStates = viewModel::refreshSyncStates,
-                onStopRefresh = viewModel::stopHashCheck,
-                onSelectAll = viewModel::selectAllNotSynced,
-                onClearSelection = viewModel::clearSelection,
-                onFreeUpSpace = { showFreeSpaceConfirm = true }
-            )
 
             when {
                 state.isLoading ->
@@ -206,17 +185,6 @@ fun BackupPendingScreen(
         }
     }
 
-    if (showFreeSpaceConfirm) {
-        FreeUpSpaceDialog(
-            count = state.syncedCount,
-            onDismiss = { showFreeSpaceConfirm = false },
-            onConfirm = {
-                showFreeSpaceConfirm = false
-                viewModel.freeUpSyncedSpace()
-            }
-        )
-    }
-
     val startUri = previewStartUri
     if (startUri != null) {
         val startIndex = state.entries.indexOfFirst { it.media.uri == startUri }
@@ -241,45 +209,9 @@ fun BackupPendingScreen(
 }
 
 @Composable
-private fun FreeUpSpaceDialog(
-    count: Int,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                Icons.Filled.Delete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error
-            )
-        },
-        title = { Text(stringResource(Res.string.device_backup_free_space_dialog_title)) },
-        text = {
-            Text(stringResource(Res.string.device_backup_free_space_dialog_message, count))
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    stringResource(Res.string.device_backup_free_space_confirm),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.device_backup_free_space_cancel))
-            }
-        }
-    )
-}
-
-@Composable
 private fun FolderHeader(
     folder: DeviceFolderRef,
-    totalCount: Int,
-    onChangeFolder: () -> Unit
+    totalCount: Int
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -311,80 +243,6 @@ private fun FolderHeader(
                 )
                 Text(
                     stringResource(Res.string.device_backup_total, totalCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            TextButton(onClick = onChangeFolder) {
-                Text(stringResource(Res.string.device_backup_change_folder))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionBar(
-    state: DeviceBackupUiState,
-    onRefreshSyncStates: () -> Unit,
-    onStopRefresh: () -> Unit,
-    onSelectAll: () -> Unit,
-    onClearSelection: () -> Unit,
-    onFreeUpSpace: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = if (state.isCheckingHashes) onStopRefresh else onRefreshSyncStates,
-                modifier = Modifier.weight(1f),
-                enabled = !state.isSyncing && !state.isFreeingSpace
-            ) {
-                Icon(Icons.Filled.Refresh, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text(stringResource(Res.string.device_backup_action_refresh_states))
-            }
-            OutlinedButton(
-                onClick = if (state.selectedCount > 0) onClearSelection else onSelectAll,
-                modifier = Modifier.weight(1f),
-                enabled = !state.isSyncing && !state.isFreeingSpace
-            ) {
-                Text(
-                    if (state.selectedCount > 0) "× ${state.selectedCount}"
-                    else stringResource(Res.string.device_backup_action_select_all)
-                )
-            }
-        }
-        if (state.syncedCount > 0) {
-            Spacer(Modifier.size(4.dp))
-            OutlinedButton(
-                onClick = onFreeUpSpace,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isSyncing && !state.isFreeingSpace
-            ) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    stringResource(
-                        Res.string.device_backup_action_free_space,
-                        state.syncedCount
-                    ),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            if (state.isFreeingSpace) {
-                Spacer(Modifier.size(4.dp))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
-                Text(
-                    stringResource(Res.string.device_backup_free_space_in_progress),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

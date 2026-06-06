@@ -5,6 +5,7 @@ package com.photonne.app
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.FloatingActionButton
@@ -88,6 +89,7 @@ import com.photonne.app.resources.people_unnamed
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.backup_pending_screen_title
+import com.photonne.app.resources.device_backup_action_select_all
 import com.photonne.app.resources.enrichment_screen_title
 import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.trash_title
@@ -443,6 +445,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
+    val deviceBackupState by deviceBackupViewModel.state.collectAsState()
     val enrichmentStatusViewModel: com.photonne.app.ui.devicebackup.EnrichmentStatusViewModel = koinViewModel()
     val utilitiesDuplicatesViewModel:
         com.photonne.app.ui.utilities.UtilitiesDuplicatesViewModel = koinViewModel()
@@ -805,6 +808,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.device_backup_title),
                     onBack = { moreSubscreen = null }
+                )
+            moreSubscreen == MoreSubscreen.DeviceBackupPending &&
+                deviceBackupState.selectedCount > 0 ->
+                // Same contextual selection bar as Timeline/Albums, with a
+                // select-all action for queueing every pending file at once.
+                AssetSelectionTopBar(
+                    selectedCount = deviceBackupState.selectedCount,
+                    isMutating = deviceBackupState.isSyncing,
+                    onClose = deviceBackupViewModel::clearSelection,
+                    actions = {
+                        androidx.compose.material3.IconButton(
+                            onClick = deviceBackupViewModel::selectAllNotSynced,
+                            enabled = !deviceBackupState.isSyncing
+                        ) {
+                            androidx.compose.material3.Icon(
+                                Icons.Filled.SelectAll,
+                                contentDescription = stringResource(
+                                    Res.string.device_backup_action_select_all
+                                )
+                            )
+                        }
+                    }
                 )
             moreSubscreen == MoreSubscreen.DeviceBackupPending ->
                 com.photonne.app.ui.main.SettingsTopBar(

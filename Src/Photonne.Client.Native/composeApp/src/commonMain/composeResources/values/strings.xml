@@ -817,11 +817,9 @@
     <string name="device_backup_intro">Elige una carpeta de tu dispositivo y verás todas sus fotos y vídeos. Después puedes sincronizar las que quieras con tu cuenta.</string>
     <string name="device_backup_action_pick_folder">Elegir carpeta</string>
     <string name="device_backup_folder_label">Carpeta</string>
-    <string name="device_backup_change_folder">Cambiar</string>
     <string name="device_backup_total">%1$d elementos</string>
     <string name="device_backup_empty_folder">No hay fotos ni vídeos en esta carpeta.</string>
     <string name="device_backup_not_supported">La copia de seguridad del dispositivo aún no está disponible en esta plataforma.</string>
-    <string name="device_backup_action_refresh_states">Comprobar estado</string>
     <string name="device_backup_action_select_all">Seleccionar todo</string>
     <string name="device_backup_action_sync">Sincronizar (%1$d)</string>
     <string name="device_backup_progress">%1$d / %2$d</string>
