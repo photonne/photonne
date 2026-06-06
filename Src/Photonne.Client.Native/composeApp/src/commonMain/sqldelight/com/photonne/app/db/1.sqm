@@ -1,0 +1,3 @@
+-- v1 → v2: persist the technical detail of a failed upload so the failure
+-- dialog can still explain WHY after a restart or a re-verification pass.
+ALTER TABLE backupLedger ADD COLUMN failureDetail TEXT;

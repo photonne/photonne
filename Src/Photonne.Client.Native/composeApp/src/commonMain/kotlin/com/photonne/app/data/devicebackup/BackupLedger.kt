@@ -36,6 +36,7 @@ data class LedgerEntry(
     val state: LedgerState,
     val assetId: String?,
     val failureReason: String?,
+    val failureDetail: String?,
     val lastVerifiedAtMillis: Long?
 ) {
     fun matchesFingerprint(media: DeviceMedia): Boolean =
@@ -48,7 +49,8 @@ data class LedgerEntry(
         LedgerState.Failed -> DeviceMediaSyncState.Failed(
             reason = failureReason
                 ?.let { raw -> UploadFailureReason.entries.firstOrNull { it.name == raw } }
-                ?: UploadFailureReason.Unknown
+                ?: UploadFailureReason.Unknown,
+            detail = failureDetail
         )
     }
 }
@@ -132,6 +134,7 @@ class BackupLedger(private val database: PhotonneDatabase) {
                     state = LedgerState.Unknown,
                     assetId = null,
                     failureReason = null,
+                    failureDetail = null,
                     lastVerifiedAtMillis = null
                 )
                 insert(folderUri, fresh)
@@ -183,8 +186,13 @@ class BackupLedger(private val database: PhotonneDatabase) {
         setVerdict(folderUri, uri, LedgerState.Synced, assetId)
     }
 
-    fun markUploadFailed(folderUri: String, uri: String, reason: UploadFailureReason) {
-        queries.setFailure(reason.name, folderUri, uri)
+    fun markUploadFailed(
+        folderUri: String,
+        uri: String,
+        reason: UploadFailureReason,
+        detail: String?
+    ) {
+        queries.setFailure(reason.name, detail, folderUri, uri)
     }
 
     // ─── Internals ───────────────────────────────────────────────────────────
@@ -199,7 +207,8 @@ class BackupLedger(private val database: PhotonneDatabase) {
             syncState = entry.state.toDb(),
             assetId = entry.assetId,
             failureReason = entry.failureReason,
-            lastVerifiedAtMillis = entry.lastVerifiedAtMillis
+            lastVerifiedAtMillis = entry.lastVerifiedAtMillis,
+            failureDetail = entry.failureDetail
         )
     }
 
@@ -211,6 +220,7 @@ class BackupLedger(private val database: PhotonneDatabase) {
         state = LedgerState.fromDb(syncState),
         assetId = assetId,
         failureReason = failureReason,
+        failureDetail = failureDetail,
         lastVerifiedAtMillis = lastVerifiedAtMillis
     )
 

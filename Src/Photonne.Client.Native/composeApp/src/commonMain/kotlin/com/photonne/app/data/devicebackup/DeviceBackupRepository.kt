@@ -241,8 +241,13 @@ class DeviceBackupRepository(
     }
 
     /** Records a failed upload so the failure is visible after restart too. */
-    fun markUploadFailed(folder: DeviceFolderRef, uri: String, reason: UploadFailureReason) {
-        ledger.markUploadFailed(folder.uri, uri, reason)
+    fun markUploadFailed(
+        folder: DeviceFolderRef,
+        uri: String,
+        reason: UploadFailureReason,
+        detail: String?
+    ) {
+        ledger.markUploadFailed(folder.uri, uri, reason, detail)
     }
 
     // ─── Last completed pass ─────────────────────────────────────────────────

@@ -75,7 +75,9 @@ class BackupRunner(
                     failed++
                     val reason = error.toUploadFailureReason()
                     failuresByReason[reason] = (failuresByReason[reason] ?: 0) + 1
-                    repository.markUploadFailed(folder, media.uri, reason)
+                    repository.markUploadFailed(
+                        folder, media.uri, reason, error.toUploadFailureDetail()
+                    )
                 }
         }
 

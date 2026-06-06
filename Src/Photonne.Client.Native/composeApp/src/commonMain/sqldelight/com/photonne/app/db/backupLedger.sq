@@ -8,6 +8,9 @@
 --
 -- syncState values: 'UNKNOWN' | 'NOT_SYNCED' | 'SYNCED' | 'FAILED'
 
+-- NOTE: failureDetail is declared last because it arrived via migration
+-- (1.sqm) and ALTER TABLE appends columns — the declared order here must
+-- match the on-disk order of migrated databases.
 CREATE TABLE backupLedger (
     folderUri TEXT NOT NULL,
     uri TEXT NOT NULL,
@@ -18,6 +21,7 @@ CREATE TABLE backupLedger (
     assetId TEXT,
     failureReason TEXT,
     lastVerifiedAtMillis INTEGER,
+    failureDetail TEXT,
     PRIMARY KEY (folderUri, uri)
 );
 
@@ -45,21 +49,21 @@ GROUP BY syncState;
 insertEntry:
 INSERT OR REPLACE INTO backupLedger(
     folderUri, uri, sizeBytes, dateModifiedMillis,
-    sha256, syncState, assetId, failureReason, lastVerifiedAtMillis
+    sha256, syncState, assetId, failureReason, lastVerifiedAtMillis, failureDetail
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 setHash:
 UPDATE backupLedger SET sha256 = ? WHERE folderUri = ? AND uri = ?;
 
 setVerdict:
 UPDATE backupLedger
-SET syncState = ?, assetId = ?, failureReason = NULL, lastVerifiedAtMillis = ?
+SET syncState = ?, assetId = ?, failureReason = NULL, failureDetail = NULL, lastVerifiedAtMillis = ?
 WHERE folderUri = ? AND uri = ?;
 
 setFailure:
 UPDATE backupLedger
-SET syncState = 'FAILED', failureReason = ?
+SET syncState = 'FAILED', failureReason = ?, failureDetail = ?
 WHERE folderUri = ? AND uri = ?;
 
 deleteByUris:

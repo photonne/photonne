@@ -497,9 +497,10 @@ class DeviceBackupViewModel(
                     .onFailure { error ->
                         failed++
                         val reason = error.toUploadFailureReason()
+                        val detail = error.toUploadFailureDetail()
                         failureReasonCounts[reason] = (failureReasonCounts[reason] ?: 0) + 1
                         _state.value.folder?.let { folder ->
-                            repository.markUploadFailed(folder, entry.media.uri, reason)
+                            repository.markUploadFailed(folder, entry.media.uri, reason, detail)
                         }
                         _state.update { current ->
                             current.copy(
@@ -508,7 +509,7 @@ class DeviceBackupViewModel(
                                         e.copy(
                                             syncState = DeviceMediaSyncState.Failed(
                                                 reason = reason,
-                                                detail = error.toUploadFailureDetail()
+                                                detail = detail
                                             )
                                         )
                                     } else e
