@@ -28,6 +28,10 @@ class BackgroundSyncSchedulerIos : BackgroundSyncScheduler {
             IosBackupBridge.cancelPending()
         }
     }
+
+    override fun requestImmediateSync(prefs: BackgroundSyncPreferences) {
+        if (prefs.enabled) IosBackupBridge.scheduleImmediate()
+    }
 }
 
 actual fun createBackgroundSyncScheduler(): BackgroundSyncScheduler =

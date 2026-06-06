@@ -120,6 +120,7 @@ class BackupWorker(
     companion object {
         private const val TAG = "BackupWorker"
         const val UNIQUE_WORK_NAME = "photonne.backup.periodic"
+        const val ONE_TIME_WORK_NAME = "photonne.backup.once"
         private const val CHANNEL_ID = "photonne.backup"
         private const val FAILURE_NOTIFICATION_ID = 4001
     }

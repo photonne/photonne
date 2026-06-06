@@ -4,7 +4,10 @@ import android.content.Context
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import org.koin.core.context.GlobalContext
@@ -62,6 +65,32 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
             "Scheduled periodic backup — requireWifi=${prefs.requireWifi} " +
                 "requireCharging=${prefs.requireCharging}"
         )
+    }
+
+    override fun requestImmediateSync(prefs: BackgroundSyncPreferences) {
+        if (!prefs.enabled) return
+
+        // Expedited one-shot so flipping the toggle starts backing up right
+        // away instead of waiting for the end of the first 15-min periodic
+        // window. Only the network constraint applies (expedited work cannot
+        // carry a charging constraint, and the user is explicitly asking).
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(
+                if (prefs.requireWifi) NetworkType.UNMETERED else NetworkType.CONNECTED
+            )
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<BackupWorker>()
+            .setConstraints(constraints)
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+
+        workManager.enqueueUniqueWork(
+            BackupWorker.ONE_TIME_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request
+        )
+        Log.i(TAG, "Enqueued immediate one-time backup — requireWifi=${prefs.requireWifi}")
     }
 
     private companion object {

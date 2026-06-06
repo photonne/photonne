@@ -114,6 +114,35 @@ object IosBackupBridge : KoinComponent {
         }
     }
 
+    /**
+     * Best-effort "run as soon as you can": submitted with no earliest
+     * date and without the external-power requirement, because the user
+     * just enabled auto-backup and expects something to happen. iOS still
+     * owns the actual timing (BGProcessingTask has no guaranteed "now"),
+     * but an unconstrained request is the strongest nudge available. The
+     * task handler reschedules the periodic request when it completes.
+     */
+    fun scheduleImmediate() {
+        val prefs = currentPreferences()
+        if (!prefs.enabled) {
+            NSLog("[IosBackup] auto-backup off — not scheduling immediate run")
+            return
+        }
+
+        val request = BGProcessingTaskRequest(TASK_IDENTIFIER).apply {
+            requiresNetworkConnectivity = true
+            requiresExternalPower = false
+            earliestBeginDate = null
+        }
+
+        try {
+            BGTaskScheduler.sharedScheduler.submitTaskRequest(request, error = null)
+            NSLog("[IosBackup] requested immediate BGProcessingTask")
+        } catch (ex: Throwable) {
+            NSLog("[IosBackup] failed to request immediate task: ${ex.message}")
+        }
+    }
+
     /** Removes any pending BGTask request. Called when the user disables auto-backup. */
     fun cancelPending() {
         BGTaskScheduler.sharedScheduler.cancelTaskRequestWithIdentifier(TASK_IDENTIFIER)

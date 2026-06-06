@@ -22,6 +22,21 @@ interface BackgroundSyncScheduler {
      * `enabled = false` cancels any previously-scheduled work.
      */
     fun apply(prefs: BackgroundSyncPreferences)
+
+    /**
+     * Best-effort request to run one backup pass as soon as possible,
+     * independent of the periodic schedule. Called when the user just
+     * enabled auto-backup: a periodic WorkManager job fires at the END of
+     * its first 15-min window (and only once the charging/Wi-Fi
+     * constraints hold), so without this kick "I turned it on and nothing
+     * happens" is the default experience. The kick honours the network
+     * preference but deliberately ignores the charging one — the user is
+     * actively asking for a sync right now.
+     *
+     * Default is a no-op for platforms without a meaningful "now"
+     * (desktop) or where the OS owns the timing entirely.
+     */
+    fun requestImmediateSync(prefs: BackgroundSyncPreferences) {}
 }
 
 /** Returns the platform's [BackgroundSyncScheduler]. Set up via DI. */

@@ -176,8 +176,15 @@ class DeviceBackupViewModel(
         }
     }
 
-    fun setAutoBackupEnabled(enabled: Boolean) =
+    fun setAutoBackupEnabled(enabled: Boolean) {
         updateBackgroundPrefs { repository.setAutoBackupEnabled(enabled) }
+        // Flipping the switch should visibly DO something: the periodic job
+        // won't fire until the end of its first 15-min window (and only
+        // under its charging/Wi-Fi constraints), so kick one pass now.
+        if (enabled) {
+            backgroundScheduler.requestImmediateSync(repository.backgroundSyncPreferences())
+        }
+    }
 
     fun setRequireWifi(value: Boolean) =
         updateBackgroundPrefs { repository.setRequireWifi(value) }
