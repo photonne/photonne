@@ -854,6 +854,27 @@
     <string name="backup_pending_screen_title">Pending</string>
     <string name="backup_disabled_hint">Turn backup on to start uploading your photos.</string>
 
+    <!-- Unified backup status card -->
+    <string name="backup_status_verifying">Verifying…</string>
+    <string name="backup_status_verifying_progress">Verifying %1$d/%2$d new…</string>
+    <string name="backup_status_all_synced">Everything backed up</string>
+    <string name="backup_status_pending">%1$d pending upload</string>
+    <string name="backup_status_failures">%1$d with upload errors</string>
+    <string name="backup_status_syncing">Uploading %1$d of %2$d…</string>
+    <string name="backup_status_upload_now">Upload now</string>
+    <string name="backup_status_recheck">Re-verify</string>
+    <string name="backup_status_enrichment_row">%1$d file(s) processing on the server</string>
+    <string name="backup_last_run_manual">Last backup: %1$s</string>
+    <string name="backup_last_run_background">Last automatic backup: %1$s</string>
+    <string name="backup_last_run_counts">%1$d uploaded · %2$d failed</string>
+    <string name="backup_time_just_now">just now</string>
+    <string name="backup_time_minutes">%1$d min ago</string>
+    <string name="backup_time_hours">%1$d h ago</string>
+    <string name="backup_time_days">%1$d days ago</string>
+    <string name="backup_notification_channel">Backup</string>
+    <string name="backup_notification_failures_title">Backup incomplete</string>
+    <string name="backup_notification_failures_text">%1$d file(s) could not be uploaded. Open Photonne to review them.</string>
+
     <!-- Background sync preferences -->
     <string name="background_sync_section">Background sync</string>
     <string name="background_sync_auto_label">Auto sync</string>
@@ -877,9 +898,6 @@
     <string name="upload_error_unknown">Unknown error</string>
 
     <!-- Enrichment status screen -->
-    <string name="enrichment_banner_title">Enrichment pending</string>
-    <string name="enrichment_banner_subtitle">%1$d asset(s) with pending or failed tasks</string>
-    <string name="enrichment_banner_action">View status</string>
     <string name="enrichment_screen_title">Enrichment status</string>
     <string name="enrichment_summary">%1$d pending · %2$d failed</string>
     <string name="enrichment_empty">All assets are enriched.</string>

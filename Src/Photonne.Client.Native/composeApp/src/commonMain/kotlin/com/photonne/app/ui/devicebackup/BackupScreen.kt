@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -58,10 +59,23 @@ import com.photonne.app.resources.background_sync_charging_label
 import com.photonne.app.resources.background_sync_section
 import com.photonne.app.resources.background_sync_wifi_hint
 import com.photonne.app.resources.background_sync_wifi_label
-import com.photonne.app.resources.enrichment_banner_action
-import com.photonne.app.resources.enrichment_banner_subtitle
-import com.photonne.app.resources.enrichment_banner_title
 import com.photonne.app.resources.backup_disabled_hint
+import com.photonne.app.resources.backup_last_run_background
+import com.photonne.app.resources.backup_last_run_counts
+import com.photonne.app.resources.backup_last_run_manual
+import com.photonne.app.resources.backup_status_all_synced
+import com.photonne.app.resources.backup_status_enrichment_row
+import com.photonne.app.resources.backup_status_failures
+import com.photonne.app.resources.backup_status_pending
+import com.photonne.app.resources.backup_status_recheck
+import com.photonne.app.resources.backup_status_syncing
+import com.photonne.app.resources.backup_status_upload_now
+import com.photonne.app.resources.backup_status_verifying
+import com.photonne.app.resources.backup_status_verifying_progress
+import com.photonne.app.resources.backup_time_days
+import com.photonne.app.resources.backup_time_hours
+import com.photonne.app.resources.backup_time_just_now
+import com.photonne.app.resources.backup_time_minutes
 import com.photonne.app.resources.backup_enabled_label
 import com.photonne.app.resources.backup_enabled_off
 import com.photonne.app.resources.backup_enabled_on
@@ -82,6 +96,7 @@ import com.photonne.app.resources.device_backup_free_space_dialog_message
 import com.photonne.app.resources.device_backup_free_space_dialog_title
 import com.photonne.app.resources.device_backup_free_space_in_progress
 import com.photonne.app.resources.device_backup_not_supported
+import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -137,15 +152,6 @@ fun BackupScreen(
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (enrichmentState.totalAssets > 0) {
-            item("enrichment-banner") {
-                EnrichmentBanner(
-                    count = enrichmentState.totalAssets,
-                    onClick = onOpenEnrichment
-                )
-            }
-        }
-
         item("enable") {
             BackupToggleCard(
                 enabled = state.isBackupEnabled,
@@ -226,11 +232,15 @@ fun BackupScreen(
 
         item("pending-header") { SectionHeader(stringResource(Res.string.backup_pending_title)) }
         item("pending") {
-            PendingPanel(
-                hasFolder = state.folder != null,
+            BackupStatusCard(
+                state = state,
                 hasChecked = hasChecked,
                 pendingCount = pendingCount,
-                onOpen = onOpenPending
+                enrichmentCount = enrichmentState.totalAssets,
+                onUploadNow = viewModel::syncAllPending,
+                onOpenPending = onOpenPending,
+                onOpenEnrichment = onOpenEnrichment,
+                onRecheck = viewModel::refreshSyncStates
             )
         }
 
@@ -301,52 +311,209 @@ fun BackupScreen(
     }
 }
 
+/**
+ * Single source of truth for "how is my backup doing?". One card, one
+ * mental model: verifying → uploading → (errors | pending | all backed
+ * up), plus the last completed pass and the server-side enrichment
+ * queue as secondary rows. Replaces the old PendingPanel + separate
+ * enrichment banner.
+ */
 @Composable
-private fun EnrichmentBanner(count: Int, onClick: () -> Unit) {
+private fun BackupStatusCard(
+    state: DeviceBackupUiState,
+    hasChecked: Boolean,
+    pendingCount: Int,
+    enrichmentCount: Int,
+    onUploadNow: () -> Unit,
+    onOpenPending: () -> Unit,
+    onOpenEnrichment: () -> Unit,
+    onRecheck: () -> Unit
+) {
+    val hasFolder = state.folder != null
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable(onClick = onClick),
+            .padding(horizontal = 16.dp),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
-            Icon(
-                Icons.Filled.HourglassEmpty,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Spacer(Modifier.size(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.enrichment_banner_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+            // ── Headline: the one-line verdict ──────────────────────────
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val (icon, tint) = when {
+                    !hasFolder -> Icons.Outlined.CloudUpload to
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    state.isSyncing || state.isCheckingHashes ->
+                        Icons.Filled.HourglassEmpty to MaterialTheme.colorScheme.primary
+                    state.failedCount > 0 -> Icons.Filled.CloudUpload to
+                        MaterialTheme.colorScheme.error
+                    pendingCount > 0 -> Icons.Filled.CloudUpload to
+                        MaterialTheme.colorScheme.tertiary
+                    hasChecked -> Icons.Filled.CheckCircle to
+                        MaterialTheme.colorScheme.primary
+                    else -> Icons.Outlined.CloudUpload to
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(28.dp)
                 )
-                Text(
-                    text = stringResource(Res.string.enrichment_banner_subtitle, count),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Spacer(Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = when {
+                            !hasFolder -> stringResource(Res.string.backup_source_none)
+                            state.isSyncing -> stringResource(
+                                Res.string.backup_status_syncing,
+                                (state.syncProgress?.completed ?: 0) +
+                                    (state.syncProgress?.skipped ?: 0) +
+                                    (state.syncProgress?.failed ?: 0),
+                                state.syncProgress?.total ?: 0
+                            )
+                            state.isCheckingHashes -> state.hashProgress?.let {
+                                if (it.hashTotal > 0) stringResource(
+                                    Res.string.backup_status_verifying_progress,
+                                    it.hashedCount, it.hashTotal
+                                ) else stringResource(Res.string.backup_status_verifying)
+                            } ?: stringResource(Res.string.backup_status_verifying)
+                            state.failedCount > 0 -> stringResource(
+                                Res.string.backup_status_failures, state.failedCount
+                            )
+                            pendingCount > 0 -> stringResource(
+                                Res.string.backup_status_pending, pendingCount
+                            )
+                            hasChecked -> stringResource(Res.string.backup_status_all_synced)
+                            else -> stringResource(Res.string.backup_pending_unknown)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    state.lastRun?.let { run ->
+                        Text(
+                            text = stringResource(
+                                if (run.background) Res.string.backup_last_run_background
+                                else Res.string.backup_last_run_manual,
+                                relativeTimeLabel(run.finishedAtMillis)
+                            ) + if (run.uploaded > 0 || run.failed > 0) {
+                                " · " + stringResource(
+                                    Res.string.backup_last_run_counts,
+                                    run.uploaded, run.failed
+                                )
+                            } else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.size(8.dp))
-            TextButton(onClick = onClick) {
-                Text(
-                    stringResource(Res.string.enrichment_banner_action),
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
+
+            // ── Activity bar while verifying / uploading ────────────────
+            if (state.isCheckingHashes || state.isSyncing) {
+                Spacer(Modifier.size(12.dp))
+                val progress = when {
+                    state.isSyncing && (state.syncProgress?.total ?: 0) > 0 -> {
+                        val p = state.syncProgress!!
+                        (p.completed + p.skipped + p.failed).toFloat() / p.total
+                    }
+                    state.isCheckingHashes && (state.hashProgress?.hashTotal ?: 0) > 0 ->
+                        state.hashProgress!!.hashedCount.toFloat() / state.hashProgress!!.hashTotal
+                    else -> null
+                }
+                if (progress != null) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                    )
+                }
+            }
+
+            // ── Server-side enrichment queue (secondary) ────────────────
+            if (enrichmentCount > 0) {
+                Spacer(Modifier.size(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onOpenEnrichment),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.HourglassEmpty,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(
+                            Res.string.backup_status_enrichment_row, enrichmentCount
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // ── Actions ─────────────────────────────────────────────────
+            if (hasFolder) {
+                Spacer(Modifier.size(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (pendingCount > 0 && !state.isSyncing) {
+                        Button(
+                            onClick = onUploadNow,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(Res.string.backup_status_upload_now))
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onOpenPending,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(Res.string.backup_pending_view))
+                    }
+                }
+                if (!state.isCheckingHashes && !state.isSyncing) {
+                    TextButton(
+                        onClick = onRecheck,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(Res.string.backup_status_recheck))
+                    }
+                }
             }
         }
+    }
+}
+
+/** "hace 5 min" / "5 min ago" style label for the last-run timestamp. */
+@Composable
+private fun relativeTimeLabel(epochMillis: Long): String {
+    val now = Clock.System.now().toEpochMilliseconds()
+    val minutes = ((now - epochMillis) / 60_000L).coerceAtLeast(0)
+    return when {
+        minutes < 1 -> stringResource(Res.string.backup_time_just_now)
+        minutes < 60 -> stringResource(Res.string.backup_time_minutes, minutes.toInt())
+        minutes < 60 * 24 -> stringResource(Res.string.backup_time_hours, (minutes / 60).toInt())
+        else -> stringResource(Res.string.backup_time_days, (minutes / (60 * 24)).toInt())
     }
 }
 
@@ -476,70 +643,6 @@ private fun SettingsRow(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PendingPanel(
-    hasFolder: Boolean,
-    hasChecked: Boolean,
-    pendingCount: Int,
-    onOpen: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val (icon, tint) = when {
-                    !hasFolder || !hasChecked -> Icons.Outlined.CloudUpload to
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    pendingCount == 0 -> Icons.Filled.CheckCircle to
-                        MaterialTheme.colorScheme.primary
-                    else -> Icons.Filled.CloudUpload to MaterialTheme.colorScheme.error
-                }
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(Modifier.size(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = when {
-                            !hasFolder -> stringResource(Res.string.backup_source_none)
-                            !hasChecked -> stringResource(Res.string.backup_pending_unknown)
-                            pendingCount == 0 -> stringResource(Res.string.backup_pending_none)
-                            else -> stringResource(
-                                Res.string.backup_pending_count, pendingCount
-                            )
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            if (hasFolder) {
-                Spacer(Modifier.size(12.dp))
-                OutlinedButton(
-                    onClick = onOpen,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(Res.string.backup_pending_view))
-                }
             }
         }
     }

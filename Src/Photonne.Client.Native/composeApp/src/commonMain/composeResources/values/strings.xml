@@ -854,6 +854,27 @@
     <string name="backup_pending_screen_title">Pendientes</string>
     <string name="backup_disabled_hint">Activa la copia de seguridad para empezar a subir tus fotos.</string>
 
+    <!-- Unified backup status card -->
+    <string name="backup_status_verifying">Verificando…</string>
+    <string name="backup_status_verifying_progress">Verificando %1$d/%2$d nuevos…</string>
+    <string name="backup_status_all_synced">Todo respaldado</string>
+    <string name="backup_status_pending">%1$d pendientes de subir</string>
+    <string name="backup_status_failures">%1$d con errores de subida</string>
+    <string name="backup_status_syncing">Subiendo %1$d de %2$d…</string>
+    <string name="backup_status_upload_now">Subir ahora</string>
+    <string name="backup_status_recheck">Volver a verificar</string>
+    <string name="backup_status_enrichment_row">%1$d archivo(s) procesándose en el servidor</string>
+    <string name="backup_last_run_manual">Última copia: %1$s</string>
+    <string name="backup_last_run_background">Última copia automática: %1$s</string>
+    <string name="backup_last_run_counts">%1$d subidos · %2$d fallidos</string>
+    <string name="backup_time_just_now">hace un momento</string>
+    <string name="backup_time_minutes">hace %1$d min</string>
+    <string name="backup_time_hours">hace %1$d h</string>
+    <string name="backup_time_days">hace %1$d días</string>
+    <string name="backup_notification_channel">Copia de seguridad</string>
+    <string name="backup_notification_failures_title">Copia de seguridad incompleta</string>
+    <string name="backup_notification_failures_text">%1$d archivo(s) no se pudieron subir. Abre Photonne para revisarlos.</string>
+
     <!-- Background sync preferences -->
     <string name="background_sync_section">Sincronización en segundo plano</string>
     <string name="background_sync_auto_label">Sync automático</string>
@@ -877,9 +898,6 @@
     <string name="upload_error_unknown">Error desconocido</string>
 
     <!-- Enrichment status screen -->
-    <string name="enrichment_banner_title">Enriquecimiento pendiente</string>
-    <string name="enrichment_banner_subtitle">%1$d asset(s) con tareas pendientes o fallidas</string>
-    <string name="enrichment_banner_action">Ver estado</string>
     <string name="enrichment_screen_title">Estado de enriquecimiento</string>
     <string name="enrichment_summary">%1$d pendientes · %2$d fallidas</string>
     <string name="enrichment_empty">Todos los assets están enriquecidos.</string>

@@ -11,6 +11,8 @@ import com.photonne.app.data.devicebackup.UploadFailureReason
 import com.photonne.app.data.devicebackup.toUploadFailureReason
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
+import com.photonne.app.data.devicebackup.LastBackupRun
+import kotlinx.datetime.Clock
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.LocalSyncBadge
@@ -55,12 +57,14 @@ data class DeviceBackupUiState(
     val entries: List<DeviceBackupEntry> = emptyList(),
     val isLoading: Boolean = false,
     val isCheckingHashes: Boolean = false,
+    val hashProgress: DeviceBackupRepository.VerificationProgress? = null,
     val isSyncing: Boolean = false,
     val isFreeingSpace: Boolean = false,
     val syncProgress: SyncProgress? = null,
     val error: UiError? = null,
     val statusMessage: String? = null,
     val lastSyncSummary: SyncSummary? = null,
+    val lastRun: LastBackupRun? = null,
     val backgroundSync: BackgroundSyncPreferences = BackgroundSyncPreferences(
         enabled = false,
         requireWifi = true,
@@ -73,6 +77,12 @@ data class DeviceBackupUiState(
     }
     val syncedCount: Int get() = entries.count {
         it.syncState is DeviceMediaSyncState.Synced
+    }
+    val failedCount: Int get() = entries.count {
+        it.syncState is DeviceMediaSyncState.Failed
+    }
+    val uploadingCount: Int get() = entries.count {
+        it.syncState is DeviceMediaSyncState.Uploading
     }
 
     /**
@@ -109,6 +119,7 @@ class DeviceBackupViewModel(
         DeviceBackupUiState(
             isSupported = repository.isSupported,
             isBackupEnabled = repository.isBackupEnabled(),
+            lastRun = repository.lastRun(),
             backgroundSync = repository.backgroundSyncPreferences()
         )
     )
@@ -189,6 +200,8 @@ class DeviceBackupViewModel(
     fun ensureLoaded() {
         if (_state.value.isLoading) return
         if (!repository.isSupported) return
+        // A background pass may have run since we last looked.
+        _state.update { it.copy(lastRun = repository.lastRun()) }
         val folder = _state.value.folder
         if (folder != null) {
             refreshFolderContents(folder)
@@ -240,6 +253,12 @@ class DeviceBackupViewModel(
                             }
                         )
                     }
+                    // Verdicts already proven in a previous session appear
+                    // instantly — no hashing, no network.
+                    seedSyncStatesFromLedger(folder)
+                    // …then reconcile against the server. Cheap now: only
+                    // new/changed files hash, the rest is 1-2 bulk calls.
+                    maybeAutoVerify()
                     // Persist the fresh scan so the next launch can seed the
                     // timeline instantly from cache.
                     withContext(Dispatchers.Default) {
@@ -296,49 +315,94 @@ class DeviceBackupViewModel(
     }
 
     /**
-     * Streams through every entry, hashing locally and asking the
-     * server if a matching asset already exists. Runs serially to
-     * keep memory pressure low; users with very large folders can
-     * just sync without waiting for the full pass.
+     * Incremental verification pass backed by the persistent ledger:
+     * only new/changed files are hashed (everything already verified is
+     * skipped), and the server is asked in bulk — a couple of HTTP calls
+     * for the whole folder instead of one per file. Cancelling mid-pass
+     * loses nothing: hashes and verdicts persist as they are computed.
      */
     fun refreshSyncStates() {
         val folder = _state.value.folder ?: return
         if (_state.value.isCheckingHashes) return
-        _state.update { it.copy(isCheckingHashes = true, error = null) }
+        _state.update { it.copy(isCheckingHashes = true, error = null, hashProgress = null) }
         viewModelScope.launch {
-            val snapshot = _state.value.entries
-            for (entry in snapshot) {
-                if (!_state.value.isCheckingHashes) break // user cancelled / left screen
-                val (hash, state) = runCatching {
-                    repository.checkSyncStatus(entry.media)
-                }.getOrElse {
-                    "" to DeviceMediaSyncState.Failed(
-                        reason = it.toUploadFailureReason(),
-                        detail = it.message
-                    )
-                }
-                _state.update { current ->
-                    current.copy(
-                        entries = current.entries.map { e ->
-                            if (e.media.uri == entry.media.uri) {
-                                e.copy(
-                                    media = e.media.copy(
-                                        sha256 = hash.takeIf { it.isNotBlank() }
-                                    ),
-                                    syncState = state
-                                )
-                            } else e
-                        }
-                    )
-                }
+            val scanned = _state.value.entries.map { it.media }
+            val result = runCatching {
+                repository.verifyAgainstServer(
+                    folder = folder,
+                    scanned = scanned,
+                    onProgress = { progress ->
+                        _state.update { it.copy(hashProgress = progress) }
+                    },
+                    shouldContinue = { _state.value.isCheckingHashes }
+                )
             }
-            _state.update { it.copy(isCheckingHashes = false) }
+            result
+                .onSuccess { states -> applySyncStates(states) }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "Could not verify pending files"))
+                    }
+                }
+            _state.update { it.copy(isCheckingHashes = false, hashProgress = null) }
         }
-        _state.value.folder
+    }
+
+    /** Merge ledger/server verdicts into the grid, leaving in-flight
+     *  `Uploading` entries alone so an active sync isn't visually reset. */
+    private fun applySyncStates(states: Map<String, DeviceMediaSyncState>) {
+        if (states.isEmpty()) return
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    val verdict = states[entry.media.uri] ?: return@map entry
+                    if (entry.syncState is DeviceMediaSyncState.Uploading) entry
+                    else entry.copy(syncState = verdict)
+                }
+            )
+        }
+    }
+
+    /** Seed sync badges from the persisted ledger — instant, no hashing or
+     *  network. Only fills entries still in `Unknown` so fresher in-session
+     *  states are never downgraded. */
+    private fun seedSyncStatesFromLedger(folder: DeviceFolderRef) {
+        viewModelScope.launch {
+            val states = withContext(Dispatchers.Default) { repository.syncStatesFor(folder) }
+            if (states.isEmpty()) return@launch
+            _state.update { current ->
+                current.copy(
+                    entries = current.entries.map { entry ->
+                        if (entry.syncState !is DeviceMediaSyncState.Unknown) entry
+                        else states[entry.media.uri]?.let { entry.copy(syncState = it) } ?: entry
+                    }
+                )
+            }
+        }
     }
 
     fun stopHashCheck() {
         _state.update { it.copy(isCheckingHashes = false) }
+    }
+
+    /**
+     * Kicks the incremental verification automatically after a folder scan.
+     * The ledger makes this cheap enough to run on every screen entry, so
+     * the pending count is always real instead of "Unknown until you ask".
+     */
+    private fun maybeAutoVerify() {
+        val current = _state.value
+        if (!current.isBackupEnabled) return
+        if (current.isCheckingHashes || current.isSyncing) return
+        refreshSyncStates()
+    }
+
+    /** Selects everything not yet on the server and uploads it — the status
+     *  card's one-tap "upload now" action. */
+    fun syncAllPending() {
+        if (_state.value.isSyncing) return
+        selectAllNotSynced()
+        syncSelected()
     }
 
     /** Uploads every selected entry that isn't already synced. */
@@ -394,6 +458,11 @@ class DeviceBackupViewModel(
                         if (isDup) skipped++ else completed++
                         val nextState: DeviceMediaSyncState =
                             DeviceMediaSyncState.Synced(response.assetId.orEmpty())
+                        _state.value.folder?.let { folder ->
+                            repository.markUploaded(
+                                folder, entry.media.uri, response.assetId.orEmpty()
+                            )
+                        }
                         _state.update { current ->
                             current.copy(
                                 entries = current.entries.map { e ->
@@ -415,6 +484,9 @@ class DeviceBackupViewModel(
                         failed++
                         val reason = error.toUploadFailureReason()
                         failureReasonCounts[reason] = (failureReasonCounts[reason] ?: 0) + 1
+                        _state.value.folder?.let { folder ->
+                            repository.markUploadFailed(folder, entry.media.uri, reason)
+                        }
                         _state.update { current ->
                             current.copy(
                                 entries = current.entries.map { e ->
@@ -432,9 +504,18 @@ class DeviceBackupViewModel(
                         }
                     }
             }
+            val run = LastBackupRun(
+                finishedAtMillis = Clock.System.now().toEpochMilliseconds(),
+                uploaded = completed,
+                skipped = skipped,
+                failed = failed,
+                background = false
+            )
+            repository.recordLastRun(run)
             _state.update {
                 it.copy(
                     isSyncing = false,
+                    lastRun = run,
                     lastSyncSummary = SyncSummary(
                         completed = completed,
                         skipped = skipped,
@@ -519,6 +600,8 @@ class DeviceBackupViewModel(
                             entries = items.map { DeviceBackupEntry(media = it) }
                         )
                     }
+                    seedSyncStatesFromLedger(folder)
+                    maybeAutoVerify()
                 }
                 .onFailure { error ->
                     _state.update {
