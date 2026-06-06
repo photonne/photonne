@@ -27,6 +27,7 @@ import com.photonne.app.data.models.SearchResponse
 import com.photonne.app.data.models.SemanticSearchResponse
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineBucket
+import com.photonne.app.data.models.TimelineGridSection
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.TimelineYearSummary
@@ -229,6 +230,9 @@ interface PhotonneApi {
 
     /** Compressed yearly view: per-year counts + evenly-sampled items. */
     suspend fun getTimelineYears(sample: Int): List<TimelineYearSummary>
+
+    /** Whole-library structure index (layout data only), by month. */
+    suspend fun getTimelineGridIndex(): List<TimelineGridSection>
     suspend fun listUnsupportedFiles(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): UnsupportedFilesPage
     suspend fun getUnsupportedFileContent(id: String): AssetContentBytes
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
@@ -649,6 +653,24 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Timeline years fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getTimelineGridIndex(): List<TimelineGridSection> {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/timeline/grid") {
+            // Whole-library projection, streamed by the server — same
+            // safety net as getTimeline() for big cold-cache libraries.
+            timeout {
+                requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+            }
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Timeline grid index fetch failed (${response.status.value})"
             )
         }
         return response.body()

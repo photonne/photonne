@@ -72,6 +72,35 @@ data class TimelineBucket(
 )
 
 /**
+ * One month of the lightweight structure index
+ * (`GET /api/assets/timeline/grid`): per-item layout data for the WHOLE
+ * library. Prefetched in the background so unloaded months render their
+ * real justified structure (aspect ratios, dominant colors, type glyphs)
+ * instead of square skeletons — and hydration doesn't shift scroll, since
+ * the heights are already exact.
+ */
+@Serializable
+data class TimelineGridSection(
+    /** Calendar month key, "yyyy-MM". */
+    val yearMonth: String,
+    val items: List<TimelineGridItem> = emptyList()
+)
+
+@Serializable
+data class TimelineGridItem(
+    val id: String,
+    /** "Image" or "Video". */
+    val type: String = "Image",
+    val aspectRatio: Double = 1.0,
+    /** Capture date, "yyyy-MM-dd" (UTC parts, same grouping as buckets). */
+    val date: String = "",
+    val dominantColor: String? = null,
+    val width: Int = 0,
+    val height: Int = 0,
+    val isReadOnly: Boolean = false
+)
+
+/**
  * One year of the compressed yearly view (`GET /api/assets/timeline/years`):
  * total visible-asset count plus a sample distributed evenly across the
  * year, newest first. The Year zoom level renders a fixed number of rows

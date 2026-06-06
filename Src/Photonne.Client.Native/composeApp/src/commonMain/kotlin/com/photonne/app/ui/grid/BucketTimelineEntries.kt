@@ -1,11 +1,13 @@
 package com.photonne.app.ui.grid
 
+import com.photonne.app.data.models.TimelineGridItem
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.timeline.TimelineBucketState
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -67,7 +69,16 @@ internal data class BucketRange(
 internal fun buildBucketEntries(
     buckets: List<TimelineBucketState>,
     localItems: List<TimelineItem>,
-    grouping: TimelineGrouping
+    grouping: TimelineGrouping,
+    /**
+     * Whole-library structure index, by month. When an unloaded month has
+     * an entry here it renders its REAL justified structure (aspect
+     * ratios, dominant colors, type glyphs, thumbnails by id) as
+     * placeholder cells with `index = -1` — Synology-style: the grid shape
+     * is always right and hydration can't shift scroll. Months absent from
+     * the index fall back to square [TimelineEntry.SkeletonBucket]s.
+     */
+    gridIndex: Map<String, List<TimelineGridItem>> = emptyMap()
 ): BucketEntriesResult {
     val localByMonth = localItems.groupBy { bucketKeyOf(it.fileCreatedAt) }
     val serverByKey = buckets.associateBy { it.key }
@@ -89,11 +100,63 @@ internal fun buildBucketEntries(
         }
     }
 
+    // Emits one bucket's cells (plus day headers when needed). Placeholder
+    // cells carry index = -1: they never enter the merged list, so clicks,
+    // selection and the detail pager all ignore them until hydration.
+    fun emitBucketCells(bucketKey: String, items: List<TimelineItem>, placeholders: Boolean) {
+        order += bucketKey
+        val start = merged.size
+
+        fun emitCell(item: TimelineItem) {
+            if (placeholders) {
+                entries += TimelineEntry.Cell(item = item, index = -1)
+            } else {
+                merged += item
+                entries += TimelineEntry.Cell(item = item, index = merged.size - 1)
+            }
+        }
+
+        if (grouping == TimelineGrouping.Day) {
+            // Day headers derive from the items themselves (device timezone).
+            var lastDayKey: String? = null
+            items.forEach { item ->
+                val dayKey = dayKeyOf(item.fileCreatedAt)
+                if (dayKey != lastDayKey) {
+                    emitGroupHeader(key = dayKey, title = dayLabelOf(item.fileCreatedAt))
+                    lastDayKey = dayKey
+                }
+                emitCell(item)
+            }
+        } else {
+            emitGroupHeader(
+                key = monthOrYearKey(bucketKey, grouping),
+                title = monthOrYearLabel(bucketKey, grouping)
+            )
+            items.forEach(::emitCell)
+        }
+
+        if (placeholders) {
+            // Structure-only content still interrupts pager continuity.
+            runId++
+        } else {
+            ranges += BucketRange(bucketKey, start until merged.size, runId)
+        }
+    }
+
     for (bucketKey in allKeys) {
         val server = serverByKey[bucketKey]
         val local = localByMonth[bucketKey].orEmpty()
 
         if (server != null && !server.isLoaded) {
+            val structure = gridIndex[bucketKey].orEmpty()
+            if (structure.isNotEmpty()) {
+                emitBucketCells(
+                    bucketKey = bucketKey,
+                    items = structure.map { it.toPlaceholderItem(bucketKey) },
+                    placeholders = true
+                )
+                continue
+            }
             if (server.count == 0) continue
             order += bucketKey
             emitGroupHeader(
@@ -111,33 +174,7 @@ internal fun buildBucketEntries(
             else -> local.sortedByDescending { it.fileCreatedAt }
         }
         if (items.isEmpty()) continue
-        order += bucketKey
-
-        if (grouping == TimelineGrouping.Day) {
-            // Day headers derive from the items themselves (device timezone).
-            var lastDayKey: String? = null
-            items.forEach { item ->
-                val dayKey = dayKeyOf(item.fileCreatedAt)
-                if (dayKey != lastDayKey) {
-                    emitGroupHeader(key = dayKey, title = dayLabelOf(item.fileCreatedAt))
-                    lastDayKey = dayKey
-                }
-                merged += item
-                entries += TimelineEntry.Cell(item = item, index = merged.size - 1)
-            }
-            ranges += BucketRange(bucketKey, (merged.size - items.size) until merged.size, runId)
-        } else {
-            emitGroupHeader(
-                key = monthOrYearKey(bucketKey, grouping),
-                title = monthOrYearLabel(bucketKey, grouping)
-            )
-            val start = merged.size
-            items.forEach { item ->
-                merged += item
-                entries += TimelineEntry.Cell(item = item, index = merged.size - 1)
-            }
-            ranges += BucketRange(bucketKey, start until merged.size, runId)
-        }
+        emitBucketCells(bucketKey = bucketKey, items = items, placeholders = false)
     }
 
     return BucketEntriesResult(
@@ -146,6 +183,38 @@ internal fun buildBucketEntries(
         loadedRanges = ranges,
         bucketOrder = order
     )
+}
+
+/**
+ * Lifts a structure-index entry into the cell model. The instant is the
+ * capture DAY at UTC midnight — month/day grouping keys stay consistent
+ * with the server's bucket grouping; finer precision arrives with the real
+ * item on hydration.
+ */
+private fun TimelineGridItem.toPlaceholderItem(bucketKey: String): TimelineItem {
+    val day = parseGridDate(date) ?: parseGridDate("$bucketKey-01")
+    val instant = day?.atStartOfDayIn(TimeZone.UTC) ?: Instant.DISTANT_PAST
+    return TimelineItem(
+        id = id,
+        fileName = "",
+        fullPath = "",
+        fileSize = 0L,
+        fileCreatedAt = instant,
+        fileModifiedAt = instant,
+        extension = "",
+        scannedAt = instant,
+        type = type,
+        width = width.takeIf { it > 0 },
+        height = height.takeIf { it > 0 },
+        dominantColor = dominantColor,
+        isReadOnly = isReadOnly
+    )
+}
+
+private fun parseGridDate(value: String): LocalDate? = try {
+    LocalDate.parse(value)
+} catch (_: IllegalArgumentException) {
+    null
 }
 
 /**

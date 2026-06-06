@@ -247,48 +247,91 @@ internal fun GroupedAssetGrid(
     // is laid out up front (skeleton or real rows) and content loading is
     // driven by which bucket keys are visible — see TimelineScreen's
     // visibility effect.
+    //
+    // Rows are emitted as one items(count) interval per header group rather
+    // than one item() per row: with the structure index materializing the
+    // whole library, per-row registration made every rows swap re-register
+    // thousands of intervals on the main thread.
+    val segments = remember(rows) { segmentRows(rows) }
     LazyColumn(
         state = state,
         verticalArrangement = Arrangement.spacedBy(cellSpacing),
         modifier = modifier.fillMaxSize()
     ) {
         header?.invoke(this)
-        rows.forEach { entry ->
-            when (entry) {
-                is JustifiedRowEntry.Header -> stickyHeader(key = "h:${entry.key}") {
-                    StickyMonthHeader(title = entry.title, count = entry.count)
+        segments.forEach { segment ->
+            segment.header?.let { groupHeader ->
+                stickyHeader(key = "h:${groupHeader.key}") {
+                    StickyMonthHeader(title = groupHeader.title, count = groupHeader.count)
                 }
-                is JustifiedRowEntry.SkeletonRow -> {
-                    item(key = "s:${entry.bucketKey}:${entry.rowIndex}") {
-                        SkeletonCellsRow(
-                            entry = entry,
-                            spacing = cellSpacing,
-                            onClick = onSkeletonClick?.let { handler ->
-                                { handler(entry.bucketKey) }
-                            }
-                        )
-                    }
-                }
-                is JustifiedRowEntry.Row -> {
-                    val first = entry.row.cells.first()
-                    item(key = "r:${assetCellKey(first.item, first.index)}") {
-                        JustifiedCellsRow(
-                            row = entry.row,
-                            baseUrl = baseUrl,
-                            spacing = cellSpacing,
-                            onItemClick = onItemClick,
-                            onItemLongClick = onItemLongClick,
-                            selectedIds = selectedIds,
-                            // Device-only rows are merged in after the gallery
-                            // scan finishes; animateItem fades them in and
-                            // slides their neighbours instead of hard-popping.
-                            modifier = Modifier.animateItem()
-                        )
-                    }
+            }
+            items(
+                count = segment.body.size,
+                key = { i -> rowLazyKey(segment.body[i]) }
+            ) { i ->
+                when (val entry = segment.body[i]) {
+                    is JustifiedRowEntry.SkeletonRow -> SkeletonCellsRow(
+                        entry = entry,
+                        spacing = cellSpacing,
+                        onClick = onSkeletonClick?.let { handler ->
+                            { handler(entry.bucketKey) }
+                        }
+                    )
+                    is JustifiedRowEntry.Row -> JustifiedCellsRow(
+                        row = entry.row,
+                        baseUrl = baseUrl,
+                        spacing = cellSpacing,
+                        onItemClick = onItemClick,
+                        onItemLongClick = onItemLongClick,
+                        selectedIds = selectedIds,
+                        // Device-only rows are merged in after the gallery
+                        // scan finishes; animateItem fades them in and
+                        // slides their neighbours instead of hard-popping.
+                        modifier = Modifier.animateItem()
+                    )
+                    // Headers never enter a segment body.
+                    is JustifiedRowEntry.Header -> Unit
                 }
             }
         }
     }
+}
+
+/** One sticky header plus its run of row entries. */
+internal data class RowSegment(
+    val header: JustifiedRowEntry.Header?,
+    val body: List<JustifiedRowEntry>
+)
+
+/** Splits the flat row list into per-header segments (leading rows headerless). */
+internal fun segmentRows(rows: List<JustifiedRowEntry>): List<RowSegment> {
+    val out = ArrayList<RowSegment>()
+    var header: JustifiedRowEntry.Header? = null
+    var body = ArrayList<JustifiedRowEntry>()
+    fun flush() {
+        if (header != null || body.isNotEmpty()) out += RowSegment(header, body)
+    }
+    rows.forEach { entry ->
+        if (entry is JustifiedRowEntry.Header) {
+            flush()
+            header = entry
+            body = ArrayList()
+        } else {
+            body += entry
+        }
+    }
+    flush()
+    return out
+}
+
+/** Stable LazyColumn key — must stay identical to the keyToBucket scheme. */
+internal fun rowLazyKey(entry: JustifiedRowEntry): Any = when (entry) {
+    is JustifiedRowEntry.Row -> {
+        val first = entry.row.cells.first()
+        "r:${assetCellKey(first.item, first.index)}"
+    }
+    is JustifiedRowEntry.SkeletonRow -> "s:${entry.bucketKey}:${entry.rowIndex}"
+    is JustifiedRowEntry.Header -> "h:${entry.key}"
 }
 
 /**

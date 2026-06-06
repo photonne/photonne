@@ -2,15 +2,22 @@ package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +29,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,14 +52,21 @@ private const val MIN_ROWS_FOR_SCRUBBER = 40
 /** Sticky-header band height — must match StickyMonthHeader. */
 private const val HEADER_HEIGHT_DP = 56f
 
-private val ThumbHeight = 48.dp
-private val ThumbWidth = 6.dp
+/** Touch target around the handle — the ONLY draggable area. */
+private val HandleTouchWidth = 48.dp
+private val HandleTouchHeight = 64.dp
+
+/** Visual handle: a vertical pill with up/down chevrons. */
+private val HandleWidth = 28.dp
+private val HandleHeight = 52.dp
 
 /**
- * Fast-scroll scrubber pinned to the right edge. Appears while the list is
- * scrolling (or being scrubbed) and fades out after a pause. Dragging the
- * thumb jumps the grid and shows a bubble with the month-year under the
- * thumb.
+ * Fast-scroll scrubber pinned to the right edge, drawn as an overlay (it
+ * takes no layout space from the grid). Appears while the list is scrolling
+ * (or being scrubbed) and fades out after a pause. Only the handle itself is
+ * draggable — a full-height touch strip would hijack ordinary scrolls near
+ * the right edge the moment the scrubber became visible. Dragging jumps the
+ * grid and shows a bubble with the month-year under the handle.
  *
  * The mapping between track fraction and list position is EXACT, not an
  * item-count approximation: with the bucket model every row's height is
@@ -70,28 +85,33 @@ internal fun TimelineScrubber(
     if (rows.size < MIN_ROWS_FOR_SCRUBBER) return
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    val prefix = remember(rows) { rowHeightPrefixSums(rows) }
-    val labels = remember(rows) { scrubberRowLabels(rows) }
-    val totalDp = prefix.last()
-    if (totalDp <= 0f) return
+    // rememberUpdatedState: rows are REBUILT whenever a bucket's content
+    // arrives. Keying the gesture (or the derived fraction) on them would
+    // cancel an in-progress drag mid-scrub — the "frozen scrubber right
+    // after a month loads" bug. The stable holders below let everything
+    // read the freshest data without ever restarting.
+    val prefix by rememberUpdatedState(remember(rows) { rowHeightPrefixSums(rows) })
+    val labels by rememberUpdatedState(remember(rows) { scrubberRowLabels(rows) })
+    val headerCount by rememberUpdatedState(headerItemCount)
+    if (prefix.last() <= 0f) return
 
     var isDragging by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(0f) }
     var scrollJob by remember { mutableStateOf<Job?>(null) }
 
-    val scrollFraction by remember(prefix, headerItemCount) {
+    val scrollFraction by remember {
         derivedStateOf {
-            val first = gridState.firstVisibleItemIndex - headerItemCount
-            if (first <= 0) {
+            val p = prefix
+            val first = gridState.firstVisibleItemIndex - headerCount
+            if (first <= 0 || p.size <= 1) {
                 0f
             } else {
                 val offsetDp = with(density) { gridState.firstVisibleItemScrollOffset.toDp() }.value
-                ((prefix[first.coerceIn(0, prefix.lastIndex)] + offsetDp) / totalDp)
+                ((p[first.coerceIn(0, p.lastIndex)] + offsetDp) / p.last())
                     .coerceIn(0f, 1f)
             }
         }
     }
-    val fraction = if (isDragging) dragFraction else scrollFraction
 
     // Visible while scrolling/scrubbing; fades out shortly after.
     val active = isDragging || gridState.isScrollInProgress
@@ -109,43 +129,50 @@ internal fun TimelineScrubber(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
-            .width(160.dp) // room for the bubble to the left of the thumb
+            .width(200.dp) // room for the bubble; plain Boxes don't eat touches
             .graphicsLayer { this.alpha = alpha }
     ) {
         val trackHeightPx = constraints.maxHeight.toFloat()
-        val thumbHeightPx = with(density) { ThumbHeight.toPx() }
-        val thumbY = ((trackHeightPx - thumbHeightPx) * fraction).roundToInt()
-
-        fun scrubTo(y: Float) {
-            val usable = (trackHeightPx - thumbHeightPx).coerceAtLeast(1f)
-            val f = ((y - thumbHeightPx / 2) / usable).coerceIn(0f, 1f)
-            dragFraction = f
-            val row = rowIndexForFraction(prefix, f)
-            scrollJob?.cancel()
-            scrollJob = scope.launch {
-                gridState.scrollToItem(row + headerItemCount)
-            }
+        val touchHeightPx = with(density) { HandleTouchHeight.toPx() }
+        val usableTrackPx = (trackHeightPx - touchHeightPx).coerceAtLeast(1f)
+        // Deferred state read: the offset lambda resolves during the
+        // PLACEMENT phase, so the handle tracks every scroll frame without
+        // recomposing this composable — reading the fraction in composition
+        // is what made the handle visibly lag behind the list.
+        val handleOffset: androidx.compose.ui.unit.Density.() -> IntOffset = {
+            val f = if (isDragging) dragFraction else scrollFraction
+            IntOffset(0, (usableTrackPx * f).roundToInt())
         }
 
-        // Touch strip along the right edge. Only interactive while the
-        // scrubber is visible, so a hidden scrubber never hijacks edge
-        // drags meant for the grid.
+        val usableTrack by rememberUpdatedState(usableTrackPx)
+        // Drag-on-the-handle only. Delta-based: the pointer input sits on
+        // the element that moves, so absolute positions would feed back
+        // into themselves. Keyed on Unit on purpose — every mutable input
+        // is read through a rememberUpdatedState holder, so the gesture
+        // survives bucket loads, resizes and zoom changes mid-drag.
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(32.dp)
+                .align(Alignment.TopEnd)
+                .offset(handleOffset)
+                .width(HandleTouchWidth)
+                .height(HandleTouchHeight)
                 .then(
                     if (visible) {
-                        Modifier.pointerInput(prefix, headerItemCount) {
+                        Modifier.pointerInput(Unit) {
                             detectVerticalDragGestures(
-                                onDragStart = { offset ->
+                                onDragStart = {
+                                    dragFraction = scrollFraction
                                     isDragging = true
-                                    scrubTo(offset.y)
                                 },
-                                onVerticalDrag = { change, _ ->
+                                onVerticalDrag = { change, dragAmount ->
                                     change.consume()
-                                    scrubTo(change.position.y)
+                                    dragFraction = (dragFraction + dragAmount / usableTrack)
+                                        .coerceIn(0f, 1f)
+                                    val row = rowIndexForFraction(prefix, dragFraction)
+                                    scrollJob?.cancel()
+                                    scrollJob = scope.launch {
+                                        gridState.scrollToItem(row + headerCount)
+                                    }
                                 },
                                 onDragEnd = { isDragging = false },
                                 onDragCancel = { isDragging = false }
@@ -154,20 +181,39 @@ internal fun TimelineScrubber(
                     } else {
                         Modifier
                     }
-                )
-        )
-
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = if (isDragging) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.outline,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset { IntOffset(0, thumbY) }
-                .padding(end = 4.dp)
-                .width(ThumbWidth)
-                .height(ThumbHeight)
-        ) {}
+                ),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = if (isDragging) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 3.dp,
+                shadowElevation = 2.dp,
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .width(HandleWidth)
+                    .height(HandleHeight)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
 
         if (isDragging) {
             val label = labels.getOrNull(rowIndexForFraction(prefix, dragFraction)).orEmpty()
@@ -178,8 +224,8 @@ internal fun TimelineScrubber(
                     tonalElevation = 4.dp,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset { IntOffset(0, thumbY) }
-                        .padding(end = 24.dp)
+                        .offset(handleOffset)
+                        .padding(end = HandleTouchWidth + 8.dp)
                 ) {
                     Text(
                         text = label,

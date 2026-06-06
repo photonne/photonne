@@ -53,6 +53,7 @@ import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
+import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.JustifiedRowEntry
 import com.photonne.app.ui.grid.assetCellKey
@@ -71,7 +72,11 @@ import com.photonne.app.ui.theme.SkeletonBlock
 import com.photonne.app.ui.theme.SkeletonChip
 import kotlin.math.abs
 import kotlin.math.ln
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -137,11 +142,6 @@ fun TimelineScreen(
     // rows per year, count in the header); every other zoom level renders
     // the full bucket timeline. Both flatten into the same entries shape.
     val isYearView = zoomLevel.grouping == TimelineGrouping.Year
-    val bucketEntries = remember(state.buckets, state.yearSummaries, localItems, zoomLevel) {
-        if (isYearView) buildYearSummaryEntries(state.yearSummaries.orEmpty())
-        else buildBucketEntries(state.buckets, localItems, zoomLevel.grouping)
-    }
-    val mergedItems = bucketEntries.mergedItems
 
     // Pinch state: during a two-finger zoom the target row height lerps
     // toward the next zoom level for visual feedback, then snaps to a
@@ -192,48 +192,42 @@ fun TimelineScreen(
                     TimelineSkeleton(cellMinSize = effectiveRowHeight)
                 else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val containerWidthDp = maxWidth
-                    // Justify entries into rows. Re-packs whenever the user
-                    // scrolls (no), changes zoom (yes), or rotates/resizes
-                    // the window (yes). For 1000s of items this is O(n)
-                    // and runs at ~1ms — cheap enough to keep inside a
-                    // remember-keyed block.
-                    val rows = remember(bucketEntries, containerWidthDp, effectiveRowHeight) {
-                        val packed = packJustifiedRows(
-                            entries = bucketEntries.entries,
-                            containerWidthDp = containerWidthDp.value,
-                            targetRowHeightDp = effectiveRowHeight.value,
-                            spacingDp = 2f
-                        )
-                        // Year view: cap every year to a fixed number of
-                        // rows — the header count says how much more there
-                        // is, and clicking dives into the month.
-                        if (isYearView) truncateRowsPerGroup(packed, YEAR_VIEW_MAX_ROWS)
-                        else packed
-                    }
-
-                    // LazyColumn item key → bucket key, so the visibility
-                    // effect below can tell which months are on screen
-                    // without fighting the memories-header index offset.
-                    val keyToBucket: Map<Any, String> = remember(rows) {
-                        buildMap {
-                            rows.forEach { entry ->
-                                when (entry) {
-                                    is JustifiedRowEntry.Row -> {
-                                        val first = entry.row.cells.firstOrNull()
-                                        if (first != null) {
-                                            put(
-                                                "r:${assetCellKey(first.item, first.index)}",
-                                                bucketKeyOf(first.item.fileCreatedAt)
-                                            )
-                                        }
-                                    }
-                                    is JustifiedRowEntry.SkeletonRow ->
-                                        put("s:${entry.bucketKey}:${entry.rowIndex}", entry.bucketKey)
-                                    is JustifiedRowEntry.Header -> Unit
-                                }
-                            }
+                    // The whole derivation pipeline — flattening buckets into
+                    // entries, justifying them into rows, and the key→bucket
+                    // map — runs OFF the main thread. With the structure
+                    // index materializing the entire library, this touches
+                    // tens of thousands of items per bucket arrival; doing
+                    // it in a remember{} (i.e. during composition) was what
+                    // hitched the scrubber whenever data landed. The
+                    // PREVIOUS frame's rows stay on screen while the new
+                    // ones compute, so the UI thread never waits; restarts
+                    // cancel superseded computations (mapLatest semantics).
+                    var packed by remember { mutableStateOf<PackedTimeline?>(null) }
+                    LaunchedEffect(
+                        state.buckets, state.yearSummaries, state.gridIndex,
+                        localItems, zoomLevel, containerWidthDp, effectiveRowHeight
+                    ) {
+                        packed = withContext(Dispatchers.Default) {
+                            derivePackedTimeline(
+                                state = state,
+                                localItems = localItems,
+                                grouping = zoomLevel.grouping,
+                                containerWidthDp = containerWidthDp.value,
+                                targetRowHeightDp = effectiveRowHeight.value
+                            )
                         }
                     }
+                    val current = packed
+                    if (current == null) {
+                        // Only the very first derivation (cold entry into the
+                        // grid) has nothing previous to show.
+                        TimelineSkeleton(cellMinSize = effectiveRowHeight)
+                        return@BoxWithConstraints
+                    }
+                    val bucketEntries = current.entries
+                    val mergedItems = bucketEntries.mergedItems
+                    val rows = current.rows
+                    val keyToBucket = current.keyToBucket
 
                     // Drives bucket loading: visible months (± one neighbour
                     // per side) get their contents fetched. The store dedups
@@ -249,12 +243,21 @@ fun TimelineScreen(
                                 .distinct()
                         }
                             .distinctUntilChanged()
-                            .collect { visible ->
-                                if (visible.isNotEmpty()) {
-                                    onBucketsVisible(
-                                        expandWithNeighborBuckets(visible, bucketEntries.bucketOrder)
-                                    )
-                                }
+                            .collectLatest { visible ->
+                                if (visible.isEmpty()) return@collectLatest
+                                // Settle debounce: while a fling or the
+                                // scrubber is flying through months, the
+                                // collectLatest restart cancels the delay, so
+                                // intermediate buckets are never requested —
+                                // they stay as gray skeletons. Only where the
+                                // scroll settles do we spend requests (and
+                                // each arrival re-packs the whole timeline,
+                                // so flooding the queue is what caused the
+                                // mid-scrub jank).
+                                delay(SETTLE_DEBOUNCE_MS)
+                                onBucketsVisible(
+                                    expandWithNeighborBuckets(visible, bucketEntries.bucketOrder)
+                                )
                             }
                     }
 
@@ -592,12 +595,76 @@ private const val SKELETON_TILE_COUNT = 36
 /** Max justified rows per year in the compressed Year view. */
 private const val YEAR_VIEW_MAX_ROWS = 5
 
+/** How long the viewport must hold still before its buckets are fetched. */
+private const val SETTLE_DEBOUNCE_MS = 180L
+
 /**
  * The asset half of a Year-view click: which asset to land on (and which
  * bucket carries it, for the give-up check) once the Month view has the
  * bucket's content in its rows.
  */
 private data class PendingAssetAnchor(val assetId: String, val bucketKey: String)
+
+/**
+ * Snapshot of one full timeline derivation: flattened entries, justified
+ * rows and the LazyColumn key → bucket map. Produced as a unit off the main
+ * thread so the grid swaps atomically from one consistent frame to the next.
+ */
+private data class PackedTimeline(
+    val entries: BucketEntriesResult,
+    val rows: List<JustifiedRowEntry>,
+    val keyToBucket: Map<Any, String>
+)
+
+/** The CPU-heavy derivation pipeline — always called on a background dispatcher. */
+private fun derivePackedTimeline(
+    state: TimelineUiState,
+    localItems: List<com.photonne.app.data.models.TimelineItem>,
+    grouping: TimelineGrouping,
+    containerWidthDp: Float,
+    targetRowHeightDp: Float
+): PackedTimeline {
+    val isYear = grouping == TimelineGrouping.Year
+    val entries = if (isYear) {
+        buildYearSummaryEntries(state.yearSummaries.orEmpty())
+    } else {
+        buildBucketEntries(
+            buckets = state.buckets,
+            localItems = localItems,
+            grouping = grouping,
+            gridIndex = state.gridIndex.orEmpty()
+        )
+    }
+    var rows = packJustifiedRows(
+        entries = entries.entries,
+        containerWidthDp = containerWidthDp,
+        targetRowHeightDp = targetRowHeightDp,
+        spacingDp = 2f
+    )
+    // Year view: cap every year to a fixed number of rows — the header
+    // count says how much more there is, and clicking dives into the month.
+    if (isYear) rows = truncateRowsPerGroup(rows, YEAR_VIEW_MAX_ROWS)
+
+    val keyToBucket = buildMap {
+        rows.forEach { entry ->
+            when (entry) {
+                is JustifiedRowEntry.Row -> {
+                    val first = entry.row.cells.firstOrNull()
+                    if (first != null) {
+                        put(
+                            "r:${assetCellKey(first.item, first.index)}" as Any,
+                            bucketKeyOf(first.item.fileCreatedAt)
+                        )
+                    }
+                }
+                is JustifiedRowEntry.SkeletonRow ->
+                    put("s:${entry.bucketKey}:${entry.rowIndex}", entry.bucketKey)
+                is JustifiedRowEntry.Header -> Unit
+            }
+        }
+    }
+    return PackedTimeline(entries = entries, rows = rows, keyToBucket = keyToBucket)
+}
 
 @Composable
 private fun TimelineEmptyState(onOpenUpload: (() -> Unit)?) {

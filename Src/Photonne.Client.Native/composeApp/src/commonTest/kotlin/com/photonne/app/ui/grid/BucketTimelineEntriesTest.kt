@@ -199,6 +199,57 @@ class BucketTimelineEntriesTest {
     }
 
     @Test
+    fun structure_index_replaces_skeletons_with_placeholder_cells() {
+        val result = buildBucketEntries(
+            buckets = listOf(
+                loaded("2026-02", item("feb-1", "2026-02-20T10:00:00Z")),
+                skeleton("2026-01", 2)
+            ),
+            localItems = emptyList(),
+            grouping = TimelineGrouping.Month,
+            gridIndex = mapOf(
+                "2026-01" to listOf(
+                    com.photonne.app.data.models.TimelineGridItem(
+                        id = "jan-1", type = "Video", date = "2026-01-20",
+                        dominantColor = "#112233", width = 4000, height = 3000
+                    ),
+                    com.photonne.app.data.models.TimelineGridItem(
+                        id = "jan-2", type = "Image", date = "2026-01-05"
+                    )
+                )
+            )
+        )
+
+        // No square skeleton for January — real placeholder cells instead.
+        assertTrue(result.entries.filterIsInstance<TimelineEntry.SkeletonBucket>().isEmpty())
+        val cells = result.entries.filterIsInstance<TimelineEntry.Cell>()
+        assertEquals(listOf("feb-1", "jan-1", "jan-2"), cells.map { it.item.id })
+        // Placeholders carry index -1 and never enter the merged list.
+        assertEquals(listOf(0, -1, -1), cells.map { it.index })
+        assertEquals(listOf("feb-1"), result.mergedItems.map { it.id })
+        // Layout data survives the lift so packing and badges are real.
+        val jan1 = cells.first { it.item.id == "jan-1" }.item
+        assertEquals(4000, jan1.width)
+        assertEquals("#112233", jan1.dominantColor)
+        assertTrue(jan1.isVideo)
+        // Structure-only months still break pager continuity.
+        assertEquals(1, result.loadedRanges.size)
+    }
+
+    @Test
+    fun structure_months_fall_back_to_skeletons_when_absent_from_index() {
+        val result = buildBucketEntries(
+            buckets = listOf(skeleton("2026-01", 7)),
+            localItems = emptyList(),
+            grouping = TimelineGrouping.Month,
+            gridIndex = mapOf("2025-12" to emptyList())
+        )
+
+        val skeletonEntry = result.entries.filterIsInstance<TimelineEntry.SkeletonBucket>().single()
+        assertEquals(7, skeletonEntry.count)
+    }
+
+    @Test
     fun year_summaries_build_one_header_per_year_with_count() {
         val result = buildYearSummaryEntries(
             listOf(

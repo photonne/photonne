@@ -60,6 +60,10 @@ public class TimelineGridEndpoint : IEndpoint
             // FileCreatedAt fallback), matching the main timeline endpoint.
             var rawItems = await TimelineQuery.VisibleAssets(dbContext, allowedIds)
                 .OrderByDescending(a => a.CapturedAt)
+                // Same tiebreaker as the timeline/bucket endpoints, so the
+                // structure index the native client prefetches lines up
+                // item-for-item with the bucket contents that replace it.
+                .ThenByDescending(a => a.FileModifiedAt)
                 .Select(a => new
                 {
                     a.Id,

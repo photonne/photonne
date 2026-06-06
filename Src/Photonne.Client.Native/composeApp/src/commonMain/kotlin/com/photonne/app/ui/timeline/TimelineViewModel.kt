@@ -6,6 +6,7 @@ import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.models.TimelineGridItem
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.timeline.TimelineBucketState
@@ -22,6 +23,8 @@ data class TimelineUiState(
     val buckets: List<TimelineBucketState> = emptyList(),
     /** Compressed yearly view; null until the Year zoom level requests it. */
     val yearSummaries: List<TimelineYearSummary>? = null,
+    /** Whole-library structure index; null until the background fetch lands. */
+    val gridIndex: Map<String, List<TimelineGridItem>>? = null,
     val isInitialLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: UiError? = null,
@@ -57,6 +60,11 @@ class TimelineViewModel(
                 _state.update { it.copy(yearSummaries = summaries) }
             }
         }
+        viewModelScope.launch {
+            store.gridIndex.collect { index ->
+                _state.update { it.copy(gridIndex = index) }
+            }
+        }
         refresh()
     }
 
@@ -74,6 +82,10 @@ class TimelineViewModel(
             runCatching { store.refresh() }
                 .onSuccess {
                     _state.update { it.copy(isInitialLoading = false, isRefreshing = false) }
+                    // Background structure prefetch — pure enhancement, so a
+                    // failure is silent (square skeletons remain the
+                    // fallback) and the next refresh retries it.
+                    viewModelScope.launch { runCatching { store.ensureGridIndex() } }
                 }
                 .onFailure { error ->
                     _state.update {
