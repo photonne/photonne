@@ -26,7 +26,10 @@ var demoEnabled = builder.Configuration
     .GetValue<bool>(nameof(DemoModeOptions.Enabled));
 
 // Cap request body size when running a public demo so a single visitor can't fill
-// the host disk with a giant upload. In normal deployments Kestrel keeps its default.
+// the host disk with a giant upload. In normal deployments the platform limits are
+// lifted entirely — Kestrel defaults to ~28.6 MB and multipart forms to 128 MB,
+// which silently 413'd any large video. The admin-configurable
+// ServerSettings.MaxUploadSizeMb (0 = unlimited) is the real upload policy.
 if (demoEnabled)
 {
     builder.WebHost.ConfigureKestrel(o =>
@@ -34,6 +37,17 @@ if (demoEnabled)
         o.Limits.MaxRequestBodySize = 25L * 1024 * 1024;
     });
 }
+else
+{
+    builder.WebHost.ConfigureKestrel(o =>
+    {
+        o.Limits.MaxRequestBodySize = null;
+    });
+}
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = long.MaxValue;
+});
 
 // Rate limiter is registered ALWAYS so endpoints can declare policies unconditionally.
 // Outside demo mode every policy is a no-op (NoLimiter) — zero runtime overhead.

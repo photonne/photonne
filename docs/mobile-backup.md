@@ -212,6 +212,19 @@ Si corres una imagen anterior (sin entrypoint) o has puesto
 chown -R 1654:1654 /ruta/del/volumen/assets   # o tu PUID:PGID
 ```
 
+### "Archivo demasiado grande" (413) al subir vídeos
+
+Tres límites posibles, en orden de comprobación:
+
+1. **`ServerSettings.MaxUploadSizeMb`** (Admin → Servidor): el único límite de
+   producto. `0` = sin límite (default).
+2. **Plataforma ASP.NET**: en imágenes anteriores a este fix, Kestrel cortaba
+   en ~28,6 MB y multipart en 128 MB aunque `MaxUploadSizeMb` fuera 0.
+   Corregido: fuera del modo demo ambos quedan sin límite. Requiere la imagen
+   actualizada.
+3. **Reverse proxy**: si tienes nginx/traefik/Caddy delante, su límite de body
+   aplica antes de llegar a Photonne (`client_max_body_size` en nginx, p. ej.).
+
 ### "He subido una foto pero no veo el thumbnail"
 
 Normal durante 1-2s post-upload. El worker corre asíncrono. Si pasados varios
