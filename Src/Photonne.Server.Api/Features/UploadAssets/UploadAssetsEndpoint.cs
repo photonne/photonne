@@ -33,6 +33,7 @@ public class UploadAssetsEndpoint : IEndpoint
         [FromServices] FileHashService hashService,
         [FromServices] IEnrichmentService enrichmentService,
         [FromServices] SettingsService settingsService,
+        [FromServices] ILogger<UploadAssetsEndpoint> logger,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -166,6 +167,10 @@ public class UploadAssetsEndpoint : IEndpoint
         }
         catch (Exception ex)
         {
+            // Log the full exception server-side; the client only gets the
+            // message via ProblemDetails, which is not enough to diagnose
+            // I/O or database failures after the fact.
+            logger.LogError(ex, "Upload failed for user {Username}, file {FileName}", username, file.FileName);
             if (File.Exists(tempPath)) File.Delete(tempPath);
             return Results.Problem(ex.Message);
         }
