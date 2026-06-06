@@ -1,6 +1,7 @@
 package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.upload.UploadRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -165,15 +166,32 @@ class DeviceBackupRepository(
             }
         }
 
-        // 3. One bulk lookup over every hashed entry.
+        // 3. One bulk lookup over every hashed entry. `checked` only contains
+        //    the checksums that actually reached the server, so a cancelled
+        //    pass never mislabels unchecked files as NotSynced.
         if (shouldContinue()) {
+            var bulkSupported = true
             val hashedEntries = entries.values.filter { it.sha256 != null }
             val byChecksum = hashedEntries.groupBy { it.sha256!! }
             byChecksum.keys.chunked(CHECKSUM_BATCH).forEach { batch ->
                 if (!shouldContinue()) return@forEach
-                val existing = api.checkChecksums(batch)
-                val verdicts = batch.flatMap { checksum ->
-                    val assetId = existing[checksum]
+                val checked: Map<String, String?> = if (bulkSupported) {
+                    try {
+                        val found = api.checkChecksums(batch)
+                        batch.associateWith { found[it] }
+                    } catch (ex: PhotonneApiException) {
+                        if (ex.status != 404) throw ex
+                        // Older server without /check-checksums (client newer
+                        // than the deployment — common in self-hosted setups).
+                        // Degrade to the legacy per-file lookup for the rest
+                        // of the pass instead of failing the verification.
+                        bulkSupported = false
+                        lookupChecksumsLegacy(batch, shouldContinue)
+                    }
+                } else {
+                    lookupChecksumsLegacy(batch, shouldContinue)
+                }
+                val verdicts = checked.entries.flatMap { (checksum, assetId) ->
                     byChecksum.getValue(checksum).map { entry ->
                         val state = when {
                             assetId != null -> LedgerState.Synced
@@ -198,6 +216,23 @@ class DeviceBackupRepository(
         }
 
         return entries.mapValues { (_, entry) -> entry.toSyncState() }
+    }
+
+    /**
+     * Pre-/check-checksums servers: one GET /api/assets/exists/{hash} per
+     * checksum. Stops early when [shouldContinue] flips, returning only the
+     * checksums it actually verified.
+     */
+    private suspend fun lookupChecksumsLegacy(
+        batch: List<String>,
+        shouldContinue: () -> Boolean
+    ): Map<String, String?> {
+        val results = LinkedHashMap<String, String?>(batch.size)
+        for (checksum in batch) {
+            if (!shouldContinue()) break
+            results[checksum] = api.assetExistsByChecksum(checksum)
+        }
+        return results
     }
 
     /** Records a finished upload so the verdict survives restarts. */
