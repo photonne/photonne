@@ -872,6 +872,10 @@
     <string name="backup_notification_channel">Backup</string>
     <string name="backup_notification_failures_title">Backup incomplete</string>
     <string name="backup_notification_failures_text">%1$d file(s) could not be uploaded. Open Photonne to review them.</string>
+    <string name="backup_failed_dialog_title">Upload error</string>
+    <string name="backup_failed_dialog_no_detail">No additional details from the server.</string>
+    <string name="backup_failed_dialog_retry">Retry</string>
+    <string name="backup_failed_dialog_close">Close</string>
 
     <!-- Background sync preferences -->
     <string name="background_sync_section">Background sync</string>

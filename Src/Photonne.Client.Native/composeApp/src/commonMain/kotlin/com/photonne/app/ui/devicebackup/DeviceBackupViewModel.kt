@@ -8,6 +8,7 @@ import com.photonne.app.data.devicebackup.BackgroundSyncPreferences
 import com.photonne.app.data.devicebackup.BackgroundSyncScheduler
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
 import com.photonne.app.data.devicebackup.UploadFailureReason
+import com.photonne.app.data.devicebackup.toUploadFailureDetail
 import com.photonne.app.data.devicebackup.toUploadFailureReason
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
@@ -405,6 +406,19 @@ class DeviceBackupViewModel(
         syncSelected()
     }
 
+    /** Re-uploads exactly one entry — the failure dialog's retry action. */
+    fun retrySingle(uri: String) {
+        if (_state.value.isSyncing) return
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    entry.copy(isSelected = entry.media.uri == uri)
+                }
+            )
+        }
+        syncSelected()
+    }
+
     /** Uploads every selected entry that isn't already synced. */
     fun syncSelected() {
         if (_state.value.isSyncing) return
@@ -494,7 +508,7 @@ class DeviceBackupViewModel(
                                         e.copy(
                                             syncState = DeviceMediaSyncState.Failed(
                                                 reason = reason,
-                                                detail = error.message
+                                                detail = error.toUploadFailureDetail()
                                             )
                                         )
                                     } else e

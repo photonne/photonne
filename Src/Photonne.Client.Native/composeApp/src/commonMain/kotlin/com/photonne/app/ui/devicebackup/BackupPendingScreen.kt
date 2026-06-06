@@ -59,6 +59,10 @@ import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.backup_failed_dialog_close
+import com.photonne.app.resources.backup_failed_dialog_no_detail
+import com.photonne.app.resources.backup_failed_dialog_retry
+import com.photonne.app.resources.backup_failed_dialog_title
 import com.photonne.app.resources.backup_failure_reason_label
 import com.photonne.app.resources.backup_summary_counts
 import com.photonne.app.resources.backup_summary_title
@@ -86,6 +90,7 @@ fun BackupPendingScreen(
         onPicked = viewModel::onFolderPicked
     )
     var previewStartUri by remember { mutableStateOf<String?>(null) }
+    var failedDialogUri by remember { mutableStateOf<String?>(null) }
 
     if (!state.isSupported) {
         EmptyMessage(stringResource(Res.string.device_backup_not_supported))
@@ -155,6 +160,10 @@ fun BackupPendingScreen(
                             // selection so it matches the existing
                             // multi-select flow.
                             viewModel.toggleSelection(entry.media.uri)
+                        } else if (entry.syncState is DeviceMediaSyncState.Failed) {
+                            // A failed item's most useful action is showing
+                            // WHY it failed, with retry one tap away.
+                            failedDialogUri = entry.media.uri
                         } else {
                             previewStartUri = entry.media.uri
                         }
@@ -185,6 +194,25 @@ fun BackupPendingScreen(
         }
     }
 
+    failedDialogUri?.let { uri ->
+        val entry = state.entries.firstOrNull { it.media.uri == uri }
+        val failedState = entry?.syncState as? DeviceMediaSyncState.Failed
+        if (entry == null || failedState == null) {
+            failedDialogUri = null
+        } else {
+            FailedItemDialog(
+                fileName = entry.media.displayName,
+                reasonLabel = uploadErrorLabel(failedState.reason),
+                detail = failedState.detail,
+                onRetry = {
+                    failedDialogUri = null
+                    viewModel.retrySingle(uri)
+                },
+                onDismiss = { failedDialogUri = null }
+            )
+        }
+    }
+
     val startUri = previewStartUri
     if (startUri != null) {
         val startIndex = state.entries.indexOfFirst { it.media.uri == startUri }
@@ -206,6 +234,58 @@ fun BackupPendingScreen(
             )
         }
     }
+}
+
+/**
+ * Drill-down for a failed upload: the localized category the summary
+ * already shows, plus the raw server/exception detail that explains the
+ * actual cause — the difference between "server error" and a fixable
+ * diagnosis.
+ */
+@Composable
+private fun FailedItemDialog(
+    fileName: String,
+    reasonLabel: String,
+    detail: String?,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.backup_failed_dialog_title)) },
+        text = {
+            Column {
+                Text(
+                    fileName,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    reasonLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    detail ?: stringResource(Res.string.backup_failed_dialog_no_detail),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onRetry) {
+                Text(stringResource(Res.string.backup_failed_dialog_retry))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.backup_failed_dialog_close))
+            }
+        }
+    )
 }
 
 @Composable

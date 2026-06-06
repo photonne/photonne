@@ -1150,14 +1150,10 @@ class PhotonneApiClient(
                 )
             )
         }
-        if (response.status != HttpStatusCode.OK &&
-            response.status != HttpStatusCode.Created
-        ) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Upload failed (${response.status.value})"
-            )
-        }
+        // ensureSuccess keeps the error body (the server reports the real
+        // cause via Results.Problem), so upload failures are diagnosable
+        // from the client instead of showing a bare status code.
+        response.ensureSuccess { "Upload failed ($it)" }
         return response.body()
     }
 

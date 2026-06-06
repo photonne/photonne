@@ -872,6 +872,10 @@
     <string name="backup_notification_channel">Copia de seguridad</string>
     <string name="backup_notification_failures_title">Copia de seguridad incompleta</string>
     <string name="backup_notification_failures_text">%1$d archivo(s) no se pudieron subir. Abre Photonne para revisarlos.</string>
+    <string name="backup_failed_dialog_title">Error de subida</string>
+    <string name="backup_failed_dialog_no_detail">Sin detalles adicionales del servidor.</string>
+    <string name="backup_failed_dialog_retry">Reintentar</string>
+    <string name="backup_failed_dialog_close">Cerrar</string>
 
     <!-- Background sync preferences -->
     <string name="background_sync_section">Sincronización en segundo plano</string>

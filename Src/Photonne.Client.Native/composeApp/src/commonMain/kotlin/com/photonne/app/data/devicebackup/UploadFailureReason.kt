@@ -1,6 +1,10 @@
 package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.PhotonneApiException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Categorizes why an upload failed. The viewmodel/UI map each value to a
@@ -53,6 +57,28 @@ fun Throwable.toUploadFailureReason(): UploadFailureReason {
         name.contains("Socket", ignoreCase = true) -> UploadFailureReason.NetworkError
         else -> UploadFailureReason.Unknown
     }
+}
+
+/**
+ * Human-diagnosable detail for an upload failure: the exception message plus
+ * whatever the server said. The API returns errors as RFC 7807 ProblemDetails
+ * (`Results.Problem(ex.Message)`), so when the body parses as JSON we surface
+ * its `detail`/`title` instead of the raw payload.
+ */
+fun Throwable.toUploadFailureDetail(): String? {
+    val api = this as? PhotonneApiException ?: return message
+    val serverSays = api.responseBody
+        ?.takeIf { it.isNotBlank() }
+        ?.let { raw ->
+            runCatching {
+                val problem = Json.parseToJsonElement(raw).jsonObject
+                problem["detail"]?.jsonPrimitive?.contentOrNull
+                    ?: problem["title"]?.jsonPrimitive?.contentOrNull
+            }.getOrNull() ?: raw
+        }
+    return listOfNotNull(api.message, serverSays)
+        .joinToString("\n")
+        .ifBlank { null }
 }
 
 /**
