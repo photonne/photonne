@@ -187,6 +187,12 @@ data class RetryAllTasksResponse(
 internal data class ExistsByChecksumBody(val assetId: String = "")
 
 @Serializable
+internal data class CheckChecksumsRequest(val checksums: List<String>)
+
+@Serializable
+internal data class CheckChecksumsBody(val existing: Map<String, String> = emptyMap())
+
+@Serializable
 internal data class SetCoverRequest(val assetId: String)
 
 @Serializable
@@ -306,6 +312,14 @@ interface PhotonneApi {
      * propagates as a [PhotonneApiException].
      */
     suspend fun assetExistsByChecksum(sha256: String): String?
+
+    /**
+     * Bulk SHA-256 existence check. Returns a map of checksum → assetId
+     * for the hashes the current user already has; absent checksums do
+     * not exist on the server. The server caps each request at 1000
+     * checksums — callers batch accordingly.
+     */
+    suspend fun checkChecksums(checksums: List<String>): Map<String, String>
     suspend fun getMapPoints(): List<MapPoint>
     suspend fun removeAssetFromAlbum(albumId: String, assetId: String)
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
@@ -1160,6 +1174,22 @@ class PhotonneApiClient(
                 message = "Hash lookup failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun checkChecksums(checksums: List<String>): Map<String, String> {
+        if (checksums.isEmpty()) return emptyMap()
+        val response: HttpResponse = client.post("$baseUrl/api/assets/check-checksums") {
+            contentType(ContentType.Application.Json)
+            setBody(CheckChecksumsRequest(checksums))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Bulk hash lookup failed (${response.status.value})"
+            )
+        }
+        val body: CheckChecksumsBody = response.body()
+        return body.existing
     }
 
     override suspend fun getMapPoints(): List<MapPoint> {

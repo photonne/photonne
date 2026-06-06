@@ -88,6 +88,20 @@ class DeviceBackupStateStore(private val settings: Settings) {
             requireCharging = requireCharging()
         )
 
+    // ─── Last completed pass ─────────────────────────────────────────────────
+    // Outcome of the most recent backup pass (manual or background), so the
+    // status card can answer "when did this last actually run, and how did it
+    // go?" without the user digging through logs.
+
+    fun lastRun(): LastBackupRun? {
+        val raw = settings.getStringOrNull(KEY_LAST_RUN) ?: return null
+        return runCatching { json.decodeFromString<LastBackupRun>(raw) }.getOrNull()
+    }
+
+    fun recordLastRun(run: LastBackupRun) {
+        settings.putString(KEY_LAST_RUN, json.encodeToString(run))
+    }
+
     private companion object {
         const val KEY_FOLDER = "device_backup.folder"
         const val KEY_MEDIA_CACHE = "device_backup.media_cache"
@@ -95,8 +109,20 @@ class DeviceBackupStateStore(private val settings: Settings) {
         const val KEY_AUTO_BACKUP = "device_backup.auto_enabled"
         const val KEY_REQUIRE_WIFI = "device_backup.require_wifi"
         const val KEY_REQUIRE_CHARGING = "device_backup.require_charging"
+        const val KEY_LAST_RUN = "device_backup.last_run"
     }
 }
+
+/** Outcome of the most recent completed backup pass, manual or background. */
+@Serializable
+data class LastBackupRun(
+    val finishedAtMillis: Long,
+    val uploaded: Int,
+    val skipped: Int,
+    val failed: Int,
+    /** True when the pass came from WorkManager/BGTaskScheduler. */
+    val background: Boolean
+)
 
 /** Persisted device-scan cache: the media list tagged with the folder it
  *  came from, so a scan from a different folder is never served stale. */

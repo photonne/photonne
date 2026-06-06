@@ -8,6 +8,15 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
+}
+
+sqldelight {
+    databases {
+        create("PhotonneDatabase") {
+            packageName.set("com.photonne.app.db")
+        }
+    }
 }
 
 val photonneVersion: String = readPhotonneVersion()
@@ -86,6 +95,8 @@ kotlin {
 
             implementation(libs.multiplatform.settings)
 
+            implementation(libs.sqldelight.runtime)
+
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
 
@@ -109,6 +120,7 @@ kotlin {
             implementation(libs.androidx.media3.ui)
             implementation(libs.androidx.media3.datasource.okhttp)
             implementation(libs.androidx.work.runtime)
+            implementation(libs.sqldelight.android.driver)
             // Decodes a poster frame from a content:// / file:// video so device
             // videos pending upload show a thumbnail instead of a fallback icon.
             implementation(libs.coil.video)
@@ -116,6 +128,7 @@ kotlin {
 
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(libs.sqldelight.native.driver)
         }
 
         val desktopMain by getting {
@@ -124,6 +137,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.multiplatform.settings.no.arg)
+                implementation(libs.sqldelight.sqlite.driver)
             }
         }
     }

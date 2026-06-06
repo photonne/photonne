@@ -124,13 +124,16 @@ fun commonModule(config: PhotonneAppConfig) = module {
     singleOf(::AccountRepository)
     singleOf(::AdminRepository)
     single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }
+    single { com.photonne.app.db.PhotonneDatabase(com.photonne.app.data.db.createPhotonneDatabaseDriver()) }
+    single { com.photonne.app.data.devicebackup.BackupLedger(get()) }
     single { com.photonne.app.data.devicebackup.DeviceBackupStateStore(get()) }
     single {
         com.photonne.app.data.devicebackup.DeviceBackupRepository(
             gallery = get(),
             api = get(),
             uploads = get(),
-            stateStore = get()
+            stateStore = get(),
+            ledger = get()
         )
     }
     single { com.photonne.app.data.devicebackup.EnrichmentRepository(get()) }

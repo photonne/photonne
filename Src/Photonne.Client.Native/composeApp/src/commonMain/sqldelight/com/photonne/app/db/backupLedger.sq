@@ -1,0 +1,81 @@
+-- Per-media-item sync ledger for the device backup flow.
+--
+-- One row per file under the user-picked backup folder. The
+-- (sizeBytes, dateModifiedMillis) pair is the fingerprint: while it
+-- matches the on-disk file we trust the stored sha256 + verdict and
+-- never re-hash. When it changes, the row is reset to UNKNOWN and the
+-- file re-enters the verification pipeline.
+--
+-- syncState values: 'UNKNOWN' | 'NOT_SYNCED' | 'SYNCED' | 'FAILED'
+
+CREATE TABLE backupLedger (
+    folderUri TEXT NOT NULL,
+    uri TEXT NOT NULL,
+    sizeBytes INTEGER NOT NULL,
+    dateModifiedMillis INTEGER NOT NULL,
+    sha256 TEXT,
+    syncState TEXT NOT NULL DEFAULT 'UNKNOWN',
+    assetId TEXT,
+    failureReason TEXT,
+    lastVerifiedAtMillis INTEGER,
+    PRIMARY KEY (folderUri, uri)
+);
+
+CREATE INDEX backupLedger_state ON backupLedger(folderUri, syncState);
+
+-- Key/value side table; today it only stores the account scope
+-- (server + username) the ledger was built against, so verdicts from
+-- a different account/server are never reused.
+CREATE TABLE ledgerMeta (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+selectByFolder:
+SELECT * FROM backupLedger WHERE folderUri = ?;
+
+selectByState:
+SELECT * FROM backupLedger WHERE folderUri = ? AND syncState = ?;
+
+countByState:
+SELECT syncState, COUNT(*) AS total FROM backupLedger
+WHERE folderUri = ?
+GROUP BY syncState;
+
+insertEntry:
+INSERT OR REPLACE INTO backupLedger(
+    folderUri, uri, sizeBytes, dateModifiedMillis,
+    sha256, syncState, assetId, failureReason, lastVerifiedAtMillis
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+setHash:
+UPDATE backupLedger SET sha256 = ? WHERE folderUri = ? AND uri = ?;
+
+setVerdict:
+UPDATE backupLedger
+SET syncState = ?, assetId = ?, failureReason = NULL, lastVerifiedAtMillis = ?
+WHERE folderUri = ? AND uri = ?;
+
+setFailure:
+UPDATE backupLedger
+SET syncState = 'FAILED', failureReason = ?
+WHERE folderUri = ? AND uri = ?;
+
+deleteByUris:
+DELETE FROM backupLedger WHERE folderUri = ? AND uri IN ?;
+
+clearFolder:
+DELETE FROM backupLedger WHERE folderUri = ?;
+
+clearAll:
+DELETE FROM backupLedger;
+
+selectMeta:
+SELECT value FROM ledgerMeta WHERE key = ?;
+
+upsertMeta:
+INSERT OR REPLACE INTO ledgerMeta(key, value) VALUES (?, ?);
+
+clearMeta:
+DELETE FROM ledgerMeta;

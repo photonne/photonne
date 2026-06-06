@@ -2,7 +2,15 @@ package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.upload.UploadRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -24,7 +32,8 @@ class DeviceBackupRepository(
     private val gallery: DeviceGallery,
     private val api: PhotonneApi,
     private val uploads: UploadRepository,
-    private val stateStore: DeviceBackupStateStore
+    private val stateStore: DeviceBackupStateStore,
+    private val ledger: BackupLedger
 ) {
 
     val isSupported: Boolean get() = gallery.isSupported
@@ -88,6 +97,125 @@ class DeviceBackupRepository(
         return hash to state
     }
 
+    // ─── Incremental verification (ledger-backed) ────────────────────────────
+
+    /** Progress of a [verifyAgainstServer] pass. Hashing dominates the cost,
+     *  so [hashedCount]/[hashTotal] is what a progress bar should show. */
+    data class VerificationProgress(
+        val hashedCount: Int,
+        val hashTotal: Int
+    )
+
+    /** Last persisted verdict per uri — instant, no hashing, no network.
+     *  Lets the UI seed sync badges the moment a folder scan completes. */
+    fun syncStatesFor(folder: DeviceFolderRef): Map<String, DeviceMediaSyncState> =
+        ledger.entries(folder.uri).mapValues { (_, entry) -> entry.toSyncState() }
+
+    /**
+     * Brings the ledger up to date against a fresh [scanned] folder listing:
+     *
+     * 1. Reconcile — new/changed files reset to UNKNOWN, deleted rows drop.
+     * 2. Hash — SHA-256 only the files without a valid stored hash.
+     * 3. Bulk-check — ONE server round-trip per [CHECKSUM_BATCH] hashes,
+     *    covering every hashed entry (so server-side deletions or uploads
+     *    from another client are picked up on every pass, not just for
+     *    new files).
+     *
+     * Cancellation via [shouldContinue] is cheap: everything done so far is
+     * already persisted, so the next pass resumes where this one stopped.
+     *
+     * Returns the resulting sync state per uri.
+     */
+    suspend fun verifyAgainstServer(
+        folder: DeviceFolderRef,
+        scanned: List<DeviceMedia>,
+        onProgress: ((VerificationProgress) -> Unit)? = null,
+        shouldContinue: () -> Boolean = { true }
+    ): Map<String, DeviceMediaSyncState> {
+        val entries = ledger.reconcile(folder.uri, scanned).toMutableMap()
+        val mediaByUri = scanned.associateBy { it.uri }
+
+        // 2. Hash anything the ledger doesn't have a valid hash for. Files
+        //    hash in parallel (bounded — hashing is CPU+IO, not network), but
+        //    ledger writes and progress updates stay serialized.
+        val needHash = entries.values.filter { it.sha256 == null }
+        onProgress?.invoke(VerificationProgress(0, needHash.size))
+        if (needHash.isNotEmpty()) {
+            val permits = Semaphore(HASH_CONCURRENCY)
+            val writes = Mutex()
+            var hashed = 0
+            coroutineScope {
+                needHash.map { entry ->
+                    async(Dispatchers.Default) {
+                        if (!shouldContinue()) return@async
+                        permits.withPermit {
+                            if (!shouldContinue()) return@withPermit
+                            val media = mediaByUri[entry.uri] ?: return@withPermit
+                            val hash = runCatching { gallery.computeSha256(media) }
+                                .getOrNull() ?: return@withPermit
+                            writes.withLock {
+                                ledger.setHash(folder.uri, entry.uri, hash)
+                                entries[entry.uri] = entry.copy(sha256 = hash)
+                                hashed++
+                                onProgress?.invoke(VerificationProgress(hashed, needHash.size))
+                            }
+                        }
+                    }
+                }.awaitAll()
+            }
+        }
+
+        // 3. One bulk lookup over every hashed entry.
+        if (shouldContinue()) {
+            val hashedEntries = entries.values.filter { it.sha256 != null }
+            val byChecksum = hashedEntries.groupBy { it.sha256!! }
+            byChecksum.keys.chunked(CHECKSUM_BATCH).forEach { batch ->
+                if (!shouldContinue()) return@forEach
+                val existing = api.checkChecksums(batch)
+                val verdicts = batch.flatMap { checksum ->
+                    val assetId = existing[checksum]
+                    byChecksum.getValue(checksum).map { entry ->
+                        val state = when {
+                            assetId != null -> LedgerState.Synced
+                            // A confirmed upload failure is more useful to
+                            // surface than a generic "not synced".
+                            entry.state == LedgerState.Failed -> LedgerState.Failed
+                            else -> LedgerState.NotSynced
+                        }
+                        Triple(entry.uri, state, assetId)
+                    }
+                }
+                ledger.setVerdicts(folder.uri, verdicts.filter { it.second != LedgerState.Failed })
+                verdicts.forEach { (uri, state, assetId) ->
+                    entries[uri]?.let {
+                        entries[uri] = it.copy(
+                            state = state,
+                            assetId = assetId ?: it.assetId.takeIf { _ -> state == LedgerState.Synced }
+                        )
+                    }
+                }
+            }
+        }
+
+        return entries.mapValues { (_, entry) -> entry.toSyncState() }
+    }
+
+    /** Records a finished upload so the verdict survives restarts. */
+    fun markUploaded(folder: DeviceFolderRef, uri: String, assetId: String) {
+        ledger.markUploaded(folder.uri, uri, assetId)
+    }
+
+    /** Records a failed upload so the failure is visible after restart too. */
+    fun markUploadFailed(folder: DeviceFolderRef, uri: String, reason: UploadFailureReason) {
+        ledger.markUploadFailed(folder.uri, uri, reason)
+    }
+
+    // ─── Last completed pass ─────────────────────────────────────────────────
+
+    fun lastRun(): LastBackupRun? = stateStore.lastRun()
+
+    fun recordLastRun(run: LastBackupRun) = stateStore.recordLastRun(run)
+
     /**
      * Reads [media] in full and posts it to the server. The server
      * dedupes by SHA-256 itself, so if the hash check above raced the
@@ -134,6 +262,13 @@ class DeviceBackupRepository(
     companion object {
         const val MOBILE_BACKUP_DESTINATION = "mobile-backup"
         const val DEFAULT_MAX_ATTEMPTS = 3
+
+        // Server caps /check-checksums at 1000 hashes per request; stay under.
+        const val CHECKSUM_BATCH = 500
+
+        // Parallel SHA-256 workers during verification. Bounded so a phone
+        // doesn't read 4+ large videos into the hash pipeline at once.
+        const val HASH_CONCURRENCY = 4
 
         // Backoff between client-side upload retries. Index = attempt number
         // (0-based) of the FAILED attempt — delay BEFORE the next try.
