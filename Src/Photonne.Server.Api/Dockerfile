@@ -6,7 +6,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-USER $APP_UID
+# No USER directive: the entrypoint starts as root to fix data-volume
+# ownership (PUID/PGID remap + chown of /data/*), then drops to `app`
+# via setpriv before launching the server.
 WORKDIR /app
 EXPOSE 8080
 
@@ -29,4 +31,6 @@ RUN dotnet publish "Photonne.Server.Api.csproj" -c $BUILD_CONFIGURATION -o /app/
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Photonne.Server.Api.dll"]
+COPY Src/Photonne.Server.Api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

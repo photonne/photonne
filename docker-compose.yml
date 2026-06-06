@@ -22,6 +22,13 @@ services:
       - Ml__SceneClassification__Enabled=${SCENE_CLASSIFICATION_ENABLED:-${SCENE_RECOGNITION_ENABLED:-true}}
       - Ml__ServiceUrl=${ML_SERVICE_URL:-${FACE_SERVICE_URL:-http://photonne-ml:8000}}
       - Ml__TextRecognition__Enabled=${TEXT_RECOGNITION_ENABLED:-true}
+      # Run the server as this uid/gid (NAS convention). On boot the
+      # entrypoint also fixes the ownership of /data/* so uploads can
+      # always create their folders; set PHOTONNE_SKIP_CHOWN=1 to manage
+      # permissions yourself on very large libraries.
+      - PUID=${PUID:-1654}
+      - PGID=${PGID:-1654}
+      - PHOTONNE_SKIP_CHOWN=${PHOTONNE_SKIP_CHOWN:-0}
     volumes:
       - ${ASSETS_HOST_PATH:-./data/photos}:/data/assets
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails

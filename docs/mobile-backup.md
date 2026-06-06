@@ -189,6 +189,29 @@ están rate-limited por `demo-upload`.
 
 ## Troubleshooting
 
+### "Access to the path '/data/assets/…' is denied" al subir
+
+El volumen de assets pertenece a un uid distinto del que usa el servidor
+dentro del contenedor, así que no puede crear carpetas nuevas (p. ej.
+`MobileBackup/<dispositivo>`). Desde la imagen con entrypoint propio esto
+se corrige solo: el contenedor arranca como root, ajusta la propiedad de
+`/data/assets` y `/data/thumbnails` y baja privilegios al usuario `app`
+antes de lanzar el servidor.
+
+Variables relacionadas (en `docker-compose.yml` o `.env`):
+
+| Variable | Default | Uso |
+|---|---|---|
+| `PUID` / `PGID` | `1654` | uid/gid con el que corre el servidor y quedan los ficheros. Ponlos al uid/gid de tu usuario del NAS si compartes el volumen con otros servicios. |
+| `PHOTONNE_SKIP_CHOWN` | `0` | A `1` para saltarte el ajuste de permisos en el arranque (bibliotecas enormes donde prefieres gestionarlos tú). |
+
+Si corres una imagen anterior (sin entrypoint) o has puesto
+`PHOTONNE_SKIP_CHOWN=1`, el arreglo manual en el host es:
+
+```bash
+chown -R 1654:1654 /ruta/del/volumen/assets   # o tu PUID:PGID
+```
+
 ### "He subido una foto pero no veo el thumbnail"
 
 Normal durante 1-2s post-upload. El worker corre asíncrono. Si pasados varios
