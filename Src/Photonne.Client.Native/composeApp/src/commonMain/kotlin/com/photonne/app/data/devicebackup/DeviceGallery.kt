@@ -46,12 +46,18 @@ expect class DeviceGallery {
     suspend fun computeSha256(media: DeviceMedia): String
 
     /**
-     * Load the entire payload into memory ready to hand to
-     * `UploadRepository.upload`. Caller is expected to release the
-     * `ByteArray` reference quickly so the GC can reclaim it before
-     * the next file's bytes are loaded.
+     * Opens [media] as a streaming [kotlinx.io.Source] and runs [block]
+     * with it plus the exact byte count. The platform owns the resource
+     * lifecycle (stream close, security scope, temp-file cleanup), which
+     * is why this is scoped instead of returning the source: large videos
+     * must never be loaded into memory — a 500 MB allocation OOMs the
+     * Android heap outright. The source is single-use; callers retrying
+     * an upload call this again per attempt.
      */
-    suspend fun readBytes(media: DeviceMedia): ByteArray
+    suspend fun <T> withUploadSource(
+        media: DeviceMedia,
+        block: suspend (source: kotlinx.io.Source, sizeBytes: Long) -> T
+    ): T
 
     /**
      * Returns an opaque value that Coil can resolve to a thumbnail.

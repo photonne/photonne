@@ -14,6 +14,9 @@ import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.Source
+import kotlinx.io.asSource
+import kotlinx.io.buffered
 import java.security.MessageDigest
 
 /**
@@ -120,14 +123,23 @@ actual class DeviceGallery(private val context: Context) {
             digest.digest().toHexLower()
         }
 
-    actual suspend fun readBytes(media: DeviceMedia): ByteArray =
-        withContext(Dispatchers.IO) {
-            val uri = Uri.parse(media.uri)
-            context.contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "Cannot open ${media.displayName} for upload" }
-                input.readBytes()
-            }
+    actual suspend fun <T> withUploadSource(
+        media: DeviceMedia,
+        block: suspend (source: Source, sizeBytes: Long) -> T
+    ): T = withContext(Dispatchers.IO) {
+        val uri = Uri.parse(media.uri)
+        // statSize gives the authoritative byte count even when the scan
+        // metadata went stale; fall back to the scanned size for providers
+        // that can't stat.
+        val sizeBytes = runCatching {
+            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+        }.getOrNull()?.takeIf { it >= 0 } ?: media.sizeBytes
+        val input = context.contentResolver.openInputStream(uri)
+            ?: throw DeviceGalleryUnavailable("Cannot open ${media.displayName} for upload")
+        input.use { stream ->
+            block(stream.asSource().buffered(), sizeBytes)
         }
+    }
 
     actual fun thumbnailModel(media: DeviceMedia): String = media.uri
 }

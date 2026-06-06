@@ -50,6 +50,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
+import io.ktor.client.request.forms.InputProvider
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.http.ContentType
@@ -287,6 +288,21 @@ interface PhotonneApi {
         fileName: String,
         mimeType: String,
         bytes: ByteArray,
+        destination: String? = null,
+        deviceName: String? = null
+    ): UploadAssetResponse
+
+    /**
+     * Streaming variant of [uploadAsset]: the multipart body is read from
+     * [source] on the fly instead of a ByteArray, keeping memory flat for
+     * large videos (a 500 MB allocation OOMs Android outright). [source]
+     * is consumed once; callers retrying must supply a fresh one.
+     */
+    suspend fun uploadAssetStream(
+        fileName: String,
+        mimeType: String,
+        source: kotlinx.io.Source,
+        sizeBytes: Long,
         destination: String? = null,
         deviceName: String? = null
     ): UploadAssetResponse
@@ -1153,6 +1169,45 @@ class PhotonneApiClient(
         // ensureSuccess keeps the error body (the server reports the real
         // cause via Results.Problem), so upload failures are diagnosable
         // from the client instead of showing a bare status code.
+        response.ensureSuccess { "Upload failed ($it)" }
+        return response.body()
+    }
+
+    override suspend fun uploadAssetStream(
+        fileName: String,
+        mimeType: String,
+        source: kotlinx.io.Source,
+        sizeBytes: Long,
+        destination: String?,
+        deviceName: String?
+    ): UploadAssetResponse {
+        val parsedType = runCatching { ContentType.parse(mimeType) }
+            .getOrDefault(ContentType.Application.OctetStream)
+        val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            key = "file",
+                            value = InputProvider(sizeBytes) { source },
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, parsedType.toString())
+                                append(
+                                    HttpHeaders.ContentDisposition,
+                                    "filename=\"${fileName.replace("\"", "")}\""
+                                )
+                            }
+                        )
+                        if (!destination.isNullOrBlank()) {
+                            append("destination", destination)
+                        }
+                        if (!deviceName.isNullOrBlank()) {
+                            append("deviceName", deviceName)
+                        }
+                    }
+                )
+            )
+        }
         response.ensureSuccess { "Upload failed ($it)" }
         return response.body()
     }

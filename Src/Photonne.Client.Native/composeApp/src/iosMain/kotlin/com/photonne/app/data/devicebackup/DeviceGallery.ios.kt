@@ -11,8 +11,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.io.Source
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import platform.Foundation.NSData
 import platform.Foundation.NSError
+import platform.Foundation.NSFileHandle
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSUUID
+import platform.Foundation.closeFile
+import platform.Foundation.fileHandleForWritingAtPath
+import platform.Foundation.writeData
 import platform.Foundation.NSMutableArray
 import platform.Foundation.NSSortDescriptor
 import platform.Foundation.timeIntervalSince1970
@@ -115,31 +126,37 @@ actual class DeviceGallery {
         return digest.digest().toLowerHex()
     }
 
-    actual suspend fun readBytes(media: DeviceMedia): ByteArray {
+    actual suspend fun <T> withUploadSource(
+        media: DeviceMedia,
+        block: suspend (source: Source, sizeBytes: Long) -> T
+    ): T {
         val asset = resolveAsset(media.uri)
             ?: throw DeviceGalleryUnavailable("Asset not found for ${media.displayName}")
         val resource = primaryResource(asset)
             ?: throw DeviceGalleryUnavailable("No data resource for ${media.displayName}")
-        val chunks = mutableListOf<ByteArray>()
-        var total = 0
-        streamResourceData(resource) { data ->
-            val len = data.length.toInt()
-            if (len == 0) return@streamResourceData
-            val src = data.bytes ?: return@streamResourceData
-            val buf = ByteArray(len)
-            buf.usePinned { pinned ->
-                memcpy(pinned.addressOf(0), src, len.toULong())
+
+        // PhotoKit only hands data out in push-style chunks, so spill them
+        // to a temp file and serve the upload from a plain seekable source —
+        // RAM usage stays flat no matter how big the video is.
+        val tmpPath = NSTemporaryDirectory() + "photonne-upload-" + NSUUID().UUIDString
+        NSFileManager.defaultManager.createFileAtPath(tmpPath, contents = null, attributes = null)
+        val handle = NSFileHandle.fileHandleForWritingAtPath(tmpPath)
+            ?: throw DeviceGalleryUnavailable("Cannot create temp file for ${media.displayName}")
+        try {
+            streamResourceData(resource) { data -> handle.writeData(data) }
+        } finally {
+            handle.closeFile()
+        }
+
+        val path = Path(tmpPath)
+        try {
+            val sizeBytes = SystemFileSystem.metadataOrNull(path)?.size ?: media.sizeBytes
+            return SystemFileSystem.source(path).buffered().use { source ->
+                block(source, sizeBytes)
             }
-            chunks += buf
-            total += len
+        } finally {
+            runCatching { SystemFileSystem.delete(path, mustExist = false) }
         }
-        val out = ByteArray(total)
-        var offset = 0
-        for (chunk in chunks) {
-            chunk.copyInto(out, destinationOffset = offset)
-            offset += chunk.size
-        }
-        return out
     }
 
     actual fun thumbnailModel(media: DeviceMedia): String = media.uri

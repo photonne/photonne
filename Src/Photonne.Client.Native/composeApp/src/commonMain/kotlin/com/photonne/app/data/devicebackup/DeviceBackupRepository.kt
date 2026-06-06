@@ -257,30 +257,34 @@ class DeviceBackupRepository(
     fun recordLastRun(run: LastBackupRun) = stateStore.recordLastRun(run)
 
     /**
-     * Reads [media] in full and posts it to the server. The server
-     * dedupes by SHA-256 itself, so if the hash check above raced the
-     * upload still ends with the right asset id.
+     * Streams [media] to the server without ever holding the payload in
+     * memory — large videos OOM the Android heap if read into a ByteArray.
+     * The server dedupes by SHA-256 itself, so if the hash check above
+     * raced the upload still ends with the right asset id.
      *
      * Transient failures (network, 5xx, 429) are retried with exponential
-     * backoff up to [maxAttempts] times. Permanent failures (quota, oversize,
-     * forbidden, unauthorized) bail immediately so we don't keep retrying
-     * something the server will never accept.
+     * backoff up to [maxAttempts] times, re-opening the source each try.
+     * Permanent failures (quota, oversize, forbidden, unauthorized) bail
+     * immediately so we don't keep retrying something the server will
+     * never accept.
      */
     suspend fun upload(
         media: DeviceMedia,
         maxAttempts: Int = DEFAULT_MAX_ATTEMPTS
     ): com.photonne.app.data.api.UploadAssetResponse {
-        val bytes = gallery.readBytes(media)
         var lastError: Throwable? = null
         repeat(maxAttempts) { attempt ->
             try {
-                return uploads.upload(
-                    fileName = media.displayName,
-                    mimeType = media.mimeType,
-                    bytes = bytes,
-                    destination = MOBILE_BACKUP_DESTINATION,
-                    deviceName = currentDeviceName()
-                )
+                return gallery.withUploadSource(media) { source, sizeBytes ->
+                    uploads.uploadStream(
+                        fileName = media.displayName,
+                        mimeType = media.mimeType,
+                        source = source,
+                        sizeBytes = sizeBytes,
+                        destination = MOBILE_BACKUP_DESTINATION,
+                        deviceName = currentDeviceName()
+                    )
+                }
             } catch (ex: Throwable) {
                 lastError = ex
                 if (!ex.toUploadFailureReason().isRetryable) {

@@ -6,6 +6,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.Source
+import kotlinx.io.asSource
+import kotlinx.io.buffered
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
@@ -81,10 +84,15 @@ actual class DeviceGallery {
             digest.digest().joinToString("") { "%02x".format(it) }
         }
 
-    actual suspend fun readBytes(media: DeviceMedia): ByteArray =
-        withContext(Dispatchers.IO) {
-            File(URI(media.uri)).readBytes()
+    actual suspend fun <T> withUploadSource(
+        media: DeviceMedia,
+        block: suspend (source: Source, sizeBytes: Long) -> T
+    ): T = withContext(Dispatchers.IO) {
+        val file = File(URI(media.uri))
+        file.inputStream().use { stream ->
+            block(stream.asSource().buffered(), file.length())
         }
+    }
 
     actual fun thumbnailModel(media: DeviceMedia): String = media.uri
 
