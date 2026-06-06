@@ -50,7 +50,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
-import io.ktor.client.request.forms.InputProvider
+import io.ktor.client.request.forms.ChannelProvider
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.http.ContentType
@@ -58,9 +58,15 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.close
 import io.ktor.utils.io.readUTF8Line
+import io.ktor.utils.io.writeFully
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -1180,36 +1186,66 @@ class PhotonneApiClient(
         sizeBytes: Long,
         destination: String?,
         deviceName: String?
-    ): UploadAssetResponse {
+    ): UploadAssetResponse = coroutineScope {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
-        val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
-            setBody(
-                MultiPartFormDataContent(
-                    formData {
-                        append(
-                            key = "file",
-                            value = InputProvider(sizeBytes) { source },
-                            headers = Headers.build {
-                                append(HttpHeaders.ContentType, parsedType.toString())
-                                append(
-                                    HttpHeaders.ContentDisposition,
-                                    "filename=\"${fileName.replace("\"", "")}\""
-                                )
-                            }
-                        )
-                        if (!destination.isNullOrBlank()) {
-                            append("destination", destination)
-                        }
-                        if (!deviceName.isNullOrBlank()) {
-                            append("deviceName", deviceName)
-                        }
-                    }
-                )
-            )
+
+        // Ktor 3.0.x's InputProvider path slurps the WHOLE Input into the
+        // channel's write buffer in one writePacket() call — a 500 MB video
+        // OOMs the app even though we hand it a streaming source. The
+        // ChannelProvider path streams chunk-by-chunk with backpressure, so
+        // we pump the source into a bounded ByteChannel ourselves.
+        val channel = ByteChannel()
+        // Default (not the caller's) dispatcher: source reads block on disk
+        // I/O and the caller may be on Main. Android's gallery already wraps
+        // uploads in Dispatchers.IO; Default keeps iOS/desktop off Main too.
+        val pump = launch(Dispatchers.Default) {
+            try {
+                val buffer = ByteArray(UPLOAD_COPY_CHUNK)
+                while (true) {
+                    val read = source.readAtMostTo(buffer, 0, buffer.size)
+                    if (read == -1) break
+                    channel.writeFully(buffer, 0, read)
+                }
+                channel.flushAndClose()
+            } catch (cause: Throwable) {
+                channel.close(cause)
+            }
         }
-        response.ensureSuccess { "Upload failed ($it)" }
-        return response.body()
+
+        try {
+            val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append(
+                                key = "file",
+                                value = ChannelProvider(sizeBytes) { channel },
+                                headers = Headers.build {
+                                    append(HttpHeaders.ContentType, parsedType.toString())
+                                    append(
+                                        HttpHeaders.ContentDisposition,
+                                        "filename=\"${fileName.replace("\"", "")}\""
+                                    )
+                                }
+                            )
+                            if (!destination.isNullOrBlank()) {
+                                append("destination", destination)
+                            }
+                            if (!deviceName.isNullOrBlank()) {
+                                append("deviceName", deviceName)
+                            }
+                        }
+                    )
+                )
+            }
+            response.ensureSuccess { "Upload failed ($it)" }
+            response.body()
+        } finally {
+            // If the server replied without draining the body (e.g. an early
+            // 4xx), the pump is parked on backpressure — release it.
+            pump.cancel()
+        }
     }
 
     override suspend fun assetExistsByChecksum(sha256: String): String? {
@@ -2753,6 +2789,11 @@ class PhotonneApiClient(
             ignoreUnknownKeys = true
             isLenient = true
         }
+
+        /** Chunk size for pumping an upload source into the multipart
+         *  channel — small enough to keep memory flat, big enough to not
+         *  bottleneck disk reads. */
+        const val UPLOAD_COPY_CHUNK = 64 * 1024
     }
 }
 
