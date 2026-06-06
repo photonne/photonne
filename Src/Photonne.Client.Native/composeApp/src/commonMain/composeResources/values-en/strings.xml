@@ -49,6 +49,7 @@
     <string name="timeline_empty_subtitle">Index a folder from the web app or upload your first photos.</string>
     <string name="timeline_empty_action_upload">Upload photos</string>
     <string name="timeline_device_loading">Finding device photos…</string>
+    <string name="timeline_scroll_to_top">Back to top</string>
     <string name="timeline_memories_section">Memories</string>
     <string name="timeline_memories_one_year_ago">1 year ago</string>
     <string name="timeline_memories_years_ago">%1$d years ago</string>

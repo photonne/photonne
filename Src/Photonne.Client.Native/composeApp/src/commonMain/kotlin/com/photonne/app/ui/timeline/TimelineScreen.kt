@@ -1,5 +1,10 @@
 package com.photonne.app.ui.timeline
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,11 +22,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -49,6 +58,7 @@ import com.photonne.app.data.settings.TimelineZoomLevel
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_device_loading
+import com.photonne.app.resources.timeline_scroll_to_top
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
@@ -76,6 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -501,6 +512,16 @@ fun TimelineScreen(
                         onDraggingChange = { dragging -> isScrubbing = dragging },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     )
+
+                    // Bottom-center so it never collides with the scrubber
+                    // handle riding the right edge.
+                    ScrollToTopButton(
+                        gridState = gridState,
+                        suppressed = isScrubbing || state.isSelectionActive,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 16.dp)
+                    )
                 }
             }
             state.error?.let {
@@ -549,6 +570,85 @@ private fun DeviceScanIndicator(modifier: Modifier = Modifier) {
         }
     }
 }
+
+/**
+ * Floating "back to top" pill. Follows the scrubber's rhythm — appears
+ * while the list is scrolling (once a few screens deep) and fades out
+ * after a pause — so the overlay chrome comes and goes as one. Tapping
+ * teleports near the top and animates the last stretch; animating the
+ * whole way would compose thousands of rows for nothing.
+ */
+@Composable
+private fun ScrollToTopButton(
+    gridState: LazyListState,
+    /** Hidden while scrubbing or selecting, where it would just be noise. */
+    suppressed: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    val pastThreshold by remember {
+        derivedStateOf { gridState.firstVisibleItemIndex > SCROLL_TO_TOP_MIN_INDEX }
+    }
+    val active = pastThreshold && gridState.isScrollInProgress
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(active, pastThreshold) {
+        when {
+            active -> visible = true
+            !pastThreshold -> visible = false
+            else -> {
+                delay(1500)
+                visible = false
+            }
+        }
+    }
+    AnimatedVisibility(
+        visible = visible && !suppressed,
+        enter = fadeIn() + scaleIn(initialScale = 0.8f),
+        exit = fadeOut() + scaleOut(targetScale = 0.8f),
+        modifier = modifier
+    ) {
+        Surface(
+            onClick = {
+                scope.launch {
+                    runCatching {
+                        if (gridState.firstVisibleItemIndex > SCROLL_TO_TOP_SNAP_INDEX) {
+                            gridState.scrollToItem(SCROLL_TO_TOP_SNAP_INDEX)
+                        }
+                        gridState.animateScrollToItem(0)
+                    }
+                }
+            },
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 3.dp,
+            shadowElevation = 2.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = stringResource(Res.string.timeline_scroll_to_top),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** Rows scrolled past before the back-to-top pill can appear (~3 screens). */
+private const val SCROLL_TO_TOP_MIN_INDEX = 24
+
+/** Where the tap teleports to before animating the rest of the way up. */
+private const val SCROLL_TO_TOP_SNAP_INDEX = 12
 
 /**
  * Returns the next-most-zoomed-in level. Levels are ordered Year (most
