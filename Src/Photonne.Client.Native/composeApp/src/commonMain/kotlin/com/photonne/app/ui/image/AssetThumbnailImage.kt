@@ -57,7 +57,19 @@ fun AssetThumbnailImage(
     size: String,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    /**
+     * When false, no image request is created (or kept) at all — the caller's
+     * dominant-colour backdrop shows through. Used by the timeline while the
+     * scrubber is being dragged: teleporting the viewport several times per
+     * second with live AsyncImages churns one image request per cell per
+     * jump, which is exactly the work that made fast scrubbing stutter.
+     */
+    enabled: Boolean = true,
 ) {
+    if (!enabled) {
+        Box(modifier = modifier)
+        return
+    }
     val model = remember(item.id, item.localThumbnailModel, baseUrl, size) {
         thumbnailModelFor(item, baseUrl, size)
     }

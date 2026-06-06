@@ -240,6 +240,12 @@ internal fun GroupedAssetGrid(
      * yearly grid is skeletons, so cells alone would leave it half-inert.
      */
     onSkeletonClick: ((bucketKey: String) -> Unit)? = null,
+    /**
+     * While true, cells skip thumbnail requests entirely (dominant-colour
+     * backdrop + badges only) — flipped during scrubber drags so viewport
+     * teleports stay cheap.
+     */
+    suppressThumbnails: Boolean = false,
     cellSpacing: Dp = 2.dp,
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
@@ -284,6 +290,7 @@ internal fun GroupedAssetGrid(
                         onItemClick = onItemClick,
                         onItemLongClick = onItemLongClick,
                         selectedIds = selectedIds,
+                        loadThumbnails = !suppressThumbnails,
                         // Device-only rows are merged in after the gallery
                         // scan finishes; animateItem fades them in and
                         // slides their neighbours instead of hard-popping.
@@ -437,7 +444,8 @@ private fun JustifiedCellsRow(
     onItemClick: (Int) -> Unit,
     onItemLongClick: ((Int) -> Unit)?,
     selectedIds: Set<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    loadThumbnails: Boolean = true
 ) {
     Row(
         modifier = modifier
@@ -453,6 +461,7 @@ private fun JustifiedCellsRow(
                 onLongClick = onItemLongClick?.let { { it(cell.index) } },
                 isSelected = cell.item.id in selectedIds,
                 forceSquare = false,
+                loadThumbnail = loadThumbnails,
                 modifier = Modifier
                     .weight(aspectRatioOf(cell.item))
                     .fillMaxHeight()

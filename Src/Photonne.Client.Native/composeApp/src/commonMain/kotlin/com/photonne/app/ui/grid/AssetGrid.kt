@@ -129,7 +129,13 @@ fun AssetGridCell(
      * the justified timeline grid where width/height come from the row's
      * height and the cell's weight).
      */
-    forceSquare: Boolean = true
+    forceSquare: Boolean = true,
+    /**
+     * When false the cell renders only its dominant-colour backdrop and
+     * badges — no thumbnail request. The timeline flips this while the
+     * scrubber is dragged so viewport teleports stay cheap.
+     */
+    loadThumbnail: Boolean = true
 ) {
     val placeholder = remember(asset.dominantColor) { parseHexColor(asset.dominantColor) }
     val sharedScope = LocalSharedTransitionScope.current
@@ -169,7 +175,8 @@ fun AssetGridCell(
             item = asset,
             baseUrl = baseUrl,
             size = "Small",
-            modifier = Modifier.fillMaxSize().then(thumbnailSharedMod)
+            modifier = Modifier.fillMaxSize().then(thumbnailSharedMod),
+            enabled = loadThumbnail
         )
         asset.localSyncBadge?.let { badge ->
             // BottomStart so we don't collide with the video glyph

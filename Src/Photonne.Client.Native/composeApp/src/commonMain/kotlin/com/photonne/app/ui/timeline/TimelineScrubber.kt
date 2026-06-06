@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.grid.JustifiedRowEntry
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import kotlin.math.roundToInt
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -51,6 +50,12 @@ private const val MIN_ROWS_FOR_SCRUBBER = 40
 
 /** Sticky-header band height — must match StickyMonthHeader. */
 private const val HEADER_HEIGHT_DP = 56f
+
+/**
+ * How often the throttled applier teleports the list while scrubbing
+ * (~15×/s). The thumb itself tracks the finger at full frame rate.
+ */
+private const val SCRUB_APPLY_INTERVAL_MS = 64L
 
 /** Touch target around the handle — the ONLY draggable area. */
 private val HandleTouchWidth = 48.dp
@@ -80,6 +85,12 @@ internal fun TimelineScrubber(
     rows: List<JustifiedRowEntry>,
     /** Items the grid's optional header lambda emits before the rows. */
     headerItemCount: Int,
+    /**
+     * Reports scrub-drag start/end so the host can switch the grid into
+     * lightweight rendering (dominant-color cells, no thumbnail requests)
+     * while the finger is down.
+     */
+    onDraggingChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (rows.size < MIN_ROWS_FOR_SCRUBBER) return
@@ -97,7 +108,25 @@ internal fun TimelineScrubber(
 
     var isDragging by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(0f) }
-    var scrollJob by remember { mutableStateOf<Job?>(null) }
+
+    // Decoupled, throttled list applier. The drag callback itself only
+    // writes a float (so the thumb tracks the finger at full frame rate);
+    // this loop teleports the list to the LATEST fraction a few times per
+    // second. Intermediate positions are skipped by construction — each
+    // scrollToItem composes a whole new viewport, and doing that per drag
+    // event was what saturated the main thread and made the handle lag.
+    LaunchedEffect(isDragging) {
+        if (!isDragging) return@LaunchedEffect
+        var lastRow = -1
+        while (true) {
+            val row = rowIndexForFraction(prefix, dragFraction)
+            if (row != lastRow) {
+                lastRow = row
+                runCatching { gridState.scrollToItem(row + headerCount) }
+            }
+            delay(SCRUB_APPLY_INTERVAL_MS)
+        }
+    }
 
     val scrollFraction by remember {
         derivedStateOf {
@@ -159,23 +188,30 @@ internal fun TimelineScrubber(
                 .then(
                     if (visible) {
                         Modifier.pointerInput(Unit) {
+                            // Gesture callbacks stay trivial — a float write
+                            // and nothing else. The throttled applier above
+                            // moves the list; the end handlers land exactly.
+                            fun endDrag() {
+                                isDragging = false
+                                onDraggingChange(false)
+                                scope.launch {
+                                    val row = rowIndexForFraction(prefix, dragFraction)
+                                    runCatching { gridState.scrollToItem(row + headerCount) }
+                                }
+                            }
                             detectVerticalDragGestures(
                                 onDragStart = {
                                     dragFraction = scrollFraction
                                     isDragging = true
+                                    onDraggingChange(true)
                                 },
                                 onVerticalDrag = { change, dragAmount ->
                                     change.consume()
                                     dragFraction = (dragFraction + dragAmount / usableTrack)
                                         .coerceIn(0f, 1f)
-                                    val row = rowIndexForFraction(prefix, dragFraction)
-                                    scrollJob?.cancel()
-                                    scrollJob = scope.launch {
-                                        gridState.scrollToItem(row + headerCount)
-                                    }
                                 },
-                                onDragEnd = { isDragging = false },
-                                onDragCancel = { isDragging = false }
+                                onDragEnd = ::endDrag,
+                                onDragCancel = ::endDrag
                             )
                         }
                     } else {

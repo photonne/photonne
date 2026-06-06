@@ -217,6 +217,12 @@ fun TimelineScreen(
                             )
                         }
                     }
+                    // While the scrubber is dragged the grid renders in
+                    // lightweight mode: dominant-colour cells, no thumbnail
+                    // requests. Thumbnails come back the instant the finger
+                    // lifts.
+                    var isScrubbing by remember { mutableStateOf(false) }
+
                     val current = packed
                     if (current == null) {
                         // Only the very first derivation (cold entry into the
@@ -454,6 +460,7 @@ fun TimelineScreen(
                                     }
                                 }
                             },
+                            suppressThumbnails = isScrubbing,
                             header = if (showMemoriesHeader) {
                                 {
                                     item(key = "memories-strip") {
@@ -491,6 +498,7 @@ fun TimelineScreen(
                         headerItemCount = if (showMemoriesHeader) {
                             1 + (if (deviceLoading && state.error == null) 1 else 0)
                         } else 0,
+                        onDraggingChange = { dragging -> isScrubbing = dragging },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     )
                 }
