@@ -132,6 +132,36 @@ public sealed class ExifExtractorTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task QuickTimeVideo_GpsExtracted_FromIso6709Location()
+    {
+        // Videos carry GPS in the QuickTime metadata atom (ISO 6709 string),
+        // not in an EXIF GpsDirectory — before the QuickTime branch existed
+        // no video ever got coordinates. Fixture is Madrid (N/W).
+        var exif = await ResolveAndRunAsync(e => e.ExtractExifAsync(FixturePaths.VideoWithGps));
+
+        Assert.NotNull(exif);
+        Assert.NotNull(exif!.Latitude);
+        Assert.NotNull(exif.Longitude);
+        Assert.InRange(exif.Latitude!.Value, 40.40, 40.43);
+        Assert.InRange(exif.Longitude!.Value, -3.71, -3.70);
+    }
+
+    [Fact]
+    public async Task Mp4Video_GpsExtracted_FromLegacyUdtaXyzAtom()
+    {
+        // Android camera apps write GPS into moov/udta/©xyz (not the Apple
+        // keys/ilst metadata), which MetadataExtractor skips — the manual
+        // udta fallback must pick it up. Fixture is Buenos Aires (S/W).
+        var exif = await ResolveAndRunAsync(e => e.ExtractExifAsync(FixturePaths.VideoWithXyzGps));
+
+        Assert.NotNull(exif);
+        Assert.NotNull(exif!.Latitude);
+        Assert.NotNull(exif.Longitude);
+        Assert.InRange(exif.Latitude!.Value, -34.61, -34.60);
+        Assert.InRange(exif.Longitude!.Value, -58.39, -58.38);
+    }
+
+    [Fact]
     public async Task DateFallback_UsesIfd0DateTime_WhenDateTimeOriginalMissing()
     {
         // Edited/exported images often carry ONLY the IFD0 DateTime ("modify

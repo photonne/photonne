@@ -29,4 +29,21 @@ public static class FixturePaths
     /// <c>ffmpeg -f lavfi -i color=c=teal:s=64x64:d=1 -c:v libx264</c>.
     /// </summary>
     public static string Video => Path.Combine(Root, "sample-video.mp4");
+
+    /// <summary>
+    /// Same clip muxed as QuickTime MOV with an Apple-style ISO 6709
+    /// location (Madrid, N/W), generated with
+    /// <c>ffmpeg -i sample-video.mp4 -metadata location=+40.4168-003.7038/
+    /// -c copy sample-video-gps.mov</c>. Exercises the QuickTime GPS branch
+    /// of the extractor (videos carry no EXIF GpsDirectory).
+    /// </summary>
+    public static string VideoWithGps => Path.Combine(Root, "sample-video-gps.mov");
+
+    /// <summary>
+    /// Same clip as plain ISO MP4 with the GPS written Android-style: an
+    /// ISO 6709 string (Buenos Aires, S/W) in the legacy moov/udta/©xyz
+    /// atom, which MetadataExtractor does not surface — exercises the
+    /// manual udta scan fallback.
+    /// </summary>
+    public static string VideoWithXyzGps => Path.Combine(Root, "sample-video-gps-xyz.mp4");
 }

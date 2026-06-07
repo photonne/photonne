@@ -29,6 +29,8 @@ public class UploadAssetsEndpoint : IEndpoint
         [FromForm] IFormFile file,
         [FromForm] string? destination,
         [FromForm] string? deviceName,
+        [FromForm] string? fileModifiedAt,
+        [FromForm] string? fileCreatedAt,
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] FileHashService hashService,
         [FromServices] IEnrichmentService enrichmentService,
@@ -121,6 +123,17 @@ public class UploadAssetsEndpoint : IEndpoint
 
             File.Move(tempPath, targetPath);
 
+            // Restore the original device timestamps the client sent along —
+            // otherwise the moved temp file carries the upload time and the
+            // library loses the real mtime forever. Same pattern as
+            // SyncAssetEndpoint. SetCreationTimeUtc is a silent no-op on
+            // filesystems without birth time; the Asset row below uses the
+            // parsed values directly so the database stays correct anyway.
+            var modifiedUtc = ParseClientTimestamp(fileModifiedAt);
+            var createdUtc = ParseClientTimestamp(fileCreatedAt);
+            if (modifiedUtc.HasValue) File.SetLastWriteTimeUtc(targetPath, modifiedUtc.Value);
+            if (createdUtc.HasValue) File.SetCreationTimeUtc(targetPath, createdUtc.Value);
+
             // 5. Create Asset record with the minimum the backup contract requires:
             // file on disk + Asset row + checksum + owner/folder. Enrichment
             // (EXIF, thumbnails, media tags, ML) is enqueued and runs in the
@@ -138,12 +151,14 @@ public class UploadAssetsEndpoint : IEndpoint
                 Checksum = checksum,
                 Type = assetType,
                 Extension = extension,
-                FileCreatedAt = fileInfo.CreationTimeUtc,
-                FileModifiedAt = fileInfo.LastWriteTimeUtc,
-                // Seed CapturedAt from the filesystem timestamp; the EXIF
-                // enrichment worker overwrites it with DateTimeOriginal as
-                // soon as it runs.
-                CapturedAt = fileInfo.CreationTimeUtc,
+                FileCreatedAt = createdUtc ?? fileInfo.CreationTimeUtc,
+                FileModifiedAt = modifiedUtc ?? fileInfo.LastWriteTimeUtc,
+                // Seed CapturedAt from the client-supplied timestamps (the
+                // device's original dates) falling back to the filesystem;
+                // CapturedAtSource stays FileSystem so the EXIF enrichment
+                // worker overwrites it with DateTimeOriginal as soon as it
+                // runs.
+                CapturedAt = createdUtc ?? modifiedUtc ?? fileInfo.CreationTimeUtc,
                 ScannedAt = DateTime.UtcNow,
                 FolderId = uploadsFolder?.Id,
                 OwnerId = userId
@@ -174,6 +189,30 @@ public class UploadAssetsEndpoint : IEndpoint
             if (File.Exists(tempPath)) File.Delete(tempPath);
             return Results.Problem(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Parses a client-supplied epoch-milliseconds timestamp form field.
+    /// Returns null for missing, malformed, or implausible values (before
+    /// the Unix epoch or more than 5 minutes in the future — clock skew
+    /// tolerance) so a buggy or malicious client can't poison file dates.
+    /// </summary>
+    internal static DateTime? ParseClientTimestamp(string? epochMillis)
+    {
+        if (string.IsNullOrWhiteSpace(epochMillis)) return null;
+        if (!long.TryParse(epochMillis, out var millis) || millis <= 0) return null;
+
+        DateTime parsed;
+        try
+        {
+            parsed = DateTimeOffset.FromUnixTimeMilliseconds(millis).UtcDateTime;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+
+        return parsed > DateTime.UtcNow.AddMinutes(5) ? null : parsed;
     }
 
     private static string ResolveDestinationFolder(string? destination)

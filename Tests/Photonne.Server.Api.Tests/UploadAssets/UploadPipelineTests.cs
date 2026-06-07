@@ -216,6 +216,74 @@ public sealed class UploadPipelineTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Upload_WithClientTimestamps_SeedsAssetDatesFromThem()
+    {
+        // The mobile client sends the device-side original timestamps so the
+        // library keeps the real file dates instead of the upload time.
+        var (_, client) = await CreateAuthenticatedUserAsync();
+
+        var modified = new DateTime(2023, 7, 14, 10, 30, 0, DateTimeKind.Utc);
+        var created = new DateTime(2023, 7, 14, 10, 0, 0, DateTimeKind.Utc);
+
+        using var form = BuildMultipart(FixturePaths.NoMetadata);
+        form.Add(new StringContent(new DateTimeOffset(modified).ToUnixTimeMilliseconds().ToString()), "fileModifiedAt");
+        form.Add(new StringContent(new DateTimeOffset(created).ToUnixTimeMilliseconds().ToString()), "fileCreatedAt");
+        var response = await client.PostAsync("/api/assets/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<UploadResp>();
+        Assert.NotNull(body?.AssetId);
+
+        await WithDbContextAsync(async db =>
+        {
+            var asset = await db.Assets.AsNoTracking()
+                .FirstAsync(a => a.Id == body!.AssetId!.Value);
+            Assert.Equal(modified, asset.FileModifiedAt);
+            Assert.Equal(created, asset.FileCreatedAt);
+            // CapturedAt seeds from the created timestamp; CapturedAtSource
+            // stays FileSystem so EXIF enrichment can still overwrite it.
+            Assert.Equal(created, asset.CapturedAt);
+            Assert.Equal(CaptureDateSource.FileSystem, asset.CapturedAtSource);
+
+            // The physical file's mtime is restored too (the temp-move had
+            // stamped it with "now").
+            var physicalPath = Path.Combine(
+                Factory.InternalAssetsPath,
+                asset.FullPath.Replace("/assets/", "").Replace('/', Path.DirectorySeparatorChar));
+            Assert.True(File.Exists(physicalPath), $"expected file at {physicalPath}");
+            Assert.Equal(modified, File.GetLastWriteTimeUtc(physicalPath));
+        });
+    }
+
+    [Fact]
+    public async Task Upload_WithFutureOrMalformedTimestamps_IgnoresThem()
+    {
+        var (_, client) = await CreateAuthenticatedUserAsync();
+
+        var future = DateTimeOffset.UtcNow.AddDays(2).ToUnixTimeMilliseconds();
+        using var form = BuildMultipart(FixturePaths.NoMetadata);
+        form.Add(new StringContent(future.ToString()), "fileModifiedAt");
+        form.Add(new StringContent("not-a-number"), "fileCreatedAt");
+        var response = await client.PostAsync("/api/assets/upload", form);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<UploadResp>();
+        Assert.NotNull(body?.AssetId);
+
+        await WithDbContextAsync(async db =>
+        {
+            var asset = await db.Assets.AsNoTracking()
+                .FirstAsync(a => a.Id == body!.AssetId!.Value);
+            // Both values rejected → fell back to the filesystem timestamps,
+            // which are "around now", definitely not two days ahead.
+            Assert.True(asset.FileModifiedAt < DateTime.UtcNow.AddMinutes(10),
+                $"expected fallback mtime, got {asset.FileModifiedAt:O}");
+            Assert.True(asset.CapturedAt < DateTime.UtcNow.AddMinutes(10),
+                $"expected fallback CapturedAt, got {asset.CapturedAt:O}");
+        });
+    }
+
+    [Fact]
     public async Task Upload_SameFileTwice_IsDeduplicatedByChecksum()
     {
         var (_, client) = await CreateAuthenticatedUserAsync();

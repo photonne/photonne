@@ -104,6 +104,24 @@ public class ExifExtractorService
                     ?? ParseExifDateTag(directories, ExifDirectoryBase.TagDateTime, tzInfo);
             }
 
+            // Android MP4s carry GPS as an ISO 6709 string in the legacy
+            // moov/udta/©xyz atom, which MetadataExtractor doesn't surface
+            // (the keys/ilst branch above only covers Apple-style MOVs) —
+            // scan for it manually when the library pass found no GPS.
+            if (IsVideoFile(extension) && options.Gps &&
+                exif.Latitude == null && exif.Longitude == null)
+            {
+                var xyz = await Task.Run(() => TryReadUdtaXyzLocation(filePath), cancellationToken);
+                if (xyz != null &&
+                    TryParseIso6709(xyz, out var xyzLat, out var xyzLon, out var xyzAlt) &&
+                    (Math.Abs(xyzLat) > 0.0001 || Math.Abs(xyzLon) > 0.0001))
+                {
+                    exif.Latitude = xyzLat;
+                    exif.Longitude = xyzLon;
+                    if (xyzAlt.HasValue) exif.Altitude = xyzAlt;
+                }
+            }
+
             // Dimensions
             if (IsImageFile(extension))
             {
@@ -248,6 +266,28 @@ public class ExifExtractorService
                 exif.DateTimeOriginal = System.DateTime.SpecifyKind(qtCreated, DateTimeKind.Utc);
             }
         }
+        else if (directory is QuickTimeMetadataHeaderDirectory qtMetaDir && options.Gps)
+        {
+            // Videos (MOV/MP4 from iPhone/Android): GPS lives in the QuickTime
+            // metadata atom as an ISO 6709 string ("+41.3874+002.1686+020.000/"),
+            // not in an EXIF GpsDirectory — without this branch no video ever
+            // got coordinates. Never clobber EXIF-provided GPS.
+            if (exif.Latitude == null && exif.Longitude == null)
+            {
+                var iso6709 = qtMetaDir.GetDescription(QuickTimeMetadataHeaderDirectory.TagGpsLocation);
+                if (!string.IsNullOrEmpty(iso6709) &&
+                    TryParseIso6709(iso6709, out var lat, out var lon, out var alt))
+                {
+                    // Same Null Island guard as the EXIF GpsDirectory branch.
+                    if (Math.Abs(lat) > 0.0001 || Math.Abs(lon) > 0.0001)
+                    {
+                        exif.Latitude = lat;
+                        exif.Longitude = lon;
+                        if (alt.HasValue) exif.Altitude = alt;
+                    }
+                }
+            }
+        }
         else if (directory is IptcDirectory iptcDir && options.Iptc)
         {
             var caption = iptcDir.GetDescription(IptcDirectory.TagCaption);
@@ -317,6 +357,39 @@ public class ExifExtractorService
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Parses an ISO 6709 location string as written by QuickTime metadata
+    /// ("+34.0679-118.4438+010.123/" — lat, lon, optional altitude; each
+    /// field starts with an explicit sign, '/' terminates). Returns false
+    /// when fewer than two coordinates are present or parsing fails.
+    /// </summary>
+    internal static bool TryParseIso6709(string value, out double latitude, out double longitude, out double? altitude)
+    {
+        latitude = 0;
+        longitude = 0;
+        altitude = null;
+
+        var matches = System.Text.RegularExpressions.Regex.Matches(value, @"[+-]\d+(?:\.\d+)?");
+        if (matches.Count < 2) return false;
+
+        if (!double.TryParse(matches[0].Value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out latitude))
+            return false;
+        if (!double.TryParse(matches[1].Value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out longitude))
+            return false;
+        if (Math.Abs(latitude) > 90 || Math.Abs(longitude) > 180) return false;
+
+        if (matches.Count >= 3 &&
+            double.TryParse(matches[2].Value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var alt))
+        {
+            altitude = alt;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Scans every EXIF directory for <paramref name="tag"/> and returns the
     /// first parseable "yyyy:MM:dd HH:mm:ss" value converted from the
     /// configured timezone to UTC. Mirrors the DateTimeOriginal handling in
@@ -339,6 +412,79 @@ public class ExifExtractorService
                 return System.TimeZoneInfo.ConvertTimeToUtc(
                     System.DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), tzInfo);
             }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Reads the ISO 6709 location string from the legacy MP4
+    /// moov/udta/©xyz atom (2-byte length + 2-byte language code + text),
+    /// the place Android camera apps write GPS. Returns null when the atom
+    /// is absent or the file isn't parseable as ISO BMFF.
+    /// </summary>
+    internal static string? TryReadUdtaXyzLocation(string filePath)
+    {
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            var moov = FindBox(stream, 0, stream.Length, "moov");
+            if (moov == null) return null;
+            var udta = FindBox(stream, moov.Value.Start, moov.Value.End, "udta");
+            if (udta == null) return null;
+            var xyz = FindBox(stream, udta.Value.Start, udta.Value.End, "©xyz");
+            if (xyz == null) return null;
+
+            var payloadLength = (int)Math.Min(xyz.Value.End - xyz.Value.Start, 4096);
+            if (payloadLength < 4) return null;
+            stream.Position = xyz.Value.Start;
+            var payload = new byte[payloadLength];
+            stream.ReadExactly(payload);
+
+            // Big-endian text length, then 2-byte language code, then the string.
+            var textLength = (payload[0] << 8) | payload[1];
+            if (textLength <= 0 || textLength > payloadLength - 4) textLength = payloadLength - 4;
+            return System.Text.Encoding.UTF8.GetString(payload, 4, textLength);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Walks sibling ISO BMFF boxes in [start, end) and returns the payload
+    /// range of the first box whose 4CC matches <paramref name="type"/>.
+    /// </summary>
+    private static (long Start, long End)? FindBox(Stream stream, long start, long end, string type)
+    {
+        Span<byte> header = stackalloc byte[8];
+        var target = System.Text.Encoding.Latin1.GetBytes(type);
+        var position = start;
+        while (position + 8 <= end)
+        {
+            stream.Position = position;
+            if (stream.Read(header) < 8) return null;
+            long size = (uint)((header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3]);
+            var headerSize = 8L;
+            if (size == 1)
+            {
+                Span<byte> large = stackalloc byte[8];
+                if (stream.Read(large) < 8) return null;
+                size = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(large);
+                headerSize = 16;
+            }
+            else if (size == 0)
+            {
+                size = end - position;
+            }
+            if (size < headerSize) return null;
+
+            if (header[4] == target[0] && header[5] == target[1] &&
+                header[6] == target[2] && header[7] == target[3])
+            {
+                return (position + headerSize, Math.Min(position + size, end));
+            }
+            position += size;
         }
         return null;
     }
