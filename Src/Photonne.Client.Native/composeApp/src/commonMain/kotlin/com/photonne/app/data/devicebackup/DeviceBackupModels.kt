@@ -34,7 +34,14 @@ data class DeviceMedia(
     val sizeBytes: Long,
     val dateModifiedMillis: Long,
     val type: DeviceMediaType,
-    val sha256: String? = null
+    val sha256: String? = null,
+    /**
+     * Original creation/capture timestamp where the platform exposes one
+     * (iOS `PHAsset.creationDate`, desktop file birth time). Null on
+     * Android — SAF only surfaces last-modified. Sent with the upload so
+     * the server can preserve the device-side dates.
+     */
+    val dateCreatedMillis: Long? = null
 )
 
 /**

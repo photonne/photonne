@@ -295,7 +295,9 @@ interface PhotonneApi {
         mimeType: String,
         bytes: ByteArray,
         destination: String? = null,
-        deviceName: String? = null
+        deviceName: String? = null,
+        fileModifiedAtMillis: Long? = null,
+        fileCreatedAtMillis: Long? = null
     ): UploadAssetResponse
 
     /**
@@ -303,6 +305,10 @@ interface PhotonneApi {
      * [source] on the fly instead of a ByteArray, keeping memory flat for
      * large videos (a 500 MB allocation OOMs Android outright). [source]
      * is consumed once; callers retrying must supply a fresh one.
+     *
+     * [fileModifiedAtMillis]/[fileCreatedAtMillis] carry the device-side
+     * original timestamps (epoch millis UTC) so the server can preserve
+     * the file's real dates instead of stamping the upload time.
      */
     suspend fun uploadAssetStream(
         fileName: String,
@@ -310,7 +316,9 @@ interface PhotonneApi {
         source: kotlinx.io.Source,
         sizeBytes: Long,
         destination: String? = null,
-        deviceName: String? = null
+        deviceName: String? = null,
+        fileModifiedAtMillis: Long? = null,
+        fileCreatedAtMillis: Long? = null
     ): UploadAssetResponse
 
     /** Lists the caller's assets with at least one Pending or Failed enrichment task. */
@@ -1143,7 +1151,9 @@ class PhotonneApiClient(
         mimeType: String,
         bytes: ByteArray,
         destination: String?,
-        deviceName: String?
+        deviceName: String?,
+        fileModifiedAtMillis: Long?,
+        fileCreatedAtMillis: Long?
     ): UploadAssetResponse {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
@@ -1168,6 +1178,12 @@ class PhotonneApiClient(
                         if (!deviceName.isNullOrBlank()) {
                             append("deviceName", deviceName)
                         }
+                        if (fileModifiedAtMillis != null) {
+                            append("fileModifiedAt", fileModifiedAtMillis.toString())
+                        }
+                        if (fileCreatedAtMillis != null) {
+                            append("fileCreatedAt", fileCreatedAtMillis.toString())
+                        }
                     }
                 )
             )
@@ -1185,7 +1201,9 @@ class PhotonneApiClient(
         source: kotlinx.io.Source,
         sizeBytes: Long,
         destination: String?,
-        deviceName: String?
+        deviceName: String?,
+        fileModifiedAtMillis: Long?,
+        fileCreatedAtMillis: Long?
     ): UploadAssetResponse = coroutineScope {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
@@ -1234,6 +1252,12 @@ class PhotonneApiClient(
                             }
                             if (!deviceName.isNullOrBlank()) {
                                 append("deviceName", deviceName)
+                            }
+                            if (fileModifiedAtMillis != null) {
+                                append("fileModifiedAt", fileModifiedAtMillis.toString())
+                            }
+                            if (fileCreatedAtMillis != null) {
+                                append("fileCreatedAt", fileCreatedAtMillis.toString())
                             }
                         }
                     )

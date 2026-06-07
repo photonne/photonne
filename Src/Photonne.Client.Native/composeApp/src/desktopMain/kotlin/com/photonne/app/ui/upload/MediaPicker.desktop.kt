@@ -42,7 +42,8 @@ private fun File.toPickedFile(): PickedFile? = runCatching {
         name = name,
         mimeType = guessMimeType(extension.lowercase()),
         sizeBytes = bytes.size.toLong(),
-        bytes = bytes
+        bytes = bytes,
+        lastModifiedMillis = lastModified().takeIf { it > 0 }
     )
 }.getOrNull()
 

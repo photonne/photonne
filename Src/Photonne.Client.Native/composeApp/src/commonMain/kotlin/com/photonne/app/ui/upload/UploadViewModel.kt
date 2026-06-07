@@ -24,6 +24,7 @@ data class UploadItem(
      * resident in memory after a successful upload.
      */
     val bytes: ByteArray?,
+    val lastModifiedMillis: Long? = null,
     val status: UploadStatus = UploadStatus.Queued,
     val assetId: String? = null,
     val errorMessage: String? = null
@@ -62,7 +63,8 @@ class UploadViewModel(
                     name = picked.name,
                     mimeType = picked.mimeType.ifBlank { "application/octet-stream" },
                     sizeBytes = picked.sizeBytes,
-                    bytes = picked.bytes
+                    bytes = picked.bytes,
+                    lastModifiedMillis = picked.lastModifiedMillis
                 )
             }
         val tooBig = files.size - newItems.size
@@ -179,7 +181,12 @@ class UploadViewModel(
             )
         }
         val outcome = runCatching {
-            repository.upload(current.name, current.mimeType, bytes)
+            repository.upload(
+                current.name,
+                current.mimeType,
+                bytes,
+                fileModifiedAtMillis = current.lastModifiedMillis
+            )
         }
         outcome.onSuccess { response ->
             val alreadyExisted = response.message.contains("already exists", ignoreCase = true)

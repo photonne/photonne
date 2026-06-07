@@ -6,6 +6,7 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.auth.TokenStorage
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -96,6 +97,70 @@ class UploadRepositoryTest {
         )
 
         assertEquals("/api/assets/upload", endpoint)
+    }
+
+    @Test
+    fun upload_with_timestamps_sends_them_as_form_fields() = runTest {
+        // The original device-side dates ride along as epoch-millis form
+        // fields so the server can preserve the file's real mtime instead
+        // of stamping the upload time.
+        var body: String? = null
+        val engine = MockEngine { request ->
+            body = request.body.toByteArray().decodeToString()
+            respond(
+                content = ByteReadChannel(
+                    """{"message":"Asset uploaded successfully","assetId":"abc-123"}"""
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val repo = newRepo(engine)
+
+        repo.upload(
+            fileName = "vacation.jpg",
+            mimeType = "image/jpeg",
+            bytes = byteArrayOf(1, 2, 3),
+            fileModifiedAtMillis = 1689330600000L,
+            fileCreatedAtMillis = 1689328800000L
+        )
+
+        val multipart = body
+        assertNotNull(multipart)
+        assertTrue("fileModifiedAt part") {
+            multipart.contains("fileModifiedAt") && multipart.contains("1689330600000")
+        }
+        assertTrue("fileCreatedAt part") {
+            multipart.contains("fileCreatedAt") && multipart.contains("1689328800000")
+        }
+    }
+
+    @Test
+    fun upload_without_timestamps_omits_the_form_fields() = runTest {
+        var body: String? = null
+        val engine = MockEngine { request ->
+            body = request.body.toByteArray().decodeToString()
+            respond(
+                content = ByteReadChannel(
+                    """{"message":"Asset uploaded successfully","assetId":"abc-123"}"""
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val repo = newRepo(engine)
+
+        repo.upload(
+            fileName = "vacation.jpg",
+            mimeType = "image/jpeg",
+            bytes = byteArrayOf(1, 2, 3)
+        )
+
+        val multipart = body
+        assertNotNull(multipart)
+        assertTrue("no timestamp parts") {
+            !multipart.contains("fileModifiedAt") && !multipart.contains("fileCreatedAt")
+        }
     }
 
     @Test

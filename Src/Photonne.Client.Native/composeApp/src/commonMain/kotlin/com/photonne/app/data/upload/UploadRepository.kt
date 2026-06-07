@@ -11,8 +11,13 @@ class UploadRepository(
         mimeType: String,
         bytes: ByteArray,
         destination: String? = null,
-        deviceName: String? = null
-    ): UploadAssetResponse = api.uploadAsset(fileName, mimeType, bytes, destination, deviceName)
+        deviceName: String? = null,
+        fileModifiedAtMillis: Long? = null,
+        fileCreatedAtMillis: Long? = null
+    ): UploadAssetResponse = api.uploadAsset(
+        fileName, mimeType, bytes, destination, deviceName,
+        fileModifiedAtMillis, fileCreatedAtMillis
+    )
 
     /** Streaming variant for large files — see [PhotonneApi.uploadAssetStream]. */
     suspend fun uploadStream(
@@ -21,7 +26,11 @@ class UploadRepository(
         source: kotlinx.io.Source,
         sizeBytes: Long,
         destination: String? = null,
-        deviceName: String? = null
-    ): UploadAssetResponse =
-        api.uploadAssetStream(fileName, mimeType, source, sizeBytes, destination, deviceName)
+        deviceName: String? = null,
+        fileModifiedAtMillis: Long? = null,
+        fileCreatedAtMillis: Long? = null
+    ): UploadAssetResponse = api.uploadAssetStream(
+        fileName, mimeType, source, sizeBytes, destination, deviceName,
+        fileModifiedAtMillis, fileCreatedAtMillis
+    )
 }

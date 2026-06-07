@@ -282,7 +282,9 @@ class DeviceBackupRepository(
                         source = source,
                         sizeBytes = sizeBytes,
                         destination = MOBILE_BACKUP_DESTINATION,
-                        deviceName = currentDeviceName()
+                        deviceName = currentDeviceName(),
+                        fileModifiedAtMillis = media.dateModifiedMillis.takeIf { it > 0 },
+                        fileCreatedAtMillis = media.dateCreatedMillis
                     )
                 }
             } catch (ex: Throwable) {

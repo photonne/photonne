@@ -219,7 +219,8 @@ private fun assetToMedia(asset: PHAsset): DeviceMedia? {
         // Android tree URI does).
         sizeBytes = 0L,
         dateModifiedMillis = modified ?: created ?: 0L,
-        type = type
+        type = type,
+        dateCreatedMillis = created
     )
 }
 

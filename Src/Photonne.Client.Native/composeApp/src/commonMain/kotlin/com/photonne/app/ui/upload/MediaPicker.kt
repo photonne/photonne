@@ -12,7 +12,13 @@ data class PickedFile(
     val name: String,
     val mimeType: String,
     val sizeBytes: Long,
-    val bytes: ByteArray
+    val bytes: ByteArray,
+    /**
+     * Original last-modified timestamp (epoch millis UTC) when the
+     * platform picker exposes it; sent with the upload so the server
+     * preserves the file's real date instead of the upload time.
+     */
+    val lastModifiedMillis: Long? = null
 ) {
     override fun equals(other: Any?): Boolean = this === other
     override fun hashCode(): Int = (name.hashCode() * 31 + mimeType.hashCode()) * 31 + sizeBytes.hashCode()
@@ -24,10 +30,11 @@ data class PickedFile(
  * (possibly empty if they cancelled).
  *
  * Concretely:
- * - Android: `ActivityResultContracts.PickMultipleVisualMedia`
+ * - Android: `ActivityResultContracts.OpenMultipleDocuments` (SAF — the
+ *   Photo Picker strips GPS EXIF by design, so we avoid it)
  * - Desktop (JVM): Swing `JFileChooser` with multi-select
- * - iOS: not implemented yet (returns an empty list and signals the
- *   error through `MediaPickerUnavailable`).
+ * - iOS: PhotosUI `PHPickerViewController` with the original asset
+ *   representation (no transcoding, so GPS/EXIF survive)
  */
 @Composable
 expect fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit

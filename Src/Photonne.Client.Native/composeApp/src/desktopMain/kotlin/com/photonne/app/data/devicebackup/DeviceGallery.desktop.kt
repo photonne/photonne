@@ -62,7 +62,8 @@ actual class DeviceGallery {
                         mimeType = mime,
                         sizeBytes = runCatching { path.fileSize() }.getOrDefault(0L),
                         dateModifiedMillis = attrs.lastModifiedTime().toMillis(),
-                        type = type
+                        type = type,
+                        dateCreatedMillis = attrs.creationTime().toMillis().takeIf { it > 0 }
                     )
                 }
             }
