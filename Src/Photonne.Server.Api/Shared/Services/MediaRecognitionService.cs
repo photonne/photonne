@@ -42,6 +42,15 @@ public class MediaRecognitionService
             // it: it should never appear as a standalone video next to its still.
             tags.Add(AssetTagType.MotionPhotoPart);
         }
+        else if (EmbeddedMotionPhotoExtractor.IsCandidateExtension(filePath)
+                 && EmbeddedMotionPhotoExtractor.IsEmbeddedMotionPhoto(filePath))
+        {
+            // Samsung/Google "motion photo": a single JPEG with the clip embedded
+            // inside it (no sibling). Tag it LivePhoto too so the client shows the
+            // same "play motion" affordance; the /motion endpoint extracts the
+            // embedded MP4 on demand.
+            tags.Add(AssetTagType.LivePhoto);
+        }
 
         // Detect Burst (multiple files with same base name pattern)
         if (await IsBurstPhotoAsync(filePath, cancellationToken))

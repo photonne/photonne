@@ -18,8 +18,9 @@ namespace Photonne.Server.Api.Features.AssetDetail;
 /// seek/scrub cheaply. Returns 404 when the asset has no paired clip, which is
 /// the signal the client uses to fall back to a plain still.
 ///
-/// Out of scope: Android "Motion Photos" embed the video inside the JPEG
-/// rather than as a sibling file; those aren't served here.
+/// Samsung/Google "Motion Photos" embed the MP4 inside the JPEG rather than as a
+/// sibling file; when there's no sibling clip we fall back to extracting the
+/// embedded video (<see cref="EmbeddedMotionPhotoExtractor"/>) and stream that.
 /// </summary>
 public class MotionPhotoEndpoint : IEndpoint
 {
@@ -49,12 +50,29 @@ public class MotionPhotoEndpoint : IEndpoint
         var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
         var motionPath = ResolveMotionClipPath(physicalPath);
 
-        if (motionPath == null)
+        if (motionPath != null)
         {
-            return Results.NotFound(new { error = $"Asset {assetId} has no paired motion clip" });
+            return Results.File(motionPath, "video/quicktime", enableRangeProcessing: true);
         }
 
-        return Results.File(motionPath, "video/quicktime", enableRangeProcessing: true);
+        // No sibling clip — try a Samsung/Google motion photo with the MP4
+        // embedded inside the still. The clip is the trailing bytes from the
+        // resolved offset to EOF; copy that slice into a seekable stream so
+        // range processing works the same as the sibling path.
+        var embedded = EmbeddedMotionPhotoExtractor.ResolveEmbeddedVideo(physicalPath);
+        if (embedded is { } range)
+        {
+            var clip = new MemoryStream();
+            await using (var file = File.OpenRead(physicalPath))
+            {
+                file.Position = range.Offset;
+                await file.CopyToAsync(clip, cancellationToken);
+            }
+            clip.Position = 0;
+            return Results.Stream(clip, "video/mp4", enableRangeProcessing: true);
+        }
+
+        return Results.NotFound(new { error = $"Asset {assetId} has no paired motion clip" });
     }
 
     /// <summary>
