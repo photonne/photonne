@@ -251,13 +251,22 @@ public class AssetIndexingService
         await EnqueueMissingEnrichmentAsync(asset, ct);
     }
 
-    // Enqueues only the ML task types whose *CompletedAt is null. Safe to call on
-    // re-scans: a previously-failed task will be re-queued (the scan is a manual
-    // admin action and reintents are desirable), while completed types are skipped.
-    // Note: the MediaRecognitionService is resolved from the service provider here
-    // because AssetIndexingService no longer takes it as a constructor dependency.
+    // Enqueues MediaRecognition plus the ML task types whose *CompletedAt is null.
+    // Safe to call on re-scans: a previously-failed task will be re-queued (the scan
+    // is a manual admin action and reintents are desirable), while completed ML types
+    // are skipped. MediaRecognition is (re)queued unconditionally for media assets —
+    // it has no *CompletedAt column and its result depends on sibling files on disk,
+    // so a rescan after a Live Photo's paired clip lands is the only way the still/
+    // clip ever get tagged LivePhoto/MotionPhotoPart. The task is cheap and idempotent
+    // (the worker deletes existing tags and recomputes), and EnqueueAsync de-dups any
+    // still-pending row so the fresh-index path doesn't double-queue it.
     private async Task EnqueueMissingEnrichmentAsync(Asset asset, CancellationToken ct)
     {
+        if (asset.Type == AssetType.Image || asset.Type == AssetType.Video)
+        {
+            await _enrichmentService.EnqueueAsync(asset.Id, AssetEnrichmentType.MediaRecognition, ct);
+        }
+
         // Reload Exif if not yet attached — needed by the gating in GetMissingMlTaskTypes.
         if (asset.Exif == null)
         {

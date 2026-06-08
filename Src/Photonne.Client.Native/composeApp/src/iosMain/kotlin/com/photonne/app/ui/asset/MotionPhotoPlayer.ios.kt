@@ -2,7 +2,9 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitViewController
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -34,8 +36,12 @@ private const val AVURLAssetHTTPHeaderFieldsKey = "AVURLAssetHTTPHeaderFieldsKey
 actual fun MotionPhotoPlayer(
     url: String,
     headers: Map<String, String>,
-    modifier: Modifier
+    modifier: Modifier,
+    loop: Boolean,
+    onPlaybackEnded: () -> Unit
 ) {
+    // Keep the end callback fresh without re-registering the end observer.
+    val currentOnEnded by rememberUpdatedState(onPlaybackEnded)
     val nsUrl = remember(url) { NSURL.URLWithString(url) }
     // Keep a handle on the item so the loop observer can scope itself to this
     // clip's end notification — the ObjC custom getter (isMuted) means the
@@ -57,15 +63,21 @@ actual fun MotionPhotoPlayer(
         }
     }
 
-    // Loop by seeking back to the start whenever the item reaches the end.
-    val loopObserver = remember(player, item) {
+    // On reaching the end: loop by seeking back to the start, or — for a
+    // tap-to-play-once clip — fire the end callback so the caller reverts to
+    // the still instead of replaying.
+    val endObserver = remember(player, item, loop) {
         NSNotificationCenter.defaultCenter.addObserverForName(
             name = AVPlayerItemDidPlayToEndTimeNotification,
             `object` = item,
             queue = NSOperationQueue.mainQueue,
             usingBlock = { _ ->
-                player.seekToTime(CMTimeMake(value = 0, timescale = 1))
-                player.play()
+                if (loop) {
+                    player.seekToTime(CMTimeMake(value = 0, timescale = 1))
+                    player.play()
+                } else {
+                    currentOnEnded()
+                }
             }
         )
     }
@@ -82,7 +94,7 @@ actual fun MotionPhotoPlayer(
         player.play()
         onDispose {
             player.pause()
-            NSNotificationCenter.defaultCenter.removeObserver(loopObserver)
+            NSNotificationCenter.defaultCenter.removeObserver(endObserver)
             container.playerViewController.player = null
         }
     }

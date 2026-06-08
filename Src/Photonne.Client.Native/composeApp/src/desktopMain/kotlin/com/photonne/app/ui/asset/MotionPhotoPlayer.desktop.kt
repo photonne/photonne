@@ -9,6 +9,11 @@ import androidx.compose.ui.Modifier
 actual fun MotionPhotoPlayer(
     url: String,
     headers: Map<String, String>,
-    modifier: Modifier
+    modifier: Modifier,
+    loop: Boolean,
+    onPlaybackEnded: () -> Unit
 ) {
+    // No engine here; the Live Photo branch is gated on isVideoPlaybackSupported
+    // (false on desktop) so this is never reached in practice. Params accepted
+    // only to satisfy the expect signature.
 }

@@ -2,7 +2,9 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -19,10 +21,14 @@ import okhttp3.OkHttpClient
 actual fun MotionPhotoPlayer(
     url: String,
     headers: Map<String, String>,
-    modifier: Modifier
+    modifier: Modifier,
+    loop: Boolean,
+    onPlaybackEnded: () -> Unit
 ) {
     val context = LocalContext.current
-    val player = remember(url, headers) {
+    // Keep the end callback fresh without rebuilding the player/listener.
+    val currentOnEnded by rememberUpdatedState(onPlaybackEnded)
+    val player = remember(url, headers, loop) {
         val httpFactory = OkHttpDataSource.Factory(OkHttpClient())
             .setDefaultRequestProperties(headers)
         val baseFactory = DefaultDataSource.Factory(context, httpFactory)
@@ -32,15 +38,27 @@ actual fun MotionPhotoPlayer(
             .build()
             .apply {
                 setMediaItem(MediaItem.fromUri(url))
-                repeatMode = Player.REPEAT_MODE_ONE
+                repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
                 volume = 0f
                 prepare()
                 playWhenReady = true
             }
     }
 
-    DisposableEffect(player) {
-        onDispose { player.release() }
+    DisposableEffect(player, loop) {
+        // Play-once: signal the caller when the clip reaches its end so it can
+        // unmount us and reveal the still again. Looping playback never ends.
+        val listener = if (!loop) {
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_ENDED) currentOnEnded()
+                }
+            }.also { player.addListener(it) }
+        } else null
+        onDispose {
+            listener?.let { player.removeListener(it) }
+            player.release()
+        }
     }
 
     AndroidView(

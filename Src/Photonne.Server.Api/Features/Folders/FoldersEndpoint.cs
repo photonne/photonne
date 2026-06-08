@@ -477,6 +477,10 @@ public class FoldersEndpoint : IEndpoint
                 .Include(a => a.Thumbnails)
                 .Where(a => a.FolderId == folderId)
                 .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
+                // Hide the motion (.mov) half of a Live Photo, mirroring
+                // TimelineQuery.VisibleAssets: the clip is served through the
+                // still's /motion endpoint, never as its own folder entry.
+                .Where(a => !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
                 .OrderByDescending(a => a.ScannedAt)
                 .ThenByDescending(a => a.FileModifiedAt)
                 .ToListAsync(cancellationToken);
@@ -499,6 +503,10 @@ public class FoldersEndpoint : IEndpoint
                 DeletedAt = asset.DeletedAt,
                 IsReadOnly = asset.ExternalLibraryId.HasValue
             }).ToList();
+
+            // Stitch detected/user tags (e.g. "LivePhoto") onto the page so the
+            // viewer opened from a folder shows the Live Photo affordance too.
+            await TimelineQuery.HydrateTagsAsync(dbContext, response, cancellationToken);
 
             return Results.Ok(response);
         }

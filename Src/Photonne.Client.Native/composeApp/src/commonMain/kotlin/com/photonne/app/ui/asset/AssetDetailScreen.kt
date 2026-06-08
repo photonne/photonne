@@ -985,16 +985,26 @@ private fun AssetPage(
     }
 }
 
+/** How a Live Photo's motion clip is currently playing, if at all. */
+private enum class MotionPlay { None, Hold, TapOnce }
+
 /**
- * A Live Photo still that comes alive on press-and-hold, mirroring iOS
- * Photos. The zoomable still is always present; while the user holds, the
- * looping motion clip is mounted on top and a brief "LIVE" pill confirms the
- * affordance. Releasing (or the gesture cancelling) tears the clip back down.
+ * A Live Photo still with two ways to bring it to life:
+ *  - press-and-hold, mirroring iOS Photos: the looping clip plays for as long
+ *    as the finger stays down ([MotionPlay.Hold]);
+ *  - a tappable "Ver foto en movimiento" pill that plays the clip through
+ *    exactly once, like a short video, then reverts to the still
+ *    ([MotionPlay.TapOnce]) — the discoverable affordance.
+ *
+ * The zoomable still is always present; whichever trigger is active mounts the
+ * motion clip on top, and the pill flips to an active "LIVE" badge while it
+ * plays.
  *
  * The hold detector lives in its own [pointerInput] layered over the image.
  * It only claims the gesture once the press survives [LIVE_HOLD_THRESHOLD_MS]
  * without moving past touch slop, so quick taps, double-tap-zoom and pinch
- * still reach [ZoomablePagerImage] underneath.
+ * still reach [ZoomablePagerImage] underneath. The pill is drawn above that
+ * layer, so a tap on it never reaches the hold detector.
  */
 @Composable
 private fun LivePhotoPage(
@@ -1008,11 +1018,12 @@ private fun LivePhotoPage(
     contentScale: ContentScale = ContentScale.Fit,
     onTap: (() -> Unit)? = null
 ) {
-    var playing by remember(item.id) { mutableStateOf(false) }
+    var motionPlay by remember(item.id) { mutableStateOf(MotionPlay.None) }
+    val playing = motionPlay != MotionPlay.None
 
     // Stop playing the moment the page stops being the active/stable one.
     LaunchedEffect(enabled) {
-        if (!enabled) playing = false
+        if (!enabled) motionPlay = MotionPlay.None
     }
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1036,8 +1047,10 @@ private fun LivePhotoPage(
                     .matchParentSize()
                     .pointerInput(item.id) {
                         detectLivePhotoHold(
-                            onHoldStart = { playing = true },
-                            onHoldEnd = { playing = false }
+                            onHoldStart = { motionPlay = MotionPlay.Hold },
+                            // Only the hold clears itself on release; a tap-once
+                            // clip keeps playing until it reaches its end.
+                            onHoldEnd = { if (motionPlay == MotionPlay.Hold) motionPlay = MotionPlay.None }
                         )
                     }
             )
@@ -1047,12 +1060,20 @@ private fun LivePhotoPage(
             MotionPhotoPlayer(
                 url = "$baseUrl/api/assets/${item.id}/motion",
                 headers = authHeaders,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                loop = motionPlay == MotionPlay.Hold,
+                onPlaybackEnded = { if (motionPlay == MotionPlay.TapOnce) motionPlay = MotionPlay.None }
             )
         }
 
         LivePhotoBadge(
             active = playing,
+            // Idle: a tappable pill that plays the clip once. While playing it
+            // just confirms "LIVE" (hold releases on lift; tap-once auto-reverts).
+            label = if (playing) "LIVE" else "Ver foto en movimiento",
+            onClick = if (enabled && !playing) {
+                { motionPlay = MotionPlay.TapOnce }
+            } else null,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .windowInsetsPadding(WindowInsets.statusBars)
@@ -1178,9 +1199,14 @@ private suspend fun PointerInputScope.detectLivePhotoHold(
 }
 
 @Composable
-private fun LivePhotoBadge(active: Boolean, modifier: Modifier = Modifier) {
+private fun LivePhotoBadge(
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    label: String = "LIVE",
+    onClick: (() -> Unit)? = null
+) {
     Surface(
-        modifier = modifier,
+        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
         shape = RoundedCornerShape(20.dp),
         color = Color.Black.copy(alpha = if (active) 0.55f else 0.4f),
         contentColor = Color.White
@@ -1197,7 +1223,7 @@ private fun LivePhotoBadge(active: Boolean, modifier: Modifier = Modifier) {
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "LIVE",
+                text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White
             )
