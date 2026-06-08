@@ -3,28 +3,32 @@ package com.photonne.app.ui.upload
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import com.photonne.app.data.devicebackup.MediaOriginalReader
+import com.photonne.app.data.devicebackup.MediaPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Uses the SAF documents picker (`OpenMultipleDocuments`) instead of the
- * system Photo Picker on purpose: the Photo Picker redacts GPS EXIF from
- * the returned bytes by design (its provider URIs don't support
- * `setRequireOriginal`), so photos uploaded through it silently lost
- * their location. The documents provider returns the file verbatim and
- * additionally exposes `COLUMN_LAST_MODIFIED`, which we forward so the
- * server can preserve the original file date.
+ * Uses the SAF documents picker (`OpenMultipleDocuments`) for selection,
+ * then reads the ORIGINAL bytes via [MediaOriginalReader] (MediaStore +
+ * setRequireOriginal) so GPS/EXIF survive. The system Photo Picker can't be
+ * used here: its URIs are always location-redacted with no opt-out. We
+ * request the media + ACCESS_MEDIA_LOCATION permissions before picking so the
+ * original read can succeed; if denied we fall back to the (redacted) SAF
+ * stream.
  */
 @Composable
 actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentOnPicked = rememberUpdatedState(onPicked)
-    val launcher = rememberLauncherForActivityResult(
+
+    val docLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
@@ -36,16 +40,24 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
                 // selection can't queue an unbounded in-memory batch.
                 uris.take(MAX_SELECTION).mapNotNull { uri ->
                     runCatching {
-                        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-                            ?: return@runCatching null
-                        val (name, lastModified) = queryNameAndLastModified(resolver, uri)
+                        val meta = queryMeta(resolver, uri)
+                        val name = meta.name ?: "upload"
                         val mime = resolver.getType(uri) ?: "application/octet-stream"
+                        val isVideo = mime.startsWith("video/")
+                        // Original bytes (GPS intact) when the file is in
+                        // MediaStore and the permission is held; otherwise the
+                        // plain SAF stream.
+                        val bytes = MediaOriginalReader.openOriginalStream(
+                            context, name, isVideo, meta.size ?: 0L
+                        )?.use { it.readBytes() }
+                            ?: resolver.openInputStream(uri)?.use { it.readBytes() }
+                            ?: return@runCatching null
                         PickedFile(
-                            name = name ?: "upload",
+                            name = name,
                             mimeType = mime,
                             sizeBytes = bytes.size.toLong(),
                             bytes = bytes,
-                            lastModifiedMillis = lastModified
+                            lastModifiedMillis = meta.lastModified
                         )
                     }.getOrNull()
                 }
@@ -54,28 +66,40 @@ actual fun rememberMediaPicker(onPicked: (List<PickedFile>) -> Unit): () -> Unit
         }
     }
 
-    return { launcher.launch(arrayOf("image/*", "video/*")) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { docLauncher.launch(arrayOf("image/*", "video/*")) }
+
+    return {
+        if (MediaOriginalReader.hasMediaLocationAccess(context)) {
+            docLauncher.launch(arrayOf("image/*", "video/*"))
+        } else {
+            val needed = MediaPermissions.requestSet()
+            if (needed.isEmpty()) docLauncher.launch(arrayOf("image/*", "video/*"))
+            else permissionLauncher.launch(needed)
+        }
+    }
 }
 
-private fun queryNameAndLastModified(
-    resolver: android.content.ContentResolver,
-    uri: android.net.Uri
-): Pair<String?, Long?> {
+private data class DocMeta(val name: String?, val size: Long?, val lastModified: Long?)
+
+private fun queryMeta(resolver: android.content.ContentResolver, uri: android.net.Uri): DocMeta {
     val projection = arrayOf(
         android.provider.OpenableColumns.DISPLAY_NAME,
+        android.provider.OpenableColumns.SIZE,
         android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED
     )
     return resolver.query(uri, projection, null, null, null)?.use { cursor ->
-        if (!cursor.moveToFirst()) return@use null to null
-        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-        val modifiedIndex =
-            cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-        val name = if (nameIndex >= 0) cursor.getString(nameIndex) else null
-        val modified = if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) {
-            cursor.getLong(modifiedIndex).takeIf { it > 0 }
-        } else null
-        name to modified
-    } ?: (null to null)
+        if (!cursor.moveToFirst()) return@use DocMeta(null, null, null)
+        val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+        val sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+        val modIdx = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+        DocMeta(
+            name = if (nameIdx >= 0) cursor.getString(nameIdx) else null,
+            size = if (sizeIdx >= 0 && !cursor.isNull(sizeIdx)) cursor.getLong(sizeIdx) else null,
+            lastModified = if (modIdx >= 0 && !cursor.isNull(modIdx)) cursor.getLong(modIdx).takeIf { it > 0 } else null
+        )
+    } ?: DocMeta(null, null, null)
 }
 
 private const val MAX_SELECTION = 50

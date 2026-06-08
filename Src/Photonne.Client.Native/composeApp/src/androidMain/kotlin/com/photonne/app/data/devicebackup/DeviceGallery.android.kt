@@ -110,12 +110,17 @@ actual class DeviceGallery(private val context: Context) {
     actual suspend fun computeSha256(media: DeviceMedia): String =
         withContext(Dispatchers.IO) {
             val digest = MessageDigest.getInstance("SHA-256")
-            val uri = Uri.parse(media.uri)
-            context.contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "Cannot open ${media.displayName} for hashing" }
+            val isVideo = media.type == DeviceMediaType.Video
+            // Hash the SAME (original, un-redacted) bytes we'll upload so the
+            // server-side dedup key matches the payload.
+            val input = MediaOriginalReader.openOriginalStream(
+                context, media.displayName, isVideo, media.sizeBytes
+            ) ?: context.contentResolver.openInputStream(Uri.parse(media.uri))
+            input.use { stream ->
+                requireNotNull(stream) { "Cannot open ${media.displayName} for hashing" }
                 val buf = ByteArray(64 * 1024)
                 while (true) {
-                    val n = input.read(buf)
+                    val n = stream.read(buf)
                     if (n <= 0) break
                     digest.update(buf, 0, n)
                 }
@@ -127,6 +132,21 @@ actual class DeviceGallery(private val context: Context) {
         media: DeviceMedia,
         block: suspend (source: Source, sizeBytes: Long) -> T
     ): T = withContext(Dispatchers.IO) {
+        val isVideo = media.type == DeviceMediaType.Video
+        // Prefer the original MediaStore bytes (location intact). Its SIZE is
+        // the authoritative content length for the upload.
+        val original = MediaOriginalReader.resolveOriginal(
+            context, media.displayName, isVideo, media.sizeBytes
+        )
+        if (original != null) {
+            val stream = context.contentResolver.openInputStream(original.uri)
+            if (stream != null) {
+                return@withContext stream.use { block(it.asSource().buffered(), original.sizeBytes) }
+            }
+        }
+
+        // Fallback (API < 29, or file not in MediaStore): plain SAF read. GPS
+        // may be redacted here, but it's the only way to reach the bytes.
         val uri = Uri.parse(media.uri)
         // statSize gives the authoritative byte count even when the scan
         // metadata went stale; fall back to the scanned size for providers
@@ -191,5 +211,20 @@ actual fun rememberDeviceFolderPicker(
         }
     }
 
-    return { launcher.launch(null) }
+    // Request media-read + ACCESS_MEDIA_LOCATION before picking the folder, so
+    // the background backup worker can later read the originals (un-redacted
+    // GPS). We proceed to the folder picker regardless of the grant result —
+    // without it the upload simply falls back to redacted SAF reads.
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { launcher.launch(null) }
+
+    return {
+        if (MediaOriginalReader.hasMediaLocationAccess(context)) {
+            launcher.launch(null)
+        } else {
+            val needed = MediaPermissions.requestSet()
+            if (needed.isEmpty()) launcher.launch(null) else permissionLauncher.launch(needed)
+        }
+    }
 }

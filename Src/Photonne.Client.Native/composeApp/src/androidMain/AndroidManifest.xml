@@ -7,6 +7,19 @@
          shows up in the Backup status card on next app open. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Media read + ACCESS_MEDIA_LOCATION are required to read the ORIGINAL
+         (un-redacted) bytes of gallery photos/videos. Since Android 10 the
+         platform strips GPS EXIF from media handed to apps without these,
+         regardless of whether the file is read via MediaStore or SAF — the
+         only documented way to keep location is MediaStore.setRequireOriginal,
+         which needs ACCESS_MEDIA_LOCATION + a media read grant. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+
     <application
         android:name=".PhotonneApplication"
         android:label="Photonne"
