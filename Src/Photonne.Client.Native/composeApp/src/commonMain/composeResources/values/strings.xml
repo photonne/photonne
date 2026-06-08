@@ -681,6 +681,8 @@
     <string name="admin_system_thumbnails_subtitle">Crear o regenerar miniaturas</string>
     <string name="admin_system_duplicates">Detección de duplicados</string>
     <string name="admin_system_duplicates_subtitle">Encontrar y limpiar copias repetidas</string>
+    <string name="admin_system_media_recognition">Live Photos</string>
+    <string name="admin_system_media_recognition_subtitle">Re-emparejar fotos y vídeos de Live Photos</string>
     <string name="admin_system_face">Reconocimiento facial</string>
     <string name="admin_system_face_subtitle">Procesar caras pendientes y reagrupar</string>
     <string name="admin_system_object">Reconocimiento de objetos</string>

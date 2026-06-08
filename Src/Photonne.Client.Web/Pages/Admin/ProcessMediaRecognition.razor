@@ -1,0 +1,46 @@
+@page "/admin/system/tasks/media-recognition"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Live Photos - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-4">Live Photos (emparejado de medios)</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MlBackfillCard Title="Emparejar Live Photos pendientes"
+                                Description="Detecta los pares foto + vídeo (HEIC + MOV) ya en la biblioteca y los empareja: el clip deja de salir como un segundo elemento en el timeline y las carpetas, y la foto pasa a tener movimiento. Útil tras mover una biblioteca al servidor y reindexar."
+                                EndpointKey="media-recognition" />
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+    }
+}

@@ -681,6 +681,8 @@
     <string name="admin_system_thumbnails_subtitle">Create or regenerate thumbnails</string>
     <string name="admin_system_duplicates">Detect duplicates</string>
     <string name="admin_system_duplicates_subtitle">Find and clean up duplicates</string>
+    <string name="admin_system_media_recognition">Live Photos</string>
+    <string name="admin_system_media_recognition_subtitle">Re-pair Live Photo stills and clips</string>
     <string name="admin_system_face">Face recognition</string>
     <string name="admin_system_face_subtitle">Process pending faces and re-cluster</string>
     <string name="admin_system_object">Object detection</string>

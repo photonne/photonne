@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Landscape
+import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.GroupWork
@@ -87,6 +88,8 @@ import com.photonne.app.resources.admin_system_face
 import com.photonne.app.resources.admin_system_face_subtitle
 import com.photonne.app.resources.admin_system_index
 import com.photonne.app.resources.admin_system_index_subtitle
+import com.photonne.app.resources.admin_system_media_recognition
+import com.photonne.app.resources.admin_system_media_recognition_subtitle
 import com.photonne.app.resources.admin_system_metadata
 import com.photonne.app.resources.admin_system_metadata_subtitle
 import com.photonne.app.resources.admin_system_object
@@ -140,6 +143,10 @@ enum class AdminBackfillKind(val apiPath: String) {
     SceneClassification("scene-classification"),
     TextRecognition("text-recognition"),
     ImageEmbedding("image-embedding"),
+    // Not an ML model: re-pairs Live Photo stills with their motion clips by
+    // re-running MediaRecognition (filesystem sibling check). Lives in the
+    // Other section as a re-runnable maintenance action, not an IA row.
+    MediaRecognition("media-recognition"),
 }
 
 /**
@@ -236,6 +243,14 @@ enum class AdminRunTask(
         subtitleRes = Res.string.admin_system_duplicates_subtitle,
         icon = Icons.Outlined.ContentCopy,
         backfillKind = null,
+        section = AdminRunTaskSection.Other,
+        backgroundType = null,
+    ),
+    MediaRecognition(
+        titleRes = Res.string.admin_system_media_recognition,
+        subtitleRes = Res.string.admin_system_media_recognition_subtitle,
+        icon = Icons.Outlined.MotionPhotosOn,
+        backfillKind = AdminBackfillKind.MediaRecognition,
         section = AdminRunTaskSection.Other,
         backgroundType = null,
     ),
@@ -867,25 +882,50 @@ fun AdminRunTasksScreen(
 
         item { SectionHeader(stringResource(Res.string.admin_run_tasks_section_other)) }
         items(otherTasks) { task ->
-            TaskRow(
-                task = task,
-                running = task.backgroundType?.let { runningByType[it] },
-                aiInProgress = false,
-                lastFinished = task.backgroundType?.let { lastFinishedByType[it] },
-                nowMs = nowMs,
-                pending = null,
-                isTriggering = task in state.triggering,
-                enqueuingProgress = null,
-                sessionBaseline = null,
-                // Duplicates keeps its dedicated screen for now — it has
-                // toggles (cleanup, physical-delete) and per-group review
-                // UI that don't fit on a single row.
-                onOpen = { onOpenTask(task) },
-                onStart = { viewModel.triggerTask(task) },
-                onSecondary = null,
-                onCancelAi = null,
-                onCancel = { dto -> viewModel.cancelTask(dto.id) }
-            )
+            if (task.backfillKind != null) {
+                // A re-runnable maintenance action backed by the /backfill
+                // enqueue loop (Live Photos re-pairing today). Reuses the AI
+                // machinery for the "Encolando X / Y" feedback + cancel, but
+                // passes pending = null: it has no honest "N pending → 0"
+                // counter (no per-asset completion marker), so it shows as a
+                // fire-and-forget run, not a draining queue with a percentage.
+                TaskRow(
+                    task = task,
+                    running = null,
+                    aiInProgress = false,
+                    lastFinished = null,
+                    nowMs = nowMs,
+                    pending = null,
+                    isTriggering = task in state.triggering,
+                    enqueuingProgress = state.enqueuing[task],
+                    sessionBaseline = null,
+                    onOpen = null,
+                    onStart = { viewModel.triggerMlBackfill(task) },
+                    onSecondary = null,
+                    onCancelAi = { viewModel.cancelMlQueue(task) },
+                    onCancel = null
+                )
+            } else {
+                TaskRow(
+                    task = task,
+                    running = task.backgroundType?.let { runningByType[it] },
+                    aiInProgress = false,
+                    lastFinished = task.backgroundType?.let { lastFinishedByType[it] },
+                    nowMs = nowMs,
+                    pending = null,
+                    isTriggering = task in state.triggering,
+                    enqueuingProgress = null,
+                    sessionBaseline = null,
+                    // Duplicates keeps its dedicated screen for now — it has
+                    // toggles (cleanup, physical-delete) and per-group review
+                    // UI that don't fit on a single row.
+                    onOpen = { onOpenTask(task) },
+                    onStart = { viewModel.triggerTask(task) },
+                    onSecondary = null,
+                    onCancelAi = null,
+                    onCancel = { dto -> viewModel.cancelTask(dto.id) }
+                )
+            }
         }
     }
 }

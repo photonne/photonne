@@ -202,6 +202,23 @@
                 </MudCard>
             </MudItem>
 
+            @* ── 10. Live Photos (emparejado de medios) ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Live Photos</MudText>
+                            <MudText Typo="Typo.body2">Empareja los HEIC con su vídeo y oculta el clip del timeline y las carpetas.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/admin/system/tasks/media-recognition"))">
+                            Abrir
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
         </MudGrid>
     }
 </div>
