@@ -2,6 +2,7 @@ package com.photonne.app.ui.asset
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -12,13 +13,18 @@ import kotlinx.cinterop.ObjCAction
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
 import platform.AVFAudio.setActive
+import platform.AVFoundation.AVLayerVideoGravityResizeAspect
+import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.AVURLAsset
 import platform.AVFoundation.pause
+import platform.AVFoundation.play
 import platform.AVKit.AVPlayerViewController
+import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSSelectorFromString
 import platform.Foundation.NSURL
+import platform.UIKit.UIApplicationDidEnterBackgroundNotification
 import platform.UIKit.UIGestureRecognizer
 import platform.UIKit.UIGestureRecognizerDelegateProtocol
 import platform.UIKit.UITapGestureRecognizer
@@ -42,7 +48,9 @@ actual fun VideoPlayer(
     url: String,
     headers: Map<String, String>,
     modifier: Modifier,
-    onControlsVisibilityChanged: (Boolean) -> Unit
+    onControlsVisibilityChanged: (Boolean) -> Unit,
+    fillCrop: Boolean,
+    controlsEnabled: Boolean
 ) {
     val nsUrl = remember(url) { NSURL.URLWithString(url) }
     val player = remember(url, headers) {
@@ -74,6 +82,31 @@ actual fun VideoPlayer(
             this.showsPlaybackControls = true
         }
         VideoPlayerContainerViewController(playerVC, tapHandler)
+    }
+
+    // Zoom-to-fill in the 1:1 info header, aspect-fit otherwise. Updating the
+    // gravity on the live controller (no remount) keeps the clip playing.
+    LaunchedEffect(container, fillCrop) {
+        container.playerViewController.videoGravity =
+            if (fillCrop) AVLayerVideoGravityResizeAspectFill else AVLayerVideoGravityResizeAspect
+    }
+
+    // Info mode: hide the transport controls and play automatically (ambient
+    // playback). Controls reappear when controlsEnabled flips back to true.
+    LaunchedEffect(container, controlsEnabled) {
+        container.playerViewController.showsPlaybackControls = controlsEnabled
+        if (!controlsEnabled) player.play()
+    }
+
+    // Pause when the app is backgrounded so the clip doesn't keep playing audio
+    // off-screen (the Playback audio category would otherwise allow it).
+    DisposableEffect(player) {
+        val observer = NSNotificationCenter.defaultCenter.addObserverForName(
+            name = UIApplicationDidEnterBackgroundNotification,
+            `object` = null,
+            queue = null
+        ) { _ -> player.pause() }
+        onDispose { NSNotificationCenter.defaultCenter.removeObserver(observer) }
     }
 
     DisposableEffect(player) {

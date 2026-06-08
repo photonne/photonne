@@ -35,8 +35,35 @@ class AssetDetailViewModel(
     val state: StateFlow<AssetDetailUiState> = _state.asStateFlow()
 
     private val cache = mutableMapOf<String, AssetDetail>()
+    // Snapshot of the cache, exposed so the pager can show prev/next assets'
+    // metadata immediately (prefetched) instead of waiting for them to become
+    // the selected page.
+    private val _details = MutableStateFlow<Map<String, AssetDetail>>(emptyMap())
+    val details: StateFlow<Map<String, AssetDetail>> = _details.asStateFlow()
     private var currentJob: Job? = null
     private var currentId: String? = null
+
+    private fun publishCache() {
+        _details.value = cache.toMap()
+    }
+
+    /**
+     * Warms the cache for [assetIds] (e.g. the pager neighbours) so their
+     * metadata is ready when the user swipes to them. Skips local-only ids and
+     * anything already cached or in flight.
+     */
+    fun prefetch(assetIds: List<String>) {
+        assetIds.forEach { id ->
+            if (id.startsWith("device:") || cache.containsKey(id)) return@forEach
+            viewModelScope.launch {
+                runCatching { repository.getDetail(id) }
+                    .onSuccess { detail ->
+                        cache[id] = detail
+                        publishCache()
+                    }
+            }
+        }
+    }
 
     fun select(assetId: String) {
         if (assetId == currentId && _state.value.detail?.id == assetId) return
@@ -59,6 +86,7 @@ class AssetDetailViewModel(
             runCatching { repository.getDetail(assetId) }
                 .onSuccess { detail ->
                     cache[assetId] = detail
+                    publishCache()
                     if (currentId == assetId) {
                         _state.value = AssetDetailUiState(detail = detail)
                     }
@@ -107,7 +135,7 @@ class AssetDetailViewModel(
     }
 
     private fun applyFavorite(assetId: String, isFavorite: Boolean) {
-        cache[assetId]?.let { cache[assetId] = it.copy(isFavorite = isFavorite) }
+        cache[assetId]?.let { cache[assetId] = it.copy(isFavorite = isFavorite); publishCache() }
         _state.update { current ->
             val detail = current.detail
             if (detail != null && detail.id == assetId) {
@@ -121,6 +149,7 @@ class AssetDetailViewModel(
             runCatching { repository.archive(listOf(assetId)) }
                 .onSuccess {
                     cache.remove(assetId)
+                    publishCache()
                     onCompleted(assetId)
                 }
                 .onFailure { error ->
@@ -136,6 +165,7 @@ class AssetDetailViewModel(
             runCatching { repository.trash(listOf(assetId)) }
                 .onSuccess {
                     cache.remove(assetId)
+                    publishCache()
                     onCompleted(assetId)
                 }
                 .onFailure { error ->
@@ -149,7 +179,7 @@ class AssetDetailViewModel(
     fun updateDescription(assetId: String, description: String?) {
         val cleaned = description?.trim()?.takeIf { it.isNotEmpty() }
         // Optimistic local update — both cache and visible state.
-        cache[assetId]?.let { cache[assetId] = it.copy(caption = cleaned) }
+        cache[assetId]?.let { cache[assetId] = it.copy(caption = cleaned); publishCache() }
         _state.update { current ->
             val detail = current.detail
             if (detail != null && detail.id == assetId) {
@@ -185,7 +215,7 @@ class AssetDetailViewModel(
             d.copy(exif = (d.exif ?: ExifData()).copy(dateTaken = date))
 
         // Optimistic local update — both cache and visible state.
-        cache[assetId]?.let { cache[assetId] = withDate(it, dateTaken) }
+        cache[assetId]?.let { cache[assetId] = withDate(it, dateTaken); publishCache() }
         _state.update { current ->
             val detail = current.detail
             if (detail != null && detail.id == assetId) current.copy(detail = withDate(detail, dateTaken))
@@ -195,7 +225,7 @@ class AssetDetailViewModel(
             runCatching { repository.updateCaptureDate(assetId, dateTaken, writeToFile) }
                 .onSuccess { resp ->
                     val confirmed = resp.dateTaken ?: return@onSuccess
-                    cache[assetId]?.let { cache[assetId] = withDate(it, confirmed) }
+                    cache[assetId]?.let { cache[assetId] = withDate(it, confirmed); publishCache() }
                     _state.update { current ->
                         val detail = current.detail
                         if (detail != null && detail.id == assetId) current.copy(detail = withDate(detail, confirmed))

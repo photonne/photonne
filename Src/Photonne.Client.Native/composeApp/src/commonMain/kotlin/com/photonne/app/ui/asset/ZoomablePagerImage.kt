@@ -42,6 +42,8 @@ fun ZoomablePagerImage(
     contentDescription: String?,
     onScaleChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    zoomEnabled: Boolean = true,
+    contentScale: ContentScale = ContentScale.Fit,
     onTap: (() -> Unit)? = null
 ) {
     var scale by remember { mutableStateOf(MIN_SCALE) }
@@ -64,10 +66,12 @@ fun ZoomablePagerImage(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { size = it }
-            .pointerInput(onTap) {
+            .pointerInput(onTap, zoomEnabled) {
                 detectTapGestures(
                     onTap = onTap?.let { { _ -> it() } },
-                    onDoubleTap = { tap ->
+                    // Double-tap zoom only when zooming is enabled (it's disabled
+                    // while the asset is acting as the info header/left pane).
+                    onDoubleTap = if (!zoomEnabled) null else { tap ->
                         if (scale > 1f) {
                             scale = MIN_SCALE
                             offset = Offset.Zero
@@ -84,19 +88,25 @@ fun ZoomablePagerImage(
                     }
                 )
             }
-            .pointerInput(Unit) {
-                detectPinchAndPanGestures(isZoomed = { scale > 1f }) { pan, zoom ->
-                    val newScale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
-                    val newOffset = if (newScale > 1f) clampOffset(offset + pan, newScale) else Offset.Zero
-                    scale = newScale
-                    offset = newOffset
+            .then(
+                if (zoomEnabled) {
+                    Modifier.pointerInput(Unit) {
+                        detectPinchAndPanGestures(isZoomed = { scale > 1f }) { pan, zoom ->
+                            val newScale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
+                            val newOffset = if (newScale > 1f) clampOffset(offset + pan, newScale) else Offset.Zero
+                            scale = newScale
+                            offset = newOffset
+                        }
+                    }
+                } else {
+                    Modifier
                 }
-            }
+            )
     ) {
         AsyncImage(
             model = model,
             contentDescription = contentDescription,
-            contentScale = ContentScale.Fit,
+            contentScale = contentScale,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {

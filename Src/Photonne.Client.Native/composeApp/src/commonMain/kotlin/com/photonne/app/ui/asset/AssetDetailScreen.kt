@@ -3,7 +3,9 @@ package com.photonne.app.ui.asset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -16,15 +18,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -38,6 +41,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
@@ -59,6 +63,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.MotionPhotosOn
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -67,14 +72,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -93,15 +95,23 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.ScaleFactor
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImage
@@ -131,6 +141,7 @@ import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.ln
@@ -171,6 +182,7 @@ fun AssetDetailScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val tokenStorage: TokenStorage = koinInject()
     val state by viewModel.state.collectAsState()
+    val details by viewModel.details.collectAsState()
 
     val pagerState = rememberPagerState(initialPage = startIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) {
         items.size
@@ -188,6 +200,21 @@ fun AssetDetailScreen(
     // Animatable so a sub-threshold release can spring back smoothly.
     val density = LocalDensity.current
     val dismissOffsetY = remember { Animatable(0f) }
+
+    // Info "continuation" panel (One UI style): a single progress value in
+    // [0,1] drives the asset shrinking into a fixed header (portrait) or a
+    // left pane (landscape) while the metadata panel fills the rest and
+    // scrolls. 0 = full asset, 1 = info fully open. An upward swipe opens it;
+    // an at-the-top downward drag inside the metadata closes it (a SEPARATE
+    // gesture from the swipe-down-to-dismiss that closes the whole viewer).
+    val infoProgress = remember { Animatable(0f) }
+    val infoDragPx = with(density) { 320.dp.toPx() }
+    // A deliberately slowish settle so the asset (and the video, which can only
+    // crop in one binary native step near the end) eases into the 1:1 top
+    // position instead of snapping — especially noticeable on a fast flick up.
+    val infoSpring = remember {
+        tween<Float>(durationMillis = 420, easing = FastOutSlowInEasing)
+    }
 
     // Immersive mode: a single tap on the asset toggles all chrome (top bar +
     // bottom strip/actions) so the asset can be viewed edge to edge, matching
@@ -228,18 +255,21 @@ fun AssetDetailScreen(
                     // the shared-element morph until the user closes the viewer.
                     onPageChanged(it.id)
                 }
+                // Warm the neighbours so their info panel is ready when the user
+                // swipes to them (otherwise sliding reveals empty text first).
+                viewModel.prefetch(
+                    listOfNotNull(items.getOrNull(index - 1)?.id, items.getOrNull(index + 1)?.id)
+                )
                 if (hasMore && index >= items.size - PAGER_PREFETCH_THRESHOLD) {
                     onLoadMore()
                 }
             }
     }
 
-    var showInfo by remember { mutableStateOf(false) }
     var showOverflow by remember { mutableStateOf(false) }
     var showEditDescription by remember { mutableStateOf(false) }
     var showEditDate by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
-    val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val currentItem = items.getOrNull(pagerState.currentPage)
     val currentIsFavorite = state.detail
         ?.takeIf { it.id == currentItem?.id }?.isFavorite
@@ -297,9 +327,65 @@ fun AssetDetailScreen(
             targetValue = if (chromeVisible) 1f else 0f,
             label = "chromeToggleAlpha"
         )
-        val chromeAlpha = (1f - dismissProgress) * chromeToggleAlpha
+        val chromeAlpha = (1f - dismissProgress) * chromeToggleAlpha * (1f - infoProgress.value)
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        // Settles the info panel fully open or closed by position (no velocity,
+        // matching the dismiss-by-distance convention). Shared by the drive
+        // gesture's release and each page's close connection.
+        suspend fun settleInfo() {
+            infoProgress.animateTo(if (infoProgress.value >= 0.45f) 1f else 0f, infoSpring)
+        }
+
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val progress = infoProgress.value
+            val infoOpen = progress > 0f
+            // Info open shrinks the asset to a 1:1 SQUARE. Portrait: a top header
+            // (side = screen width) that shares ONE vertical scroll with the
+            // metadata below it — so once 1:1 is reached, continuing to scroll
+            // carries the asset up together with the content. Landscape: a left
+            // pane (side = screen height) with the metadata as an independent,
+            // scrollable right pane. The asset isn't deformed: it crops
+            // (zoom-to-fill), interpolated from Fit so opening is a smooth
+            // progressive zoom rather than an instant jump.
+            val headerHeightDp = maxHeight - (maxHeight - maxWidth) * progress
+            val mediaWidthDp = maxWidth - (maxWidth - maxHeight) * progress
+            val rightPaneWidthDp = (maxWidth - maxHeight) * progress
+            val metadataMinHeightDp = maxHeight - headerHeightDp
+            val authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) }
+
+            // Vertical-drive gesture (drag up = open info, drag down = dismiss
+            // the viewer), active only while fully closed. Shared by both
+            // orientations; only the rendered branch attaches it.
+            val driveModifier = Modifier.pointerInput(items.size) {
+                detectVerticalDriveGesture(
+                    isEnabled = {
+                        currentScale <= PAGER_DISABLE_THRESHOLD &&
+                            !slideshowActive &&
+                            infoProgress.value == 0f
+                    },
+                    onDrag = { dy, directionUp ->
+                        if (directionUp) {
+                            coroutineScope.launch {
+                                infoProgress.snapTo((infoProgress.value - dy / infoDragPx).coerceIn(0f, 1f))
+                            }
+                        } else {
+                            coroutineScope.launch {
+                                dismissOffsetY.snapTo(dismissOffsetY.value + dy)
+                            }
+                        }
+                    },
+                    onRelease = { directionUp, totalY ->
+                        if (directionUp) {
+                            coroutineScope.launch { settleInfo() }
+                        } else if (abs(totalY) > dismissThresholdPx) {
+                            onBack()
+                        } else {
+                            coroutineScope.launch { dismissOffsetY.animateTo(0f) }
+                        }
+                    }
+                )
+            }
+
             // The fading black backdrop. Everything else stacks on top.
             Box(
                 modifier = Modifier
@@ -307,72 +393,149 @@ fun AssetDetailScreen(
                     .background(Color.Black.copy(alpha = backgroundAlpha))
             )
 
-            // Wrapper that owns the vertical-dismiss gesture. It's the PARENT of
-            // the pager, so by the time it inspects an event the pager (child)
-            // has already claimed any horizontal swipe; only unclaimed vertical
-            // motion — and only while not zoomed — is taken for dismissal.
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(items.size) {
-                        detectVerticalDismiss(
-                            isEnabled = { currentScale <= PAGER_DISABLE_THRESHOLD && !slideshowActive },
-                            onDragDelta = { dy ->
-                                coroutineScope.launch { dismissOffsetY.snapTo(dismissOffsetY.value + dy) }
-                            },
-                            onRelease = { totalY ->
-                                if (abs(totalY) > dismissThresholdPx) {
-                                    onBack()
-                                } else {
-                                    coroutineScope.launch { dismissOffsetY.animateTo(0f) }
+            // Swipe-to-dismiss transform (offset + scale) applied to the WHOLE
+            // pager so the current asset isn't clipped while dragged down. A
+            // no-op while info is open (dismissOffsetY = 0, pageScale = 1).
+            val dismissTransform = Modifier.graphicsLayer {
+                translationY = dismissOffsetY.value
+                scaleX = pageScale
+                scaleY = pageScale
+            }
+
+            // The pager is the OUTER container: each page holds the full
+            // per-asset info view (1:1 header + metadata), so paging in info
+            // mode slides the asset AND its info together. The vertical scroll
+            // and the close gesture live per page.
+            HorizontalPager(
+                state = pagerState,
+                // Paging stays enabled in info mode (the whole page slides);
+                // only disabled while zoomed.
+                userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
+                pageSpacing = PAGER_PAGE_SPACING,
+                modifier = Modifier.fillMaxSize().then(dismissTransform)
+            ) { page ->
+                val item = items[page]
+                val isCurrent = page == pagerState.currentPage
+                val pageDetail = details[item.id]
+                val pageScroll = rememberScrollState()
+                // Close-on-overscroll connection bound to THIS page's scroll.
+                val pageConn = remember(pageScroll) {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            val dy = available.y
+                            val p = infoProgress.value
+                            val midTransition = p > 0f && p < 1f
+                            val closingFromTop = p >= 1f && dy > 0f && pageScroll.value == 0
+                            if (midTransition || closingFromTop) {
+                                coroutineScope.launch {
+                                    infoProgress.snapTo((p - dy / infoDragPx).coerceIn(0f, 1f))
                                 }
+                                return Offset(0f, dy)
                             }
-                        )
-                    }
-            ) {
-                HorizontalPager(
-                    state = pagerState,
-                    userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
-                    // Gutter between pages so neighbours don't touch mid-swipe: a
-                    // strip of black breathing room slides in between the outgoing
-                    // and incoming photo, echoing the gaps in the thumbnail strip.
-                    pageSpacing = PAGER_PAGE_SPACING,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .offset { IntOffset(0, dismissOffsetY.value.roundToInt()) }
-                        .graphicsLayer {
-                            scaleX = pageScale
-                            scaleY = pageScale
+                            return Offset.Zero
                         }
-                ) { page ->
-                    val item = items[page]
-                    val isCurrent = page == pagerState.currentPage
+
+                        override suspend fun onPreFling(available: Velocity): Velocity {
+                            if (infoProgress.value < 1f) {
+                                settleInfo()
+                                return available
+                            }
+                            return Velocity.Zero
+                        }
+                    }
+                }
+
+                val renderAsset: @Composable () -> Unit = {
                     AssetPage(
                         item = item,
                         baseUrl = apiBaseUrl,
                         showOriginal = showOriginal[item.id] == true,
                         isCurrent = isCurrent,
-                        authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) },
+                        authHeaders = authHeaders,
                         onScaleChange = { newScale -> if (isCurrent) currentScale = newScale },
                         onToggleChrome = { chromeVisible = !chromeVisible },
-                        // A tap on the video toggles its native controls; mirror
-                        // that into the chrome so both move together.
+                        zoomEnabled = !infoOpen,
+                        infoOpen = infoOpen,
+                        // Video can't interpolate its crop (native binary
+                        // gravity), so keep it fit (positioning) until the box is
+                        // almost square, then crop — so it fills the 1:1 it's
+                        // already in instead of jumping mid-transition.
+                        videoFillCrop = progress >= 0.92f,
+                        contentScale = blendedContentScale(progress),
                         onVideoControlsVisibilityChanged = { chromeVisible = it },
-                        // Video bottom inset keeps the player's scrubber ABOVE the
-                        // thumbnail strip so it stays draggable:
-                        //  - landscape + chrome shown: end the video right above the
-                        //    whole bottom column (scrubber sits over the strip).
-                        //  - portrait + chrome shown: same, minus a small overlap so
-                        //    the strip floats a few px over the asset.
-                        //  - chrome hidden (either): full-bleed, no inset.
-                        videoTopInset = if (chromeVisible && !landscapeMode) topChromeHeight else 0.dp,
+                        videoTopInset = if (chromeVisible && !landscapeMode && !infoOpen) topChromeHeight else 0.dp,
                         videoBottomInset = when {
+                            infoOpen -> 0.dp
                             !chromeVisible -> 0.dp
                             landscapeMode -> bottomChromeHeight
                             else -> (bottomChromeHeight - STRIP_PORTRAIT_OVERLAP).coerceAtLeast(0.dp)
                         },
                         animatedVisibilityScope = animatedVisibilityScope
                     )
+                }
+
+                val renderMetadata: @Composable () -> Unit = {
+                    AssetMetadataPanel(
+                        fallback = item,
+                        detail = pageDetail,
+                        isLoading = isCurrent && state.isLoading,
+                        errorMessage = if (isCurrent) state.error?.userMessage else null,
+                        onEditDescription = { showEditDescription = true },
+                        onEditDate = { showEditDate = true },
+                        onOpenFaces = { onOpenFaces(item.id) }
+                    )
+                }
+
+                if (landscapeMode) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(mediaWidthDp)
+                                .then(driveModifier)
+                        ) { renderAsset() }
+                        if (infoOpen) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(rightPaneWidthDp)
+                                    .nestedScroll(pageConn),
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Column(modifier = Modifier.verticalScroll(pageScroll)) {
+                                    renderMetadata()
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Portrait: header + metadata in ONE vertical scroll so the
+                    // square asset scrolls up together with the info; the
+                    // nestedScroll connection (outside verticalScroll, so it
+                    // intercepts as a parent) closes info at the top.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(pageConn)
+                            .verticalScroll(pageScroll, enabled = infoOpen)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(headerHeightDp)
+                                .then(driveModifier)
+                        ) { renderAsset() }
+                        if (infoOpen) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = metadataMinHeightDp),
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                renderMetadata()
+                            }
+                        }
+                    }
                 }
             }
 
@@ -468,7 +631,9 @@ fun AssetDetailScreen(
                             IconButton(onClick = { onAddToAlbum(currentItem) }) {
                                 Icon(Icons.Outlined.AddToPhotos, contentDescription = "Añadir a álbum", tint = Color.White)
                             }
-                            IconButton(onClick = { showInfo = true }) {
+                            IconButton(onClick = {
+                                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
+                            }) {
                                 Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
                             }
                             Box {
@@ -550,7 +715,9 @@ fun AssetDetailScreen(
                                 }
                             },
                             onAddToAlbum = { onAddToAlbum(currentItem) },
-                            onShowInfo = { showInfo = true },
+                            onShowInfo = {
+                                coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
+                            },
                             onTrashRequest = { showTrashConfirm = true },
                             onEditDescription = { showEditDescription = true },
                             onEditDate = { showEditDate = true },
@@ -596,20 +763,6 @@ fun AssetDetailScreen(
         }
     }
 
-    if (showInfo && currentItem != null) {
-        ModalBottomSheet(
-            onDismissRequest = { showInfo = false },
-            sheetState = infoSheetState
-        ) {
-            AssetMetadataPanel(
-                fallback = currentItem,
-                detail = state.detail.takeIf { it?.id == currentItem.id },
-                isLoading = state.isLoading,
-                errorMessage = state.error?.userMessage
-            )
-        }
-    }
-
     if (showEditDescription && currentItem != null) {
         val current = state.detail.takeIf { it?.id == currentItem.id }?.caption
         EditDescriptionDialog(
@@ -651,6 +804,28 @@ fun AssetDetailScreen(
     }
 }
 
+/**
+ * A [ContentScale] that blends from [ContentScale.Fit] (fraction 0) to
+ * [ContentScale.Crop] (fraction 1). Driving [fraction] with the info-open
+ * progress turns the square-crop into a smooth progressive zoom instead of an
+ * instant Fit→Crop pop at the start of the gesture.
+ */
+private fun blendedContentScale(fraction: Float): ContentScale =
+    if (fraction <= 0f) {
+        ContentScale.Fit
+    } else {
+        object : ContentScale {
+            override fun computeScaleFactor(srcSize: Size, dstSize: Size): ScaleFactor {
+                val fit = ContentScale.Fit.computeScaleFactor(srcSize, dstSize)
+                val fill = ContentScale.Crop.computeScaleFactor(srcSize, dstSize)
+                return ScaleFactor(
+                    lerp(fit.scaleX, fill.scaleX, fraction),
+                    lerp(fit.scaleY, fill.scaleY, fraction)
+                )
+            }
+        }
+    }
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AssetPage(
@@ -661,6 +836,10 @@ private fun AssetPage(
     authHeaders: Map<String, String>,
     onScaleChange: (Float) -> Unit,
     onToggleChrome: () -> Unit = {},
+    zoomEnabled: Boolean = true,
+    infoOpen: Boolean = false,
+    videoFillCrop: Boolean = false,
+    contentScale: ContentScale = ContentScale.Fit,
     onVideoControlsVisibilityChanged: (Boolean) -> Unit = {},
     videoTopInset: androidx.compose.ui.unit.Dp = 0.dp,
     videoBottomInset: androidx.compose.ui.unit.Dp = 0.dp,
@@ -710,6 +889,8 @@ private fun AssetPage(
                         url = localUri,
                         headers = emptyMap(),
                         onControlsVisibilityChanged = onVideoControlsVisibilityChanged,
+                        fillCrop = videoFillCrop,
+                        controlsEnabled = !infoOpen,
                         modifier = Modifier.fillMaxSize()
                             .padding(top = videoTopInset, bottom = videoBottomInset)
                     )
@@ -720,6 +901,8 @@ private fun AssetPage(
                         model = model,
                         contentDescription = item.fileName,
                         onScaleChange = onScaleChange,
+                        zoomEnabled = zoomEnabled,
+                        contentScale = contentScale,
                         onTap = onToggleChrome
                     )
                     if (item.isVideo && !isVideoPlaybackSupported) {
@@ -740,6 +923,8 @@ private fun AssetPage(
                     url = "$baseUrl/api/assets/${item.id}/content",
                     headers = authHeaders,
                     onControlsVisibilityChanged = onVideoControlsVisibilityChanged,
+                    fillCrop = videoFillCrop,
+                    controlsEnabled = !infoOpen,
                     modifier = Modifier.fillMaxSize()
                         .padding(top = videoTopInset, bottom = videoBottomInset)
                 )
@@ -756,7 +941,7 @@ private fun AssetPage(
                     item = item,
                     baseUrl = baseUrl,
                     size = "Large",
-                    contentScale = ContentScale.Fit,
+                    contentScale = contentScale,
                     modifier = Modifier.fillMaxSize()
                 )
                 if (!isVideoPlaybackSupported) {
@@ -775,6 +960,8 @@ private fun AssetPage(
                     enabled = isCurrent && !isTransitioning,
                     authHeaders = authHeaders,
                     onScaleChange = onScaleChange,
+                    zoomEnabled = zoomEnabled,
+                    contentScale = contentScale,
                     onTap = onToggleChrome
                 )
             }
@@ -788,6 +975,8 @@ private fun AssetPage(
                     model = imageUrl,
                     contentDescription = item.fileName,
                     onScaleChange = onScaleChange,
+                    zoomEnabled = zoomEnabled,
+                    contentScale = contentScale,
                     onTap = onToggleChrome
                 )
             }
@@ -815,6 +1004,8 @@ private fun LivePhotoPage(
     enabled: Boolean,
     authHeaders: Map<String, String>,
     onScaleChange: (Float) -> Unit,
+    zoomEnabled: Boolean = true,
+    contentScale: ContentScale = ContentScale.Fit,
     onTap: (() -> Unit)? = null
 ) {
     var playing by remember(item.id) { mutableStateOf(false) }
@@ -834,6 +1025,8 @@ private fun LivePhotoPage(
             model = imageUrl,
             contentDescription = item.fileName,
             onScaleChange = onScaleChange,
+            zoomEnabled = zoomEnabled,
+            contentScale = contentScale,
             onTap = onTap
         )
 
@@ -869,34 +1062,37 @@ private fun LivePhotoPage(
 }
 
 /**
- * Detects a vertical drag for swipe-to-dismiss without stealing the
+ * Detects a vertical drag and routes it by direction, without stealing the
  * HorizontalPager's left/right swipes or the zoom/pan gestures.
  *
  * Strategy: accumulate movement from the first touch; the first axis to cross
  * touch slop wins. If horizontal wins (or a second finger lands, i.e. a pinch),
  * we bow out and never consume, leaving the pager/zoom in control. If vertical
- * wins — and [isEnabled] still holds — we claim the gesture, forward each dy to
- * [onDragDelta], and report the total to [onRelease] on lift so the caller can
- * decide between dismissing and springing back.
+ * wins — and [isEnabled] still holds — we claim the gesture and lock its
+ * direction (the sign at claim time): an upward drag opens the info panel, a
+ * downward drag dismisses the viewer. Each dy is forwarded to [onDrag] with the
+ * locked direction; the total is reported to [onRelease] on lift so the caller
+ * can settle.
  */
-private suspend fun PointerInputScope.detectVerticalDismiss(
+private suspend fun PointerInputScope.detectVerticalDriveGesture(
     isEnabled: () -> Boolean,
-    onDragDelta: (Float) -> Unit,
-    onRelease: (totalDragY: Float) -> Unit
+    onDrag: (dy: Float, directionUp: Boolean) -> Unit,
+    onRelease: (directionUp: Boolean, totalDragY: Float) -> Unit
 ) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false)
         val slop = viewConfiguration.touchSlop
         var claimed = false
+        var directionUp = false
         var accumX = 0f
         var accumY = 0f
 
         while (true) {
             val event = awaitPointerEvent()
 
-            // A second finger means the user is pinching to zoom — never dismiss.
+            // A second finger means the user is pinching to zoom — never drive.
             if (event.changes.count { it.pressed } > 1) {
-                if (claimed) onRelease(accumY)
+                if (claimed) onRelease(directionUp, accumY)
                 return@awaitEachGesture
             }
 
@@ -913,18 +1109,19 @@ private suspend fun PointerInputScope.detectVerticalDismiss(
                 }
                 if (abs(accumY) > slop && abs(accumY) > abs(accumX)) {
                     claimed = true
+                    directionUp = accumY < 0
                 }
             }
 
             if (claimed) {
-                onDragDelta(delta.y)
+                onDrag(delta.y, directionUp)
                 change.consume()
             }
 
             if (event.changes.all { !it.pressed }) break
         }
 
-        if (claimed) onRelease(accumY)
+        if (claimed) onRelease(directionUp, accumY)
     }
 }
 
@@ -1013,47 +1210,88 @@ private fun AssetMetadataPanel(
     fallback: TimelineItem,
     detail: AssetDetail?,
     isLoading: Boolean,
-    errorMessage: String?
+    errorMessage: String?,
+    onEditDescription: () -> Unit,
+    onEditDate: () -> Unit,
+    onOpenFaces: () -> Unit
 ) {
+    val exif = detail?.exif
+    // Scrolling is owned by the caller's container (the portrait collapsing
+    // column or the landscape pane), so this is plain content.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            // Keep the content clear of the device's navigation bar at the
+            // bottom, then add comfortable top/bottom breathing room so it
+            // doesn't butt up against the asset above or the system buttons.
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 20.dp, vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = detail?.fileName ?: fallback.fileName,
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 2
         )
-        detail?.caption?.takeIf { it.isNotBlank() }?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium)
+
+        // Editable description + capture date — only for server-backed assets
+        // (a local-only asset has no detail and can't be edited).
+        if (detail != null) {
+            MetadataEditableRow(
+                leadingIcon = null,
+                label = "Descripción",
+                value = detail.caption?.takeIf { it.isNotBlank() },
+                placeholder = "Añadir descripción",
+                onClick = onEditDescription
+            )
+            val captureDate = exif?.dateTaken ?: detail.fileCreatedAt
+            MetadataEditableRow(
+                leadingIcon = Icons.Outlined.DateRange,
+                label = "Fecha de captura",
+                value = formatInstant(captureDate.toString()),
+                placeholder = "",
+                onClick = onEditDate
+            )
+        } else {
+            MetadataRow("Creado", formatInstant(fallback.fileCreatedAt.toString()))
         }
 
-        Spacer(Modifier.height(4.dp))
-
-        MetadataRow("Tipo", (detail?.type ?: fallback.type).lowercase().replaceFirstChar { it.uppercase() })
-        MetadataRow("Tamaño del archivo", formatBytes(detail?.fileSize ?: fallback.fileSize))
-        val width = detail?.exif?.width ?: fallback.width
-        val height = detail?.exif?.height ?: fallback.height
-        if (width != null && height != null) {
-            MetadataRow("Dimensiones", "${width} × ${height}")
-        }
-        MetadataRow("Creado", formatInstant((detail?.fileCreatedAt ?: fallback.fileCreatedAt).toString()))
-        detail?.exif?.dateTaken?.let { MetadataRow("Fecha de captura", formatInstant(it.toString())) }
-        detail?.exif?.cameraDisplay?.let { MetadataRow("Cámara", it) }
-        detail?.exif?.iso?.let { MetadataRow("ISO", it.toString()) }
-        detail?.exif?.aperture?.let { MetadataRow("Apertura", "f/$it") }
-        detail?.exif?.shutterSpeed?.let { MetadataRow("Velocidad", "${it}s") }
-        detail?.exif?.focalLength?.let { MetadataRow("Focal", "${it} mm") }
-        detail?.folderPath?.let { MetadataRow("Carpeta", it) }
-
-        val lat = detail?.exif?.latitude
-        val lon = detail?.exif?.longitude
+        // Location: a cropped map centred exactly on the point.
+        val lat = exif?.latitude
+        val lon = exif?.longitude
         if (lat != null && lon != null) {
-            GpsPreview(latitude = lat, longitude = lon)
+            LocationMap(latitude = lat, longitude = lon)
         }
 
+        // Technical EXIF as a 2-column grid of stat cells.
+        val stats = buildList {
+            val width = exif?.width ?: fallback.width
+            val height = exif?.height ?: fallback.height
+            if (width != null && height != null) {
+                val megapixels = width.toLong() * height.toLong() / 1_000_000.0
+                add(StatCell(value = "${formatOneDecimal(megapixels)} MP", label = "$width × $height"))
+            }
+            add(StatCell(value = formatBytes(detail?.fileSize ?: fallback.fileSize), label = "Tamaño"))
+            exif?.iso?.let { add(StatCell(value = "ISO $it", label = "Sensibilidad")) }
+            exif?.aperture?.let { add(StatCell(value = "f/$it", label = "Apertura")) }
+            exif?.shutterSpeed?.let { add(StatCell(value = formatShutter(it), label = "Velocidad")) }
+            exif?.focalLength?.let { add(StatCell(value = "${it.roundToInt()} mm", label = "Distancia focal")) }
+        }
+        ExifGrid(stats)
+
+        exif?.cameraDisplay?.let {
+            MetadataInfoRow(leadingIcon = Icons.Outlined.PhotoCamera, label = "Cámara", value = it)
+        }
+
+        if (detail != null) {
+            MetadataActionRow(
+                leadingIcon = Icons.Outlined.Face,
+                label = "Ver caras",
+                onClick = onOpenFaces
+            )
+        }
+
+        detail?.folderPath?.let { MetadataRow("Carpeta", it) }
         val tags = detail?.tags ?: fallback.tags
         if (tags.isNotEmpty()) {
             MetadataRow("Etiquetas", tags.joinToString(", "))
@@ -1067,19 +1305,184 @@ private fun AssetMetadataPanel(
         errorMessage?.let {
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
 
-        Spacer(Modifier.height(16.dp))
+private data class StatCell(val value: String, val label: String)
+
+/** Numeric EXIF laid out as cards, two per row. */
+@Composable
+private fun ExifGrid(cells: List<StatCell>) {
+    if (cells.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        cells.chunked(2).forEach { rowCells ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowCells.forEach { cell ->
+                    ExifStatCard(cell = cell, modifier = Modifier.weight(1f))
+                }
+                if (rowCells.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
     }
 }
 
 @Composable
-private fun GpsPreview(latitude: Double, longitude: Double) {
-    val coords = formatGps(latitude, longitude)
+private fun ExifStatCard(cell: StatCell, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Text(
+                text = cell.value,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+            Text(
+                text = cell.label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/** A tappable card (description, capture date) that opens an edit dialog. */
+@Composable
+private fun MetadataEditableRow(
+    leadingIcon: ImageVector?,
+    label: String,
+    value: String?,
+    placeholder: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = value ?: placeholder,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (value == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.Edit,
+                contentDescription = "Editar",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+/** A non-interactive labelled card (e.g. camera). */
+@Composable
+private fun MetadataInfoRow(leadingIcon: ImageVector, label: String, value: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+/** A tappable navigation card (e.g. faces) with a trailing chevron. */
+@Composable
+private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/**
+ * A cropped OSM map centred exactly on [latitude]/[longitude] with the pin in
+ * the dead centre. The tiles are laid out as an adjacent grid (Column of Rows)
+ * — so the layout itself guarantees they meet edge-to-edge with no seam — sized
+ * with requiredSize so the box constraints don't clip the grid (which once
+ * blanked the map), and the WHOLE grid is shifted by a single offset to centre
+ * the point.
+ */
+@Composable
+private fun LocationMap(latitude: Double, longitude: Double) {
     val mapsUrl = "https://www.google.com/maps/?q=$latitude,$longitude"
-    val grid = remember(latitude, longitude) { computeMapGrid(latitude, longitude, MAP_ZOOM) }
+    val density = LocalDensity.current
+    val n = 1 shl MAP_ZOOM
+    val worldX = (longitude + 180.0) / 360.0 * n
+    val latRad = latitude * PI / 180.0
+    val worldY = (1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n
+    val centerTileX = floor(worldX).toInt()
+    val centerTileY = floor(worldY).toInt()
+    val fracX = worldX - centerTileX
+    val fracY = worldY - centerTileY
+
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
             stringResource(Res.string.asset_metadata_location),
@@ -1089,88 +1492,111 @@ private fun GpsPreview(latitude: Double, longitude: Double) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
+                .height(MAP_HEIGHT_DP)
+                .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { openExternalUrl(mapsUrl) }
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    OsmTile(MAP_ZOOM, grid.tileXStart, grid.tileYStart, Modifier.weight(1f).fillMaxHeight())
-                    OsmTile(MAP_ZOOM, grid.tileXStart + 1, grid.tileYStart, Modifier.weight(1f).fillMaxHeight())
-                }
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    OsmTile(MAP_ZOOM, grid.tileXStart, grid.tileYStart + 1, Modifier.weight(1f).fillMaxHeight())
-                    OsmTile(MAP_ZOOM, grid.tileXStart + 1, grid.tileYStart + 1, Modifier.weight(1f).fillMaxHeight())
-                }
-            }
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val pinX = maxWidth * grid.markerXFraction.toFloat() - 12.dp
-                val pinY = maxHeight * grid.markerYFraction.toFloat() - 24.dp
-                Icon(
-                    imageVector = Icons.Filled.LocationOn,
-                    contentDescription = stringResource(Res.string.asset_metadata_open_map),
-                    tint = Color(0xFFE53935),
+                val tilePx = with(density) { MAP_TILE_DP.toPx() }
+                val boxWpx = with(density) { maxWidth.toPx() }
+                val boxHpx = with(density) { maxHeight.toPx() }
+                // Tiles needed on each side of the centre tile to cover the box.
+                val halfX = ceil(boxWpx / 2f / tilePx).toInt() + 1
+                val halfY = ceil(boxHpx / 2f / tilePx).toInt() + 1
+                // Single shift so the exact point lands at the box centre.
+                val gridOffsetX = (boxWpx / 2.0 - (halfX + fracX) * tilePx).roundToInt()
+                val gridOffsetY = (boxHpx / 2.0 - (halfY + fracY) * tilePx).roundToInt()
+                Column(
                     modifier = Modifier
-                        .offset(x = pinX, y = pinY)
-                        .size(24.dp)
-                )
+                        .requiredSize(
+                            width = MAP_TILE_DP * (2 * halfX + 1),
+                            height = MAP_TILE_DP * (2 * halfY + 1)
+                        )
+                        .offset { IntOffset(gridOffsetX, gridOffsetY) }
+                ) {
+                    for (dy in -halfY..halfY) {
+                        Row {
+                            for (dx in -halfX..halfX) {
+                                val tileX = (((centerTileX + dx) % n) + n) % n
+                                val tileY = (centerTileY + dy).coerceIn(0, n - 1)
+                                AsyncImage(
+                                    model = "https://tile.openstreetmap.org/$MAP_ZOOM/$tileX/$tileY.png",
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(MAP_TILE_DP)
+                                )
+                            }
+                        }
+                    }
+                }
             }
-            Box(
+            Icon(
+                imageVector = Icons.Filled.LocationOn,
+                contentDescription = stringResource(Res.string.asset_metadata_open_map),
+                tint = Color(0xFFE53935),
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(8.dp)
-                    .background(
-                        Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(6.dp)
-                    )
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.Center)
+                    .offset(y = (-15).dp)
+                    .size(34.dp)
+            )
+            // Bottom bar inside the card: coordinates on the left, the
+            // "open in maps" action on the right.
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = coords,
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall
-                )
+                Box(
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = formatGps(latitude, longitude),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .clickable { openExternalUrl(mapsUrl) }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(Res.string.asset_action_open_in_maps),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             }
-        }
-        TextButton(onClick = { openExternalUrl(mapsUrl) }) {
-            Icon(Icons.Filled.LocationOn, contentDescription = null)
-            Spacer(Modifier.width(4.dp))
-            Text(stringResource(Res.string.asset_action_open_in_maps))
         }
     }
 }
 
-@Composable
-private fun OsmTile(zoom: Int, x: Int, y: Int, modifier: Modifier) {
-    AsyncImage(
-        model = "https://tile.openstreetmap.org/$zoom/$x/$y.png",
-        contentDescription = null,
-        contentScale = ContentScale.FillBounds,
-        modifier = modifier
-    )
-}
+private const val MAP_ZOOM = 16
+private val MAP_TILE_DP = 180.dp
+private val MAP_HEIGHT_DP = 200.dp
 
-private const val MAP_ZOOM = 15
+private fun formatOneDecimal(value: Double): String =
+    ((value * 10).roundToInt() / 10.0).toString()
 
-private data class MapGrid(
-    val tileXStart: Int,
-    val tileYStart: Int,
-    val markerXFraction: Double,
-    val markerYFraction: Double
-)
-
-private fun computeMapGrid(lat: Double, lon: Double, zoom: Int): MapGrid {
-    val n = (1 shl zoom).toDouble()
-    val worldX = (lon + 180.0) / 360.0 * n
-    val latRad = lat * PI / 180.0
-    val worldY = (1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n
-    val tileXStart = floor(worldX - 0.5).toInt()
-    val tileYStart = floor(worldY - 0.5).toInt()
-    val markerXFraction = (worldX - tileXStart) / 2.0
-    val markerYFraction = (worldY - tileYStart) / 2.0
-    return MapGrid(tileXStart, tileYStart, markerXFraction, markerYFraction)
-}
+private fun formatShutter(seconds: Double): String =
+    if (seconds >= 1.0) "${formatOneDecimal(seconds)} s"
+    else "1/${(1.0 / seconds).roundToInt()} s"
 
 private fun formatGps(lat: Double, lon: Double): String {
     fun round5(value: Double): String {

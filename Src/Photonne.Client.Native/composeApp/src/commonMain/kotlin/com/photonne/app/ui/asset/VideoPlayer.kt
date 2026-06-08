@@ -23,13 +23,21 @@ import androidx.compose.ui.Modifier
  * chrome (top/bottom bars) to this so a single tap toggles everything at once,
  * matching the iOS Photos / Google Photos viewer. The player letterboxes the
  * video (aspect-fit) so a portrait clip never overflows behind the chrome.
+ * @param fillCrop when true the video fills its box by cropping (zoom-to-fill)
+ * instead of letterboxing — used for the 1:1 info header so the clip sits
+ * snugly in the square, matching the photo crop.
+ * @param controlsEnabled when false the transport controls are hidden and the
+ * clip plays automatically (ambient playback for the 1:1 info header); they
+ * reappear when it becomes true again (on leaving info mode).
  */
 @Composable
 expect fun VideoPlayer(
     url: String,
     headers: Map<String, String>,
     modifier: Modifier = Modifier,
-    onControlsVisibilityChanged: (Boolean) -> Unit = {}
+    onControlsVisibilityChanged: (Boolean) -> Unit = {},
+    fillCrop: Boolean = false,
+    controlsEnabled: Boolean = true
 )
 
 /**

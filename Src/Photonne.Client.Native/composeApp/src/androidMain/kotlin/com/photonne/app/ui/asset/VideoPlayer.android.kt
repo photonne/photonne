@@ -8,6 +8,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -24,7 +27,9 @@ actual fun VideoPlayer(
     url: String,
     headers: Map<String, String>,
     modifier: Modifier,
-    onControlsVisibilityChanged: (Boolean) -> Unit
+    onControlsVisibilityChanged: (Boolean) -> Unit,
+    fillCrop: Boolean,
+    controlsEnabled: Boolean
 ) {
     val context = LocalContext.current
     // Latest callback without re-creating the AndroidView when the lambda
@@ -49,8 +54,36 @@ actual fun VideoPlayer(
         onDispose { player.release() }
     }
 
+    // Pause when the app is backgrounded (home button / app switcher) so the
+    // clip doesn't keep playing audio off-screen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, player) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                player.playWhenReady = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     AndroidView(
         modifier = modifier,
+        update = { playerView ->
+            // Zoom-to-fill in the 1:1 info header, aspect-fit otherwise.
+            playerView.resizeMode = if (fillCrop) {
+                AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            } else {
+                AspectRatioFrameLayout.RESIZE_MODE_FIT
+            }
+            // Info mode: hide the transport controls and play automatically
+            // (ambient playback). Leave the play state untouched otherwise.
+            playerView.useController = controlsEnabled
+            if (!controlsEnabled) {
+                playerView.hideController()
+                player.playWhenReady = true
+            }
+        },
         factory = { ctx ->
             PlayerView(ctx).apply {
                 this.player = player

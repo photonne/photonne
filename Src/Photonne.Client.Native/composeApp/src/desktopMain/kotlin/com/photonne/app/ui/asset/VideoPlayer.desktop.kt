@@ -22,7 +22,9 @@ actual fun VideoPlayer(
     url: String,
     headers: Map<String, String>,
     modifier: Modifier,
-    onControlsVisibilityChanged: (Boolean) -> Unit
+    onControlsVisibilityChanged: (Boolean) -> Unit,
+    fillCrop: Boolean,
+    controlsEnabled: Boolean
 ) {
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black),
