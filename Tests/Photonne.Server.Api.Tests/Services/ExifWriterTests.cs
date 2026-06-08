@@ -127,6 +127,39 @@ public sealed class ExifWriterTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task WriteDateTaken_PreservesExistingGps()
+    {
+        // Regression: "Restore dates" rewrites the file via Magick. It must
+        // keep the existing GPS (it lives in the same EXIF profile we reuse),
+        // not silently drop location while updating the date.
+        var path = CopyToTemp(FixturePaths.WithExif); // Madrid GPS
+        try
+        {
+            using var scope = Factory.Services.CreateScope();
+            var writer = scope.ServiceProvider.GetRequiredService<ExifWriterService>();
+            var extractor = scope.ServiceProvider.GetRequiredService<ExifExtractorService>();
+
+            var before = await extractor.ExtractExifAsync(path);
+            Assert.NotNull(before!.Latitude);
+            Assert.NotNull(before.Longitude);
+
+            var result = await writer.WriteDateTakenAsync(
+                path, new DateTime(2015, 2, 14, 18, 30, 0, DateTimeKind.Utc));
+            Assert.True(result.FileWritten, result.Reason);
+
+            var after = await extractor.ExtractExifAsync(path);
+            Assert.NotNull(after!.Latitude);
+            Assert.NotNull(after.Longitude);
+            Assert.Equal(before.Latitude!.Value, after.Latitude!.Value, precision: 3);
+            Assert.Equal(before.Longitude!.Value, after.Longitude!.Value, precision: 3);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task WriteDateTaken_OnVideo_ReportsNotWritten()
     {
         using var scope = Factory.Services.CreateScope();
