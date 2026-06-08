@@ -1,8 +1,8 @@
 package com.photonne.app.ui.timeline
 
 import com.photonne.app.data.models.TimelineItem
-import com.photonne.app.ui.grid.JustifiedRow
-import com.photonne.app.ui.grid.JustifiedRowEntry
+import com.photonne.app.ui.grid.TimelineRow
+import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.TimelineEntry
 import com.photonne.app.ui.grid.findRowIndexForAsset
 import com.photonne.app.ui.grid.formatLocalizedMonth
@@ -23,17 +23,18 @@ private fun item(id: String) = TimelineItem(
     type = "IMAGE"
 )
 
-private fun header(key: String) = JustifiedRowEntry.Header(key = key, title = key)
+private fun header(key: String) = TimelineRowEntry.Header(key = key, title = key)
 
-private fun row(id: String, heightDp: Float = 100f) = JustifiedRowEntry.Row(
-    JustifiedRow(
+private fun row(id: String, heightDp: Float = 100f) = TimelineRowEntry.Row(
+    TimelineRow(
         cells = listOf(TimelineEntry.Cell(item(id), index = 0)),
-        rowHeightDp = heightDp
+        rowHeightDp = heightDp,
+        columns = 1
     )
 )
 
 private fun skeletonRow(bucketKey: String, i: Int, heightDp: Float = 100f) =
-    JustifiedRowEntry.SkeletonRow(
+    TimelineRowEntry.SkeletonRow(
         bucketKey = bucketKey,
         rowIndex = i,
         cellCount = 3,

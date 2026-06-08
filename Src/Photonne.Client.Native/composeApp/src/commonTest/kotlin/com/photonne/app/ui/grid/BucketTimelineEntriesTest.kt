@@ -199,57 +199,6 @@ class BucketTimelineEntriesTest {
     }
 
     @Test
-    fun structure_index_replaces_skeletons_with_placeholder_cells() {
-        val result = buildBucketEntries(
-            buckets = listOf(
-                loaded("2026-02", item("feb-1", "2026-02-20T10:00:00Z")),
-                skeleton("2026-01", 2)
-            ),
-            localItems = emptyList(),
-            grouping = TimelineGrouping.Month,
-            gridIndex = mapOf(
-                "2026-01" to listOf(
-                    com.photonne.app.data.models.TimelineGridItem(
-                        id = "jan-1", type = "Video", date = "2026-01-20",
-                        dominantColor = "#112233", width = 4000, height = 3000
-                    ),
-                    com.photonne.app.data.models.TimelineGridItem(
-                        id = "jan-2", type = "Image", date = "2026-01-05"
-                    )
-                )
-            )
-        )
-
-        // No square skeleton for January — real placeholder cells instead.
-        assertTrue(result.entries.filterIsInstance<TimelineEntry.SkeletonBucket>().isEmpty())
-        val cells = result.entries.filterIsInstance<TimelineEntry.Cell>()
-        assertEquals(listOf("feb-1", "jan-1", "jan-2"), cells.map { it.item.id })
-        // Placeholders carry index -1 and never enter the merged list.
-        assertEquals(listOf(0, -1, -1), cells.map { it.index })
-        assertEquals(listOf("feb-1"), result.mergedItems.map { it.id })
-        // Layout data survives the lift so packing and badges are real.
-        val jan1 = cells.first { it.item.id == "jan-1" }.item
-        assertEquals(4000, jan1.width)
-        assertEquals("#112233", jan1.dominantColor)
-        assertTrue(jan1.isVideo)
-        // Structure-only months still break pager continuity.
-        assertEquals(1, result.loadedRanges.size)
-    }
-
-    @Test
-    fun structure_months_fall_back_to_skeletons_when_absent_from_index() {
-        val result = buildBucketEntries(
-            buckets = listOf(skeleton("2026-01", 7)),
-            localItems = emptyList(),
-            grouping = TimelineGrouping.Month,
-            gridIndex = mapOf("2025-12" to emptyList())
-        )
-
-        val skeletonEntry = result.entries.filterIsInstance<TimelineEntry.SkeletonBucket>().single()
-        assertEquals(7, skeletonEntry.count)
-    }
-
-    @Test
     fun year_summaries_build_one_header_per_year_with_count() {
         val result = buildYearSummaryEntries(
             listOf(
@@ -281,9 +230,9 @@ class BucketTimelineEntriesTest {
     @Test
     fun truncate_caps_rows_per_group_but_keeps_headers() {
         val rows = listOf(
-            JustifiedRowEntry.Header(key = "2026", title = "2026"),
+            TimelineRowEntry.Header(key = "2026", title = "2026"),
             row("a"), row("b"), row("c"),
-            JustifiedRowEntry.Header(key = "2025", title = "2025"),
+            TimelineRowEntry.Header(key = "2025", title = "2025"),
             row("d")
         )
 
@@ -293,9 +242,9 @@ class BucketTimelineEntriesTest {
             listOf("2026", "r:a", "r:b", "2025", "r:d"),
             truncated.map {
                 when (it) {
-                    is JustifiedRowEntry.Header -> it.key
-                    is JustifiedRowEntry.Row -> "r:${it.row.cells.first().item.id}"
-                    is JustifiedRowEntry.SkeletonRow -> "s"
+                    is TimelineRowEntry.Header -> it.key
+                    is TimelineRowEntry.Row -> "r:${it.row.cells.first().item.id}"
+                    is TimelineRowEntry.SkeletonRow -> "s"
                 }
             }
         )
@@ -308,33 +257,11 @@ class BucketTimelineEntriesTest {
         assertEquals("1 234 567", formatGroupedCount(1234567))
     }
 
-    private fun row(id: String) = JustifiedRowEntry.Row(
-        JustifiedRow(
+    private fun row(id: String) = TimelineRowEntry.Row(
+        TimelineRow(
             cells = listOf(TimelineEntry.Cell(item(id, "2026-01-01T10:00:00Z"), index = 0)),
-            rowHeightDp = 35f
+            rowHeightDp = 35f,
+            columns = 1
         )
     )
-
-    @Test
-    fun skeleton_buckets_pack_into_deterministic_row_count() {
-        val entries = listOf(
-            TimelineEntry.Header(key = "2026-01", title = "enero de 2026"),
-            TimelineEntry.SkeletonBucket(bucketKey = "2026-01", count = 10)
-        )
-
-        // 350dp wide, 100dp target rows → 3 cells/row → ceil(10/3) = 4 rows,
-        // last row with a single cell.
-        val rows = packJustifiedRows(
-            entries = entries,
-            containerWidthDp = 350f,
-            targetRowHeightDp = 100f,
-            spacingDp = 2f
-        )
-
-        val skeletonRows = rows.filterIsInstance<JustifiedRowEntry.SkeletonRow>()
-        assertEquals(4, skeletonRows.size)
-        assertEquals(listOf(3, 3, 3, 1), skeletonRows.map { it.cellCount })
-        assertTrue(skeletonRows.all { it.cellsPerRow == 3 })
-        assertTrue(skeletonRows.all { it.rowHeightDp == 100f })
-    }
 }

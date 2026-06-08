@@ -65,7 +65,7 @@ import com.photonne.app.resources.timeline_empty_title
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
-import com.photonne.app.ui.grid.JustifiedRowEntry
+import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.grid.bucketKeyOf
 import com.photonne.app.ui.grid.buildBucketEntries
@@ -74,7 +74,7 @@ import com.photonne.app.ui.grid.contiguousRunAround
 import com.photonne.app.ui.grid.expandWithNeighborBuckets
 import com.photonne.app.ui.grid.findRowIndexForAsset
 import com.photonne.app.ui.grid.findRowIndexForDate
-import com.photonne.app.ui.grid.packJustifiedRows
+import com.photonne.app.ui.grid.packUniformRows
 import com.photonne.app.ui.grid.truncateRowsPerGroup
 import androidx.compose.foundation.layout.aspectRatio
 import com.photonne.app.ui.theme.EmptyState
@@ -154,10 +154,10 @@ fun TimelineScreen(
     // the full bucket timeline. Both flatten into the same entries shape.
     val isYearView = zoomLevel.grouping == TimelineGrouping.Year
 
-    // Pinch state: during a two-finger zoom the target row height lerps
-    // toward the next zoom level for visual feedback, then snaps to a
-    // discrete level on gesture end. Grouping stays at zoomLevel.grouping
-    // for the duration of the gesture — only the row height animates.
+    // Pinch state: during a two-finger zoom the cell size lerps toward the
+    // next zoom level for visual feedback, then snaps to a discrete level on
+    // gesture end. Grouping stays at zoomLevel.grouping for the duration of
+    // the gesture — only the cell size animates.
     var gestureActive by remember { mutableStateOf(false) }
     var gestureZoom by remember { mutableFloatStateOf(1f) }
     val gestureTarget: TimelineZoomLevel = remember(zoomLevel, gestureZoom) {
@@ -168,7 +168,7 @@ fun TimelineScreen(
         if (gestureZoom <= 0f) 0f
         else (abs(ln(gestureZoom)) / ln(1.5f)).toFloat().coerceIn(0f, 1f)
     }
-    val effectiveRowHeight = if (!gestureActive) {
+    val effectiveCellMinSize = if (!gestureActive) {
         zoomLevel.cellMinSizeDp.dp
     } else {
         lerp(
@@ -195,28 +195,28 @@ fun TimelineScreen(
                 if (isYearView) onEnsureYearSummaries(yearSample)
             }
             when {
-                state.isInitialLoading -> TimelineSkeleton(cellMinSize = effectiveRowHeight)
+                state.isInitialLoading -> TimelineSkeleton(cellMinSize = effectiveCellMinSize)
                 state.isEmpty -> TimelineEmptyState(onOpenUpload = onOpenUpload)
                 // Year view before its summaries arrive: full-screen skeleton
                 // (the ensure effect below fires the fetch).
                 isYearView && state.yearSummaries == null ->
-                    TimelineSkeleton(cellMinSize = effectiveRowHeight)
+                    TimelineSkeleton(cellMinSize = effectiveCellMinSize)
                 else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val containerWidthDp = maxWidth
                     // The whole derivation pipeline — flattening buckets into
-                    // entries, justifying them into rows, and the key→bucket
-                    // map — runs OFF the main thread. With the structure
-                    // index materializing the entire library, this touches
-                    // tens of thousands of items per bucket arrival; doing
-                    // it in a remember{} (i.e. during composition) was what
-                    // hitched the scrubber whenever data landed. The
-                    // PREVIOUS frame's rows stay on screen while the new
-                    // ones compute, so the UI thread never waits; restarts
-                    // cancel superseded computations (mapLatest semantics).
+                    // entries, packing them into uniform rows, and the
+                    // key→bucket map — runs OFF the main thread. With the whole
+                    // library laid out up front this touches tens of thousands
+                    // of items per bucket arrival; doing it in a remember{}
+                    // (i.e. during composition) was what hitched the scrubber
+                    // whenever data landed. The PREVIOUS frame's rows stay on
+                    // screen while the new ones compute, so the UI thread never
+                    // waits; restarts cancel superseded computations (mapLatest
+                    // semantics).
                     var packed by remember { mutableStateOf<PackedTimeline?>(null) }
                     LaunchedEffect(
-                        state.buckets, state.yearSummaries, state.gridIndex,
-                        localItems, zoomLevel, containerWidthDp, effectiveRowHeight
+                        state.buckets, state.yearSummaries,
+                        localItems, zoomLevel, containerWidthDp, effectiveCellMinSize
                     ) {
                         packed = withContext(Dispatchers.Default) {
                             derivePackedTimeline(
@@ -224,7 +224,7 @@ fun TimelineScreen(
                                 localItems = localItems,
                                 grouping = zoomLevel.grouping,
                                 containerWidthDp = containerWidthDp.value,
-                                targetRowHeightDp = effectiveRowHeight.value
+                                minCellSizeDp = effectiveCellMinSize.value
                             )
                         }
                     }
@@ -238,7 +238,7 @@ fun TimelineScreen(
                     if (current == null) {
                         // Only the very first derivation (cold entry into the
                         // grid) has nothing previous to show.
-                        TimelineSkeleton(cellMinSize = effectiveRowHeight)
+                        TimelineSkeleton(cellMinSize = effectiveCellMinSize)
                         return@BoxWithConstraints
                     }
                     val bucketEntries = current.entries
@@ -288,12 +288,12 @@ fun TimelineScreen(
                             val end = minOf(idx + 8, rows.size - 1)
                             for (i in idx..end) {
                                 when (val e = rows.getOrNull(i)) {
-                                    is JustifiedRowEntry.Row -> {
+                                    is TimelineRowEntry.Row -> {
                                         val first = e.row.cells.firstOrNull() ?: continue
                                         return@derivedStateOf first.item.fileCreatedAt
                                             .toLocalDateTime(TimeZone.currentSystemDefault()).date
                                     }
-                                    is JustifiedRowEntry.SkeletonRow -> {
+                                    is TimelineRowEntry.SkeletonRow -> {
                                         val year = e.bucketKey.substringBefore('-').toIntOrNull()
                                             ?: continue
                                         val month = e.bucketKey.substringAfter('-').toIntOrNull()
@@ -714,13 +714,13 @@ private const val SETTLE_DEBOUNCE_MS = 180L
 private data class PendingAssetAnchor(val assetId: String, val bucketKey: String)
 
 /**
- * Snapshot of one full timeline derivation: flattened entries, justified
- * rows and the LazyColumn key → bucket map. Produced as a unit off the main
+ * Snapshot of one full timeline derivation: flattened entries, uniform rows
+ * and the LazyColumn key → bucket map. Produced as a unit off the main
  * thread so the grid swaps atomically from one consistent frame to the next.
  */
 private data class PackedTimeline(
     val entries: BucketEntriesResult,
-    val rows: List<JustifiedRowEntry>,
+    val rows: List<TimelineRowEntry>,
     val keyToBucket: Map<Any, String>
 )
 
@@ -730,7 +730,7 @@ private fun derivePackedTimeline(
     localItems: List<com.photonne.app.data.models.TimelineItem>,
     grouping: TimelineGrouping,
     containerWidthDp: Float,
-    targetRowHeightDp: Float
+    minCellSizeDp: Float
 ): PackedTimeline {
     val isYear = grouping == TimelineGrouping.Year
     val entries = if (isYear) {
@@ -739,14 +739,13 @@ private fun derivePackedTimeline(
         buildBucketEntries(
             buckets = state.buckets,
             localItems = localItems,
-            grouping = grouping,
-            gridIndex = state.gridIndex.orEmpty()
+            grouping = grouping
         )
     }
-    var rows = packJustifiedRows(
+    var rows = packUniformRows(
         entries = entries.entries,
         containerWidthDp = containerWidthDp,
-        targetRowHeightDp = targetRowHeightDp,
+        minCellSizeDp = minCellSizeDp,
         spacingDp = 2f
     )
     // Year view: cap every year to a fixed number of rows — the header
@@ -756,7 +755,7 @@ private fun derivePackedTimeline(
     val keyToBucket = buildMap {
         rows.forEach { entry ->
             when (entry) {
-                is JustifiedRowEntry.Row -> {
+                is TimelineRowEntry.Row -> {
                     val first = entry.row.cells.firstOrNull()
                     if (first != null) {
                         put(
@@ -765,9 +764,9 @@ private fun derivePackedTimeline(
                         )
                     }
                 }
-                is JustifiedRowEntry.SkeletonRow ->
+                is TimelineRowEntry.SkeletonRow ->
                     put("s:${entry.bucketKey}:${entry.rowIndex}", entry.bucketKey)
-                is JustifiedRowEntry.Header -> Unit
+                is TimelineRowEntry.Header -> Unit
             }
         }
     }

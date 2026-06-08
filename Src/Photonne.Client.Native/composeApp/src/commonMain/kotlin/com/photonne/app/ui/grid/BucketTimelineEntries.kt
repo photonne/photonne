@@ -1,13 +1,11 @@
 package com.photonne.app.ui.grid
 
-import com.photonne.app.data.models.TimelineGridItem
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.timeline.TimelineBucketState
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -58,9 +56,10 @@ internal data class BucketRange(
  * - Loaded buckets contribute real cells (server items merged with that
  *   month's local items via [mergeTimelineWithLocal]).
  * - Unloaded buckets contribute a single [TimelineEntry.SkeletonBucket]
- *   whose count reserves deterministic height. Local items of an unloaded
- *   month stay hidden until it loads — dedup against the server needs the
- *   server's items.
+ *   whose count reserves EXACT height (uniform grid → height is a pure
+ *   function of the count, so hydration never shifts scroll). Local items of
+ *   an unloaded month stay hidden until it loads — dedup against the server
+ *   needs the server's items.
  * - Months that exist only on the device become synthetic loaded buckets.
  * - Headers follow [grouping]: one per year, one per month (from the bucket
  *   key, so header and bucket can never disagree), or one per local day
@@ -69,16 +68,7 @@ internal data class BucketRange(
 internal fun buildBucketEntries(
     buckets: List<TimelineBucketState>,
     localItems: List<TimelineItem>,
-    grouping: TimelineGrouping,
-    /**
-     * Whole-library structure index, by month. When an unloaded month has
-     * an entry here it renders its REAL justified structure (aspect
-     * ratios, dominant colors, type glyphs, thumbnails by id) as
-     * placeholder cells with `index = -1` — Synology-style: the grid shape
-     * is always right and hydration can't shift scroll. Months absent from
-     * the index fall back to square [TimelineEntry.SkeletonBucket]s.
-     */
-    gridIndex: Map<String, List<TimelineGridItem>> = emptyMap()
+    grouping: TimelineGrouping
 ): BucketEntriesResult {
     val localByMonth = localItems.groupBy { bucketKeyOf(it.fileCreatedAt) }
     val serverByKey = buckets.associateBy { it.key }
@@ -100,20 +90,14 @@ internal fun buildBucketEntries(
         }
     }
 
-    // Emits one bucket's cells (plus day headers when needed). Placeholder
-    // cells carry index = -1: they never enter the merged list, so clicks,
-    // selection and the detail pager all ignore them until hydration.
-    fun emitBucketCells(bucketKey: String, items: List<TimelineItem>, placeholders: Boolean) {
+    // Emits one bucket's cells (plus day headers when needed).
+    fun emitBucketCells(bucketKey: String, items: List<TimelineItem>) {
         order += bucketKey
         val start = merged.size
 
         fun emitCell(item: TimelineItem) {
-            if (placeholders) {
-                entries += TimelineEntry.Cell(item = item, index = -1)
-            } else {
-                merged += item
-                entries += TimelineEntry.Cell(item = item, index = merged.size - 1)
-            }
+            merged += item
+            entries += TimelineEntry.Cell(item = item, index = merged.size - 1)
         }
 
         if (grouping == TimelineGrouping.Day) {
@@ -135,12 +119,7 @@ internal fun buildBucketEntries(
             items.forEach(::emitCell)
         }
 
-        if (placeholders) {
-            // Structure-only content still interrupts pager continuity.
-            runId++
-        } else {
-            ranges += BucketRange(bucketKey, start until merged.size, runId)
-        }
+        ranges += BucketRange(bucketKey, start until merged.size, runId)
     }
 
     for (bucketKey in allKeys) {
@@ -148,15 +127,6 @@ internal fun buildBucketEntries(
         val local = localByMonth[bucketKey].orEmpty()
 
         if (server != null && !server.isLoaded) {
-            val structure = gridIndex[bucketKey].orEmpty()
-            if (structure.isNotEmpty()) {
-                emitBucketCells(
-                    bucketKey = bucketKey,
-                    items = structure.map { it.toPlaceholderItem(bucketKey) },
-                    placeholders = true
-                )
-                continue
-            }
             if (server.count == 0) continue
             order += bucketKey
             emitGroupHeader(
@@ -174,7 +144,7 @@ internal fun buildBucketEntries(
             else -> local.sortedByDescending { it.fileCreatedAt }
         }
         if (items.isEmpty()) continue
-        emitBucketCells(bucketKey = bucketKey, items = items, placeholders = false)
+        emitBucketCells(bucketKey = bucketKey, items = items)
     }
 
     return BucketEntriesResult(
@@ -183,38 +153,6 @@ internal fun buildBucketEntries(
         loadedRanges = ranges,
         bucketOrder = order
     )
-}
-
-/**
- * Lifts a structure-index entry into the cell model. The instant is the
- * capture DAY at UTC midnight — month/day grouping keys stay consistent
- * with the server's bucket grouping; finer precision arrives with the real
- * item on hydration.
- */
-private fun TimelineGridItem.toPlaceholderItem(bucketKey: String): TimelineItem {
-    val day = parseGridDate(date) ?: parseGridDate("$bucketKey-01")
-    val instant = day?.atStartOfDayIn(TimeZone.UTC) ?: Instant.DISTANT_PAST
-    return TimelineItem(
-        id = id,
-        fileName = "",
-        fullPath = "",
-        fileSize = 0L,
-        fileCreatedAt = instant,
-        fileModifiedAt = instant,
-        extension = "",
-        scannedAt = instant,
-        type = type,
-        width = width.takeIf { it > 0 },
-        height = height.takeIf { it > 0 },
-        dominantColor = dominantColor,
-        isReadOnly = isReadOnly
-    )
-}
-
-private fun parseGridDate(value: String): LocalDate? = try {
-    LocalDate.parse(value)
-} catch (_: IllegalArgumentException) {
-    null
 }
 
 /**

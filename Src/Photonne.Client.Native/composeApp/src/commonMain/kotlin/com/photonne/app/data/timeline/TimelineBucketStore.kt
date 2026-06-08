@@ -2,7 +2,6 @@ package com.photonne.app.data.timeline
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.TimelineBucket
-import com.photonne.app.data.models.TimelineGridItem
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelineYearSummary
 import kotlinx.coroutines.Dispatchers
@@ -55,16 +54,6 @@ class TimelineBucketStore(
     private val _yearSummaries = MutableStateFlow<List<TimelineYearSummary>?>(null)
     val yearSummaries: StateFlow<List<TimelineYearSummary>?> = _yearSummaries.asStateFlow()
 
-    /**
-     * Whole-library structure index (layout data only), keyed by month.
-     * Fetched once in the background; unloaded months render their real
-     * justified structure from it instead of square skeletons. Null until
-     * fetched; cleared by [refresh].
-     */
-    private val _gridIndex = MutableStateFlow<Map<String, List<TimelineGridItem>>?>(null)
-    val gridIndex: StateFlow<Map<String, List<TimelineGridItem>>?> = _gridIndex.asStateFlow()
-    private var gridIndexInFlight = false
-
     /** Guards [inFlight], [lastTouched], year-fetch state and eviction. */
     private val mutex = Mutex()
     private val inFlight = mutableSetOf<String>()
@@ -87,34 +76,10 @@ class TimelineBucketStore(
         mutex.withLock {
             lastTouched.clear()
             _buckets.value = skeleton.map { TimelineBucketState(key = it.key, count = it.count) }
-            // Year summaries and the structure index are snapshots of the
-            // same library — refetch on demand after a refresh.
+            // Year summaries are a snapshot of the same library — refetch on
+            // demand after a refresh.
             _yearSummaries.value = null
             yearSampleSize = 0
-            _gridIndex.value = null
-        }
-    }
-
-    /**
-     * Fetches the whole-library structure index once; concurrent callers
-     * dedup. Failures propagate — callers treat the index as an enhancement
-     * (square skeletons remain the fallback) and may retry later.
-     */
-    suspend fun ensureGridIndex() {
-        mutex.withLock {
-            if (_gridIndex.value != null || gridIndexInFlight) return
-            gridIndexInFlight = true
-        }
-        try {
-            // The whole-library index is the heaviest payload the client
-            // parses — keep both the deserialization and the map reshaping
-            // off the main thread.
-            val byMonth = fetchOffMain {
-                api.getTimelineGridIndex().associate { it.yearMonth to it.items }
-            }
-            mutex.withLock { _gridIndex.value = byMonth }
-        } finally {
-            mutex.withLock { gridIndexInFlight = false }
         }
     }
 

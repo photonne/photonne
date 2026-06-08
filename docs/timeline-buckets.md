@@ -99,17 +99,19 @@ deriva).
 
 **`GroupedAssetGrid` / `TimelineScreen`**: emisión por bucket:
 
-- Bucket cargado → `groupTimelineEntries` + `packJustifiedRows` por bucket
+- Bucket cargado → `groupTimelineEntries` + `packUniformRows` por bucket
   (el packer ya hace flush en headers).
-- Bucket sin cargar → `stickyHeader` + placeholder de altura determinista:
-  `ceil(count / floor(anchoContenedor / celda)) * altoFila`, con skeleton
-  tiles cuadrados.
+- Bucket sin cargar → `stickyHeader` + placeholder de altura **exacta**:
+  `ceil(count / columnas) * ladoCelda`, con skeleton tiles cuadrados. Como el
+  grid es uniforme, esa altura coincide exactamente con la de las filas reales,
+  así que la hidratación nunca desplaza el scroll.
 - Detección de visibilidad: `snapshotFlow` sobre `layoutInfo.visibleItemsInfo`
   → keys de bucket visibles → `ensureVisible(visibles ± 1)`. Sustituye al
   `PREFETCH_THRESHOLD`/`onLoadMore` actual.
 - Keys estables (`h:2026-05`, `ph:2026-05`, filas por asset-id) para que
-  `LazyColumn` preserve el scroll al hidratar un placeholder. Si hay salto
-  (altura estimada ≠ real), compensar con `scrollBy(delta)` — ajuste fino.
+  `LazyColumn` preserve el scroll al hidratar un placeholder. Con grid uniforme
+  la altura del placeholder ya es la definitiva, así que no hay salto que
+  compensar.
 - Zoom `Year`: headers solo de año (suprimir los de mes), placeholders
   siguen siendo por mes. `findRowIndexForDate` funciona sin cambios y ahora
   siempre encuentra el header — saltos de fecha y re-anclajes instantáneos.

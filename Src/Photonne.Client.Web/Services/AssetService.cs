@@ -64,36 +64,6 @@ public class AssetService : IAssetService
         return response ?? new List<TimelineIndexItem>();
     }
 
-    public async Task<List<TimelineGridSection>> GetTimelineGridAsync()
-    {
-        await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<List<TimelineGridSection>>("/api/assets/timeline/grid");
-        return response ?? new List<TimelineGridSection>();
-    }
-
-    public async IAsyncEnumerable<TimelineGridSection> GetTimelineGridStreamAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await SetAuthHeaderAsync();
-
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/assets/timeline/grid");
-        request.SetBrowserResponseStreamingEnabled(true);
-
-        using var response = await _httpClient.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-
-        await foreach (var section in JsonSerializer.DeserializeAsyncEnumerable<TimelineGridSection>(
-            stream, options, cancellationToken))
-        {
-            if (section != null)
-                yield return section;
-        }
-    }
-
     public async Task<List<TimelineItem>> GetDeviceAssetsAsync()
     {
         await SetAuthHeaderAsync();

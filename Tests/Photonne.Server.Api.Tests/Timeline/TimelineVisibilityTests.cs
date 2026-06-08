@@ -5,10 +5,10 @@ using Photonne.Server.Api.Tests.Infrastructure;
 namespace Photonne.Server.Api.Tests.Timeline;
 
 /// <summary>
-/// Pins every timeline-family endpoint (/timeline, /recent, /timeline/grid,
-/// /timeline/index, /timeline-neighbors) to the SAME visibility predicate
+/// Pins every timeline-family endpoint (/timeline, /recent, /timeline/index,
+/// /timeline-neighbors) to the SAME visibility predicate
 /// (TimelineQuery.VisibleAssets). Before the predicate was centralized the
-/// inlined copies had diverged — grid/index/neighbors surfaced the motion
+/// inlined copies had diverged — index/neighbors surfaced the motion
 /// (.mov) half of Live Photos that /timeline hides. The bucket model
 /// (docs/timeline-buckets.md) requires exact count/content agreement, so any
 /// new divergence must fail here.
@@ -21,8 +21,6 @@ public sealed class TimelineVisibilityTests : IntegrationTestBase
     // format changes, not silently re-bind) ─────────────────────────────────
     private sealed record TimelineItem(Guid Id, DateTime FileCreatedAt);
     private sealed record TimelinePage(List<TimelineItem> Items, bool HasMore);
-    private sealed record GridItem(Guid Id);
-    private sealed record GridSection(string YearMonth, List<GridItem> Items);
     private sealed record IndexEntry(DateTime Date, int Count);
     private sealed record NeighborItem(Guid Id);
     private sealed record NeighborsPage(List<NeighborItem> Items, int CurrentIndex);
@@ -133,19 +131,6 @@ public sealed class TimelineVisibilityTests : IntegrationTestBase
         var items = await client.GetFromJsonAsync<List<TimelineItem>>("/api/assets/recent?limit=100");
 
         Assert.Equal(new[] { newer, older }, items!.Select(i => i.Id));
-    }
-
-    [Fact]
-    public async Task Grid_ReturnsOnlyVisibleAssets()
-    {
-        var (client, newer, older) = await SeedLibraryAsync();
-
-        var sections = await client.GetFromJsonAsync<List<GridSection>>("/api/assets/timeline/grid");
-
-        Assert.NotNull(sections);
-        var ids = sections.SelectMany(s => s.Items).Select(i => i.Id).ToList();
-        Assert.Equal(new[] { newer, older }, ids);
-        Assert.Equal(new[] { "2026-02", "2026-01" }, sections.Select(s => s.YearMonth));
     }
 
     [Fact]

@@ -211,9 +211,10 @@ internal fun findEntryIndexForMonth(entries: List<TimelineEntry>, target: LocalD
     findEntryIndexForDate(entries, target, TimelineGrouping.Month)
 
 /**
- * Renders the pre-packed [rows] as a justified Apple-Photos-style grid.
- * Each cell in a row shares the row's height; widths are weighted by
- * aspect ratio so the row exactly fills the container width.
+ * Renders the pre-packed [rows] as a uniform square grid. Every cell in a
+ * row shares the row's height and an equal width weight, so all tiles are
+ * the same square size; a partial trailing row reserves empty slots rather
+ * than stretching its cells.
  *
  * Month/year headers between groups are emitted via [stickyHeader] so the
  * native sticky behavior takes over — the current section's header pins
@@ -227,7 +228,7 @@ internal fun findEntryIndexForMonth(entries: List<TimelineEntry>, target: LocalD
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun GroupedAssetGrid(
-    rows: List<JustifiedRowEntry>,
+    rows: List<TimelineRowEntry>,
     baseUrl: String,
     onItemClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -255,9 +256,9 @@ internal fun GroupedAssetGrid(
     // visibility effect.
     //
     // Rows are emitted as one items(count) interval per header group rather
-    // than one item() per row: with the structure index materializing the
-    // whole library, per-row registration made every rows swap re-register
-    // thousands of intervals on the main thread.
+    // than one item() per row: with the whole library laid out up front,
+    // per-row registration made every rows swap re-register thousands of
+    // intervals on the main thread.
     val segments = remember(rows) { segmentRows(rows) }
     LazyColumn(
         state = state,
@@ -276,14 +277,14 @@ internal fun GroupedAssetGrid(
                 key = { i -> rowLazyKey(segment.body[i]) }
             ) { i ->
                 when (val entry = segment.body[i]) {
-                    is JustifiedRowEntry.SkeletonRow -> SkeletonCellsRow(
+                    is TimelineRowEntry.SkeletonRow -> SkeletonCellsRow(
                         entry = entry,
                         spacing = cellSpacing,
                         onClick = onSkeletonClick?.let { handler ->
                             { handler(entry.bucketKey) }
                         }
                     )
-                    is JustifiedRowEntry.Row -> JustifiedCellsRow(
+                    is TimelineRowEntry.Row -> UniformCellsRow(
                         row = entry.row,
                         baseUrl = baseUrl,
                         spacing = cellSpacing,
@@ -297,7 +298,7 @@ internal fun GroupedAssetGrid(
                         modifier = Modifier.animateItem()
                     )
                     // Headers never enter a segment body.
-                    is JustifiedRowEntry.Header -> Unit
+                    is TimelineRowEntry.Header -> Unit
                 }
             }
         }
@@ -306,20 +307,20 @@ internal fun GroupedAssetGrid(
 
 /** One sticky header plus its run of row entries. */
 internal data class RowSegment(
-    val header: JustifiedRowEntry.Header?,
-    val body: List<JustifiedRowEntry>
+    val header: TimelineRowEntry.Header?,
+    val body: List<TimelineRowEntry>
 )
 
 /** Splits the flat row list into per-header segments (leading rows headerless). */
-internal fun segmentRows(rows: List<JustifiedRowEntry>): List<RowSegment> {
+internal fun segmentRows(rows: List<TimelineRowEntry>): List<RowSegment> {
     val out = ArrayList<RowSegment>()
-    var header: JustifiedRowEntry.Header? = null
-    var body = ArrayList<JustifiedRowEntry>()
+    var header: TimelineRowEntry.Header? = null
+    var body = ArrayList<TimelineRowEntry>()
     fun flush() {
         if (header != null || body.isNotEmpty()) out += RowSegment(header, body)
     }
     rows.forEach { entry ->
-        if (entry is JustifiedRowEntry.Header) {
+        if (entry is TimelineRowEntry.Header) {
             flush()
             header = entry
             body = ArrayList()
@@ -332,23 +333,23 @@ internal fun segmentRows(rows: List<JustifiedRowEntry>): List<RowSegment> {
 }
 
 /** Stable LazyColumn key — must stay identical to the keyToBucket scheme. */
-internal fun rowLazyKey(entry: JustifiedRowEntry): Any = when (entry) {
-    is JustifiedRowEntry.Row -> {
+internal fun rowLazyKey(entry: TimelineRowEntry): Any = when (entry) {
+    is TimelineRowEntry.Row -> {
         val first = entry.row.cells.first()
         "r:${assetCellKey(first.item, first.index)}"
     }
-    is JustifiedRowEntry.SkeletonRow -> "s:${entry.bucketKey}:${entry.rowIndex}"
-    is JustifiedRowEntry.Header -> "h:${entry.key}"
+    is TimelineRowEntry.SkeletonRow -> "s:${entry.bucketKey}:${entry.rowIndex}"
+    is TimelineRowEntry.Header -> "h:${entry.key}"
 }
 
 /**
- * One row of an unloaded bucket: [JustifiedRowEntry.SkeletonRow.cellCount]
+ * One row of an unloaded bucket: [TimelineRowEntry.SkeletonRow.cellCount]
  * square shimmer tiles; a partial last row leaves its remaining slots empty
  * so cells keep the same size as full rows.
  */
 @Composable
 private fun SkeletonCellsRow(
-    entry: JustifiedRowEntry.SkeletonRow,
+    entry: TimelineRowEntry.SkeletonRow,
     spacing: Dp,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
@@ -437,8 +438,8 @@ internal fun formatGroupedCount(n: Int): String {
 }
 
 @Composable
-private fun JustifiedCellsRow(
-    row: JustifiedRow,
+private fun UniformCellsRow(
+    row: TimelineRow,
     baseUrl: String,
     spacing: Dp,
     onItemClick: (Int) -> Unit,
@@ -460,12 +461,22 @@ private fun JustifiedCellsRow(
                 onClick = { onItemClick(cell.index) },
                 onLongClick = onItemLongClick?.let { { it(cell.index) } },
                 isSelected = cell.item.id in selectedIds,
+                // Uniform grid: every cell carries equal weight and the row's
+                // height equals the cell width, so the tile is square without
+                // forcing an aspect ratio here.
                 forceSquare = false,
                 loadThumbnail = loadThumbnails,
                 modifier = Modifier
-                    .weight(aspectRatioOf(cell.item))
+                    .weight(1f)
                     .fillMaxHeight()
             )
+        }
+        // A partial trailing row reserves its empty slots (same as the
+        // skeleton row) so its cells keep the uniform size instead of
+        // stretching to fill the width.
+        val emptySlots = row.columns - row.cells.size
+        if (emptySlots > 0) {
+            Spacer(Modifier.weight(emptySlots.toFloat()))
         }
     }
 }

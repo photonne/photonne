@@ -38,7 +38,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.photonne.app.ui.grid.JustifiedRowEntry
+import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -82,7 +82,7 @@ private val HandleHeight = 52.dp
 @Composable
 internal fun TimelineScrubber(
     gridState: LazyListState,
-    rows: List<JustifiedRowEntry>,
+    rows: List<TimelineRowEntry>,
     /** Items the grid's optional header lambda emits before the rows. */
     headerItemCount: Int,
     /**
@@ -281,16 +281,16 @@ internal fun TimelineScrubber(
  * content height. Exact because every entry's height is known up front.
  */
 internal fun rowHeightPrefixSums(
-    rows: List<JustifiedRowEntry>,
+    rows: List<TimelineRowEntry>,
     headerHeightDp: Float = HEADER_HEIGHT_DP,
     spacingDp: Float = 2f
 ): FloatArray {
     val prefix = FloatArray(rows.size + 1)
     rows.forEachIndexed { i, entry ->
         val height = when (entry) {
-            is JustifiedRowEntry.Header -> headerHeightDp
-            is JustifiedRowEntry.Row -> entry.row.rowHeightDp
-            is JustifiedRowEntry.SkeletonRow -> entry.rowHeightDp
+            is TimelineRowEntry.Header -> headerHeightDp
+            is TimelineRowEntry.Row -> entry.row.rowHeightDp
+            is TimelineRowEntry.SkeletonRow -> entry.rowHeightDp
         }
         prefix[i + 1] = prefix[i] + height + spacingDp
     }
@@ -315,10 +315,10 @@ internal fun rowIndexForFraction(prefix: FloatArray, fraction: Float): Int {
  * key: "yyyy" → the year, "yyyy-MM(-dd)" → the localized month-year. Keys,
  * not titles, so Day-grouping headers still resolve to their month.
  */
-internal fun scrubberRowLabels(rows: List<JustifiedRowEntry>): List<String> {
+internal fun scrubberRowLabels(rows: List<TimelineRowEntry>): List<String> {
     var current = ""
     return rows.map { entry ->
-        if (entry is JustifiedRowEntry.Header) current = labelForHeaderKey(entry.key)
+        if (entry is TimelineRowEntry.Header) current = labelForHeaderKey(entry.key)
         current
     }
 }

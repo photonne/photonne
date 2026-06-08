@@ -69,23 +69,6 @@ class TimelineBucketStoreTest {
         ]
     """.trimIndent()
 
-    private val gridIndexJson = """
-        [
-          {
-            "yearMonth": "2026-02",
-            "items": [
-              { "id": "feb-1", "type": "Image", "aspectRatio": 1.5, "date": "2026-02-20",
-                "dominantColor": "#aabbcc", "width": 3000, "height": 2000, "isReadOnly": false },
-              { "id": "feb-2", "type": "Video", "aspectRatio": 1.0, "date": "2026-02-10",
-                "width": 1000, "height": 1000, "isReadOnly": false }
-            ]
-          },
-          { "yearMonth": "2026-01", "items": [
-              { "id": "jan-1", "type": "Image", "aspectRatio": 1.0, "date": "2026-01-15" }
-          ] }
-        ]
-    """.trimIndent()
-
     /**
      * Routes /timeline/buckets to the skeleton, /timeline/buckets/{key} to
      * that month's content and /timeline/years to the year summaries,
@@ -103,7 +86,6 @@ class TimelineBucketStoreTest {
             val body = when {
                 path.endsWith("/timeline/buckets") -> skeletonJson
                 path.endsWith("/timeline/years") -> yearsJson
-                path.endsWith("/timeline/grid") -> gridIndexJson
                 else -> {
                     val key = path.substringAfterLast('/')
                     bucketBodies[key] ?: error("Unexpected bucket request: $path")
@@ -274,23 +256,6 @@ class TimelineBucketStoreTest {
 
         assertEquals(2, requests.count { it.contains("/timeline/years") })
         assertTrue(requests.any { it.endsWith("/timeline/years?sample=60") })
-    }
-
-    @Test
-    fun gridIndex_fetches_once_and_refresh_clears_it() = runTest {
-        val (store, requests) = buildStore()
-        store.refresh()
-
-        store.ensureGridIndex()
-        store.ensureGridIndex()
-
-        val index = store.gridIndex.value
-        assertEquals(setOf("2026-02", "2026-01"), index?.keys)
-        assertEquals(listOf("feb-1", "feb-2"), index?.get("2026-02")?.map { it.id })
-        assertEquals(1, requests.count { it.endsWith("/timeline/grid") })
-
-        store.refresh()
-        assertNull(store.gridIndex.value)
     }
 
     @Test
