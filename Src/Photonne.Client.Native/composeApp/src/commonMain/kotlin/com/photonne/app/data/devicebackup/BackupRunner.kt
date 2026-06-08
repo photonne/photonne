@@ -60,26 +60,37 @@ class BackupRunner(
         val pending = items.filter { states[it.uri] !is DeviceMediaSyncState.Synced }
         skipped += items.size - pending.size
 
-        for ((index, media) in pending.withIndex()) {
-            if (!shouldContinue()) break
-            onProgress?.invoke(index + 1, pending.size, media.displayName)
-
-            val uploadResult = runCatching { repository.upload(media) }
-            uploadResult
-                .onSuccess { response ->
-                    val isDup = response.message.contains("already exists", ignoreCase = true)
-                    if (isDup) skipped++ else uploaded++
-                    repository.markUploaded(folder, media.uri, response.assetId.orEmpty())
+        // Upload with bounded concurrency (see [uploadInParallel]). The
+        // callbacks run under the helper's mutex, so these plain vars/map stay
+        // consistent without locking here. Progress reports the COMPLETED count
+        // — honest under parallelism, where there's no single "current index".
+        uploadInParallel(
+            pending = pending,
+            // Background pass reports progress per completed file, not per byte.
+            upload = { media, _ -> repository.upload(media) },
+            shouldContinue = shouldContinue,
+            onItemDone = { media, outcome, completed ->
+                when (outcome) {
+                    is UploadOutcome.Uploaded -> {
+                        uploaded++
+                        repository.markUploaded(folder, media.uri, outcome.assetId)
+                    }
+                    is UploadOutcome.Skipped -> {
+                        skipped++
+                        repository.markUploaded(folder, media.uri, outcome.assetId)
+                    }
+                    is UploadOutcome.Failed -> {
+                        failed++
+                        failuresByReason[outcome.reason] =
+                            (failuresByReason[outcome.reason] ?: 0) + 1
+                        repository.markUploadFailed(
+                            folder, media.uri, outcome.reason, outcome.detail
+                        )
+                    }
                 }
-                .onFailure { error ->
-                    failed++
-                    val reason = error.toUploadFailureReason()
-                    failuresByReason[reason] = (failuresByReason[reason] ?: 0) + 1
-                    repository.markUploadFailed(
-                        folder, media.uri, reason, error.toUploadFailureDetail()
-                    )
-                }
-        }
+                onProgress?.invoke(completed, pending.size, media.displayName)
+            }
+        )
 
         val result = Result(
             total = items.size,

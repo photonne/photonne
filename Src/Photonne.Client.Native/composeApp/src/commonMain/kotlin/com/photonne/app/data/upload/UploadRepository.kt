@@ -28,9 +28,10 @@ class UploadRepository(
         destination: String? = null,
         deviceName: String? = null,
         fileModifiedAtMillis: Long? = null,
-        fileCreatedAtMillis: Long? = null
+        fileCreatedAtMillis: Long? = null,
+        onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)? = null
     ): UploadAssetResponse = api.uploadAssetStream(
         fileName, mimeType, source, sizeBytes, destination, deviceName,
-        fileModifiedAtMillis, fileCreatedAtMillis
+        fileModifiedAtMillis, fileCreatedAtMillis, onProgress
     )
 }

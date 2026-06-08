@@ -111,22 +111,49 @@ actual class DeviceGallery(private val context: Context) {
         withContext(Dispatchers.IO) {
             val digest = MessageDigest.getInstance("SHA-256")
             val isVideo = media.type == DeviceMediaType.Video
-            // Hash the SAME (original, un-redacted) bytes we'll upload so the
-            // server-side dedup key matches the payload.
-            val input = MediaOriginalReader.openOriginalStream(
+            // Hash the EXACT bytes [withUploadSource] sends: same original
+            // (un-redacted) source AND the same byte count it declares as the
+            // upload's Content-Length. Reading the full stream here while the
+            // upload is bounded by `sizeBytes` made the two diverge for some
+            // files, so the server's stored checksum never matched our hash and
+            // the file looked "not synced" forever. Mirror the resolution and
+            // the size bound so the dedup/verification key always matches.
+            val original = MediaOriginalReader.resolveOriginal(
                 context, media.displayName, isVideo, media.sizeBytes
-            ) ?: context.contentResolver.openInputStream(Uri.parse(media.uri))
-            input.use { stream ->
-                requireNotNull(stream) { "Cannot open ${media.displayName} for hashing" }
-                val buf = ByteArray(64 * 1024)
-                while (true) {
-                    val n = stream.read(buf)
-                    if (n <= 0) break
-                    digest.update(buf, 0, n)
+            )
+            if (original != null) {
+                val stream = context.contentResolver.openInputStream(original.uri)
+                if (stream != null) {
+                    stream.use { hashUpTo(it, original.sizeBytes, digest) }
+                    return@withContext digest.digest().toHexLower()
                 }
             }
+            // Fallback (API < 29, or file not in MediaStore): plain SAF read,
+            // bounded by the same statSize the upload fallback declares.
+            val uri = Uri.parse(media.uri)
+            val sizeBytes = runCatching {
+                context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+            }.getOrNull()?.takeIf { it >= 0 } ?: media.sizeBytes
+            val input = context.contentResolver.openInputStream(uri)
+                ?: throw DeviceGalleryUnavailable("Cannot open ${media.displayName} for hashing")
+            input.use { hashUpTo(it, sizeBytes, digest) }
             digest.digest().toHexLower()
         }
+
+    /** Feeds at most [limit] bytes of [stream] into [digest] (or the whole
+     *  stream when [limit] <= 0), matching the upload's Content-Length bound. */
+    private fun hashUpTo(stream: java.io.InputStream, limit: Long, digest: MessageDigest) {
+        val buf = ByteArray(64 * 1024)
+        var remaining = limit
+        while (limit <= 0 || remaining > 0) {
+            val toRead = if (limit <= 0) buf.size
+                else minOf(buf.size.toLong(), remaining).toInt()
+            val n = stream.read(buf, 0, toRead)
+            if (n <= 0) break
+            digest.update(buf, 0, n)
+            if (limit > 0) remaining -= n
+        }
+    }
 
     actual suspend fun <T> withUploadSource(
         media: DeviceMedia,

@@ -8,8 +8,8 @@ import com.photonne.app.data.devicebackup.BackgroundSyncPreferences
 import com.photonne.app.data.devicebackup.BackgroundSyncScheduler
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
 import com.photonne.app.data.devicebackup.UploadFailureReason
-import com.photonne.app.data.devicebackup.toUploadFailureDetail
-import com.photonne.app.data.devicebackup.toUploadFailureReason
+import com.photonne.app.data.devicebackup.UploadOutcome
+import com.photonne.app.data.devicebackup.uploadInParallel
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.DeviceBackupRepository
 import com.photonne.app.data.devicebackup.LastBackupRun
@@ -36,7 +36,13 @@ import kotlinx.datetime.Instant
 data class DeviceBackupEntry(
     val media: DeviceMedia,
     val syncState: DeviceMediaSyncState = DeviceMediaSyncState.Unknown,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    /**
+     * Live upload progress (0..1) while this entry is `Uploading`, for the
+     * per-file progress bar in the pending list. Null when not uploading, or
+     * before the first byte-progress tick arrives (renders indeterminate).
+     */
+    val uploadProgress: Float? = null
 )
 
 /**
@@ -107,7 +113,9 @@ data class SyncProgress(
     val completed: Int,
     val skipped: Int,
     val failed: Int,
-    val currentName: String? = null
+    val currentName: String? = null,
+    /** How many uploads are in flight right now (parallel sync). */
+    val inFlight: Int = 0
 )
 
 class DeviceBackupViewModel(
@@ -453,79 +461,108 @@ class DeviceBackupViewModel(
             var skipped = 0
             val failureReasonCounts = mutableMapOf<UploadFailureReason, Int>()
             var failed = 0
-            for (entry in selected) {
-                if (!_state.value.isSyncing) break
+            var inFlight = 0
+
+            // Marks an entry Synced and refreshes the progress snapshot. Shared
+            // by the Uploaded and Skipped (server-side dedup) outcomes, which
+            // differ only in which counter they bump.
+            fun markSynced(media: DeviceMedia, assetId: String) {
+                _state.value.folder?.let { folder ->
+                    repository.markUploaded(folder, media.uri, assetId)
+                }
                 _state.update { current ->
                     current.copy(
                         entries = current.entries.map { e ->
-                            if (e.media.uri == entry.media.uri) {
-                                e.copy(syncState = DeviceMediaSyncState.Uploading)
+                            if (e.media.uri == media.uri) {
+                                e.copy(
+                                    syncState = DeviceMediaSyncState.Synced(assetId),
+                                    isSelected = false,
+                                    uploadProgress = null
+                                )
                             } else e
                         },
                         syncProgress = current.syncProgress?.copy(
-                            currentName = entry.media.displayName
+                            completed = completed,
+                            skipped = skipped,
+                            inFlight = inFlight
                         )
                     )
                 }
-                val result = runCatching { repository.upload(entry.media) }
-                result
-                    .onSuccess { response ->
-                        // Server message contains "already exists" when the
-                        // upload short-circuited via the SHA-256 dedup
-                        // path. Track those as skipped rather than counted
-                        // as full uploads.
-                        val msg = response.message
-                        val isDup = msg.contains("already exists", ignoreCase = true)
-                        if (isDup) skipped++ else completed++
-                        val nextState: DeviceMediaSyncState =
-                            DeviceMediaSyncState.Synced(response.assetId.orEmpty())
-                        _state.value.folder?.let { folder ->
-                            repository.markUploaded(
-                                folder, entry.media.uri, response.assetId.orEmpty()
-                            )
-                        }
-                        _state.update { current ->
-                            current.copy(
-                                entries = current.entries.map { e ->
-                                    if (e.media.uri == entry.media.uri) {
-                                        e.copy(
-                                            syncState = nextState,
-                                            isSelected = false
-                                        )
-                                    } else e
-                                },
-                                syncProgress = current.syncProgress?.copy(
-                                    completed = completed,
-                                    skipped = skipped
-                                )
-                            )
-                        }
-                    }
-                    .onFailure { error ->
-                        failed++
-                        val reason = error.toUploadFailureReason()
-                        val detail = error.toUploadFailureDetail()
-                        failureReasonCounts[reason] = (failureReasonCounts[reason] ?: 0) + 1
-                        _state.value.folder?.let { folder ->
-                            repository.markUploadFailed(folder, entry.media.uri, reason, detail)
-                        }
-                        _state.update { current ->
-                            current.copy(
-                                entries = current.entries.map { e ->
-                                    if (e.media.uri == entry.media.uri) {
-                                        e.copy(
-                                            syncState = DeviceMediaSyncState.Failed(
-                                                reason = reason,
-                                                detail = detail
-                                            )
-                                        )
-                                    } else e
-                                },
-                                syncProgress = current.syncProgress?.copy(failed = failed)
-                            )
-                        }
-                    }
             }
+
+            // Upload with bounded concurrency. onItemStart/onItemDone run under
+            // the helper's mutex, so the counters and inFlight stay consistent
+            // and the StateFlow updates never race. Cancellation: cancelSync()
+            // flips isSyncing=false; in-flight uploads finish, no new ones start.
+            uploadInParallel(
+                pending = selected.map { it.media },
+                upload = { media, report -> repository.upload(media, onProgress = report) },
+                shouldContinue = { _state.value.isSyncing },
+                onItemStart = { media ->
+                    inFlight++
+                    _state.update { current ->
+                        current.copy(
+                            entries = current.entries.map { e ->
+                                if (e.media.uri == media.uri) {
+                                    e.copy(
+                                        syncState = DeviceMediaSyncState.Uploading,
+                                        uploadProgress = null
+                                    )
+                                } else e
+                            },
+                            syncProgress = current.syncProgress?.copy(
+                                currentName = media.displayName,
+                                inFlight = inFlight
+                            )
+                        )
+                    }
+                },
+                onItemProgress = { media, fraction ->
+                    updateUploadProgress(media.uri, fraction)
+                },
+                onItemDone = { media, outcome, _ ->
+                    inFlight--
+                    when (outcome) {
+                        is UploadOutcome.Uploaded -> {
+                            completed++
+                            markSynced(media, outcome.assetId)
+                        }
+                        is UploadOutcome.Skipped -> {
+                            skipped++
+                            markSynced(media, outcome.assetId)
+                        }
+                        is UploadOutcome.Failed -> {
+                            failed++
+                            failureReasonCounts[outcome.reason] =
+                                (failureReasonCounts[outcome.reason] ?: 0) + 1
+                            _state.value.folder?.let { folder ->
+                                repository.markUploadFailed(
+                                    folder, media.uri, outcome.reason, outcome.detail
+                                )
+                            }
+                            _state.update { current ->
+                                current.copy(
+                                    entries = current.entries.map { e ->
+                                        if (e.media.uri == media.uri) {
+                                            e.copy(
+                                                syncState = DeviceMediaSyncState.Failed(
+                                                    reason = outcome.reason,
+                                                    detail = outcome.detail
+                                                ),
+                                                uploadProgress = null
+                                            )
+                                        } else e
+                                    },
+                                    syncProgress = current.syncProgress?.copy(
+                                        failed = failed,
+                                        inFlight = inFlight
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            )
             val run = LastBackupRun(
                 finishedAtMillis = Clock.System.now().toEpochMilliseconds(),
                 uploaded = completed,
@@ -546,6 +583,31 @@ class DeviceBackupViewModel(
                     )
                 )
             }
+        }
+    }
+
+    /**
+     * Updates the live upload fraction of one entry. Throttled to
+     * whole-percent steps so a fast upload doesn't trigger a recomposition on
+     * every byte-progress tick. Called concurrently from the in-flight uploads;
+     * each only touches its own entry and `_state.update` is atomic, so no lock
+     * is needed.
+     */
+    private fun updateUploadProgress(uri: String, fraction: Float) {
+        val pct = (fraction * 100).toInt()
+        val currentPct = _state.value.entries
+            .firstOrNull { it.media.uri == uri }
+            ?.uploadProgress
+            ?.let { (it * 100).toInt() } ?: -1
+        if (pct == currentPct) return
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { e ->
+                    if (e.media.uri == uri && e.syncState is DeviceMediaSyncState.Uploading) {
+                        e.copy(uploadProgress = fraction)
+                    } else e
+                }
+            )
         }
     }
 

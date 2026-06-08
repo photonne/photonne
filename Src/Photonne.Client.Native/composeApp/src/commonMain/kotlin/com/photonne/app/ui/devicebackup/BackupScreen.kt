@@ -21,12 +21,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -413,6 +415,19 @@ private fun BackupStatusCard(
                         )
                     }
                 }
+                // Refresh icon sits next to the count — it's what re-checks the
+                // pending/synced verdict (re-hash changed files + ask the server),
+                // not an upload or a navigation. Icon-only keeps the headline
+                // uncluttered. Hidden while it's already running.
+                if (hasFolder && !state.isCheckingHashes && !state.isSyncing) {
+                    IconButton(onClick = onRecheck) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = stringResource(Res.string.backup_status_recheck),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
 
             // ── Activity bar while verifying / uploading ────────────────
@@ -473,30 +488,24 @@ private fun BackupStatusCard(
             }
 
             // ── Actions ─────────────────────────────────────────────────
+            // Stacked, full-width: "Subir ahora" is the primary action and
+            // "Ver pendientes" the secondary navigation, so the focus is clear.
             if (hasFolder) {
                 Spacer(Modifier.size(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (pendingCount > 0 && !state.isSyncing) {
                         Button(
                             onClick = onUploadNow,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(Res.string.backup_status_upload_now))
                         }
                     }
                     OutlinedButton(
                         onClick = onOpenPending,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(Res.string.backup_pending_view))
-                    }
-                }
-                if (!state.isCheckingHashes && !state.isSyncing) {
-                    TextButton(
-                        onClick = onRecheck,
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text(stringResource(Res.string.backup_status_recheck))
                     }
                 }
             }

@@ -193,14 +193,25 @@ class DeviceBackupRepository(
                 }
                 val verdicts = checked.entries.flatMap { (checksum, assetId) ->
                     byChecksum.getValue(checksum).map { entry ->
+                        // A confirmed upload (we hold the server's assetId) is
+                        // ground truth: never auto-downgrade it to NotSynced
+                        // because this checksum lookup missed. The local hash
+                        // and the server's stored checksum can legitimately
+                        // differ for some files, and re-queuing an already
+                        // backed-up file forever is the worse failure.
+                        val keepConfirmed = assetId == null &&
+                            entry.state == LedgerState.Synced &&
+                            !entry.assetId.isNullOrEmpty()
                         val state = when {
                             assetId != null -> LedgerState.Synced
+                            keepConfirmed -> LedgerState.Synced
                             // A confirmed upload failure is more useful to
                             // surface than a generic "not synced".
                             entry.state == LedgerState.Failed -> LedgerState.Failed
                             else -> LedgerState.NotSynced
                         }
-                        Triple(entry.uri, state, assetId)
+                        val resolvedAssetId = assetId ?: entry.assetId.takeIf { keepConfirmed }
+                        Triple(entry.uri, state, resolvedAssetId)
                     }
                 }
                 ledger.setVerdicts(folder.uri, verdicts.filter { it.second != LedgerState.Failed })
@@ -270,7 +281,8 @@ class DeviceBackupRepository(
      */
     suspend fun upload(
         media: DeviceMedia,
-        maxAttempts: Int = DEFAULT_MAX_ATTEMPTS
+        maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
+        onProgress: ((fraction: Float) -> Unit)? = null
     ): com.photonne.app.data.api.UploadAssetResponse {
         var lastError: Throwable? = null
         repeat(maxAttempts) { attempt ->
@@ -284,7 +296,10 @@ class DeviceBackupRepository(
                         destination = MOBILE_BACKUP_DESTINATION,
                         deviceName = currentDeviceName(),
                         fileModifiedAtMillis = media.dateModifiedMillis.takeIf { it > 0 },
-                        fileCreatedAtMillis = media.dateCreatedMillis
+                        fileCreatedAtMillis = media.dateCreatedMillis,
+                        onProgress = onProgress?.let { report ->
+                            { sent, total -> report((sent.toFloat() / total).coerceIn(0f, 1f)) }
+                        }
                     )
                 }
             } catch (ex: Throwable) {
@@ -315,6 +330,12 @@ class DeviceBackupRepository(
         // Parallel SHA-256 workers during verification. Bounded so a phone
         // doesn't read 4+ large videos into the hash pipeline at once.
         const val HASH_CONCURRENCY = 4
+
+        // Parallel upload workers. Bounded so we don't saturate the mobile
+        // uplink or hold several large video sources/buffers open at once
+        // (OOM risk). Kept at or below HASH_CONCURRENCY since each upload also
+        // competes for the radio, not just CPU/local IO.
+        const val UPLOAD_CONCURRENCY = 3
 
         // Backoff between client-side upload retries. Index = attempt number
         // (0-based) of the FAILED attempt — delay BEFORE the next try.

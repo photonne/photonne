@@ -853,6 +853,8 @@
     <string name="backup_pending_unknown">Comprueba el estado para ver cuántos faltan</string>
     <string name="backup_pending_view">Ver pendientes</string>
     <string name="backup_pending_screen_title">Pendientes</string>
+    <string name="backup_section_pending">Pendientes (%1$d)</string>
+    <string name="backup_section_uploaded">Ya subidas (%1$d)</string>
     <string name="backup_disabled_hint">Activa la copia de seguridad para empezar a subir tus fotos.</string>
 
     <!-- Unified backup status card -->
@@ -862,6 +864,8 @@
     <string name="backup_status_pending">%1$d pendientes de subir</string>
     <string name="backup_status_failures">%1$d con errores de subida</string>
     <string name="backup_status_syncing">Subiendo %1$d de %2$d…</string>
+    <string name="backup_uploading_count">Subiendo %1$d archivos…</string>
+    <string name="backup_status_queued">En cola</string>
     <string name="backup_status_upload_now">Subir ahora</string>
     <string name="backup_status_recheck">Volver a verificar</string>
     <string name="backup_status_enrichment_row">%1$d archivo(s) procesándose en el servidor</string>

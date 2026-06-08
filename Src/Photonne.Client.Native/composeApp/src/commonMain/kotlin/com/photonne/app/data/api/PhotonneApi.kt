@@ -35,6 +35,7 @@ import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
@@ -306,6 +307,9 @@ interface PhotonneApi {
      * [fileModifiedAtMillis]/[fileCreatedAtMillis] carry the device-side
      * original timestamps (epoch millis UTC) so the server can preserve
      * the file's real dates instead of stamping the upload time.
+     *
+     * [onProgress] receives the bytes sent so far and the total content
+     * length as the body streams to the server, for a per-file progress bar.
      */
     suspend fun uploadAssetStream(
         fileName: String,
@@ -315,7 +319,8 @@ interface PhotonneApi {
         destination: String? = null,
         deviceName: String? = null,
         fileModifiedAtMillis: Long? = null,
-        fileCreatedAtMillis: Long? = null
+        fileCreatedAtMillis: Long? = null,
+        onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)? = null
     ): UploadAssetResponse
 
     /** Lists the caller's assets with at least one Pending or Failed enrichment task. */
@@ -1182,7 +1187,8 @@ class PhotonneApiClient(
         destination: String?,
         deviceName: String?,
         fileModifiedAtMillis: Long?,
-        fileCreatedAtMillis: Long?
+        fileCreatedAtMillis: Long?,
+        onProgress: ((bytesSent: Long, totalBytes: Long) -> Unit)?
     ): UploadAssetResponse = coroutineScope {
         val parsedType = runCatching { ContentType.parse(mimeType) }
             .getOrDefault(ContentType.Application.OctetStream)
@@ -1212,6 +1218,17 @@ class PhotonneApiClient(
 
         try {
             val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+                // Per-file upload progress: Ktor reports bytes written to the
+                // socket as the streamed body drains. contentLength is the whole
+                // multipart length (slightly above the raw file), good enough
+                // for a progress bar.
+                if (onProgress != null) {
+                    onUpload { bytesSentTotal, contentLength ->
+                        if (contentLength != null && contentLength > 0L) {
+                            onProgress(bytesSentTotal, contentLength)
+                        }
+                    }
+                }
                 setBody(
                     MultiPartFormDataContent(
                         formData {

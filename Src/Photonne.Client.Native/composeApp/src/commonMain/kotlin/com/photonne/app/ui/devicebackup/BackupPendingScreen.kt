@@ -1,6 +1,7 @@
 package com.photonne.app.ui.devicebackup
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -22,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -47,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,8 +69,12 @@ import com.photonne.app.resources.backup_failed_dialog_no_detail
 import com.photonne.app.resources.backup_failed_dialog_retry
 import com.photonne.app.resources.backup_failed_dialog_title
 import com.photonne.app.resources.backup_failure_reason_label
+import com.photonne.app.resources.backup_section_pending
+import com.photonne.app.resources.backup_section_uploaded
+import com.photonne.app.resources.backup_status_queued
 import com.photonne.app.resources.backup_summary_counts
 import com.photonne.app.resources.backup_summary_title
+import com.photonne.app.resources.backup_uploading_count
 import com.photonne.app.resources.device_backup_action_pick_folder
 import com.photonne.app.resources.device_backup_action_sync
 import com.photonne.app.resources.device_backup_empty_folder
@@ -396,13 +405,11 @@ private fun SyncProgressCard(progress: SyncProgress, isSyncing: Boolean) {
                 ),
                 style = MaterialTheme.typography.titleSmall
             )
-            progress.currentName?.takeIf { isSyncing }?.let {
+            if (isSyncing && progress.inFlight > 0) {
                 Text(
-                    it,
+                    stringResource(Res.string.backup_uploading_count, progress.inFlight),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             Spacer(Modifier.size(4.dp))
@@ -421,6 +428,18 @@ private fun MediaGrid(
     onClick: (DeviceBackupEntry) -> Unit,
     onLongClick: (DeviceBackupEntry) -> Unit
 ) {
+    // Two blocks: what's still pending on top, what's already backed up below.
+    // Each list keeps the folder order it already had.
+    val pending = remember(state.entries) {
+        state.entries.filter { it.syncState !is DeviceMediaSyncState.Synced }
+    }
+    val synced = remember(state.entries) {
+        state.entries.filter { it.syncState is DeviceMediaSyncState.Synced }
+    }
+    // The backed-up block is collapsed by default: keeps the focus on pending
+    // and avoids loading hundreds of thumbnails the user rarely needs to see.
+    var syncedExpanded by remember { mutableStateOf(false) }
+
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 96.dp),
         contentPadding = PaddingValues(
@@ -430,13 +449,209 @@ private fun MediaGrid(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(state.entries, key = { it.media.uri }) { entry ->
-            MediaCell(
-                entry = entry,
-                thumbnailModel = thumbnailModel(entry.media),
-                onClick = { onClick(entry) },
-                onLongClick = { onLongClick(entry) }
+        if (pending.isNotEmpty()) {
+            item(key = "hdr-pending", span = { GridItemSpan(maxLineSpan) }) {
+                SectionLabel(stringResource(Res.string.backup_section_pending, pending.size))
+            }
+            // Pending items render as full-width LIST rows (not grid cells) so
+            // each shows its own upload progress bar. The list visibly shrinks
+            // top-to-bottom as items finish and drop into the block below.
+            items(
+                pending,
+                key = { it.media.uri },
+                span = { GridItemSpan(maxLineSpan) }
+            ) { entry ->
+                PendingRow(
+                    entry = entry,
+                    thumbnailModel = thumbnailModel(entry.media),
+                    onClick = { onClick(entry) },
+                    onLongClick = { onLongClick(entry) }
+                )
+            }
+        }
+        if (synced.isNotEmpty()) {
+            item(key = "hdr-synced", span = { GridItemSpan(maxLineSpan) }) {
+                CollapsibleSectionLabel(
+                    text = stringResource(Res.string.backup_section_uploaded, synced.size),
+                    expanded = syncedExpanded,
+                    onToggle = { syncedExpanded = !syncedExpanded }
+                )
+            }
+            if (syncedExpanded) {
+                items(synced, key = { it.media.uri }) { entry ->
+                    MediaCell(
+                        entry = entry,
+                        thumbnailModel = thumbnailModel(entry.media),
+                        onClick = { onClick(entry) },
+                        onLongClick = { onLongClick(entry) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Full-span section header for the pending/backed-up blocks. */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)
+    )
+}
+
+/** Section header that toggles the visibility of its block on tap. */
+@Composable
+private fun CollapsibleSectionLabel(
+    text: String,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+/**
+ * A pending asset as a list row: thumbnail + name, with a per-file upload
+ * progress bar while it's uploading, "Queued" before it starts, or the failure
+ * reason if it failed. Tap/long-press mirror [MediaCell] (preview / select /
+ * show-failure), so the row plugs into the same interaction flow.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun PendingRow(
+    entry: DeviceBackupEntry,
+    thumbnailModel: String,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    val state = entry.syncState
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            AsyncImage(
+                model = thumbnailModel,
+                contentDescription = entry.media.displayName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
+            if (entry.media.type == DeviceMediaType.Video) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(2.dp)
+                        .size(14.dp)
+                )
+            }
+            if (entry.isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+                )
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(Color.White, CircleShape)
+                        .size(18.dp)
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.media.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.size(4.dp))
+            when (state) {
+                DeviceMediaSyncState.Uploading -> {
+                    val p = entry.uploadProgress
+                    if (p != null) {
+                        LinearProgressIndicator(
+                            progress = { p },
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    }
+                }
+                is DeviceMediaSyncState.Failed -> {
+                    Text(
+                        text = uploadErrorLabel(state.reason),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                else -> {
+                    Text(
+                        text = stringResource(Res.string.backup_status_queued),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        when (state) {
+            DeviceMediaSyncState.Uploading -> entry.uploadProgress?.let { p ->
+                Text(
+                    text = "${(p * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            is DeviceMediaSyncState.Failed -> Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            else -> {}
         }
     }
 }

@@ -853,6 +853,8 @@
     <string name="backup_pending_unknown">Run a state check to see how many are missing</string>
     <string name="backup_pending_view">View pending</string>
     <string name="backup_pending_screen_title">Pending</string>
+    <string name="backup_section_pending">Pending (%1$d)</string>
+    <string name="backup_section_uploaded">Backed up (%1$d)</string>
     <string name="backup_disabled_hint">Turn backup on to start uploading your photos.</string>
 
     <!-- Unified backup status card -->
@@ -862,6 +864,8 @@
     <string name="backup_status_pending">%1$d pending upload</string>
     <string name="backup_status_failures">%1$d with upload errors</string>
     <string name="backup_status_syncing">Uploading %1$d of %2$d…</string>
+    <string name="backup_uploading_count">Uploading %1$d files…</string>
+    <string name="backup_status_queued">Queued</string>
     <string name="backup_status_upload_now">Upload now</string>
     <string name="backup_status_recheck">Re-verify</string>
     <string name="backup_status_enrichment_row">%1$d file(s) processing on the server</string>
