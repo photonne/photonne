@@ -320,39 +320,73 @@ fun TimelineScreen(
                     val density = LocalDensity.current
 
                     var isFirstZoomComposition by remember { mutableStateOf(true) }
+                    // Stage 1 — CAPTURE where to re-anchor the instant the zoom
+                    // level flips. A click-to-zoom (Year → Month) has already
+                    // set pendingZoomAnchor to the clicked month and
+                    // pendingAssetAnchor to the exact asset, so we leave those
+                    // alone. A manual zoom (pinch/menu) instead re-anchors on
+                    // whatever is topmost right now and discards any stale asset
+                    // jump from an earlier click. We only record the target
+                    // here; the actual scroll happens in stage 2 once the rows
+                    // have been repacked for the new grouping — at this instant
+                    // `rows` still holds the OLD grouping (packing is async).
                     LaunchedEffect(zoomLevel) {
                         if (isFirstZoomComposition) {
                             isFirstZoomComposition = false
                             return@LaunchedEffect
                         }
-                        // A click-to-zoom (Year → Month) wants to land on the
-                        // clicked month, not on whatever was topmost. A manual
-                        // zoom change (pinch/menu) invalidates any pending
-                        // asset jump from an earlier click.
-                        if (pendingZoomAnchor == null) pendingAssetAnchor = null
-                        val target = pendingZoomAnchor ?: anchorDate ?: return@LaunchedEffect
-                        pendingZoomAnchor = null
-                        val newIdx = findRowIndexForDate(rows, target, zoomLevel.grouping)
-                        if (newIdx >= 0) {
-                            runCatching { gridState.animateScrollToItem(newIdx) }
+                        if (pendingZoomAnchor == null) {
+                            pendingAssetAnchor = null
+                            pendingZoomAnchor = anchorDate
                         }
                     }
 
-                    LaunchedEffect(rows, pendingAssetAnchor) {
-                        val anchor = pendingAssetAnchor ?: return@LaunchedEffect
-                        if (isYearView) return@LaunchedEffect
-                        val idx = findRowIndexForAsset(rows, anchor.assetId)
-                        if (idx >= 0) {
-                            // Land the row just below the pinned sticky header.
-                            val headerPx = with(density) { 56.dp.roundToPx() }
-                            runCatching { gridState.animateScrollToItem(idx, -headerPx) }
-                            pendingAssetAnchor = null
-                        } else {
-                            // Bucket loaded but the asset isn't there (gone
-                            // server-side) — stay at the month header.
-                            val bucket = state.buckets.firstOrNull { it.key == anchor.bucketKey }
+                    // Stage 2 — APPLY the pending re-anchor, but only against
+                    // rows that match the active grouping. Re-anchoring against
+                    // stale rows is exactly what made a view switch jump to a
+                    // random year/month and what stopped a Year-view asset
+                    // click from landing where it should. Coarse (month/date)
+                    // and fine (exact asset) anchoring live in one effect so
+                    // they never fight over gridState.
+                    LaunchedEffect(current, pendingZoomAnchor, pendingAssetAnchor) {
+                        if (pendingZoomAnchor == null && pendingAssetAnchor == null) {
+                            return@LaunchedEffect
+                        }
+                        // Wait for the repack to catch up with the zoom level.
+                        if (current.grouping != zoomLevel.grouping) return@LaunchedEffect
+
+                        // Prefer landing exactly on a clicked asset once its
+                        // bucket content is in the rows; until then fall through
+                        // to the coarse month anchor so we park on the right
+                        // month while it hydrates.
+                        val asset = pendingAssetAnchor
+                        if (asset != null && !isYearView) {
+                            val idx = findRowIndexForAsset(rows, asset.assetId)
+                            if (idx >= 0) {
+                                // Land the row just below the pinned sticky header.
+                                val headerPx = with(density) { 56.dp.roundToPx() }
+                                runCatching { gridState.animateScrollToItem(idx, -headerPx) }
+                                pendingAssetAnchor = null
+                                pendingZoomAnchor = null
+                                return@LaunchedEffect
+                            }
+                            // Not in the rows yet. Drop the asset target only if
+                            // its bucket is absent or already loaded (asset gone
+                            // server-side); if it's still loading, keep it and
+                            // let the coarse anchor park us meanwhile.
+                            val bucket = state.buckets.firstOrNull { it.key == asset.bucketKey }
                             if (bucket == null || bucket.isLoaded) pendingAssetAnchor = null
                         }
+
+                        val target = pendingZoomAnchor ?: return@LaunchedEffect
+                        val newIdx = findRowIndexForDate(rows, target, zoomLevel.grouping)
+                        if (newIdx >= 0) {
+                            // Snap (don't animate) across a wholesale layout
+                            // swap; the exact-asset stage above is the only
+                            // place that adds visible motion.
+                            runCatching { gridState.scrollToItem(newIdx) }
+                        }
+                        pendingZoomAnchor = null
                     }
 
                     LaunchedEffect(pendingJumpDate, rows) {
@@ -721,7 +755,14 @@ private data class PendingAssetAnchor(val assetId: String, val bucketKey: String
 private data class PackedTimeline(
     val entries: BucketEntriesResult,
     val rows: List<TimelineRowEntry>,
-    val keyToBucket: Map<Any, String>
+    val keyToBucket: Map<Any, String>,
+    /**
+     * The grouping these rows were packed for. The packing runs async off
+     * the main thread, so the moment [TimelineZoomLevel] flips this still
+     * reports the OLD grouping until the new rows land — the re-anchor logic
+     * gates on it so it never scrolls against stale (wrong-grouping) rows.
+     */
+    val grouping: TimelineGrouping
 )
 
 /** The CPU-heavy derivation pipeline — always called on a background dispatcher. */
@@ -770,7 +811,12 @@ private fun derivePackedTimeline(
             }
         }
     }
-    return PackedTimeline(entries = entries, rows = rows, keyToBucket = keyToBucket)
+    return PackedTimeline(
+        entries = entries,
+        rows = rows,
+        keyToBucket = keyToBucket,
+        grouping = grouping
+    )
 }
 
 @Composable
