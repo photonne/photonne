@@ -306,6 +306,7 @@
 				OTHER_LDFLAGS = (
 					"-framework",
 					ComposeApp,
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.photonne.app.iosApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -347,6 +348,7 @@
 				OTHER_LDFLAGS = (
 					"-framework",
 					ComposeApp,
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.photonne.app.iosApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
