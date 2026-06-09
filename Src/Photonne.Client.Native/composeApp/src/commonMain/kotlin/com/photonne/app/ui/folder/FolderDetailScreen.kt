@@ -39,6 +39,7 @@ import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -56,7 +57,11 @@ fun FolderDetailScreen(
 
     LaunchedEffect(folderId) { viewModel.open(folderId, folderName, parentFolderId) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isLoading &&
+            (state.items.isNotEmpty() || state.subFolders.isNotEmpty()),
+        onRefresh = viewModel::refresh
+    ) {
         when {
             state.isLoading && state.items.isEmpty() && state.subFolders.isEmpty() ->
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

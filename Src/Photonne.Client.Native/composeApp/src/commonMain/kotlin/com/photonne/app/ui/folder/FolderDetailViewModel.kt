@@ -92,7 +92,7 @@ class FolderDetailViewModel(
      */
     fun refresh() {
         val folderId = _state.value.folderId ?: return
-        _state.update { it.copy(error = null) }
+        _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             runCatching {
                 supervisorScope {
@@ -107,13 +107,17 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             items = items,
-                            subFolders = details?.subFolders.orEmpty()
+                            subFolders = details?.subFolders.orEmpty(),
+                            isLoading = false
                         )
                     }
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Failed to load folder"))
+                        it.copy(
+                            isLoading = false,
+                            error = errorFactory.from(error, "Failed to load folder")
+                        )
                     }
                 }
         }
