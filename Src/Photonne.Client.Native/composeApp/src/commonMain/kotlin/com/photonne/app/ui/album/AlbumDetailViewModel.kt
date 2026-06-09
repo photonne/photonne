@@ -8,11 +8,13 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 data class AlbumDetailUiState(
     val albumId: String? = null,
@@ -52,6 +54,46 @@ class AlbumDetailViewModel(
             runCatching { repository.assets(albumId) }
                 .onSuccess { items ->
                     _state.update { it.copy(items = items, isLoading = false) }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = errorFactory.from(error, "Failed to load album")
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Re-fetch the open album's assets and metadata, bypassing [open]'s
+     * already-loaded short-circuit. Backs pull-to-refresh so assets added by
+     * other members (and edited name/description) show up without leaving the
+     * album.
+     */
+    fun refresh() {
+        val albumId = _state.value.albumId ?: return
+        _state.update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            runCatching {
+                supervisorScope {
+                    val assets = async { repository.assets(albumId) }
+                    val details = async {
+                        runCatching { repository.get(albumId) }.getOrNull()
+                    }
+                    assets.await() to details.await()
+                }
+            }
+                .onSuccess { (items, details) ->
+                    _state.update {
+                        it.copy(
+                            items = items,
+                            albumName = details?.name ?: it.albumName,
+                            albumDescription = details?.description ?: it.albumDescription,
+                            isLoading = false
+                        )
+                    }
                 }
                 .onFailure { error ->
                     _state.update {

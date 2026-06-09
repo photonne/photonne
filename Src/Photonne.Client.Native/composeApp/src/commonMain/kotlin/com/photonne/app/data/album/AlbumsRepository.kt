@@ -15,6 +15,8 @@ class AlbumsRepository(
 ) {
     suspend fun list(): List<AlbumSummary> = api.getAlbums()
 
+    suspend fun get(albumId: String): AlbumSummary = api.getAlbum(albumId)
+
     suspend fun assets(albumId: String): List<TimelineItem> = api.getAlbumAssets(albumId)
 
     suspend fun create(name: String, description: String?): AlbumSummary =

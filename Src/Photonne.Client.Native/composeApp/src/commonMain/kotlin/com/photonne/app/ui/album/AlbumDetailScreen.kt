@@ -64,6 +64,7 @@ import com.photonne.app.resources.album_hero_shared
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -122,7 +123,10 @@ fun AlbumDetailScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PhotonneRefreshableScreen(
+        isRefreshing = state.isLoading && state.items.isNotEmpty(),
+        onRefresh = viewModel::refresh
+    ) {
         when {
             state.isLoading && state.items.isEmpty() ->
                 Column(modifier = Modifier.fillMaxSize()) {

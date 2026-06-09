@@ -273,6 +273,7 @@ interface PhotonneApi {
         assetId: String
     ): com.photonne.app.data.models.CaptureDateSuggestion
     suspend fun getAlbums(): List<AlbumSummary>
+    suspend fun getAlbum(albumId: String): AlbumSummary
     suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
     suspend fun createAlbum(name: String, description: String?): AlbumSummary
     suspend fun updateAlbum(albumId: String, name: String, description: String?): AlbumSummary
@@ -891,6 +892,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Albums fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAlbum(albumId: String): AlbumSummary {
+        val response: HttpResponse = client.get("$baseUrl/api/albums/$albumId")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Album fetch failed (${response.status.value})"
             )
         }
         return response.body()
