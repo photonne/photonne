@@ -6,7 +6,7 @@ using Photonne.Server.Api.Shared.Interfaces;
 
 namespace Photonne.Server.Api.Features.Scenes;
 
-public record SceneLabelDto(string Label, int AssetCount);
+public record SceneLabelDto(string Label, int AssetCount, string? CoverAssetId);
 
 /// <summary>
 /// Returns the distinct scene labels detected across the caller's assets,
@@ -40,27 +40,54 @@ public class SceneLabelsEndpoint : IEndpoint
 
         // Same SqlQueryRaw rationale as ObjectLabelsEndpoint: EF Core 9 +
         // Npgsql refuses to translate GroupBy chained after Distinct(), so we
-        // drop down to raw SQL to keep the COUNT(DISTINCT) server-side.
+        // drop down to raw SQL to keep the COUNT(DISTINCT) server-side. The
+        // cover pick mirrors objects: of the 30 most recently captured assets
+        // carrying the label, the one with the highest classification
+        // confidence — prototypical, refreshing, and deterministic.
         var rows = await db.Database.SqlQueryRaw<LabelCountRow>(
                 """
-                SELECT s."Label" AS "Label",
-                       COUNT(DISTINCT s."AssetId")::int AS "AssetCount"
-                FROM "AssetClassifiedScenes" s
-                JOIN "Assets" a ON a."Id" = s."AssetId"
-                WHERE a."OwnerId" = {0}
-                  AND a."DeletedAt" IS NULL
-                  AND a."IsFileMissing" = FALSE
-                  AND a."IsArchived" = FALSE
-                  AND s."Label" ILIKE {1}
-                GROUP BY s."Label"
-                ORDER BY "AssetCount" DESC, s."Label" ASC
+                WITH per_asset AS (
+                    SELECT s."Label"           AS label,
+                           s."AssetId"         AS asset_id,
+                           MAX(s."Confidence") AS score,
+                           a."CapturedAt"      AS captured_at
+                    FROM "AssetClassifiedScenes" s
+                    JOIN "Assets" a ON a."Id" = s."AssetId"
+                    WHERE a."OwnerId" = {0}
+                      AND a."DeletedAt" IS NULL
+                      AND a."IsFileMissing" = FALSE
+                      AND a."IsArchived" = FALSE
+                      AND s."Label" ILIKE {1}
+                    GROUP BY s."Label", s."AssetId", a."CapturedAt"
+                ),
+                recent AS (
+                    SELECT label, asset_id, score,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY label
+                               ORDER BY captured_at DESC, asset_id DESC
+                           ) AS recency_rank
+                    FROM per_asset
+                ),
+                cover AS (
+                    SELECT DISTINCT ON (label) label, asset_id
+                    FROM recent
+                    WHERE recency_rank <= 30
+                    ORDER BY label, score DESC, asset_id DESC
+                )
+                SELECT p.label                         AS "Label",
+                       COUNT(DISTINCT p.asset_id)::int AS "AssetCount",
+                       c.asset_id::text                AS "CoverAssetId"
+                FROM per_asset p
+                JOIN cover c ON c.label = p.label
+                GROUP BY p.label, c.asset_id
+                ORDER BY "AssetCount" DESC, p.label ASC
                 LIMIT {2}
                 """,
                 userId, likePattern, take)
             .ToListAsync(ct);
 
         var labels = rows
-            .Select(r => new SceneLabelDto(r.Label, r.AssetCount))
+            .Select(r => new SceneLabelDto(r.Label, r.AssetCount, r.CoverAssetId))
             .ToList();
 
         return Results.Ok(labels);
@@ -68,7 +95,7 @@ public class SceneLabelsEndpoint : IEndpoint
 
     // Keyless row type returned by SqlQueryRaw. Property names match the SQL
     // aliases so EF can bind by name without an explicit shaper.
-    private sealed record LabelCountRow(string Label, int AssetCount);
+    private sealed record LabelCountRow(string Label, int AssetCount, string? CoverAssetId);
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {

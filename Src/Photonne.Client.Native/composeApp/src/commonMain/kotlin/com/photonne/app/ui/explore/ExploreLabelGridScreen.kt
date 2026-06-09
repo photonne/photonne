@@ -24,23 +24,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_label_count
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Tile shown in the Scenes / Objects grids. The PWA renders each label with
- * a sample thumbnail in the background, but we don't yet have a representative
- * asset id per label in the API — for V1 we just render the label name on a
- * tinted square so the grid still reads at a glance.
+ * Tile shown in the Scenes / Objects grids. Each label renders a representative
+ * cover asset (chosen server-side as the highest-confidence detection among the
+ * most recent assets) cropped to fill, with the name + count overlaid. When no
+ * cover is available — older server, or a label whose assets are all filtered
+ * out — the tinted square shows through instead, and it also backs the image
+ * while it loads or if it fails.
  */
 internal data class ExploreLabelTile(
     val name: String,
-    val assetCount: Int
+    val assetCount: Int,
+    val coverAssetId: String? = null
 )
 
 @Composable
@@ -49,6 +54,7 @@ internal fun ExploreLabelGridScreen(
     isLoading: Boolean,
     errorMessage: String?,
     emptyText: String,
+    baseUrl: String,
     onRefresh: () -> Unit,
     onTileClick: (String) -> Unit
 ) {
@@ -85,7 +91,11 @@ internal fun ExploreLabelGridScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(tiles, key = { it.name }) { tile ->
-                    LabelTileCard(tile = tile, onClick = { onTileClick(tile.name) })
+                    LabelTileCard(
+                        tile = tile,
+                        baseUrl = baseUrl,
+                        onClick = { onTileClick(tile.name) }
+                    )
                 }
             }
         }
@@ -93,7 +103,7 @@ internal fun ExploreLabelGridScreen(
 }
 
 @Composable
-private fun LabelTileCard(tile: ExploreLabelTile, onClick: () -> Unit) {
+private fun LabelTileCard(tile: ExploreLabelTile, baseUrl: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -110,6 +120,14 @@ private fun LabelTileCard(tile: ExploreLabelTile, onClick: () -> Unit) {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
             )
+            if (tile.coverAssetId != null) {
+                AsyncImage(
+                    model = "$baseUrl/api/assets/${tile.coverAssetId}/thumbnail?size=Small",
+                    contentDescription = tile.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)

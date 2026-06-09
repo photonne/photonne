@@ -6,13 +6,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ObjectLabel(
     @SerialName("label") val label: String,
-    @SerialName("assetCount") val assetCount: Int
+    @SerialName("assetCount") val assetCount: Int,
+    @SerialName("coverAssetId") val coverAssetId: String? = null
 )
 
 @Serializable
 data class SceneLabel(
     @SerialName("label") val label: String,
-    @SerialName("assetCount") val assetCount: Int
+    @SerialName("assetCount") val assetCount: Int,
+    @SerialName("coverAssetId") val coverAssetId: String? = null
 )
 
 @Serializable
