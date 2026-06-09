@@ -597,6 +597,11 @@ interface PhotonneApi {
         // Per-request timeout for /api/assets/timeline. See the timeout block
         // inside getTimeline() for why this exists as a safety net.
         const val TIMELINE_REQUEST_TIMEOUT_MS: Long = 180_000
+
+        // Idle (socket) timeout for the backup data path. See
+        // backupIdleTimeout() for the rationale — fail fast on a half-open
+        // socket after a WiFi↔cellular switch instead of hanging forever.
+        const val BACKUP_SOCKET_TIMEOUT_MS: Long = 60_000
     }
 }
 
@@ -1218,6 +1223,9 @@ class PhotonneApiClient(
 
         try {
             val response: HttpResponse = client.post("$baseUrl/api/assets/upload") {
+                // Fail fast if the transfer stalls (network switched away)
+                // rather than parking the streamed body forever.
+                backupIdleTimeout()
                 // Per-file upload progress: Ktor reports bytes written to the
                 // socket as the streamed body drains. contentLength is the whole
                 // multipart length (slightly above the raw file), good enough
@@ -1269,7 +1277,9 @@ class PhotonneApiClient(
     }
 
     override suspend fun assetExistsByChecksum(sha256: String): String? {
-        val response: HttpResponse = client.get("$baseUrl/api/assets/exists/$sha256")
+        val response: HttpResponse = client.get("$baseUrl/api/assets/exists/$sha256") {
+            backupIdleTimeout()
+        }
         return when (response.status) {
             HttpStatusCode.OK -> {
                 val body: ExistsByChecksumBody = response.body()
@@ -1286,6 +1296,7 @@ class PhotonneApiClient(
     override suspend fun checkChecksums(checksums: List<String>): Map<String, String> {
         if (checksums.isEmpty()) return emptyMap()
         val response: HttpResponse = client.post("$baseUrl/api/assets/check-checksums") {
+            backupIdleTimeout()
             contentType(ContentType.Application.Json)
             setBody(CheckChecksumsRequest(checksums))
         }
@@ -2629,6 +2640,26 @@ class PhotonneApiClient(
         timeout {
             requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
             socketTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+        }
+    }
+
+    /**
+     * Idle (socket) timeout for the backup data path. A WiFi↔cellular switch
+     * mid-transfer leaves the socket half-open; without this the streaming
+     * upload's `writeFully` parks forever and the backup wedges until the app
+     * is killed. Bounding the gap-between-packets turns that hang into a
+     * retryable NetworkError that [DeviceBackupRepository.upload] re-attempts
+     * on the live network.
+     *
+     * Only the socket (idle) timeout is set — NOT requestTimeout — because a
+     * large video on a slow uplink legitimately takes minutes; we only want to
+     * fail when bytes actually stop flowing, not because the whole transfer is
+     * slow. The value is generous enough to ride out the server finalizing an
+     * upload (hash + dedup + write) before it streams the JSON response back.
+     */
+    private fun HttpRequestBuilder.backupIdleTimeout() {
+        timeout {
+            socketTimeoutMillis = PhotonneApi.BACKUP_SOCKET_TIMEOUT_MS
         }
     }
 

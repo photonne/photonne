@@ -49,12 +49,21 @@ fun Throwable.toUploadFailureReason(): UploadFailureReason {
     }
     // I/O / timeout / DNS / socket errors all surface through Ktor as various
     // exceptions; match by simple class-name heuristic to stay platform-neutral.
+    // DNS failures during a WiFi↔cellular switch arrive as UnknownHostException
+    // ("Unable to resolve host …") whose simple name contains none of the
+    // IOException/Socket/Connect tokens, so it is matched explicitly — otherwise
+    // a transient "host not found" would be labelled Unknown.
     val name = this::class.simpleName.orEmpty()
+    val message = this.message.orEmpty()
     return when {
         name.contains("IOException", ignoreCase = true) -> UploadFailureReason.NetworkError
         name.contains("Timeout", ignoreCase = true) -> UploadFailureReason.NetworkError
         name.contains("Connect", ignoreCase = true) -> UploadFailureReason.NetworkError
         name.contains("Socket", ignoreCase = true) -> UploadFailureReason.NetworkError
+        name.contains("UnknownHost", ignoreCase = true) -> UploadFailureReason.NetworkError
+        name.contains("Host", ignoreCase = true) -> UploadFailureReason.NetworkError
+        message.contains("resolve host", ignoreCase = true) -> UploadFailureReason.NetworkError
+        message.contains("Network", ignoreCase = true) -> UploadFailureReason.NetworkError
         else -> UploadFailureReason.Unknown
     }
 }

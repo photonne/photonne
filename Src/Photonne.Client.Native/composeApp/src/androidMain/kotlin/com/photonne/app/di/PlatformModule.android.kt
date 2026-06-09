@@ -9,6 +9,13 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
+import okhttp3.ConnectionPool
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -28,7 +35,30 @@ actual fun platformModule() = module {
         )
         SharedPreferencesSettings(prefs)
     }
-    single<HttpClientEngine> { OkHttp.create() }
+    single<HttpClientEngine> {
+        // A WiFi↔cellular switch leaves OkHttp's keep-alive sockets bound to
+        // the now-dead interface. Reusing one surfaces as "unable to resolve
+        // host" or an indefinite hang that only an app restart clears. We hold
+        // our own ConnectionPool and evict it on every network transition so
+        // the next request dials a fresh connection on the live network.
+        val pool = ConnectionPool()
+        val monitor = get<NetworkMonitor>()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        scope.launch {
+            // drop(1): skip the replayed startup tick; only react to real
+            // transitions (network gained/lost/capabilities changed).
+            monitor.changes.drop(1).collect { pool.evictAll() }
+        }
+        OkHttp.create {
+            config {
+                connectionPool(pool)
+                // Re-route off a stale pooled connection automatically; the
+                // default is already true but we pin it so a future OkHttp
+                // bump can't silently disable our recovery path.
+                retryOnConnectionFailure(true)
+            }
+        }
+    }
     single { AssetSharing(androidContext()) }
     single { com.photonne.app.data.devicebackup.DeviceGallery(androidContext()) }
 }

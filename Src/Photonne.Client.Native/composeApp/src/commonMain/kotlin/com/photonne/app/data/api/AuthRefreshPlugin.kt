@@ -70,6 +70,14 @@ fun buildPhotonneHttpClient(
         // by default — which kills a `/api/tasks/{id}/stream` connection
         // any time the server goes 60 s between pushes (perfectly normal
         // during the scanning phase of a large indexing run).
+        //
+        // No global timeout values are set on purpose: a global connect/socket
+        // timeout maps to Darwin's resource/request interval and would cap
+        // every iOS request, breaking large transfers and streams. Recovery
+        // from a WiFi↔cellular switch is handled where the per-engine mapping
+        // is known and safe: a per-request socket (idle) timeout on the backup
+        // calls (see PhotonneApiClient.backupIdleTimeout) plus OkHttp connection
+        // pool eviction on network change (see the Android platform module).
         install(HttpTimeout)
         install(Logging) {
             logger = object : Logger {
