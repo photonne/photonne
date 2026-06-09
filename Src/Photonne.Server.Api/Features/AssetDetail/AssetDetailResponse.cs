@@ -21,7 +21,12 @@ public class AssetDetailResponse
     public string? FolderPath { get; set; }
     public ExifDataResponse? Exif { get; set; }
     public List<ThumbnailInfoResponse> Thumbnails { get; set; } = new();
+    // Merged auto + user tags, kept for backward compatibility.
     public List<string> Tags { get; set; } = new();
+    // User-editable tags (removable via DELETE /api/assets/{id}/tags/{tag}).
+    public List<string> UserTags { get; set; } = new();
+    // ML/auto-derived tags (LivePhoto, Portrait, …) — read-only.
+    public List<string> AutoTags { get; set; } = new();
     public Photonne.Server.Api.Shared.Dtos.AssetSyncStatus SyncStatus { get; set; } = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced;
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }

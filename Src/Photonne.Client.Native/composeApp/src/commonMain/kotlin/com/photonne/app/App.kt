@@ -2342,6 +2342,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenFaces = { assetId ->
                             assetFacesViewModel.open(assetId)
                             showAssetFacesSheet = true
+                        },
+                        onOpenAsset = { item ->
+                            // Open a related asset as its own single-item viewer;
+                            // key(displayCtx) forces a fresh screen + detail load.
+                            assetDetail = AssetDetailContext(
+                                items = listOf(item),
+                                startIndex = 0,
+                                source = AssetDetailContext.Source.Timeline,
+                                hasMore = false,
+                                onLoadMore = {},
+                                onFavoriteChanged = { id, isFav ->
+                                    timelineViewModel.setFavorite(id, isFav)
+                                }
+                            )
                         }
                     )
                 }

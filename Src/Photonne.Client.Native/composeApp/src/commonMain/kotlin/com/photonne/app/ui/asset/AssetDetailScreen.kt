@@ -43,6 +43,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ScreenLockPortrait
@@ -55,7 +56,13 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.Camera
+import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Iso
+import androidx.compose.material.icons.outlined.ShutterSpeed
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Face
@@ -119,6 +126,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.data.models.toTimelineItem
 import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.resources.Res
@@ -176,6 +184,7 @@ fun AssetDetailScreen(
     onAssetArchived: (assetId: String) -> Unit = {},
     onOpenFaces: (assetId: String) -> Unit = {},
     onPageChanged: (assetId: String) -> Unit = {},
+    onOpenAsset: (TimelineItem) -> Unit = {},
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
@@ -480,9 +489,16 @@ fun AssetDetailScreen(
                         detail = pageDetail,
                         isLoading = isCurrent && state.isLoading,
                         errorMessage = if (isCurrent) state.error?.userMessage else null,
+                        baseUrl = apiBaseUrl,
+                        faces = if (isCurrent) state.faces else emptyList(),
+                        samePersonAssets = if (isCurrent) state.samePersonAssets else emptyList(),
+                        sameDayAssets = if (isCurrent) state.sameDayAssets else emptyList(),
                         onEditDescription = { showEditDescription = true },
                         onEditDate = { showEditDate = true },
-                        onOpenFaces = { onOpenFaces(item.id) }
+                        onOpenFaces = { onOpenFaces(item.id) },
+                        onAddTag = { tag -> viewModel.addTag(item.id, tag) },
+                        onRemoveTag = { tag -> viewModel.removeTag(item.id, tag) },
+                        onOpenAsset = onOpenAsset
                     )
                 }
 
@@ -1237,9 +1253,16 @@ private fun AssetMetadataPanel(
     detail: AssetDetail?,
     isLoading: Boolean,
     errorMessage: String?,
+    baseUrl: String,
+    faces: List<com.photonne.app.data.models.Face>,
+    samePersonAssets: List<com.photonne.app.data.models.PersonAsset>,
+    sameDayAssets: List<com.photonne.app.data.models.PersonAsset>,
     onEditDescription: () -> Unit,
     onEditDate: () -> Unit,
-    onOpenFaces: () -> Unit
+    onOpenFaces: () -> Unit,
+    onAddTag: (String) -> Unit,
+    onRemoveTag: (String) -> Unit,
+    onOpenAsset: (TimelineItem) -> Unit
 ) {
     val exif = detail?.exif
     // Scrolling is owned by the caller's container (the portrait collapsing
@@ -1282,26 +1305,20 @@ private fun AssetMetadataPanel(
             MetadataRow("Creado", formatInstant(fallback.fileCreatedAt.toString()))
         }
 
-        // Location: a cropped map centred exactly on the point.
-        val lat = exif?.latitude
-        val lon = exif?.longitude
-        if (lat != null && lon != null) {
-            LocationMap(latitude = lat, longitude = lon)
-        }
-
-        // Technical EXIF as a 2-column grid of stat cells.
+        // Technical EXIF as a 2-column grid of stat cells — placed ABOVE the
+        // map so the headline numbers (resolution, size…) read first.
         val stats = buildList {
             val width = exif?.width ?: fallback.width
             val height = exif?.height ?: fallback.height
             if (width != null && height != null) {
                 val megapixels = width.toLong() * height.toLong() / 1_000_000.0
-                add(StatCell(value = "${formatOneDecimal(megapixels)} MP", label = "$width × $height"))
+                add(StatCell(icon = Icons.Outlined.AspectRatio, value = "${formatOneDecimal(megapixels)} MP", label = "$width × $height"))
             }
-            add(StatCell(value = formatBytes(detail?.fileSize ?: fallback.fileSize), label = "Tamaño"))
-            exif?.iso?.let { add(StatCell(value = "ISO $it", label = "Sensibilidad")) }
-            exif?.aperture?.let { add(StatCell(value = "f/$it", label = "Apertura")) }
-            exif?.shutterSpeed?.let { add(StatCell(value = formatShutter(it), label = "Velocidad")) }
-            exif?.focalLength?.let { add(StatCell(value = "${it.roundToInt()} mm", label = "Distancia focal")) }
+            add(StatCell(icon = Icons.Outlined.Storage, value = formatBytes(detail?.fileSize ?: fallback.fileSize), label = "Tamaño"))
+            exif?.iso?.let { add(StatCell(icon = Icons.Outlined.Iso, value = "ISO $it", label = "Sensibilidad")) }
+            exif?.aperture?.let { add(StatCell(icon = Icons.Outlined.Camera, value = "f/$it", label = "Apertura")) }
+            exif?.shutterSpeed?.let { add(StatCell(icon = Icons.Outlined.ShutterSpeed, value = formatShutter(it), label = "Velocidad")) }
+            exif?.focalLength?.let { add(StatCell(icon = Icons.Outlined.CenterFocusStrong, value = "${it.roundToInt()} mm", label = "Distancia focal")) }
         }
         ExifGrid(stats)
 
@@ -1309,7 +1326,18 @@ private fun AssetMetadataPanel(
             MetadataInfoRow(leadingIcon = Icons.Outlined.PhotoCamera, label = "Cámara", value = it)
         }
 
-        if (detail != null) {
+        // Location: a cropped map centred exactly on the point (now below EXIF).
+        val lat = exif?.latitude
+        val lon = exif?.longitude
+        if (lat != null && lon != null) {
+            LocationMap(latitude = lat, longitude = lon)
+        }
+
+        // Detected faces — thumbnails inline; tap any (or "Ver todas") opens
+        // the full faces sheet.
+        if (detail != null && faces.isNotEmpty()) {
+            FacesSection(faces = faces, baseUrl = baseUrl, onOpenFaces = onOpenFaces)
+        } else if (detail != null) {
             MetadataActionRow(
                 leadingIcon = Icons.Outlined.Face,
                 label = "Ver caras",
@@ -1317,10 +1345,37 @@ private fun AssetMetadataPanel(
             )
         }
 
+        // Editable tags: auto tags fixed, user tags removable, plus "+ Añadir".
+        if (detail != null) {
+            EditableTagsSection(
+                userTags = detail.userTags,
+                autoTags = detail.autoTags,
+                onAddTag = onAddTag,
+                onRemoveTag = onRemoveTag
+            )
+        } else {
+            val tags = fallback.tags
+            if (tags.isNotEmpty()) MetadataRow("Etiquetas", tags.joinToString(", "))
+        }
+
         detail?.folderPath?.let { MetadataRow("Carpeta", it) }
-        val tags = detail?.tags ?: fallback.tags
-        if (tags.isNotEmpty()) {
-            MetadataRow("Etiquetas", tags.joinToString(", "))
+
+        // Related assets: more of the same people, then more from the same day.
+        if (samePersonAssets.isNotEmpty()) {
+            RelatedAssetsRow(
+                title = "Mismas personas",
+                items = samePersonAssets,
+                baseUrl = baseUrl,
+                onOpenAsset = onOpenAsset
+            )
+        }
+        if (sameDayAssets.isNotEmpty()) {
+            RelatedAssetsRow(
+                title = "Mismo día",
+                items = sameDayAssets,
+                baseUrl = baseUrl,
+                onOpenAsset = onOpenAsset
+            )
         }
 
         if (isLoading) {
@@ -1334,7 +1389,7 @@ private fun AssetMetadataPanel(
     }
 }
 
-private data class StatCell(val value: String, val label: String)
+private data class StatCell(val icon: ImageVector, val value: String, val label: String)
 
 /** Numeric EXIF laid out as cards, two per row. */
 @Composable
@@ -1359,19 +1414,248 @@ private fun ExifStatCard(cell: StatCell, modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = cell.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            Column {
+                Text(
+                    text = cell.value,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+                Text(
+                    text = cell.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Detected faces as a horizontal strip of circular thumbnails. The whole
+ * section is tappable (and a trailing chevron makes that obvious) so it opens
+ * the full faces sheet where the user assigns/edits people.
+ */
+@Composable
+private fun FacesSection(
+    faces: List<com.photonne.app.data.models.Face>,
+    baseUrl: String,
+    onOpenFaces: () -> Unit
+) {
+    Surface(
+        onClick = onOpenFaces,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Face,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Caras (${faces.size})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                itemsIndexed(faces, key = { _, f -> f.id }) { _, face ->
+                    AsyncImage(
+                        model = "$baseUrl/api/faces/${face.id}/thumbnail",
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tag chips: ML/auto tags first (fixed, no remove), then user tags (each with
+ * an ✕ to remove), then a "+ Añadir" chip that opens a small add dialog.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun EditableTagsSection(
+    userTags: List<String>,
+    autoTags: List<String>,
+    onAddTag: (String) -> Unit,
+    onRemoveTag: (String) -> Unit
+) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Etiquetas",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            autoTags.forEach { tag -> TagChip(label = tag, onRemove = null) }
+            userTags.forEach { tag -> TagChip(label = tag, onRemove = { onRemoveTag(tag) }) }
+            AddTagChip(onClick = { showAddDialog = true })
+        }
+    }
+    if (showAddDialog) {
+        AddTagDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { value ->
+                showAddDialog = false
+                onAddTag(value)
+            }
+        )
+    }
+}
+
+@Composable
+private fun TagChip(label: String, onRemove: (() -> Unit)?) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = if (onRemove != null) 6.dp else 12.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(
-                text = cell.value,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (onRemove != null) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Quitar $label",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .clickable { onRemove() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddTagChip(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.primaryContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(16.dp)
             )
             Text(
-                text = cell.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
+                text = "Añadir",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
+        }
+    }
+}
+
+@Composable
+private fun AddTagDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Añadir etiqueta") },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                placeholder = { Text("p. ej. Vacaciones") }
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = { onConfirm(text) },
+                enabled = text.isNotBlank()
+            ) { Text("Añadir") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+/**
+ * A labelled horizontal strip of related-asset thumbnails (e.g. "Mismas
+ * personas", "Mismo día"). Tapping a thumbnail opens that asset.
+ */
+@Composable
+private fun RelatedAssetsRow(
+    title: String,
+    items: List<com.photonne.app.data.models.PersonAsset>,
+    baseUrl: String,
+    onOpenAsset: (TimelineItem) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(items, key = { _, a -> a.id }) { _, asset ->
+                val item = asset.toTimelineItem()
+                AssetThumbnailImage(
+                    item = item,
+                    baseUrl = baseUrl,
+                    size = "Small",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onOpenAsset(item) }
+                )
+            }
         }
     }
 }

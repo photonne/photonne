@@ -7,6 +7,8 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.ExifData
+import com.photonne.app.data.models.Face
+import com.photonne.app.data.models.PersonAsset
 import kotlinx.coroutines.Job
 import kotlinx.datetime.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +21,10 @@ data class AssetDetailUiState(
     val detail: AssetDetail? = null,
     val isLoading: Boolean = false,
     val error: UiError? = null,
+    // Lazily-loaded extras for the info panel, keyed implicitly to [detail].
+    val faces: List<Face> = emptyList(),
+    val samePersonAssets: List<PersonAsset> = emptyList(),
+    val sameDayAssets: List<PersonAsset> = emptyList(),
 )
 
 /**
@@ -42,6 +48,16 @@ class AssetDetailViewModel(
     val details: StateFlow<Map<String, AssetDetail>> = _details.asStateFlow()
     private var currentJob: Job? = null
     private var currentId: String? = null
+
+    /** Info-panel extras (faces + related assets), cached per asset id for the
+     *  lifetime of the screen so swiping back is instant. */
+    private data class Extras(
+        val faces: List<Face> = emptyList(),
+        val samePersonAssets: List<PersonAsset> = emptyList(),
+        val sameDayAssets: List<PersonAsset> = emptyList(),
+    )
+    private val extrasCache = mutableMapOf<String, Extras>()
+    private var extrasJob: Job? = null
 
     private fun publishCache() {
         _details.value = cache.toMap()
@@ -78,6 +94,7 @@ class AssetDetailViewModel(
         }
         cache[assetId]?.let { cached ->
             _state.value = AssetDetailUiState(detail = cached)
+            loadExtras(assetId)
             return
         }
         currentJob?.cancel()
@@ -89,6 +106,7 @@ class AssetDetailViewModel(
                     publishCache()
                     if (currentId == assetId) {
                         _state.value = AssetDetailUiState(detail = detail)
+                        loadExtras(assetId)
                     }
                 }
                 .onFailure { error ->
@@ -101,6 +119,104 @@ class AssetDetailViewModel(
                         }
                     }
                 }
+        }
+    }
+
+    /**
+     * Loads the info-panel extras for [assetId]: detected faces, "same people"
+     * (assets of the first confirmed person in this asset) and "same day".
+     * Served from cache when warm; never blocks the detail. Failures degrade
+     * to empty sections rather than surfacing an error.
+     */
+    private fun loadExtras(assetId: String) {
+        if (assetId.startsWith("device:")) return
+        extrasCache[assetId]?.let { cached ->
+            applyExtras(assetId, cached)
+            return
+        }
+        extrasJob?.cancel()
+        extrasJob = viewModelScope.launch {
+            val faces = runCatching { repository.getFaces(assetId) }.getOrDefault(emptyList())
+            val personId = faces.firstOrNull { it.personId != null && !it.isRejected }?.personId
+            val samePerson = if (personId != null) {
+                runCatching { repository.getPersonAssets(personId, limit = 12) }.getOrNull()
+                    ?.items.orEmpty().filter { it.id != assetId }.take(8)
+            } else emptyList()
+            val sameDay = runCatching { repository.getSameDay(assetId, limit = 12) }.getOrNull()
+                ?.items.orEmpty().filter { it.id != assetId }.take(8)
+            val extras = Extras(faces, samePerson, sameDay)
+            extrasCache[assetId] = extras
+            if (currentId == assetId) applyExtras(assetId, extras)
+        }
+    }
+
+    private fun applyExtras(assetId: String, extras: Extras) {
+        _state.update { current ->
+            if (current.detail?.id == assetId) {
+                current.copy(
+                    faces = extras.faces,
+                    samePersonAssets = extras.samePersonAssets,
+                    sameDayAssets = extras.sameDayAssets,
+                )
+            } else current
+        }
+    }
+
+    /**
+     * Adds a user tag to [assetId] optimistically, then reconciles the
+     * tag lists with the server's authoritative (merged) list. Reverts on
+     * failure.
+     */
+    fun addTag(assetId: String, raw: String) {
+        val tag = raw.trim()
+        if (tag.isEmpty()) return
+        val snapshot = currentDetail(assetId) ?: return
+        if (snapshot.userTags.any { it.equals(tag, ignoreCase = true) }) return
+        updateTags(assetId, snapshot.tags + tag, snapshot.userTags + tag)
+        viewModelScope.launch {
+            runCatching { repository.addTags(assetId, listOf(tag)) }
+                .onSuccess { merged -> reconcileTags(assetId, merged) }
+                .onFailure { error ->
+                    updateTags(assetId, snapshot.tags, snapshot.userTags)
+                    _state.update { it.copy(error = errorFactory.from(error, "No se pudo añadir la etiqueta")) }
+                }
+        }
+    }
+
+    /** Removes a user tag from [assetId] optimistically, reverting on failure. */
+    fun removeTag(assetId: String, tag: String) {
+        val snapshot = currentDetail(assetId) ?: return
+        if (snapshot.userTags.none { it.equals(tag, ignoreCase = true) }) return
+        fun List<String>.without() = filterNot { it.equals(tag, ignoreCase = true) }
+        updateTags(assetId, snapshot.tags.without(), snapshot.userTags.without())
+        viewModelScope.launch {
+            runCatching { repository.removeTag(assetId, tag) }
+                .onSuccess { merged -> reconcileTags(assetId, merged) }
+                .onFailure { error ->
+                    updateTags(assetId, snapshot.tags, snapshot.userTags)
+                    _state.update { it.copy(error = errorFactory.from(error, "No se pudo quitar la etiqueta")) }
+                }
+        }
+    }
+
+    private fun currentDetail(assetId: String): AssetDetail? =
+        cache[assetId] ?: _state.value.detail?.takeIf { it.id == assetId }
+
+    /** Splits the server's merged tag list back into user vs auto using the
+     *  asset's known auto tags, then writes both lists to cache + state. */
+    private fun reconcileTags(assetId: String, merged: List<String>) {
+        val auto = currentDetail(assetId)?.autoTags ?: emptyList()
+        val userTags = merged.filterNot { m -> auto.any { it.equals(m, ignoreCase = true) } }
+        updateTags(assetId, merged, userTags)
+    }
+
+    private fun updateTags(assetId: String, tags: List<String>, userTags: List<String>) {
+        fun AssetDetail.applied() = copy(tags = tags, userTags = userTags)
+        cache[assetId]?.let { cache[assetId] = it.applied(); publishCache() }
+        _state.update { current ->
+            val detail = current.detail
+            if (detail != null && detail.id == assetId) current.copy(detail = detail.applied())
+            else current
         }
     }
 

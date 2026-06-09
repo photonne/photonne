@@ -58,6 +58,7 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLPathPart
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.close
 import io.ktor.utils.io.readUTF8Line
@@ -85,6 +86,12 @@ internal data class BatchAssetIdsRequest(val assetIds: List<String>)
 
 @Serializable
 internal data class UpdateDescriptionBody(val caption: String?)
+
+@Serializable
+internal data class AddTagsBody(val tags: List<String>)
+
+@Serializable
+internal data class AssetTagsResponse(val tags: List<String> = emptyList())
 
 @Serializable
 internal data class UpdateCaptureDateBody(val dateTaken: String, val writeToFile: Boolean)
@@ -251,6 +258,12 @@ interface PhotonneApi {
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
     suspend fun updateAssetDescription(assetId: String, description: String?)
+    /** Adds user tags to an asset. Returns the asset's full (merged) tag list. */
+    suspend fun addAssetTags(assetId: String, tags: List<String>): List<String>
+    /** Removes one user tag from an asset. Returns the asset's full (merged) tag list. */
+    suspend fun removeAssetTag(assetId: String, tag: String): List<String>
+    /** Other assets captured on the same calendar day (the asset itself excluded). */
+    suspend fun getSameDayAssets(assetId: String, limit: Int = 12): PersonAssetsPage
     suspend fun updateAssetCaptureDate(
         assetId: String,
         dateTaken: Instant,
@@ -967,6 +980,45 @@ class PhotonneApiClient(
                 message = "Update description failed (${response.status.value})"
             )
         }
+    }
+
+    override suspend fun addAssetTags(assetId: String, tags: List<String>): List<String> {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/$assetId/tags") {
+            contentType(ContentType.Application.Json)
+            setBody(AddTagsBody(tags = tags))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Add tags failed (${response.status.value})"
+            )
+        }
+        return response.body<AssetTagsResponse>().tags
+    }
+
+    override suspend fun removeAssetTag(assetId: String, tag: String): List<String> {
+        val response: HttpResponse =
+            client.delete("$baseUrl/api/assets/$assetId/tags/${tag.encodeURLPathPart()}")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Remove tag failed (${response.status.value})"
+            )
+        }
+        return response.body<AssetTagsResponse>().tags
+    }
+
+    override suspend fun getSameDayAssets(assetId: String, limit: Int): PersonAssetsPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/$assetId/same-day") {
+            parameter("limit", limit)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Same-day assets fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
     }
 
     override suspend fun updateAssetCaptureDate(

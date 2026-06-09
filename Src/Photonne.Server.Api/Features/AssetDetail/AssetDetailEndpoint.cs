@@ -92,6 +92,14 @@ public class AssetDetailEndpoint : IEndpoint
                     AssetId = t.AssetId
                 }).ToList(),
                 Tags = BuildTagList(asset),
+                AutoTags = asset.Tags.Select(t => t.TagType.ToString())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                UserTags = asset.UserTags.Select(t => t.UserTag.Name)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
                 SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
                 IsFavorite = asset.IsFavorite,
                 IsArchived = asset.IsArchived,

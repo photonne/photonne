@@ -36,11 +36,13 @@ private val OnSurfaceLight = Color(0xFF1E1E2E)
 private val OnSurfaceVariantLight = Color(0xFF64748B)
 private val SurfaceVariantLight = Color(0xFFF1F5F9)
 
-private val SurfaceDark = Color(0xFF1A1B26)
-private val BackgroundDark = Color(0xFF0F1117)
+// Near-black neutral dark theme — drops the old blue-grey tint so surfaces
+// read as truly dark instead of dark grey.
+private val SurfaceDark = Color(0xFF121214)
+private val BackgroundDark = Color(0xFF0A0A0C)
 private val OnSurfaceDark = Color(0xFFE2E8F0)
 private val OnSurfaceVariantDark = Color(0xFF94A3B8)
-private val SurfaceVariantDark = Color(0xFF1E1F2E)
+private val SurfaceVariantDark = Color(0xFF1C1C20)
 
 private val LightColors = lightColorScheme(
     primary = GoldPrimaryLight,

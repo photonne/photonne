@@ -22,6 +22,10 @@ data class AssetDetail(
     val exif: ExifData? = null,
     val thumbnails: List<ThumbnailInfo> = emptyList(),
     val tags: List<String> = emptyList(),
+    // User-editable tags (removable). Subset of [tags].
+    val userTags: List<String> = emptyList(),
+    // ML/auto-derived tags (LivePhoto, Portrait, …) — read-only. Subset of [tags].
+    val autoTags: List<String> = emptyList(),
     val isFavorite: Boolean = false,
     val isArchived: Boolean = false,
     val isFileMissing: Boolean = false,
