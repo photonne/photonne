@@ -66,6 +66,8 @@ actual fun VideoPlayer(
             AVURLAsset(uRL = nsUrl, options = options)
         } else null
         val item = asset?.let { AVPlayerItem(asset = it) }
+        // AVPlayer prevents display sleep during video playback by default, so
+        // the screen stays awake while a clip is on screen with no extra setup.
         AVPlayer(playerItem = item)
     }
 

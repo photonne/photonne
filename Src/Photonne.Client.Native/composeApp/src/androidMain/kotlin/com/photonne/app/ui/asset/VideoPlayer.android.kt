@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -54,12 +55,14 @@ actual fun VideoPlayer(
         onDispose { player.release() }
     }
 
-    // Pause when the app is backgrounded (home button / app switcher) so the
-    // clip doesn't keep playing audio off-screen.
+    // Pause as soon as the app leaves the foreground (home button / app
+    // switcher / another app on top) so the clip doesn't keep playing audio
+    // off-screen. ON_PAUSE fires before ON_STOP, so the sound stops the moment
+    // the viewer is no longer in front.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, player) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
+            if (event == Lifecycle.Event.ON_PAUSE) {
                 player.playWhenReady = false
             }
         }
@@ -86,12 +89,22 @@ actual fun VideoPlayer(
         },
         factory = { ctx ->
             PlayerView(ctx).apply {
+                val view = this
                 this.player = player
                 useController = true
                 // Aspect-fit so a portrait clip is letterboxed inside the page
                 // instead of cropping or overflowing under the chrome bars.
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                // Hold the screen awake only while the clip is actually playing
+                // so the device's inactivity timeout doesn't dim or lock the
+                // display mid-video; released automatically on pause/end.
+                keepScreenOn = player.isPlaying
+                player.addListener(object : Player.Listener {
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        view.keepScreenOn = isPlaying
+                    }
+                })
                 // The native controller toggles on tap; mirror that into the
                 // host so its chrome appears/disappears together with the
                 // transport controls. Also hide the settings (speed/audio) gear:
