@@ -53,6 +53,8 @@ data class DeviceMedia(
  * - [Synced] hash matches an existing server asset.
  * - [Uploading] the upload queue is actively processing this file.
  * - [Failed] last upload attempt failed; surface the message in the UI.
+ * - [Ignored] user chose to skip this file; it no longer counts as pending
+ *   and is never re-queued until they un-skip it.
  */
 sealed class DeviceMediaSyncState {
     data object Unknown : DeviceMediaSyncState()
@@ -68,4 +70,5 @@ sealed class DeviceMediaSyncState {
         val reason: UploadFailureReason,
         val detail: String? = null
     ) : DeviceMediaSyncState()
+    data object Ignored : DeviceMediaSyncState()
 }

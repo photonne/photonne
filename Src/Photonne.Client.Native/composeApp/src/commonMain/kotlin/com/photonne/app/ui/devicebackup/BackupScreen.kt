@@ -61,6 +61,8 @@ import com.photonne.app.resources.background_sync_charging_label
 import com.photonne.app.resources.background_sync_section
 import com.photonne.app.resources.background_sync_wifi_hint
 import com.photonne.app.resources.background_sync_wifi_label
+import com.photonne.app.resources.backup_turbo_hint
+import com.photonne.app.resources.backup_turbo_label
 import com.photonne.app.resources.backup_disabled_hint
 import com.photonne.app.resources.backup_last_run_background
 import com.photonne.app.resources.backup_last_run_counts
@@ -201,6 +203,17 @@ fun BackupScreen(
         if (state.isBackupEnabled) {
             item("bg-header") {
                 SectionHeader(stringResource(Res.string.background_sync_section))
+            }
+            // Turbo lives above the auto-sync constraints because it tunes BOTH
+            // manual and background passes (it widens the upload fan-out), not
+            // just the scheduled ones.
+            item("turbo") {
+                ToggleRow(
+                    label = stringResource(Res.string.backup_turbo_label),
+                    hint = stringResource(Res.string.backup_turbo_hint),
+                    checked = state.backgroundSync.turbo,
+                    onChange = viewModel::setTurbo
+                )
             }
             item("bg-auto") {
                 ToggleRow(

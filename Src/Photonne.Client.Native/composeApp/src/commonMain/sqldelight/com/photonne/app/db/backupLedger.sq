@@ -6,7 +6,9 @@
 -- never re-hash. When it changes, the row is reset to UNKNOWN and the
 -- file re-enters the verification pipeline.
 --
--- syncState values: 'UNKNOWN' | 'NOT_SYNCED' | 'SYNCED' | 'FAILED'
+-- syncState values: 'UNKNOWN' | 'NOT_SYNCED' | 'SYNCED' | 'FAILED' | 'IGNORED'
+-- ('IGNORED' is a user-skipped file; it carries no schema change since
+--  syncState is a plain TEXT column.)
 
 -- NOTE: failureDetail is declared last because it arrived via migration
 -- (1.sqm) and ALTER TABLE appends columns — the declared order here must
@@ -64,6 +66,21 @@ WHERE folderUri = ? AND uri = ?;
 setFailure:
 UPDATE backupLedger
 SET syncState = 'FAILED', failureReason = ?, failureDetail = ?
+WHERE folderUri = ? AND uri = ?;
+
+setIgnored:
+UPDATE backupLedger
+SET syncState = 'IGNORED', failureReason = NULL, failureDetail = NULL
+WHERE folderUri = ? AND uri = ?;
+
+setIgnoredByState:
+UPDATE backupLedger
+SET syncState = 'IGNORED', failureReason = NULL, failureDetail = NULL
+WHERE folderUri = ? AND syncState = ?;
+
+clearIgnored:
+UPDATE backupLedger
+SET syncState = 'UNKNOWN', failureReason = NULL, failureDetail = NULL
 WHERE folderUri = ? AND uri = ?;
 
 deleteByUris:

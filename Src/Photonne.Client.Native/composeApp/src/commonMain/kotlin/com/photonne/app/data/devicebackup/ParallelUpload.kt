@@ -11,6 +11,17 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 
 /**
+ * How many uploads may run in flight at once, split by media kind so large
+ * videos never all open at the same time (peak memory is bounded by [video],
+ * the only pool that holds big streaming sources). Photos are cheap, so their
+ * pool can be much wider — that's where the bulk speed-up comes from.
+ *
+ * Built by [DeviceBackupRepository.uploadConcurrency], which folds in the
+ * user's "Turbo" preference, so [uploadInParallel] stays a pure mechanism.
+ */
+data class UploadConcurrency(val photo: Int, val video: Int)
+
+/**
  * Terminal outcome of one item's upload, already classified so callers
  * don't have to re-implement the "already exists" dedup heuristic.
  */
@@ -28,9 +39,9 @@ sealed interface UploadOutcome {
 }
 
 /**
- * Uploads [pending] with bounded concurrency
- * ([DeviceBackupRepository.UPLOAD_CONCURRENCY] in flight at once), mirroring
- * the Semaphore + Mutex + coroutineScope pattern used for parallel hashing.
+ * Uploads [pending] with bounded concurrency ([concurrency] in flight at once,
+ * split into separate photo/video pools), mirroring the Semaphore + Mutex +
+ * coroutineScope pattern used for parallel hashing.
  *
  * Shared by both the background [BackupRunner] and the foreground
  * [com.photonne.app.ui.devicebackup.DeviceBackupViewModel] so the
@@ -62,20 +73,26 @@ sealed interface UploadOutcome {
  */
 suspend fun uploadInParallel(
     pending: List<DeviceMedia>,
+    concurrency: UploadConcurrency,
     upload: suspend (media: DeviceMedia, onProgress: (Float) -> Unit) -> UploadAssetResponse,
     shouldContinue: () -> Boolean = { true },
     onItemStart: (media: DeviceMedia) -> Unit = {},
     onItemProgress: (media: DeviceMedia, fraction: Float) -> Unit = { _, _ -> },
-    onItemDone: (media: DeviceMedia, outcome: UploadOutcome, completed: Int) -> Unit
+    onItemDone: suspend (media: DeviceMedia, outcome: UploadOutcome, completed: Int) -> Unit
 ) {
     if (pending.isEmpty()) return
-    val permits = Semaphore(DeviceBackupRepository.UPLOAD_CONCURRENCY)
+    // Separate pools: photos fan out wide (cheap), videos stay tight so we never
+    // hold more than `video` large streaming sources open at once (OOM guard).
+    val photoPermits = Semaphore(concurrency.photo.coerceAtLeast(1))
+    val videoPermits = Semaphore(concurrency.video.coerceAtLeast(1))
     val writes = Mutex()
     var completed = 0
     coroutineScope {
         pending.map { media ->
             async(Dispatchers.Default) {
                 if (!shouldContinue()) return@async
+                val permits =
+                    if (media.type == DeviceMediaType.Video) videoPermits else photoPermits
                 permits.withPermit {
                     // The cancel flag may have flipped while we waited for a
                     // permit — re-check so we don't start a new upload.

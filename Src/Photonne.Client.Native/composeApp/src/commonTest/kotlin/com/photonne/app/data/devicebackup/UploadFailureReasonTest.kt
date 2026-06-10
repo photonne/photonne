@@ -63,6 +63,9 @@ class UploadFailureReasonTest {
         assertFalse(UploadFailureReason.FileTooLarge.isRetryable)
         assertFalse(UploadFailureReason.NotAllowed.isRetryable)
         assertFalse(UploadFailureReason.Unauthorized.isRetryable)
+        // A file we can't even read won't get better by retrying the upload —
+        // the user's recourse is to skip it.
+        assertFalse(UploadFailureReason.FileUnreadable.isRetryable)
     }
 
     private fun apiError(status: Int) =

@@ -884,6 +884,17 @@
     <string name="backup_failed_dialog_retry">Retry</string>
     <string name="backup_failed_dialog_close">Close</string>
 
+    <!-- Skip / ignore controls -->
+    <string name="backup_action_ignore">Skip</string>
+    <string name="backup_action_ignore_all_failed">Skip all failed (%1$d)</string>
+    <string name="backup_action_unignore">Re-enable</string>
+    <string name="backup_section_ignored">Skipped (%1$d)</string>
+
+    <!-- Foreground (prioritized) backup notification -->
+    <string name="backup_notification_channel_progress">Backup in progress</string>
+    <string name="backup_notification_progress_title">Backing up</string>
+    <string name="backup_notification_progress_text">%1$d / %2$d files</string>
+
     <!-- Background sync preferences -->
     <string name="background_sync_section">Background sync</string>
     <string name="background_sync_auto_label">Auto sync</string>
@@ -892,6 +903,8 @@
     <string name="background_sync_wifi_hint">Avoid using mobile data</string>
     <string name="background_sync_charging_label">Only while charging</string>
     <string name="background_sync_charging_hint">Avoid draining the battery</string>
+    <string name="backup_turbo_label">Turbo mode</string>
+    <string name="backup_turbo_hint">Uploads more files at once. Faster on Wi-Fi, but uses more battery and data</string>
 
     <!-- Sync summary (rendered after a backup batch completes) -->
     <string name="backup_summary_title">Backup summary</string>
@@ -904,6 +917,7 @@
     <string name="upload_error_rate_limited">Server is busy</string>
     <string name="upload_error_server_error">Server error</string>
     <string name="upload_error_network_error">Network error</string>
+    <string name="upload_error_file_unreadable">Couldn't read the file</string>
     <string name="upload_error_unknown">Unknown error</string>
 
     <!-- Enrichment status screen -->

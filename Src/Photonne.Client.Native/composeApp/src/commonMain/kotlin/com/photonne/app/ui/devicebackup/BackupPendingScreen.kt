@@ -64,6 +64,10 @@ import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.backup_action_ignore
+import com.photonne.app.resources.backup_action_ignore_all_failed
+import com.photonne.app.resources.backup_action_unignore
+import com.photonne.app.resources.backup_section_ignored
 import com.photonne.app.resources.backup_failed_dialog_close
 import com.photonne.app.resources.backup_failed_dialog_no_detail
 import com.photonne.app.resources.backup_failed_dialog_retry
@@ -179,7 +183,9 @@ fun BackupPendingScreen(
                     },
                     onLongClick = { entry ->
                         viewModel.toggleSelection(entry.media.uri)
-                    }
+                    },
+                    onUnignore = { entry -> viewModel.unignore(entry.media.uri) },
+                    onIgnoreAllFailed = viewModel::ignoreFailed
                 )
             }
         }
@@ -216,6 +222,10 @@ fun BackupPendingScreen(
                 onRetry = {
                     failedDialogUri = null
                     viewModel.retrySingle(uri)
+                },
+                onIgnore = {
+                    failedDialogUri = null
+                    viewModel.ignoreSingle(uri)
                 },
                 onDismiss = { failedDialogUri = null }
             )
@@ -257,6 +267,7 @@ private fun FailedItemDialog(
     reasonLabel: String,
     detail: String?,
     onRetry: () -> Unit,
+    onIgnore: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -285,8 +296,17 @@ private fun FailedItemDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onRetry) {
-                Text(stringResource(Res.string.backup_failed_dialog_retry))
+            // Retry + Skip share the confirm slot; Close stays the dismiss.
+            Row {
+                TextButton(onClick = onIgnore) {
+                    Text(
+                        stringResource(Res.string.backup_action_ignore),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = onRetry) {
+                    Text(stringResource(Res.string.backup_failed_dialog_retry))
+                }
             }
         },
         dismissButton = {
@@ -426,19 +446,31 @@ private fun MediaGrid(
     state: DeviceBackupUiState,
     thumbnailModel: (com.photonne.app.data.devicebackup.DeviceMedia) -> String,
     onClick: (DeviceBackupEntry) -> Unit,
-    onLongClick: (DeviceBackupEntry) -> Unit
+    onLongClick: (DeviceBackupEntry) -> Unit,
+    onUnignore: (DeviceBackupEntry) -> Unit,
+    onIgnoreAllFailed: () -> Unit
 ) {
-    // Two blocks: what's still pending on top, what's already backed up below.
+    // Three blocks: still pending on top, skipped, then already backed up.
     // Each list keeps the folder order it already had.
     val pending = remember(state.entries) {
-        state.entries.filter { it.syncState !is DeviceMediaSyncState.Synced }
+        state.entries.filter {
+            it.syncState !is DeviceMediaSyncState.Synced &&
+                it.syncState !is DeviceMediaSyncState.Ignored
+        }
+    }
+    val ignored = remember(state.entries) {
+        state.entries.filter { it.syncState is DeviceMediaSyncState.Ignored }
     }
     val synced = remember(state.entries) {
         state.entries.filter { it.syncState is DeviceMediaSyncState.Synced }
     }
-    // The backed-up block is collapsed by default: keeps the focus on pending
-    // and avoids loading hundreds of thumbnails the user rarely needs to see.
+    val failedCount = remember(state.entries) {
+        state.entries.count { it.syncState is DeviceMediaSyncState.Failed }
+    }
+    // The backed-up and skipped blocks are collapsed by default: keeps the
+    // focus on pending and avoids loading thumbnails the user rarely needs.
     var syncedExpanded by remember { mutableStateOf(false) }
+    var ignoredExpanded by remember { mutableStateOf(false) }
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 96.dp),
@@ -451,7 +483,24 @@ private fun MediaGrid(
     ) {
         if (pending.isNotEmpty()) {
             item(key = "hdr-pending", span = { GridItemSpan(maxLineSpan) }) {
-                SectionLabel(stringResource(Res.string.backup_section_pending, pending.size))
+                Column {
+                    SectionLabel(stringResource(Res.string.backup_section_pending, pending.size))
+                    // One-tap escape hatch for a folder full of stuck failures:
+                    // skip them all so they stop counting as pending.
+                    if (failedCount > 0) {
+                        TextButton(
+                            onClick = onIgnoreAllFailed,
+                            modifier = Modifier.padding(start = 4.dp)
+                        ) {
+                            Text(
+                                stringResource(
+                                    Res.string.backup_action_ignore_all_failed,
+                                    failedCount
+                                )
+                            )
+                        }
+                    }
+                }
             }
             // Pending items render as full-width LIST rows (not grid cells) so
             // each shows its own upload progress bar. The list visibly shrinks
@@ -467,6 +516,25 @@ private fun MediaGrid(
                     onClick = { onClick(entry) },
                     onLongClick = { onLongClick(entry) }
                 )
+            }
+        }
+        if (ignored.isNotEmpty()) {
+            item(key = "hdr-ignored", span = { GridItemSpan(maxLineSpan) }) {
+                CollapsibleSectionLabel(
+                    text = stringResource(Res.string.backup_section_ignored, ignored.size),
+                    expanded = ignoredExpanded,
+                    onToggle = { ignoredExpanded = !ignoredExpanded }
+                )
+            }
+            if (ignoredExpanded) {
+                // Tap a skipped item to put it back in the pipeline.
+                items(ignored, key = { it.media.uri }) { entry ->
+                    IgnoredCell(
+                        entry = entry,
+                        thumbnailModel = thumbnailModel(entry.media),
+                        onUnignore = { onUnignore(entry) }
+                    )
+                }
             }
         }
         if (synced.isNotEmpty()) {
@@ -725,6 +793,47 @@ private fun MediaCell(
     }
 }
 
+/**
+ * A skipped file: dimmed thumbnail with a "Reactivar" affordance. Tapping it
+ * puts the file back in the backup pipeline (the next verify re-checks it).
+ */
+@Composable
+private fun IgnoredCell(
+    entry: DeviceBackupEntry,
+    thumbnailModel: String,
+    onUnignore: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(6.dp)
+            )
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onUnignore)
+    ) {
+        AsyncImage(
+            model = thumbnailModel,
+            contentDescription = entry.media.displayName,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        // Scrim so the skipped state reads at a glance and the label is legible.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
+        )
+        Text(
+            text = stringResource(Res.string.backup_action_unignore),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White,
+            modifier = Modifier.align(Alignment.Center)
+        )
+    }
+}
+
 @Composable
 private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier) {
     val (bg, tint, icon) = when (state) {
@@ -736,6 +845,8 @@ private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier
         DeviceMediaSyncState.Uploading ->
             Triple(MaterialTheme.colorScheme.primary, Color.White, Icons.Filled.PlayArrow)
         DeviceMediaSyncState.Unknown -> return
+        // Skipped items live in their own collapsible block, no cell badge.
+        DeviceMediaSyncState.Ignored -> return
     }
     Box(
         modifier = modifier

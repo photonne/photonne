@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ runtime permission; only used to surface background
          backup failures. If the user never grants it, the failure still
          shows up in the Backup status card on next app open. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- A user-triggered "Subir ahora" promotes the WorkManager backup worker
+         to a foreground (dataSync) service so a large upload keeps running at
+         full priority with the app backgrounded / screen off. DATA_SYNC is the
+         dedicated type required since Android 14 (SDK 34). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Media read + ACCESS_MEDIA_LOCATION are required to read the ORIGINAL
          (un-redacted) bytes of gallery photos/videos. Since Android 10 the
@@ -54,5 +62,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/photonne_file_paths" />
         </provider>
+
+        <!-- WorkManager vends this service; we only override it to declare the
+             dataSync foreground type so setForeground() works on Android 14+.
+             tools:node="merge" keeps WorkManager's own attributes intact. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 </manifest>

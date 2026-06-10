@@ -37,6 +37,19 @@ interface BackgroundSyncScheduler {
      * (desktop) or where the OS owns the timing entirely.
      */
     fun requestImmediateSync(prefs: BackgroundSyncPreferences) {}
+
+    /**
+     * Runs a full backup pass NOW as a prioritized, OS-foreground task that
+     * survives the app going to the background or the screen turning off, with
+     * a persistent progress notification. This is what the "Subir ahora" /
+     * "Subir todo" action triggers for big backlogs.
+     *
+     * Returns `true` when the platform took ownership (Android, via a
+     * foreground WorkManager worker). The default returns `false` so callers
+     * on iOS/Desktop — which have no equivalent foreground primitive — fall
+     * back to running the pass in-process.
+     */
+    fun requestForegroundBackup(): Boolean = false
 }
 
 /** Returns the platform's [BackgroundSyncScheduler]. Set up via DI. */

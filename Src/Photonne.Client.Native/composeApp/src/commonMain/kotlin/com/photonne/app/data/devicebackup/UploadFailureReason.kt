@@ -26,6 +26,10 @@ enum class UploadFailureReason {
     ServerError,
     /** Network exception — no response, timeout, DNS, etc. */
     NetworkError,
+    /** The local file couldn't be read/hashed (deleted mid-scan, codec error,
+     *  permission revoked). Not a server problem — retrying rarely helps, so
+     *  the user's recourse is to skip it. */
+    FileUnreadable,
     /** Anything else: serialization, unknown HTTP code, programming bug. */
     Unknown,
 }
@@ -103,5 +107,6 @@ val UploadFailureReason.isRetryable: Boolean
         UploadFailureReason.QuotaExceeded,
         UploadFailureReason.FileTooLarge,
         UploadFailureReason.NotAllowed,
+        UploadFailureReason.FileUnreadable,
         UploadFailureReason.Unauthorized -> false
     }

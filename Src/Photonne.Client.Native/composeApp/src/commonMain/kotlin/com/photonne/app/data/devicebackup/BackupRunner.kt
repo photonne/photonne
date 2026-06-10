@@ -41,7 +41,7 @@ class BackupRunner(
      */
     suspend fun runBackup(
         folder: DeviceFolderRef,
-        onProgress: ((current: Int, total: Int, currentName: String) -> Unit)? = null,
+        onProgress: (suspend (current: Int, total: Int, currentName: String) -> Unit)? = null,
         shouldContinue: () -> Boolean = { true },
         background: Boolean = true
     ): Result {
@@ -57,7 +57,13 @@ class BackupRunner(
         var failed = 0
         val failuresByReason = mutableMapOf<UploadFailureReason, Int>()
 
-        val pending = items.filter { states[it.uri] !is DeviceMediaSyncState.Synced }
+        // Upload everything not already on the server, EXCEPT files the user
+        // explicitly skipped — those must never be re-queued by a background or
+        // foreground worker pass.
+        val pending = items.filter {
+            val state = states[it.uri]
+            state !is DeviceMediaSyncState.Synced && state !is DeviceMediaSyncState.Ignored
+        }
         skipped += items.size - pending.size
 
         // Upload with bounded concurrency (see [uploadInParallel]). The
@@ -66,6 +72,7 @@ class BackupRunner(
         // — honest under parallelism, where there's no single "current index".
         uploadInParallel(
             pending = pending,
+            concurrency = repository.uploadConcurrency(),
             // Background pass reports progress per completed file, not per byte.
             upload = { media, _ -> repository.upload(media) },
             shouldContinue = shouldContinue,

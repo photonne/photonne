@@ -75,6 +75,16 @@ class DeviceBackupRepository(
     fun setAutoBackupEnabled(enabled: Boolean) = stateStore.setAutoBackupEnabled(enabled)
     fun setRequireWifi(value: Boolean) = stateStore.setRequireWifi(value)
     fun setRequireCharging(value: Boolean) = stateStore.setRequireCharging(value)
+    fun setTurboEnabled(value: Boolean) = stateStore.setTurboEnabled(value)
+
+    /** Current upload fan-out, widened when the user has Turbo on. Shared by
+     *  the foreground sync and the background runner via [uploadInParallel]. */
+    fun uploadConcurrency(): UploadConcurrency =
+        if (stateStore.isTurboEnabled()) {
+            UploadConcurrency(photo = PHOTO_CONCURRENCY_TURBO, video = VIDEO_CONCURRENCY_TURBO)
+        } else {
+            UploadConcurrency(photo = PHOTO_CONCURRENCY, video = VIDEO_CONCURRENCY)
+        }
 
     suspend fun restoreFolder(uri: String): DeviceFolderRef? =
         gallery.restoreFolder(uri)
@@ -139,7 +149,12 @@ class DeviceBackupRepository(
         // 2. Hash anything the ledger doesn't have a valid hash for. Files
         //    hash in parallel (bounded — hashing is CPU+IO, not network), but
         //    ledger writes and progress updates stay serialized.
-        val needHash = entries.values.filter { it.sha256 == null }
+        // Ignored entries are excluded everywhere: the user explicitly skipped
+        // them, so we neither re-hash (which would re-fail an unreadable file
+        // straight back out of IGNORED) nor re-check them against the server.
+        val needHash = entries.values.filter {
+            it.sha256 == null && it.state != LedgerState.Ignored
+        }
         onProgress?.invoke(VerificationProgress(0, needHash.size))
         if (needHash.isNotEmpty()) {
             val permits = Semaphore(HASH_CONCURRENCY)
@@ -152,8 +167,29 @@ class DeviceBackupRepository(
                         permits.withPermit {
                             if (!shouldContinue()) return@withPermit
                             val media = mediaByUri[entry.uri] ?: return@withPermit
-                            val hash = runCatching { gallery.computeSha256(media) }
-                                .getOrNull() ?: return@withPermit
+                            val hashResult = runCatching { gallery.computeSha256(media) }
+                            val hash = hashResult.getOrNull()
+                            if (hash == null) {
+                                // A file we can't read (deleted mid-scan, codec
+                                // error, permission revoked) used to stay UNKNOWN
+                                // forever and show as "pending" indefinitely. Mark
+                                // it FAILED so it surfaces and can be skipped.
+                                writes.withLock {
+                                    val detail = hashResult.exceptionOrNull()?.message
+                                    ledger.markUploadFailed(
+                                        folder.uri, entry.uri,
+                                        UploadFailureReason.FileUnreadable, detail
+                                    )
+                                    entries[entry.uri] = entry.copy(
+                                        state = LedgerState.Failed,
+                                        failureReason = UploadFailureReason.FileUnreadable.name,
+                                        failureDetail = detail
+                                    )
+                                    hashed++
+                                    onProgress?.invoke(VerificationProgress(hashed, needHash.size))
+                                }
+                                return@withPermit
+                            }
                             writes.withLock {
                                 ledger.setHash(folder.uri, entry.uri, hash)
                                 entries[entry.uri] = entry.copy(sha256 = hash)
@@ -171,7 +207,9 @@ class DeviceBackupRepository(
         //    pass never mislabels unchecked files as NotSynced.
         if (shouldContinue()) {
             var bulkSupported = true
-            val hashedEntries = entries.values.filter { it.sha256 != null }
+            val hashedEntries = entries.values.filter {
+                it.sha256 != null && it.state != LedgerState.Ignored
+            }
             val byChecksum = hashedEntries.groupBy { it.sha256!! }
             byChecksum.keys.chunked(CHECKSUM_BATCH).forEach { batch ->
                 if (!shouldContinue()) return@forEach
@@ -261,6 +299,23 @@ class DeviceBackupRepository(
         ledger.markUploadFailed(folder.uri, uri, reason, detail)
     }
 
+    /** User chose to skip this file — it stops counting as pending and is never
+     *  re-queued or re-verified until [unignore] puts it back in the pipeline. */
+    fun markIgnored(folder: DeviceFolderRef, uri: String) {
+        ledger.markIgnored(folder.uri, uri)
+    }
+
+    /** Bulk skip: every currently-failed file in [folder] becomes ignored. */
+    fun ignoreFailed(folder: DeviceFolderRef) {
+        ledger.ignoreFailed(folder.uri)
+    }
+
+    /** Reverses [markIgnored]: the file returns to UNKNOWN so the next
+     *  verification re-hashes and re-checks it from scratch. */
+    fun unignore(folder: DeviceFolderRef, uri: String) {
+        ledger.unignore(folder.uri, uri)
+    }
+
     // ─── Last completed pass ─────────────────────────────────────────────────
 
     fun lastRun(): LastBackupRun? = stateStore.lastRun()
@@ -328,14 +383,17 @@ class DeviceBackupRepository(
         const val CHECKSUM_BATCH = 500
 
         // Parallel SHA-256 workers during verification. Bounded so a phone
-        // doesn't read 4+ large videos into the hash pipeline at once.
-        const val HASH_CONCURRENCY = 4
+        // doesn't read too many large videos into the hash pipeline at once.
+        const val HASH_CONCURRENCY = 6
 
-        // Parallel upload workers. Bounded so we don't saturate the mobile
-        // uplink or hold several large video sources/buffers open at once
-        // (OOM risk). Kept at or below HASH_CONCURRENCY since each upload also
-        // competes for the radio, not just CPU/local IO.
-        const val UPLOAD_CONCURRENCY = 3
+        // Parallel upload workers, split by media kind. Photos are small so
+        // they fan out wide; videos stay tight because each holds a large
+        // streaming source open (OOM risk) and competes for the radio. Turbo
+        // raises both for users on fast Wi-Fi who want to drain a big backlog.
+        const val PHOTO_CONCURRENCY = 6
+        const val VIDEO_CONCURRENCY = 2
+        const val PHOTO_CONCURRENCY_TURBO = 10
+        const val VIDEO_CONCURRENCY_TURBO = 3
 
         // Backoff between client-side upload retries. Index = attempt number
         // (0-based) of the FAILED attempt — delay BEFORE the next try.
