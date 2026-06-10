@@ -41,7 +41,7 @@ class BackupRunner(
      */
     suspend fun runBackup(
         folder: DeviceFolderRef,
-        onProgress: ((current: Int, total: Int, currentName: String) -> Unit)? = null,
+        onProgress: (suspend (current: Int, total: Int, currentName: String) -> Unit)? = null,
         shouldContinue: () -> Boolean = { true },
         background: Boolean = true
     ): Result {

@@ -78,7 +78,7 @@ suspend fun uploadInParallel(
     shouldContinue: () -> Boolean = { true },
     onItemStart: (media: DeviceMedia) -> Unit = {},
     onItemProgress: (media: DeviceMedia, fraction: Float) -> Unit = { _, _ -> },
-    onItemDone: (media: DeviceMedia, outcome: UploadOutcome, completed: Int) -> Unit
+    onItemDone: suspend (media: DeviceMedia, outcome: UploadOutcome, completed: Int) -> Unit
 ) {
     if (pending.isEmpty()) return
     // Separate pools: photos fan out wide (cheap), videos stay tight so we never
