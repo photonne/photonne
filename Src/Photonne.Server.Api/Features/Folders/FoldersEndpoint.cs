@@ -216,11 +216,12 @@ public class FoldersEndpoint : IEndpoint
                 return Results.Unauthorized();
             }
 
+            var isAdmin = user.IsInRole("Admin");
             var cacheKey = $"folders:list:{userId}";
             if (cache.TryGetValue(cacheKey, out List<FolderResponse>? cachedFolders) && cachedFolders != null)
                 return Results.Ok(cachedFolders);
 
-            var folders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, cancellationToken);
+            var folders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
 
             var folderIds = folders.Select(f => f.Id).ToList();
             var sharedCounts = await dbContext.FolderPermissions
@@ -268,7 +269,9 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = userPerm?.CanManagePermissions ?? false,
+                    IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
+                        || (isAdmin && IsInSharedSpace(f.Path))
+                        || (userPerm?.CanManagePermissions ?? false),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     ExternalLibraryId = f.ExternalLibraryId
@@ -313,7 +316,8 @@ public class FoldersEndpoint : IEndpoint
                 return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
             }
 
-            if (!await CanReadFolderAsync(dbContext, userId, folderId, cancellationToken))
+            var isAdmin = user.IsInRole("Admin");
+            if (!await CanReadFolderAsync(dbContext, userId, folderId, isAdmin, cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -385,7 +389,9 @@ public class FoldersEndpoint : IEndpoint
                     .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
-                IsOwner = userPermission?.CanManagePermissions ?? false,
+                IsOwner = ownerIdFromPath == userId
+                    || (isAdmin && IsInSharedSpace(folder.Path))
+                    || (userPermission?.CanManagePermissions ?? false),
                 IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = sharedCount,
                 ExternalLibraryId = folder.ExternalLibraryId,
@@ -405,7 +411,9 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false,
+                    IsOwner = OwnsByPath(sf.Path, usernameToIdMap, userId)
+                        || (isAdmin && IsInSharedSpace(sf.Path))
+                        || (subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false),
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId
                 }).ToList()
@@ -443,7 +451,7 @@ public class FoldersEndpoint : IEndpoint
                 return Results.NotFound(new { error = $"Folder with ID {folderId} not found" });
             }
 
-            if (!await CanReadFolderAsync(dbContext, userId, folderId, cancellationToken))
+            if (!await CanReadFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -532,11 +540,12 @@ public class FoldersEndpoint : IEndpoint
                 return Results.Unauthorized();
             }
 
+            var isAdmin = user.IsInRole("Admin");
             var treeCacheKey = $"folders:tree:{userId}";
             if (cache.TryGetValue(treeCacheKey, out List<FolderResponse>? cachedTree) && cachedTree != null)
                 return Results.Ok(cachedTree);
 
-            var allFolders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, cancellationToken);
+            var allFolders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
 
             var folderIds = allFolders.Select(f => f.Id).ToList();
             var sharedCounts = await dbContext.FolderPermissions
@@ -585,7 +594,9 @@ public class FoldersEndpoint : IEndpoint
                         .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                         .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                         .Take(4).Select(a => a.Id).ToList(),
-                    IsOwner = userPerm?.CanManagePermissions ?? false,
+                    IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
+                        || (isAdmin && IsInSharedSpace(f.Path))
+                        || (userPerm?.CanManagePermissions ?? false),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     SubFolders = new List<FolderResponse>()
@@ -654,7 +665,7 @@ public class FoldersEndpoint : IEndpoint
                 return Results.NotFound(new { error = "Carpeta padre no encontrada." });
             }
 
-            if (!await CanWriteFolderAsync(dbContext, userId, parentFolder.Id, cancellationToken))
+            if (!await CanWriteFolderAsync(dbContext, userId, parentFolder.Id, user.IsInRole("Admin"), cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -741,7 +752,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta no encontrada." });
         }
 
-        if (!await CanWriteFolderAsync(dbContext, userId, folderId, cancellationToken))
+        if (!await CanWriteFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
         {
             return Results.Forbid();
         }
@@ -769,7 +780,7 @@ public class FoldersEndpoint : IEndpoint
                 return Results.BadRequest(new { error = "No puedes mover una carpeta dentro de su propia subcarpeta." });
             }
 
-            if (!await CanWriteFolderAsync(dbContext, userId, newParent.Id, cancellationToken))
+            if (!await CanWriteFolderAsync(dbContext, userId, newParent.Id, user.IsInRole("Admin"), cancellationToken))
             {
                 return Results.Forbid();
             }
@@ -850,7 +861,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta no encontrada." });
         }
 
-        if (!await CanDeleteFolderAsync(dbContext, userId, folderId, cancellationToken))
+        if (!await CanDeleteFolderAsync(dbContext, userId, folderId, user.IsInRole("Admin"), cancellationToken))
         {
             return Results.Forbid();
         }
@@ -913,8 +924,8 @@ public class FoldersEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        if ((request.SourceFolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, request.SourceFolderId.Value, cancellationToken)) ||
-            !await CanWriteFolderAsync(dbContext, userId, request.TargetFolderId, cancellationToken))
+        if ((request.SourceFolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, request.SourceFolderId.Value, user.IsInRole("Admin"), cancellationToken)) ||
+            !await CanWriteFolderAsync(dbContext, userId, request.TargetFolderId, user.IsInRole("Admin"), cancellationToken))
         {
             return Results.Forbid();
         }
@@ -934,7 +945,7 @@ public class FoldersEndpoint : IEndpoint
         {
             foreach (var asset in assets)
             {
-                if (asset.FolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, asset.FolderId.Value, cancellationToken))
+                if (asset.FolderId.HasValue && !await CanWriteFolderAsync(dbContext, userId, asset.FolderId.Value, user.IsInRole("Admin"), cancellationToken))
                 {
                     return Results.Forbid();
                 }
@@ -1000,7 +1011,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.BadRequest(new { error = "Debes seleccionar al menos un asset." });
         }
 
-        if (!await CanWriteFolderAsync(dbContext, userId, request.FolderId, cancellationToken))
+        if (!await CanWriteFolderAsync(dbContext, userId, request.FolderId, user.IsInRole("Admin"), cancellationToken))
         {
             return Results.Forbid();
         }
@@ -1063,7 +1074,7 @@ public class FoldersEndpoint : IEndpoint
 
     private enum FolderPermissionKind { Read, Write, Delete }
 
-    private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
+    private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
     {
         var folder = await dbContext.Folders
             .AsNoTracking()
@@ -1086,11 +1097,15 @@ public class FoldersEndpoint : IEndpoint
         // depender de filas de permiso (que pueden existir si comparte una subcarpeta).
         if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
 
+        // Admin: acceso total al espacio compartido (no a los personales ajenos),
+        // incluidas las carpetas creadas a mano en el servidor sin filas de permiso.
+        if (isAdmin && IsInSharedSpace(folder.Path)) return true;
+
         // Permiso explícito o heredado: CanRead sobre la carpeta o cualquier ancestro.
         return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Read, ct);
     }
 
-    private static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
+    private static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
     {
         var folder = await dbContext.Folders
             .AsNoTracking()
@@ -1100,11 +1115,13 @@ public class FoldersEndpoint : IEndpoint
         if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
         if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
+
+        if (isAdmin && IsInSharedSpace(folder.Path)) return true;
 
         return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Write, ct);
     }
 
-    private static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, CancellationToken ct)
+    private static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
     {
         var folder = await dbContext.Folders
             .AsNoTracking()
@@ -1114,6 +1131,8 @@ public class FoldersEndpoint : IEndpoint
         if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
 
         if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
+
+        if (isAdmin && IsInSharedSpace(folder.Path)) return true;
 
         return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Delete, ct);
     }
@@ -1178,6 +1197,7 @@ public class FoldersEndpoint : IEndpoint
         ApplicationDbContext dbContext,
         Guid userId,
         bool includeAssets,
+        bool isAdmin,
         CancellationToken ct)
     {
         var query = dbContext.Folders.AsQueryable();
@@ -1224,6 +1244,22 @@ public class FoldersEndpoint : IEndpoint
                 if (!folder.ExternalLibraryId.HasValue
                     && !structuralIds.Contains(folder.Id)
                     && VirtualPath.IsUnder(folder.Path, userRootPath))
+                {
+                    allowedIds.Add(folder.Id);
+                }
+            }
+        }
+
+        // Admin: todo el espacio compartido es visible/gestionable, incluidas las
+        // carpetas creadas a mano en el servidor sin filas de permiso. No se tocan
+        // los espacios personales ajenos.
+        if (isAdmin)
+        {
+            foreach (var folder in allFolders)
+            {
+                if (!folder.ExternalLibraryId.HasValue
+                    && !structuralIds.Contains(folder.Id)
+                    && IsInSharedSpace(folder.Path))
                 {
                     allowedIds.Add(folder.Id);
                 }
@@ -1470,6 +1506,16 @@ public class FoldersEndpoint : IEndpoint
         return $"/assets/users/{username}";
     }
 
+    // A user owns a folder when it lives in their personal space — the path's
+    // /assets/users/{username} segment resolves to their id. Personal folders
+    // carry no FolderPermission row (access is path-based), so ownership must be
+    // derived from the path, not just from CanManagePermissions.
+    internal static bool OwnsByPath(
+        string path,
+        IReadOnlyDictionary<string, Guid> usernameToIdMap,
+        Guid userId)
+        => TryGetUserIdFromPath(path, usernameToIdMap, out var owner) && owner == userId;
+
     private static async Task<Dictionary<string, Guid>> GetUsernameToIdMapAsync(
         ApplicationDbContext dbContext, CancellationToken ct)
     {
@@ -1485,6 +1531,12 @@ public class FoldersEndpoint : IEndpoint
     {
         return "/assets/shared";
     }
+
+    // True when the folder lives in the shared space (/assets/shared/{share}/...).
+    // The /assets/shared root itself is a structural container and is excluded by
+    // IsUnder's callers, which check IsStructuralContainer first.
+    internal static bool IsInSharedSpace(string path)
+        => VirtualPath.IsUnder(path, GetSharedRootPath());
 
     internal static bool IsBinPath(string path)
     {

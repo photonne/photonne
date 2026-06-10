@@ -29,8 +29,9 @@ public class UtilityFolderTreeEndpoint : IEndpoint
         if (!FoldersEndpoint.TryGetUserId(user, out var userId))
             return Results.Unauthorized();
 
+        var isAdmin = user.IsInRole("Admin");
         var allFolders = await FoldersEndpoint.GetFoldersForUserAsync(
-            dbContext, userId, includeAssets: true, cancellationToken);
+            dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
 
         var folderIds = allFolders.Select(f => f.Id).ToList();
 
@@ -80,7 +81,9 @@ public class UtilityFolderTreeEndpoint : IEndpoint
                     .Where(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
                     .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
                     .Take(4).Select(a => a.Id).ToList(),
-                IsOwner = userPerm?.CanManagePermissions ?? false,
+                IsOwner = FoldersEndpoint.OwnsByPath(f.Path, usernameToIdMap, userId)
+                    || (isAdmin && FoldersEndpoint.IsInSharedSpace(f.Path))
+                    || (userPerm?.CanManagePermissions ?? false),
                 IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var cnt) ? cnt : 0,
                 SubFolders = new List<FolderResponse>()
