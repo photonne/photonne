@@ -108,6 +108,41 @@ public sealed class EmbeddedMotionPhotoExtractorTests
     }
 
     [Fact]
+    public void IsEmbeddedMotionPhoto_BareSamsungFooter_False()
+    {
+        // A Samsung photo with an SEF footer but no motion block (e.g. a portrait
+        // or dual-camera capture). The bare "SEFH" marker must NOT be treated as a
+        // motion photo — only the "MotionPhoto_Data" block name counts.
+        var bytes = FakeJpeg()
+            .Concat(System.Text.Encoding.ASCII.GetBytes("DualShot_Meta_Info"))
+            .Concat(System.Text.Encoding.ASCII.GetBytes("SEFH"))
+            .ToArray();
+        var path = WriteTemp(bytes);
+        try
+        {
+            Assert.False(EmbeddedMotionPhotoExtractor.IsEmbeddedMotionPhoto(path));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    // Explicit flags set to "1" are reliable motion-photo markers.
+    [InlineData("1", null, null, true)]
+    [InlineData(null, "1", null, true)]
+    // A positive MicroVideoOffset points at real appended bytes.
+    [InlineData(null, null, "123", true)]
+    // Ordinary captures write the flags/offset as "0" — these are NOT motion photos.
+    [InlineData("0", "0", "0", false)]
+    [InlineData(null, null, "0", false)]
+    [InlineData(null, null, null, false)]
+    public void IsMotionXmpPositive_DistinguishesGenuineMotionPhotos(
+        string? motionPhoto, string? microVideo, string? microOffset, bool expected)
+    {
+        Assert.Equal(expected,
+            EmbeddedMotionPhotoExtractor.IsMotionXmpPositive(motionPhoto, microVideo, microOffset));
+    }
+
+    [Fact]
     public void IsCandidateExtension_OnlyStillImages()
     {
         Assert.True(EmbeddedMotionPhotoExtractor.IsCandidateExtension("a.jpg"));

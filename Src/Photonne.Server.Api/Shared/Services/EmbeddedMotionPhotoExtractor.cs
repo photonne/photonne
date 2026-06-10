@@ -109,12 +109,25 @@ public static class EmbeddedMotionPhotoExtractor
                 var motionPhoto = meta.GetPropertyString(GCameraNs, "MotionPhoto");
                 var microVideo = meta.GetPropertyString(GCameraNs, "MicroVideo");
                 var microOffset = meta.GetPropertyString(GCameraNs, "MicroVideoOffset");
-                if (motionPhoto == "1" || microVideo == "1" || !string.IsNullOrEmpty(microOffset))
+                if (IsMotionXmpPositive(motionPhoto, microVideo, microOffset))
                     return true;
             }
             catch { /* property absent or malformed path */ }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Pure decision (no I/O) for whether the Google/Samsung camera XMP marks a
+    /// genuine motion photo. The explicit flags (<c>MotionPhoto</c>/<c>MicroVideo</c>
+    /// == "1") are reliable. <c>MicroVideoOffset</c> only counts when it parses to a
+    /// positive byte offset: ordinary captures still write <c>MicroVideo="0"</c> and
+    /// <c>MicroVideoOffset="0"</c>, which must NOT be treated as a motion photo.
+    /// </summary>
+    internal static bool IsMotionXmpPositive(string? motionPhoto, string? microVideo, string? microOffset)
+    {
+        if (motionPhoto == "1" || microVideo == "1") return true;
+        return long.TryParse(microOffset, out var off) && off > 0;
     }
 
     private static long? TryGetMicroVideoOffset(string filePath)
@@ -153,8 +166,11 @@ public static class EmbeddedMotionPhotoExtractor
 
     // Older Samsung motion photos carry no Google XMP; instead the file ends
     // with a Samsung Extended Format footer ("SEFH") that indexes appended
-    // blocks, one of which is the motion video. A bounded tail read is enough to
-    // recognize it; the exact clip bounds are still located via the 'ftyp' scan.
+    // blocks, one of which is the motion video. The SEF directory (which lists
+    // the block names) sits just before the footer, so a bounded tail read holds
+    // it. We require the motion-specific block name "MotionPhoto_Data": the bare
+    // "SEFH" footer is present on countless non-motion Samsung photos (portrait,
+    // dual-camera, beauty, DualShot_Meta_Info…) and must not match on its own.
     private static bool HasSamsungTrailer(string filePath)
     {
         try
@@ -166,8 +182,7 @@ public static class EmbeddedMotionPhotoExtractor
             var buffer = new byte[tail];
             stream.ReadExactly(buffer);
             var text = Encoding.Latin1.GetString(buffer);
-            return text.Contains("MotionPhoto_Data", StringComparison.Ordinal)
-                || text.Contains("SEFH", StringComparison.Ordinal);
+            return text.Contains("MotionPhoto_Data", StringComparison.Ordinal);
         }
         catch
         {
