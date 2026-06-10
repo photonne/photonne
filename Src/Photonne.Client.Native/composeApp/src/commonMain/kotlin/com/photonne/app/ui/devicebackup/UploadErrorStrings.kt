@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.photonne.app.data.devicebackup.UploadFailureReason
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.upload_error_file_too_large
+import com.photonne.app.resources.upload_error_file_unreadable
 import com.photonne.app.resources.upload_error_network_error
 import com.photonne.app.resources.upload_error_not_allowed
 import com.photonne.app.resources.upload_error_quota_exceeded
@@ -26,5 +27,6 @@ fun uploadErrorLabel(reason: UploadFailureReason): String = when (reason) {
     UploadFailureReason.RateLimited -> stringResource(Res.string.upload_error_rate_limited)
     UploadFailureReason.ServerError -> stringResource(Res.string.upload_error_server_error)
     UploadFailureReason.NetworkError -> stringResource(Res.string.upload_error_network_error)
+    UploadFailureReason.FileUnreadable -> stringResource(Res.string.upload_error_file_unreadable)
     UploadFailureReason.Unknown -> stringResource(Res.string.upload_error_unknown)
 }

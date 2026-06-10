@@ -10,6 +10,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import org.koin.core.context.GlobalContext
 import java.util.concurrent.TimeUnit
 
@@ -91,6 +92,24 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
             request
         )
         Log.i(TAG, "Enqueued immediate one-time backup — requireWifi=${prefs.requireWifi}")
+    }
+
+    override fun requestForegroundBackup(): Boolean {
+        // Explicit user action ("Subir ahora"): no network/charging constraints,
+        // and KEY_FOREGROUND tells the worker to promote itself to a foreground
+        // service with a progress notification so the OS keeps it at high
+        // priority and it survives the app being backgrounded.
+        val request = OneTimeWorkRequestBuilder<BackupWorker>()
+            .setInputData(workDataOf(BackupWorker.KEY_FOREGROUND to true))
+            .build()
+
+        workManager.enqueueUniqueWork(
+            BackupWorker.FOREGROUND_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            request
+        )
+        Log.i(TAG, "Enqueued foreground (prioritized) backup")
+        return true
     }
 
     private companion object {

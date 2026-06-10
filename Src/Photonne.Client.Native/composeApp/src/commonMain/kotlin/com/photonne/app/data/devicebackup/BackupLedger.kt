@@ -7,13 +7,14 @@ import kotlinx.datetime.Clock
 /** Persisted verdict for one ledger row. Mirrors [DeviceMediaSyncState]
  *  minus the transient `Uploading` state, which never survives a restart. */
 enum class LedgerState {
-    Unknown, NotSynced, Synced, Failed;
+    Unknown, NotSynced, Synced, Failed, Ignored;
 
     companion object {
         fun fromDb(value: String): LedgerState = when (value) {
             "NOT_SYNCED" -> NotSynced
             "SYNCED" -> Synced
             "FAILED" -> Failed
+            "IGNORED" -> Ignored
             else -> Unknown
         }
     }
@@ -23,6 +24,7 @@ enum class LedgerState {
         NotSynced -> "NOT_SYNCED"
         Synced -> "SYNCED"
         Failed -> "FAILED"
+        Ignored -> "IGNORED"
     }
 }
 
@@ -52,6 +54,7 @@ data class LedgerEntry(
                 ?: UploadFailureReason.Unknown,
             detail = failureDetail
         )
+        LedgerState.Ignored -> DeviceMediaSyncState.Ignored
     }
 }
 
@@ -193,6 +196,21 @@ class BackupLedger(private val database: PhotonneDatabase) {
         detail: String?
     ) {
         queries.setFailure(reason.name, detail, folderUri, uri)
+    }
+
+    /** Skip one file: it leaves the pending pipeline until [unignore]. */
+    fun markIgnored(folderUri: String, uri: String) {
+        queries.setIgnored(folderUri, uri)
+    }
+
+    /** Skip every currently-failed file under [folderUri] in one statement. */
+    fun ignoreFailed(folderUri: String) {
+        queries.setIgnoredByState(folderUri, LedgerState.Failed.toDb())
+    }
+
+    /** Put a skipped file back in the pipeline (resets it to UNKNOWN). */
+    fun unignore(folderUri: String, uri: String) {
+        queries.clearIgnored(folderUri, uri)
     }
 
     // ─── Internals ───────────────────────────────────────────────────────────

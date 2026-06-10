@@ -884,6 +884,17 @@
     <string name="backup_failed_dialog_retry">Reintentar</string>
     <string name="backup_failed_dialog_close">Cerrar</string>
 
+    <!-- Skip / ignore controls -->
+    <string name="backup_action_ignore">Omitir</string>
+    <string name="backup_action_ignore_all_failed">Omitir todos los fallidos (%1$d)</string>
+    <string name="backup_action_unignore">Reactivar</string>
+    <string name="backup_section_ignored">Omitidos (%1$d)</string>
+
+    <!-- Foreground (prioritized) backup notification -->
+    <string name="backup_notification_channel_progress">Copia en curso</string>
+    <string name="backup_notification_progress_title">Subiendo copia de seguridad</string>
+    <string name="backup_notification_progress_text">%1$d / %2$d archivos</string>
+
     <!-- Background sync preferences -->
     <string name="background_sync_section">Sincronización en segundo plano</string>
     <string name="background_sync_auto_label">Sync automático</string>
@@ -892,6 +903,8 @@
     <string name="background_sync_wifi_hint">Evita consumir datos móviles</string>
     <string name="background_sync_charging_label">Solo cargando</string>
     <string name="background_sync_charging_hint">Evita gastar batería</string>
+    <string name="backup_turbo_label">Modo Turbo</string>
+    <string name="backup_turbo_hint">Sube más archivos a la vez. Más rápido con Wi-Fi, pero gasta más batería y datos</string>
 
     <!-- Sync summary (rendered after a backup batch completes) -->
     <string name="backup_summary_title">Resumen de la copia</string>
@@ -904,6 +917,7 @@
     <string name="upload_error_rate_limited">Servidor saturado</string>
     <string name="upload_error_server_error">Error del servidor</string>
     <string name="upload_error_network_error">Error de red</string>
+    <string name="upload_error_file_unreadable">No se pudo leer el archivo</string>
     <string name="upload_error_unknown">Error desconocido</string>
 
     <!-- Enrichment status screen -->

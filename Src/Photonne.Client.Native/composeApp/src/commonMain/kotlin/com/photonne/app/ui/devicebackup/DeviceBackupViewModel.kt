@@ -80,13 +80,18 @@ data class DeviceBackupUiState(
 ) {
     val selectedCount: Int get() = entries.count { it.isSelected }
     val syncableSelectedCount: Int get() = entries.count {
-        it.isSelected && it.syncState !is DeviceMediaSyncState.Synced
+        it.isSelected &&
+            it.syncState !is DeviceMediaSyncState.Synced &&
+            it.syncState !is DeviceMediaSyncState.Ignored
     }
     val syncedCount: Int get() = entries.count {
         it.syncState is DeviceMediaSyncState.Synced
     }
     val failedCount: Int get() = entries.count {
         it.syncState is DeviceMediaSyncState.Failed
+    }
+    val ignoredCount: Int get() = entries.count {
+        it.syncState is DeviceMediaSyncState.Ignored
     }
     val uploadingCount: Int get() = entries.count {
         it.syncState is DeviceMediaSyncState.Uploading
@@ -199,6 +204,14 @@ class DeviceBackupViewModel(
 
     fun setRequireCharging(value: Boolean) =
         updateBackgroundPrefs { repository.setRequireCharging(value) }
+
+    /** Turbo only tunes the in-app/worker upload fan-out; it doesn't change the
+     *  OS schedule, so it skips [backgroundScheduler.apply] (unlike the other
+     *  prefs, which reconcile WorkManager constraints). */
+    fun setTurbo(value: Boolean) {
+        repository.setTurboEnabled(value)
+        _state.update { it.copy(backgroundSync = repository.backgroundSyncPreferences()) }
+    }
 
     private fun updateBackgroundPrefs(mutate: () -> Unit) {
         mutate()
@@ -317,7 +330,10 @@ class DeviceBackupViewModel(
         _state.update { current ->
             current.copy(
                 entries = current.entries.map { entry ->
-                    if (entry.syncState is DeviceMediaSyncState.Synced) entry
+                    // Already-synced and user-skipped items are never auto-queued.
+                    if (entry.syncState is DeviceMediaSyncState.Synced ||
+                        entry.syncState is DeviceMediaSyncState.Ignored
+                    ) entry
                     else entry.copy(isSelected = true)
                 }
             )
@@ -414,9 +430,21 @@ class DeviceBackupViewModel(
     }
 
     /** Selects everything not yet on the server and uploads it — the status
-     *  card's one-tap "upload now" action. */
+     *  card's one-tap "upload now" action.
+     *
+     *  On Android this hands the whole pass to a prioritized foreground worker
+     *  so a big backlog keeps uploading at full speed even with the app
+     *  backgrounded (progress shows in a notification). On iOS/Desktop, where
+     *  there's no such primitive, [BackgroundSyncScheduler.requestForegroundBackup]
+     *  returns false and we run it in-process with live per-file progress. */
     fun syncAllPending() {
         if (_state.value.isSyncing) return
+        if (backgroundScheduler.requestForegroundBackup()) {
+            // The foreground worker owns this pass now; reflect that a run was
+            // kicked so the next screen refresh picks up its results.
+            _state.update { it.copy(statusMessage = null, error = null) }
+            return
+        }
         selectAllNotSynced()
         syncSelected()
     }
@@ -434,11 +462,71 @@ class DeviceBackupViewModel(
         syncSelected()
     }
 
+    /** Skips one file: it stops counting as pending and is never re-queued
+     *  until [unignore]. The failure dialog's "Omitir" action. */
+    fun ignoreSingle(uri: String) {
+        val folder = _state.value.folder ?: return
+        repository.markIgnored(folder, uri)
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    if (entry.media.uri == uri) {
+                        entry.copy(
+                            syncState = DeviceMediaSyncState.Ignored,
+                            isSelected = false,
+                            uploadProgress = null
+                        )
+                    } else entry
+                }
+            )
+        }
+    }
+
+    /** Bulk skip: every currently-failed file becomes ignored in one shot.
+     *  The pending list's "Omitir todos los fallidos" action. */
+    fun ignoreFailed() {
+        val folder = _state.value.folder ?: return
+        repository.ignoreFailed(folder)
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    if (entry.syncState is DeviceMediaSyncState.Failed) {
+                        entry.copy(
+                            syncState = DeviceMediaSyncState.Ignored,
+                            isSelected = false,
+                            uploadProgress = null
+                        )
+                    } else entry
+                }
+            )
+        }
+    }
+
+    /** Reverses a skip: the file returns to Unknown and the next verify pass
+     *  re-hashes and re-checks it. */
+    fun unignore(uri: String) {
+        val folder = _state.value.folder ?: return
+        repository.unignore(folder, uri)
+        _state.update { current ->
+            current.copy(
+                entries = current.entries.map { entry ->
+                    if (entry.media.uri == uri) {
+                        entry.copy(syncState = DeviceMediaSyncState.Unknown)
+                    } else entry
+                }
+            )
+        }
+        // Re-verify so the un-skipped file gets a fresh verdict right away.
+        maybeAutoVerify()
+    }
+
     /** Uploads every selected entry that isn't already synced. */
     fun syncSelected() {
         if (_state.value.isSyncing) return
         val selected = _state.value.entries.filter {
-            it.isSelected && it.syncState !is DeviceMediaSyncState.Synced
+            it.isSelected &&
+                it.syncState !is DeviceMediaSyncState.Synced &&
+                it.syncState !is DeviceMediaSyncState.Ignored
         }
         if (selected.isEmpty()) return
 
@@ -496,6 +584,7 @@ class DeviceBackupViewModel(
             // flips isSyncing=false; in-flight uploads finish, no new ones start.
             uploadInParallel(
                 pending = selected.map { it.media },
+                concurrency = repository.uploadConcurrency(),
                 upload = { media, report -> repository.upload(media, onProgress = report) },
                 shouldContinue = { _state.value.isSyncing },
                 onItemStart = { media ->
@@ -732,6 +821,8 @@ class DeviceBackupViewModel(
                 // here at all.
                 DeviceMediaSyncState.Unknown -> LocalSyncBadge.Pending
                 is DeviceMediaSyncState.Synced -> return@mapNotNull null
+                // Skipped by the user — don't clutter the timeline with it.
+                DeviceMediaSyncState.Ignored -> return@mapNotNull null
             }
             TimelineItem(
                 id = "device:${media.uri}",

@@ -80,12 +80,20 @@ class DeviceBackupStateStore(private val settings: Settings) {
     fun setRequireCharging(value: Boolean) =
         settings.putBoolean(KEY_REQUIRE_CHARGING, value)
 
+    // Turbo widens the upload fan-out (more files at once) for users on fast
+    // Wi-Fi draining a big backlog. Off by default — the conservative caps are
+    // gentler on battery and the mobile uplink. Applies to manual and
+    // background passes alike, so it lives alongside the other prefs.
+    fun isTurboEnabled(): Boolean = settings.getBoolean(KEY_TURBO, false)
+    fun setTurboEnabled(value: Boolean) = settings.putBoolean(KEY_TURBO, value)
+
     /** Snapshots all background-sync preferences for the scheduler. */
     fun backgroundSyncPreferences(): BackgroundSyncPreferences =
         BackgroundSyncPreferences(
             enabled = isAutoBackupEnabled(),
             requireWifi = requireWifi(),
-            requireCharging = requireCharging()
+            requireCharging = requireCharging(),
+            turbo = isTurboEnabled()
         )
 
     // ─── Last completed pass ─────────────────────────────────────────────────
@@ -109,6 +117,7 @@ class DeviceBackupStateStore(private val settings: Settings) {
         const val KEY_AUTO_BACKUP = "device_backup.auto_enabled"
         const val KEY_REQUIRE_WIFI = "device_backup.require_wifi"
         const val KEY_REQUIRE_CHARGING = "device_backup.require_charging"
+        const val KEY_TURBO = "device_backup.turbo"
         const val KEY_LAST_RUN = "device_backup.last_run"
     }
 }
@@ -136,5 +145,8 @@ private data class CachedMedia(
 data class BackgroundSyncPreferences(
     val enabled: Boolean,
     val requireWifi: Boolean,
-    val requireCharging: Boolean
+    val requireCharging: Boolean,
+    /** Widen the upload fan-out for faster bulk backups. Independent of
+     *  [enabled]: it tunes both manual and background passes. */
+    val turbo: Boolean = false
 )
