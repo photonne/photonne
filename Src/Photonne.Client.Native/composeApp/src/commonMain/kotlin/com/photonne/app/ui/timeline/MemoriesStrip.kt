@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.hub_action_see_all
@@ -100,21 +102,32 @@ fun MemoriesStrip(
         var paused by remember { mutableStateOf(false) }
         val scrollScope = rememberCoroutineScope()
 
-        // Auto-advance: when the pager *settles* on a page, drive progress
-        // 0→1 over StoryDurationMs, then scroll to the next page. We key
-        // off [settledPage] (not currentPage) so a swipe in progress
-        // doesn't re-trigger the timer mid-flight, and we hand the scroll
-        // to [scrollScope] so the LaunchedEffect cancelling on key change
-        // doesn't leave the pager stranded between two pages.
-        LaunchedEffect(pagerState.settledPage, paused, groups.size) {
+        // Gate the Ken Burns + auto-advance timer on the on-screen cover
+        // having loaded, so the 5s timer never starts while the image is
+        // still fetching (which would make the cover pop in already
+        // mid-zoom). Keying off the load state means the scale always
+        // starts from 1.0.
+        val loadedCovers = remember { mutableStateMapOf<String, Boolean>() }
+        val activeCoverId = groups.getOrNull(pagerState.currentPage)?.cover?.id
+        val activeCoverLoaded = activeCoverId != null && loadedCovers[activeCoverId] == true
+
+        // Auto-advance: once the current page's cover has loaded, drive
+        // progress 0→1 over StoryDurationMs, then scroll to the next page.
+        // We key off [currentPage] (not settledPage) so the zoom resets and
+        // restarts from 1.0 the instant the page changes — i.e. mid-scroll,
+        // before the incoming cover reaches centre — making it one
+        // continuous motion instead of "lands, sits still, then zooms".
+        // The scroll runs in [scrollScope] so this effect cancelling on key
+        // change doesn't leave the pager stranded between two pages.
+        LaunchedEffect(pagerState.currentPage, paused, groups.size, activeCoverLoaded) {
             progress.snapTo(0f)
-            if (paused || groups.size < 2) return@LaunchedEffect
+            if (paused || groups.size < 2 || !activeCoverLoaded) return@LaunchedEffect
             val animationResult = progress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = StoryDurationMs.toInt(), easing = LinearEasing)
             )
             if (animationResult.endReason == AnimationEndReason.Finished) {
-                val next = (pagerState.settledPage + 1) % groups.size
+                val next = (pagerState.currentPage + 1) % groups.size
                 scrollScope.launch { pagerState.animateScrollToPage(next) }
             }
         }
@@ -130,6 +143,10 @@ fun MemoriesStrip(
                     .height(cardWidth * 0.62f)
             ) { page ->
                 val group = groups[page]
+                // Ken Burns drives off currentPage — the same key that resets
+                // [progress] to 0 — so the incoming page reads progress 0 the
+                // moment it becomes current (no stale ≈1.0 value, no jump) and
+                // zooms continuously as it slides in.
                 val isActive = pagerState.currentPage == page
                 val label = if (group.yearsAgo == 1)
                     stringResource(Res.string.timeline_memories_one_year_ago)
@@ -145,6 +162,7 @@ fun MemoriesStrip(
                     totalStories = groups.size,
                     activeIndex = pagerState.currentPage,
                     onTapHold = { hold -> paused = hold },
+                    onCoverLoaded = { loadedCovers[group.cover.id] = true },
                     onClick = { onOpenMemory(group.items, 0) }
                 )
             }
@@ -163,6 +181,7 @@ private fun StoryCard(
     totalStories: Int,
     activeIndex: Int,
     onTapHold: (Boolean) -> Unit,
+    onCoverLoaded: () -> Unit,
     onClick: () -> Unit
 ) {
     val cover = group.cover
@@ -215,6 +234,9 @@ private fun StoryCard(
                 model = "$baseUrl/api/assets/${cover.id}/thumbnail?size=Large",
                 contentDescription = cover.fileName,
                 contentScale = ContentScale.Crop,
+                onState = { state ->
+                    if (state is AsyncImagePainter.State.Success) onCoverLoaded()
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
