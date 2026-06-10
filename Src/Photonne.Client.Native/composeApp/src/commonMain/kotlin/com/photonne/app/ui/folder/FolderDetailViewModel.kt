@@ -27,9 +27,15 @@ data class FolderDetailUiState(
     val isMutating: Boolean = false,
     val error: UiError? = null,
     val selection: Set<String> = emptySet(),
-    val isBulkMutating: Boolean = false
+    val isBulkMutating: Boolean = false,
+    val selectedSubfolderId: String? = null
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
+
+    val isSubfolderSelectionActive: Boolean get() = selectedSubfolderId != null
+
+    val selectedSubfolder: FolderSummary?
+        get() = selectedSubfolderId?.let { id -> subFolders.firstOrNull { it.id == id } }
 }
 
 class FolderDetailViewModel(
@@ -146,8 +152,29 @@ class FolderDetailViewModel(
         _state.update { previous ->
             val next = previous.selection.toMutableSet()
             if (!next.add(assetId)) next.remove(assetId)
-            previous.copy(selection = next)
+            // Asset and subfolder selection are mutually exclusive — they share
+            // the detail screen's selection top/bottom bars.
+            previous.copy(selection = next, selectedSubfolderId = null)
         }
+    }
+
+    /** Long-press a subfolder to enter single-subfolder selection mode. */
+    fun selectSubfolder(id: String) {
+        _state.update { it.copy(selectedSubfolderId = id, selection = emptySet()) }
+    }
+
+    /** Tap an already-shown subfolder while selecting: switch target or clear. */
+    fun toggleSubfolderSelection(id: String) {
+        _state.update {
+            it.copy(
+                selectedSubfolderId = if (it.selectedSubfolderId == id) null else id,
+                selection = emptySet()
+            )
+        }
+    }
+
+    fun clearSubfolderSelection() {
+        _state.update { it.copy(selectedSubfolderId = null) }
     }
 
     fun clearSelection() {
@@ -211,6 +238,76 @@ class FolderDetailViewModel(
                         it.copy(
                             isMutating = false,
                             error = errorFactory.from(error, "Failed to move folder")
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Rename a direct subfolder of the open folder. Its parent stays the open
+     * folder; on success the in-memory subfolder list is patched so the new name
+     * shows without a full reload.
+     */
+    fun renameSubfolder(
+        subfolderId: String,
+        name: String,
+        onSuccess: (FolderSummary) -> Unit = {}
+    ) {
+        val parentId = _state.value.folderId
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.update(subfolderId, name.trim(), parentFolderId = parentId) }
+                .onSuccess { folder ->
+                    _state.update { st ->
+                        st.copy(
+                            isMutating = false,
+                            selectedSubfolderId = null,
+                            subFolders = st.subFolders.map { sf ->
+                                if (sf.id == folder.id) {
+                                    sf.copy(name = folder.name, path = folder.path)
+                                } else sf
+                            }
+                        )
+                    }
+                    onSuccess(folder)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            error = errorFactory.from(error, "Failed to rename folder")
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Delete a direct subfolder of the open folder. The server rejects folders
+     * that still hold assets; that error surfaces in the confirmation dialog.
+     */
+    fun deleteSubfolder(subfolderId: String, onSuccess: (String) -> Unit = {}) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.delete(subfolderId) }
+                .onSuccess {
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            selectedSubfolderId = null,
+                            subFolders = it.subFolders.filterNot { sf -> sf.id == subfolderId }
+                        )
+                    }
+                    onSuccess(subfolderId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            error = errorFactory.from(error, "Failed to delete folder")
                         )
                     }
                 }

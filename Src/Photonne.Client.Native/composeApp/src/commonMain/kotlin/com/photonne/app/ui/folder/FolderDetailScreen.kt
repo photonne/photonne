@@ -1,7 +1,9 @@
 package com.photonne.app.ui.folder
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,6 +53,7 @@ fun FolderDetailScreen(
     onItemClick: (Int) -> Unit,
     onItemLongClick: (Int) -> Unit,
     onSubfolderClick: (FolderSummary) -> Unit,
+    onSubfolderLongPress: (FolderSummary) -> Unit,
     viewModel: FolderDetailViewModel
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -85,13 +89,17 @@ fun FolderDetailScreen(
             state.items.isEmpty() && state.subFolders.isNotEmpty() ->
                 SubfolderList(
                     subFolders = state.subFolders,
-                    onSubfolderClick = onSubfolderClick
+                    selectedSubfolderId = state.selectedSubfolderId,
+                    onSubfolderClick = onSubfolderClick,
+                    onSubfolderLongPress = onSubfolderLongPress
                 )
             else -> Column(modifier = Modifier.fillMaxSize()) {
                 if (state.subFolders.isNotEmpty()) {
                     SubfolderList(
                         subFolders = state.subFolders,
+                        selectedSubfolderId = state.selectedSubfolderId,
                         onSubfolderClick = onSubfolderClick,
+                        onSubfolderLongPress = onSubfolderLongPress,
                         modifier = Modifier.fillMaxWidth()
                     )
                     HorizontalDivider()
@@ -112,7 +120,9 @@ fun FolderDetailScreen(
 @Composable
 private fun SubfolderList(
     subFolders: List<FolderSummary>,
+    selectedSubfolderId: String?,
     onSubfolderClick: (FolderSummary) -> Unit,
+    onSubfolderLongPress: (FolderSummary) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -120,17 +130,28 @@ private fun SubfolderList(
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         items(subFolders, key = { it.id }) { folder ->
-            SubfolderRow(folder = folder, onClick = { onSubfolderClick(folder) })
+            SubfolderRow(
+                folder = folder,
+                isSelected = selectedSubfolderId == folder.id,
+                onClick = { onSubfolderClick(folder) },
+                onLongPress = { onSubfolderLongPress(folder) }
+            )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SubfolderRow(folder: FolderSummary, onClick: () -> Unit) {
+private fun SubfolderRow(
+    folder: FolderSummary,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -138,13 +159,21 @@ private fun SubfolderRow(folder: FolderSummary, onClick: () -> Unit) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (isSelected) Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    ) else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Filled.Folder,
+                imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Filled.Folder,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (isSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(Modifier.size(12.dp))
@@ -160,10 +189,12 @@ private fun SubfolderRow(folder: FolderSummary, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (!isSelected) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

@@ -569,6 +569,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showCreateFolder by remember { mutableStateOf(false) }
     var showEditFolder by remember { mutableStateOf(false) }
     var showDeleteFolder by remember { mutableStateOf(false) }
+    var showEditSubfolder by remember { mutableStateOf(false) }
+    var showDeleteSubfolder by remember { mutableStateOf(false) }
     var showFolderMembers by remember { mutableStateOf(false) }
     var showInviteFolderMember by remember { mutableStateOf(false) }
     var showMoveFolder by remember { mutableStateOf(false) }
@@ -615,7 +617,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albumDetailState.isSelectionActive) ||
         (selectedTab == MainTab.Albums && albumsState.isSelectionActive) ||
         (selectedTab == MainTab.Folders && selectedFolder != null &&
-            folderDetailState.isSelectionActive) ||
+            (folderDetailState.isSelectionActive ||
+                folderDetailState.isSubfolderSelectionActive)) ||
         (selectedTab == MainTab.Folders && foldersState.isSelectionActive) ||
         (selectedTab == MainTab.Search && searchState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
@@ -644,6 +647,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumsViewModel.clearSelection()
             selectedTab == MainTab.Folders && selectedFolder != null &&
                 folderDetailState.isSelectionActive -> folderDetailViewModel.clearSelection()
+            selectedTab == MainTab.Folders && selectedFolder != null &&
+                folderDetailState.isSubfolderSelectionActive ->
+                folderDetailViewModel.clearSubfolderSelection()
             selectedTab == MainTab.Folders && foldersState.isSelectionActive ->
                 foldersViewModel.clearSelection()
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
@@ -735,6 +741,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsState.working != AssetActionWorking.Idle,
                     onClose = folderDetailViewModel::clearSelection
                 )
+            selectedTab == MainTab.Folders && selectedFolder != null &&
+                folderDetailState.isSubfolderSelectionActive -> {
+                val subfolder = folderDetailState.selectedSubfolder
+                com.photonne.app.ui.main.FolderCardSelectionTopBar(
+                    folderName = (subfolder?.name ?: "").ifBlank { subfolder?.path ?: "" },
+                    isMutating = folderDetailState.isMutating,
+                    onClose = folderDetailViewModel::clearSubfolderSelection
+                )
+            }
             selectedTab == MainTab.Folders && selectedFolder != null -> {
                 val folder = selectedFolder!!
                 FolderDetailTopBar(
@@ -1205,6 +1220,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
         }
         selectedTab == MainTab.Folders && selectedFolder != null &&
+            folderDetailState.isSubfolderSelectionActive -> {
+            val subfolder = folderDetailState.selectedSubfolder
+            if (subfolder != null) {
+                {
+                    // Members management for a subfolder is reached by opening it
+                    // and using the detail top bar; the selection bar stays focused
+                    // on the rename/delete the user asked for.
+                    com.photonne.app.ui.main.FolderCardSelectionBottomBar(
+                        canManageMembers = false,
+                        canRename = subfolder.isOwner,
+                        canDelete = subfolder.isOwner,
+                        isMutating = folderDetailState.isMutating,
+                        onManageMembers = {},
+                        onRename = { showEditSubfolder = true },
+                        onDelete = { showDeleteSubfolder = true }
+                    )
+                }
+            } else null
+        }
+        selectedTab == MainTab.Folders && selectedFolder != null &&
             folderDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
@@ -1621,8 +1656,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 }
                             },
                             onSubfolderClick = { subfolder ->
-                                folderBackStack.add(openedFolder)
-                                selectedFolder = subfolder
+                                if (folderDetailState.isSubfolderSelectionActive) {
+                                    folderDetailViewModel.toggleSubfolderSelection(subfolder.id)
+                                } else {
+                                    folderBackStack.add(openedFolder)
+                                    selectedFolder = subfolder
+                                }
+                            },
+                            onSubfolderLongPress = { subfolder ->
+                                folderDetailViewModel.selectSubfolder(subfolder.id)
                             },
                             viewModel = folderDetailViewModel
                         )
@@ -2770,6 +2812,48 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 foldersViewModel.deleteFolder(target.id) {
                     showDeleteFolder = false
                     pendingActionFolder = null
+                }
+            }
+        )
+    }
+
+    // Rename/delete for a selected subfolder inside the open folder. These mirror
+    // the top-level folder selection actions but target a child of the open
+    // folder via FolderDetailViewModel, which patches its subfolder list in place.
+    val selectedSubfolder = folderDetailState.selectedSubfolder
+    if (showEditSubfolder && selectedSubfolder != null) {
+        FolderFormDialog(
+            title = stringResource(Res.string.folder_action_edit),
+            confirmLabel = stringResource(Res.string.action_save),
+            initialName = selectedSubfolder.name.ifBlank { selectedSubfolder.path },
+            isSubmitting = folderDetailState.isMutating,
+            errorMessage = folderDetailState.error?.userMessage,
+            onDismiss = {
+                showEditSubfolder = false
+                folderDetailViewModel.clearError()
+            },
+            onConfirm = { name, _ ->
+                folderDetailViewModel.renameSubfolder(selectedSubfolder.id, name) {
+                    showEditSubfolder = false
+                    foldersViewModel.refresh()
+                }
+            }
+        )
+    }
+
+    if (showDeleteSubfolder && selectedSubfolder != null) {
+        DeleteFolderDialog(
+            folderName = selectedSubfolder.name.ifBlank { selectedSubfolder.path },
+            isSubmitting = folderDetailState.isMutating,
+            errorMessage = folderDetailState.error?.userMessage,
+            onDismiss = {
+                showDeleteSubfolder = false
+                folderDetailViewModel.clearError()
+            },
+            onConfirm = {
+                folderDetailViewModel.deleteSubfolder(selectedSubfolder.id) {
+                    showDeleteSubfolder = false
+                    foldersViewModel.refresh()
                 }
             }
         )
