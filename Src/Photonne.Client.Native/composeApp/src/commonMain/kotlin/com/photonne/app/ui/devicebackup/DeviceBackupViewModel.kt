@@ -535,6 +535,14 @@ class DeviceBackupViewModel(
                 isSyncing = true,
                 error = null,
                 statusMessage = null,
+                // Selection was only the "what to upload" queue — already
+                // captured into `selected` above. Clear it now so the pending
+                // screen leaves selection mode the instant the sync starts;
+                // otherwise every in-flight item stays selected and taps just
+                // toggle selection instead of opening preview/failure actions.
+                entries = it.entries.map { e ->
+                    if (e.isSelected) e.copy(isSelected = false) else e
+                },
                 syncProgress = SyncProgress(
                     total = selected.size,
                     completed = 0,
