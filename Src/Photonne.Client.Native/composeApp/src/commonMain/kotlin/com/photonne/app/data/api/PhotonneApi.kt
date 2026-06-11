@@ -2,6 +2,7 @@ package com.photonne.app.data.api
 
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
+import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.AssetContentBytes
@@ -371,6 +372,7 @@ interface PhotonneApi {
     suspend fun setAlbumCover(albumId: String, assetId: String): AlbumSummary
     suspend fun leaveAlbum(albumId: String)
     suspend fun listAlbumShares(albumId: String): List<AlbumShareLink>
+    suspend fun getSentShares(): List<SentShareLink>
     suspend fun createAlbumShare(
         albumId: String,
         expiresAt: Instant?,
@@ -1444,6 +1446,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Listing share links failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getSentShares(): List<SentShareLink> {
+        val response: HttpResponse = client.get("$baseUrl/api/share/sent")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Listing sent share links failed (${response.status.value})"
             )
         }
         return response.body()

@@ -148,6 +148,10 @@
     <string name="share_attribute_no_downloads">no downloads</string>
     <string name="share_attribute_views_format">%1$d views</string>
     <string name="share_attribute_expiry_format">expires %1$s</string>
+    <string name="share_link_fallback_title">Link</string>
+    <string name="my_links_empty_title">You haven't shared any links yet</string>
+    <string name="share_revoke_confirm_title">Revoke link?</string>
+    <string name="share_revoke_confirm_message">The link will stop working and anyone who has it will no longer be able to view the content.</string>
 
     <string name="permissions_title">Album members</string>
     <string name="permissions_empty">Only you have access. Invite people to give them read or write access.</string>

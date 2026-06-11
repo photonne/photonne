@@ -5,6 +5,7 @@ import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.ShareableUser
 import com.photonne.app.data.models.TimelineItem
@@ -50,6 +51,8 @@ class AlbumsRepository(
 
     suspend fun listShares(albumId: String): List<AlbumShareLink> =
         api.listAlbumShares(albumId)
+
+    suspend fun sentShares(): List<SentShareLink> = api.getSentShares()
 
     suspend fun createShare(
         albumId: String,

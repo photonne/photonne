@@ -35,6 +35,7 @@ import com.photonne.app.ui.album.AlbumDetailViewModel
 import com.photonne.app.ui.album.AlbumPermissionsViewModel
 import com.photonne.app.ui.album.AlbumSharesViewModel
 import com.photonne.app.ui.album.AlbumsViewModel
+import com.photonne.app.ui.album.SentSharesViewModel
 import com.photonne.app.ui.asset.AssetDetailViewModel
 import com.photonne.app.ui.library.ArchivedViewModel
 import com.photonne.app.ui.library.FavoritesViewModel
@@ -162,6 +163,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AlbumsViewModel)
     viewModelOf(::AlbumDetailViewModel)
     viewModelOf(::AlbumSharesViewModel)
+    viewModelOf(::SentSharesViewModel)
     viewModelOf(::AlbumPermissionsViewModel)
     viewModelOf(::FoldersViewModel)
     viewModelOf(::FolderDetailViewModel)

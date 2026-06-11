@@ -117,6 +117,12 @@ fun AlbumsListScreen(
             onOpenObjects = onOpenObjects
         )
         AlbumsTabBar(selected = state.selectedTab, onSelect = viewModel::selectTab)
+        // "My links" lists share links (not albums), so it has its own screen + view model
+        // rather than reusing the album grid/search below.
+        if (state.selectedTab == AlbumsTab.MyLinks) {
+            MyLinksTab(modifier = Modifier.fillMaxWidth().weight(1f))
+            return@Column
+        }
         if (state.isSearchActive) {
             AlbumsSearchField(
                 query = state.searchQuery,
