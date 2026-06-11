@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Share;
 
@@ -20,7 +21,9 @@ public class GetSentSharesEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
+        HttpContext httpContext,
         CancellationToken ct)
     {
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -41,6 +44,8 @@ public class GetSentSharesEndpoint : IEndpoint
             .Where(l => (l.ExpiresAt == null || l.ExpiresAt > now) &&
                         (l.MaxViews == null || l.ViewCount < l.MaxViews))
             .ToList();
+
+        var publicBase = await CreateShareEndpoint.ResolvePublicBaseUrlAsync(settingsService, httpContext);
 
         var result = links.Select(l =>
         {
@@ -67,7 +72,8 @@ public class GetSentSharesEndpoint : IEndpoint
                 AssetThumbnailUrl = l.AssetId.HasValue ? $"/api/assets/{l.AssetId}/thumbnail?size=Medium" : null,
                 AlbumId = l.AlbumId,
                 AlbumName = l.Album?.Name,
-                AlbumCoverUrl = albumCoverUrl
+                AlbumCoverUrl = albumCoverUrl,
+                ShareUrl = $"{publicBase}/share/{l.Token}"
             };
         }).ToList();
 
@@ -91,4 +97,9 @@ public class SentShareLinkDto
     public Guid? AlbumId { get; set; }
     public string? AlbumName { get; set; }
     public string? AlbumCoverUrl { get; set; }
+    /// <summary>
+    /// Absolute URL (based on <c>ServerSettings.PublicUrl</c> when configured, otherwise
+    /// the current request's base URL) that end users can open to view the shared content.
+    /// </summary>
+    public string ShareUrl { get; set; } = string.Empty;
 }
