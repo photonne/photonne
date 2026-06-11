@@ -131,6 +131,7 @@ import com.photonne.app.data.models.toTimelineItem
 import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.add_to_album_title
 import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_edit_date
 import com.photonne.app.resources.asset_action_edit_description
@@ -2219,16 +2220,6 @@ private fun AssetActionsBottomBar(
                         tint = Color.White
                     )
                 }
-                IconButton(onClick = onAddToAlbum) {
-                    Icon(
-                        Icons.Outlined.AddToPhotos,
-                        contentDescription = "Añadir a álbum",
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onShowInfo) {
-                    Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
-                }
                 IconButton(onClick = onTrashRequest) {
                     Icon(
                         Icons.Outlined.Delete,
@@ -2248,6 +2239,14 @@ private fun AssetActionsBottomBar(
                         expanded = showOverflow,
                         onDismissRequest = { onShowOverflowChange(false) }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.add_to_album_title)) },
+                            leadingIcon = { Icon(Icons.Outlined.AddToPhotos, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onAddToAlbum()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.asset_action_edit_description)) },
                             leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
