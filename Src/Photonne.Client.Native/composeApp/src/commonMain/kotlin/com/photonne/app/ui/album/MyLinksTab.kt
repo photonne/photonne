@@ -260,7 +260,6 @@ private fun MyLinkRow(
 private fun formatDate(instant: Instant): String =
     instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
 
-private fun resolveUrl(url: String, baseUrl: String): String {
     if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
         return url
     }
