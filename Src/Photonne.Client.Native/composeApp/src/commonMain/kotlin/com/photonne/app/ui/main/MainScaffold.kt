@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.AddToPhotos
@@ -632,7 +631,6 @@ private fun SelectionLabel(text: String, color: Color = Color.Unspecified) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumsListTopBar(
-    onCreateAlbum: () -> Unit,
     onOpenFilters: () -> Unit,
     isSearchActive: Boolean = false,
     onToggleSearch: () -> Unit = {}
@@ -650,12 +648,6 @@ fun AlbumsListTopBar(
                 Icon(
                     Icons.Outlined.Tune,
                     contentDescription = stringResource(Res.string.albums_action_filters)
-                )
-            }
-            IconButton(onClick = onCreateAlbum) {
-                Icon(
-                    Icons.Outlined.AddBox,
-                    contentDescription = stringResource(Res.string.album_action_new)
                 )
             }
         }

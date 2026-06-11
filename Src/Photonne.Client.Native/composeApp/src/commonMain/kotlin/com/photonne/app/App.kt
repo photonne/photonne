@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.FloatingActionButton
@@ -720,7 +721,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 } else {
                     AlbumsListTopBar(
-                        onCreateAlbum = { showCreateAlbum = true },
                         onOpenFilters = { showAlbumsFilters = true },
                         isSearchActive = albumsState.isSearchActive,
                         onToggleSearch = albumsViewModel::toggleSearch
@@ -728,7 +728,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             }
             selectedTab == MainTab.Albums && moreSubscreen == null -> AlbumsListTopBar(
-                onCreateAlbum = { showCreateAlbum = true },
                 onOpenFilters = { showAlbumsFilters = true },
                 isSearchActive = albumsState.isSearchActive,
                 onToggleSearch = albumsViewModel::toggleSearch
@@ -1450,6 +1449,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     Icon(
                         Icons.Outlined.CreateNewFolder,
                         contentDescription = stringResource(Res.string.folder_action_new)
+                    )
+                }
+            // Album creation as a FAB, matching the Timeline upload and Folders
+            // create patterns. Only on the albums list (not an open album or a
+            // More subscreen) and hidden during selection, which owns the
+            // bottom bar.
+            selectedTab == MainTab.Albums && bottomBar == null &&
+                selectedAlbum == null && moreSubscreen == null ->
+                FloatingActionButton(onClick = { showCreateAlbum = true }) {
+                    Icon(
+                        Icons.Outlined.AddBox,
+                        contentDescription = stringResource(Res.string.album_action_new)
                     )
                 }
         }
