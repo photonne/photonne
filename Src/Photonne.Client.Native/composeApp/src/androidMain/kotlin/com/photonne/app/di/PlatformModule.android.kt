@@ -16,8 +16,10 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import java.util.concurrent.TimeUnit
 
 actual fun platformModule() = module {
     single<NetworkMonitor> { AndroidNetworkMonitor(androidContext()) }
@@ -35,13 +37,21 @@ actual fun platformModule() = module {
         )
         SharedPreferencesSettings(prefs)
     }
+    // One pool shared by the Ktor API/image client AND the ExoPlayer video
+    // data source, so a single eviction reaches every socket. The 30 s
+    // keep-alive (default is 5 min) is the second half of the half-open-socket
+    // defence: a connection left idle while the phone slept — almost certainly
+    // killed by the server/NAT, with no network-change event to trigger
+    // evictAll() — has already aged out of the pool on wake, so the next
+    // request dials fresh instead of reusing a dead socket.
+    single { ConnectionPool(5, 30, TimeUnit.SECONDS) }
     single<HttpClientEngine> {
         // A WiFi↔cellular switch leaves OkHttp's keep-alive sockets bound to
         // the now-dead interface. Reusing one surfaces as "unable to resolve
-        // host" or an indefinite hang that only an app restart clears. We hold
-        // our own ConnectionPool and evict it on every network transition so
-        // the next request dials a fresh connection on the live network.
-        val pool = ConnectionPool()
+        // host" or an indefinite hang that only an app restart clears. We evict
+        // the shared pool on every network transition so the next request dials
+        // a fresh connection on the live network.
+        val pool = get<ConnectionPool>()
         val monitor = get<NetworkMonitor>()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         scope.launch {
@@ -58,6 +68,19 @@ actual fun platformModule() = module {
                 retryOnConnectionFailure(true)
             }
         }
+    }
+    // ExoPlayer's HTTP data source. Shares the pool above (so network-change
+    // eviction and the short idle keep-alive reach video too) and adds finite
+    // connect/read timeouts so a half-open socket fails fast and the player can
+    // re-dial — instead of a clip that simply never loads until the app is
+    // killed and reopened.
+    single {
+        OkHttpClient.Builder()
+            .connectionPool(get<ConnectionPool>())
+            .retryOnConnectionFailure(true)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
     }
     single { AssetSharing(androidContext()) }
     single { com.photonne.app.data.devicebackup.DeviceGallery(androidContext()) }

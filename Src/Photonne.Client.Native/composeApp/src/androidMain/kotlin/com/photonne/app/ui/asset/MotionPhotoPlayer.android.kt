@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import okhttp3.OkHttpClient
+import org.koin.compose.koinInject
 
 @Composable
 actual fun MotionPhotoPlayer(
@@ -28,8 +29,10 @@ actual fun MotionPhotoPlayer(
     val context = LocalContext.current
     // Keep the end callback fresh without rebuilding the player/listener.
     val currentOnEnded by rememberUpdatedState(onPlaybackEnded)
+    // Shared client (same pool + timeouts as the API); see VideoPlayer.android.kt.
+    val httpClient = koinInject<OkHttpClient>()
     val player = remember(url, headers, loop) {
-        val httpFactory = OkHttpDataSource.Factory(OkHttpClient())
+        val httpFactory = OkHttpDataSource.Factory(httpClient)
             .setDefaultRequestProperties(headers)
         val baseFactory = DefaultDataSource.Factory(context, httpFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(baseFactory)

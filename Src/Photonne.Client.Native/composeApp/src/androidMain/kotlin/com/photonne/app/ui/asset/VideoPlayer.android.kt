@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import okhttp3.OkHttpClient
+import org.koin.compose.koinInject
 
 actual val isVideoPlaybackSupported: Boolean = true
 
@@ -36,8 +37,12 @@ actual fun VideoPlayer(
     // Latest callback without re-creating the AndroidView when the lambda
     // identity changes between recompositions.
     val visibilityCallback = rememberUpdatedState(onControlsVisibilityChanged)
+    // Shared client: it rides the same connection pool the API uses, so it gets
+    // evicted on network change and ages out idle sockets, and it carries finite
+    // read/connect timeouts so a dead socket fails instead of hanging the clip.
+    val httpClient = koinInject<OkHttpClient>()
     val player = remember(url, headers) {
-        val httpFactory = OkHttpDataSource.Factory(OkHttpClient())
+        val httpFactory = OkHttpDataSource.Factory(httpClient)
             .setDefaultRequestProperties(headers)
         val baseFactory = DefaultDataSource.Factory(context, httpFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(baseFactory)

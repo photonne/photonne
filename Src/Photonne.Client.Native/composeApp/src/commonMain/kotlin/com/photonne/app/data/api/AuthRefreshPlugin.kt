@@ -71,14 +71,26 @@ fun buildPhotonneHttpClient(
         // any time the server goes 60 s between pushes (perfectly normal
         // during the scanning phase of a large indexing run).
         //
-        // No global timeout values are set on purpose: a global connect/socket
-        // timeout maps to Darwin's resource/request interval and would cap
-        // every iOS request, breaking large transfers and streams. Recovery
-        // from a WiFi↔cellular switch is handled where the per-engine mapping
-        // is known and safe: a per-request socket (idle) timeout on the backup
-        // calls (see PhotonneApiClient.backupIdleTimeout) plus OkHttp connection
-        // pool eviction on network change (see the Android platform module).
-        install(HttpTimeout)
+        // Only an idle socket timeout is set by default — deliberately NOT a
+        // total requestTimeoutMillis, which would cap large transfers. The
+        // socket timeout is the max gap *between data packets* (OkHttp's
+        // read timeout; Darwin's timeoutIntervalForRequest, which resets on
+        // every new byte), so a continuous download is never cut short. What
+        // it does catch is a half-open socket: a pooled connection silently
+        // killed by the server/NAT while the phone slept, where no network
+        // change fired to evict the pool. Without it the next request reuses
+        // that corpse and hangs forever — the "must kill and reopen the app"
+        // symptom. With it the request fails after 30 s and (with OkHttp's
+        // retryOnConnectionFailure) re-dials a fresh connection.
+        //
+        // Long-lived endpoints opt out: streaming calls override both timeouts
+        // to infinite via disableStreamTimeouts(), the timeline raises them to
+        // 180 s, and backups set their own 60 s socket timeout. This is safe on
+        // iOS for the same reason — only the idle interval is bounded, and the
+        // streams that would legitimately sit quiet for >30 s already opt out.
+        install(HttpTimeout) {
+            socketTimeoutMillis = 30_000
+        }
         install(Logging) {
             logger = object : Logger {
                 override fun log(message: String) {
