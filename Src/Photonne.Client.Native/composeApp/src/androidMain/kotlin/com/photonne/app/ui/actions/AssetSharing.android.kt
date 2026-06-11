@@ -46,7 +46,15 @@ actual class AssetSharing(private val context: Context) {
         for (file in files) {
             val source = File(file.path)
             val target = File(sharedDir, file.displayName)
-            source.copyTo(target, overwrite = true)
+            // `saveAsset`/`saveZip` already stage the bytes inside `shared/`,
+            // so source and target are usually the SAME file. Copying a file
+            // onto itself with overwrite=true would delete it first (via
+            // `target.delete()`) and then fail to read the now-missing source —
+            // which is why the share sheet silently never appeared. Only copy
+            // when the file genuinely lives elsewhere.
+            if (source.absolutePath != target.absolutePath) {
+                source.copyTo(target, overwrite = true)
+            }
             uris += FileProvider.getUriForFile(context, authority, target)
         }
         val intent = if (uris.size == 1) {
