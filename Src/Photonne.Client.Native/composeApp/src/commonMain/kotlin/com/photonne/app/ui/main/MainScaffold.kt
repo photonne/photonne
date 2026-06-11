@@ -47,6 +47,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -383,8 +384,14 @@ fun AssetSelectionTopBar(
     selectedCount: Int,
     isMutating: Boolean,
     onClose: () -> Unit,
+    totalCount: Int = 0,
+    onSelectAll: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    // "Select all" lives here, next to the count, because it controls the
+    // *scope* of the selection rather than acting on it — keeping the bottom
+    // bar for actual actions (share / album / download / trash).
+    val allSelected = totalCount > 0 && selectedCount >= totalCount
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onClose, enabled = !isMutating) {
@@ -404,7 +411,22 @@ fun AssetSelectionTopBar(
                 style = MaterialTheme.typography.titleMedium
             )
         },
-        actions = actions
+        actions = {
+            if (onSelectAll != null) {
+                IconButton(onClick = onSelectAll, enabled = !isMutating) {
+                    Icon(
+                        Icons.Outlined.SelectAll,
+                        contentDescription = stringResource(
+                            if (allSelected) Res.string.selection_action_deselect_all
+                            else Res.string.selection_action_select_all
+                        ),
+                        tint = if (allSelected) MaterialTheme.colorScheme.primary
+                        else LocalContentColor.current
+                    )
+                }
+            }
+            actions()
+        }
     )
 }
 
@@ -416,11 +438,8 @@ fun AssetSelectionTopBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssetSelectionBottomBar(
-    selectedCount: Int,
-    totalCount: Int,
     isMutating: Boolean,
     archiveMode: ArchiveMode = ArchiveMode.Archive,
-    onSelectAll: () -> Unit,
     onShare: () -> Unit,
     onAddToAlbum: () -> Unit,
     onDownload: () -> Unit,
@@ -432,35 +451,12 @@ fun AssetSelectionBottomBar(
     onSetAsCover: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val allSelected = totalCount > 0 && selectedCount >= totalCount
     // When any context-specific action is wired (Move/Remove/SetCover/Unlink),
     // Download moves to the overflow so the bar keeps a stable 4-item primary
     // count + More. The context action takes Download's slot.
     val hasContextAction = onMove != null || onRemoveFromAlbum != null ||
         onSetAsCover != null || onUnlink != null
     NavigationBar {
-        NavigationBarItem(
-            selected = allSelected,
-            onClick = onSelectAll,
-            enabled = !isMutating,
-            icon = {
-                Icon(
-                    Icons.Outlined.SelectAll,
-                    contentDescription = stringResource(
-                        if (allSelected) Res.string.selection_action_deselect_all
-                        else Res.string.selection_action_select_all
-                    )
-                )
-            },
-            label = {
-                SelectionLabel(
-                    stringResource(
-                        if (allSelected) Res.string.selection_label_deselect_all
-                        else Res.string.selection_label_select_all
-                    )
-                )
-            }
-        )
         NavigationBarItem(
             selected = false,
             onClick = onShare,

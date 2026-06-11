@@ -693,17 +693,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 timelineState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = timelineState.selection.size,
+                    totalCount = timelineState.loadedItems.size,
                     isMutating = timelineState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = timelineViewModel::clearSelection
+                    onClose = timelineViewModel::clearSelection,
+                    onSelectAll = timelineViewModel::toggleSelectAll
                 )
             selectedTab == MainTab.Albums && selectedAlbum != null &&
                 albumDetailState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = albumDetailState.selection.size,
+                    totalCount = albumDetailState.items.size,
                     isMutating = albumDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = albumDetailViewModel::clearSelection
+                    onClose = albumDetailViewModel::clearSelection,
+                    onSelectAll = albumDetailViewModel::toggleSelectAll
                 )
             selectedTab == MainTab.Albums && selectedAlbum != null -> {
                 // The hero inside AlbumDetailScreen owns back / share / overflow
@@ -736,9 +740,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 folderDetailState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = folderDetailState.selection.size,
+                    totalCount = folderDetailState.items.size,
                     isMutating = folderDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = folderDetailViewModel::clearSelection
+                    onClose = folderDetailViewModel::clearSelection,
+                    onSelectAll = folderDetailViewModel::toggleSelectAll
                 )
             selectedTab == MainTab.Folders && selectedFolder != null &&
                 folderDetailState.isSubfolderSelectionActive -> {
@@ -801,9 +807,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = searchState.selection.size,
+                    totalCount = searchState.results.size,
                     isMutating = searchState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = searchViewModel::clearSelection
+                    onClose = searchViewModel::clearSelection,
+                    onSelectAll = searchViewModel::toggleSelectAll
                 )
             selectedTab == MainTab.Search ->
                 com.photonne.app.ui.main.SearchTopBar()
@@ -926,9 +934,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 selectedPerson != null && personDetailState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = personDetailState.selection.size,
+                    totalCount = personDetailState.items.size,
                     isMutating = personDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = personDetailViewModel::clearSelection
+                    onClose = personDetailViewModel::clearSelection,
+                    onSelectAll = personDetailViewModel::toggleSelectAll
                 )
             moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null -> {
@@ -973,9 +983,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 favoritesState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = favoritesState.selection.size,
+                    totalCount = favoritesState.items.size,
                     isMutating = favoritesState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = favoritesViewModel::clearSelection
+                    onClose = favoritesViewModel::clearSelection,
+                    onSelectAll = favoritesViewModel::toggleSelectAll
                 )
             moreSubscreen == MoreSubscreen.Favorites -> {
                 val count = favoritesState.items.size
@@ -990,9 +1002,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 archivedState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = archivedState.selection.size,
+                    totalCount = archivedState.items.size,
                     isMutating = archivedState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onClose = archivedViewModel::clearSelection
+                    onClose = archivedViewModel::clearSelection,
+                    onSelectAll = archivedViewModel::toggleSelectAll
                 )
             moreSubscreen == MoreSubscreen.Archived -> {
                 val count = archivedState.items.size
@@ -1155,11 +1169,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             timelineState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = timelineState.selection.size,
-                    totalCount = timelineState.loadedItems.size,
                     isMutating = timelineState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onSelectAll = timelineViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(timelineState.selection.toList())
                     },
@@ -1176,11 +1187,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albumDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = albumDetailState.selection.size,
-                    totalCount = albumDetailState.items.size,
                     isMutating = albumDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onSelectAll = albumDetailViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(albumDetailState.selection.toList())
                     },
@@ -1242,11 +1250,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             folderDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = folderDetailState.selection.size,
-                    totalCount = folderDetailState.items.size,
                     isMutating = folderDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onSelectAll = folderDetailViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(folderDetailState.selection.toList())
                     },
@@ -1265,11 +1270,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedTab == MainTab.Search && searchState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = searchState.selection.size,
-                    totalCount = searchState.results.size,
                     isMutating = searchState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onSelectAll = searchViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(searchState.selection.toList())
                     },
@@ -1286,11 +1288,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedPerson != null && personDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = personDetailState.selection.size,
-                    totalCount = personDetailState.items.size,
                     isMutating = personDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onSelectAll = personDetailViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(personDetailState.selection.toList())
                     },
@@ -1317,11 +1316,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             favoritesState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = favoritesState.selection.size,
-                    totalCount = favoritesState.items.size,
                     isMutating = favoritesState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
-                    onSelectAll = favoritesViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(favoritesState.selection.toList())
                     },
@@ -1338,12 +1334,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             archivedState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
-                    selectedCount = archivedState.selection.size,
-                    totalCount = archivedState.items.size,
                     isMutating = archivedState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     archiveMode = ArchiveMode.Unarchive,
-                    onSelectAll = archivedViewModel::toggleSelectAll,
                     onShare = {
                         actionsViewModel.beginShare(archivedState.selection.toList())
                     },
