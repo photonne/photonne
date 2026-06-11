@@ -1,10 +1,12 @@
 package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -147,8 +149,11 @@ fun TimelineScreen(
     // scan (no cache yet → entries still empty). Cached launches seed the
     // grid instantly and never flip isLoading, so the hint stays hidden.
     val deviceLoading = deviceBackupState.isBackupEnabled && deviceBackupState.isLoading
-    val showMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null &&
-        !state.isSelectionActive
+    // Whether the Recuerdos strip belongs in the timeline at all. It stays
+    // mounted while selecting and instead collapses smoothly (see the
+    // AnimatedVisibility below) so entering selection no longer makes the
+    // whole grid jump up by the strip's height.
+    val hasMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null
     // Year view renders the compressed per-year summaries (a few sampled
     // rows per year, count in the header); every other zoom level renders
     // the full bucket timeline. Both flatten into the same entries shape.
@@ -506,15 +511,23 @@ fun TimelineScreen(
                                 }
                             },
                             suppressThumbnails = isScrubbing,
-                            header = if (showMemoriesHeader) {
+                            header = if (hasMemoriesHeader) {
                                 {
                                     item(key = "memories-strip") {
-                                        MemoriesStrip(
-                                            memories = memories,
-                                            baseUrl = apiBaseUrl,
-                                            onOpenMemory = onOpenMemory!!,
-                                            onSeeAll = onSeeAllMemories
-                                        )
+                                        // Collapse (not unmount) during selection so
+                                        // the grid eases up instead of snapping.
+                                        AnimatedVisibility(
+                                            visible = !state.isSelectionActive,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            MemoriesStrip(
+                                                memories = memories,
+                                                baseUrl = apiBaseUrl,
+                                                onOpenMemory = onOpenMemory!!,
+                                                onSeeAll = onSeeAllMemories
+                                            )
+                                        }
                                     }
                                     // With memories present the floating pill
                                     // would overlap the strip, so the scan hint
@@ -540,7 +553,7 @@ fun TimelineScreen(
                     TimelineScrubber(
                         gridState = gridState,
                         rows = rows,
-                        headerItemCount = if (showMemoriesHeader) {
+                        headerItemCount = if (hasMemoriesHeader) {
                             1 + (if (deviceLoading && state.error == null) 1 else 0)
                         } else 0,
                         onDraggingChange = { dragging -> isScrubbing = dragging },
@@ -567,7 +580,7 @@ fun TimelineScreen(
             }
             // Floating pill only when there's no memories header to host it
             // inline (otherwise the inline header item above is used).
-            if (deviceLoading && state.error == null && !showMemoriesHeader) {
+            if (deviceLoading && state.error == null && !hasMemoriesHeader) {
                 DeviceScanIndicator(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
