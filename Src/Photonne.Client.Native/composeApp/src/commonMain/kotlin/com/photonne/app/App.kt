@@ -2389,6 +2389,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             assetFacesViewModel.open(assetId)
                             showAssetFacesSheet = true
                         },
+                        onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
                         onOpenAsset = { item ->
                             // Open a related asset as its own single-item viewer;
                             // key(displayCtx) forces a fresh screen + detail load.

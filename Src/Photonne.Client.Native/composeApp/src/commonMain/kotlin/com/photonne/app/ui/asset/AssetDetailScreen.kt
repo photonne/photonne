@@ -71,6 +71,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -185,6 +186,7 @@ fun AssetDetailScreen(
     onOpenFaces: (assetId: String) -> Unit = {},
     onPageChanged: (assetId: String) -> Unit = {},
     onOpenAsset: (TimelineItem) -> Unit = {},
+    onShare: (TimelineItem) -> Unit = {},
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
@@ -644,6 +646,9 @@ fun AssetDetailScreen(
                                     tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
                                 )
                             }
+                            IconButton(onClick = { onShare(currentItem) }) {
+                                Icon(Icons.Outlined.Share, contentDescription = "Compartir", tint = Color.White)
+                            }
                             IconButton(onClick = { onAddToAlbum(currentItem) }) {
                                 Icon(Icons.Outlined.AddToPhotos, contentDescription = "Añadir a álbum", tint = Color.White)
                             }
@@ -731,6 +736,7 @@ fun AssetDetailScreen(
                                 }
                             },
                             onAddToAlbum = { onAddToAlbum(currentItem) },
+                            onShare = { onShare(currentItem) },
                             onShowInfo = {
                                 coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
                             },
@@ -2173,6 +2179,7 @@ private fun AssetActionsBottomBar(
     onShowOverflowChange: (Boolean) -> Unit,
     onToggleFavorite: () -> Unit,
     onAddToAlbum: () -> Unit,
+    onShare: () -> Unit,
     onShowInfo: () -> Unit,
     onTrashRequest: () -> Unit,
     onEditDescription: () -> Unit,
@@ -2203,6 +2210,13 @@ private fun AssetActionsBottomBar(
                         else Icons.Outlined.FavoriteBorder,
                         contentDescription = if (isFavorite) "Quitar favorito" else "Marcar favorito",
                         tint = if (isFavorite) Color(0xFFFF5252) else Color.White
+                    )
+                }
+                IconButton(onClick = onShare) {
+                    Icon(
+                        Icons.Outlined.Share,
+                        contentDescription = "Compartir",
+                        tint = Color.White
                     )
                 }
                 IconButton(onClick = onAddToAlbum) {
