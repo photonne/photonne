@@ -21,8 +21,7 @@ import platform.CoreMedia.CMTimeMake
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSURL
-import platform.UIKit.UIViewAutoresizingFlexibleHeight
-import platform.UIKit.UIViewAutoresizingFlexibleWidth
+import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
 import platform.UIKit.didMoveToParentViewController
@@ -105,9 +104,10 @@ actual fun MotionPhotoPlayer(
     )
 }
 
-// Same defensive layout wrapper rationale as VideoPlayer.ios.kt: seed the
-// initial frame and opt into autoresizing so AVKit doesn't leave the view
-// offset when mounted before Compose hands it final bounds.
+// Same layout wrapper rationale as VideoPlayer.ios.kt: pin the player view to
+// the container with Auto Layout so AVKit can't leave it offset/oversized when
+// mounted before Compose hands it final bounds (constraints re-solve against
+// the current bounds every pass instead of latching a stale seeded frame).
 @OptIn(ExperimentalForeignApi::class)
 private class MotionPlayerContainerViewController(
     val playerViewController: AVPlayerViewController
@@ -117,16 +117,21 @@ private class MotionPlayerContainerViewController(
         super.viewDidLoad()
         addChildViewController(playerViewController)
         val playerView = playerViewController.view
-        playerView.setFrame(view.bounds)
-        playerView.setAutoresizingMask(
-            UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
-        )
+        playerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(playerView)
+        NSLayoutConstraint.activateConstraints(
+            listOf(
+                playerView.leadingAnchor.constraintEqualToAnchor(view.leadingAnchor),
+                playerView.trailingAnchor.constraintEqualToAnchor(view.trailingAnchor),
+                playerView.topAnchor.constraintEqualToAnchor(view.topAnchor),
+                playerView.bottomAnchor.constraintEqualToAnchor(view.bottomAnchor)
+            )
+        )
         playerViewController.didMoveToParentViewController(this)
     }
 
-    override fun viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        playerViewController.view.setFrame(view.bounds)
+    override fun viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        playerViewController.view.layoutIfNeeded()
     }
 }

@@ -24,6 +24,9 @@ import org.koin.compose.koinInject
 
 actual val isVideoPlaybackSupported: Boolean = true
 
+// Android's PlayerView lays out correctly inside the pager, so keep it in-page.
+actual val hostVideoOutsidePager: Boolean = false
+
 @Composable
 actual fun VideoPlayer(
     url: String,

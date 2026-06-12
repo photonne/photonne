@@ -558,6 +558,54 @@ fun AssetDetailScreen(
                 }
             }
 
+            // iOS hosts the video player as a full-screen overlay ABOVE the
+            // pager instead of inside a pager page. CMP's UIKit interop
+            // mis-positions a native view embedded in a scrolling/paging
+            // container (the player mounted oversized with its controls
+            // off-screen until a tap forced a re-sync); at a fixed rect outside
+            // the pager it lays out correctly from the first frame. The pager
+            // page shows the still poster in its place. We only mount the player
+            // once everything is at rest — info closed, not paging, not
+            // dragging, not mid open/close transition — so during motion the
+            // poster animates cleanly and the interop never has to chase moving
+            // bounds. Android keeps the in-page player (hostVideoOutsidePager
+            // is false there).
+            val overlayVideo = currentItem
+            val screenTransitioning = animatedVisibilityScope?.transition?.let {
+                it.currentState != it.targetState
+            } ?: false
+            if (
+                hostVideoOutsidePager &&
+                overlayVideo != null &&
+                overlayVideo.isVideo &&
+                isVideoPlaybackSupported &&
+                !slideshowActive &&
+                !infoOpen &&
+                !screenTransitioning &&
+                !pagerState.isScrollInProgress &&
+                dismissOffsetY.value == 0f
+            ) {
+                val overlayLocalUri = overlayVideo.localUri
+                VideoPlayer(
+                    url = overlayLocalUri ?: "$apiBaseUrl/api/assets/${overlayVideo.id}/content",
+                    headers = if (overlayLocalUri != null) emptyMap() else authHeaders,
+                    onControlsVisibilityChanged = { chromeVisible = it },
+                    fillCrop = false,
+                    controlsEnabled = true,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(
+                            top = if (chromeVisible && !landscapeMode) topChromeHeight else 0.dp,
+                            bottom = when {
+                                !chromeVisible -> 0.dp
+                                landscapeMode -> bottomChromeHeight
+                                else -> (bottomChromeHeight - STRIP_PORTRAIT_OVERLAP)
+                                    .coerceAtLeast(0.dp)
+                            }
+                        )
+                )
+            }
+
             // Skip the top bar entirely once faded out so it can't intercept
             // taps meant for the asset underneath (immersive mode).
             if (chromeAlpha > 0.01f) {
@@ -907,7 +955,8 @@ private fun AssetPage(
         val localUri = item.localUri
         if (localUri != null) {
             when {
-                item.isVideo && isVideoPlaybackSupported && isCurrent && !isTransitioning -> {
+                item.isVideo && isVideoPlaybackSupported && isCurrent &&
+                    !isTransitioning && !hostVideoOutsidePager -> {
                     VideoPlayer(
                         url = localUri,
                         headers = emptyMap(),
@@ -941,7 +990,8 @@ private fun AssetPage(
             return@Box
         }
         when {
-            item.isVideo && isVideoPlaybackSupported && isCurrent && !isTransitioning -> {
+            item.isVideo && isVideoPlaybackSupported && isCurrent &&
+                !isTransitioning && !hostVideoOutsidePager -> {
                 VideoPlayer(
                     url = "$baseUrl/api/assets/${item.id}/content",
                     headers = authHeaders,

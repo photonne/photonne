@@ -46,3 +46,20 @@ expect fun VideoPlayer(
  * a fallback poster + message.
  */
 expect val isVideoPlaybackSupported: Boolean
+
+/**
+ * Whether [VideoPlayer] must be hosted as a full-screen overlay ABOVE the asset
+ * pager rather than inside a pager page.
+ *
+ * iOS = true: Compose Multiplatform's UIKit interop mis-positions a native view
+ * embedded in a scrolling/paging container — the AVPlayerViewController mounts
+ * oversized with its controls off-screen and only re-syncs on a touch. Hosting
+ * it at a fixed rect outside the pager makes it lay out correctly from the first
+ * frame. The pager page renders the still poster in its place; the overlay mounts
+ * only while everything is at rest (no paging/dragging/info/transition) so motion
+ * still animates the poster cleanly.
+ *
+ * Android/Desktop = false: the in-page player lays out correctly, so it stays
+ * inside the pager (where swipe-to-page and gestures compose naturally).
+ */
+expect val hostVideoOutsidePager: Boolean

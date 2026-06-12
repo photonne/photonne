@@ -25,11 +25,10 @@ import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSSelectorFromString
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplicationDidEnterBackgroundNotification
+import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIGestureRecognizer
 import platform.UIKit.UIGestureRecognizerDelegateProtocol
 import platform.UIKit.UITapGestureRecognizer
-import platform.UIKit.UIViewAutoresizingFlexibleHeight
-import platform.UIKit.UIViewAutoresizingFlexibleWidth
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
 import platform.UIKit.didMoveToParentViewController
@@ -41,6 +40,11 @@ import platform.darwin.NSObject
 private const val AVURLAssetHTTPHeaderFieldsKey = "AVURLAssetHTTPHeaderFieldsKey"
 
 actual val isVideoPlaybackSupported: Boolean = true
+
+// iOS hosts the player as an overlay above the pager (see hostVideoOutsidePager
+// doc): CMP's UIKit interop mis-positions a native view embedded inside a
+// scrolling/paging container, so the player must live at a fixed rect outside it.
+actual val hostVideoOutsidePager: Boolean = true
 
 @OptIn(ExperimentalForeignApi::class)
 @Composable
@@ -158,10 +162,14 @@ private class VideoTapHandler(
 // always relay layout changes from its parent — when entering the detail
 // screen from a shared-element transition (e.g. the home memories story
 // card) the controller's view mounts before the Compose slot has its final
-// bounds, and AVKit then leaves it offset and oversized. Wrapping it in a
-// parent controller lets us seed the initial frame, opt into UIKit's
-// autoresizing so subsequent bounds changes propagate automatically, and
-// re-pin on every layout pass as a defensive backstop.
+// bounds, and AVKit then lays out its controls against those stale (wider)
+// bounds: the clip looks zoomed and the play button sits off the right edge
+// until a tap forces another layout pass. Pinning the player view to the
+// container with Auto Layout fixes this at the source — constraints are
+// re-solved against the container's *current* bounds on every pass, so the
+// view can never latch a stale frame (the old seeded-frame + autoresizing +
+// manual re-pin approach depended on reading bounds at exactly the right
+// moment, which is what failed here).
 @OptIn(ExperimentalForeignApi::class)
 private class VideoPlayerContainerViewController(
     val playerViewController: AVPlayerViewController,
@@ -172,11 +180,16 @@ private class VideoPlayerContainerViewController(
         super.viewDidLoad()
         addChildViewController(playerViewController)
         val playerView = playerViewController.view
-        playerView.setFrame(view.bounds)
-        playerView.setAutoresizingMask(
-            UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
-        )
+        playerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(playerView)
+        NSLayoutConstraint.activateConstraints(
+            listOf(
+                playerView.leadingAnchor.constraintEqualToAnchor(view.leadingAnchor),
+                playerView.trailingAnchor.constraintEqualToAnchor(view.trailingAnchor),
+                playerView.topAnchor.constraintEqualToAnchor(view.topAnchor),
+                playerView.bottomAnchor.constraintEqualToAnchor(view.bottomAnchor)
+            )
+        )
         playerViewController.didMoveToParentViewController(this)
 
         // Observe taps without consuming them so the player's own controls
@@ -190,8 +203,10 @@ private class VideoPlayerContainerViewController(
         view.addGestureRecognizer(tap)
     }
 
-    override fun viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        playerViewController.view.setFrame(view.bounds)
+    // Once the container settles to its final bounds, force AVKit to re-lay out
+    // its transport overlay so the controls can't stay pinned to a stale edge.
+    override fun viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        playerViewController.view.layoutIfNeeded()
     }
 }
