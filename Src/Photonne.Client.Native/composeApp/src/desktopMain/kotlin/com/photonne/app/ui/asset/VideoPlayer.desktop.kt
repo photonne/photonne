@@ -17,8 +17,6 @@ import androidx.compose.ui.unit.dp
 
 actual val isVideoPlaybackSupported: Boolean = false
 
-actual val hostVideoOutsidePager: Boolean = false
-
 @Composable
 actual fun VideoPlayer(
     url: String,

@@ -41,11 +41,6 @@ private const val AVURLAssetHTTPHeaderFieldsKey = "AVURLAssetHTTPHeaderFieldsKey
 
 actual val isVideoPlaybackSupported: Boolean = true
 
-// iOS hosts the player as an overlay above the pager (see hostVideoOutsidePager
-// doc): CMP's UIKit interop mis-positions a native view embedded inside a
-// scrolling/paging container, so the player must live at a fixed rect outside it.
-actual val hostVideoOutsidePager: Boolean = true
-
 @OptIn(ExperimentalForeignApi::class)
 @Composable
 actual fun VideoPlayer(

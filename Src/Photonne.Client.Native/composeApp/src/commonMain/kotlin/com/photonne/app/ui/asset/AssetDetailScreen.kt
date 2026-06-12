@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,6 +82,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -168,9 +171,6 @@ import org.koin.compose.viewmodel.koinViewModel
 private const val PAGER_PREFETCH_THRESHOLD = 8
 private const val PAGER_DISABLE_THRESHOLD = 1.05f
 private val PAGER_PAGE_SPACING = 16.dp
-// In portrait the bottom chrome floats slightly OVER the asset (covering a few
-// of its pixels) instead of butting up against it edge-to-edge.
-private val STRIP_PORTRAIT_OVERLAP = 8.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -232,15 +232,13 @@ fun AssetDetailScreen(
     // bottom strip/actions) so the asset can be viewed edge to edge, matching
     // the iOS Photos / Google Photos gallery. Starts visible.
     var chromeVisible by remember { mutableStateOf(true) }
-    // Measured height of the bottom chrome column, fed back as bottom padding to
-    // the video player so its native controls (scrubber/timeline) render ABOVE
-    // the actions bar instead of behind it.
-    var bottomChromeHeightPx by remember { mutableStateOf(0) }
-    val bottomChromeHeight = with(density) { bottomChromeHeightPx.toDp() }
-    // Same for the top bar, so a portrait video is letterboxed BELOW it instead
-    // of running up behind it.
+    // Measured chrome heights. On iOS the video surface paints over all Compose
+    // content (see videoSurfaceRendersOnTop), so it's inset by these to sit
+    // between the top bar and the bottom controls instead of hiding them.
     var topChromeHeightPx by remember { mutableStateOf(0) }
     val topChromeHeight = with(density) { topChromeHeightPx.toDp() }
+    var bottomChromeHeightPx by remember { mutableStateOf(0) }
+    val bottomChromeHeight = with(density) { bottomChromeHeightPx.toDp() }
 
     LaunchedEffect(
         slideshowActive,
@@ -365,6 +363,20 @@ fun AssetDetailScreen(
             val metadataMinHeightDp = maxHeight - headerHeightDp
             val authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) }
 
+            // One playback for whichever video is current, hoisted here so both
+            // the surface (in the pager page) and the controls (in the bottom
+            // chrome) drive the same instance. Null for photos, so no player is
+            // ever spun up for a still; recreated as the current video changes
+            // and released when it leaves composition. autoPlay makes landing on
+            // a video start it without a tap, like the native gallery.
+            val currentVideoUrl: String? = currentItem
+                ?.takeIf { it.isVideo && isVideoPlaybackSupported }
+                ?.let { it.localUri ?: "$apiBaseUrl/api/assets/${it.id}/content" }
+            val currentVideoHeaders = if (currentItem?.localUri != null) emptyMap() else authHeaders
+            val videoPlayback: VideoPlayback? = currentVideoUrl?.let { url ->
+                rememberVideoPlayback(url, currentVideoHeaders, autoPlay = true)
+            }
+
             // Vertical-drive gesture (drag up = open info, drag down = dismiss
             // the viewer), active only while fully closed. Shared by both
             // orientations; only the rendered branch attaches it.
@@ -474,14 +486,18 @@ fun AssetDetailScreen(
                         // already in instead of jumping mid-transition.
                         videoFillCrop = progress >= 0.92f,
                         contentScale = blendedContentScale(progress),
-                        onVideoControlsVisibilityChanged = { chromeVisible = it },
-                        videoTopInset = if (chromeVisible && !landscapeMode && !infoOpen) topChromeHeight else 0.dp,
-                        videoBottomInset = when {
-                            infoOpen -> 0.dp
-                            !chromeVisible -> 0.dp
-                            landscapeMode -> bottomChromeHeight
-                            else -> (bottomChromeHeight - STRIP_PORTRAIT_OVERLAP).coerceAtLeast(0.dp)
-                        },
+                        // The current video's playback (null otherwise); the page
+                        // renders its surface, the bottom chrome its controls.
+                        videoPlayback = if (isCurrent) videoPlayback else null,
+                        // On iOS the surface paints over Compose, so inset it to
+                        // clear the visible chrome (full-screen once chrome hides);
+                        // Android composes in z-order and needs no inset.
+                        videoTopInset = if (
+                            videoSurfaceRendersOnTop && chromeVisible && !landscapeMode && !infoOpen
+                        ) topChromeHeight else 0.dp,
+                        videoBottomInset = if (
+                            videoSurfaceRendersOnTop && chromeVisible && !infoOpen
+                        ) bottomChromeHeight else 0.dp,
                         animatedVisibilityScope = animatedVisibilityScope
                     )
                 }
@@ -556,54 +572,6 @@ fun AssetDetailScreen(
                         }
                     }
                 }
-            }
-
-            // iOS hosts the video player as a full-screen overlay ABOVE the
-            // pager instead of inside a pager page. CMP's UIKit interop
-            // mis-positions a native view embedded in a scrolling/paging
-            // container (the player mounted oversized with its controls
-            // off-screen until a tap forced a re-sync); at a fixed rect outside
-            // the pager it lays out correctly from the first frame. The pager
-            // page shows the still poster in its place. We only mount the player
-            // once everything is at rest — info closed, not paging, not
-            // dragging, not mid open/close transition — so during motion the
-            // poster animates cleanly and the interop never has to chase moving
-            // bounds. Android keeps the in-page player (hostVideoOutsidePager
-            // is false there).
-            val overlayVideo = currentItem
-            val screenTransitioning = animatedVisibilityScope?.transition?.let {
-                it.currentState != it.targetState
-            } ?: false
-            if (
-                hostVideoOutsidePager &&
-                overlayVideo != null &&
-                overlayVideo.isVideo &&
-                isVideoPlaybackSupported &&
-                !slideshowActive &&
-                !infoOpen &&
-                !screenTransitioning &&
-                !pagerState.isScrollInProgress &&
-                dismissOffsetY.value == 0f
-            ) {
-                val overlayLocalUri = overlayVideo.localUri
-                VideoPlayer(
-                    url = overlayLocalUri ?: "$apiBaseUrl/api/assets/${overlayVideo.id}/content",
-                    headers = if (overlayLocalUri != null) emptyMap() else authHeaders,
-                    onControlsVisibilityChanged = { chromeVisible = it },
-                    fillCrop = false,
-                    controlsEnabled = true,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .padding(
-                            top = if (chromeVisible && !landscapeMode) topChromeHeight else 0.dp,
-                            bottom = when {
-                                !chromeVisible -> 0.dp
-                                landscapeMode -> bottomChromeHeight
-                                else -> (bottomChromeHeight - STRIP_PORTRAIT_OVERLAP)
-                                    .coerceAtLeast(0.dp)
-                            }
-                        )
-                )
             }
 
             // Skip the top bar entirely once faded out so it can't intercept
@@ -757,6 +725,14 @@ fun AssetDetailScreen(
                         .graphicsLayer { alpha = chromeAlpha }
                         .onSizeChanged { bottomChromeHeightPx = it.height }
                 ) {
+                    // On a video, a floating play/pause + time readout and a
+                    // full-width scrubber sit ABOVE the filmstrip — which stays
+                    // visible so you never lose your place in the gallery while
+                    // a clip is playing. You navigate by swiping the asset.
+                    if (currentItem.isVideo && videoPlayback != null) {
+                        VideoControlsRow(videoPlayback)
+                        VideoScrubber(videoPlayback)
+                    }
                     if (items.size > 1) {
                         AssetThumbnailStrip(
                             items = items,
@@ -911,7 +887,7 @@ private fun AssetPage(
     infoOpen: Boolean = false,
     videoFillCrop: Boolean = false,
     contentScale: ContentScale = ContentScale.Fit,
-    onVideoControlsVisibilityChanged: (Boolean) -> Unit = {},
+    videoPlayback: VideoPlayback? = null,
     videoTopInset: androidx.compose.ui.unit.Dp = 0.dp,
     videoBottomInset: androidx.compose.ui.unit.Dp = 0.dp,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
@@ -956,15 +932,13 @@ private fun AssetPage(
         if (localUri != null) {
             when {
                 item.isVideo && isVideoPlaybackSupported && isCurrent &&
-                    !isTransitioning && !hostVideoOutsidePager -> {
-                    VideoPlayer(
-                        url = localUri,
-                        headers = emptyMap(),
-                        onControlsVisibilityChanged = onVideoControlsVisibilityChanged,
+                    !isTransitioning && videoPlayback != null -> {
+                    VideoPage(
+                        playback = videoPlayback,
                         fillCrop = videoFillCrop,
-                        controlsEnabled = !infoOpen,
-                        modifier = Modifier.fillMaxSize()
-                            .padding(top = videoTopInset, bottom = videoBottomInset)
+                        onTap = onToggleChrome,
+                        topInset = videoTopInset,
+                        bottomInset = videoBottomInset
                     )
                 }
                 else -> {
@@ -991,25 +965,18 @@ private fun AssetPage(
         }
         when {
             item.isVideo && isVideoPlaybackSupported && isCurrent &&
-                !isTransitioning && !hostVideoOutsidePager -> {
-                VideoPlayer(
-                    url = "$baseUrl/api/assets/${item.id}/content",
-                    headers = authHeaders,
-                    onControlsVisibilityChanged = onVideoControlsVisibilityChanged,
+                !isTransitioning && videoPlayback != null -> {
+                VideoPage(
+                    playback = videoPlayback,
                     fillCrop = videoFillCrop,
-                    controlsEnabled = !infoOpen,
-                    modifier = Modifier.fillMaxSize()
-                        .padding(top = videoTopInset, bottom = videoBottomInset)
+                    onTap = onToggleChrome
                 )
             }
             item.isVideo -> {
-                // Off-screen pages, unsupported platforms, or while a
-                // shared-element transition is morphing the page bounds:
-                // render the poster so Compose can animate it cleanly, and
-                // let the platform video player mount only once the page
-                // is at its stable, final size (AVPlayerViewController on
-                // iOS bakes its initial bounds into auto-layout constraints
-                // and never recovers if mounted mid-morph).
+                // Non-current pages and while a shared-element transition is
+                // morphing the page bounds: render the still poster so Compose
+                // can animate it cleanly. The live surface mounts only on the
+                // current, settled page (its playback is non-null only there).
                 AssetThumbnailImage(
                     item = item,
                     baseUrl = baseUrl,
@@ -1056,6 +1023,116 @@ private fun AssetPage(
         }
       }
     }
+}
+
+/**
+ * The current video inside a pager page: the bare [VideoSurface] plus a
+ * transparent tap layer that toggles the viewer chrome. The surface itself adds
+ * no gestures, so a horizontal drag falls through to the pager (swipe to the
+ * next asset) and only the tap is consumed here. Aspect-fit by default so a
+ * portrait clip fills and a landscape clip letterboxes; [fillCrop] zoom-fills
+ * for the 1:1 info header. Playback (autoplay, position, controls) is owned by
+ * the caller, which also paints the transport controls in the bottom chrome.
+ */
+@Composable
+private fun VideoPage(
+    playback: VideoPlayback,
+    fillCrop: Boolean,
+    onTap: () -> Unit,
+    topInset: androidx.compose.ui.unit.Dp = 0.dp,
+    bottomInset: androidx.compose.ui.unit.Dp = 0.dp,
+    modifier: Modifier = Modifier
+) {
+    // The inset keeps the surface clear of the chrome on platforms where it
+    // paints over Compose (iOS); zero elsewhere, so the surface is full-bleed
+    // and the controls float over it.
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(top = topInset, bottom = bottomInset)
+    ) {
+        VideoSurface(
+            playback = playback,
+            fillCrop = fillCrop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }
+        )
+    }
+}
+
+/**
+ * Floating transport row shown above the scrubber for the current video:
+ * play/pause and the current / total time. Mirrors the native gallery, where
+ * these float over the clip rather than living in a player chrome bar.
+ */
+@Composable
+private fun VideoControlsRow(
+    playback: VideoPlayback,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        IconButton(onClick = { playback.togglePlay() }) {
+            Icon(
+                imageVector = if (playback.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (playback.isPlaying) {
+                    stringResource(Res.string.slideshow_pause)
+                } else {
+                    stringResource(Res.string.slideshow_play)
+                },
+                tint = Color.White
+            )
+        }
+        Text(
+            text = "${formatClock(playback.positionMs)} / ${formatClock(playback.durationMs)}",
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium
+        )
+    }
+}
+
+/**
+ * The bottom thumbnail strip's stand-in while a video is current: a draggable
+ * timeline. While the finger is down it shows the dragged position and holds it
+ * (so the playhead ticker doesn't fight the drag); on release it seeks.
+ */
+@Composable
+private fun VideoScrubber(
+    playback: VideoPlayback,
+    modifier: Modifier = Modifier
+) {
+    val duration = playback.durationMs.coerceAtLeast(1L)
+    var dragValue by remember(playback) { mutableStateOf<Float?>(null) }
+    val value = dragValue ?: (playback.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    Slider(
+        value = value,
+        onValueChange = { dragValue = it },
+        onValueChangeFinished = {
+            dragValue?.let { playback.seekTo((it * duration).toLong()) }
+            dragValue = null
+        },
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        colors = SliderDefaults.colors(
+            thumbColor = Color.White,
+            activeTrackColor = Color.White,
+            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+        )
+    )
+}
+
+/** Formats a duration in milliseconds as m:ss (e.g. 0:07, 3:12). */
+private fun formatClock(ms: Long): String {
+    val totalSeconds = (ms / 1000).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
 
 /** How a Live Photo's motion clip is currently playing, if at all. */
