@@ -46,14 +46,18 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.settings.TimelineZoomLevel
@@ -82,8 +86,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.SkeletonBlock
 import com.photonne.app.ui.theme.SkeletonChip
-import kotlin.math.abs
-import kotlin.math.ln
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -159,29 +161,11 @@ fun TimelineScreen(
     // the full bucket timeline. Both flatten into the same entries shape.
     val isYearView = zoomLevel.grouping == TimelineGrouping.Year
 
-    // Pinch state: during a two-finger zoom the cell size lerps toward the
-    // next zoom level for visual feedback, then snaps to a discrete level on
-    // gesture end. Grouping stays at zoomLevel.grouping for the duration of
-    // the gesture — only the cell size animates.
-    var gestureActive by remember { mutableStateOf(false) }
-    var gestureZoom by remember { mutableFloatStateOf(1f) }
-    val gestureTarget: TimelineZoomLevel = remember(zoomLevel, gestureZoom) {
-        if (gestureZoom > 1f) nextZoomLevelIn(zoomLevel)
-        else nextZoomLevelOut(zoomLevel)
-    }
-    val gestureFraction: Float = remember(gestureZoom) {
-        if (gestureZoom <= 0f) 0f
-        else (abs(ln(gestureZoom)) / ln(1.5f)).toFloat().coerceIn(0f, 1f)
-    }
-    val effectiveCellMinSize = if (!gestureActive) {
-        zoomLevel.cellMinSizeDp.dp
-    } else {
-        lerp(
-            zoomLevel.cellMinSizeDp.dp,
-            gestureTarget.cellMinSizeDp.dp,
-            gestureFraction
-        )
-    }
+    // The base grid is always packed at the committed level's cell size; the
+    // pinch no longer morphs it (that forced a per-frame re-pack). The visible
+    // zoom motion is driven by the continuous reflow layer instead — see the
+    // reflow state inside the grid block below.
+    val effectiveCellMinSize = zoomLevel.cellMinSizeDp.dp
 
     PullToRefreshBox(
         state = pullState,
@@ -323,6 +307,57 @@ fun TimelineScreen(
                         mutableStateOf<PendingAssetAnchor?>(null)
                     }
                     val density = LocalDensity.current
+                    val scope = rememberCoroutineScope()
+
+                    // ---- Continuous pinch-reflow state ----
+                    // The base grid is frozen + hidden while the reflow layer
+                    // drives the visible transition. The pinch callbacks live in
+                    // a `pointerInput(Unit)` block (created once), so anything
+                    // that changes across recomposition is read through these
+                    // `rememberUpdatedState` mirrors rather than captured stale.
+                    val rowsLatest = rememberUpdatedState(rows)
+                    val widthLatest = rememberUpdatedState(containerWidthDp.value)
+                    val zoomLatest = rememberUpdatedState(zoomLevel)
+                    val headerCount = if (hasMemoriesHeader) {
+                        1 + (if (deviceLoading && state.error == null) 1 else 0)
+                    } else 0
+                    val headerCountLatest = rememberUpdatedState(headerCount)
+
+                    var reflowActive by remember { mutableStateOf(false) }
+                    // The two same-grouping levels currently cross-dissolving
+                    // (indices into [ladder]); only updated when a level boundary
+                    // is crossed, so per-frame zoom never recomposes.
+                    var bracketLo by remember { mutableStateOf(0) }
+                    var bracketHi by remember { mutableStateOf(0) }
+                    // The "virtual" cell size (dp) the grid is being pinched to;
+                    // read live inside the dissolve layer (no recompose).
+                    val virtualCell = remember { mutableFloatStateOf(0f) }
+                    // Captured at pinch start.
+                    var ladder by remember { mutableStateOf<List<LadderEntry>>(emptyList()) }
+                    var windowItems by remember {
+                        mutableStateOf<List<com.photonne.app.data.models.TimelineItem>>(emptyList())
+                    }
+                    var capAnchorId by remember { mutableStateOf<String?>(null) }
+                    // Anchor date: handoff fallback when the exact photo isn't in
+                    // the target rows (Year shows only a sampled subset).
+                    var capAnchorDate by remember { mutableStateOf<LocalDate?>(null) }
+                    var anchorTopYdp by remember { mutableFloatStateOf(0f) }
+                    var committedCell by remember { mutableFloatStateOf(0f) }
+                    // Grouping captured at gesture start; used for the whole
+                    // dissolve so headers never blink when the bracket crosses
+                    // into a different-grouping level.
+                    var committedGrouping by remember { mutableStateOf(zoomLevel.grouping) }
+                    // True when zooming out of Year: anchor on the photo under the
+                    // fingers (navigational dive into that month) and transform the
+                    // whole screen around it, rather than anchoring top-left.
+                    var focalZoom by remember { mutableStateOf(false) }
+                    // Set on commit; consumed by the handoff effect once the base
+                    // grid has re-packed for the new level.
+                    var pendingReflowCommit by remember { mutableStateOf<ReflowCommit?>(null) }
+                    // Set true once the settle animation has reached its target,
+                    // gating the handoff so the overlay is fully resolved before
+                    // the live grid takes over (no mid-motion jump).
+                    var reflowSettled by remember { mutableStateOf(false) }
 
                     var isFirstZoomComposition by remember { mutableStateOf(true) }
                     // Stage 1 — CAPTURE where to re-anchor the instant the zoom
@@ -340,6 +375,10 @@ fun TimelineScreen(
                             isFirstZoomComposition = false
                             return@LaunchedEffect
                         }
+                        // A reflow commit anchors the grid itself (precisely) via
+                        // the handoff effect — skip the coarse generic re-anchor
+                        // so the two don't fight over gridState.
+                        if (pendingReflowCommit != null) return@LaunchedEffect
                         if (pendingZoomAnchor == null) {
                             pendingAssetAnchor = null
                             pendingZoomAnchor = anchorDate
@@ -411,30 +450,240 @@ fun TimelineScreen(
                         onJumpHandled()
                     }
 
+                    // Reflow handoff: once the base grid has re-packed for the
+                    // committed level, scroll it so the anchor (top-left) photo
+                    // sits exactly where the dissolve layer left it, then drop the
+                    // overlay — making the swap to the live grid seamless.
+                    LaunchedEffect(pendingReflowCommit, current, reflowSettled) {
+                        val pc = pendingReflowCommit ?: return@LaunchedEffect
+                        if (!reflowSettled) return@LaunchedEffect
+                        if (current.grouping != pc.toLevel.grouping) return@LaunchedEffect
+                        if (current.packedCellMinDp != pc.toLevel.cellMinSizeDp.toFloat()) {
+                            return@LaunchedEffect
+                        }
+                        val anchorId = pc.anchorId
+                        if (anchorId != null) {
+                            // Prefer the exact photo; fall back to the date's group
+                            // when it isn't present (Year only keeps a sample).
+                            var idx = findRowIndexForAsset(current.rows, anchorId)
+                            if (idx < 0 && pc.anchorDate != null) {
+                                idx = findRowIndexForDate(
+                                    current.rows, pc.anchorDate, pc.toLevel.grouping
+                                )
+                            }
+                            if (idx >= 0) {
+                                // Offset stays signed: when the anchor row sits below
+                                // the top (Recuerdos above it) the offset is negative
+                                // and LazyColumn fills the space above with it.
+                                val off = with(density) { (-pc.anchorTopYdp).dp.roundToPx() }
+                                runCatching {
+                                    gridState.scrollToItem(headerCount + idx, off)
+                                }
+                            }
+                        }
+                        withFrameNanos {}
+                        withFrameNanos {}
+                        pendingReflowCommit = null
+                        reflowSettled = false
+                        reflowActive = false
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectTimelinePinch(
-                                    onZoomStart = {
-                                        gestureActive = true
-                                        gestureZoom = 1f
-                                    },
-                                    onZoom = { z -> gestureZoom = z },
-                                    onZoomEnd = { finalZoom ->
-                                        gestureActive = false
-                                        val fraction = if (finalZoom <= 0f) 0f
-                                        else (abs(ln(finalZoom)) / ln(1.5f))
-                                            .toFloat().coerceIn(0f, 1f)
-                                        if (fraction > 0.5f) {
-                                            val target = if (finalZoom > 1f)
-                                                nextZoomLevelIn(zoomLevel)
-                                            else nextZoomLevelOut(zoomLevel)
-                                            if (target != zoomLevel) {
-                                                zoomStore.update(target)
+                                    onZoomStart = { centroid ->
+                                        // Capture a forward window of real items.
+                                        // The dissolve spans every level in one
+                                        // gesture (Year ↔ Month ↔ Day S/M/L), using
+                                        // the committed view's on-screen photos +
+                                        // grouping throughout (Year's real sampled
+                                        // grid takes over on release).
+                                        val rws = rowsLatest.value
+                                        val hc = headerCountLatest.value
+                                        val width = widthLatest.value
+                                        val zl = zoomLatest.value
+                                        committedCell = levelNaturalCell(
+                                            width, zl.cellMinSizeDp.toFloat()
+                                        )
+                                        committedGrouping = zl.grouping
+                                        // In Year view, zooming in is navigational:
+                                        // anchor on the photo UNDER THE FINGERS so we
+                                        // dive into that month. Every other level
+                                        // anchors top-left (current scroll stays put).
+                                        val focal = zl.grouping == TimelineGrouping.Year
+                                        val vis = gridState.layoutInfo.visibleItemsInfo
+                                        val chosen = if (focal) {
+                                            vis.lastOrNull { vi ->
+                                                val e = rws.getOrNull(vi.index - hc)
+                                                e is TimelineRowEntry.Row &&
+                                                    centroid.y >= vi.offset &&
+                                                    centroid.y < vi.offset + vi.size
+                                            } ?: vis.firstOrNull {
+                                                rws.getOrNull(it.index - hc) is TimelineRowEntry.Row
+                                            }
+                                        } else {
+                                            vis.firstOrNull {
+                                                rws.getOrNull(it.index - hc) is TimelineRowEntry.Row
                                             }
                                         }
-                                        gestureZoom = 1f
+                                        val allLevels = TimelineZoomLevel.entries
+                                        if (chosen != null && allLevels.size >= 2) {
+                                            val ri = chosen.index - hc
+                                            val offsetPx = chosen.offset
+                                            val cells = (rws[ri] as TimelineRowEntry.Row).row.cells
+                                            val anchorCol = if (focal) {
+                                                val cellPx = with(density) { committedCell.dp.toPx() }
+                                                val spacingPx = with(density) { 2f.dp.toPx() }
+                                                (centroid.x / (cellPx + spacingPx)).toInt()
+                                                    .coerceIn(0, (cells.size - 1).coerceAtLeast(0))
+                                            } else 0
+                                            val anchorItem = (cells.getOrNull(anchorCol)
+                                                ?: cells.firstOrNull())?.item
+                                            capAnchorId = anchorItem?.id
+                                            capAnchorDate = anchorItem?.fileCreatedAt
+                                                ?.toLocalDateTime(TimeZone.currentSystemDefault())
+                                                ?.date
+                                            anchorTopYdp = with(density) { offsetPx.toDp().value }
+                                            // Warm Year's sampled summaries so the
+                                            // landing on Year (if the gesture ends
+                                            // there) has data ready instead of a
+                                            // skeleton.
+                                            onEnsureYearSummaries(
+                                                (width / TimelineZoomLevel.Year.cellMinSizeDp)
+                                                    .toInt().coerceAtLeast(1) * YEAR_VIEW_MAX_ROWS
+                                            )
+                                            // Focal (Year) zoom dives into the month
+                                            // under the fingers — preload that month's
+                                            // bucket now so its photos are ready when
+                                            // we land, instead of loading on arrival.
+                                            if (focal) {
+                                                anchorItem?.fileCreatedAt?.let {
+                                                    onBucketsVisible(listOf(bucketKeyOf(it)))
+                                                }
+                                            }
+                                            focalZoom = focal
+                                            // Focal zoom (Year) collects items both
+                                            // above and below the anchor so the whole
+                                            // screen transforms around it; top-left
+                                            // anchoring only needs items forward.
+                                            val start = if (focal) {
+                                                windowStartIdx(rws, ri, REFLOW_BACK_CELLS)
+                                            } else ri
+                                            val end = windowEndIdx(rws, ri, REFLOW_FWD_CELLS)
+                                            val items = ArrayList<com.photonne.app.data.models.TimelineItem>()
+                                            for (k in start until end) {
+                                                val e = rws[k]
+                                                if (e is TimelineRowEntry.Row) {
+                                                    e.row.cells.forEach { items += it.item }
+                                                }
+                                            }
+                                            windowItems = items
+                                            ladder = allLevels
+                                                .map { lvl ->
+                                                    LadderEntry(
+                                                        lvl,
+                                                        levelNaturalCell(width, lvl.cellMinSizeDp.toFloat())
+                                                    )
+                                                }
+                                                .sortedBy { it.naturalCell }
+                                            virtualCell.floatValue = committedCell
+                                            val (lo, hi) = bracketIndices(ladder, committedCell)
+                                            bracketLo = lo
+                                            bracketHi = hi
+                                            reflowActive = items.isNotEmpty() &&
+                                                capAnchorId != null && ladder.size >= 2
+                                        } else {
+                                            reflowActive = false
+                                            ladder = emptyList()
+                                        }
+                                    },
+                                    onZoom = { zoom, _ ->
+                                        if (!reflowActive) return@detectTimelinePinch
+                                        val l = ladder
+                                        if (l.isEmpty()) return@detectTimelinePinch
+                                        val minC = l.first().naturalCell
+                                        val maxC = l.last().naturalCell
+                                        val vc = (committedCell * zoom).coerceIn(minC, maxC)
+                                        virtualCell.floatValue = vc
+                                        val (lo, hi) = bracketIndices(l, vc)
+                                        if (lo != bracketLo) bracketLo = lo
+                                        if (hi != bracketHi) bracketHi = hi
+                                    },
+                                    onZoomEnd = { finalZoom ->
+                                        val zl = zoomLatest.value
+                                        if (!reflowActive) {
+                                            // No dissolve was shown (cross-grouping
+                                            // or no neighbours): instant one-step
+                                            // commit past the half-way threshold.
+                                            val dir = if (finalZoom > 1f) 1 else -1
+                                            val all = TimelineZoomLevel.entries
+                                            val target = all.getOrNull(zl.ordinal + dir) ?: zl
+                                            if (kotlin.math.abs(kotlin.math.ln(finalZoom)) >
+                                                kotlin.math.ln(1.5f) * 0.5f && target != zl
+                                            ) {
+                                                zoomStore.update(target)
+                                            }
+                                            return@detectTimelinePinch
+                                        }
+                                        val l = ladder
+                                        if (l.isEmpty()) { reflowActive = false; return@detectTimelinePinch }
+                                        val vc = virtualCell.floatValue
+                                        val lo = bracketLo.coerceIn(0, l.size - 1)
+                                        val hi = bracketHi.coerceIn(0, l.size - 1)
+                                        val loC = l[lo].naturalCell
+                                        val hiC = l[hi].naturalCell
+                                        val f = if (hiC > loC)
+                                            ((vc - loC) / (hiC - loC)).coerceIn(0f, 1f) else 0f
+                                        val targetIdx = if (f > 0.5f) hi else lo
+                                        val targetEntry = l[targetIdx]
+                                        val targetLevel = targetEntry.level
+                                        val targetCell = targetEntry.naturalCell
+                                        if (targetLevel == zl) {
+                                            // Clamped at a ladder end. If the user
+                                            // keeps pinching toward an out-of-ladder
+                                            // neighbour (e.g. Month → Year, which is
+                                            // sampled and has no dissolve yet),
+                                            // commit to it instantly past a firmer
+                                            // threshold; otherwise spring back.
+                                            val dir = if (finalZoom > 1f) 1 else -1
+                                            val beyond = TimelineZoomLevel.entries
+                                                .getOrNull(zl.ordinal + dir)
+                                            val strong = kotlin.math.abs(kotlin.math.ln(finalZoom)) >
+                                                kotlin.math.ln(1.5f) * 0.75f
+                                            // Only instant-jump to a level the
+                                            // dissolve doesn't cover (Year).
+                                            if (beyond != null && strong &&
+                                                ladder.none { it.level == beyond }
+                                            ) {
+                                                reflowActive = false
+                                                virtualCell.floatValue = committedCell
+                                                zoomStore.update(beyond)
+                                            } else {
+                                                scope.launch {
+                                                    animateReflow(
+                                                        virtualCell.floatValue, committedCell
+                                                    ) { virtualCell.floatValue = it }
+                                                    reflowActive = false
+                                                }
+                                            }
+                                        } else {
+                                            reflowSettled = false
+                                            pendingReflowCommit = ReflowCommit(
+                                                anchorId = capAnchorId,
+                                                anchorDate = capAnchorDate,
+                                                anchorTopYdp = anchorTopYdp,
+                                                toLevel = targetLevel
+                                            )
+                                            zoomStore.update(targetLevel)
+                                            scope.launch {
+                                                animateReflow(
+                                                    virtualCell.floatValue, targetCell
+                                                ) { virtualCell.floatValue = it }
+                                                reflowSettled = true
+                                            }
+                                        }
                                     }
                                 )
                             }
@@ -546,8 +795,62 @@ fun TimelineScreen(
                                     }
                                 }
                             } else null,
+                            // Frozen while a pinch plays. NOT hidden: the dissolve
+                            // overlay only paints from the anchor row down, so the
+                            // base keeps showing the chrome above it (Recuerdos /
+                            // pinned header) instead of it blinking out.
+                            userScrollEnabled = !reflowActive,
                             modifier = Modifier.fillMaxSize()
                         )
+
+                        // Per-cell dissolve layer. Top-left mode (Day/Month) anchors
+                        // the first visible photo and paints only below it (chrome
+                        // above keeps showing). Focal mode (zoom out of Year) anchors
+                        // the photo under the fingers and transforms the whole screen
+                        // around it. Rebuilt only when the bracket pair changes.
+                        if (reflowActive && ladder.size >= 2) {
+                            val lo = bracketLo.coerceIn(0, ladder.size - 1)
+                            val hi = bracketHi.coerceIn(0, ladder.size - 1)
+                            val plan = remember(
+                                lo, hi, windowItems, containerWidthDp, committedGrouping, capAnchorId
+                            ) {
+                                buildDissolvePlan(
+                                    items = windowItems,
+                                    grouping = committedGrouping,
+                                    loCellMinDp = ladder[lo].level.cellMinSizeDp.toFloat(),
+                                    hiCellMinDp = ladder[hi].level.cellMinSizeDp.toFloat(),
+                                    widthDp = containerWidthDp.value,
+                                    anchorId = capAnchorId,
+                                    baseUrl = apiBaseUrl
+                                )
+                            }
+                            if (plan != null) {
+                                val surfaceColor = MaterialTheme.colorScheme.surface
+                                val isFocal = focalZoom
+                                val anchorTopPx = with(density) { anchorTopYdp.dp.toPx() }
+                                ZoomDissolveLayer(
+                                    plan = plan,
+                                    virtualCell = { virtualCell.floatValue },
+                                    anchorScreenYdp = anchorTopYdp,
+                                    skipFirstHeader = !isFocal,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .drawBehind {
+                                            // Focal: cover the whole screen (the
+                                            // dissolve replaces everything). Top-left:
+                                            // cover only below the anchor so the
+                                            // chrome above keeps showing from the base.
+                                            val top = if (isFocal) 0f
+                                            else anchorTopPx.coerceAtLeast(0f)
+                                            drawRect(
+                                                color = surfaceColor,
+                                                topLeft = Offset(0f, top),
+                                                size = Size(size.width, size.height - top)
+                                            )
+                                        }
+                                )
+                            }
+                        }
                     }
 
                     TimelineScrubber(
@@ -697,19 +1000,88 @@ private const val SCROLL_TO_TOP_MIN_INDEX = 24
 /** Where the tap teleports to before animating the rest of the way up. */
 private const val SCROLL_TO_TOP_SNAP_INDEX = 12
 
+/** How many cells forward the dissolve window covers from the top-left anchor.
+ * Enough to fill the screen at the densest level plus a margin; larger means a
+ * heavier one-time compose when the gesture starts. */
+private const val REFLOW_FWD_CELLS = 96
+
+/** Cells above the anchor to include for a focal (Year) zoom. */
+private const val REFLOW_BACK_CELLS = 60
+
+/** Settle duration after the finger lifts (commit or cancel), ms. */
+private const val REFLOW_SETTLE_MS = 200
+
+/** One zoom level paired with its natural cell size (dp) at the current width. */
+private data class LadderEntry(
+    val level: TimelineZoomLevel,
+    val naturalCell: Float
+)
+
 /**
- * Returns the next-most-zoomed-in level. Levels are ordered Year (most
- * zoomed-out) → Month → DayLarge → DayMedium → DaySmall (most zoomed-in).
+ * Pending zoom commit: where to land the freshly re-packed base grid so the
+ * handoff from the dissolve layer is seamless.
  */
-private fun nextZoomLevelIn(current: TimelineZoomLevel): TimelineZoomLevel {
-    val all = TimelineZoomLevel.entries
-    return all.getOrNull(current.ordinal + 1) ?: current
+private data class ReflowCommit(
+    val anchorId: String?,
+    /** Fallback when [anchorId] isn't in the target rows (Year is sampled). */
+    val anchorDate: LocalDate?,
+    /** Screen-space top Y (dp) the anchor row should keep after the swap. */
+    val anchorTopYdp: Float,
+    val toLevel: TimelineZoomLevel
+)
+
+/** Bracketing ladder indices (lo, hi) surrounding [cell] (by natural size). */
+private fun bracketIndices(ladder: List<LadderEntry>, cell: Float): Pair<Int, Int> {
+    if (ladder.isEmpty()) return 0 to 0
+    if (cell <= ladder.first().naturalCell) return 0 to 0
+    val last = ladder.size - 1
+    if (cell >= ladder.last().naturalCell) return last to last
+    for (i in 0 until last) {
+        if (cell >= ladder[i].naturalCell && cell <= ladder[i + 1].naturalCell) {
+            return i to (i + 1)
+        }
+    }
+    return last to last
 }
 
-/** Inverse of [nextZoomLevelIn]: returns the next-most-zoomed-out level. */
-private fun nextZoomLevelOut(current: TimelineZoomLevel): TimelineZoomLevel {
-    val all = TimelineZoomLevel.entries
-    return all.getOrNull(current.ordinal - 1) ?: current
+private fun rowCellCount(entry: TimelineRowEntry): Int = when (entry) {
+    is TimelineRowEntry.Row -> entry.row.cells.size
+    is TimelineRowEntry.SkeletonRow -> entry.cellCount
+    is TimelineRowEntry.Header -> 0
+}
+
+/** Window start index: back from [from] until [cellCap] cells covered (>=0). */
+private fun windowStartIdx(rows: List<TimelineRowEntry>, from: Int, cellCap: Int): Int {
+    var i = from
+    var cells = 0
+    while (i > 0 && cells < cellCap) {
+        cells += rowCellCount(rows[i - 1])
+        i--
+    }
+    return i
+}
+
+/** Window end index (exclusive): forward from [from] until [cellCap] cells covered. */
+private fun windowEndIdx(rows: List<TimelineRowEntry>, from: Int, cellCap: Int): Int {
+    var i = from
+    var cells = 0
+    while (i < rows.size && cells < cellCap) {
+        cells += rowCellCount(rows[i])
+        i++
+    }
+    return i
+}
+
+/** Animates [virtualCell] toward [target], emitting each frame to [onFrame]. */
+private suspend fun animateReflow(from: Float, target: Float, onFrame: (Float) -> Unit) {
+    androidx.compose.animation.core.animate(
+        initialValue = from,
+        targetValue = target,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = REFLOW_SETTLE_MS,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        )
+    ) { value, _ -> onFrame(value) }
 }
 
 /**
@@ -775,7 +1147,13 @@ private data class PackedTimeline(
      * reports the OLD grouping until the new rows land — the re-anchor logic
      * gates on it so it never scrolls against stale (wrong-grouping) rows.
      */
-    val grouping: TimelineGrouping
+    val grouping: TimelineGrouping,
+    /**
+     * Minimum cell size these rows were packed at — lets the reflow handoff
+     * tell when the base grid has caught up with the committed level even for
+     * same-grouping (Day S/M/L) changes, where [grouping] alone doesn't move.
+     */
+    val packedCellMinDp: Float
 )
 
 /** The CPU-heavy derivation pipeline — always called on a background dispatcher. */
@@ -828,7 +1206,8 @@ private fun derivePackedTimeline(
         entries = entries,
         rows = rows,
         keyToBucket = keyToBucket,
-        grouping = grouping
+        grouping = grouping,
+        packedCellMinDp = minCellSizeDp
     )
 }
 

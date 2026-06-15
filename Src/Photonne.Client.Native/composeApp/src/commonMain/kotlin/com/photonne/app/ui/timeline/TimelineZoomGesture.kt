@@ -2,8 +2,10 @@ package com.photonne.app.ui.timeline
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.positionChanged
@@ -26,8 +28,8 @@ import kotlin.math.abs
  * the start of the gesture (1.0 == no change), not per-event.
  */
 suspend fun PointerInputScope.detectTimelinePinch(
-    onZoomStart: () -> Unit,
-    onZoom: (cumulativeZoom: Float) -> Unit,
+    onZoomStart: (centroid: Offset) -> Unit,
+    onZoom: (cumulativeZoom: Float, centroid: Offset) -> Unit,
     onZoomEnd: (finalZoom: Float) -> Unit
 ) {
     awaitEachGesture {
@@ -58,12 +60,13 @@ suspend fun PointerInputScope.detectTimelinePinch(
                 val zoomMotion = abs(1f - cumulativeZoom) * centroidSize
                 if (zoomMotion > touchSlop) {
                     pastTouchSlop = true
-                    onZoomStart()
-                    onZoom(cumulativeZoom)
+                    val centroid = event.calculateCentroid(useCurrent = true)
+                    onZoomStart(centroid)
+                    onZoom(cumulativeZoom, centroid)
                     event.changes.forEach { if (it.positionChanged()) it.consume() }
                 }
             } else if (zoomChange != 1f) {
-                onZoom(cumulativeZoom)
+                onZoom(cumulativeZoom, event.calculateCentroid(useCurrent = true))
                 event.changes.forEach { if (it.positionChanged()) it.consume() }
             }
         } while (event.changes.any { it.pressed })

@@ -247,6 +247,12 @@ internal fun GroupedAssetGrid(
      * teleports stay cheap.
      */
     suppressThumbnails: Boolean = false,
+    /**
+     * Disables user scrolling. Flipped off while the zoom-reflow layer is
+     * driving the visible transition so the frozen base grid underneath
+     * can't be scrolled out from under it.
+     */
+    userScrollEnabled: Boolean = true,
     cellSpacing: Dp = 2.dp,
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
@@ -262,6 +268,7 @@ internal fun GroupedAssetGrid(
     val segments = remember(rows) { segmentRows(rows) }
     LazyColumn(
         state = state,
+        userScrollEnabled = userScrollEnabled,
         verticalArrangement = Arrangement.spacedBy(cellSpacing),
         modifier = modifier.fillMaxSize()
     ) {

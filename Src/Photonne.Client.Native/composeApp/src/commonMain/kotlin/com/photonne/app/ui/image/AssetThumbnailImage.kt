@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import com.photonne.app.data.models.TimelineItem
 
 /**
@@ -75,10 +77,27 @@ fun AssetThumbnailImage(
     }
     var failed by remember(model) { mutableStateOf(false) }
 
+    val platformContext = LocalPlatformContext.current
+    // Pin an explicit memory-cache key AND use it as the placeholder key, so a
+    // freshly-composed cell paints the cached bitmap synchronously instead of
+    // flashing empty for a frame while Coil re-resolves it. This is what makes
+    // the live grid take over from the zoom dissolve overlay without the cells
+    // appearing to reload; it also smooths normal LazyGrid recycling. The key
+    // includes [size] so the grid (Small) and the detail poster (larger) don't
+    // collide on local items, whose model is size-agnostic.
+    val request = remember(model, size) {
+        model?.let {
+            ImageRequest.Builder(platformContext)
+                .data(it)
+                .memoryCacheKey("$it|$size")
+                .placeholderMemoryCacheKey("$it|$size")
+                .build()
+        }
+    }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (model != null && !failed) {
+        if (request != null && !failed) {
             AsyncImage(
-                model = model,
+                model = request,
                 contentDescription = item.fileName,
                 contentScale = contentScale,
                 modifier = Modifier.fillMaxSize(),
