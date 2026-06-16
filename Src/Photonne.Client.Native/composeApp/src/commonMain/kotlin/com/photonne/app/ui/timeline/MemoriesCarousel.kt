@@ -52,13 +52,14 @@ internal fun groupMemoriesByDay(
     currentYear: Int
 ): List<MemoryGroup> {
     if (items.isEmpty()) return emptyList()
+    // The server already constrains a memory to a single calendar day (it
+    // filters by CapturedAt month+day in UTC), so the only meaningful axis here
+    // is the year. Grouping by the locally-derived month+day would split a
+    // single day's memory in two whenever a timezone offset pushes some assets
+    // across midnight — producing two cards both labelled "N years ago".
     return items
-        .groupBy {
-            val date = it.fileCreatedAt.toLocalDateTime(zone).date
-            Triple(date.year, date.monthNumber, date.dayOfMonth)
-        }
-        .map { (key, group) ->
-            val (year, _, _) = key
+        .groupBy { it.fileCreatedAt.toLocalDateTime(zone).date.year }
+        .map { (year, group) ->
             val yearsAgo = (currentYear - year).coerceAtLeast(1)
             MemoryGroup(items = group, yearsAgo = yearsAgo)
         }
