@@ -10,6 +10,7 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.timeline.TimelineBucketState
 import com.photonne.app.data.timeline.TimelineBucketStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +77,12 @@ class TimelineViewModel(
                     _state.update { it.copy(isInitialLoading = false, isRefreshing = false) }
                 }
                 .onFailure { error ->
+                    // A refresh() that supersedes an in-flight one (e.g. the
+                    // effective URL flipping LAN↔público) cancels this job. That
+                    // cancellation is not a load error — swallowing it here would
+                    // strand a spurious banner over the successful reload — so
+                    // honour cooperative cancellation and rethrow.
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(
                             isInitialLoading = false,

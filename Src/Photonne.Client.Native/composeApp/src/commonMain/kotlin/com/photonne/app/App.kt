@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
@@ -406,13 +408,28 @@ fun App() {
     val themeStore: com.photonne.app.data.settings.ThemePreferenceStore = koinInject()
     val themePreference by themeStore.value.collectAsState()
 
+    val sessionBootstrapper: com.photonne.app.data.auth.SessionBootstrapper = koinInject()
+    LaunchedEffect(Unit) {
+        sessionBootstrapper.restore()
+    }
+
     PhotonneTheme(preference = themePreference) {
         val authState: AuthStateHolder = koinInject()
         val state by authState.state.collectAsState()
         when (val current = state) {
             is AuthState.Authenticated -> AuthenticatedApp(user = current)
-            AuthState.Unauthenticated, AuthState.Unknown -> LoginScreen()
+            AuthState.Unauthenticated -> LoginScreen()
+            // Booting: restoring a persisted session. Show a neutral splash so
+            // the login screen never flashes before the timeline appears.
+            AuthState.Unknown -> SessionLoadingScreen()
         }
+    }
+}
+
+@Composable
+private fun SessionLoadingScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
 
@@ -436,6 +453,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
     val foldersViewModel: FoldersViewModel = koinViewModel()
+    // La primera carga de las pantallas principales corre en el init de su
+    // ViewModel contra la URL pública, antes de que el probe de reachability
+    // decida LAN↔público. Desde dentro de la LAN de casa esa petición hace
+    // connect-timeout (la pública no es alcanzable sin NAT hairpin). Cuando el
+    // probe voltea la URL efectiva, recargamos: cancela la petición condenada y
+    // reintenta contra la LAN, así el usuario no se queda atrapado en un error
+    // con botón "reintentar". Se ignora el valor inicial (ya lo cargó el init).
+    var lastEffectiveUrl by remember { mutableStateOf(apiBaseUrl) }
+    LaunchedEffect(apiBaseUrl) {
+        if (apiBaseUrl != lastEffectiveUrl) {
+            lastEffectiveUrl = apiBaseUrl
+            if (apiBaseUrl.isNotBlank()) {
+                timelineViewModel.refresh()
+                albumsViewModel.refresh()
+                foldersViewModel.refresh()
+            }
+        }
+    }
     val folderDetailViewModel: com.photonne.app.ui.folder.FolderDetailViewModel = koinViewModel()
     val folderPermissionsViewModel: FolderPermissionsViewModel = koinViewModel()
     val albumSharesViewModel: AlbumSharesViewModel = koinViewModel()

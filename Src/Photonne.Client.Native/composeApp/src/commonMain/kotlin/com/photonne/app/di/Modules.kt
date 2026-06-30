@@ -21,6 +21,7 @@ import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.auth.RememberedCredentialsStore
+import com.photonne.app.data.auth.SessionBootstrapper
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.map.MapRepository
@@ -126,6 +127,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { UiErrorFactory(urlStore = get(), versionStore = get()) }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
+    singleOf(::SessionBootstrapper)
     singleOf(::AdminRepository)
     single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }
     single { com.photonne.app.db.PhotonneDatabase(com.photonne.app.data.db.createPhotonneDatabaseDriver()) }

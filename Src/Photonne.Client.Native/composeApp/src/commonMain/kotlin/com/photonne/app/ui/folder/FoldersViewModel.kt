@@ -12,6 +12,8 @@ import com.photonne.app.data.folder.filterSharedFolders
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.russhwolf.settings.Settings
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,6 +94,7 @@ class FoldersViewModel(
     val state: StateFlow<FoldersUiState> = _state.asStateFlow()
 
     private var allFolders: List<FolderSummary> = emptyList()
+    private var refreshJob: Job? = null
 
     init { refresh() }
 
@@ -141,8 +144,9 @@ class FoldersViewModel(
 
     fun refresh() {
         val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
+        refreshJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             runCatching {
                 // supervisorScope keeps a child failure (e.g. /folders → 500)
                 // from cancelling the parent launch and escaping runCatching
@@ -181,6 +185,11 @@ class FoldersViewModel(
                     }
                 }
                 .onFailure { error ->
+                    // A refresh() that supersedes this one (e.g. the effective
+                    // URL flipping LAN↔público) cancels this job; that is not a
+                    // load error, so honour cancellation and rethrow rather than
+                    // paint a banner over the successful reload.
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(
                             isLoading = false,
