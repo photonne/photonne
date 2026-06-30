@@ -6,7 +6,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -16,6 +16,13 @@ private class FakeNetworkMonitor : NetworkMonitor {
     override val changes: Flow<Unit> = emptyFlow()
 }
 
+/**
+ * Lives in the desktop (JVM) test source set rather than commonTest so it can
+ * use [runBlocking]: runProbe wraps its HEAD in withTimeoutOrNull, which races
+ * the MockEngine response against the virtual clock under runTest and reports a
+ * spurious timeout. Real time avoids that; the probe logic itself is
+ * platform-agnostic, so desktop coverage is sufficient.
+ */
 class LocalReachabilityProbeTest {
 
     private fun store(local: String?): ServerUrlStore =
@@ -25,7 +32,7 @@ class LocalReachabilityProbeTest {
         }
 
     @Test
-    fun marks_unreachable_when_no_local_configured() = runTest {
+    fun marks_unreachable_when_no_local_configured() = runBlocking {
         val store = store(local = null)
         var calls = 0
         val client = HttpClient(MockEngine { calls++; respond("", HttpStatusCode.OK) })
@@ -37,7 +44,7 @@ class LocalReachabilityProbeTest {
     }
 
     @Test
-    fun marks_reachable_when_head_succeeds() = runTest {
+    fun marks_reachable_when_head_succeeds() = runBlocking {
         val store = store(local = "http://192.168.1.10:5000")
         val client = HttpClient(MockEngine { respond("", HttpStatusCode.OK) })
         val probe = LocalReachabilityProbe(client, store, FakeNetworkMonitor())
@@ -49,7 +56,7 @@ class LocalReachabilityProbeTest {
     }
 
     @Test
-    fun retries_then_succeeds() = runTest {
+    fun retries_then_succeeds() = runBlocking {
         val store = store(local = "http://192.168.1.10:5000")
         var calls = 0
         val client = HttpClient(MockEngine {
@@ -65,7 +72,7 @@ class LocalReachabilityProbeTest {
     }
 
     @Test
-    fun marks_unreachable_after_all_attempts_miss() = runTest {
+    fun marks_unreachable_after_all_attempts_miss() = runBlocking {
         val store = store(local = "http://192.168.1.10:5000")
         var calls = 0
         val client = HttpClient(MockEngine { calls++; throw RuntimeException("unreachable") })
