@@ -7,6 +7,8 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
 import com.russhwolf.settings.Settings
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,6 +68,8 @@ class AlbumsViewModel(
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<AlbumsUiState> = _state.asStateFlow()
 
+    private var refreshJob: Job? = null
+
     init { refresh() }
 
     private fun loadInitialState(): AlbumsUiState {
@@ -118,8 +122,9 @@ class AlbumsViewModel(
     }
 
     fun refresh() {
+        refreshJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             runCatching { repository.list() }
                 .onSuccess { albums ->
                     _state.update {
@@ -134,6 +139,11 @@ class AlbumsViewModel(
                     }
                 }
                 .onFailure { error ->
+                    // A refresh() that supersedes this one (e.g. the effective
+                    // URL flipping LAN↔público) cancels this job; that is not a
+                    // load error, so honour cancellation and rethrow rather than
+                    // paint a banner over the successful reload.
+                    if (error is CancellationException) throw error
                     _state.update {
                         it.copy(
                             isLoading = false,

@@ -15,6 +15,7 @@ class AuthRepository(
         val deviceId = tokenStorage.getDeviceId()
         val response = api.login(username = username, password = password, deviceId = deviceId)
         tokenStorage.saveTokens(response.token, response.refreshToken)
+        tokenStorage.saveUser(response.user)
         authStateHolder.update(AuthState.Authenticated(response.user))
         // The backup ledger's verdicts are only valid for one account on one
         // server. Logging into a different one wipes them so stale "synced"

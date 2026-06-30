@@ -614,6 +614,11 @@ interface PhotonneApi {
         // inside getTimeline() for why this exists as a safety net.
         const val TIMELINE_REQUEST_TIMEOUT_MS: Long = 180_000
 
+        // Connect-phase timeout for the timeline calls. Short on purpose: the
+        // long request/socket budgets above must not also delay failing a
+        // connect to an unreachable host (the public URL from inside the LAN).
+        const val TIMELINE_CONNECT_TIMEOUT_MS: Long = 4_000
+
         // Idle (socket) timeout for the backup data path. See
         // backupIdleTimeout() for the rationale — fail fast on a half-open
         // socket after a WiFi↔cellular switch instead of hanging forever.
@@ -664,6 +669,7 @@ class PhotonneApiClient(
             timeout {
                 requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
                 socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                connectTimeoutMillis = PhotonneApi.TIMELINE_CONNECT_TIMEOUT_MS
             }
             parameter("pageSize", pageSize)
             if (cursor != null) parameter("cursor", cursor.toString())
@@ -695,6 +701,7 @@ class PhotonneApiClient(
             timeout {
                 requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
                 socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                connectTimeoutMillis = PhotonneApi.TIMELINE_CONNECT_TIMEOUT_MS
             }
         }
         if (response.status != HttpStatusCode.OK) {
@@ -713,6 +720,7 @@ class PhotonneApiClient(
             timeout {
                 requestTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
                 socketTimeoutMillis = PhotonneApi.TIMELINE_REQUEST_TIMEOUT_MS
+                connectTimeoutMillis = PhotonneApi.TIMELINE_CONNECT_TIMEOUT_MS
             }
             parameter("sample", sample)
         }

@@ -3,6 +3,7 @@ package com.photonne.app.data.account
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
+import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.models.ChangePasswordRequest
 import com.photonne.app.data.models.StorageInfoDto
 import com.photonne.app.data.models.UpdateProfileRequest
@@ -16,10 +17,12 @@ import com.photonne.app.data.models.UserDto
  */
 class AccountRepository(
     private val api: PhotonneApi,
-    private val authStateHolder: AuthStateHolder
+    private val authStateHolder: AuthStateHolder,
+    private val tokenStorage: TokenStorage
 ) {
     suspend fun refreshCurrentUser(): UserDto {
         val user = api.getCurrentUser()
+        tokenStorage.saveUser(user)
         authStateHolder.update(AuthState.Authenticated(user))
         return user
     }
@@ -38,6 +41,7 @@ class AccountRepository(
                 lastName = lastName
             )
         )
+        tokenStorage.saveUser(updated)
         authStateHolder.update(AuthState.Authenticated(updated))
         return updated
     }

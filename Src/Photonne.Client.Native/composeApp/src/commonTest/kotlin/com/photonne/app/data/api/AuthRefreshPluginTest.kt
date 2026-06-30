@@ -81,7 +81,7 @@ class AuthRefreshPluginTest {
     }
 
     @Test
-    fun marks_unauthenticated_when_refresh_fails() = runTest {
+    fun marks_unauthenticated_when_refresh_rejected() = runTest {
         val storage = FakeTokenStorage()
         val authState = AuthStateHolder()
 
@@ -104,5 +104,114 @@ class AuthRefreshPluginTest {
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertEquals(AuthState.Unauthenticated, authState.state.value)
         assertEquals(1, storage.clearedTimes)
+    }
+
+    @Test
+    fun logs_out_when_refresh_returns_403() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/protected" -> respond("", HttpStatusCode.Unauthorized)
+                "/api/auth/refresh" -> respond("", HttpStatusCode.Forbidden)
+                else -> respond("nope", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState
+        )
+
+        val response: HttpResponse = client.get("http://test.local/api/protected")
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(AuthState.Unauthenticated, authState.state.value)
+        assertEquals(1, storage.clearedTimes)
+    }
+
+    @Test
+    fun preserves_session_when_refresh_throws() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/protected" -> respond("", HttpStatusCode.Unauthorized)
+                // Simulate a transient network failure during refresh.
+                "/api/auth/refresh" -> throw RuntimeException("connect timeout")
+                else -> respond("nope", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState
+        )
+
+        val response: HttpResponse = client.get("http://test.local/api/protected")
+        // Original 401 surfaces, but the session is left intact for a retry.
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(AuthState.Unknown, authState.state.value)
+        assertEquals(0, storage.clearedTimes)
+    }
+
+    @Test
+    fun preserves_session_when_refresh_returns_5xx() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+
+        val engine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/api/protected" -> respond("", HttpStatusCode.Unauthorized)
+                "/api/auth/refresh" -> respond("", HttpStatusCode.InternalServerError)
+                else -> respond("nope", HttpStatusCode.NotFound)
+            }
+        }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState
+        )
+
+        val response: HttpResponse = client.get("http://test.local/api/protected")
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(AuthState.Unknown, authState.state.value)
+        assertEquals(0, storage.clearedTimes)
+    }
+
+    @Test
+    fun fires_connection_error_callback_when_request_throws() = runTest {
+        val storage = FakeTokenStorage()
+        val authState = AuthStateHolder()
+        var connectionErrors = 0
+
+        val engine = MockEngine { throw RuntimeException("connect timeout") }
+
+        val client = buildPhotonneHttpClient(
+            engine = engine,
+            baseUrl = "http://test.local",
+            tokenStorage = storage,
+            authState = authState,
+            onConnectionError = { connectionErrors++ }
+        )
+
+        var thrown = false
+        try {
+            client.get("http://test.local/api/protected")
+        } catch (_: Throwable) {
+            thrown = true
+        }
+        assertTrue(thrown)
+        assertEquals(1, connectionErrors)
+        // A connection failure is not an auth failure — session untouched.
+        assertEquals(0, storage.clearedTimes)
+        assertEquals(AuthState.Unknown, authState.state.value)
     }
 }

@@ -21,6 +21,7 @@ import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.auth.RememberedCredentialsStore
+import com.photonne.app.data.auth.SessionBootstrapper
 import com.photonne.app.data.auth.SettingsTokenStorage
 import com.photonne.app.data.auth.TokenStorage
 import com.photonne.app.data.map.MapRepository
@@ -111,7 +112,10 @@ fun commonModule(config: PhotonneAppConfig) = module {
             engine = get<HttpClientEngine>(),
             baseUrlProvider = { urlStore.requireBaseUrl() },
             tokenStorage = get(),
-            authState = get()
+            authState = get(),
+            // Resolved lazily (only invoked on a request-time connection
+            // failure) so the probe→client construction order isn't a cycle.
+            onConnectionError = { get<LocalReachabilityProbe>().requestReprobe() }
         )
     }
     single<PhotonneApi> {
@@ -123,6 +127,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { UiErrorFactory(urlStore = get(), versionStore = get()) }
     singleOf(::AuthRepository)
     singleOf(::AccountRepository)
+    singleOf(::SessionBootstrapper)
     singleOf(::AdminRepository)
     single { com.photonne.app.data.utilities.UtilitiesRepository(get()) }
     single { com.photonne.app.db.PhotonneDatabase(com.photonne.app.data.db.createPhotonneDatabaseDriver()) }
