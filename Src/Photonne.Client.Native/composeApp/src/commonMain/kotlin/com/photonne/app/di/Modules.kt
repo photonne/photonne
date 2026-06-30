@@ -111,7 +111,10 @@ fun commonModule(config: PhotonneAppConfig) = module {
             engine = get<HttpClientEngine>(),
             baseUrlProvider = { urlStore.requireBaseUrl() },
             tokenStorage = get(),
-            authState = get()
+            authState = get(),
+            // Resolved lazily (only invoked on a request-time connection
+            // failure) so the probe→client construction order isn't a cycle.
+            onConnectionError = { get<LocalReachabilityProbe>().requestReprobe() }
         )
     }
     single<PhotonneApi> {

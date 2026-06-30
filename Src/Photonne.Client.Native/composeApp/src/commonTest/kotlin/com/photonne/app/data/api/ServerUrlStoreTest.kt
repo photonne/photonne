@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  * `multiplatform-settings-test` in as a runtime dep because the store only
  * exercises string keys.
  */
-private class InMemorySettings : Settings {
+class InMemorySettings : Settings {
     private val map = mutableMapOf<String, Any?>()
     override val keys: Set<String> get() = map.keys
     override val size: Int get() = map.size

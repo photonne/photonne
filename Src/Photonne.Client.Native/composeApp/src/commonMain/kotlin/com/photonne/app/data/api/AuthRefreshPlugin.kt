@@ -26,6 +26,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.client.request.takeFrom
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -43,6 +44,21 @@ fun HttpRequestBuilder.skipAuthRefresh() {
 }
 
 /**
+ * Outcome of a token refresh attempt. The distinction between [AuthRejected]
+ * and [Transient] is what keeps a transient network blip — extremely common
+ * mid network-switch, or when the refresh itself hits a public URL that is
+ * unreachable from inside the LAN — from nuking a perfectly valid session.
+ */
+private enum class RefreshOutcome {
+    /** Server issued new tokens. */
+    Success,
+    /** Server definitively rejected the refresh token (401/403): log out. */
+    AuthRejected,
+    /** Network error, timeout, or 5xx: inconclusive — keep the session. */
+    Transient,
+}
+
+/**
  * Refresh-on-401 mirror of Photonne.Client.Web/Services/AuthRefreshHandler.cs.
  * Uses a mutex so concurrent 401s only trigger one refresh.
  */
@@ -50,14 +66,16 @@ fun buildPhotonneHttpClient(
     engine: HttpClientEngine,
     baseUrl: String,
     tokenStorage: TokenStorage,
-    authState: AuthStateHolder
-): HttpClient = buildPhotonneHttpClient(engine, { baseUrl }, tokenStorage, authState)
+    authState: AuthStateHolder,
+    onConnectionError: (() -> Unit)? = null
+): HttpClient = buildPhotonneHttpClient(engine, { baseUrl }, tokenStorage, authState, onConnectionError)
 
 fun buildPhotonneHttpClient(
     engine: HttpClientEngine,
     baseUrlProvider: () -> String,
     tokenStorage: TokenStorage,
-    authState: AuthStateHolder
+    authState: AuthStateHolder,
+    onConnectionError: (() -> Unit)? = null
 ): HttpClient {
     val refreshMutex = Mutex()
 
@@ -90,6 +108,12 @@ fun buildPhotonneHttpClient(
         // streams that would legitimately sit quiet for >30 s already opt out.
         install(HttpTimeout) {
             socketTimeoutMillis = 30_000
+            // Bound the connect phase so a request to an unreachable host (the
+            // classic case: the public URL is not reachable from inside the
+            // home LAN without NAT hairpin) fails in 4 s instead of OkHttp's
+            // 10 s default. This also caps how long a Transient refresh can
+            // hold the refresh mutex below.
+            connectTimeoutMillis = 4_000
         }
         install(Logging) {
             logger = object : Logger {
@@ -111,16 +135,37 @@ fun buildPhotonneHttpClient(
             request.headers[HttpHeaders.Authorization] = "Bearer $token"
         }
 
-        val firstCall = execute(request)
+        // A thrown exception here is a connection/timeout failure (a non-2xx
+        // status returns normally and is handled below). Nudge the reachability
+        // probe so a request that connect-timed-out against the public URL while
+        // on the LAN can re-discover the local URL — then rethrow so the caller
+        // still sees the error for this attempt.
+        val firstCall = try {
+            execute(request)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            onConnectionError?.invoke()
+            throw t
+        }
         if (firstCall.response.status != HttpStatusCode.Unauthorized) return@intercept firstCall
 
-        val refreshed = refreshMutex.withLock {
+        val outcome = refreshMutex.withLock {
             attemptRefresh(client, baseUrlProvider(), tokenStorage)
         }
-        if (!refreshed) {
-            tokenStorage.clear()
-            authState.update(AuthState.Unauthenticated)
-            return@intercept firstCall
+        when (outcome) {
+            RefreshOutcome.Success -> Unit // fall through to retry with the new token
+            RefreshOutcome.AuthRejected -> {
+                tokenStorage.clear()
+                authState.update(AuthState.Unauthenticated)
+                return@intercept firstCall
+            }
+            RefreshOutcome.Transient -> {
+                // Network/timeout/5xx during refresh — inconclusive. Do NOT clear
+                // a valid session; surface the original 401 and let the next
+                // request retry once connectivity / the effective URL is correct.
+                return@intercept firstCall
+            }
         }
 
         val retry = HttpRequestBuilder().takeFrom(request)
@@ -137,8 +182,10 @@ private suspend fun attemptRefresh(
     client: HttpClient,
     baseUrl: String,
     tokenStorage: TokenStorage
-): Boolean {
-    val refreshToken = tokenStorage.getRefreshToken() ?: return false
+): RefreshOutcome {
+    // No refresh token to spend — nothing transient about it, so this is a
+    // definitive auth failure.
+    val refreshToken = tokenStorage.getRefreshToken() ?: return RefreshOutcome.AuthRejected
     val deviceId = tokenStorage.getDeviceId()
     return try {
         val response: HttpResponse = client.post("$baseUrl/api/auth/refresh") {
@@ -146,11 +193,25 @@ private suspend fun attemptRefresh(
             contentType(ContentType.Application.Json)
             setBody(RefreshTokenRequest(refreshToken = refreshToken, deviceId = deviceId))
         }
-        if (response.status != HttpStatusCode.OK) return false
-        val body: RefreshTokenResponse = response.body()
-        tokenStorage.saveTokens(body.token, body.refreshToken)
-        true
+        when (response.status) {
+            HttpStatusCode.OK -> {
+                val body: RefreshTokenResponse = response.body()
+                tokenStorage.saveTokens(body.token, body.refreshToken)
+                RefreshOutcome.Success
+            }
+            // The server explicitly rejected the refresh token (expired/revoked).
+            HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> RefreshOutcome.AuthRejected
+            // 5xx / 0 / anything else: the credential may still be valid, the
+            // server or network is just having a moment. Keep the session.
+            else -> RefreshOutcome.Transient
+        }
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: Throwable) {
-        false
+        // Any thrown exception (timeout, connection reset, DNS, TLS, even a
+        // malformed 200 body) is treated as transient regardless of engine —
+        // we never inspect the exception type, which keeps this engine-neutral
+        // across OkHttp / Darwin / CIO.
+        RefreshOutcome.Transient
     }
 }
