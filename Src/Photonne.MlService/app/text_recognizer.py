@@ -49,6 +49,16 @@ class TextRecognizer:
             if settings.text.cls_model_path and os.path.isfile(settings.text.cls_model_path):
                 kwargs["cls_model_path"] = settings.text.cls_model_path
 
+            # Unlike the other loaders, RapidOCR doesn't take an ONNX providers
+            # list — it toggles CUDA per sub-model. Mirror the shared
+            # ONNX_PROVIDERS setting so OCR follows the GPU too; requires the
+            # onnxruntime-gpu wheel (the -gpu image), otherwise ORT ignores it.
+            providers = [p.strip() for p in settings.providers.split(",") if p.strip()]
+            if "CUDAExecutionProvider" in providers:
+                kwargs["det_use_cuda"] = True
+                kwargs["cls_use_cuda"] = True
+                kwargs["rec_use_cuda"] = True
+
             self._engine = RapidOCR(**kwargs)
             self._load_error = None
             log.info(

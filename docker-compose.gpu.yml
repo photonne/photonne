@@ -1,0 +1,27 @@
+# GPU (NVIDIA/CUDA) overlay. Opt-in: run alongside the base compose file with
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# It ONLY overrides the photonne-ml service — swapping in the CUDA image,
+# passing the GPU through, and asking ONNX Runtime to use CUDA (falling back to
+# CPU if the provider can't load). Everything else comes from docker-compose.yml.
+#
+# Host prerequisites: an NVIDIA driver + the nvidia-container-toolkit
+# (`nvidia-ctk runtime configure`). Verify with:
+#   docker run --rm --gpus all nvidia/cuda:12.6.2-base-ubuntu22.04 nvidia-smi
+services:
+  photonne-ml:
+    image: ghcr.io/photonne/photonne-ml:latest-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      # Overrides the base file's default (which honours ML_ONNX_PROVIDERS,
+      # CPU-only). CUDA first, CPU as fallback if the CUDA provider fails to load.
+      - ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider

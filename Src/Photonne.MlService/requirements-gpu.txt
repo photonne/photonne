@@ -1,0 +1,15 @@
+# GPU (NVIDIA/CUDA) variant of requirements.txt. Identical pins EXCEPT
+# onnxruntime -> onnxruntime-gpu, which is what registers CUDAExecutionProvider.
+# insightface and rapidocr-onnxruntime ride on whichever onnxruntime is
+# installed, so pulling the -gpu wheel here moves faces + OCR to GPU too.
+# Kept in lockstep with requirements.txt — update both together.
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+insightface==0.7.3
+onnxruntime-gpu==1.19.2
+numpy==1.26.4
+pillow==10.4.0
+opencv-python-headless==4.10.0.84
+rapidocr-onnxruntime==1.3.24
+tokenizers==0.20.0
