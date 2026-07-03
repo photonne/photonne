@@ -37,7 +37,33 @@ Environment variables (see `app/config.py`):
 ### Shared
 | Var | Default | Notes |
 |---|---|---|
-| `ONNX_PROVIDERS` | `CPUExecutionProvider` | Comma-separated. Use `CUDAExecutionProvider,CPUExecutionProvider` for GPU |
+| `ONNX_PROVIDERS` | `CPUExecutionProvider` | Comma-separated ORT execution providers, in priority order. See **GPU acceleration** below — the default image is CPU-only, so setting this to `CUDAExecutionProvider` alone does nothing. |
+
+## GPU acceleration (NVIDIA/CUDA)
+
+The default `photonne-ml` image is CPU-only (`python:3.11-slim` + the `onnxruntime`
+CPU wheel), so faces/objects/scenes/embeddings/OCR all run on CPU regardless of
+`ONNX_PROVIDERS`. To use an NVIDIA GPU you need three things together:
+
+1. **Host:** an NVIDIA driver and the [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+   (`sudo nvidia-ctk runtime configure && sudo systemctl restart docker`). Verify:
+   `docker run --rm --gpus all nvidia/cuda:12.6.2-base-ubuntu22.04 nvidia-smi`.
+2. **Image:** the `photonne-ml:latest-gpu` build (CUDA 12 + cuDNN 9 base +
+   `onnxruntime-gpu`), built from `Dockerfile.gpu`. amd64 only.
+3. **Compose:** the `docker-compose.gpu.yml` overlay, which passes the GPU
+   through and sets `ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider`.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+Confirm GPU is actually active: `curl -s localhost:8000/health | jq .providers`
+should list `CUDAExecutionProvider`, and `docker logs photonne-ml` should NOT show
+an ORT warning about falling back to CPU. During a (re)index `nvidia-smi` should
+show the container's Python process with utilisation > 0.
+
+> OCR (RapidOCR) is the one exception: it only moves to GPU when
+> `ONNX_PROVIDERS` includes `CUDAExecutionProvider` (see `text_recognizer.py`).
 
 ### Face detection
 | Var | Default | Notes |
