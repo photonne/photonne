@@ -18,6 +18,7 @@ import onnxruntime as ort
 
 from .config import settings
 from .embedding_download import ensure_file
+from .onnx_providers import build_providers
 
 log = logging.getLogger("photonne.ml.embeddings.text")
 
@@ -29,12 +30,14 @@ class TextEmbedder:
         self._input_names: List[str] = []
         self._max_length: int = settings.embedding.text_max_length
         self._load_error: Optional[str] = None
+        self._spec: str = settings.embedding.providers
 
-    def load(self) -> None:
+    def load(self, providers: Optional[str] = None) -> None:
         if not settings.embedding.enabled:
             log.info("Text embedding disabled by config")
             return
 
+        spec = providers if providers is not None else settings.embedding.providers
         try:
             model_path = settings.embedding.text_model_path
             tok_path = settings.embedding.text_tokenizer_path
@@ -62,13 +65,15 @@ class TextEmbedder:
             self._tokenizer.enable_truncation(max_length=self._max_length)
             self._tokenizer.enable_padding(length=self._max_length)
 
-            providers = [p.strip() for p in settings.providers.split(",") if p.strip()]
-            self._session = ort.InferenceSession(model_path, providers=providers)
-            self._input_names = [i.name for i in self._session.get_inputs()]
+            names, opts = build_providers(spec)
+            session = ort.InferenceSession(model_path, providers=names, provider_options=opts)
+            self._session = session
+            self._input_names = [i.name for i in session.get_inputs()]
+            self._spec = spec
             self._load_error = None
             log.info(
                 "Text embedder loaded: model=%s tokenizer=%s providers=%s max_length=%d inputs=%s",
-                model_path, tok_path, providers, self._max_length, self._input_names,
+                model_path, tok_path, names, self._max_length, self._input_names,
             )
         except Exception as e:
             self._load_error = f"{type(e).__name__}: {e}"
@@ -81,6 +86,10 @@ class TextEmbedder:
     @property
     def load_error(self) -> Optional[str]:
         return self._load_error
+
+    @property
+    def providers(self) -> str:
+        return self._spec
 
     def encode(self, text: str) -> Tuple[List[float], int]:
         if self._session is None or self._tokenizer is None:

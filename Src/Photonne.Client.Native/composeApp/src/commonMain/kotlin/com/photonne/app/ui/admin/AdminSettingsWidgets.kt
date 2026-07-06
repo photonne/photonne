@@ -48,6 +48,12 @@ import kotlin.math.roundToInt
 import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
+import com.photonne.app.resources.admin_settings_device_auto
+import com.photonne.app.resources.admin_settings_device_cpu
+import com.photonne.app.resources.admin_settings_device_gpu
+import com.photonne.app.resources.admin_settings_device_hint
+import com.photonne.app.resources.admin_settings_device_label
+import com.photonne.app.resources.admin_settings_device_ocr_warning
 import com.photonne.app.resources.admin_face_settings_nightly_mode_all
 import com.photonne.app.resources.admin_face_settings_nightly_mode_missing
 import com.photonne.app.resources.admin_face_settings_nightly_open
@@ -323,6 +329,53 @@ fun SettingDropdown(
                 )
             }
         }
+    }
+}
+
+/** The three compute-device values persisted under each `<Feature>.Provider`
+ *  setting; kept in sync with the server-side MlProviders.Device* constants. */
+object ComputeDevice {
+    const val AUTO = "auto"
+    const val GPU = "cuda"
+    const val CPU = "cpu"
+}
+
+/**
+ * Compute-device selector shared by every ML feature settings page. Writes the
+ * `<Feature>.Provider` key (auto|cuda|cpu); the server maps that to an ONNX
+ * provider and hot-reloads the task on the ML service. Pass [showOcrWarning] on
+ * the OCR page, where GPU has a known VRAM-blowup caveat.
+ */
+@Composable
+fun DeviceSettingDropdown(
+    value: String,
+    onChange: (String) -> Unit,
+    enabled: Boolean = true,
+    showOcrWarning: Boolean = false,
+) {
+    val options = listOf(
+        ComputeDevice.AUTO to stringResource(Res.string.admin_settings_device_auto),
+        ComputeDevice.GPU to stringResource(Res.string.admin_settings_device_gpu),
+        ComputeDevice.CPU to stringResource(Res.string.admin_settings_device_cpu),
+    )
+    SettingDropdown(
+        label = stringResource(Res.string.admin_settings_device_label),
+        value = value.ifBlank { ComputeDevice.AUTO },
+        options = options,
+        enabled = enabled,
+        onChange = onChange,
+    )
+    Text(
+        stringResource(Res.string.admin_settings_device_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (showOcrWarning && value.equals(ComputeDevice.GPU, ignoreCase = true)) {
+        Text(
+            stringResource(Res.string.admin_settings_device_ocr_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
     }
 }
 

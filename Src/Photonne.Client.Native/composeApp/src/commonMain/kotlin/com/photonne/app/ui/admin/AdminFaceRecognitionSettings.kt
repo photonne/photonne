@@ -48,6 +48,7 @@ class AdminFaceRecognitionSettingsViewModel(
 
     override val keys = listOf(
         ENABLED_KEY,
+        PROVIDER_KEY,
         MIN_DETECTION_SCORE_KEY,
         CLUSTERING_THRESHOLD_KEY,
         SUGGESTION_THRESHOLD_KEY,
@@ -62,6 +63,7 @@ class AdminFaceRecognitionSettingsViewModel(
 
     override val defaults = mapOf(
         ENABLED_KEY to "true",
+        PROVIDER_KEY to "auto",
         MIN_DETECTION_SCORE_KEY to "0.5",
         CLUSTERING_THRESHOLD_KEY to "0.42",
         SUGGESTION_THRESHOLD_KEY to "0.55",
@@ -89,6 +91,7 @@ class AdminFaceRecognitionSettingsViewModel(
 
     companion object {
         const val ENABLED_KEY = "FaceRecognition.Enabled"
+        const val PROVIDER_KEY = "FaceRecognition.Provider"
         const val MIN_DETECTION_SCORE_KEY = "FaceRecognition.MinDetectionScore"
         const val CLUSTERING_THRESHOLD_KEY = "FaceRecognition.ClusteringThreshold"
         const val SUGGESTION_THRESHOLD_KEY = "FaceRecognition.SuggestionThreshold"
@@ -137,6 +140,11 @@ fun AdminFaceRecognitionSettingsScreen(
         Text(
             stringResource(Res.string.admin_face_settings_parameters_section),
             style = MaterialTheme.typography.titleSmall,
+        )
+
+        DeviceSettingDropdown(
+            value = state.get(AdminFaceRecognitionSettingsViewModel.PROVIDER_KEY),
+            onChange = { viewModel.set(AdminFaceRecognitionSettingsViewModel.PROVIDER_KEY, it) },
         )
 
         // Three confidence thresholds in [0.0, 1.0] — sliders here let the

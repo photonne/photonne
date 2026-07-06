@@ -109,6 +109,16 @@ public static class DependencyInjection
         });
         builder.Services.AddScoped<ImageEmbeddingService>();
 
+        // Pushes the admin's per-task GPU/CPU choice to the ML service's
+        // /v1/config endpoint (on settings save and once at startup).
+        builder.Services.AddHttpClient<IMlConfigClient, MlConfigClient>((sp, client) =>
+        {
+            var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;
+            client.BaseAddress = new Uri(ml.ServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(ml.TimeoutSeconds);
+        });
+        builder.Services.AddHostedService<MlProviderReconcileService>();
+
         // Registrar AuthService
         builder.Services.AddScoped<IAuthService, AuthService>();
         

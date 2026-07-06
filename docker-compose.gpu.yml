@@ -25,3 +25,14 @@ services:
       # Overrides the base file's default (which honours ML_ONNX_PROVIDERS,
       # CPU-only). CUDA first, CPU as fallback if the CUDA provider fails to load.
       - ONNX_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider
+      # OCR (RapidOCR) stays on CPU by default: rapidocr-onnxruntime hardcodes an
+      # EXHAUSTIVE cuDNN conv-algo search with no way to pass provider_options,
+      # so on a GPU already hosting faces/objects/scenes/embeddings its workspace
+      # is the first allocation to hit "CUDA out of memory". Flip it to
+      # CUDAExecutionProvider,CPUExecutionProvider (here or per-task from the
+      # admin panel) only if the card has ample spare VRAM.
+      - TEXT_ONNX_PROVIDERS=CPUExecutionProvider
+      # Per-task overrides also available: FACE_ONNX_PROVIDERS,
+      # OBJECT_ONNX_PROVIDERS, SCENE_ONNX_PROVIDERS, EMBEDDING_ONNX_PROVIDERS
+      # (each falls back to ONNX_PROVIDERS). CUDA_GPU_MEM_LIMIT_MB optionally caps
+      # each CUDA session's arena on very tight cards.

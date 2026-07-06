@@ -19,6 +19,7 @@ import onnxruntime as ort
 
 from .config import settings
 from .embedding_download import ensure_file
+from .onnx_providers import build_providers
 
 log = logging.getLogger("photonne.ml.embeddings.image")
 
@@ -36,12 +37,14 @@ class ImageEmbedder:
         self._input_name: str = ""
         self._input_size: int = settings.embedding.image_size
         self._load_error: Optional[str] = None
+        self._spec: str = settings.embedding.providers
 
-    def load(self) -> None:
+    def load(self, providers: Optional[str] = None) -> None:
         if not settings.embedding.enabled:
             log.info("Image embedding disabled by config")
             return
 
+        spec = providers if providers is not None else settings.embedding.providers
         try:
             path = settings.embedding.image_model_path
             ensure_file(
@@ -52,16 +55,19 @@ class ImageEmbedder:
                 min_size_bytes=10 * 1024 * 1024,
             )
 
-            providers = [p.strip() for p in settings.providers.split(",") if p.strip()]
-            self._session = ort.InferenceSession(path, providers=providers)
-            self._input_name = self._session.get_inputs()[0].name
-            shape = self._session.get_inputs()[0].shape
+            names, opts = build_providers(spec)
+            session = ort.InferenceSession(path, providers=names, provider_options=opts)
+            input_name = session.get_inputs()[0].name
+            shape = session.get_inputs()[0].shape
+            self._session = session
+            self._input_name = input_name
             if isinstance(shape[2], int) and shape[2] > 0:
                 self._input_size = int(shape[2])
+            self._spec = spec
             self._load_error = None
             log.info(
                 "Image embedder loaded: model=%s providers=%s input=%dx%d",
-                path, providers, self._input_size, self._input_size,
+                path, names, self._input_size, self._input_size,
             )
         except Exception as e:
             self._load_error = f"{type(e).__name__}: {e}"
@@ -74,6 +80,10 @@ class ImageEmbedder:
     @property
     def load_error(self) -> Optional[str]:
         return self._load_error
+
+    @property
+    def providers(self) -> str:
+        return self._spec
 
     def encode(self, image_bgr: np.ndarray) -> Tuple[List[float], int]:
         if self._session is None:

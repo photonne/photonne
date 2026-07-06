@@ -6,6 +6,18 @@ def _bool_env(name: str, default: str) -> bool:
     return os.getenv(name, default).lower() not in {"false", "0", "no"}
 
 
+# Comma-separated list of ONNX execution providers in priority order. Each task
+# reads its own <TASK>_ONNX_PROVIDERS and falls back to the global ONNX_PROVIDERS
+# (which itself defaults to CPU). This lets an operator — or the admin panel via
+# the ML /v1/config endpoint — put, say, faces on the GPU while keeping OCR on
+# CPU, so no single task's VRAM spike takes the whole GPU out of memory.
+_GLOBAL_PROVIDERS = os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")
+
+
+def _providers_for(task_env: str) -> str:
+    return os.getenv(task_env, _GLOBAL_PROVIDERS)
+
+
 @dataclass(frozen=True)
 class FaceSettings:
     # Legacy env var names (MODEL_NAME, DET_SIZE, ...) still work so existing
@@ -17,6 +29,7 @@ class FaceSettings:
     min_face_size: int = int(os.getenv("FACE_MIN_SIZE", os.getenv("MIN_FACE_SIZE", "40")))
     min_det_score: float = float(os.getenv("FACE_MIN_DET_SCORE", os.getenv("MIN_DET_SCORE", "0.5")))
     max_faces: int = int(os.getenv("FACE_MAX", os.getenv("MAX_FACES", "50")))
+    providers: str = _providers_for("FACE_ONNX_PROVIDERS")
 
 
 @dataclass(frozen=True)
@@ -36,6 +49,7 @@ class ObjectSettings:
     min_score: float = float(os.getenv("OBJECT_MIN_SCORE", "0.25"))
     iou_threshold: float = float(os.getenv("OBJECT_IOU", "0.45"))
     max_objects: int = int(os.getenv("OBJECT_MAX", "100"))
+    providers: str = _providers_for("OBJECT_ONNX_PROVIDERS")
 
 
 @dataclass(frozen=True)
@@ -57,6 +71,7 @@ class SceneSettings:
     # Drop predictions below this softmax probability (rank ≥ 2 only — rank 1
     # is always emitted so the model's best guess is always visible).
     min_score: float = float(os.getenv("SCENE_MIN_SCORE", "0.15"))
+    providers: str = _providers_for("SCENE_ONNX_PROVIDERS")
 
 
 @dataclass(frozen=True)
@@ -74,6 +89,7 @@ class TextSettings:
     # Hard cap of recognized lines per image. Long documents are rare in a
     # photo library and indexing 500+ lines per asset would balloon the table.
     max_lines: int = int(os.getenv("TEXT_MAX_LINES", "200"))
+    providers: str = _providers_for("TEXT_ONNX_PROVIDERS")
 
 
 @dataclass(frozen=True)
@@ -99,12 +115,14 @@ class EmbeddingSettings:
     # Stable identifier persisted alongside each embedding row so a future
     # model swap re-embeds via the backfill instead of mixing vector spaces.
     model_version: str = os.getenv("EMBEDDING_MODEL_VERSION", "mclip-vit-b32-v1")
+    providers: str = _providers_for("EMBEDDING_ONNX_PROVIDERS")
 
 
 @dataclass(frozen=True)
 class Settings:
-    # Comma-separated list of ONNX execution providers in priority order.
-    providers: str = os.getenv("ONNX_PROVIDERS", "CPUExecutionProvider")
+    # Global ONNX execution-provider list (priority order). Kept as the fallback
+    # for the per-task <TASK>_ONNX_PROVIDERS on each sub-settings above.
+    providers: str = _GLOBAL_PROVIDERS
     face: FaceSettings = field(default_factory=FaceSettings)
     obj: ObjectSettings = field(default_factory=ObjectSettings)
     scene: SceneSettings = field(default_factory=SceneSettings)

@@ -38,6 +38,8 @@ Environment variables (see `app/config.py`):
 | Var | Default | Notes |
 |---|---|---|
 | `ONNX_PROVIDERS` | `CPUExecutionProvider` | Comma-separated ORT execution providers, in priority order. See **GPU acceleration** below — the default image is CPU-only, so setting this to `CUDAExecutionProvider` alone does nothing. |
+| `FACE_ONNX_PROVIDERS`, `OBJECT_ONNX_PROVIDERS`, `SCENE_ONNX_PROVIDERS`, `TEXT_ONNX_PROVIDERS`, `EMBEDDING_ONNX_PROVIDERS` | *(falls back to `ONNX_PROVIDERS`)* | Per-task provider override, so e.g. faces run on GPU while OCR stays on CPU. Also settable at runtime per task from the admin panel (persisted in the API DB, pushed to `POST /v1/config`). |
+| `CUDA_GPU_MEM_LIMIT_MB` | *(unset)* | Optional hard cap (MiB) on each CUDA session's memory arena. Leave unset unless a very tight card OOMs even with the frugal defaults. |
 
 ## GPU acceleration (NVIDIA/CUDA)
 
@@ -62,8 +64,27 @@ should list `CUDAExecutionProvider`, and `docker logs photonne-ml` should NOT sh
 an ORT warning about falling back to CPU. During a (re)index `nvidia-smi` should
 show the container's Python process with utilisation > 0.
 
-> OCR (RapidOCR) is the one exception: it only moves to GPU when
-> `ONNX_PROVIDERS` includes `CUDAExecutionProvider` (see `text_recognizer.py`).
+All CUDA sessions this service creates use memory-frugal provider options
+(`cudnn_conv_algo_search=HEURISTIC`, `arena_extend_strategy=kSameAsRequested`)
+so the ~10 models can share one GPU without the exhaustive conv-search workspace
+tipping the card into "CUDA out of memory". See `onnx_providers.py`.
+
+### Per-task device selection
+
+Each task reads its own `<TASK>_ONNX_PROVIDERS` (falling back to
+`ONNX_PROVIDERS`), so you don't have to run everything on the same device. The
+same choice is exposed per task in the admin panel (Face/Object/Scene/Text/
+Embedding settings → *Compute device*): the API persists it and pushes it to
+`POST /v1/config`, which hot-reloads that task on the new provider — no container
+restart. On API startup the saved choices are reconciled back to the ML service.
+
+> **OCR (RapidOCR) defaults to CPU even in the GPU overlay.**
+> rapidocr-onnxruntime hardcodes an EXHAUSTIVE cuDNN conv-algo search and doesn't
+> expose `provider_options`, so we can't shrink its VRAM footprint like the other
+> models. On a GPU already hosting faces/objects/scenes/embeddings its workspace
+> is the first allocation to OOM. `docker-compose.gpu.yml` therefore sets
+> `TEXT_ONNX_PROVIDERS=CPUExecutionProvider`; move OCR to GPU only if the card has
+> ample spare VRAM.
 
 ### Face detection
 | Var | Default | Notes |

@@ -41,6 +41,7 @@ class AdminObjectDetectionSettingsViewModel(
 
     override val keys = listOf(
         ENABLED_KEY,
+        PROVIDER_KEY,
         MIN_SCORE_KEY,
         MIN_NORMALIZED_SIZE_KEY,
         MAX_OBJECTS_PER_ASSET_KEY,
@@ -52,6 +53,7 @@ class AdminObjectDetectionSettingsViewModel(
 
     override val defaults = mapOf(
         ENABLED_KEY to "true",
+        PROVIDER_KEY to "auto",
         MIN_SCORE_KEY to "0.25",
         MIN_NORMALIZED_SIZE_KEY to "0.02",
         MAX_OBJECTS_PER_ASSET_KEY to "50",
@@ -73,6 +75,7 @@ class AdminObjectDetectionSettingsViewModel(
 
     companion object {
         const val ENABLED_KEY = "ObjectDetection.Enabled"
+        const val PROVIDER_KEY = "ObjectDetection.Provider"
         const val MIN_SCORE_KEY = "ObjectDetection.MinScore"
         const val MIN_NORMALIZED_SIZE_KEY = "ObjectDetection.MinNormalizedSize"
         const val MAX_OBJECTS_PER_ASSET_KEY = "ObjectDetection.MaxObjectsPerAsset"
@@ -116,6 +119,11 @@ fun AdminObjectDetectionSettingsScreen(
         Text(
             stringResource(Res.string.admin_face_settings_parameters_section),
             style = MaterialTheme.typography.titleSmall,
+        )
+
+        DeviceSettingDropdown(
+            value = state.get(AdminObjectDetectionSettingsViewModel.PROVIDER_KEY),
+            onChange = { viewModel.set(AdminObjectDetectionSettingsViewModel.PROVIDER_KEY, it) },
         )
 
         SettingSlider(

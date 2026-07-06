@@ -55,6 +55,7 @@ class AdminImageEmbeddingSettingsViewModel(
 
     override val keys = listOf(
         ENABLED_KEY,
+        PROVIDER_KEY,
         MODEL_VERSION_KEY,
         MAX_COSINE_DISTANCE_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
@@ -65,6 +66,7 @@ class AdminImageEmbeddingSettingsViewModel(
 
     override val defaults = mapOf(
         ENABLED_KEY to "true",
+        PROVIDER_KEY to "auto",
         MODEL_VERSION_KEY to "mclip-vit-b32-v1",
         MAX_COSINE_DISTANCE_KEY to "0.7",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
@@ -81,6 +83,7 @@ class AdminImageEmbeddingSettingsViewModel(
 
     companion object {
         const val ENABLED_KEY = "Embedding.Enabled"
+        const val PROVIDER_KEY = "Embedding.Provider"
         const val MODEL_VERSION_KEY = "Embedding.ModelVersion"
         const val MAX_COSINE_DISTANCE_KEY = "Embedding.MaxCosineDistance"
         const val PREFER_THUMBNAIL_LARGE_KEY = "Embedding.PreferThumbnailLarge"
@@ -128,6 +131,11 @@ fun AdminImageEmbeddingSettingsScreen(
         Text(
             stringResource(Res.string.admin_face_settings_parameters_section),
             style = MaterialTheme.typography.titleSmall,
+        )
+
+        DeviceSettingDropdown(
+            value = state.get(AdminImageEmbeddingSettingsViewModel.PROVIDER_KEY),
+            onChange = { viewModel.set(AdminImageEmbeddingSettingsViewModel.PROVIDER_KEY, it) },
         )
 
         // Model version stays a free-form text field — strings like

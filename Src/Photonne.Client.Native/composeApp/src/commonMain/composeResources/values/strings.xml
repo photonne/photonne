@@ -591,6 +591,13 @@
     <string name="admin_settings_feature_mode_missing">Solo elementos sin procesar</string>
     <string name="admin_settings_feature_mode_all">Todos los elementos</string>
 
+    <string name="admin_settings_device_label">Dispositivo de cómputo</string>
+    <string name="admin_settings_device_hint">Dónde se ejecuta esta tarea. «GPU» requiere la imagen ML con CUDA; si no está disponible, cae a CPU automáticamente.</string>
+    <string name="admin_settings_device_auto">Automático (por defecto del servidor)</string>
+    <string name="admin_settings_device_gpu">GPU (CUDA)</string>
+    <string name="admin_settings_device_cpu">CPU</string>
+    <string name="admin_settings_device_ocr_warning">⚠ El OCR en GPU reserva mucha memoria de vídeo (búsqueda de convolución exhaustiva no ajustable). En una GPU compartida con otras tareas puede agotar la VRAM y fallar; si ves errores «out of memory», déjalo en CPU.</string>
+
     <string name="admin_settings_image">Ajustes de imagen</string>
     <string name="admin_settings_image_subtitle">Formato y calidad de miniaturas</string>
     <string name="admin_settings_image_format">Formato de miniaturas</string>

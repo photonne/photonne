@@ -1,8 +1,10 @@
 import logging
+import threading
 from contextlib import asynccontextmanager
-from typing import Any, Dict
+from typing import Any, Callable, Dict, List, Tuple
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 from .config import settings
 from .embedding_image import embedder as image_embedder
@@ -26,14 +28,14 @@ log = logging.getLogger("photonne.ml")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.face.enabled:
-        log.info("Loading face detector model=%s providers=%s", settings.face.model_name, settings.providers)
+        log.info("Loading face detector model=%s providers=%s", settings.face.model_name, settings.face.providers)
         face_detector.load()
         log.info("Face detector loaded")
     else:
         log.info("Face detector disabled by config")
 
     if settings.obj.enabled:
-        log.info("Loading object detector model=%s providers=%s", settings.obj.model_path, settings.providers)
+        log.info("Loading object detector model=%s providers=%s", settings.obj.model_path, settings.obj.providers)
         try:
             object_detector.load()
             log.info("Object detector loaded")
@@ -46,7 +48,7 @@ async def lifespan(app: FastAPI):
         log.info("Object detector disabled by config")
 
     if settings.scene.enabled:
-        log.info("Loading scene classifier model=%s providers=%s", settings.scene.model_path, settings.providers)
+        log.info("Loading scene classifier model=%s providers=%s", settings.scene.model_path, settings.scene.providers)
         try:
             scene_classifier.load()
             log.info("Scene classifier loaded")
@@ -58,7 +60,7 @@ async def lifespan(app: FastAPI):
         log.info("Scene classifier disabled by config")
 
     if settings.text.enabled:
-        log.info("Loading text recognizer providers=%s", settings.providers)
+        log.info("Loading text recognizer providers=%s", settings.text.providers)
         try:
             text_recognizer.load()
             log.info("Text recognizer loaded")
@@ -74,7 +76,7 @@ async def lifespan(app: FastAPI):
             "Loading CLIP embedder image=%s text=%s providers=%s",
             settings.embedding.image_model_path,
             settings.embedding.text_model_path,
-            settings.providers,
+            settings.embedding.providers,
         )
         try:
             image_embedder.load()
@@ -102,26 +104,31 @@ def health() -> Dict[str, Any]:
             "enabled": settings.face.enabled,
             "loaded": face_detector.is_loaded,
             "model": settings.face.model_name,
+            "providers": face_detector.providers,
         },
         "objects": {
             "enabled": settings.obj.enabled,
             "loaded": object_detector.is_loaded,
             "model": settings.obj.model_path,
+            "providers": object_detector.providers,
         },
         "scenes": {
             "enabled": settings.scene.enabled,
             "loaded": scene_classifier.is_loaded,
             "model": settings.scene.model_path,
+            "providers": scene_classifier.providers,
         },
         "text": {
             "enabled": settings.text.enabled,
             "loaded": text_recognizer.is_loaded,
             "model": "rapidocr",
+            "providers": text_recognizer.providers,
         },
         "embeddings": {
             "enabled": settings.embedding.enabled,
             "loaded": image_embedder.is_loaded and text_embedder.is_loaded,
             "model": settings.embedding.model_version,
+            "providers": image_embedder.providers,
         },
     }
     if object_detector.load_error:
@@ -140,6 +147,70 @@ def health() -> Dict[str, Any]:
         "status": "ready" if all_loaded else "loading",
         "providers": providers,
         "components": components,
+    }
+
+
+class ProviderConfigRequest(BaseModel):
+    # task: faces | objects | scenes | text | embeddings (singular aliases too).
+    task: str
+    # ONNX provider spec, e.g. "CUDAExecutionProvider,CPUExecutionProvider".
+    # Empty / "auto" / "default" reloads the task on its configured env default.
+    providers: str = ""
+
+
+# Serialize reloads so two concurrent admin saves can't rebuild the same task's
+# session at once. Inference itself stays lock-free: load() builds the new
+# session fully before swapping the attribute, and the GIL makes that swap
+# atomic, so an in-flight request keeps using whichever session it referenced.
+_reload_lock = threading.Lock()
+
+# task alias -> (loaders to reload, effective-providers getter)
+_TASK_LOADERS: Dict[str, Tuple[List[Any], Callable[[], str]]] = {
+    "faces": ([face_detector], lambda: face_detector.providers),
+    "face": ([face_detector], lambda: face_detector.providers),
+    "objects": ([object_detector], lambda: object_detector.providers),
+    "object": ([object_detector], lambda: object_detector.providers),
+    "scenes": ([scene_classifier], lambda: scene_classifier.providers),
+    "scene": ([scene_classifier], lambda: scene_classifier.providers),
+    "text": ([text_recognizer], lambda: text_recognizer.providers),
+    "embeddings": ([image_embedder, text_embedder], lambda: image_embedder.providers),
+    "embedding": ([image_embedder, text_embedder], lambda: image_embedder.providers),
+}
+
+
+@app.post("/v1/config")
+def set_provider_config(req: ProviderConfigRequest) -> Dict[str, Any]:
+    """Reload one ML task on a different execution provider at runtime.
+
+    Lets the admin panel move a task between GPU and CPU without restarting the
+    container. A failed reload leaves the previous session running and surfaces
+    the cause as a 500 so the caller can revert the setting.
+    """
+    key = req.task.strip().lower()
+    entry = _TASK_LOADERS.get(key)
+    if entry is None:
+        raise HTTPException(status_code=400, detail=f"unknown task '{req.task}'")
+    loaders, providers_getter = entry
+    reset = req.providers.strip().lower() in ("", "auto", "default")
+    target = None if reset else req.providers.strip()
+
+    with _reload_lock:
+        try:
+            for loader in loaders:
+                loader.load(target)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"failed to reload '{key}' on providers="
+                    f"{target or 'default'}: {type(e).__name__}: {e}"
+                ),
+            ) from e
+
+    return {
+        "task": key,
+        "providers": providers_getter(),
+        "loaded": all(loader.is_loaded for loader in loaders),
     }
 
 

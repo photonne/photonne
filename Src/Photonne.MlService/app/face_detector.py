@@ -1,11 +1,12 @@
 import time
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from insightface.app import FaceAnalysis
 
 from .config import settings
 from .face_models import DetectedFace
+from .onnx_providers import build_providers, uses_cuda
 
 
 class FaceDetector:
@@ -13,20 +14,34 @@ class FaceDetector:
 
     def __init__(self) -> None:
         self._app: FaceAnalysis | None = None
+        # Effective provider spec of the live models; swappable at runtime via
+        # /v1/config -> load(providers=...).
+        self._spec: str = settings.face.providers
 
-    def load(self) -> None:
-        providers = [p.strip() for p in settings.providers.split(",") if p.strip()]
+    def load(self, providers: Optional[str] = None) -> None:
+        spec = providers if providers is not None else settings.face.providers
+        names, opts = build_providers(spec)
         app = FaceAnalysis(
             name=settings.face.model_name,
             root=settings.face.model_root,
-            providers=providers,
+            providers=names,
+            provider_options=opts,
         )
-        app.prepare(ctx_id=0, det_size=(settings.face.det_size, settings.face.det_size))
+        # ctx_id selects the compute device InsightFace prepares its models on:
+        # >= 0 is a CUDA device index, < 0 is CPU. Match it to the provider spec
+        # so a CPU-only task doesn't try to prime a GPU it isn't using.
+        ctx_id = 0 if uses_cuda(spec) else -1
+        app.prepare(ctx_id=ctx_id, det_size=(settings.face.det_size, settings.face.det_size))
         self._app = app
+        self._spec = spec
 
     @property
     def is_loaded(self) -> bool:
         return self._app is not None
+
+    @property
+    def providers(self) -> str:
+        return self._spec
 
     def detect(self, image_bgr: np.ndarray) -> Tuple[List[DetectedFace], int]:
         if self._app is None:

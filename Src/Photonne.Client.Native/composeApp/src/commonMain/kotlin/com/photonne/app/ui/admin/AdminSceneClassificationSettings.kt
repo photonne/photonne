@@ -38,6 +38,7 @@ class AdminSceneClassificationSettingsViewModel(
 
     override val keys = listOf(
         ENABLED_KEY,
+        PROVIDER_KEY,
         MIN_SCORE_KEY,
         MAX_SCENES_PER_ASSET_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
@@ -48,6 +49,7 @@ class AdminSceneClassificationSettingsViewModel(
 
     override val defaults = mapOf(
         ENABLED_KEY to "true",
+        PROVIDER_KEY to "auto",
         MIN_SCORE_KEY to "0.15",
         MAX_SCENES_PER_ASSET_KEY to "5",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
@@ -64,6 +66,7 @@ class AdminSceneClassificationSettingsViewModel(
 
     companion object {
         const val ENABLED_KEY = "SceneClassification.Enabled"
+        const val PROVIDER_KEY = "SceneClassification.Provider"
         const val MIN_SCORE_KEY = "SceneClassification.MinScore"
         const val MAX_SCENES_PER_ASSET_KEY = "SceneClassification.MaxScenesPerAsset"
         const val PREFER_THUMBNAIL_LARGE_KEY = "SceneClassification.PreferThumbnailLarge"
@@ -106,6 +109,11 @@ fun AdminSceneClassificationSettingsScreen(
         Text(
             stringResource(Res.string.admin_face_settings_parameters_section),
             style = MaterialTheme.typography.titleSmall,
+        )
+
+        DeviceSettingDropdown(
+            value = state.get(AdminSceneClassificationSettingsViewModel.PROVIDER_KEY),
+            onChange = { viewModel.set(AdminSceneClassificationSettingsViewModel.PROVIDER_KEY, it) },
         )
 
         SettingSlider(

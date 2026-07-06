@@ -591,6 +591,13 @@
     <string name="admin_settings_feature_mode_missing">Only items without results</string>
     <string name="admin_settings_feature_mode_all">All items</string>
 
+    <string name="admin_settings_device_label">Compute device</string>
+    <string name="admin_settings_device_hint">Where this task runs. "GPU" requires the CUDA ML image; if unavailable it falls back to CPU automatically.</string>
+    <string name="admin_settings_device_auto">Automatic (server default)</string>
+    <string name="admin_settings_device_gpu">GPU (CUDA)</string>
+    <string name="admin_settings_device_cpu">CPU</string>
+    <string name="admin_settings_device_ocr_warning">⚠ OCR on GPU reserves a lot of video memory (an exhaustive, non-tunable convolution search). On a GPU shared with other tasks it can exhaust VRAM and fail; if you see "out of memory" errors, keep it on CPU.</string>
+
     <string name="admin_settings_image">Image settings</string>
     <string name="admin_settings_image_subtitle">Thumbnail format and quality</string>
     <string name="admin_settings_image_format">Thumbnail format</string>

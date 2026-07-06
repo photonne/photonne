@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
+using Photonne.Server.Api.Shared.Services.Ml;
 
 namespace Photonne.Server.Api.Features.Settings;
 
@@ -48,7 +49,9 @@ public class SettingsEndpoint : IEndpoint
     private async Task<IResult> SaveSetting(
         [FromBody] SaveSettingRequest request,
         [FromServices] SettingsService settingsService,
-        ClaimsPrincipal user)
+        [FromServices] IMlConfigClient mlConfig,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Key))
             return Results.BadRequest("Key is required");
@@ -58,8 +61,27 @@ public class SettingsEndpoint : IEndpoint
             return Results.Unauthorized();
         }
 
-        var effectiveUserId = IsGlobalKey(request.Key) ? Guid.Empty : userId;
+        var isGlobal = IsGlobalKey(request.Key);
+        // Server-wide settings must not be writable by ordinary users; only the
+        // owning user's own (non-global) settings are self-service.
+        if (isGlobal && !user.IsInRole("Admin"))
+        {
+            return Results.Forbid();
+        }
+
+        var effectiveUserId = isGlobal ? Guid.Empty : userId;
         await settingsService.SetSettingAsync(request.Key, request.Value ?? "", effectiveUserId);
+
+        // A per-task compute-device change takes effect immediately by asking
+        // the ML service to reload that task on the chosen provider. Best-effort
+        // (the client never throws), so a stopped ML container doesn't fail the
+        // save — the startup reconcile re-syncs it later.
+        if (isGlobal && MlProviders.KeyToTask.TryGetValue(request.Key, out var task))
+        {
+            var spec = MlProviders.DeviceToProviderSpec(request.Value);
+            await mlConfig.SetProviderAsync(task, spec, cancellationToken);
+        }
+
         return Results.Ok(new { message = "Setting saved successfully" });
     }
 
@@ -72,11 +94,11 @@ public class SettingsEndpoint : IEndpoint
     /// MetadataSettings.*         — EXIF/IPTC extraction behaviour
     /// NightlyTaskSettings.*      — nightly scheduled tasks (schedule, enabled tasks, last run)
     /// NotificationSettings.*     — notification system (enabled types, retention, per-user cap)
-    /// FaceRecognition.*          — face recognition runtime overrides (enable, thresholds)
-    /// ObjectDetection.*          — object detection runtime overrides (enable)
-    /// SceneClassification.*      — scene classification runtime overrides (enable)
-    /// TextRecognition.*          — text recognition runtime overrides (enable)
-    /// Embedding.*                — image embedding runtime overrides (enable)
+    /// FaceRecognition.*          — face recognition runtime overrides (enable, thresholds, compute device)
+    /// ObjectDetection.*          — object detection runtime overrides (enable, compute device)
+    /// SceneClassification.*      — scene classification runtime overrides (enable, compute device)
+    /// TextRecognition.*          — text recognition runtime overrides (enable, compute device)
+    /// Embedding.*                — image embedding runtime overrides (enable, compute device)
     /// </summary>
     private static bool IsGlobalKey(string key) =>
         key.StartsWith("TaskSettings.", StringComparison.Ordinal) ||

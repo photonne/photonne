@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from .config import settings
+from .onnx_providers import uses_cuda
 from .text_models import RecognizedTextLine
 
 log = logging.getLogger("photonne.ml.text")
@@ -27,12 +28,16 @@ class TextRecognizer:
     def __init__(self) -> None:
         self._engine = None  # type: ignore[assignment]
         self._load_error: Optional[str] = None
+        # Effective provider spec of the live engine; swappable at runtime via
+        # /v1/config -> load(providers=...).
+        self._spec: str = settings.text.providers
 
-    def load(self) -> None:
+    def load(self, providers: Optional[str] = None) -> None:
         if not settings.text.enabled:
             log.info("Text recognition disabled by config")
             return
 
+        spec = providers if providers is not None else settings.text.providers
         try:
             # Imported lazily so a missing optional dependency doesn't crash
             # the whole service at import time — only the /v1/text/detect
@@ -50,22 +55,33 @@ class TextRecognizer:
                 kwargs["cls_model_path"] = settings.text.cls_model_path
 
             # Unlike the other loaders, RapidOCR doesn't take an ONNX providers
-            # list — it toggles CUDA per sub-model. Mirror the shared
-            # ONNX_PROVIDERS setting so OCR follows the GPU too; requires the
-            # onnxruntime-gpu wheel (the -gpu image), otherwise ORT ignores it.
-            providers = [p.strip() for p in settings.providers.split(",") if p.strip()]
-            if "CUDAExecutionProvider" in providers:
+            # list — it toggles CUDA per sub-model. Mirror the task's provider
+            # spec so OCR follows the GPU too; requires the onnxruntime-gpu wheel
+            # (the -gpu image), otherwise ORT ignores it.
+            #
+            # NOTE: rapidocr_onnxruntime 1.3.x hardcodes the CUDA EP to an
+            # EXHAUSTIVE cudnn_conv_algo_search and does NOT expose
+            # provider_options, so we cannot shrink its VRAM footprint the way
+            # build_providers() does for the other models. On a GPU that's
+            # already hosting faces/objects/scenes/embeddings that exhaustive
+            # workspace is the first allocation to OOM — which is why the GPU
+            # overlay leaves TEXT_ONNX_PROVIDERS on CPU by default.
+            engine_cuda = uses_cuda(spec)
+            if engine_cuda:
                 kwargs["det_use_cuda"] = True
                 kwargs["cls_use_cuda"] = True
                 kwargs["rec_use_cuda"] = True
 
-            self._engine = RapidOCR(**kwargs)
+            engine = RapidOCR(**kwargs)
+            self._engine = engine
+            self._spec = spec
             self._load_error = None
             log.info(
-                "Text recognizer loaded: det=%s rec=%s cls=%s min_score=%.2f max_lines=%d",
+                "Text recognizer loaded: det=%s rec=%s cls=%s cuda=%s min_score=%.2f max_lines=%d",
                 kwargs.get("det_model_path", "<bundled>"),
                 kwargs.get("rec_model_path", "<bundled>"),
                 kwargs.get("cls_model_path", "<bundled>"),
+                engine_cuda,
                 settings.text.min_score,
                 settings.text.max_lines,
             )
@@ -80,6 +96,10 @@ class TextRecognizer:
     @property
     def load_error(self) -> Optional[str]:
         return self._load_error
+
+    @property
+    def providers(self) -> str:
+        return self._spec
 
     def recognize(self, image_bgr: np.ndarray) -> Tuple[List[RecognizedTextLine], str, int]:
         if self._engine is None:

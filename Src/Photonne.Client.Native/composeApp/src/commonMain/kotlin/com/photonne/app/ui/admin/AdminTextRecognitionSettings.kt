@@ -37,6 +37,7 @@ class AdminTextRecognitionSettingsViewModel(
 
     override val keys = listOf(
         ENABLED_KEY,
+        PROVIDER_KEY,
         MIN_SCORE_KEY,
         MAX_LINES_PER_ASSET_KEY,
         PREFER_THUMBNAIL_LARGE_KEY,
@@ -47,6 +48,7 @@ class AdminTextRecognitionSettingsViewModel(
 
     override val defaults = mapOf(
         ENABLED_KEY to "true",
+        PROVIDER_KEY to "auto",
         MIN_SCORE_KEY to "0.5",
         MAX_LINES_PER_ASSET_KEY to "200",
         PREFER_THUMBNAIL_LARGE_KEY to "true",
@@ -63,6 +65,7 @@ class AdminTextRecognitionSettingsViewModel(
 
     companion object {
         const val ENABLED_KEY = "TextRecognition.Enabled"
+        const val PROVIDER_KEY = "TextRecognition.Provider"
         const val MIN_SCORE_KEY = "TextRecognition.MinScore"
         const val MAX_LINES_PER_ASSET_KEY = "TextRecognition.MaxLinesPerAsset"
         const val PREFER_THUMBNAIL_LARGE_KEY = "TextRecognition.PreferThumbnailLarge"
@@ -105,6 +108,12 @@ fun AdminTextRecognitionSettingsScreen(
         Text(
             stringResource(Res.string.admin_face_settings_parameters_section),
             style = MaterialTheme.typography.titleSmall,
+        )
+
+        DeviceSettingDropdown(
+            value = state.get(AdminTextRecognitionSettingsViewModel.PROVIDER_KEY),
+            onChange = { viewModel.set(AdminTextRecognitionSettingsViewModel.PROVIDER_KEY, it) },
+            showOcrWarning = true,
         )
 
         SettingSlider(

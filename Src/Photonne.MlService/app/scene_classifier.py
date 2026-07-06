@@ -10,6 +10,7 @@ import numpy as np
 import onnxruntime as ort
 
 from .config import settings
+from .onnx_providers import build_providers
 from .places365_labels import PLACES365_CLASSES
 from .scene_models import ClassifiedScene
 
@@ -40,24 +41,31 @@ class SceneClassifier:
         # Captured at load() time so the cause is observable from /health and
         # from the 503 body, not just from the startup logs.
         self._load_error: Optional[str] = None
+        # Effective provider spec of the live session; swappable at runtime via
+        # /v1/config -> load(providers=...).
+        self._spec: str = settings.scene.providers
 
-    def load(self) -> None:
+    def load(self, providers: Optional[str] = None) -> None:
         if not settings.scene.enabled:
             log.info("Scene classification disabled by config")
             return
 
+        spec = providers if providers is not None else settings.scene.providers
         try:
             path = self._ensure_model()
-            providers = [p.strip() for p in settings.providers.split(",") if p.strip()]
-            self._session = ort.InferenceSession(path, providers=providers)
-            self._input_name = self._session.get_inputs()[0].name
-            shape = self._session.get_inputs()[0].shape
+            names, opts = build_providers(spec)
+            session = ort.InferenceSession(path, providers=names, provider_options=opts)
+            input_name = session.get_inputs()[0].name
+            shape = session.get_inputs()[0].shape
+            self._session = session
+            self._input_name = input_name
             if isinstance(shape[2], int) and shape[2] > 0:
                 self._input_size = int(shape[2])
+            self._spec = spec
             self._load_error = None
             log.info(
                 "Scene classifier loaded: model=%s providers=%s input=%dx%d classes=%d",
-                path, providers, self._input_size, self._input_size, len(self._classes),
+                path, names, self._input_size, self._input_size, len(self._classes),
             )
         except Exception as e:
             self._load_error = f"{type(e).__name__}: {e}"
@@ -123,6 +131,10 @@ class SceneClassifier:
     @property
     def load_error(self) -> Optional[str]:
         return self._load_error
+
+    @property
+    def providers(self) -> str:
+        return self._spec
 
     def classify(self, image_bgr: np.ndarray) -> Tuple[List[ClassifiedScene], int]:
         if self._session is None:
