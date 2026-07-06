@@ -6,6 +6,10 @@ import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.ui.util.SortDirection
+import com.photonne.app.ui.util.applyDirection
+import com.photonne.app.ui.util.parseSortDirection
+import com.photonne.app.ui.util.sortedByNatural
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -17,14 +21,21 @@ import kotlinx.coroutines.launch
 
 enum class AlbumsTab { Mine, Shared, MyLinks }
 
-enum class AlbumSort { Recent, Oldest, Name }
+enum class AlbumSort { Date, Name }
+
+/** Natural default direction when a criterion is freshly picked. */
+fun AlbumSort.defaultDirection(): SortDirection = when (this) {
+    AlbumSort.Date -> SortDirection.Descending // newest first
+    AlbumSort.Name -> SortDirection.Ascending // A→Z
+}
 
 enum class AlbumViewMode { Grid, List }
 
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
     val selectedTab: AlbumsTab = AlbumsTab.Mine,
-    val sort: AlbumSort = AlbumSort.Recent,
+    val sort: AlbumSort = AlbumSort.Date,
+    val direction: SortDirection = SortDirection.Descending,
     val viewMode: AlbumViewMode = AlbumViewMode.Grid,
     val groupByYear: Boolean = false,
     val selectedAlbumId: String? = null,
@@ -51,11 +62,11 @@ data class AlbumsUiState(
                     (album.description?.lowercase()?.contains(needle) == true)
             }
         } else tabFiltered
-        return when (sort) {
-            AlbumSort.Recent -> queryFiltered.sortedByDescending { it.createdAt }
-            AlbumSort.Oldest -> queryFiltered.sortedBy { it.createdAt }
-            AlbumSort.Name -> queryFiltered.sortedBy { it.name.lowercase() }
+        val ascending = when (sort) {
+            AlbumSort.Date -> queryFiltered.sortedBy { it.createdAt }
+            AlbumSort.Name -> queryFiltered.sortedByNatural { it.name }
         }
+        return ascending.applyDirection(direction)
     }
 }
 
@@ -73,14 +84,29 @@ class AlbumsViewModel(
     init { refresh() }
 
     private fun loadInitialState(): AlbumsUiState {
-        val sort = settings.getStringOrNull(KEY_SORT)
-            ?.let { runCatching { AlbumSort.valueOf(it) }.getOrNull() }
-            ?: AlbumSort.Recent
+        // Legacy values "Recent"/"Oldest" collapse into (Date, direction); newer
+        // installs persist the criterion and direction separately.
+        val rawSort = settings.getStringOrNull(KEY_SORT)
+        val (sort, migratedDirection) = when (rawSort) {
+            "Recent" -> AlbumSort.Date to SortDirection.Descending
+            "Oldest" -> AlbumSort.Date to SortDirection.Ascending
+            else -> (runCatching { AlbumSort.valueOf(rawSort ?: "") }.getOrNull()
+                ?: AlbumSort.Date) to null
+        }
+        val direction = parseSortDirection(
+            settings.getStringOrNull(KEY_DIRECTION),
+            migratedDirection ?: sort.defaultDirection()
+        )
         val viewMode = settings.getStringOrNull(KEY_VIEW_MODE)
             ?.let { runCatching { AlbumViewMode.valueOf(it) }.getOrNull() }
             ?: AlbumViewMode.Grid
         val groupByYear = settings.getBoolean(KEY_GROUP_BY_YEAR, false)
-        return AlbumsUiState(sort = sort, viewMode = viewMode, groupByYear = groupByYear)
+        return AlbumsUiState(
+            sort = sort,
+            direction = direction,
+            viewMode = viewMode,
+            groupByYear = groupByYear
+        )
     }
 
     fun selectTab(tab: AlbumsTab) {
@@ -99,8 +125,17 @@ class AlbumsViewModel(
     }
 
     fun setSort(sort: AlbumSort) {
+        // Picking a criterion resets to its natural direction; the user can then
+        // flip it explicitly with setDirection.
+        val direction = sort.defaultDirection()
         settings.putString(KEY_SORT, sort.name)
-        _state.update { it.copy(sort = sort) }
+        settings.putString(KEY_DIRECTION, direction.name)
+        _state.update { it.copy(sort = sort, direction = direction) }
+    }
+
+    fun setDirection(direction: SortDirection) {
+        settings.putString(KEY_DIRECTION, direction.name)
+        _state.update { it.copy(direction = direction) }
     }
 
     fun setViewMode(mode: AlbumViewMode) {
@@ -339,6 +374,7 @@ class AlbumsViewModel(
 
     private companion object {
         private const val KEY_SORT = "photonne.albums.sort"
+        private const val KEY_DIRECTION = "photonne.albums.sortDirection"
         private const val KEY_VIEW_MODE = "photonne.albums.viewMode"
         private const val KEY_GROUP_BY_YEAR = "photonne.albums.groupByYear"
     }

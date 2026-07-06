@@ -6,6 +6,7 @@ import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumMemberRole
+import com.photonne.app.ui.util.sortedByNatural
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.ShareableUser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,7 @@ data class AlbumPermissionsUiState(
         get() {
             val taken = members.map { it.userId }.toHashSet()
             return candidates.filterNot { it.id in taken }
-                .sortedBy { it.username.lowercase() }
+                .sortedByNatural { it.username }
         }
 }
 

@@ -2996,6 +2996,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             state = albumsState,
             onDismiss = { showAlbumsFilters = false },
             onSortChange = albumsViewModel::setSort,
+            onDirectionChange = albumsViewModel::setDirection,
             onViewModeChange = albumsViewModel::setViewMode,
             onGroupByYearChange = albumsViewModel::setGroupByYear
         )
@@ -3006,6 +3007,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             state = foldersState,
             onDismiss = { showFoldersFilters = false },
             onSortChange = foldersViewModel::setSort,
+            onDirectionChange = foldersViewModel::setDirection,
             onViewModeChange = foldersViewModel::setViewMode
         )
     }

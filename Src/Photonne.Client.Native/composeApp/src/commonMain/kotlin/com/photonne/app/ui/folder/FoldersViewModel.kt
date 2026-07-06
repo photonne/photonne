@@ -11,6 +11,7 @@ import com.photonne.app.data.folder.filterPersonalFolders
 import com.photonne.app.data.folder.filterSharedFolders
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.ui.util.SortDirection
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -36,6 +37,7 @@ data class FoldersUiState(
     val libraryRoots: Map<String, FolderSummary> = emptyMap(),
     val selectedTab: FoldersTab = FoldersTab.Personal,
     val sort: FolderSort = FolderSort.Name,
+    val direction: SortDirection = SortDirection.Ascending,
     val viewMode: FolderViewMode = FolderViewMode.List,
     val selectedFolderId: String? = null,
     val isSearchActive: Boolean = false,
@@ -99,13 +101,12 @@ class FoldersViewModel(
     init { refresh() }
 
     private fun loadInitialState(): FoldersUiState {
-        val sort = settings.getStringOrNull(KEY_SORT)
-            ?.let { runCatching { FolderSort.valueOf(it) }.getOrNull() }
-            ?: FolderSort.Name
+        val sort = readFolderSort(settings)
+        val direction = readFolderDirection(settings, sort)
         val viewMode = settings.getStringOrNull(KEY_VIEW_MODE)
             ?.let { runCatching { FolderViewMode.valueOf(it) }.getOrNull() }
             ?: FolderViewMode.List
-        return FoldersUiState(sort = sort, viewMode = viewMode)
+        return FoldersUiState(sort = sort, direction = direction, viewMode = viewMode)
     }
 
     fun selectTab(tab: FoldersTab) {
@@ -124,8 +125,18 @@ class FoldersViewModel(
     }
 
     fun setSort(sort: FolderSort) {
-        settings.putString(KEY_SORT, sort.name)
-        _state.update { it.copy(sort = sort) }
+        // Picking a criterion resets to its natural direction; the user can then
+        // flip it explicitly with setDirection.
+        val direction = sort.defaultDirection()
+        settings.putString(FOLDERS_SORT_KEY, sort.name)
+        settings.putString(FOLDERS_DIRECTION_KEY, direction.name)
+        _state.update { it.copy(sort = sort, direction = direction) }
+        repartition()
+    }
+
+    fun setDirection(direction: SortDirection) {
+        settings.putString(FOLDERS_DIRECTION_KEY, direction.name)
+        _state.update { it.copy(direction = direction) }
         repartition()
     }
 
@@ -166,15 +177,17 @@ class FoldersViewModel(
                     val personalChildren = if (username.isNullOrBlank()) emptyList()
                         else filterPersonalFolders(folders, username)
                     val sort = _state.value.sort
-                    val personal = sortFolders(personalChildren.filter { !it.isShared }, sort)
-                    val shared = sortFolders(filterSharedFolders(folders), sort)
+                    val direction = _state.value.direction
+                    val personal = sortFolders(personalChildren.filter { !it.isShared }, sort, direction)
+                    val shared = sortFolders(filterSharedFolders(folders), sort, direction)
                     val libRoots = resolveLibraryRoots(folders)
-                    val libFolders = sortFolders(folders.filter { it.externalLibraryId != null }, sort)
+                    val libFolders =
+                        sortFolders(folders.filter { it.externalLibraryId != null }, sort, direction)
                     _state.update {
                         it.copy(
                             personalFolders = personal,
                             sharedFolders = shared,
-                            libraries = sortLibraries(libs, sort),
+                            libraries = sortLibraries(libs, sort, direction),
                             libraryFolders = libFolders,
                             libraryRoots = libRoots,
                             isLoading = false,
@@ -310,37 +323,24 @@ class FoldersViewModel(
         val personalChildren = if (username.isNullOrBlank()) emptyList()
             else filterPersonalFolders(allFolders, username)
         val sort = _state.value.sort
-        val personal = sortFolders(personalChildren.filter { !it.isShared }, sort)
-        val shared = sortFolders(filterSharedFolders(allFolders), sort)
-        val libFolders = sortFolders(allFolders.filter { it.externalLibraryId != null }, sort)
+        val direction = _state.value.direction
+        val personal = sortFolders(personalChildren.filter { !it.isShared }, sort, direction)
+        val shared = sortFolders(filterSharedFolders(allFolders), sort, direction)
+        val libFolders =
+            sortFolders(allFolders.filter { it.externalLibraryId != null }, sort, direction)
         _state.update {
             it.copy(
                 personalFolders = personal,
                 sharedFolders = shared,
                 libraryFolders = libFolders,
-                libraries = sortLibraries(it.libraries, sort)
+                libraries = sortLibraries(it.libraries, sort, direction)
             )
         }
     }
 
     private companion object {
-        private const val KEY_SORT = "photonne.folders.sort"
         private const val KEY_VIEW_MODE = "photonne.folders.viewMode"
     }
-}
-
-private fun sortFolders(folders: List<FolderSummary>, sort: FolderSort): List<FolderSummary> =
-    when (sort) {
-        FolderSort.Name -> folders.sortedBy { it.name.ifBlank { it.path }.lowercase() }
-        FolderSort.AssetCount -> folders.sortedByDescending { it.assetCount }
-    }
-
-private fun sortLibraries(
-    libs: List<ExternalLibraryDto>,
-    sort: FolderSort
-): List<ExternalLibraryDto> = when (sort) {
-    FolderSort.Name -> libs.sortedBy { it.name.lowercase() }
-    FolderSort.AssetCount -> libs.sortedByDescending { it.assetCount }
 }
 
 private fun resolveLibraryRoots(folders: List<FolderSummary>): Map<String, FolderSummary> {

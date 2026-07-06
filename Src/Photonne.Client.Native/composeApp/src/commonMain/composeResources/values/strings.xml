@@ -100,12 +100,14 @@
 
     <string name="filters_title">Opciones de vista</string>
     <string name="filters_sort_label">Ordenar por</string>
+    <string name="filters_direction_label">Dirección</string>
+    <string name="filters_sort_ascending">Ascendente</string>
+    <string name="filters_sort_descending">Descendente</string>
     <string name="filters_view_label">Vista</string>
     <string name="view_mode_grid">Cuadrícula</string>
     <string name="view_mode_list">Lista</string>
     <string name="albums_action_filters">Opciones de vista</string>
-    <string name="albums_sort_recent">Foto más reciente</string>
-    <string name="albums_sort_oldest">Foto más antigua</string>
+    <string name="albums_sort_date">Fecha</string>
     <string name="albums_sort_name">Nombre</string>
     <string name="albums_filters_group_by_year">Agrupar por año</string>
     <string name="action_collaborators">Colaboradores</string>

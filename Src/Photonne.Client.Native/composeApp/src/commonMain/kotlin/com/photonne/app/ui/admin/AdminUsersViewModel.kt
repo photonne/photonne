@@ -9,6 +9,7 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.UserDto
+import com.photonne.app.ui.util.sortedByNatural
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,7 +69,7 @@ class AdminUsersViewModel(
             runCatching { repository.listUsers() }
                 .onSuccess { users ->
                     _state.update {
-                        it.copy(users = users.sortedBy { u -> u.username }, isLoading = false)
+                        it.copy(users = users.sortedByNatural { u -> u.username }, isLoading = false)
                     }
                 }
                 .onFailure { error ->
@@ -115,7 +116,7 @@ class AdminUsersViewModel(
                 .onSuccess { created ->
                     _state.update { current ->
                         current.copy(
-                            users = (current.users + created).sortedBy { it.username },
+                            users = (current.users + created).sortedByNatural { it.username },
                             isMutating = false,
                             statusMessage = "User \"${created.username}\" created"
                         )
@@ -156,7 +157,7 @@ class AdminUsersViewModel(
                     _state.update { current ->
                         val replaced = current.users
                             .map { if (it.id == updated.id) updated else it }
-                            .sortedBy { it.username }
+                            .sortedByNatural { it.username }
                         current.copy(
                             users = replaced,
                             isMutating = false,

@@ -6,6 +6,7 @@ import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.ExternalLibraryDto
+import com.photonne.app.ui.util.sortedByNatural
 import com.photonne.app.data.models.LibraryPermissionDto
 import com.photonne.app.data.models.LibraryScanProgress
 import com.photonne.app.data.models.UserDto
@@ -223,7 +224,7 @@ class AdminLibrariesViewModel(
                 .onSuccess { perm ->
                     _state.update { current ->
                         val list = current.permissions.filterNot { it.userId == perm.userId } + perm
-                        current.copy(permissions = list.sortedBy { it.username })
+                        current.copy(permissions = list.sortedByNatural { it.username })
                     }
                 }
                 .onFailure { error ->

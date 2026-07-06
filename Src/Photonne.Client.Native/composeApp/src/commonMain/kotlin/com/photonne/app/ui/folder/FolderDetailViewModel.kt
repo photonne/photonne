@@ -9,6 +9,7 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.TimelineItem
+import com.russhwolf.settings.Settings
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,10 +44,21 @@ class FolderDetailViewModel(
     private val assetRepository: AssetDetailRepository,
     private val albumsRepository: AlbumsRepository,
     private val errorFactory: UiErrorFactory,
+    private val settings: Settings,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FolderDetailUiState())
     val state: StateFlow<FolderDetailUiState> = _state.asStateFlow()
+
+    /**
+     * Order subfolders by the same persisted sort the folder list screen uses,
+     * so drilling into a folder keeps the chosen order instead of falling back
+     * to raw server order.
+     */
+    private fun sortSubfolders(folders: List<FolderSummary>): List<FolderSummary> {
+        val sort = readFolderSort(settings)
+        return sortFolders(folders, sort, readFolderDirection(settings, sort))
+    }
 
     fun open(folderId: String, name: String, parentFolderId: String?) {
         if (_state.value.folderId == folderId &&
@@ -75,7 +87,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             items = items,
-                            subFolders = details?.subFolders.orEmpty(),
+                            subFolders = sortSubfolders(details?.subFolders.orEmpty()),
                             isLoading = false
                         )
                     }
@@ -113,7 +125,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             items = items,
-                            subFolders = details?.subFolders.orEmpty(),
+                            subFolders = sortSubfolders(details?.subFolders.orEmpty()),
                             isLoading = false
                         )
                     }
@@ -264,11 +276,13 @@ class FolderDetailViewModel(
                         st.copy(
                             isMutating = false,
                             selectedSubfolderId = null,
-                            subFolders = st.subFolders.map { sf ->
-                                if (sf.id == folder.id) {
-                                    sf.copy(name = folder.name, path = folder.path)
-                                } else sf
-                            }
+                            subFolders = sortSubfolders(
+                                st.subFolders.map { sf ->
+                                    if (sf.id == folder.id) {
+                                        sf.copy(name = folder.name, path = folder.path)
+                                    } else sf
+                                }
+                            )
                         )
                     }
                     onSuccess(folder)

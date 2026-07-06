@@ -39,6 +39,7 @@ import com.photonne.app.resources.utilities_locations_external_badge
 import com.photonne.app.resources.utilities_locations_item_count
 import com.photonne.app.resources.utilities_locations_shared_badge
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import com.photonne.app.ui.util.sortedByNatural
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -73,7 +74,7 @@ fun UtilitiesLocationsScreen(viewModel: UtilitiesLocationsViewModel) {
                 ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                state.roots.forEach { root ->
+                state.roots.sortedByNatural { it.name.ifBlank { it.path } }.forEach { root ->
                     renderFolder(
                         node = root,
                         depth = 0,
@@ -106,7 +107,7 @@ private fun LazyListScope.renderFolder(
         )
     }
     if (node.id in expanded) {
-        node.subFolders.forEach { child ->
+        node.subFolders.sortedByNatural { it.name.ifBlank { it.path } }.forEach { child ->
             renderFolder(
                 node = child,
                 depth = depth + 1,

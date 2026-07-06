@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.ui.util.sortedByNatural
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_move
@@ -58,7 +59,7 @@ fun FolderPickerDialog(
     }
     val candidates = remember(folders, excluded) {
         folders.filterNot { it.id in excluded }
-            .sortedBy { it.path.lowercase() }
+            .sortedByNatural { it.path }
     }
     var selectedId by remember(initialSelectionId) {
         mutableStateOf<String?>(initialSelectionId)
