@@ -1,0 +1,83 @@
+#!/bin/sh
+# Auto-bump de la versión de la app derivado del Conventional Commit.
+#
+# Fuente de verdad: Src/Directory.Build.props <Version> (cascada a servidor
+# .NET, cliente web, Android versionName/versionCode, Desktop y la constante
+# PhotonneVersion). iOS no deriva de ahí, así que también sincronizamos
+# MARKETING_VERSION / CURRENT_PROJECT_VERSION en el project.pbxproj.
+#
+# Regla de bump (semver) según el tipo del subject:
+#   feat            -> minor
+#   <tipo>!  / BREAKING CHANGE -> major
+#   fix / cualquier otro       -> patch
+#
+# Por qué post-commit + amend en vez de pre-commit / prepare-commit-msg:
+#   - pre-commit incluye ficheros en el commit pero NO ve el mensaje '-m'.
+#   - prepare-commit-msg ve el mensaje pero sus 'git add' se retrasan al
+#     commit siguiente.
+# Así que dejamos que el commit se cree, calculamos el bump desde su mensaje
+# final, editamos los ficheros de versión y los plegamos con --amend.
+
+# Guard de recursión: nuestro propio amend vuelve a disparar post-commit.
+[ -n "$PHOTONNE_SKIP_BUMP" ] && exit 0
+
+GITDIR=$(git rev-parse --git-dir)
+# No tocar merges (2+ padres) ni rebase/cherry-pick en curso.
+if git rev-parse --verify -q HEAD^2 >/dev/null 2>&1; then exit 0; fi
+if [ -d "$GITDIR/rebase-merge" ] || [ -d "$GITDIR/rebase-apply" ]; then exit 0; fi
+
+PROPS="Src/Directory.Build.props"
+PBX="Src/Photonne.Client.Native/iosApp/iosApp.xcodeproj/project.pbxproj"
+
+extract_version() {
+    sed -n 's:.*<Version>\([0-9][0-9.]*\)</Version>.*:\1:p' | head -n1
+}
+
+CUR=$(git show "HEAD:$PROPS" 2>/dev/null | extract_version)
+[ -z "$CUR" ] && exit 0   # sin <Version> reconocible, no hacemos nada
+
+# Si este commit ya cambió la versión respecto a su padre, no re-bumpear:
+# cubre nuestro propio fold, un --amend manual de un commit ya bumpeado y una
+# edición manual deliberada de la versión.
+if git rev-parse --verify -q HEAD^ >/dev/null 2>&1; then
+    PREV=$(git show "HEAD^:$PROPS" 2>/dev/null | extract_version)
+    if [ -n "$PREV" ] && [ "$PREV" != "$CUR" ]; then exit 0; fi
+fi
+
+SUBJECT=$(git log -1 --format=%s)
+BODY=$(git log -1 --format=%B)
+# Solo footer real de Conventional Commits: 'BREAKING CHANGE:' (o -) en mayúsculas
+# a principio de línea y con dos puntos. Evita falsos positivos si el CUERPO
+# menciona el texto en prosa (p.ej. documentando esta propia regla).
+if printf '%s' "$BODY" | grep -qE '^BREAKING[ -]CHANGE:'; then
+    BUMP=major
+elif printf '%s' "$SUBJECT" | grep -qE '^[a-zA-Z]+(\([^)]*\))?!:'; then
+    BUMP=major
+elif printf '%s' "$SUBJECT" | grep -qE '^feat(\([^)]*\))?:'; then
+    BUMP=minor
+else
+    BUMP=patch
+fi
+
+MA=${CUR%%.*}; REST=${CUR#*.}; MI=${REST%%.*}; PA=${REST#*.}; PA=${PA%%[!0-9]*}
+[ -z "$MA" ] && MA=0; [ -z "$MI" ] && MI=0; [ -z "$PA" ] && PA=0
+case "$BUMP" in
+    major) MA=$((MA + 1)); MI=0; PA=0 ;;
+    minor) MI=$((MI + 1)); PA=0 ;;
+    patch) PA=$((PA + 1)) ;;
+esac
+NEW="$MA.$MI.$PA"
+[ "$NEW" = "$CUR" ] && exit 0
+
+# Mismo esquema de code que Android toVersionCode(): major*10000+minor*100+patch.
+CODE=$((MA * 10000 + MI * 100 + PA))
+
+sed -i.bak "s:<Version>$CUR</Version>:<Version>$NEW</Version>:" "$PROPS" && rm -f "$PROPS.bak"
+if [ -f "$PBX" ]; then
+    sed -i.bak -E "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $NEW;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $CODE;/g" "$PBX" && rm -f "$PBX.bak"
+fi
+
+git add "$PROPS"
+[ -f "$PBX" ] && git add "$PBX"
+PHOTONNE_SKIP_BUMP=1 git commit --amend --no-edit --no-verify >/dev/null
+echo "[photonne] versión $CUR -> $NEW ($BUMP) plegada en el commit" >&2
