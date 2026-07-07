@@ -123,6 +123,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
         PhotonneApiClient(get(), baseUrlProvider = { urlStore.requireBaseUrl() })
     }
     single { LocalReachabilityProbe(get(), get(), get()) }
+    single { com.photonne.app.data.api.ForegroundRecovery(get(), get()) }
     single { AppVersionStore(get()) }
     single { UiErrorFactory(urlStore = get(), versionStore = get()) }
     singleOf(::AuthRepository)

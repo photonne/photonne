@@ -14,6 +14,11 @@ actual fun platformModule() = module {
     single<NetworkMonitor> { DesktopNetworkMonitor() }
     single<Settings> { PreferencesSettings(Preferences.userRoot().node("com/photonne/app")) }
     single<HttpClientEngine> { CIO.create() }
+    single<com.photonne.app.data.api.ConnectionRecycler> {
+        object : com.photonne.app.data.api.ConnectionRecycler {
+            override fun recycle() {}
+        }
+    }
     single { AssetSharing() }
     single { com.photonne.app.data.devicebackup.DeviceGallery() }
 }

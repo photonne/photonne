@@ -82,6 +82,17 @@ actual fun platformModule() = module {
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
     }
+    // Purga proactiva de sockets al volver a primer plano (ForegroundRecovery).
+    // Reutiliza EL MISMO pool compartido que ya se evicta en cambio de red, así
+    // que un keep-alive muerto tras la suspensión del móvil se cierra antes de
+    // que el primer request lo reutilice. evictAll() solo cierra conexiones
+    // ociosas: una subida de backup en curso no lo es y sobrevive.
+    single<com.photonne.app.data.api.ConnectionRecycler> {
+        val pool = get<ConnectionPool>()
+        object : com.photonne.app.data.api.ConnectionRecycler {
+            override fun recycle() = pool.evictAll()
+        }
+    }
     single { AssetSharing(androidContext()) }
     single { com.photonne.app.data.devicebackup.DeviceGallery(androidContext()) }
 }

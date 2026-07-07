@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +24,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
@@ -403,6 +407,26 @@ fun App() {
     val probeScope = rememberCoroutineScope()
     LaunchedEffect(reachabilityProbe) {
         reachabilityProbe.start(probeScope)
+    }
+
+    // Recuperación proactiva al volver a primer plano: purga los sockets
+    // medio-abiertos y re-sondea la reachability ANTES de que el primer request
+    // del usuario reutilice un socket muerto y saque el banner "Reintentar".
+    val foregroundRecovery: com.photonne.app.data.api.ForegroundRecovery = koinInject()
+    val recoveryScope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        // Salta el ON_START del arranque en frío: el probe ya sondea al iniciar
+        // (tick inicial del NetworkMonitor) y el pool está vacío.
+        var first = true
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) {
+                if (first) first = false
+                else recoveryScope.launch { foregroundRecovery.onEnterForeground() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val themeStore: com.photonne.app.data.settings.ThemePreferenceStore = koinInject()
