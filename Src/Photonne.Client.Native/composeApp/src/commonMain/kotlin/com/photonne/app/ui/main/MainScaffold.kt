@@ -41,6 +41,8 @@ import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
@@ -93,6 +95,8 @@ import com.photonne.app.resources.folder_action_actions
 import com.photonne.app.resources.folder_action_move
 import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_selection_move
+import com.photonne.app.resources.folder_timeline_add
+import com.photonne.app.resources.folder_timeline_remove
 import com.photonne.app.resources.people_action_hide
 import com.photonne.app.resources.people_action_hide_hidden
 import com.photonne.app.resources.people_action_merge
@@ -871,9 +875,32 @@ fun FolderCardSelectionBottomBar(
     isMutating: Boolean,
     onManageMembers: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    // Per-user timeline opt-out. Only meaningful for shared folders.
+    canToggleTimeline: Boolean = false,
+    excludedFromTimeline: Boolean = false,
+    onToggleTimeline: () -> Unit = {}
 ) {
     NavigationBar {
+        if (canToggleTimeline) {
+            val label = stringResource(
+                if (excludedFromTimeline) Res.string.folder_timeline_add
+                else Res.string.folder_timeline_remove
+            )
+            NavigationBarItem(
+                selected = false,
+                onClick = onToggleTimeline,
+                enabled = !isMutating,
+                icon = {
+                    Icon(
+                        if (excludedFromTimeline) Icons.Outlined.Visibility
+                        else Icons.Outlined.VisibilityOff,
+                        contentDescription = label
+                    )
+                },
+                label = { SelectionLabel(label) }
+            )
+        }
         if (canManageMembers) {
             NavigationBarItem(
                 selected = false,
@@ -938,10 +965,14 @@ fun FolderDetailTopBar(
     onEdit: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
-    onManageMembers: () -> Unit
+    onManageMembers: () -> Unit,
+    // Per-user timeline opt-out. Only meaningful for shared folders.
+    canToggleTimeline: Boolean = false,
+    excludedFromTimeline: Boolean = false,
+    onToggleTimeline: () -> Unit = {}
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = canEdit || canDelete || canManageMembers || canMove
+    val hasMenu = canEdit || canDelete || canManageMembers || canMove || canToggleTimeline
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -973,6 +1004,26 @@ fun FolderDetailTopBar(
                         )
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (canToggleTimeline) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        stringResource(
+                                            if (excludedFromTimeline) Res.string.folder_timeline_add
+                                            else Res.string.folder_timeline_remove
+                                        )
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (excludedFromTimeline) Icons.Outlined.Visibility
+                                        else Icons.Outlined.VisibilityOff,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = { menuOpen = false; onToggleTimeline() }
+                            )
+                        }
                         if (canEdit) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.action_edit)) },

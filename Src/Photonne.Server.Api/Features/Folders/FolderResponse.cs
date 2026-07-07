@@ -14,5 +14,19 @@ public class FolderResponse
     public bool IsOwner { get; set; }
     public int SharedWithCount { get; set; }
     public Guid? ExternalLibraryId { get; set; }
+
+    // Per-user opt-out: true when the requesting user has excluded this shared
+    // folder from their own discovery surfaces (timeline, memories, people,
+    // search…) while keeping it browsable/administrable here. See
+    // AllowedFolderCache.ExcludedFoldersSettingKey.
+    public bool ExcludedFromTimeline { get; set; }
+
     public List<FolderResponse> SubFolders { get; set; } = new();
+}
+
+public class TimelineVisibilityRequest
+{
+    // true  => include this folder in my timeline/memories/etc. (default)
+    // false => I only administer it; keep it out of my personal surfaces.
+    public bool Included { get; set; }
 }

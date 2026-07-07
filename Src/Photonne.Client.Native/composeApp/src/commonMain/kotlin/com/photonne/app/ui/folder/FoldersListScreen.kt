@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,6 +63,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folder_external_badge
 import com.photonne.app.resources.folder_shared_badge
+import com.photonne.app.resources.folder_timeline_excluded_badge
 import com.photonne.app.resources.folders_action_search
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
@@ -379,6 +381,9 @@ private fun FolderRow(
                 if (folder.externalLibraryId != null) {
                     Badge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
                 }
+                if (folder.excludedFromTimeline) {
+                    Badge(stringResource(Res.string.folder_timeline_excluded_badge), Icons.Outlined.VisibilityOff)
+                }
             }
         }
     }
@@ -432,20 +437,39 @@ private fun FolderCard(
                     style = MaterialTheme.typography.labelSmall
                 )
             }
-            if (folder.isShared) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
-                        .padding(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = stringResource(Res.string.folder_shared_badge),
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (folder.excludedFromTimeline) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
+                            .padding(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.VisibilityOff,
+                            contentDescription = stringResource(Res.string.folder_timeline_excluded_badge),
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                if (folder.isShared) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
+                            .padding(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = stringResource(Res.string.folder_shared_badge),
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
             }
             if (isSelected) {

@@ -837,6 +837,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onManageMembers = {
                         folderPermissionsViewModel.open(folder.id)
                         showFolderMembers = true
+                    },
+                    canToggleTimeline = folder.isShared && folder.externalLibraryId == null,
+                    excludedFromTimeline = folder.excludedFromTimeline,
+                    onToggleTimeline = {
+                        val nextIncluded = folder.excludedFromTimeline
+                        foldersViewModel.setTimelineIncluded(folder.id, included = nextIncluded)
+                        selectedFolder = folder.copy(excludedFromTimeline = !nextIncluded)
                     }
                 )
             }
@@ -1465,6 +1472,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onDelete = {
                             pendingActionFolder = target
                             showDeleteFolder = true
+                        },
+                        canToggleTimeline = target.isShared && target.externalLibraryId == null,
+                        excludedFromTimeline = target.excludedFromTimeline,
+                        onToggleTimeline = {
+                            foldersViewModel.setTimelineIncluded(
+                                folderId = target.id,
+                                included = target.excludedFromTimeline
+                            )
                         }
                     )
                 }

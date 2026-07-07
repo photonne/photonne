@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
@@ -24,6 +25,16 @@ namespace Photonne.Server.Api.Features.Timeline;
 public class AllowedFolderCache
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Per-user setting key holding a JSON array of folder ids the user has
+    /// opted OUT of their discovery surfaces (timeline, memories, people,
+    /// search, map…). Stored under the user's own Setting.OwnerId. The folder
+    /// stays fully browsable/administrable via FoldersEndpoint (which does NOT
+    /// derive from this cache) — only the read-side "my content" set shrinks.
+    /// </summary>
+    public const string ExcludedFoldersSettingKey = "TimelinePrefs.ExcludedFolders";
+
     private readonly IMemoryCache _cache;
 
     public AllowedFolderCache(IMemoryCache cache)
@@ -125,6 +136,57 @@ public class AllowedFolderCache
             }
         }
 
+        // Per-user opt-out: a folder the user only ADMINISTERS should not bleed
+        // into their timeline/memories/people/search. Subtract each excluded
+        // root together with its whole subtree (grants are inherited, so the
+        // children were pulled into allowedIds above). Applied last, after
+        // personal space and libraries — excluded roots are always shared
+        // folders, so this never touches the user's own personal content.
+        var excludedRootIds = await GetExcludedFolderIdsAsync(dbContext, userId, ct);
+        if (excludedRootIds.Count > 0)
+        {
+            var excludedSubtree = new HashSet<Guid>();
+            var pendingExcluded = new Stack<Guid>(excludedRootIds);
+            while (pendingExcluded.Count > 0)
+            {
+                var current = pendingExcluded.Pop();
+                if (!excludedSubtree.Add(current)) continue;
+                foreach (var child in childrenByParent[current]) pendingExcluded.Push(child.Id);
+            }
+            allowedIds.ExceptWith(excludedSubtree);
+        }
+
         return allowedIds;
+    }
+
+    /// <summary>
+    /// Reads the user's opt-out folder set from their <c>TimelinePrefs.ExcludedFolders</c>
+    /// setting. Returns an empty set when unset or unparseable. Shared by the
+    /// visibility computation, the Folders DTO (to render the toggle state) and
+    /// the toggle endpoint (read-modify-write).
+    /// </summary>
+    public static async Task<HashSet<Guid>> GetExcludedFolderIdsAsync(
+        ApplicationDbContext dbContext, Guid userId, CancellationToken ct)
+    {
+        var raw = await dbContext.Settings
+            .AsNoTracking()
+            .Where(s => s.OwnerId == userId && s.Key == ExcludedFoldersSettingKey)
+            .Select(s => s.Value)
+            .FirstOrDefaultAsync(ct);
+        return ParseFolderIds(raw);
+    }
+
+    public static HashSet<Guid> ParseFolderIds(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return new HashSet<Guid>();
+        try
+        {
+            var ids = JsonSerializer.Deserialize<List<Guid>>(raw);
+            return ids is null ? new HashSet<Guid>() : ids.ToHashSet();
+        }
+        catch (JsonException)
+        {
+            return new HashSet<Guid>();
+        }
     }
 }

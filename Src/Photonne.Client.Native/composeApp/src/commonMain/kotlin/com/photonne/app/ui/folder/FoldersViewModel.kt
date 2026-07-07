@@ -304,6 +304,35 @@ class FoldersViewModel(
         }
     }
 
+    /**
+     * Per-user opt-out: include/exclude a shared folder from my timeline,
+     * memories, people and search. The folder stays browsable/administrable —
+     * only my discovery surfaces change.
+     */
+    fun setTimelineIncluded(folderId: String, included: Boolean, onSuccess: () -> Unit = {}) {
+        if (_state.value.isMutating) return
+        _state.update { it.copy(isMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.setTimelineIncluded(folderId, included) }
+                .onSuccess {
+                    allFolders = allFolders.map {
+                        if (it.id == folderId) it.copy(excludedFromTimeline = !included) else it
+                    }
+                    repartition()
+                    _state.update { it.copy(isMutating = false, selectedFolderId = null) }
+                    onSuccess()
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isMutating = false,
+                            error = errorFactory.from(error, "Failed to update timeline visibility")
+                        )
+                    }
+                }
+        }
+    }
+
     fun applyUpdate(updated: FolderSummary) {
         allFolders = allFolders.map { if (it.id == updated.id) updated else it }
         repartition()
