@@ -100,6 +100,14 @@ git clone https://github.com/photonne/photonne.git
 cd photonne
 ```
 
+> **Activa los git hooks del repo (una vez por clon):**
+> ```bash
+> ./scripts/setup-hooks.sh
+> ```
+> Fija `core.hooksPath` a `.githooks/`, que incluye el auto-bump de versión en
+> cada commit. Es config local de git y **no se clona**, por eso hay que
+> ejecutarlo una vez en cada máquina. Ver [Versionado](#versionado).
+
 ### 2. Configurar las variables de entorno
 
 ```bash
@@ -399,6 +407,26 @@ El `docker-compose.override.yml` se aplica automáticamente y compila desde el
 `photonne-ml` se adapta a tu arquitectura automáticamente (`ARG TARGETARCH`):
 en `amd64` usa los wheels `+cpu` de PyTorch (slim, ~200 MB); en `arm64` usa
 los wheels nativos de PyPI, también CPU-only.
+
+## Versionado
+
+La versión de la app se incrementa **automáticamente en cada commit**, derivada
+del tipo del [Conventional Commit](https://www.conventionalcommits.org/), y se
+pliega en ese mismo commit (vía `git commit --amend`) mediante el hook
+`.githooks/post-commit` (activar con `./scripts/setup-hooks.sh`).
+
+| Commit | Bump (semver) |
+|---|---|
+| `feat: ...` / `feat(scope): ...` | minor |
+| `<tipo>!: ...` o footer `BREAKING CHANGE:` | major |
+| `fix: ...` y cualquier otro tipo | patch |
+
+La fuente de verdad es `Src/Directory.Build.props` (`<Version>`), que cascada
+al servidor .NET, el cliente web, Android (`versionName`/`versionCode`), Desktop
+y la constante `PhotonneVersion`. iOS no deriva de ahí, así que el hook también
+sincroniza `MARKETING_VERSION` y `CURRENT_PROJECT_VERSION` en el
+`project.pbxproj`. No re-bumpea en `--amend` manual, merges ni rebases. Más
+detalle en [`.githooks/README.md`](.githooks/README.md).
 
 ## CI/CD
 

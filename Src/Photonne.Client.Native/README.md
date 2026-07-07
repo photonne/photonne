@@ -92,6 +92,17 @@ El `.xcodeproj` no está versionado todavía. La forma recomendada de generarlo:
 Una vez generado el `iosApp.xcodeproj`, comítelo dentro de `iosApp/` para
 fijar la configuración compartida.
 
+## Versionado
+
+No edites las versiones a mano. `versionName`/`versionCode` (Android) y el
+`packageVersion` (Desktop) se leen en configuración de Gradle desde
+`../Directory.Build.props` (`<Version>`); iOS (`MARKETING_VERSION` /
+`CURRENT_PROJECT_VERSION` en `iosApp.xcodeproj/project.pbxproj`) lo sincroniza
+el hook `post-commit` del repo. Ese hook incrementa la versión en cada commit
+según el tipo del Conventional Commit — ver [Versionado en el README
+raíz](../../README.md#versionado). `CURRENT_PROJECT_VERSION` usa el mismo
+esquema que `versionCode`: `major*10000 + minor*100 + patch`.
+
 ## Generación del cliente del API desde OpenAPI
 
 Hoy las DTOs están escritas a mano (ver
