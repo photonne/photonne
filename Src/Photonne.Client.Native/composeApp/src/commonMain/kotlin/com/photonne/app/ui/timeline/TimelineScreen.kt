@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.PhotoLibrary
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -63,7 +62,6 @@ import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.settings.TimelineZoomLevel
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.timeline_device_loading
 import com.photonne.app.resources.timeline_scroll_to_top
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
@@ -147,10 +145,6 @@ fun TimelineScreen(
         if (!deviceBackupState.isBackupEnabled) emptyList()
         else deviceBackupViewModel.deviceTimelineItems()
     }
-    // Subtle "finding device photos" hint shown only during the first device
-    // scan (no cache yet → entries still empty). Cached launches seed the
-    // grid instantly and never flip isLoading, so the hint stays hidden.
-    val deviceLoading = deviceBackupState.isBackupEnabled && deviceBackupState.isLoading
     // Whether the Recuerdos strip belongs in the timeline at all. It stays
     // mounted while selecting and instead collapses smoothly (see the
     // AnimatedVisibility below) so entering selection no longer makes the
@@ -318,9 +312,7 @@ fun TimelineScreen(
                     val rowsLatest = rememberUpdatedState(rows)
                     val widthLatest = rememberUpdatedState(containerWidthDp.value)
                     val zoomLatest = rememberUpdatedState(zoomLevel)
-                    val headerCount = if (hasMemoriesHeader) {
-                        1 + (if (deviceLoading && state.error == null) 1 else 0)
-                    } else 0
+                    val headerCount = if (hasMemoriesHeader) 1 else 0
                     val headerCountLatest = rememberUpdatedState(headerCount)
 
                     var reflowActive by remember { mutableStateOf(false) }
@@ -778,21 +770,6 @@ fun TimelineScreen(
                                             )
                                         }
                                     }
-                                    // With memories present the floating pill
-                                    // would overlap the strip, so the scan hint
-                                    // sits inline between memories and the grid.
-                                    if (deviceLoading && state.error == null) {
-                                        item(key = "device-scan-indicator") {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(bottom = 12.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                DeviceScanIndicator()
-                                            }
-                                        }
-                                    }
                                 }
                             } else null,
                             // Frozen while a pinch plays. NOT hidden: the dissolve
@@ -856,9 +833,7 @@ fun TimelineScreen(
                     TimelineScrubber(
                         gridState = gridState,
                         rows = rows,
-                        headerItemCount = if (hasMemoriesHeader) {
-                            1 + (if (deviceLoading && state.error == null) 1 else 0)
-                        } else 0,
+                        headerItemCount = if (hasMemoriesHeader) 1 else 0,
                         onDraggingChange = { dragging -> isScrubbing = dragging },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     )
@@ -881,42 +856,6 @@ fun TimelineScreen(
                     onRetry = onRefresh,
                 )
             }
-            // Floating pill only when there's no memories header to host it
-            // inline (otherwise the inline header item above is used).
-            if (deviceLoading && state.error == null && !hasMemoriesHeader) {
-                DeviceScanIndicator(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 12.dp)
-                )
-            }
-        }
-    }
-}
-
-/** Small pill shown over the grid while the first device-gallery scan runs. */
-@Composable
-private fun DeviceScanIndicator(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            CircularProgressIndicator(
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(14.dp)
-            )
-            Text(
-                text = stringResource(Res.string.timeline_device_loading),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

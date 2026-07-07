@@ -1215,7 +1215,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 onJumpToDate = { showJumpToDate = true },
                 currentZoom = timelineZoom,
                 onZoomSelected = timelineZoomStore::update,
-                onOpenSearch = { selectedTab = MainTab.Search }
+                onOpenSearch = { selectedTab = MainTab.Search },
+                deviceLoading = deviceBackupState.isBackupEnabled &&
+                    deviceBackupState.isLoading
             )
         }
     }
