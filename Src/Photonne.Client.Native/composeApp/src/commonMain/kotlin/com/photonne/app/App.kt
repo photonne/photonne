@@ -3,6 +3,7 @@
 package com.photonne.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
@@ -217,7 +218,6 @@ private enum class MoreSubscreen {
     AccountAppearance,
     AccountStorage,
     Notifications,
-    SharedTrash,
     Administration,
     AdminUsers,
     AdminUserEditor,
@@ -381,7 +381,6 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.UnsupportedFiles,
     MoreSubscreen.AccountSettings,
     MoreSubscreen.Notifications,
-    MoreSubscreen.SharedTrash,
     MoreSubscreen.Administration -> null
 }
 
@@ -659,6 +658,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showRestoreAllTrash by remember { mutableStateOf(false) }
     var showEmptyTrash by remember { mutableStateOf(false) }
     var showPurgeSelected by remember { mutableStateOf(false) }
+    // Active tab of the unified Trash screen (Personal / Compartida).
+    var trashTab by remember { mutableStateOf(com.photonne.app.ui.library.TrashTab.Personal) }
 
     val onLogout: () -> Unit = { authRepository.logout() }
     val albumBack: () -> Unit = { selectedAlbum = null }
@@ -693,7 +694,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (selectedTab == MainTab.Search && searchState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.Favorites && favoritesState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
-        (moreSubscreen == MoreSubscreen.Trash && trashState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.Trash && trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
             personDetailState.isSelectionActive)
     )
@@ -728,7 +729,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 favoritesViewModel.clearSelection()
             moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive ->
                 archivedViewModel.clearSelection()
-            moreSubscreen == MoreSubscreen.Trash && trashState.isSelectionActive ->
+            moreSubscreen == MoreSubscreen.Trash && trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive ->
                 trashViewModel.clearSelection()
             moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
                 personDetailState.isSelectionActive -> personDetailViewModel.clearSelection()
@@ -1095,7 +1096,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onUnarchiveAll = { showUnarchiveAll = true }
                 )
             }
+            // Personal tab in selection mode: restore/purge selected.
             moreSubscreen == MoreSubscreen.Trash &&
+                trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
                 trashState.isSelectionActive ->
                 com.photonne.app.ui.main.TrashSelectionTopBar(
                     selectedCount = trashState.selection.size,
@@ -1104,7 +1107,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onRestore = { trashViewModel.bulkRestore() },
                     onPurge = { showPurgeSelected = true }
                 )
-            moreSubscreen == MoreSubscreen.Trash -> {
+            // Personal tab, normal: restore-all / empty.
+            moreSubscreen == MoreSubscreen.Trash &&
+                trashTab == com.photonne.app.ui.library.TrashTab.Personal -> {
                 val count = trashState.items.size
                 com.photonne.app.ui.main.TrashTopBar(
                     title = stringResource(Res.string.trash_title),
@@ -1116,6 +1121,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onEmptyTrash = { showEmptyTrash = true }
                 )
             }
+            // Shared tab: the screen renders its own selection/action bar, so the
+            // top bar is just title + back.
+            moreSubscreen == MoreSubscreen.Trash ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.trash_title),
+                    onBack = { moreSubscreen = null },
+                )
             moreSubscreen == MoreSubscreen.Notifications ->
                 com.photonne.app.ui.main.NotificationsTopBar(
                     title = stringResource(Res.string.notifications_title),
@@ -1123,11 +1135,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         !notificationsState.isMarkingAllRead,
                     onBack = { moreSubscreen = null },
                     onMarkAllRead = notificationsViewModel::markAllRead
-                )
-            moreSubscreen == MoreSubscreen.SharedTrash ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.admin_shared_trash),
-                    onBack = { moreSubscreen = null },
                 )
             moreSubscreen == MoreSubscreen.AccountSettings ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -1800,7 +1807,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onLogout = onLogout,
                         onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
                         onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
-                        onOpenTrash = { moreSubscreen = MoreSubscreen.Trash },
+                        onOpenTrash = {
+                            trashTab = com.photonne.app.ui.library.TrashTab.Personal
+                            moreSubscreen = MoreSubscreen.Trash
+                        },
                         onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
                         onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
                         onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
@@ -1808,9 +1818,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             moreSubscreen = MoreSubscreen.Notifications
                         },
                         notificationsUnreadCount = notificationsState.unreadCount,
-                        onOpenSharedTrash = {
-                            moreSubscreen = MoreSubscreen.SharedTrash
-                        },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
                         },
@@ -2119,38 +2126,58 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onLoad = archivedViewModel::ensureLoaded,
                         onRefresh = archivedViewModel::refresh
                     )
-                    MoreSubscreen.Trash -> com.photonne.app.ui.library.TrashScreen(
-                        state = trashState,
-                        onItemClick = { index ->
-                            if (trashState.isSelectionActive) {
-                                trashState.items.getOrNull(index)?.let {
-                                    trashViewModel.toggleSelection(it.id)
+                    MoreSubscreen.Trash -> Column(modifier = Modifier.fillMaxSize()) {
+                        com.photonne.app.ui.library.TrashTabBar(
+                            selected = trashTab,
+                            onSelect = { tab ->
+                                if (tab != trashTab) {
+                                    // Leaving the personal tab drops its selection
+                                    // so the top bar/back don't act on a hidden tab.
+                                    trashViewModel.clearSelection()
+                                    trashTab = tab
                                 }
-                            } else {
-                                assetDetail = AssetDetailContext(
-                                    items = trashState.items,
-                                    startIndex = index,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = trashState.hasMore,
+                            }
+                        )
+                        when (trashTab) {
+                            com.photonne.app.ui.library.TrashTab.Personal ->
+                                com.photonne.app.ui.library.TrashScreen(
+                                    state = trashState,
+                                    onItemClick = { index ->
+                                        if (trashState.isSelectionActive) {
+                                            trashState.items.getOrNull(index)?.let {
+                                                trashViewModel.toggleSelection(it.id)
+                                            }
+                                        } else {
+                                            assetDetail = AssetDetailContext(
+                                                items = trashState.items,
+                                                startIndex = index,
+                                                source = AssetDetailContext.Source.Timeline,
+                                                hasMore = trashState.hasMore,
+                                                onLoadMore = trashViewModel::loadMore,
+                                                onFavoriteChanged = { id, isFav ->
+                                                    // Trashed assets ignore favorite changes
+                                                    // server-side, but keep the local copy
+                                                    // consistent if the viewer toggles.
+                                                    timelineViewModel.setFavorite(id, isFav)
+                                                }
+                                            )
+                                        }
+                                    },
+                                    onItemLongClick = { index ->
+                                        trashState.items.getOrNull(index)?.let {
+                                            trashViewModel.toggleSelection(it.id)
+                                        }
+                                    },
                                     onLoadMore = trashViewModel::loadMore,
-                                    onFavoriteChanged = { id, isFav ->
-                                        // Trashed assets ignore favorite changes
-                                        // server-side, but keep the local copy
-                                        // consistent if the viewer toggles.
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
+                                    onLoad = trashViewModel::ensureLoaded,
+                                    onRefresh = trashViewModel::refresh
                                 )
-                            }
-                        },
-                        onItemLongClick = { index ->
-                            trashState.items.getOrNull(index)?.let {
-                                trashViewModel.toggleSelection(it.id)
-                            }
-                        },
-                        onLoadMore = trashViewModel::loadMore,
-                        onLoad = trashViewModel::ensureLoaded,
-                        onRefresh = trashViewModel::refresh
-                    )
+                            com.photonne.app.ui.library.TrashTab.Shared ->
+                                com.photonne.app.ui.admin.AdminSharedTrashScreen(
+                                    viewModel = adminSharedTrashViewModel
+                                )
+                        }
+                    }
                     MoreSubscreen.Notifications ->
                         com.photonne.app.ui.notifications.NotificationsScreen(
                             viewModel = notificationsViewModel,
@@ -2160,14 +2187,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 val path = url.substringBefore('?').trimEnd('/')
                                 when {
                                     path == "/shared-trash" ||
-                                        path.endsWith("/shared-trash") ->
-                                        moreSubscreen = MoreSubscreen.SharedTrash
+                                        path.endsWith("/shared-trash") -> {
+                                        trashTab = com.photonne.app.ui.library.TrashTab.Shared
+                                        moreSubscreen = MoreSubscreen.Trash
+                                    }
                                 }
                             }
-                        )
-                    MoreSubscreen.SharedTrash ->
-                        com.photonne.app.ui.admin.AdminSharedTrashScreen(
-                            viewModel = adminSharedTrashViewModel
                         )
                     MoreSubscreen.AccountSettings ->
                         com.photonne.app.ui.settings.AccountSettingsScreen(

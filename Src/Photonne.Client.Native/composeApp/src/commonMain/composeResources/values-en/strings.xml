@@ -263,6 +263,8 @@
     <string name="archive_action_unarchive_all_message">All archived items will be brought back to the timeline.</string>
 
     <string name="trash_title">Trash</string>
+    <string name="trash_tab_personal">Personal</string>
+    <string name="trash_tab_shared">Shared</string>
     <string name="trash_empty_title">Trash is empty</string>
     <string name="trash_empty_subtitle">Photos you move to the trash will appear here until you restore them or delete them forever.</string>
     <string name="trash_action_restore">Restore</string>

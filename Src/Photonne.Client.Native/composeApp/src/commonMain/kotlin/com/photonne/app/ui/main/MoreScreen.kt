@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Notifications
@@ -50,7 +49,6 @@ import com.photonne.app.PhotonneVersion
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_settings_title
-import com.photonne.app.resources.admin_shared_trash
 import com.photonne.app.resources.action_logout
 import com.photonne.app.resources.administration_title
 import com.photonne.app.resources.archive_title
@@ -100,7 +98,6 @@ fun MoreScreen(
     onOpenDeviceBackup: () -> Unit,
     onOpenNotifications: () -> Unit,
     notificationsUnreadCount: Int = 0,
-    onOpenSharedTrash: () -> Unit,
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null
 ) {
@@ -115,8 +112,7 @@ fun MoreScreen(
         onOpenUtilities,
         onOpenDeviceBackup,
         onOpenNotifications,
-        notificationsUnreadCount,
-        onOpenSharedTrash
+        notificationsUnreadCount
     ) {
         listOf(
             // Browsing by grouping (People / Map / Scenes / Objects) now lives
@@ -129,8 +125,7 @@ fun MoreScreen(
                 shortcuts = listOf(
                     MoreShortcut("favorites", Res.string.favorites_title, Icons.Outlined.FavoriteBorder, onOpenFavorites),
                     MoreShortcut("archive", Res.string.archive_title, Icons.Outlined.Archive, onOpenArchived),
-                    MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash),
-                    MoreShortcut("shared-trash", Res.string.admin_shared_trash, Icons.Outlined.DeleteSweep, onOpenSharedTrash)
+                    MoreShortcut("trash", Res.string.trash_title, Icons.Outlined.Delete, onOpenTrash)
                 )
             ),
             MoreSection(
@@ -215,12 +210,15 @@ fun MoreScreen(
                     }
                 }
             }
-            // "Otros archivos" reads as a lightweight link tucked under the
-            // Gestión grid — it's a rarely-visited diagnostics view, not a
-            // primary destination, so it doesn't earn a full tile.
+            // "Otros archivos" reads as a lightweight horizontal row under the
+            // Gestión grid — its label is too long for a narrow square tile.
             if (section.key == "manage") {
                 item("unsupported-files-link") {
-                    UnsupportedFilesLink(onClick = onOpenUnsupportedFiles)
+                    ManageLinkRow(
+                        icon = Icons.Outlined.FolderOff,
+                        label = stringResource(Res.string.unsupported_files_title),
+                        onClick = onOpenUnsupportedFiles
+                    )
                 }
             }
         }
@@ -268,8 +266,10 @@ fun MoreScreen(
     }
 }
 
+/** Full-width horizontal row under the Gestión grid (icon + label + chevron).
+ *  Used for entries whose labels don't fit a narrow square tile. */
 @Composable
-private fun UnsupportedFilesLink(onClick: () -> Unit) {
+private fun ManageLinkRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -278,14 +278,14 @@ private fun UnsupportedFilesLink(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Outlined.FolderOff,
+            imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp)
         )
         Spacer(Modifier.size(10.dp))
         Text(
-            text = stringResource(Res.string.unsupported_files_title),
+            text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)

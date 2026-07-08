@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Videocam
@@ -53,6 +54,8 @@ import com.photonne.app.resources.admin_shared_trash_action_purge
 import com.photonne.app.resources.admin_shared_trash_action_restore
 import com.photonne.app.resources.admin_shared_trash_deleted_by
 import com.photonne.app.resources.admin_shared_trash_empty
+import com.photonne.app.resources.admin_shared_trash_empty_subtitle
+import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.resources.admin_shared_trash_load_more
 import com.photonne.app.resources.admin_shared_trash_purge_confirm_message
 import com.photonne.app.resources.admin_shared_trash_purge_confirm_title
@@ -254,12 +257,11 @@ fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
                 Text(state.errorMessage!!, color = MaterialTheme.colorScheme.error)
             }
         state.isEmpty ->
-            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    stringResource(Res.string.admin_shared_trash_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            EmptyState(
+                icon = Icons.Outlined.DeleteSweep,
+                title = stringResource(Res.string.admin_shared_trash_empty),
+                subtitle = stringResource(Res.string.admin_shared_trash_empty_subtitle)
+            )
         else -> Column(modifier = Modifier.fillMaxSize()) {
             if (state.isSelectionActive) {
                 SelectionActionBar(

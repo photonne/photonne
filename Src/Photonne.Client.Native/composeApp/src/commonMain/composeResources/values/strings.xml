@@ -263,6 +263,8 @@
     <string name="archive_action_unarchive_all_message">Se devolverán a la línea de tiempo todos los elementos archivados.</string>
 
     <string name="trash_title">Papelera</string>
+    <string name="trash_tab_personal">Personal</string>
+    <string name="trash_tab_shared">Compartida</string>
     <string name="trash_empty_title">La papelera está vacía</string>
     <string name="trash_empty_subtitle">Las fotos que muevas a la papelera aparecerán aquí hasta que las restaures o las elimines.</string>
     <string name="trash_action_restore">Restaurar</string>
@@ -680,6 +682,7 @@
     <string name="admin_shared_trash">Papelera compartida</string>
     <string name="admin_shared_trash_subtitle">Elementos borrados de carpetas compartidas</string>
     <string name="admin_shared_trash_empty">No hay elementos en la papelera compartida</string>
+    <string name="admin_shared_trash_empty_subtitle">Los archivos que se eliminen de carpetas compartidas aparecerán aquí hasta que se restauren o se eliminen.</string>
     <string name="admin_shared_trash_deleted_by">Borrado por</string>
     <string name="admin_shared_trash_unknown_user">Desconocido</string>
     <string name="admin_shared_trash_selected">seleccionados</string>

@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,10 +21,37 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.trash_empty_subtitle
 import com.photonne.app.resources.trash_empty_title
+import com.photonne.app.resources.trash_tab_personal
+import com.photonne.app.resources.trash_tab_shared
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
+
+/** Tabs of the unified Trash screen: the user's own trash and the shared-folder trash. */
+enum class TrashTab { Personal, Shared }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TrashTabBar(selected: TrashTab, onSelect: (TrashTab) -> Unit) {
+    val tabs = TrashTab.entries
+    PrimaryTabRow(selectedTabIndex = tabs.indexOf(selected)) {
+        tabs.forEach { tab ->
+            Tab(
+                selected = tab == selected,
+                onClick = { onSelect(tab) },
+                text = {
+                    Text(
+                        when (tab) {
+                            TrashTab.Personal -> stringResource(Res.string.trash_tab_personal)
+                            TrashTab.Shared -> stringResource(Res.string.trash_tab_shared)
+                        }
+                    )
+                }
+            )
+        }
+    }
+}
 
 @Composable
 fun TrashScreen(
