@@ -162,8 +162,17 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.ExternalLibraryId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Deleter of a shared-folder asset. SetNull so removing the user
+            // never orphans a trash record.
+            entity.HasOne(e => e.DeletedBy)
+                .WithMany()
+                .HasForeignKey(e => e.DeletedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasIndex(e => e.ExternalLibraryId);
             entity.HasIndex(e => e.IsFileMissing);
+            // Every trash query filters on DeletedAt; index it.
+            entity.HasIndex(e => e.DeletedAt);
 
             entity.Property(e => e.FileCreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.FileModifiedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);

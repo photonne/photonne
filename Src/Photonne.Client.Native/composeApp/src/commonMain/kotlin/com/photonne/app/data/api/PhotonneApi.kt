@@ -302,6 +302,12 @@ interface PhotonneApi {
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
     ): AssetPage
+    suspend fun getSharedTrash(
+        cursor: Instant? = null,
+        pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
+    ): com.photonne.app.data.models.SharedTrashPage
+    suspend fun restoreSharedTrash(assetIds: List<String>)
+    suspend fun purgeSharedTrash(assetIds: List<String>)
     suspend fun getFavoriteAssets(
         cursor: Instant? = null,
         pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE
@@ -1199,6 +1205,38 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun getSharedTrash(cursor: Instant?, pageSize: Int): com.photonne.app.data.models.SharedTrashPage {
+        val response: HttpResponse = client.get("$baseUrl/api/assets/shared-trash") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Shared trash list failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun restoreSharedTrash(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/shared-trash/restore") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        ensureSuccess(response, "Shared trash restore failed")
+    }
+
+    override suspend fun purgeSharedTrash(assetIds: List<String>) {
+        if (assetIds.isEmpty()) return
+        val response: HttpResponse = client.post("$baseUrl/api/assets/shared-trash/purge") {
+            contentType(ContentType.Application.Json)
+            setBody(BatchAssetIdsRequest(assetIds = assetIds))
+        }
+        ensureSuccess(response, "Shared trash purge failed")
     }
 
     override suspend fun getFavoriteAssets(cursor: Instant?, pageSize: Int): AssetPage {

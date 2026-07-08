@@ -636,6 +636,7 @@
     <string name="admin_settings_nightly_text">Reconocimiento de texto (OCR)</string>
     <string name="admin_settings_nightly_embedding">Búsqueda inteligente (embeddings)</string>
     <string name="admin_settings_nightly_clustering">Reagrupar caras tras los modelos</string>
+    <string name="admin_settings_nightly_trash_cleanup">Vaciar papelera caducada (retención y cuota)</string>
     <string name="admin_settings_nightly_mode">Modo de proceso</string>
 
     <string name="admin_settings_notifications">Notificaciones</string>
@@ -675,6 +676,18 @@
     <string name="admin_settings_trash_retention">Días de retención</string>
     <string name="admin_settings_trash_max_quota">Cuota máxima (MB)</string>
     <string name="admin_settings_trash_max_quota_hint">0 = sin límite</string>
+
+    <string name="admin_shared_trash">Papelera compartida</string>
+    <string name="admin_shared_trash_subtitle">Elementos borrados de carpetas compartidas</string>
+    <string name="admin_shared_trash_empty">No hay elementos en la papelera compartida</string>
+    <string name="admin_shared_trash_deleted_by">Borrado por</string>
+    <string name="admin_shared_trash_unknown_user">Desconocido</string>
+    <string name="admin_shared_trash_selected">seleccionados</string>
+    <string name="admin_shared_trash_action_restore">Restaurar</string>
+    <string name="admin_shared_trash_action_purge">Eliminar permanentemente</string>
+    <string name="admin_shared_trash_purge_confirm_title">Eliminar permanentemente</string>
+    <string name="admin_shared_trash_purge_confirm_message">Los elementos seleccionados se eliminarán de forma permanente. Esta acción no se puede deshacer.</string>
+    <string name="admin_shared_trash_load_more">Cargar más</string>
 
     <string name="admin_settings_user_defaults">Ajustes de usuario</string>
     <string name="admin_settings_user_defaults_subtitle">Valores por defecto al crear cuentas</string>

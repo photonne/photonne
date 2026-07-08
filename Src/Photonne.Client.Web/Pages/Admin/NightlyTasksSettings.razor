@@ -275,6 +275,8 @@
         var embEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Enabled")) == "true";
         var embMode    =  await SettingsService.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Mode") ?? "missing";
 
+        var trashCleanupEnabled = (await SettingsService.GetSettingAsync("NightlyTaskSettings.TrashCleanup.Enabled")) == "true";
+
         // Order mirrors /admin/system (Sistema) so admins see the same list in the same sequence.
         return new()
         {
@@ -318,6 +320,11 @@
                 embEnabled ? $"Activa — modo: {ModeLabel(embMode, "reprocesar todas", "solo las que faltan")}" : "Desactivada",
                 embEnabled,
                 "/admin/settings/image-embedding"),
+            new NightlyEntry(
+                "Limpieza de papelera",
+                trashCleanupEnabled ? "Activa — aplica retención y cuota" : "Desactivada",
+                trashCleanupEnabled,
+                "/admin/settings/trash"),
         };
     }
 

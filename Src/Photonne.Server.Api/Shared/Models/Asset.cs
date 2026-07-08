@@ -129,6 +129,12 @@ public class Asset
     [MaxLength(1000)]
     public string? DeletedFromPath { get; set; }
     public Guid? DeletedFromFolderId { get; set; }
+
+    // Who moved this asset to the trash. Null for personal-space deletions
+    // (the owner is implicit); set for shared-folder deletions so the shared
+    // trash can attribute them and authorize the deleter's own restore.
+    public Guid? DeletedByUserId { get; set; }
+    public User? DeletedBy { get; set; }
     
     // For videos
     public TimeSpan? Duration { get; set; }

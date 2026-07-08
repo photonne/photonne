@@ -1,0 +1,337 @@
+@page "/admin/settings/shared-trash"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+
+<PageTitle>Administración - Papelera compartida - Photonne</PageTitle>
+
+<div class="page-pad">
+    @if (!_isAuthorized)
+    {
+        <div class="mt-8">
+            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
+            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+                Volver al inicio
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Papelera compartida</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Archivos que los usuarios han eliminado de carpetas compartidas. Puedes restaurarlos a su
+            ubicación original o eliminarlos permanentemente.
+        </MudText>
+
+        <MudCard>
+            <MudCardContent>
+                <div class="d-flex align-center gap-2 flex-wrap mb-3">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="Reload"
+                               Disabled="_loading">
+                        Actualizar
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.RestoreFromTrash"
+                               OnClick="RestoreSelected"
+                               Disabled="@(_working || _selected.Count == 0)">
+                        @if (_working)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Restaurar
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                               OnClick="@(() => _confirmPurge = true)"
+                               Disabled="@(_working || _selected.Count == 0)">
+                        Eliminar permanentemente
+                    </MudButton>
+
+                    <MudSpacer />
+
+                    @if (_selected.Count > 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            @_selected.Count seleccionado@(_selected.Count == 1 ? "" : "s")
+                        </MudText>
+                    }
+                </div>
+
+                @if (_confirmPurge)
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-3">
+                        <div class="d-flex flex-column gap-2">
+                            <MudText Typo="Typo.body2">
+                                Vas a eliminar permanentemente @_selected.Count elemento@(_selected.Count == 1 ? "" : "s").
+                                Esta acción no se puede deshacer.
+                            </MudText>
+                            <div class="d-flex gap-2">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Error"
+                                           StartIcon="@Icons.Material.Filled.DeleteForever"
+                                           OnClick="PurgeSelected"
+                                           Disabled="_working">
+                                    @if (_working)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Eliminando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Sí, eliminar</span>
+                                    }
+                                </MudButton>
+                                <MudButton Variant="Variant.Text"
+                                           OnClick="@(() => _confirmPurge = false)"
+                                           Disabled="_working">
+                                    Cancelar
+                                </MudButton>
+                            </div>
+                        </div>
+                    </MudAlert>
+                }
+
+                @if (_loading && _items.Count == 0)
+                {
+                    <div class="d-flex justify-center pa-8">
+                        <MudProgressCircular Indeterminate="true" />
+                    </div>
+                }
+                else if (_items.Count == 0)
+                {
+                    <div class="d-flex flex-column align-center pa-8 mud-text-secondary">
+                        <MudIcon Icon="@Icons.Material.Outlined.DeleteSweep" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.body1">La papelera compartida está vacía.</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudTable T="SharedTrashItem"
+                              Items="_items"
+                              Hover="true"
+                              Dense="true"
+                              Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh Style="width:48px;">
+                                <MudCheckBox T="bool"
+                                             Value="_allSelected"
+                                             ValueChanged="ToggleSelectAll"
+                                             Dense="true" />
+                            </MudTh>
+                            <MudTh Style="width:64px;"></MudTh>
+                            <MudTh>Archivo</MudTh>
+                            <MudTh>Borrado por</MudTh>
+                            <MudTh>Carpeta de origen</MudTh>
+                            <MudTh>Fecha de borrado</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="">
+                                <MudCheckBox T="bool"
+                                             Value="_selected.Contains(context.Id)"
+                                             ValueChanged="@(v => ToggleSelect(context.Id, v))"
+                                             Dense="true" />
+                            </MudTd>
+                            <MudTd DataLabel="">
+                                @if (context.HasThumbnails)
+                                {
+                                    <img src="@context.ThumbnailUrl"
+                                         alt="@context.FileName"
+                                         style="width:48px;height:48px;object-fit:cover;border-radius:4px;"
+                                         onerror="this.style.display='none'" />
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-center justify-center"
+                                         style="width:48px;height:48px;border-radius:4px;background:var(--mud-palette-background-grey);">
+                                        <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" />
+                                    </div>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Archivo">
+                                <MudText Typo="Typo.body2" Style="word-break:break-all;font-weight:600;">@context.FileName</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.FileSizeFormatted</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Borrado por">
+                                @(string.IsNullOrEmpty(context.DeletedByUsername) ? "—" : context.DeletedByUsername)
+                            </MudTd>
+                            <MudTd DataLabel="Carpeta de origen">
+                                @(string.IsNullOrEmpty(context.DeletedFromFolderName) ? "—" : context.DeletedFromFolderName)
+                            </MudTd>
+                            <MudTd DataLabel="Fecha de borrado">
+                                @(context.DeletedAt.HasValue ? context.DeletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "—")
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
+                    @if (_hasMore)
+                    {
+                        <div class="d-flex justify-center mt-3">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       OnClick="LoadMore"
+                                       Disabled="_loading">
+                                @if (_loading)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Cargar más
+                            </MudButton>
+                        </div>
+                    }
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+</div>
+
+@code {
+    private bool _isAuthorized;
+    private bool _loading = true;
+    private bool _working;
+    private bool _confirmPurge;
+
+    private readonly List<SharedTrashItem> _items = new();
+    private readonly HashSet<Guid> _selected = new();
+    private bool _hasMore;
+    private DateTime? _nextCursor;
+
+    private bool _allSelected => _items.Count > 0 && _selected.Count == _items.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            var returnUrl = Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+            return;
+        }
+
+        var currentUser = await AuthService.GetCurrentUserAsync();
+        _isAuthorized = currentUser?.Role == "Admin";
+
+        if (_isAuthorized)
+        {
+            await Reload();
+        }
+        else
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Reload()
+    {
+        _loading = true;
+        _confirmPurge = false;
+        _items.Clear();
+        _selected.Clear();
+        _nextCursor = null;
+        _hasMore = false;
+        try
+        {
+            var page = await AssetService.GetSharedTrashAsync();
+            _items.AddRange(page.Items);
+            _hasMore = page.HasMore;
+            _nextCursor = page.NextCursor;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar la papelera compartida: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMore()
+    {
+        if (!_hasMore || _nextCursor == null) return;
+        _loading = true;
+        try
+        {
+            var page = await AssetService.GetSharedTrashAsync(_nextCursor);
+            _items.AddRange(page.Items);
+            _hasMore = page.HasMore;
+            _nextCursor = page.NextCursor;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar más elementos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSelect(Guid id, bool selected)
+    {
+        if (selected) _selected.Add(id);
+        else _selected.Remove(id);
+    }
+
+    private void ToggleSelectAll(bool selectAll)
+    {
+        _selected.Clear();
+        if (selectAll)
+        {
+            foreach (var item in _items)
+                _selected.Add(item.Id);
+        }
+    }
+
+    private async Task RestoreSelected()
+    {
+        if (_selected.Count == 0) return;
+        _working = true;
+        try
+        {
+            var ids = _selected.ToList();
+            await AssetService.RestoreSharedTrashAsync(ids);
+            Snackbar.Add($"{ids.Count} elemento(s) restaurado(s).", Severity.Success);
+            await Reload();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al restaurar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private async Task PurgeSelected()
+    {
+        if (_selected.Count == 0) return;
+        _working = true;
+        try
+        {
+            var ids = _selected.ToList();
+            await AssetService.PurgeSharedTrashAsync(ids);
+            Snackbar.Add($"{ids.Count} elemento(s) eliminado(s) permanentemente.", Severity.Success);
+            _confirmPurge = false;
+            await Reload();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al eliminar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+}

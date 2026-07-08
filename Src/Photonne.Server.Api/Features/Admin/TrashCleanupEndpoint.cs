@@ -26,6 +26,10 @@ public class TrashCleanupResult
     public int Deleted { get; set; }
 }
 
+/// <summary>Notification-free result of the shared retention/quota cleanup so
+/// both the admin endpoint and the nightly scheduler can consume it.</summary>
+public readonly record struct TrashCleanupOutcome(int Deleted, string Message);
+
 public class TrashCleanupEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
@@ -125,6 +129,30 @@ public class TrashCleanupEndpoint : IEndpoint
         Guid triggeredBy,
         CancellationToken ct)
     {
+        var outcome = await RunCleanupAsync(dbContext, settingsService, ct);
+        if (triggeredBy != Guid.Empty)
+            await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
+                "Limpieza de papelera completada", outcome.Message);
+
+        return Results.Ok(new TrashCleanupResult
+        {
+            Success = true,
+            Message = outcome.Message,
+            Deleted = outcome.Deleted
+        });
+    }
+
+    /// <summary>
+    /// Applies the retention + per-user-quota trash policy: permanently deletes
+    /// expired and over-quota trash (physical files + thumbnails + rows), skipping
+    /// external-library files. Notification-free so both the admin endpoint and
+    /// the nightly scheduler reuse it. Returns the summary and the count removed.
+    /// </summary>
+    internal static async Task<TrashCleanupOutcome> RunCleanupAsync(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        CancellationToken ct)
+    {
         var retentionDays = await GetRetentionDaysAsync(settingsService);
         var maxQuotaMb    = await GetMaxQuotaMbAsync(settingsService);
 
@@ -176,10 +204,7 @@ public class TrashCleanupEndpoint : IEndpoint
             var msg = retentionDays <= 0 && maxQuotaMb <= 0
                 ? "La retención está configurada como indefinida y no hay cuota. No se eliminó ningún elemento."
                 : $"No hay elementos que eliminar (retención: {(retentionDays > 0 ? retentionDays + " días" : "indefinida")}, cuota: {(maxQuotaMb > 0 ? maxQuotaMb + " MB" : "sin límite")}).";
-            if (triggeredBy != Guid.Empty)
-                await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
-                    "Limpieza de papelera completada", msg);
-            return Results.Ok(new TrashCleanupResult { Success = true, Message = msg, Deleted = 0 });
+            return new TrashCleanupOutcome(0, msg);
         }
 
         foreach (var asset in toDelete)
@@ -219,16 +244,7 @@ public class TrashCleanupEndpoint : IEndpoint
         var detail = parts.Count > 0 ? $" ({string.Join(", ", parts)})" : "";
 
         var resultMsg = $"Limpieza completada. {toDelete.Count} elemento(s) eliminado(s) permanentemente{detail}.";
-        if (triggeredBy != Guid.Empty)
-            await notifications.CreateAsync(triggeredBy, NotificationType.JobCompleted,
-                "Limpieza de papelera completada", resultMsg);
-
-        return Results.Ok(new TrashCleanupResult
-        {
-            Success = true,
-            Message = resultMsg,
-            Deleted = toDelete.Count
-        });
+        return new TrashCleanupOutcome(toDelete.Count, resultMsg);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

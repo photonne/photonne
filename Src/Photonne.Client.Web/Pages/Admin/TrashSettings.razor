@@ -228,6 +228,40 @@
                 </MudCard>
             </MudItem>
 
+            @* ── Limpieza automática nocturna ── *@
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Limpieza automática</MudText>
+                            <MudText Typo="Typo.body2">Aplica la retención y la cuota en la tarea nocturna, sin intervención manual.</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSwitch T="bool"
+                                   @bind-Value="_nightlyCleanupEnabled"
+                                   Color="Color.Primary"
+                                   Label="@(_nightlyCleanupEnabled ? "Limpieza nocturna activada" : "Limpieza nocturna desactivada")" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1 d-block">
+                            Requiere que las tareas nocturnas estén activadas. Elimina permanentemente los elementos expirados y los que superen la cuota.
+                        </MudText>
+                    </MudCardContent>
+                    <MudCardActions Class="px-4 pb-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveNightlyCleanup"
+                                   Disabled="_savingNightlyCleanup">
+                            @if (_savingNightlyCleanup)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Guardar
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+
         </MudGrid>
     }
 </div>
@@ -236,6 +270,7 @@
     private const string KeyEnabled       = "TrashSettings.Enabled";
     private const string KeyRetentionDays = "TrashSettings.RetentionDays";
     private const string KeyMaxQuotaMb    = "TrashSettings.MaxQuotaMb";
+    private const string KeyNightlyCleanup = "NightlyTaskSettings.TrashCleanup.Enabled";
 
     private bool _isAuthorized;
     private bool _loading = true;
@@ -247,6 +282,9 @@
     private bool _savingEnabled;
     private bool _savingRetention;
     private bool _savingQuota;
+
+    private bool _nightlyCleanupEnabled;
+    private bool _savingNightlyCleanup;
 
     private bool               _statsLoading   = true;
     private bool               _cleanupRunning;
@@ -279,6 +317,7 @@
         _trashEnabled     = !enabledRaw.Equals("false", StringComparison.OrdinalIgnoreCase);
         _retentionDays    = ParseInt(await SettingsService.GetSettingAsync(KeyRetentionDays, "30"), 0, 365, 30);
         _maxQuotaMb       = ParseInt(await SettingsService.GetSettingAsync(KeyMaxQuotaMb, "0"), 0, 102400, 0);
+        _nightlyCleanupEnabled = (await SettingsService.GetSettingAsync(KeyNightlyCleanup, "false")).Equals("true", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task LoadStats()
@@ -331,6 +370,17 @@
             ShowResult(ok, "Cuota");
         }
         finally { _savingQuota = false; }
+    }
+
+    private async Task SaveNightlyCleanup()
+    {
+        _savingNightlyCleanup = true;
+        try
+        {
+            var ok = await SettingsService.SaveSettingAsync(KeyNightlyCleanup, _nightlyCleanupEnabled ? "true" : "false");
+            ShowResult(ok, "Limpieza automática");
+        }
+        finally { _savingNightlyCleanup = false; }
     }
 
     private async Task RunCleanup()

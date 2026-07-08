@@ -69,6 +69,7 @@ import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerSettingsViewModel
 import com.photonne.app.ui.admin.AdminServerViewModel
 import com.photonne.app.ui.admin.AdminStatsViewModel
+import com.photonne.app.ui.admin.AdminSharedTrashViewModel
 import com.photonne.app.ui.admin.AdminTrashSettingsViewModel
 import com.photonne.app.ui.admin.AdminUserDefaultsViewModel
 import com.photonne.app.ui.admin.AdminUsersViewModel
@@ -206,6 +207,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminNotificationSettingsViewModel)
     viewModelOf(::AdminServerSettingsViewModel)
     viewModelOf(::AdminTrashSettingsViewModel)
+    viewModelOf(::AdminSharedTrashViewModel)
     viewModelOf(::AdminUserDefaultsViewModel)
     viewModelOf(::AdminDuplicatesViewModel)
     viewModelOf(::AdminMaintenanceViewModel)

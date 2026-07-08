@@ -28,6 +28,7 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   TextRecognition.Mode          — "missing" | "all" (default: "missing")
 ///   ImageEmbedding.Enabled        — enqueue CLIP embedding backfill (default: false)
 ///   ImageEmbedding.Mode           — "missing" | "all" (default: "missing")
+///   TrashCleanup.Enabled          — apply trash retention/quota policy (default: false); uses TrashSettings.*
 ///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
 /// </summary>
 public class NightlySchedulerService : BackgroundService
@@ -147,6 +148,7 @@ public class NightlySchedulerService : BackgroundService
         var textMode     = await settings.GetSettingAsync("NightlyTaskSettings.TextRecognition.Mode",        Guid.Empty, "missing");
         var embEnabled   = await settings.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Enabled",      Guid.Empty, "false");
         var embMode      = await settings.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Mode",         Guid.Empty, "missing");
+        var trashCleanupEnabled = await settings.GetSettingAsync("NightlyTaskSettings.TrashCleanup.Enabled", Guid.Empty, "false");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
@@ -171,6 +173,45 @@ public class NightlySchedulerService : BackgroundService
 
         if (embEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMlBackfillAsync(AssetEnrichmentType.ImageEmbedding, embMode == "all", "búsqueda inteligente (CLIP)", ct);
+
+        // Trash retention/quota cleanup — permanently removes expired and
+        // over-quota trash (personal + shared) per TrashSettings.*.
+        if (trashCleanupEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunTrashCleanupAsync(ct);
+    }
+
+    /// <summary>Applies the trash retention/quota policy overnight, reusing the
+    /// same core as the admin <c>POST /api/admin/trash/cleanup-expired</c>
+    /// endpoint. No-op when retention is indefinite and no quota is set.</summary>
+    private async Task RunTrashCleanupAsync(CancellationToken ct)
+    {
+        Console.WriteLine("[NIGHTLY] Trash cleanup started.");
+
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var settings  = scope.ServiceProvider.GetRequiredService<SettingsService>();
+
+        try
+        {
+            var outcome = await Features.Admin.TrashCleanupEndpoint.RunCleanupAsync(dbContext, settings, ct);
+            Console.WriteLine($"[NIGHTLY] Trash cleanup done — removed:{outcome.Deleted}.");
+
+            await NotifyAdminsAsync(
+                NotificationType.JobCompleted,
+                "Tarea nocturna: limpieza de papelera",
+                outcome.Message,
+                ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] Trash cleanup error: {ex.Message}");
+            await NotifyAdminsAsync(
+                NotificationType.JobFailed,
+                "Tarea nocturna: limpieza de papelera",
+                $"Error durante la limpieza: {Truncate(ex.Message, 200)}",
+                ct);
+        }
     }
 
     /// <summary>Enqueues an ML backfill batch as part of the nightly cycle. The

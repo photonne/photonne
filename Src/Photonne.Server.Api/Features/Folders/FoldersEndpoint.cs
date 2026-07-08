@@ -1133,7 +1133,7 @@ public class FoldersEndpoint : IEndpoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private enum FolderPermissionKind { Read, Write, Delete }
+    private enum FolderPermissionKind { Read, Write, Delete, ManagePermissions }
 
     private static async Task<bool> CanReadFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
     {
@@ -1182,7 +1182,10 @@ public class FoldersEndpoint : IEndpoint
         return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Write, ct);
     }
 
-    private static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
+    // internal: the asset trash flow (AssetsEndpoint / SharedTrashEndpoint) reuses
+    // this to gate deletion of assets inside a shared folder by the same rules as
+    // deleting the folder itself.
+    internal static async Task<bool> CanDeleteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
     {
         var folder = await dbContext.Folders
             .AsNoTracking()
@@ -1196,6 +1199,24 @@ public class FoldersEndpoint : IEndpoint
         if (isAdmin && IsInSharedSpace(folder.Path)) return true;
 
         return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Delete, ct);
+    }
+
+    // internal: SharedTrashEndpoint uses this to let a folder's manager restore or
+    // purge items deleted from it. Mirrors CanDeleteFolderAsync's structure.
+    internal static async Task<bool> CanManagePermissionsFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
+    {
+        var folder = await dbContext.Folders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == folderId, ct);
+
+        if (folder == null) return false;
+        if (VirtualPath.IsStructuralContainer(folder.Path)) return false;
+
+        if (await IsInUserPersonalSpaceAsync(dbContext, folder.Path, userId, ct)) return true;
+
+        if (isAdmin && IsInSharedSpace(folder.Path)) return true;
+
+        return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.ManagePermissions, ct);
     }
 
     /// <summary>
@@ -1230,6 +1251,7 @@ public class FoldersEndpoint : IEndpoint
             FolderPermissionKind.Read => query.Where(p => p.CanRead),
             FolderPermissionKind.Write => query.Where(p => p.CanWrite),
             FolderPermissionKind.Delete => query.Where(p => p.CanDelete),
+            FolderPermissionKind.ManagePermissions => query.Where(p => p.CanManagePermissions),
             _ => query
         };
         return await query.AnyAsync(ct);
@@ -1320,7 +1342,10 @@ public class FoldersEndpoint : IEndpoint
             {
                 if (!folder.ExternalLibraryId.HasValue
                     && !structuralIds.Contains(folder.Id)
-                    && IsInSharedSpace(folder.Path))
+                    && IsInSharedSpace(folder.Path)
+                    // The shared trash (/assets/shared/_trash) is reached only via
+                    // the dedicated shared-trash endpoints, never browsed as a folder.
+                    && !IsBinPath(folder.Path))
                 {
                     allowedIds.Add(folder.Id);
                 }

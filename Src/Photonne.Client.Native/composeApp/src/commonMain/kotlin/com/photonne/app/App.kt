@@ -56,6 +56,7 @@ import com.photonne.app.resources.admin_settings_scene_classification
 import com.photonne.app.resources.admin_settings_server
 import com.photonne.app.resources.admin_settings_text_recognition
 import com.photonne.app.resources.admin_settings_trash
+import com.photonne.app.resources.admin_shared_trash
 import com.photonne.app.resources.admin_settings_user_defaults
 import com.photonne.app.resources.admin_settings_version
 import com.photonne.app.resources.admin_system_backup
@@ -234,6 +235,7 @@ private enum class MoreSubscreen {
     AdminSettingsNotifications,
     AdminSettingsServer,
     AdminSettingsTrash,
+    AdminSharedTrash,
     AdminSettingsUserDefaults,
     AdminSettingsVersion,
     AdminSystemHub,
@@ -257,6 +259,7 @@ private fun isAdminSettingsSubpage(subscreen: MoreSubscreen?): Boolean = when (s
     MoreSubscreen.AdminSettingsNotifications,
     MoreSubscreen.AdminSettingsServer,
     MoreSubscreen.AdminSettingsTrash,
+    MoreSubscreen.AdminSharedTrash,
     MoreSubscreen.AdminSettingsUserDefaults,
     MoreSubscreen.AdminSettingsVersion -> true
     else -> false
@@ -304,6 +307,8 @@ private fun adminSettingsSubpageMeta(
         Res.string.admin_settings_server to Unit
     MoreSubscreen.AdminSettingsTrash ->
         Res.string.admin_settings_trash to Unit
+    MoreSubscreen.AdminSharedTrash ->
+        Res.string.admin_shared_trash to Unit
     MoreSubscreen.AdminSettingsUserDefaults ->
         Res.string.admin_settings_user_defaults to Unit
     MoreSubscreen.AdminSettingsVersion ->
@@ -357,6 +362,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSettingsNotifications,
     MoreSubscreen.AdminSettingsServer,
     MoreSubscreen.AdminSettingsTrash,
+    MoreSubscreen.AdminSharedTrash,
     MoreSubscreen.AdminSettingsUserDefaults,
     MoreSubscreen.AdminSettingsVersion -> MoreSubscreen.AdminSettingsHub
     MoreSubscreen.AdminSystemDuplicates -> MoreSubscreen.AdminSystemRunTasks
@@ -557,6 +563,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.admin.DeviceConnectionViewModel = koinViewModel()
     val adminTrashSettingsViewModel:
         com.photonne.app.ui.admin.AdminTrashSettingsViewModel = koinViewModel()
+    val adminSharedTrashViewModel:
+        com.photonne.app.ui.admin.AdminSharedTrashViewModel = koinViewModel()
     val adminUserDefaultsViewModel:
         com.photonne.app.ui.admin.AdminUserDefaultsViewModel = koinViewModel()
     val adminDuplicatesViewModel:
@@ -2265,6 +2273,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         MoreSubscreen.AdminSettingsServer
                                     com.photonne.app.ui.admin.AdminSettingsEntry.Trash ->
                                         MoreSubscreen.AdminSettingsTrash
+                                    com.photonne.app.ui.admin.AdminSettingsEntry.SharedTrash ->
+                                        MoreSubscreen.AdminSharedTrash
                                     com.photonne.app.ui.admin.AdminSettingsEntry.UserDefaults ->
                                         MoreSubscreen.AdminSettingsUserDefaults
                                     com.photonne.app.ui.admin.AdminSettingsEntry.VersionCheck ->
@@ -2346,6 +2356,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AdminSettingsTrash ->
                         com.photonne.app.ui.admin.AdminTrashSettingsScreen(
                             viewModel = adminTrashSettingsViewModel
+                        )
+                    MoreSubscreen.AdminSharedTrash ->
+                        com.photonne.app.ui.admin.AdminSharedTrashScreen(
+                            viewModel = adminSharedTrashViewModel
                         )
                     MoreSubscreen.AdminSettingsUserDefaults ->
                         com.photonne.app.ui.admin.AdminUserDefaultsScreen(

@@ -22,6 +22,9 @@ public interface IAssetService
     Task PurgeAssetsAsync(PurgeAssetsRequest request);
     Task RestoreTrashAsync();
     Task EmptyTrashAsync();
+    Task<SharedTrashPage> GetSharedTrashAsync(DateTime? cursor = null, int pageSize = 150);
+    Task RestoreSharedTrashAsync(IEnumerable<Guid> assetIds);
+    Task PurgeSharedTrashAsync(IEnumerable<Guid> assetIds);
     Task<List<string>> AddAssetTagsAsync(Guid assetId, List<string> tags);
     Task<List<string>> RemoveAssetTagAsync(Guid assetId, string tag);
     Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null);

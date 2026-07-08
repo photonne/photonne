@@ -636,6 +636,7 @@
     <string name="admin_settings_nightly_text">Text recognition (OCR)</string>
     <string name="admin_settings_nightly_embedding">Smart search (embeddings)</string>
     <string name="admin_settings_nightly_clustering">Re-cluster faces after model runs</string>
+    <string name="admin_settings_nightly_trash_cleanup">Empty expired trash (retention &amp; quota)</string>
     <string name="admin_settings_nightly_mode">Processing mode</string>
 
     <string name="admin_settings_notifications">Notifications</string>

@@ -5,6 +5,7 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.FolderDelete
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Info
@@ -24,6 +25,8 @@ import com.photonne.app.resources.admin_settings_image_embedding_subtitle
 import com.photonne.app.resources.admin_settings_image_subtitle
 import com.photonne.app.resources.admin_settings_metadata
 import com.photonne.app.resources.admin_settings_metadata_subtitle
+import com.photonne.app.resources.admin_shared_trash
+import com.photonne.app.resources.admin_shared_trash_subtitle
 import com.photonne.app.resources.admin_settings_nightly
 import com.photonne.app.resources.admin_settings_nightly_subtitle
 import com.photonne.app.resources.admin_settings_notifications
@@ -56,6 +59,7 @@ enum class AdminSettingsEntry {
     Notifications,
     Server,
     Trash,
+    SharedTrash,
     UserDefaults,
     VersionCheck
 }
@@ -128,6 +132,12 @@ fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
             stringResource(Res.string.admin_settings_trash),
             stringResource(Res.string.admin_settings_trash_subtitle),
             Icons.Outlined.Delete
+        ),
+        AdminHubEntry(
+            AdminSettingsEntry.SharedTrash.name,
+            stringResource(Res.string.admin_shared_trash),
+            stringResource(Res.string.admin_shared_trash_subtitle),
+            Icons.Outlined.FolderDelete
         ),
         AdminHubEntry(
             AdminSettingsEntry.UserDefaults.name,

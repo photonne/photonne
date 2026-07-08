@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -66,9 +67,31 @@ public class AssetsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Assets no encontrados." });
         }
 
-        if (assets.Any(a => !IsAssetInUserRoot(a.FullPath, username)))
+        // Partition by space. Personal-space assets follow the existing flow
+        // (personal trash). Shared-space assets go to a communal admin trash,
+        // gated by CanDelete on their folder (same rule as deleting the folder).
+        var isAdmin = user.IsInRole("Admin");
+        var personalAssets = new List<Asset>();
+        var sharedAssets = new List<Asset>();
+        foreach (var asset in assets)
         {
-            return Results.Forbid();
+            if (IsAssetInUserRoot(asset.FullPath, username))
+            {
+                personalAssets.Add(asset);
+            }
+            else if (FoldersEndpoint.IsInSharedSpace(asset.FullPath))
+            {
+                if (asset.FolderId is not Guid folderId ||
+                    !await FoldersEndpoint.CanDeleteFolderAsync(dbContext, userId, folderId, isAdmin, ct))
+                {
+                    return Results.Forbid();
+                }
+                sharedAssets.Add(asset);
+            }
+            else
+            {
+                return Results.Forbid();
+            }
         }
 
         // If trash is disabled, delete permanently instead of moving to _trash
@@ -83,14 +106,49 @@ public class AssetsEndpoint : IEndpoint
             return Results.NoContent();
         }
 
-        var trashVirtualRoot = $"/assets/users/{username}/_trash";
+        if (personalAssets.Count > 0)
+        {
+            await TrashAssetsAsync(dbContext, settingsService, personalAssets,
+                $"/assets/users/{username}/_trash", userId, deletedByUserId: null, grantPermission: true, ct);
+        }
+        if (sharedAssets.Count > 0)
+        {
+            await TrashAssetsAsync(dbContext, settingsService, sharedAssets,
+                "/assets/shared/_trash", userId, deletedByUserId: userId, grantPermission: false, ct);
+        }
+
+        var albumAssets = await dbContext.AlbumAssets
+            .Where(a => request.AssetIds.Contains(a.AssetId))
+            .ToListAsync(ct);
+        dbContext.AlbumAssets.RemoveRange(albumAssets);
+
+        await dbContext.SaveChangesAsync(ct);
+
+        return Results.NoContent();
+    }
+
+    // Moves a batch of assets into a trash root (personal or shared), moving the
+    // physical file under {trashVirtualRoot}/{yyyy-MM-dd} and stamping the
+    // soft-delete columns. deletedByUserId attributes shared deletions (null for
+    // personal). grantPermission=false skips the folder auto-grant so the shared
+    // trash root never becomes a manageable folder for the deleter.
+    private static async Task TrashAssetsAsync(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        List<Asset> assets,
+        string trashVirtualRoot,
+        Guid actingUserId,
+        Guid? deletedByUserId,
+        bool grantPermission,
+        CancellationToken ct)
+    {
         var dateFolder = DateTime.UtcNow.ToString("yyyy-MM-dd");
         var dateVirtualPath = $"{trashVirtualRoot}/{dateFolder}";
         var datePhysicalPath = await settingsService.ResolvePhysicalPathAsync(dateVirtualPath);
         Directory.CreateDirectory(datePhysicalPath);
 
-        var binFolder = await EnsureFolderRecordAsync(dbContext, userId, trashVirtualRoot, ct);
-        var dateFolderRecord = await EnsureFolderRecordAsync(dbContext, userId, dateVirtualPath, ct, binFolder?.Id);
+        var binFolder = await EnsureFolderRecordAsync(dbContext, actingUserId, trashVirtualRoot, ct, grantPermission: grantPermission);
+        var dateFolderRecord = await EnsureFolderRecordAsync(dbContext, actingUserId, dateVirtualPath, ct, binFolder?.Id, grantPermission);
 
         foreach (var asset in assets)
         {
@@ -122,17 +180,9 @@ public class AssetsEndpoint : IEndpoint
             asset.DeletedAt = DateTime.UtcNow;
             asset.DeletedFromPath = asset.DeletedFromPath ?? originalPath;
             asset.DeletedFromFolderId = originalFolderId;
+            asset.DeletedByUserId = deletedByUserId;
             asset.FolderId = dateFolderRecord?.Id;
         }
-
-        var albumAssets = await dbContext.AlbumAssets
-            .Where(a => request.AssetIds.Contains(a.AssetId))
-            .ToListAsync(ct);
-        dbContext.AlbumAssets.RemoveRange(albumAssets);
-
-        await dbContext.SaveChangesAsync(ct);
-
-        return Results.NoContent();
     }
 
     private static async Task<IResult> RestoreAssets(
@@ -197,7 +247,8 @@ public class AssetsEndpoint : IEndpoint
         return Results.NoContent();
     }
 
-    private static async Task RestoreAssetsInternalAsync(
+    // internal: reused by SharedTrashEndpoint's restore.
+    internal static async Task RestoreAssetsInternalAsync(
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         List<Asset> assets,
@@ -240,6 +291,7 @@ public class AssetsEndpoint : IEndpoint
             asset.DeletedAt = null;
             asset.DeletedFromPath = null;
             asset.DeletedFromFolderId = null;
+            asset.DeletedByUserId = null;
         }
 
         await dbContext.SaveChangesAsync(ct);
@@ -314,7 +366,8 @@ public class AssetsEndpoint : IEndpoint
         return Results.NoContent();
     }
 
-    private static async Task DeleteAssetsPermanentlyAsync(
+    // internal: reused by SharedTrashEndpoint's purge.
+    internal static async Task DeleteAssetsPermanentlyAsync(
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         List<Asset> assets,
@@ -375,7 +428,8 @@ public class AssetsEndpoint : IEndpoint
         Guid userId,
         string folderPath,
         CancellationToken ct,
-        Guid? parentFolderId = null)
+        Guid? parentFolderId = null,
+        bool grantPermission = true)
     {
         var normalizedPath = folderPath.Replace('\\', '/').TrimEnd('/');
         var existing = await dbContext.Folders.FirstOrDefaultAsync(f => f.Path == normalizedPath, ct);
@@ -393,6 +447,14 @@ public class AssetsEndpoint : IEndpoint
 
         dbContext.Folders.Add(folder);
         await dbContext.SaveChangesAsync(ct);
+
+        // The shared trash root must never grant the deleter permissions, or the
+        // full-access auto-grant below would let any deleter manage the whole
+        // shared trash (and thus see/restore everyone's deletions via inheritance).
+        if (!grantPermission)
+        {
+            return folder;
+        }
 
         // Inherited semantics: personal-space folders and folders already
         // covered by an ancestor grant don't need their own row.

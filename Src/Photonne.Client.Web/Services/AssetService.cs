@@ -461,6 +461,32 @@ public class AssetService : IAssetService
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<SharedTrashPage> GetSharedTrashAsync(DateTime? cursor = null, int pageSize = 150)
+    {
+        await SetAuthHeaderAsync();
+        var url = $"/api/assets/shared-trash?pageSize={pageSize}";
+        if (cursor.HasValue)
+            url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
+        var response = await _httpClient.GetFromJsonAsync<SharedTrashPage>(url);
+        return response ?? new SharedTrashPage();
+    }
+
+    public async Task RestoreSharedTrashAsync(IEnumerable<Guid> assetIds)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsJsonAsync(
+            "/api/assets/shared-trash/restore", new { assetIds = assetIds.ToList() });
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task PurgeSharedTrashAsync(IEnumerable<Guid> assetIds)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.PostAsJsonAsync(
+            "/api/assets/shared-trash/purge", new { assetIds = assetIds.ToList() });
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50)
     {
         await SetAuthHeaderAsync();

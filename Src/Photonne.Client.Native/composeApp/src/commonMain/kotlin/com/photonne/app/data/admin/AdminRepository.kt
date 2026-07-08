@@ -106,6 +106,17 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun cleanupExpiredTrash(): TrashCleanupResult = api.adminCleanupExpiredTrash()
 
+    // --- Shared-folder trash ---
+
+    suspend fun getSharedTrash(
+        cursor: kotlinx.datetime.Instant? = null,
+        pageSize: Int = 150
+    ): com.photonne.app.data.models.SharedTrashPage = api.getSharedTrash(cursor, pageSize)
+
+    suspend fun restoreSharedTrash(assetIds: List<String>) = api.restoreSharedTrash(assetIds)
+
+    suspend fun purgeSharedTrash(assetIds: List<String>) = api.purgeSharedTrash(assetIds)
+
     // --- Settings ---
 
     /** Fetch a single setting as a string. Returns `null` when the key
