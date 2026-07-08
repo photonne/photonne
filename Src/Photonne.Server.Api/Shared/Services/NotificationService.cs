@@ -28,6 +28,7 @@ public class NotificationService : INotificationService
             NotificationType.JobCompleted => "NotificationSettings.JobCompleted.Enabled",
             NotificationType.JobFailed    => "NotificationSettings.JobFailed.Enabled",
             NotificationType.ShareViewed  => "NotificationSettings.ShareViewed.Enabled",
+            NotificationType.SharedAssetsDeleted => "NotificationSettings.SharedAssetsDeleted.Enabled",
             _                             => null
         };
         if (typeKey is not null)

@@ -211,4 +211,55 @@ public sealed class SharedFolderTrashTests : IntegrationTestBase
         var exists = await WithDbContextAsync(db => db.Assets.AsNoTracking().AnyAsync(a => a.Id == assetId));
         Assert.False(exists);
     }
+
+    [Fact]
+    public async Task Delete_NotifiesAdminsAndManagers_ButNotTheDeleter()
+    {
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        var (bob, bobClient) = await CreateAuthenticatedUserAsync();
+        var (manager, _) = await CreateAuthenticatedUserAsync();
+        var (admin, _) = await CreateAuthenticatedUserAsync(role: "Admin");
+
+        var folderId = await CreateSharedFolderAsync("/assets/shared/project", "project");
+        var assetId = await CreateSharedAssetAsync(folderId, "/assets/shared/project/shared.jpg", owner.Id);
+        await GrantAsync(folderId, bob.Id, owner.Id, canRead: true, canDelete: true);
+        await GrantAsync(folderId, manager.Id, owner.Id, canRead: true, canManagePermissions: true);
+
+        var resp = await bobClient.PostAsJsonAsync("/api/assets/delete", new DeleteRequest(new() { assetId }));
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
+
+        var notifications = await WithDbContextAsync(db => db.Notifications
+            .AsNoTracking()
+            .Where(n => n.Type == NotificationType.SharedAssetsDeleted)
+            .ToListAsync());
+
+        // The folder manager and the admin are notified; the deleter (bob) is not.
+        Assert.Contains(notifications, n => n.UserId == manager.Id);
+        Assert.Contains(notifications, n => n.UserId == admin.Id);
+        Assert.DoesNotContain(notifications, n => n.UserId == bob.Id);
+        Assert.All(notifications, n => Assert.Equal("/shared-trash", n.ActionUrl));
+    }
+
+    [Fact]
+    public async Task Delete_AcrossTwoSharedFolders_NotifiesPerFolder()
+    {
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        var (bob, bobClient) = await CreateAuthenticatedUserAsync();
+        var (admin, _) = await CreateAuthenticatedUserAsync(role: "Admin");
+
+        var folderA = await CreateSharedFolderAsync("/assets/shared/a", "a");
+        var folderB = await CreateSharedFolderAsync("/assets/shared/b", "b");
+        var assetA = await CreateSharedAssetAsync(folderA, "/assets/shared/a/one.jpg", owner.Id);
+        var assetB = await CreateSharedAssetAsync(folderB, "/assets/shared/b/two.jpg", owner.Id);
+        await GrantAsync(folderA, bob.Id, owner.Id, canRead: true, canDelete: true);
+        await GrantAsync(folderB, bob.Id, owner.Id, canRead: true, canDelete: true);
+
+        await bobClient.PostAsJsonAsync("/api/assets/delete", new DeleteRequest(new() { assetA, assetB }));
+
+        // One aggregated notification per folder → the admin gets two.
+        var adminNotifs = await WithDbContextAsync(db => db.Notifications
+            .AsNoTracking()
+            .CountAsync(n => n.UserId == admin.Id && n.Type == NotificationType.SharedAssetsDeleted));
+        Assert.Equal(2, adminNotifs);
+    }
 }

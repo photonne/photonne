@@ -1229,20 +1229,7 @@ public class FoldersEndpoint : IEndpoint
     private static async Task<bool> HasInheritedFolderPermissionAsync(
         ApplicationDbContext dbContext, Guid userId, Folder folder, FolderPermissionKind kind, CancellationToken ct)
     {
-        var chainIds = new List<Guid> { folder.Id };
-        var parentId = folder.ParentFolderId;
-        while (parentId.HasValue)
-        {
-            var currentId = parentId.Value;
-            var parent = await dbContext.Folders
-                .AsNoTracking()
-                .Where(f => f.Id == currentId)
-                .Select(f => new { f.ParentFolderId, f.Path })
-                .FirstOrDefaultAsync(ct);
-            if (parent == null) break;
-            if (!VirtualPath.IsStructuralContainer(parent.Path)) chainIds.Add(currentId);
-            parentId = parent.ParentFolderId;
-        }
+        var chainIds = await GetFolderChainIdsAsync(dbContext, folder.Id, ct);
 
         var query = dbContext.FolderPermissions
             .Where(p => p.UserId == userId && chainIds.Contains(p.FolderId));
@@ -1255,6 +1242,56 @@ public class FoldersEndpoint : IEndpoint
             _ => query
         };
         return await query.AnyAsync(ct);
+    }
+
+    /// <summary>
+    /// The folder id plus every non-structural ancestor id (walking ParentFolderId).
+    /// This is the set of folders whose FolderPermission rows apply to
+    /// <paramref name="folderId"/> under the inheritance model.
+    /// </summary>
+    internal static async Task<List<Guid>> GetFolderChainIdsAsync(
+        ApplicationDbContext dbContext, Guid folderId, CancellationToken ct)
+    {
+        var start = await dbContext.Folders
+            .AsNoTracking()
+            .Where(f => f.Id == folderId)
+            .Select(f => new { f.Id, f.ParentFolderId })
+            .FirstOrDefaultAsync(ct);
+        if (start == null) return new List<Guid>();
+
+        var chainIds = new List<Guid> { start.Id };
+        var parentId = start.ParentFolderId;
+        while (parentId.HasValue)
+        {
+            var currentId = parentId.Value;
+            var parent = await dbContext.Folders
+                .AsNoTracking()
+                .Where(f => f.Id == currentId)
+                .Select(f => new { f.ParentFolderId, f.Path })
+                .FirstOrDefaultAsync(ct);
+            if (parent == null) break;
+            if (!VirtualPath.IsStructuralContainer(parent.Path)) chainIds.Add(currentId);
+            parentId = parent.ParentFolderId;
+        }
+        return chainIds;
+    }
+
+    /// <summary>
+    /// All distinct user ids that manage <paramref name="folderId"/> — i.e. hold
+    /// CanManagePermissions on the folder or any non-structural ancestor. Used to
+    /// notify a shared folder's managers/owners when its assets are deleted.
+    /// </summary>
+    internal static async Task<List<Guid>> GetFolderManagerUserIdsAsync(
+        ApplicationDbContext dbContext, Guid folderId, CancellationToken ct)
+    {
+        var chainIds = await GetFolderChainIdsAsync(dbContext, folderId, ct);
+        if (chainIds.Count == 0) return new List<Guid>();
+
+        return await dbContext.FolderPermissions
+            .Where(p => chainIds.Contains(p.FolderId) && p.CanManagePermissions)
+            .Select(p => p.UserId)
+            .Distinct()
+            .ToListAsync(ct);
     }
 
     /// <summary>

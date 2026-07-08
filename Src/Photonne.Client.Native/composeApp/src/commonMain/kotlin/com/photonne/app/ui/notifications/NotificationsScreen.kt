@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
@@ -63,7 +64,10 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun NotificationsScreen(viewModel: NotificationsViewModel) {
+fun NotificationsScreen(
+    viewModel: NotificationsViewModel,
+    onNavigate: (String) -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
@@ -115,7 +119,10 @@ fun NotificationsScreen(viewModel: NotificationsViewModel) {
                     items(state.items, key = { it.id }) { notification ->
                         NotificationRow(
                             notification = notification,
-                            onClick = { viewModel.markRead(notification.id) }
+                            onClick = {
+                                viewModel.markRead(notification.id)
+                                notification.actionUrl?.let { onNavigate(it) }
+                            }
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant
@@ -288,6 +295,8 @@ private fun iconFor(type: Int): Pair<ImageVector, Color> = when (type) {
         Icons.Filled.Error to MaterialTheme.colorScheme.error
     NotificationKind.ShareViewed ->
         Icons.Filled.Visibility to MaterialTheme.colorScheme.tertiary
+    NotificationKind.SharedAssetsDeleted ->
+        Icons.Filled.DeleteSweep to MaterialTheme.colorScheme.secondary
     else ->
         Icons.Filled.Notifications to MaterialTheme.colorScheme.onSurfaceVariant
 }

@@ -1,4 +1,5 @@
 @page "/admin/settings/shared-trash"
+@page "/shared-trash"
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject IAssetService AssetService
@@ -215,8 +216,11 @@
             return;
         }
 
+        // Any authenticated user may open the shared trash: the backend scopes the
+        // listing per-item (admins see all; managers/deleters see only their own),
+        // so a non-admin manager reaching this via a notification sees just theirs.
         var currentUser = await AuthService.GetCurrentUserAsync();
-        _isAuthorized = currentUser?.Role == "Admin";
+        _isAuthorized = currentUser != null;
 
         if (_isAuthorized)
         {

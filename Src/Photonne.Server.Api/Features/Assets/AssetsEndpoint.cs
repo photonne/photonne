@@ -42,6 +42,7 @@ public class AssetsEndpoint : IEndpoint
     private static async Task<IResult> DeleteAssets(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] INotificationService notifications,
         [FromBody] DeleteAssetsRequest request,
         ClaimsPrincipal user,
         CancellationToken ct)
@@ -124,7 +125,75 @@ public class AssetsEndpoint : IEndpoint
 
         await dbContext.SaveChangesAsync(ct);
 
+        if (sharedAssets.Count > 0)
+        {
+            await NotifySharedDeletionAsync(dbContext, notifications, sharedAssets, userId, username, ct);
+        }
+
         return Results.NoContent();
+    }
+
+    // Best-effort: notify each shared folder's managers plus all active admins
+    // (minus the deleter) that assets were moved to the shared trash. Grouped per
+    // folder so recipients get one aggregated notice, not one per asset. A
+    // notification failure must never fail the delete.
+    private static async Task NotifySharedDeletionAsync(
+        ApplicationDbContext dbContext,
+        INotificationService notifications,
+        List<Asset> sharedAssets,
+        Guid deleterUserId,
+        string deleterUsername,
+        CancellationToken ct)
+    {
+        try
+        {
+            var adminIds = await dbContext.Users
+                .Where(u => u.Role == "Admin" && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+
+            var groups = sharedAssets
+                .Where(a => a.DeletedFromFolderId.HasValue)
+                .GroupBy(a => a.DeletedFromFolderId!.Value);
+
+            foreach (var group in groups)
+            {
+                var folderId = group.Key;
+                var count = group.Count();
+
+                var managerIds = await FoldersEndpoint.GetFolderManagerUserIdsAsync(dbContext, folderId, ct);
+                var recipients = managerIds.Concat(adminIds)
+                    .Where(id => id != deleterUserId)
+                    .Distinct()
+                    .ToList();
+                if (recipients.Count == 0) continue;
+
+                var folderName = await dbContext.Folders
+                    .AsNoTracking()
+                    .Where(f => f.Id == folderId)
+                    .Select(f => f.Name)
+                    .FirstOrDefaultAsync(ct);
+                if (string.IsNullOrEmpty(folderName)) folderName = "una carpeta compartida";
+
+                var fileWord = count == 1 ? "archivo" : "archivos";
+                var message = $"{deleterUsername} movió {count} {fileWord} de «{folderName}» a la papelera compartida.";
+
+                foreach (var recipientId in recipients)
+                {
+                    await notifications.CreateAsync(
+                        recipientId,
+                        NotificationType.SharedAssetsDeleted,
+                        "Archivos eliminados de una carpeta compartida",
+                        message,
+                        actionUrl: "/shared-trash");
+                }
+            }
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SHARED-TRASH] Failed to dispatch deletion notifications: {ex.Message}");
+        }
     }
 
     // Moves a batch of assets into a trash root (personal or shared), moving the

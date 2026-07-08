@@ -217,6 +217,7 @@ private enum class MoreSubscreen {
     AccountAppearance,
     AccountStorage,
     Notifications,
+    SharedTrash,
     Administration,
     AdminUsers,
     AdminUserEditor,
@@ -380,6 +381,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.UnsupportedFiles,
     MoreSubscreen.AccountSettings,
     MoreSubscreen.Notifications,
+    MoreSubscreen.SharedTrash,
     MoreSubscreen.Administration -> null
 }
 
@@ -1122,6 +1124,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = { moreSubscreen = null },
                     onMarkAllRead = notificationsViewModel::markAllRead
                 )
+            moreSubscreen == MoreSubscreen.SharedTrash ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.admin_shared_trash),
+                    onBack = { moreSubscreen = null },
+                )
             moreSubscreen == MoreSubscreen.AccountSettings ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.account_settings_title),
@@ -1801,6 +1808,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             moreSubscreen = MoreSubscreen.Notifications
                         },
                         notificationsUnreadCount = notificationsState.unreadCount,
+                        onOpenSharedTrash = {
+                            moreSubscreen = MoreSubscreen.SharedTrash
+                        },
                         onOpenAccountSettings = {
                             moreSubscreen = MoreSubscreen.AccountSettings
                         },
@@ -2143,7 +2153,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                     MoreSubscreen.Notifications ->
                         com.photonne.app.ui.notifications.NotificationsScreen(
-                            viewModel = notificationsViewModel
+                            viewModel = notificationsViewModel,
+                            onNavigate = { url ->
+                                // Map known server actionUrls to in-app
+                                // subscreens; unknown routes are a no-op.
+                                val path = url.substringBefore('?').trimEnd('/')
+                                when {
+                                    path == "/shared-trash" ||
+                                        path.endsWith("/shared-trash") ->
+                                        moreSubscreen = MoreSubscreen.SharedTrash
+                                }
+                            }
+                        )
+                    MoreSubscreen.SharedTrash ->
+                        com.photonne.app.ui.admin.AdminSharedTrashScreen(
+                            viewModel = adminSharedTrashViewModel
                         )
                     MoreSubscreen.AccountSettings ->
                         com.photonne.app.ui.settings.AccountSettingsScreen(

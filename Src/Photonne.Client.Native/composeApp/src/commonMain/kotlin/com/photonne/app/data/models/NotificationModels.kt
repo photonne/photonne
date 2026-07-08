@@ -5,14 +5,15 @@ import kotlinx.serialization.Serializable
 
 /**
  * Mirrors `NotificationType` on the server (1 = JobCompleted, 2 = JobFailed,
- * 3 = ShareViewed). The server serializes the enum as its integer value, so
- * we keep the wire format as `Int` and map to a UI-friendly type only when
- * rendering.
+ * 3 = ShareViewed, 4 = SharedAssetsDeleted). The server serializes the enum as
+ * its integer value, so we keep the wire format as `Int` and map to a
+ * UI-friendly type only when rendering.
  */
 object NotificationKind {
     const val JobCompleted = 1
     const val JobFailed = 2
     const val ShareViewed = 3
+    const val SharedAssetsDeleted = 4
 }
 
 @Serializable

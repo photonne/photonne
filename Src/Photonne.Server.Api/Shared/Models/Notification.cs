@@ -4,7 +4,8 @@ public enum NotificationType
 {
     JobCompleted = 1,
     JobFailed = 2,
-    ShareViewed = 3
+    ShareViewed = 3,
+    SharedAssetsDeleted = 4
 }
 
 public class Notification
