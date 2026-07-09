@@ -1,16 +1,22 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services.SmartAlbums;
 using Photonne.Server.Api.Features.Timeline;
 
 namespace Photonne.Server.Api.Features.Albums;
 
 public class AlbumsEndpoint : IEndpoint
 {
+    // Smart-album rules are stored/read as camelCase JSON matching the schema
+    // in docs/smart-albums/rule-schema.md.
+    private static readonly JsonSerializerOptions SmartRuleJson = new(JsonSerializerDefaults.Web);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/albums")
@@ -279,6 +285,7 @@ public class AlbumsEndpoint : IEndpoint
 
     private async Task<IResult> GetAlbumAssets(
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] SmartAlbumResolver smartResolver,
         [FromRoute] Guid albumId,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
@@ -296,6 +303,58 @@ public class AlbumsEndpoint : IEndpoint
             if (!hasAccess)
             {
                 return Results.Forbid();
+            }
+
+            // Smart album (dynamic): membership is resolved live from the rule,
+            // owner-anchored and intersected with the viewer's visibility.
+            var smart = await dbContext.Albums
+                .AsNoTracking()
+                .Where(a => a.Id == albumId && a.Kind == AlbumKind.Smart
+                         && a.ResolveMode == SmartResolveMode.Dynamic && a.SmartRule != null)
+                .Select(a => new { a.OwnerId, a.SmartRule })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (smart != null)
+            {
+                var rule = JsonSerializer.Deserialize<SmartRuleNode>(smart.SmartRule!, SmartRuleJson);
+                if (rule == null)
+                    return Results.Ok(new List<TimelineResponse>());
+
+                IQueryable<Asset> query;
+                try
+                {
+                    query = await smartResolver.ResolveAsync(rule, smart.OwnerId, userId, cancellationToken);
+                }
+                catch (SmartRuleException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+
+                var smartResponse = await query
+                    .OrderByDescending(a => a.CapturedAt)
+                    .ThenByDescending(a => a.FileModifiedAt)
+                    .ThenBy(a => a.Id)
+                    .Select(a => new TimelineResponse
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                        FullPath = a.FullPath,
+                        FileSize = a.FileSize,
+                        FileCreatedAt = a.CapturedAt,
+                        FileModifiedAt = a.FileModifiedAt,
+                        Extension = a.Extension,
+                        ScannedAt = a.ScannedAt,
+                        Type = a.Type == AssetType.Video ? "Video" : "Image",
+                        Checksum = a.Checksum,
+                        HasExif = a.Exif != null,
+                        HasThumbnails = a.Thumbnails.Any(),
+                        IsFavorite = a.IsFavorite,
+                        SyncStatus = Photonne.Server.Api.Shared.Dtos.AssetSyncStatus.Synced,
+                        IsReadOnly = a.ExternalLibraryId.HasValue
+                    })
+                    .ToListAsync(cancellationToken);
+
+                return Results.Ok(smartResponse);
             }
 
             var albumAssets = await dbContext.AlbumAssets
@@ -371,6 +430,24 @@ public class AlbumsEndpoint : IEndpoint
                 UpdatedAt = DateTime.UtcNow
             };
 
+            // Smart album: validate the rule compiles (so a broken tree is a 400,
+            // not a runtime failure on first open) and store it verbatim — the
+            // original folder ids are kept and subtree-expanded fresh on each read.
+            if (request.SmartRule != null)
+            {
+                try
+                {
+                    SmartRuleCompiler.Compile(request.SmartRule, dbContext, userId);
+                }
+                catch (SmartRuleException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+
+                album.Kind = AlbumKind.Smart;
+                album.SmartRule = JsonSerializer.Serialize(request.SmartRule, SmartRuleJson);
+            }
+
             dbContext.Albums.Add(album);
             await dbContext.SaveChangesAsync(cancellationToken);
             cache.Remove($"albums:{userId}");
@@ -387,7 +464,8 @@ public class AlbumsEndpoint : IEndpoint
                 CanRead = true,
                 CanWrite = true,
                 CanDelete = true,
-                CanManagePermissions = true
+                CanManagePermissions = true,
+                Kind = album.Kind.ToString()
             };
 
             return Results.Created($"/api/albums/{album.Id}", response);
@@ -912,12 +990,17 @@ public class AlbumResponse
     public bool CanDelete { get; set; }
     public bool CanManagePermissions { get; set; }
     public bool HasActiveShareLink { get; set; }
+    // "Manual" or "Smart" (docs/smart-albums/).
+    public string Kind { get; set; } = nameof(AlbumKind.Manual);
 }
 
 public class CreateAlbumRequest
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    // When present, the album is a smart album: membership is derived from this
+    // rule tree (docs/smart-albums/rule-schema.md) instead of a manual list.
+    public Shared.Services.SmartAlbums.SmartRuleNode? SmartRule { get; set; }
 }
 
 public class UpdateAlbumRequest

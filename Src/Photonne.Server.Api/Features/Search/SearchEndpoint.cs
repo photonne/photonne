@@ -60,6 +60,9 @@ public class SearchEndpoint : IEndpoint
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, $"/assets/users/{username}", ct);
 
+        // Visibility gate stays here (search scopes by allowed folders); only
+        // the match criteria are delegated to the shared AssetQueryBuilder so
+        // search and smart albums filter identically (docs/smart-albums/).
         var query = dbContext.Assets
             .Include(a => a.Exif)
             .Include(a => a.Thumbnails)
@@ -69,118 +72,32 @@ public class SearchEndpoint : IEndpoint
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
-        // Text search: filename, full path, user tag names
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var tagTypeFilter = Enum.TryParse<AssetTagType>(q, ignoreCase: true, out var matchedType)
-                ? (AssetTagType?)matchedType
-                : null;
-
-            query = query.Where(a =>
-                a.FileName.Contains(q) ||
-                a.FullPath.Contains(q) ||
-                (a.Caption != null && a.Caption.Contains(q)) ||
-                a.UserTags.Any(ut => ut.UserTag.Name.Contains(q)) ||
-                a.RecognizedTextLines.Any(t => EF.Functions.ILike(t.Text, "%" + q + "%")) ||
-                (tagTypeFilter.HasValue && a.Tags.Any(t => t.TagType == tagTypeFilter.Value)));
-        }
-
-        // Date range — uses CapturedAt (EXIF date with FileCreatedAt fallback)
-        // so search results align with timeline order, not the Linux filesystem
-        // timestamps that get rewritten when assets move between volumes.
-        if (from.HasValue)
-        {
-            var fromUtc = from.Value.ToUniversalTime();
-            query = query.Where(a => a.CapturedAt >= fromUtc);
-        }
-
-        if (to.HasValue)
-        {
-            // Include the full selected day
-            var toUtc = to.Value.ToUniversalTime().Date.AddDays(1);
-            query = query.Where(a => a.CapturedAt < toUtc);
-        }
-
-        // Folder path substring
-        if (!string.IsNullOrWhiteSpace(folder))
-            query = query.Where(a => a.FullPath.Contains(folder));
-
-        // Objects filter — asset must have at least one detection for EVERY
-        // requested label (intersection: "fotos con perro Y coche"). Match is
-        // case-insensitive and trimmed so the UI can pass labels verbatim.
-        if (hasObjectFilter)
-        {
-            var labels = objectLabels!
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Select(l => l.Trim().ToLowerInvariant())
-                .Distinct()
-                .ToList();
-
-            foreach (var label in labels)
-            {
-                var captured = label;
-                query = query.Where(a => a.DetectedObjects.Any(o => o.Label.ToLower() == captured));
-            }
-        }
-
-        // Scenes filter — same intersection semantics as objects: asset must
-        // match EVERY requested scene label. Useful for "fotos en la playa Y
-        // al atardecer" when combined with other criteria.
-        if (hasSceneFilter)
-        {
-            var labels = sceneLabels!
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Select(l => l.Trim().ToLowerInvariant())
-                .Distinct()
-                .ToList();
-
-            foreach (var label in labels)
-            {
-                var captured = label;
-                query = query.Where(a => a.ClassifiedScenes.Any(s => s.Label.ToLower() == captured));
-            }
-        }
-
-        // OCR text filter — match assets whose extracted text matches the
-        // websearch tsquery (supports phrases in quotes and the "or"/"-" ops).
-        // 'simple' is used for the index, so we use the same configuration on
-        // the query side; that keeps numeric tokens (ticket numbers, serials)
-        // searchable verbatim and stays language-agnostic.
-        if (hasTextFilter)
-        {
-            var raw = textQuery!.Trim();
-            query = query.Where(a => a.RecognizedTextLines.Any(t =>
-                EF.Functions.ToTsVector("simple", t.Text)
-                    .Matches(EF.Functions.WebSearchToTsQuery("simple", raw))));
-        }
-
-        // People filter — asset must have at least one non-rejected face linked
-        // to EVERY requested person (intersection: "fotos donde aparezcan A y B").
+        // People filter is per-user; validate ownership of the requested persons
+        // up front so a forged id can't leak which assets exist. Passing an empty
+        // set to the builder would AND nothing, so short-circuit to no results.
+        IReadOnlyList<Guid>? validPersonIds = null;
         if (hasPersonFilter)
         {
-            // Validate ownership of the requested persons up front so a forged
-            // id can't leak which assets exist.
-            var validPersonIds = await dbContext.People.AsNoTracking()
+            validPersonIds = await dbContext.People.AsNoTracking()
                 .Where(p => p.OwnerId == userId && personIds!.Contains(p.Id))
                 .Select(p => p.Id)
                 .ToListAsync(ct);
 
             if (validPersonIds.Count == 0)
                 return Results.Ok(new SearchResponse());
-
-            foreach (var pid in validPersonIds)
-            {
-                var capturedPid = pid; // EF captures by reference otherwise
-                // Identity is per-user (UserFaceAssignment); the legacy Face
-                // identity columns linger but are no longer authoritative.
-                query = query.Where(a => a.Faces.Any(f =>
-                    dbContext.UserFaceAssignments.Any(uf =>
-                        uf.FaceId == f.Id
-                        && uf.UserId == userId
-                        && uf.PersonId == capturedPid
-                        && !uf.IsRejected)));
-            }
         }
+
+        query = AssetQueryBuilder.Apply(query, new AssetFilter
+        {
+            Text = q,
+            From = from,
+            To = to,
+            FolderPath = folder,
+            ObjectLabels = objectLabels,
+            SceneLabels = sceneLabels,
+            OcrText = textQuery,
+            PersonIds = validPersonIds
+        }, dbContext, userId);
 
         var dbItems = await query
             .OrderByDescending(a => a.CapturedAt)

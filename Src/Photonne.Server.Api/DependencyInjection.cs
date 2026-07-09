@@ -10,6 +10,7 @@ using Photonne.Server.Api.Shared.Services.Ml;
 using Photonne.Server.Api.Shared.Services.ObjectDetection;
 using Photonne.Server.Api.Shared.Services.Embeddings;
 using Photonne.Server.Api.Shared.Services.SceneClassification;
+using Photonne.Server.Api.Shared.Services.SmartAlbums;
 using Photonne.Server.Api.Shared.Services.TextRecognition;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
@@ -74,6 +75,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<FaceClusteringService>();
         builder.Services.AddScoped<FaceRecognitionService>();
         builder.Services.AddScoped<AssetVisibilityService>();
+        builder.Services.AddScoped<SmartAlbumResolver>();
         builder.Services.AddSingleton<FaceClusteringQueue>();
         builder.Services.AddHostedService<FaceClusteringBackgroundService>();
 

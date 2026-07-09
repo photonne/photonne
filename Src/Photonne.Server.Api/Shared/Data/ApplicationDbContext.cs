@@ -354,6 +354,14 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.OwnerId);
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.UpdatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+
+            // Smart albums (docs/smart-albums/). Rule tree stored as jsonb so we
+            // can later index/query into it; enums persist as int.
+            entity.Property(e => e.Kind).HasConversion<int>();
+            entity.Property(e => e.ResolveMode).HasConversion<int>();
+            entity.Property(e => e.SmartRule).HasColumnType("jsonb");
+            entity.Property(e => e.LastMaterializedAt)
+                .HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 
         // Configure AlbumAsset entity — composite PK (AlbumId, AssetId)
