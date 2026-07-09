@@ -142,7 +142,12 @@ de primera clase, en discusión. Ver **`creation-ux.md`**.
    migración `AddSmartAlbums`; `POST /api/albums` acepta `smartRule` (valida compilando →
    400 si es inválido) y `GET /api/albums/{id}/assets` resuelve dinámico para smart albums.
    Tests: `SmartAlbumPreviewTests` (11) + `SearchFilterTests` (6), verdes contra pgvector real.
-3. **UI** — superficie de creación "Nuevo álbum inteligente" (ver `creation-ux.md`) en cliente KMP.
+3. ✅ **UI cliente (KMP)** — pantalla "Nuevo álbum inteligente" (`ui/album/smart/`): editor de
+   condiciones (Personas/Carpetas/Fechas/Escenas/Objetos) con toggle plano Todas/Cualquiera y
+   preview en vivo (dry-run vía `POST /api/albums/preview`). Entrada desde el FAB de Álbumes
+   (chooser normal/inteligente). Modelos wire `SmartRule`/`SmartAlbumPreview`, métodos
+   `PhotonneApi.createSmartAlbum`/`previewSmartAlbum`, `AlbumsRepository.createSmart`/`preview`.
+   Compila commonMain + Android. Strings en literal español (pendiente extraer a `Res.string`).
 4. **Overrides** manuales (pin/exclude) sobre smart albums.
 5. **Lugares** (radio → geocoding inverso).
 6. **Materialización** en background (solo si el rendimiento lo pide).

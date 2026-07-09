@@ -5,6 +5,8 @@ import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.SmartRule
+import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.AssetDetail
 import com.photonne.app.data.models.AssetPage
@@ -78,6 +80,19 @@ internal data class FavoriteResponse(val isFavorite: Boolean)
 
 @Serializable
 internal data class AlbumWriteRequest(val name: String, val description: String?)
+
+@Serializable
+internal data class SmartAlbumWriteRequest(
+    val name: String,
+    val description: String?,
+    val smartRule: SmartRule,
+)
+
+@Serializable
+internal data class SmartAlbumPreviewRequest(
+    val rule: SmartRule,
+    val sampleSize: Int,
+)
 
 @Serializable
 internal data class AddAssetToAlbumRequest(val assetId: String)
@@ -282,6 +297,8 @@ interface PhotonneApi {
     suspend fun getAlbum(albumId: String): AlbumSummary
     suspend fun getAlbumAssets(albumId: String): List<TimelineItem>
     suspend fun createAlbum(name: String, description: String?): AlbumSummary
+    suspend fun createSmartAlbum(name: String, description: String?, rule: SmartRule): AlbumSummary
+    suspend fun previewSmartAlbum(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
     suspend fun updateAlbum(albumId: String, name: String, description: String?): AlbumSummary
     suspend fun deleteAlbum(albumId: String)
     suspend fun addAssetToAlbum(albumId: String, assetId: String)
@@ -950,6 +967,34 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Album create failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun createSmartAlbum(name: String, description: String?, rule: SmartRule): AlbumSummary {
+        val response: HttpResponse = client.post("$baseUrl/api/albums") {
+            contentType(ContentType.Application.Json)
+            setBody(SmartAlbumWriteRequest(name = name, description = description, smartRule = rule))
+        }
+        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.Created) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Smart album create failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun previewSmartAlbum(rule: SmartRule, sampleSize: Int): SmartAlbumPreview {
+        val response: HttpResponse = client.post("$baseUrl/api/albums/preview") {
+            contentType(ContentType.Application.Json)
+            setBody(SmartAlbumPreviewRequest(rule = rule, sampleSize = sampleSize))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Smart album preview failed (${response.status.value})"
             )
         }
         return response.body()

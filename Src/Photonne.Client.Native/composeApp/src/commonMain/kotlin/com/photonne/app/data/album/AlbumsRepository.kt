@@ -5,6 +5,8 @@ import com.photonne.app.data.models.AlbumMemberRole
 import com.photonne.app.data.models.AlbumPermission
 import com.photonne.app.data.models.AlbumShareLink
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.SmartRule
+import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.data.models.ShareUpdateResult
 import com.photonne.app.data.models.ShareableUser
@@ -22,6 +24,12 @@ class AlbumsRepository(
 
     suspend fun create(name: String, description: String?): AlbumSummary =
         api.createAlbum(name = name, description = description)
+
+    suspend fun createSmart(name: String, description: String?, rule: SmartRule): AlbumSummary =
+        api.createSmartAlbum(name = name, description = description, rule = rule)
+
+    suspend fun preview(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview =
+        api.previewSmartAlbum(rule = rule, sampleSize = sampleSize)
 
     suspend fun update(albumId: String, name: String, description: String?): AlbumSummary =
         api.updateAlbum(albumId = albumId, name = name, description = description)

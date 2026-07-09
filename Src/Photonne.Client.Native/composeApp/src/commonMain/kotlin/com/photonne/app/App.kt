@@ -195,6 +195,7 @@ private data class AddToAlbumState(
 
 private enum class MoreSubscreen {
     Upload,
+    CreateSmartAlbum,
     DeviceBackup,
     DeviceBackupPending,
     EnrichmentStatus,
@@ -371,6 +372,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSystemMaintenance,
     MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
     MoreSubscreen.Upload,
+    MoreSubscreen.CreateSmartAlbum,
     MoreSubscreen.DeviceBackup,
     MoreSubscreen.Favorites,
     MoreSubscreen.People,
@@ -609,6 +611,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // so all grid thumbnails return to their normal visible state.
     var currentDetailAssetId by remember { mutableStateOf<String?>(null) }
     var showCreateAlbum by remember { mutableStateOf(false) }
+    var showAlbumTypeChooser by remember { mutableStateOf(false) }
     var showEditAlbum by remember { mutableStateOf(false) }
     var showDeleteAlbum by remember { mutableStateOf(false) }
     var showLeaveAlbum by remember { mutableStateOf(false) }
@@ -1548,7 +1551,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // bottom bar.
             selectedTab == MainTab.Albums && bottomBar == null &&
                 selectedAlbum == null && moreSubscreen == null ->
-                FloatingActionButton(onClick = { showCreateAlbum = true }) {
+                FloatingActionButton(onClick = { showAlbumTypeChooser = true }) {
                     Icon(
                         Icons.Outlined.AddBox,
                         contentDescription = stringResource(Res.string.album_action_new)
@@ -1827,6 +1830,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             { moreSubscreen = MoreSubscreen.Administration }
                         } else {
                             null
+                        }
+                    )
+                    MoreSubscreen.CreateSmartAlbum -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
+                        onBack = { moreSubscreen = null },
+                        onCreated = { newAlbum ->
+                            moreSubscreen = null
+                            albumsViewModel.refresh()
+                            selectedTab = MainTab.Albums
+                            selectedAlbum = newAlbum
                         }
                     )
                     MoreSubscreen.Upload -> com.photonne.app.ui.upload.UploadScreen(
@@ -2557,6 +2569,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onConfirm = { date ->
                 showJumpToDate = false
                 pendingJumpDate = date
+            }
+        )
+    }
+
+    if (showAlbumTypeChooser) {
+        com.photonne.app.ui.album.smart.AlbumTypeChooserSheet(
+            onDismiss = { showAlbumTypeChooser = false },
+            onManual = {
+                showAlbumTypeChooser = false
+                showCreateAlbum = true
+            },
+            onSmart = {
+                showAlbumTypeChooser = false
+                moreSubscreen = MoreSubscreen.CreateSmartAlbum
             }
         )
     }

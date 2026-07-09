@@ -20,5 +20,10 @@ data class AlbumSummary(
     val canWrite: Boolean = false,
     val canDelete: Boolean = false,
     val canManagePermissions: Boolean = false,
-    val hasActiveShareLink: Boolean = false
-)
+    val hasActiveShareLink: Boolean = false,
+    // "Manual" or "Smart" (docs/smart-albums/). Defaults keep decode safe
+    // against older servers that don't emit the field.
+    val kind: String = "Manual"
+) {
+    val isSmart: Boolean get() = kind.equals("Smart", ignoreCase = true)
+}
