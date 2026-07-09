@@ -3,10 +3,15 @@ package com.photonne.app.ui.album.smart
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
+import com.photonne.app.data.auth.AuthState
+import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
+import com.photonne.app.data.folder.filterPersonalFolders
+import com.photonne.app.data.folder.filterSharedFolders
 import com.photonne.app.data.models.AlbumSummary
+import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.search.SearchRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,19 +39,30 @@ data class SmartAlbumEditorUiState(
 
 /** Sources feeding the condition pickers, loaded lazily the first time the
  * user opens the "add condition" sheet. */
-data class SmartPickerData(
-    val people: List<PersonRef> = emptyList(),
-    val folders: List<FolderRef> = emptyList(),
-    val sceneLabels: List<String> = emptyList(),
-    val objectLabels: List<String> = emptyList(),
+data class PickerResults<T>(
+    val query: String = "",
+    val results: List<T> = emptyList(),
     val isLoading: Boolean = false,
-    val loaded: Boolean = false,
+    val loadedOnce: Boolean = false,
+)
+
+data class SmartPickerData(
+    val people: PickerResults<PersonRef> = PickerResults(),
+    val scenes: PickerResults<LabelRef> = PickerResults(),
+    val objects: PickerResults<LabelRef> = PickerResults(),
+    // Folders have no server search: loaded once, filtered/browsed in the composable.
+    // `folders` is the flat list (search mode); `folderRoots` is the tree (browse mode).
+    val folders: List<FolderRef> = emptyList(),
+    val folderRoots: List<FolderNode> = emptyList(),
+    val foldersLoading: Boolean = false,
+    val foldersLoaded: Boolean = false,
 )
 
 class SmartAlbumEditorViewModel(
     private val albums: AlbumsRepository,
     private val search: SearchRepository,
     private val folders: FoldersRepository,
+    private val authState: AuthStateHolder,
     private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
@@ -57,6 +73,18 @@ class SmartAlbumEditorViewModel(
     val pickers: StateFlow<SmartPickerData> = _pickers.asStateFlow()
 
     private var previewJob: Job? = null
+    private var peopleJob: Job? = null
+    private var sceneJob: Job? = null
+    private var objectJob: Job? = null
+
+    /** Clears the editor back to a blank slate. Called on screen entry because
+     * the VM instance is reused across navigations (single ViewModelStoreOwner),
+     * so a freshly-opened "Nuevo álbum" would otherwise keep the last edit. */
+    fun reset() {
+        previewJob?.cancel(); peopleJob?.cancel(); sceneJob?.cancel(); objectJob?.cancel()
+        _state.value = SmartAlbumEditorUiState()
+        _pickers.value = SmartPickerData()
+    }
 
     fun setName(value: String) = _state.update { it.copy(name = value) }
 
@@ -131,40 +159,92 @@ class SmartAlbumEditorViewModel(
         }
     }
 
-    /** Loads the picker sources once (people, folders, scene/object labels). */
-    fun ensurePickerData() {
-        if (_pickers.value.loaded || _pickers.value.isLoading) return
-        _pickers.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
-            val people = runCatching {
-                search.people(limit = 200)
+    // ── Picker data (searchable, debounced) ──────────────────────────────────
+    // A blank query is sent to the server as null, so each picker opens showing
+    // the default top-N; typing narrows it server-side (people/scenes/objects).
+
+    fun setPeopleQuery(query: String) {
+        _pickers.update { it.copy(people = it.people.copy(query = query, isLoading = true)) }
+        peopleJob?.cancel()
+        peopleJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            val res = runCatching {
+                search.people(limit = 200, search = query.trim().ifBlank { null })
                     .filter { !it.name.isNullOrBlank() }
                     .map { PersonRef(it.id, it.name!!, it.coverFaceId) }
             }.getOrDefault(emptyList())
+            _pickers.update { it.copy(people = it.people.copy(results = res, isLoading = false, loadedOnce = true)) }
+        }
+    }
 
-            val folderRefs = runCatching {
-                folders.list()
-                    .filterNot { it.path.contains("/_trash") || it.path.contains("/_archive") }
-                    .map { FolderRef(it.id, it.name, it.isShared) }
+    fun setSceneQuery(query: String) {
+        _pickers.update { it.copy(scenes = it.scenes.copy(query = query, isLoading = true)) }
+        sceneJob?.cancel()
+        sceneJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            val res = runCatching {
+                search.sceneLabels(limit = 120, search = query.trim().ifBlank { null })
+                    .map { LabelRef(it.label, it.coverAssetId) }
+            }.getOrDefault(emptyList())
+            _pickers.update { it.copy(scenes = it.scenes.copy(results = res, isLoading = false, loadedOnce = true)) }
+        }
+    }
+
+    fun setObjectQuery(query: String) {
+        _pickers.update { it.copy(objects = it.objects.copy(query = query, isLoading = true)) }
+        objectJob?.cancel()
+        objectJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            val res = runCatching {
+                search.objectLabels(limit = 120, search = query.trim().ifBlank { null })
+                    .map { LabelRef(it.label, it.coverAssetId) }
+            }.getOrDefault(emptyList())
+            _pickers.update { it.copy(objects = it.objects.copy(results = res, isLoading = false, loadedOnce = true)) }
+        }
+    }
+
+    /** Loads the folder list once (no server search) and builds both the flat
+     * list (search mode) and the tree (browse mode) client-side. */
+    fun ensureFolders() {
+        if (_pickers.value.foldersLoaded || _pickers.value.foldersLoading) return
+        _pickers.update { it.copy(foldersLoading = true) }
+        viewModelScope.launch {
+            val all = runCatching {
+                folders.list().filterNot { it.path.contains("/_trash") || it.path.contains("/_archive") }
             }.getOrDefault(emptyList())
 
-            val scenes = runCatching { search.sceneLabels(limit = 120).map { it.label } }.getOrDefault(emptyList())
-            val objects = runCatching { search.objectLabels(limit = 120).map { it.label } }.getOrDefault(emptyList())
-
+            val flat = all.map { FolderRef(it.id, it.name, it.isShared, it.path) }
+            val roots = buildFolderTree(all)
             _pickers.update {
-                it.copy(
-                    people = people,
-                    folders = folderRefs,
-                    sceneLabels = scenes,
-                    objectLabels = objects,
-                    isLoading = false,
-                    loaded = true,
-                )
+                it.copy(folders = flat, folderRoots = roots, foldersLoading = false, foldersLoaded = true)
             }
         }
     }
 
+    /** Builds the personal + shared folder tree from the flat list. Roots come
+     * from [filterPersonalFolders]/[filterSharedFolders]; children are attached
+     * recursively by parentFolderId. */
+    private fun buildFolderTree(all: List<FolderSummary>): List<FolderNode> {
+        val username = (authState.state.value as? AuthState.Authenticated)?.user?.username ?: ""
+        val childrenByParent = all.groupBy { it.parentFolderId }
+
+        fun node(f: FolderSummary): FolderNode = FolderNode(
+            id = f.id,
+            name = f.name,
+            path = f.path,
+            isShared = f.isShared,
+            children = (childrenByParent[f.id] ?: emptyList())
+                .sortedBy { it.name.lowercase() }
+                .map { node(it) },
+        )
+
+        val personal = filterPersonalFolders(all, username).sortedBy { it.name.lowercase() }.map { node(it) }
+        val shared = filterSharedFolders(all).sortedBy { it.name.lowercase() }.map { node(it) }
+        return personal + shared
+    }
+
     private companion object {
         const val PREVIEW_DEBOUNCE_MS = 400L
+        const val SEARCH_DEBOUNCE_MS = 300L
     }
 }

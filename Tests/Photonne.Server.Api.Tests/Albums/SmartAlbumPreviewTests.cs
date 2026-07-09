@@ -292,4 +292,40 @@ public sealed class SmartAlbumPreviewTests : IntegrationTestBase
         });
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
     }
+
+    // ── List count + cover reflect the live rule (no AlbumAssets rows) ───────
+
+    private sealed record AlbumListItem(Guid Id, int AssetCount);
+
+    [Fact]
+    public async Task SmartAlbum_ListShowsResolvedCount_NotZero()
+    {
+        var w = await SeedAsync();
+        var album = await CreateSmartAlbumAsync(w.Client, "Familia", new
+        {
+            type = "person", match = "any", personIds = new[] { w.Abuela, w.Nieto }
+        });
+
+        var list = await w.Client.GetFromJsonAsync<List<AlbumListItem>>("/api/albums");
+        var listed = list!.Single(a => a.Id == album.Id);
+        Assert.Equal(3, listed.AssetCount); // beachDog, both, nietoOnly — not 0
+    }
+
+    [Fact]
+    public async Task SetCover_OnSmartAlbum_AcceptsResolvedAsset_RejectsOther()
+    {
+        var w = await SeedAsync();
+        var album = await CreateSmartAlbumAsync(w.Client, "Familia", new
+        {
+            type = "person", match = "any", personIds = new[] { w.Abuela, w.Nieto }
+        });
+
+        // beachDog resolves into the album (Abuela) → allowed as cover.
+        var ok = await w.Client.PutAsJsonAsync($"/api/albums/{album.Id}/cover", new { assetId = w.BeachDog });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+
+        // mountainTrip has no person → not in the album → rejected.
+        var bad = await w.Client.PutAsJsonAsync($"/api/albums/{album.Id}/cover", new { assetId = w.MountainTrip });
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
 }

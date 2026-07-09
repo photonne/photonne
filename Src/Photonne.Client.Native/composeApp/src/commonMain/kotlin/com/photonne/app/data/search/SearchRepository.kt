@@ -36,11 +36,11 @@ class SearchRepository(
     suspend fun semanticSearch(query: String, limit: Int? = null): SemanticSearchResponse =
         api.semanticSearch(q = query, limit = limit)
 
-    suspend fun objectLabels(limit: Int = 80): List<ObjectLabel> =
-        api.listObjectLabels(limit = limit)
+    suspend fun objectLabels(limit: Int = 80, search: String? = null): List<ObjectLabel> =
+        api.listObjectLabels(q = search, limit = limit)
 
-    suspend fun sceneLabels(limit: Int = 80): List<SceneLabel> =
-        api.listSceneLabels(limit = limit)
+    suspend fun sceneLabels(limit: Int = 80, search: String? = null): List<SceneLabel> =
+        api.listSceneLabels(q = search, limit = limit)
 
     suspend fun people(limit: Int = 80, search: String? = null): List<Person> =
         api.listPeople(search = search, limit = limit).items
