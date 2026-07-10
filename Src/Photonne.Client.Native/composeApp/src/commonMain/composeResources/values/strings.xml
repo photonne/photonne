@@ -1052,4 +1052,10 @@
     <string name="more_section_discover">Descubrir</string>
     <string name="more_section_manage">Gestión</string>
     <string name="more_section_actions">Acciones</string>
+    <string name="organize_inbox_title">Para organizar</string>
+    <string name="organize_inbox_card_subtitle">Fotos en MobileBackup sin archivar</string>
+    <string name="organize_inbox_count_format">%1$d sin organizar</string>
+    <string name="organize_inbox_header">Muévelas a una carpeta para archivarlas.</string>
+    <string name="organize_inbox_empty_title">Todo organizado</string>
+    <string name="organize_inbox_empty_subtitle">No queda nada en MobileBackup por archivar.</string>
 </resources>

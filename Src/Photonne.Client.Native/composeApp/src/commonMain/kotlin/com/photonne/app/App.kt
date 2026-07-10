@@ -85,6 +85,7 @@ import com.photonne.app.resources.archive_action_unarchive_all
 import com.photonne.app.resources.folder_action_edit
 import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_move_assets_title
+import com.photonne.app.resources.organize_inbox_title
 import com.photonne.app.resources.folder_move_title
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_empty
@@ -210,6 +211,7 @@ private enum class MoreSubscreen {
     UtilitiesLargeFiles,
     UtilitiesLocations,
     UnsupportedFiles,
+    OrganizeInbox,
     ExploreMemories,
     ExploreScenes,
     ExploreObjects,
@@ -381,6 +383,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.Trash,
     MoreSubscreen.Utilities,
     MoreSubscreen.UnsupportedFiles,
+    MoreSubscreen.OrganizeInbox,
     MoreSubscreen.AccountSettings,
     MoreSubscreen.Notifications,
     MoreSubscreen.Administration -> null
@@ -512,6 +515,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashViewModel: com.photonne.app.ui.library.TrashViewModel = koinViewModel()
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel = koinViewModel()
+    val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
     val deviceBackupState by deviceBackupViewModel.state.collectAsState()
@@ -589,6 +593,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val trashState by trashViewModel.state.collectAsState()
     val favoritesState by favoritesViewModel.state.collectAsState()
     val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsState()
+    val organizeInboxState by organizeInboxViewModel.state.collectAsState()
     val peopleState by peopleViewModel.state.collectAsState()
     val personDetailState by personDetailViewModel.state.collectAsState()
     val suggestionsState by personSuggestionsViewModel.state.collectAsState()
@@ -629,6 +634,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var bulkAddToAlbumFromFolder by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromArchive by remember { mutableStateOf(false) }
     var bulkAddToAlbumFromAlbum by remember { mutableStateOf(false) }
+    var bulkAddToAlbumFromInbox by remember { mutableStateOf(false) }
     var selectedPerson by remember {
         mutableStateOf<com.photonne.app.data.models.Person?>(null)
     }
@@ -647,6 +653,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showInviteFolderMember by remember { mutableStateOf(false) }
     var showMoveFolder by remember { mutableStateOf(false) }
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
+    var showMoveSelectedAssetsTimeline by remember { mutableStateOf(false) }
+    var showMoveSelectedAssetsInbox by remember { mutableStateOf(false) }
     var showSearchFilters by remember { mutableStateOf(false) }
     var showAlbumsFilters by remember { mutableStateOf(false) }
     var showFoldersFilters by remember { mutableStateOf(false) }
@@ -699,7 +707,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (moreSubscreen == MoreSubscreen.Archived && archivedState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.Trash && trashTab == com.photonne.app.ui.library.TrashTab.Personal && trashState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
-            personDetailState.isSelectionActive)
+            personDetailState.isSelectionActive) ||
+        (moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive)
     )
     val canHandleBack = (
         assetDetail != null ||
@@ -736,6 +745,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 trashViewModel.clearSelection()
             moreSubscreen == MoreSubscreen.People && selectedPerson != null &&
                 personDetailState.isSelectionActive -> personDetailViewModel.clearSelection()
+            moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive ->
+                organizeInboxViewModel.clearSelection()
             selectedTab == MainTab.Albums && selectedAlbum != null -> albumBack()
             selectedTab == MainTab.Folders && selectedFolder != null -> {
                 selectedFolder = if (folderBackStack.isNotEmpty()) {
@@ -952,6 +963,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.unsupported_files_title),
                     onBack = { moreSubscreen = null }
+                )
+            moreSubscreen == MoreSubscreen.OrganizeInbox &&
+                organizeInboxState.isSelectionActive ->
+                AssetSelectionTopBar(
+                    selectedCount = organizeInboxState.selection.size,
+                    totalCount = organizeInboxState.items.size,
+                    isMutating = organizeInboxState.isBulkMutating,
+                    onClose = organizeInboxViewModel::clearSelection,
+                    onSelectAll = organizeInboxViewModel::toggleSelectAll
+                )
+            moreSubscreen == MoreSubscreen.OrganizeInbox ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.organize_inbox_title),
+                    onBack = {
+                        moreSubscreen = null
+                        foldersViewModel.refreshOrganizeCount()
+                    }
                 )
             moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -1268,6 +1296,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsViewModel.beginShare(timelineState.selection.toList())
                     },
                     onAddToAlbum = { bulkAddToAlbum = true },
+                    onMove = { showMoveSelectedAssetsTimeline = true },
                     onDownload = {
                         actionsViewModel.download(timelineState.selection.toList())
                     },
@@ -1402,6 +1431,25 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         }
                     }
+                )
+            }
+        }
+        moreSubscreen == MoreSubscreen.OrganizeInbox &&
+            organizeInboxState.isSelectionActive -> {
+            {
+                AssetSelectionBottomBar(
+                    isMutating = organizeInboxState.isBulkMutating ||
+                        actionsState.working != AssetActionWorking.Idle,
+                    onShare = {
+                        actionsViewModel.beginShare(organizeInboxState.selection.toList())
+                    },
+                    onAddToAlbum = { bulkAddToAlbumFromInbox = true },
+                    onDownload = {
+                        actionsViewModel.download(organizeInboxState.selection.toList())
+                    },
+                    onArchive = organizeInboxViewModel::bulkArchive,
+                    onTrash = organizeInboxViewModel::bulkTrash,
+                    onMove = { showMoveSelectedAssetsInbox = true }
                 )
             }
         }
@@ -1728,7 +1776,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             },
                             onFolderLongPress = { folder ->
                                 foldersViewModel.selectFolder(folder.id)
-                            }
+                            },
+                            onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox }
                         )
                     } else {
                         com.photonne.app.ui.folder.FolderDetailScreen(
@@ -1895,6 +1944,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onRefresh = unsupportedFilesViewModel::refresh,
                             onLoadMore = unsupportedFilesViewModel::loadMore,
                             onDownload = unsupportedFilesViewModel::download
+                        )
+                    MoreSubscreen.OrganizeInbox ->
+                        com.photonne.app.ui.organize.OrganizeInboxScreen(
+                            state = organizeInboxState,
+                            onLoad = organizeInboxViewModel::ensureLoaded,
+                            onRefresh = organizeInboxViewModel::refresh,
+                            onLoadMore = organizeInboxViewModel::loadMore,
+                            onItemClick = { index ->
+                                if (organizeInboxState.isSelectionActive) {
+                                    organizeInboxState.items.getOrNull(index)?.let {
+                                        organizeInboxViewModel.toggleSelection(it.id)
+                                    }
+                                } else {
+                                    assetDetail = AssetDetailContext(
+                                        items = organizeInboxViewModel.state.value.items,
+                                        startIndex = index,
+                                        source = AssetDetailContext.Source.Timeline,
+                                        hasMore = organizeInboxState.hasMore,
+                                        onLoadMore = organizeInboxViewModel::loadMore,
+                                        onFavoriteChanged = { id, isFav ->
+                                            timelineViewModel.setFavorite(id, isFav)
+                                        }
+                                    )
+                                }
+                            },
+                            onItemLongClick = { index ->
+                                organizeInboxState.items.getOrNull(index)?.let {
+                                    organizeInboxViewModel.toggleSelection(it.id)
+                                }
+                            }
                         )
                     MoreSubscreen.Utilities ->
                         com.photonne.app.ui.utilities.UtilitiesHubScreen(
@@ -3179,7 +3258,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (showMoveSelectedAssets && openedFolder != null) {
         com.photonne.app.ui.folder.FolderPickerDialog(
             title = stringResource(Res.string.folder_move_assets_title),
-            folders = foldersState.personalFolders,
+            folders = foldersState.moveDestinations,
             isSubmitting = folderDetailState.isBulkMutating,
             errorMessage = folderDetailState.error?.userMessage,
             excludeFolderId = openedFolder.id,
@@ -3197,10 +3276,76 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             selectedFolder = openedFolder.copy(
                                 assetCount = (openedFolder.assetCount - moved).coerceAtLeast(0)
                             )
+                            foldersViewModel.refreshOrganizeCount()
                         }
                     }
                 }
             }
+        )
+    }
+
+    if (showMoveSelectedAssetsTimeline) {
+        com.photonne.app.ui.folder.FolderPickerDialog(
+            title = stringResource(Res.string.folder_move_assets_title),
+            folders = foldersState.moveDestinations,
+            isSubmitting = timelineState.isBulkMutating,
+            errorMessage = timelineState.error?.userMessage,
+            includeRoot = false,
+            onDismiss = {
+                showMoveSelectedAssetsTimeline = false
+                timelineViewModel.clearError()
+            },
+            onConfirm = { targetFolderId ->
+                if (targetFolderId != null) {
+                    timelineViewModel.moveSelectedAssets(targetFolderId) {
+                        showMoveSelectedAssetsTimeline = false
+                        foldersViewModel.refreshOrganizeCount()
+                    }
+                }
+            }
+        )
+    }
+
+    if (showMoveSelectedAssetsInbox) {
+        com.photonne.app.ui.folder.FolderPickerDialog(
+            title = stringResource(Res.string.folder_move_assets_title),
+            folders = foldersState.moveDestinations,
+            isSubmitting = organizeInboxState.isBulkMutating,
+            errorMessage = organizeInboxState.error?.userMessage,
+            includeRoot = false,
+            onDismiss = {
+                showMoveSelectedAssetsInbox = false
+                organizeInboxViewModel.clearError()
+            },
+            onConfirm = { targetFolderId ->
+                if (targetFolderId != null) {
+                    organizeInboxViewModel.moveSelectedAssets(targetFolderId) {
+                        showMoveSelectedAssetsInbox = false
+                        foldersViewModel.refreshOrganizeCount()
+                    }
+                }
+            }
+        )
+    }
+
+    if (bulkAddToAlbumFromInbox) {
+        AddToAlbumDialog(
+            albums = albumsState.albums,
+            isLoadingAlbums = albumsState.isLoading,
+            isSubmitting = organizeInboxState.isBulkMutating,
+            errorMessage = organizeInboxState.error?.userMessage,
+            onCreateNew = {
+                bulkAddToAlbumFromInbox = false
+                showCreateAlbum = true
+            },
+            onAlbumSelected = { album ->
+                organizeInboxViewModel.bulkAddToAlbum(album.id) { added ->
+                    albumsViewModel.applyAssetsAdded(album.id, added.size)
+                    albumDetailViewModel.applyAssetsAdded(album.id, added)
+                }
+                bulkAddToAlbumFromInbox = false
+            },
+            onDismiss = { bulkAddToAlbumFromInbox = false }
         )
     }
 

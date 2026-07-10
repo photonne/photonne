@@ -9,6 +9,8 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.folder.filterPersonalFolders
 import com.photonne.app.data.folder.filterSharedFolders
+import com.photonne.app.data.folder.moveDestinationFolders
+import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.ui.util.SortDirection
@@ -32,6 +34,12 @@ enum class FolderViewMode { List, Grid }
 data class FoldersUiState(
     val personalFolders: List<FolderSummary> = emptyList(),
     val sharedFolders: List<FolderSummary> = emptyList(),
+    // Full-depth writable destinations (personal + shared subtrees) for the
+    // move picker, which renders them as an indented tree.
+    val moveDestinations: List<FolderSummary> = emptyList(),
+    // Live count of unorganized (MobileBackup) assets, shown on the "Para
+    // organizar" entry card in the Personal tab.
+    val organizePendingCount: Int = 0,
     val libraries: List<ExternalLibraryDto> = emptyList(),
     val libraryFolders: List<FolderSummary> = emptyList(),
     val libraryRoots: Map<String, FolderSummary> = emptyMap(),
@@ -87,6 +95,7 @@ private fun List<FolderSummary>.flattenFolders(): List<FolderSummary> {
 
 class FoldersViewModel(
     private val repository: FoldersRepository,
+    private val organizeRepository: OrganizeRepository,
     private val authState: AuthStateHolder,
     private val settings: Settings,
     private val errorFactory: UiErrorFactory,
@@ -99,6 +108,18 @@ class FoldersViewModel(
     private var refreshJob: Job? = null
 
     init { refresh() }
+
+    /**
+     * Reloads the "Para organizar" pending count (cheap standalone query).
+     * Called on refresh and after any move that could file assets out of
+     * MobileBackup, so the entry-card badge stays honest.
+     */
+    fun refreshOrganizeCount() {
+        viewModelScope.launch {
+            runCatching { organizeRepository.count() }
+                .onSuccess { count -> _state.update { it.copy(organizePendingCount = count) } }
+        }
+    }
 
     private fun loadInitialState(): FoldersUiState {
         val sort = readFolderSort(settings)
@@ -154,6 +175,7 @@ class FoldersViewModel(
     }
 
     fun refresh() {
+        refreshOrganizeCount()
         val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
         refreshJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
@@ -187,6 +209,7 @@ class FoldersViewModel(
                         it.copy(
                             personalFolders = personal,
                             sharedFolders = shared,
+                            moveDestinations = sortFolders(moveDestinationFolders(folders), sort, direction),
                             libraries = sortLibraries(libs, sort, direction),
                             libraryFolders = libFolders,
                             libraryRoots = libRoots,
@@ -361,6 +384,7 @@ class FoldersViewModel(
             it.copy(
                 personalFolders = personal,
                 sharedFolders = shared,
+                moveDestinations = sortFolders(moveDestinationFolders(allFolders), sort, direction),
                 libraryFolders = libFolders,
                 libraries = sortLibraries(it.libraries, sort, direction)
             )

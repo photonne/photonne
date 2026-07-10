@@ -25,8 +25,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
@@ -61,6 +63,9 @@ import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
+import com.photonne.app.resources.organize_inbox_card_subtitle
+import com.photonne.app.resources.organize_inbox_count_format
+import com.photonne.app.resources.organize_inbox_title
 import com.photonne.app.resources.folder_external_badge
 import com.photonne.app.resources.folder_shared_badge
 import com.photonne.app.resources.folder_timeline_excluded_badge
@@ -83,7 +88,8 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun FoldersListScreen(
     onFolderClick: (FolderSummary) -> Unit,
-    onFolderLongPress: (FolderSummary) -> Unit
+    onFolderLongPress: (FolderSummary) -> Unit,
+    onOpenOrganize: () -> Unit
 ) {
     val viewModel: FoldersViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -107,16 +113,26 @@ fun FoldersListScreen(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (state.selectedTab) {
-                    FoldersTab.Personal -> FolderListContent(
-                        folders = state.visiblePersonalFolders,
-                        state = state,
-                        isLoading = state.isLoading,
-                        errorMessage = state.error?.userMessage,
-                        emptyTitle = stringResource(Res.string.folders_empty_title),
-                        emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
-                        onFolderClick = onFolderClick,
-                        onFolderLongPress = onFolderLongPress
-                    )
+                    FoldersTab.Personal -> Column(modifier = Modifier.fillMaxSize()) {
+                        if (state.organizePendingCount > 0 && !state.hasActiveQuery) {
+                            OrganizeInboxCard(
+                                count = state.organizePendingCount,
+                                onClick = onOpenOrganize
+                            )
+                        }
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            FolderListContent(
+                                folders = state.visiblePersonalFolders,
+                                state = state,
+                                isLoading = state.isLoading,
+                                errorMessage = state.error?.userMessage,
+                                emptyTitle = stringResource(Res.string.folders_empty_title),
+                                emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
+                                onFolderClick = onFolderClick,
+                                onFolderLongPress = onFolderLongPress
+                            )
+                        }
+                    }
                     FoldersTab.Shared -> FolderListContent(
                         folders = state.visibleSharedFolders,
                         state = state,
@@ -579,4 +595,56 @@ private fun EmptySearchState(query: String) {
         title = stringResource(Res.string.folders_search_empty_title),
         subtitle = stringResource(Res.string.folders_search_empty_subtitle, query)
     )
+}
+
+/**
+ * Entry card at the top of the Personal tab: how many assets are still sitting
+ * in MobileBackup ("sin organizar"), tapping opens the "Para organizar" inbox.
+ * Only shown while there's something pending, so a tidy library isn't nagged.
+ */
+@Composable
+private fun OrganizeInboxCard(
+    count: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Inbox,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(28.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(Res.string.organize_inbox_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Text(
+                text = stringResource(Res.string.organize_inbox_card_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
+        }
+        Text(
+            text = stringResource(Res.string.organize_inbox_count_format, count),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
 }

@@ -12,6 +12,11 @@ public class FolderResponse
     public List<Guid> PreviewAssetIds { get; set; } = new();
     public bool IsShared { get; set; }
     public bool IsOwner { get; set; }
+    // True when the requesting user may move/upload assets into this folder
+    // (own personal space, admin over a shared folder, or a Write grant on the
+    // folder or any ancestor). Mirrors CanWriteFolderAsync. Used to offer only
+    // writable folders as move destinations in the client picker.
+    public bool CanWrite { get; set; }
     public int SharedWithCount { get; set; }
     public Guid? ExternalLibraryId { get; set; }
 

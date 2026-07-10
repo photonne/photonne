@@ -33,6 +33,7 @@ import com.photonne.app.data.models.TimelineBucket
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.TimelineYearSummary
+import com.photonne.app.data.models.OrganizeCountResponse
 import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
@@ -274,6 +275,11 @@ interface PhotonneApi {
 
     suspend fun listUnsupportedFiles(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): UnsupportedFilesPage
     suspend fun getUnsupportedFileContent(id: String): AssetContentBytes
+
+    /** "Para organizar" inbox: assets still under MobileBackup, newest first. */
+    suspend fun getOrganizeInbox(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
+    /** Count of unorganized (MobileBackup) assets, for the entry-point badge. */
+    suspend fun getOrganizeCount(): Int
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     suspend fun getMemories(): List<TimelineItem>
     suspend fun getAssetDetail(assetId: String): AssetDetail
@@ -774,6 +780,31 @@ class PhotonneApiClient(
             )
         }
         return response.body()
+    }
+
+    override suspend fun getOrganizeInbox(cursor: Instant?, pageSize: Int): TimelinePage {
+        val response: HttpResponse = client.get("$baseUrl/api/organize/inbox") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize inbox fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getOrganizeCount(): Int {
+        val response: HttpResponse = client.get("$baseUrl/api/organize/inbox/count")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize count fetch failed (${response.status.value})"
+            )
+        }
+        return response.body<OrganizeCountResponse>().count
     }
 
     override suspend fun getUnsupportedFileContent(id: String): AssetContentBytes {

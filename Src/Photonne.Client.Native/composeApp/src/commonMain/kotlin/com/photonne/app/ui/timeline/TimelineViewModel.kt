@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.asset.AssetDetailRepository
+import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
@@ -39,6 +40,7 @@ class TimelineViewModel(
     private val store: TimelineBucketStore,
     private val assetRepository: AssetDetailRepository,
     private val albumsRepository: AlbumsRepository,
+    private val foldersRepository: FoldersRepository,
     private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
@@ -224,6 +226,44 @@ class TimelineViewModel(
                         it.copy(
                             isBulkMutating = false,
                             error = errorFactory.from(error, "Failed to add to album")
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Moves the selected assets into [targetFolderId] (physical relocation via
+     * the folder move endpoint). Source folders differ per asset — MobileBackup
+     * has one subfolder per device — so we pass a null source and let the server
+     * check write permission per asset. On success we re-sync from the server:
+     * moved items stay on the timeline if the destination is timeline-visible
+     * and leave it if it's an excluded/shared folder, and only a refresh knows
+     * which. [onComplete] receives the moved ids so callers can refresh the
+     * "Para organizar" count.
+     */
+    fun moveSelectedAssets(targetFolderId: String, onComplete: (List<String>) -> Unit = {}) {
+        val ids = selectedIds()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        _state.update { it.copy(isBulkMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching {
+                foldersRepository.moveAssets(
+                    sourceFolderId = null,
+                    targetFolderId = targetFolderId,
+                    assetIds = ids
+                )
+            }
+                .onSuccess {
+                    runCatching { store.refresh() }
+                    _state.update { it.copy(isBulkMutating = false, selection = emptySet()) }
+                    onComplete(ids)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            error = errorFactory.from(error, "Failed to move")
                         )
                     }
                 }

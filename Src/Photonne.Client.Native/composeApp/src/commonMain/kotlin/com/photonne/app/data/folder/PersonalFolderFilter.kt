@@ -39,3 +39,26 @@ fun filterSharedFolders(folders: List<FolderSummary>): List<FolderSummary> {
         rest.isNotEmpty() && !rest.contains('/')
     }
 }
+
+/**
+ * Shared folders the user may file assets into — the writable destinations for
+ * the move picker. Read-only shares (browsable but not writable) are excluded
+ * so the picker never offers a target that would 403 on move.
+ */
+fun writableSharedFolders(folders: List<FolderSummary>): List<FolderSummary> =
+    filterSharedFolders(folders).filter { it.canWrite || it.isOwner }
+
+/**
+ * Every folder the user may move assets into, at any depth — personal and
+ * shared subtrees alike. Feeds the move picker, which renders the full list as
+ * an indented tree. Excludes external libraries (read-only) and the `_trash` /
+ * `_archive` system folders. The picker itself drops the source folder and its
+ * own descendants via `excludeFolderId`.
+ */
+fun moveDestinationFolders(folders: List<FolderSummary>): List<FolderSummary> =
+    folders.filter { folder ->
+        if (!folder.canWrite || folder.externalLibraryId != null) return@filter false
+        folder.path.replace('\\', '/').split('/').none { segment ->
+            segment.equals("_trash", ignoreCase = true) || segment.equals("_archive", ignoreCase = true)
+        }
+    }

@@ -257,6 +257,26 @@ public class FoldersEndpoint : IEndpoint
 
             var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
 
+            // Write access is inherited down a shared subtree (a grant lives on
+            // the share root). Walk each folder's parent chain in-memory against
+            // the user's Write grants — mirrors CanWriteFolderAsync without a
+            // per-folder round-trip.
+            var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+            var folderById = folders.ToDictionary(f => f.Id);
+            bool HasInheritedWrite(Folder folder)
+            {
+                var current = folder;
+                var guard = 0;
+                while (current != null && guard++ < 64)
+                {
+                    if (writableGrantIds.Contains(current.Id)) return true;
+                    current = current.ParentFolderId.HasValue
+                        && folderById.TryGetValue(current.ParentFolderId.Value, out var parent)
+                        ? parent : null;
+                }
+                return false;
+            }
+
             var response = folders.Select(f =>
             {
                 var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
@@ -279,6 +299,10 @@ public class FoldersEndpoint : IEndpoint
                     IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
                         || (isAdmin && IsInSharedSpace(f.Path))
                         || (userPerm?.CanManagePermissions ?? false),
+                    CanWrite = !VirtualPath.IsStructuralContainer(f.Path)
+                        && (OwnsByPath(f.Path, usernameToIdMap, userId)
+                            || (isAdmin && IsInSharedSpace(f.Path))
+                            || HasInheritedWrite(f)),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     ExternalLibraryId = f.ExternalLibraryId,
@@ -586,6 +610,25 @@ public class FoldersEndpoint : IEndpoint
                 .Where(p => p.UserId == userId)
                 .ToListAsync(cancellationToken);
 
+            // Write access is inherited down a shared subtree (grant on the
+            // share root). Walk the parent chain in-memory — see the flat list
+            // handler above.
+            var writableGrantIds = permissions.Where(p => p.CanWrite).Select(p => p.FolderId).ToHashSet();
+            var folderByIdForWrite = allFolders.ToDictionary(f => f.Id);
+            bool HasInheritedWrite(Folder folder)
+            {
+                var current = folder;
+                var guard = 0;
+                while (current != null && guard++ < 64)
+                {
+                    if (writableGrantIds.Contains(current.Id)) return true;
+                    current = current.ParentFolderId.HasValue
+                        && folderByIdForWrite.TryGetValue(current.ParentFolderId.Value, out var parent)
+                        ? parent : null;
+                }
+                return false;
+            }
+
             // Build tree structure
             var folderDict = allFolders.ToDictionary(f => f.Id, f =>
             {
@@ -609,6 +652,10 @@ public class FoldersEndpoint : IEndpoint
                     IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
                         || (isAdmin && IsInSharedSpace(f.Path))
                         || (userPerm?.CanManagePermissions ?? false),
+                    CanWrite = !VirtualPath.IsStructuralContainer(f.Path)
+                        && (OwnsByPath(f.Path, usernameToIdMap, userId)
+                            || (isAdmin && IsInSharedSpace(f.Path))
+                            || HasInheritedWrite(f)),
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     SubFolders = new List<FolderResponse>()

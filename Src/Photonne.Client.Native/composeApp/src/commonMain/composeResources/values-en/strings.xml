@@ -1021,4 +1021,10 @@
     <string name="more_section_discover">Discover</string>
     <string name="more_section_manage">Manage</string>
     <string name="more_section_actions">Actions</string>
+    <string name="organize_inbox_title">To organize</string>
+    <string name="organize_inbox_card_subtitle">Photos in MobileBackup not yet filed</string>
+    <string name="organize_inbox_count_format">%1$d unorganized</string>
+    <string name="organize_inbox_header">Move them into a folder to file them away.</string>
+    <string name="organize_inbox_empty_title">All organized</string>
+    <string name="organize_inbox_empty_subtitle">Nothing left in MobileBackup to file.</string>
 </resources>
