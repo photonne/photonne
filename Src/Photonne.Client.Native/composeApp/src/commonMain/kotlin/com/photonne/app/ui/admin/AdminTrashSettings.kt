@@ -25,9 +25,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.models.TrashUserStat
 import com.photonne.app.ui.theme.actionButtonHeight
 import kotlinx.coroutines.launch
 import com.photonne.app.resources.Res
@@ -40,6 +42,8 @@ import com.photonne.app.resources.admin_settings_trash_section_config
 import com.photonne.app.resources.admin_settings_trash_section_stats
 import com.photonne.app.resources.admin_trash_action_cleanup
 import com.photonne.app.resources.admin_trash_expired
+import com.photonne.app.resources.admin_trash_per_user_expired
+import com.photonne.app.resources.admin_trash_per_user_title
 import com.photonne.app.resources.admin_trash_over_quota_bytes
 import com.photonne.app.resources.admin_trash_over_quota_users
 import com.photonne.app.resources.admin_trash_total_bytes
@@ -217,6 +221,25 @@ fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
                     TwoColumn(stringResource(Res.string.admin_trash_over_quota_bytes), humanBytes(s.overQuotaBytes))
                 }
             }
+            if (s.perUser.isNotEmpty()) {
+                Text(
+                    stringResource(Res.string.admin_trash_per_user_title),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        s.perUser.forEach { user -> PerUserRow(user) }
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -246,5 +269,31 @@ private fun TwoColumn(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Text(value, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun PerUserRow(stat: TrashUserStat) {
+    val accent = if (stat.overQuota) MaterialTheme.colorScheme.error else Color.Unspecified
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                stat.username,
+                style = MaterialTheme.typography.bodyMedium,
+                color = accent
+            )
+            if (stat.expiredItems > 0) {
+                Text(
+                    stringResource(Res.string.admin_trash_per_user_expired, stat.expiredItems),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Text(
+            "${stat.items} · ${humanBytes(stat.bytes)}",
+            style = MaterialTheme.typography.titleMedium,
+            color = accent
+        )
     }
 }

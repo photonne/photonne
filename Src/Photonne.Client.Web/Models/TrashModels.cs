@@ -9,6 +9,17 @@ public class TrashStatsResponse
     public int MaxQuotaMb { get; set; }
     public int OverQuotaUsers { get; set; }
     public long OverQuotaBytes { get; set; }
+    public List<TrashUserStat> PerUser { get; set; } = new();
+}
+
+public class TrashUserStat
+{
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public int Items { get; set; }
+    public long Bytes { get; set; }
+    public int ExpiredItems { get; set; }
+    public bool OverQuota { get; set; }
 }
 
 public class TrashCleanupResult

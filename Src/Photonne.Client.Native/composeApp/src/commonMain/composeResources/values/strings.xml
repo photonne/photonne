@@ -479,6 +479,8 @@
     <string name="admin_trash_over_quota_users">Usuarios por encima de la cuota</string>
     <string name="admin_trash_over_quota_bytes">Espacio por encima de la cuota</string>
     <string name="admin_trash_action_cleanup">Limpiar expirados</string>
+    <string name="admin_trash_per_user_title">Por usuario</string>
+    <string name="admin_trash_per_user_expired">%1$d expirados</string>
 
     <!-- Administration: top-level menu (5 entries) -->
     <string name="admin_section_libraries">Bibliotecas</string>

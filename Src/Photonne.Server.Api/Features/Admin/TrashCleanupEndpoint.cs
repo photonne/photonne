@@ -17,6 +17,17 @@ public class TrashStatsResponse
     public int MaxQuotaMb { get; set; }     // per-user quota (0 = unlimited)
     public int OverQuotaUsers { get; set; } // users whose trash exceeds the quota
     public long OverQuotaBytes { get; set; } // total excess bytes across all users over quota
+    public List<TrashUserStat> PerUser { get; set; } = new(); // breakdown by owner, largest first
+}
+
+public class TrashUserStat
+{
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public int Items { get; set; }
+    public long Bytes { get; set; }
+    public int ExpiredItems { get; set; }
+    public bool OverQuota { get; set; }
 }
 
 public class TrashCleanupResult
@@ -67,20 +78,46 @@ public class TrashCleanupEndpoint : IEndpoint
             ? DateTime.UtcNow.AddDays(-retentionDays)
             : (DateTime?)null;
 
+        var quotaBytes = maxQuotaMb > 0 ? (long)maxQuotaMb * 1024L * 1024L : 0L;
+
+        // Resolve owner usernames in one query so the breakdown can name each user.
+        var ownerIds = trashedAssets
+            .Where(a => a.OwnerId.HasValue)
+            .Select(a => a.OwnerId!.Value)
+            .Distinct()
+            .ToList();
+        var usernames = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => ownerIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Username })
+            .ToDictionaryAsync(u => u.Id, u => u.Username, ct);
+
         var overQuotaUsers = 0;
         var overQuotaBytes = 0L;
-        if (maxQuotaMb > 0)
+        var perUser = new List<TrashUserStat>();
+        foreach (var group in trashedAssets.GroupBy(a => a.OwnerId))
         {
-            var quotaBytes = (long)maxQuotaMb * 1024L * 1024L;
-            foreach (var group in trashedAssets.GroupBy(a => a.OwnerId))
+            var used = group.Sum(a => a.FileSize);
+            var overQuota = quotaBytes > 0 && used > quotaBytes;
+            if (overQuota)
             {
-                var used = group.Sum(a => a.FileSize);
-                if (used > quotaBytes)
-                {
-                    overQuotaUsers++;
-                    overQuotaBytes += used - quotaBytes;
-                }
+                overQuotaUsers++;
+                overQuotaBytes += used - quotaBytes;
             }
+
+            var username = group.Key.HasValue
+                ? usernames.GetValueOrDefault(group.Key.Value)
+                : null;
+
+            perUser.Add(new TrashUserStat
+            {
+                UserId = group.Key ?? Guid.Empty,
+                Username = username ?? "(desconocido)",
+                Items = group.Count(),
+                Bytes = used,
+                ExpiredItems = cutoff.HasValue ? group.Count(a => a.DeletedAt < cutoff) : 0,
+                OverQuota = overQuota
+            });
         }
 
         return Results.Ok(new TrashStatsResponse
@@ -93,7 +130,8 @@ public class TrashCleanupEndpoint : IEndpoint
             RetentionDays  = retentionDays,
             MaxQuotaMb     = maxQuotaMb,
             OverQuotaUsers = overQuotaUsers,
-            OverQuotaBytes = overQuotaBytes
+            OverQuotaBytes = overQuotaBytes,
+            PerUser = perUser.OrderByDescending(u => u.Bytes).ToList()
         });
     }
 

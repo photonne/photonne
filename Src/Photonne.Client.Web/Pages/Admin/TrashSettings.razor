@@ -191,6 +191,38 @@
                                 }
                             </MudGrid>
 
+                            @if (_stats.PerUser.Count > 0)
+                            {
+                                <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Por usuario</MudText>
+                                <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                                    <thead>
+                                        <tr>
+                                            <th>Usuario</th>
+                                            <th style="text-align:right">Elementos</th>
+                                            <th style="text-align:right">Tamaño</th>
+                                            <th style="text-align:right">Expirados</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var u in _stats.PerUser)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @u.Username
+                                                    @if (u.OverQuota)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-2">Sobre cuota</MudChip>
+                                                    }
+                                                </td>
+                                                <td style="text-align:right">@u.Items</td>
+                                                <td style="text-align:right">@FormatBytes(u.Bytes)</td>
+                                                <td style="text-align:right">@u.ExpiredItems</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </MudSimpleTable>
+                            }
+
                             @if (_cleanupResult != null)
                             {
                                 <MudAlert Severity="@(_cleanupResult.Success ? Severity.Success : Severity.Error)"

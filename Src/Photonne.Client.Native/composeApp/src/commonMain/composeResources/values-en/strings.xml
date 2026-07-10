@@ -479,6 +479,8 @@
     <string name="admin_trash_over_quota_users">Users over quota</string>
     <string name="admin_trash_over_quota_bytes">Space over quota</string>
     <string name="admin_trash_action_cleanup">Clean up expired</string>
+    <string name="admin_trash_per_user_title">Per user</string>
+    <string name="admin_trash_per_user_expired">%1$d expired</string>
 
     <!-- Administration: top-level menu -->
     <string name="admin_section_libraries">External libraries</string>

@@ -70,7 +70,18 @@ data class TrashStatsResponse(
     val retentionDays: Int = 0,
     val maxQuotaMb: Int = 0,
     val overQuotaUsers: Int = 0,
-    val overQuotaBytes: Long = 0L
+    val overQuotaBytes: Long = 0L,
+    val perUser: List<TrashUserStat> = emptyList()
+)
+
+@Serializable
+data class TrashUserStat(
+    val userId: String = "",
+    val username: String = "",
+    val items: Int = 0,
+    val bytes: Long = 0L,
+    val expiredItems: Int = 0,
+    val overQuota: Boolean = false
 )
 
 @Serializable
