@@ -3031,6 +3031,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteFolderDialog(
             folderName = folderDetailState.folderName ?: openedFolder.name.ifBlank { openedFolder.path },
             isSubmitting = folderDetailState.isMutating,
+            itemCount = openedFolder.assetCount,
             errorMessage = folderDetailState.error?.userMessage,
             onDismiss = {
                 showDeleteFolder = false
@@ -3051,6 +3052,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteFolderDialog(
             folderName = target.name.ifBlank { target.path },
             isSubmitting = foldersState.isMutating,
+            itemCount = target.assetCount,
             errorMessage = foldersState.error?.userMessage,
             onDismiss = {
                 showDeleteFolder = false
@@ -3094,6 +3096,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         DeleteFolderDialog(
             folderName = selectedSubfolder.name.ifBlank { selectedSubfolder.path },
             isSubmitting = folderDetailState.isMutating,
+            itemCount = selectedSubfolder.assetCount,
             errorMessage = folderDetailState.error?.userMessage,
             onDismiss = {
                 showDeleteSubfolder = false

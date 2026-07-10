@@ -224,7 +224,11 @@
     <string name="folder_create_shared_label">Crear en el espacio compartido</string>
     <string name="folder_create_shared_hint">Vivirá en /assets/shared/ y persistirá aunque borres tu usuario.</string>
     <string name="folder_delete_title">Eliminar carpeta</string>
-    <string name="folder_delete_message">"%1$s" se eliminará. Las fotos quedarán fuera del índice; podrás reindexarlas desde la app web.</string>
+    <string name="folder_delete_message">«%1$s» se eliminará.</string>
+    <plurals name="folder_delete_message_items">
+        <item quantity="one">«%1$s» y %2$d elemento se moverán a la papelera. Podrás restaurarlos desde la papelera.</item>
+        <item quantity="other">«%1$s» y %2$d elementos se moverán a la papelera. Podrás restaurarlos desde la papelera.</item>
+    </plurals>
     <string name="folder_permissions_title">Miembros de la carpeta</string>
     <string name="folder_permissions_empty">Solo tú tienes acceso. Invita a alguien para darle permiso de lectura o escritura.</string>
     <string name="folder_action_move">Mover carpeta</string>

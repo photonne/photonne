@@ -33,8 +33,10 @@ import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.folder_create_shared_hint
 import com.photonne.app.resources.folder_create_shared_label
 import com.photonne.app.resources.folder_delete_message
+import com.photonne.app.resources.folder_delete_message_items
 import com.photonne.app.resources.folder_delete_title
 import com.photonne.app.resources.folder_field_name
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,6 +128,7 @@ fun FolderFormDialog(
 fun DeleteFolderDialog(
     folderName: String,
     isSubmitting: Boolean,
+    itemCount: Int = 0,
     errorMessage: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
@@ -135,7 +138,12 @@ fun DeleteFolderDialog(
         title = { Text(stringResource(Res.string.folder_delete_title)) },
         text = {
             Column {
-                Text(stringResource(Res.string.folder_delete_message, folderName))
+                val message = if (itemCount > 0) {
+                    pluralStringResource(Res.plurals.folder_delete_message_items, itemCount, folderName, itemCount)
+                } else {
+                    stringResource(Res.string.folder_delete_message, folderName)
+                }
+                Text(message)
                 if (errorMessage != null) {
                     Spacer(Modifier.height(8.dp))
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)

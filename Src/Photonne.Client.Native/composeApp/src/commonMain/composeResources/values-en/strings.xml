@@ -224,7 +224,11 @@
     <string name="folder_create_shared_label">Create in shared space</string>
     <string name="folder_create_shared_hint">It will live under /assets/shared/ and stay there even if your account is removed.</string>
     <string name="folder_delete_title">Delete folder</string>
-    <string name="folder_delete_message">"%1$s" will be deleted. Photos stay on disk but lose their index entry; you can re-index from the web app.</string>
+    <string name="folder_delete_message">“%1$s” will be deleted.</string>
+    <plurals name="folder_delete_message_items">
+        <item quantity="one">“%1$s” and %2$d item will be moved to the trash. You can restore them from the trash.</item>
+        <item quantity="other">“%1$s” and %2$d items will be moved to the trash. You can restore them from the trash.</item>
+    </plurals>
     <string name="folder_permissions_title">Folder members</string>
     <string name="folder_permissions_empty">Only you have access. Invite people to grant them read or write access.</string>
     <string name="folder_action_move">Move folder</string>

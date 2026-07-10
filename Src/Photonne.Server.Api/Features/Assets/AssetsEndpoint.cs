@@ -68,10 +68,37 @@ public class AssetsEndpoint : IEndpoint
             return Results.NotFound(new { error = "Assets no encontrados." });
         }
 
+        var authorized = await TrashOrDeleteAssetsAsync(
+            dbContext, settingsService, notifications, assets, userId, username, user.IsInRole("Admin"), ct);
+
+        return authorized ? Results.NoContent() : Results.Forbid();
+    }
+
+    // Core delete flow shared by DeleteAssets and folder deletion. Partitions the
+    // given (live) assets by space: personal-space assets go to the user's personal
+    // trash; shared-space assets go to the communal admin trash, gated by CanDelete
+    // on their folder (same rule as deleting the folder). If the trash is globally
+    // disabled, deletes permanently instead. Cleans up album links, saves, and
+    // notifies shared-folder managers. Returns false (no side effects committed) if
+    // any asset fails authorization.
+    internal static async Task<bool> TrashOrDeleteAssetsAsync(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        INotificationService notifications,
+        List<Asset> assets,
+        Guid userId,
+        string username,
+        bool isAdmin,
+        CancellationToken ct)
+    {
+        if (assets.Count == 0)
+        {
+            return true;
+        }
+
         // Partition by space. Personal-space assets follow the existing flow
         // (personal trash). Shared-space assets go to a communal admin trash,
         // gated by CanDelete on their folder (same rule as deleting the folder).
-        var isAdmin = user.IsInRole("Admin");
         var personalAssets = new List<Asset>();
         var sharedAssets = new List<Asset>();
         foreach (var asset in assets)
@@ -85,15 +112,17 @@ public class AssetsEndpoint : IEndpoint
                 if (asset.FolderId is not Guid folderId ||
                     !await FoldersEndpoint.CanDeleteFolderAsync(dbContext, userId, folderId, isAdmin, ct))
                 {
-                    return Results.Forbid();
+                    return false;
                 }
                 sharedAssets.Add(asset);
             }
             else
             {
-                return Results.Forbid();
+                return false;
             }
         }
+
+        var assetIds = assets.Select(a => a.Id).ToList();
 
         // If trash is disabled, delete permanently instead of moving to _trash
         var trashEnabled = await settingsService.GetSettingAsync("TrashSettings.Enabled", Guid.Empty, "true");
@@ -101,10 +130,10 @@ public class AssetsEndpoint : IEndpoint
         {
             var withThumbnails = await dbContext.Assets
                 .Include(a => a.Thumbnails)
-                .Where(a => request.AssetIds.Contains(a.Id))
+                .Where(a => assetIds.Contains(a.Id))
                 .ToListAsync(ct);
             await DeleteAssetsPermanentlyAsync(dbContext, settingsService, withThumbnails, ct);
-            return Results.NoContent();
+            return true;
         }
 
         if (personalAssets.Count > 0)
@@ -119,7 +148,7 @@ public class AssetsEndpoint : IEndpoint
         }
 
         var albumAssets = await dbContext.AlbumAssets
-            .Where(a => request.AssetIds.Contains(a.AssetId))
+            .Where(a => assetIds.Contains(a.AssetId))
             .ToListAsync(ct);
         dbContext.AlbumAssets.RemoveRange(albumAssets);
 
@@ -130,7 +159,7 @@ public class AssetsEndpoint : IEndpoint
             await NotifySharedDeletionAsync(dbContext, notifications, sharedAssets, userId, username, ct);
         }
 
-        return Results.NoContent();
+        return true;
     }
 
     // Best-effort: notify each shared folder's managers plus all active admins

@@ -1797,12 +1797,7 @@ class PhotonneApiClient(
 
     override suspend fun deleteFolder(folderId: String) {
         val response: HttpResponse = client.delete("$baseUrl/api/folders/$folderId")
-        if (response.status != HttpStatusCode.OK && response.status != HttpStatusCode.NoContent) {
-            throw PhotonneApiException(
-                status = response.status.value,
-                message = "Folder delete failed (${response.status.value})"
-            )
-        }
+        response.ensureSuccess { "Folder delete failed ($it)" }
     }
 
     override suspend fun setFolderTimelineIncluded(folderId: String, included: Boolean) {

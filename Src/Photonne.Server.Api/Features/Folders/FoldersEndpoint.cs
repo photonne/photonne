@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Photonne.Server.Api.Features.Assets;
 using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
@@ -83,7 +84,7 @@ public class FoldersEndpoint : IEndpoint
 
         group.MapDelete("{folderId}", DeleteFolder)
             .WithName("DeleteFolder")
-            .WithDescription("Deletes a folder if it is empty");
+            .WithDescription("Deletes a folder and moves its contents to the trash");
 
         group.MapPut("{folderId}/timeline-visibility", SetFolderTimelineVisibility)
             .WithName("SetFolderTimelineVisibility")
@@ -902,6 +903,7 @@ public class FoldersEndpoint : IEndpoint
     private async Task<IResult> DeleteFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
+        [FromServices] INotificationService notifications,
         [FromServices] IMemoryCache cache,
         [FromRoute] Guid folderId,
         ClaimsPrincipal user,
@@ -911,6 +913,8 @@ public class FoldersEndpoint : IEndpoint
         {
             return Results.Unauthorized();
         }
+        var username = user.GetUsername();
+        if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
         var folder = await dbContext.Folders
             .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
@@ -926,12 +930,42 @@ public class FoldersEndpoint : IEndpoint
         }
 
         var folderIdsToDelete = await GetFolderSubtreeIdsAsync(dbContext, folderId, cancellationToken);
-        var hasAssets = await dbContext.Assets
-            .AnyAsync(a => a.FolderId.HasValue && folderIdsToDelete.Contains(a.FolderId.Value), cancellationToken);
 
-        if (hasAssets)
+        // Move the folder's contents (all subtree assets) to the trash before
+        // removing the folder records. External-library folders are skipped: their
+        // files aren't owned by Photonne, so we only drop the index records (same
+        // reason we don't touch their physical directory below).
+        if (!folder.ExternalLibraryId.HasValue)
         {
-            return Results.BadRequest(new { error = "La carpeta no puede contener archivos para poder eliminarla." });
+            var normPath = NormalizeVirtualPath(folder.Path);
+            var assets = await dbContext.Assets
+                .Where(a => a.DeletedAt == null)
+                .Where(a => (a.FolderId.HasValue && folderIdsToDelete.Contains(a.FolderId.Value))
+                            || EF.Functions.Like(a.FullPath, normPath + "/%"))
+                .ToListAsync(cancellationToken);
+
+            if (assets.Count > 0)
+            {
+                var authorized = await AssetsEndpoint.TrashOrDeleteAssetsAsync(
+                    dbContext, settingsService, notifications, assets, userId, username,
+                    user.IsInRole("Admin"), cancellationToken);
+                if (!authorized)
+                {
+                    return Results.Forbid();
+                }
+
+                // The subtree folders are about to be removed, so a restore that
+                // repoints FolderId to the (now gone) original folder would dangle.
+                // Drop the reference; restore falls back to the asset's original
+                // path (DeletedFromPath) and re-attaches on the next folder view.
+                foreach (var asset in assets)
+                {
+                    if (asset.DeletedAt != null)
+                    {
+                        asset.DeletedFromFolderId = null;
+                    }
+                }
+            }
         }
 
         var foldersToDelete = await dbContext.Folders
