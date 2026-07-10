@@ -123,6 +123,7 @@ public class AssetIndexingService
             }
             else
             {
+                var seedTz = await MetadataTimeZone.ResolveAsync(_settingsService);
                 asset = new Asset
                 {
                     FileName = fileInfo.Name,
@@ -133,10 +134,11 @@ public class AssetIndexingService
                     Extension = extension,
                     FileCreatedAt = effectiveCreatedUtc,
                     FileModifiedAt = modifiedUtc,
-                    // Seed CapturedAt from the filesystem timestamp; the EXIF
+                    // Seed CapturedAt from the filesystem timestamp (genuine UTC)
+                    // as local wall-clock — the same frame EXIF dates use; the
                     // enrichment worker overwrites it with DateTimeOriginal as
                     // soon as it runs.
-                    CapturedAt = effectiveCreatedUtc,
+                    CapturedAt = MetadataTimeZone.ToLocalWallClock(effectiveCreatedUtc, seedTz),
                     ScannedAt = DateTime.UtcNow,
                 };
                 isNew = true;

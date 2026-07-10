@@ -142,6 +142,7 @@ public class UploadAssetsEndpoint : IEndpoint
             var extension = Path.GetExtension(targetPath).ToLowerInvariant();
             var assetType = GetAssetType(extension);
             var dbPath = await settingsService.VirtualizePathAsync(targetPath);
+            var seedTz = await MetadataTimeZone.ResolveAsync(settingsService, cancellationToken);
 
             var asset = new Asset
             {
@@ -154,11 +155,12 @@ public class UploadAssetsEndpoint : IEndpoint
                 FileCreatedAt = createdUtc ?? fileInfo.CreationTimeUtc,
                 FileModifiedAt = modifiedUtc ?? fileInfo.LastWriteTimeUtc,
                 // Seed CapturedAt from the client-supplied timestamps (the
-                // device's original dates) falling back to the filesystem;
-                // CapturedAtSource stays FileSystem so the EXIF enrichment
-                // worker overwrites it with DateTimeOriginal as soon as it
-                // runs.
-                CapturedAt = createdUtc ?? modifiedUtc ?? fileInfo.CreationTimeUtc,
+                // device's original dates) falling back to the filesystem, as
+                // local wall-clock (same frame as EXIF dates); CapturedAtSource
+                // stays FileSystem so the EXIF enrichment worker overwrites it
+                // with DateTimeOriginal as soon as it runs.
+                CapturedAt = MetadataTimeZone.ToLocalWallClock(
+                    createdUtc ?? modifiedUtc ?? fileInfo.CreationTimeUtc, seedTz),
                 ScannedAt = DateTime.UtcNow,
                 FolderId = uploadsFolder?.Id,
                 OwnerId = userId

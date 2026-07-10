@@ -92,8 +92,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -274,7 +272,7 @@ fun TimelineScreen(
                                     is TimelineRowEntry.Row -> {
                                         val first = e.row.cells.firstOrNull() ?: continue
                                         return@derivedStateOf first.item.fileCreatedAt
-                                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                            .captureLocalDate()
                                     }
                                     is TimelineRowEntry.SkeletonRow -> {
                                         val year = e.bucketKey.substringBefore('-').toIntOrNull()
@@ -434,7 +432,7 @@ fun TimelineScreen(
                             if (!state.isInitialLoading) onJumpHandled()
                             return@LaunchedEffect
                         }
-                        val targetDate = target.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        val targetDate = target.captureLocalDate()
                         val index = findRowIndexForDate(rows, targetDate, zoomLevel.grouping)
                         if (index >= 0) {
                             runCatching { gridState.animateScrollToItem(index) }
@@ -535,8 +533,7 @@ fun TimelineScreen(
                                                 ?: cells.firstOrNull())?.item
                                             capAnchorId = anchorItem?.id
                                             capAnchorDate = anchorItem?.fileCreatedAt
-                                                ?.toLocalDateTime(TimeZone.currentSystemDefault())
-                                                ?.date
+                                                ?.captureLocalDate()
                                             anchorTopYdp = with(density) { offsetPx.toDp().value }
                                             // Warm Year's sampled summaries so the
                                             // landing on Year (if the gesture ends
@@ -701,8 +698,7 @@ fun TimelineScreen(
                                 when {
                                     isYearView -> zoomIntoMonth(
                                         anchor = item.fileCreatedAt
-                                            .toLocalDateTime(TimeZone.currentSystemDefault())
-                                            .date,
+                                            .captureLocalDate(),
                                         asset = PendingAssetAnchor(
                                             assetId = item.id,
                                             bucketKey = bucketKeyOf(item.fileCreatedAt)

@@ -301,7 +301,10 @@ public class EnrichmentWorker : BackgroundService
                     // may hold the rsync-preserved mtime.
                     var fileInfo = new FileInfo(physicalPath);
                     asset.RefreshFileDates(fileInfo.CreationTimeUtc, fileInfo.LastWriteTimeUtc);
-                    asset.CapturedAt = asset.EffectiveFileCreatedAt;
+                    // Filesystem times are genuine UTC; land the fallback in the
+                    // same local wall-clock frame as EXIF-derived dates.
+                    var tz = await MetadataTimeZone.ResolveAsync(settingsService, ct);
+                    asset.CapturedAt = MetadataTimeZone.ToLocalWallClock(asset.EffectiveFileCreatedAt, tz);
                 }
                 await dbContext.SaveChangesAsync(ct);
                 return JsonSerializer.Serialize(new

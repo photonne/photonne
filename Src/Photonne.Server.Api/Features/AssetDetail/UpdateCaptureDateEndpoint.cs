@@ -50,9 +50,11 @@ public class UpdateCaptureDateEndpoint : IEndpoint
         if (!IsAssetInUserRoot(asset.FullPath, username))
             return Results.Forbid();
 
-        // The client sends an absolute instant; persist it as UTC to match the
-        // EXIF extractor, which stores DateTimeOriginal/CapturedAt in UTC.
-        var dateUtc = DateTime.SpecifyKind(request.DateTaken.UtcDateTime, DateTimeKind.Utc);
+        // The client builds the picked wall-clock as an Instant at UTC, so
+        // UtcDateTime recovers that exact wall-clock (e.g. 2025-07-09 05:36).
+        // Capture dates are stored as local wall-clock (naive), so this value
+        // is persisted as-is into DateTimeOriginal/CapturedAt with no shift.
+        var dateLocal = DateTime.SpecifyKind(request.DateTaken.UtcDateTime, DateTimeKind.Unspecified);
 
         // ── Database: EXIF row + timeline column ──────────────────────────────
         if (asset.Exif == null)
@@ -60,8 +62,8 @@ public class UpdateCaptureDateEndpoint : IEndpoint
             asset.Exif = new AssetExif { AssetId = asset.Id };
             dbContext.AssetExifs.Add(asset.Exif);
         }
-        asset.Exif.DateTimeOriginal = dateUtc;
-        asset.CapturedAt = dateUtc;
+        asset.Exif.DateTimeOriginal = dateLocal;
+        asset.CapturedAt = dateLocal;
         // Manual is the top of the provenance ladder: no automated pass
         // (extraction fallback, restore, inference) may overwrite it.
         asset.CapturedAtSource = CaptureDateSource.Manual;
@@ -82,7 +84,7 @@ public class UpdateCaptureDateEndpoint : IEndpoint
                 // (videos/RAW included) so the physical file carries the date
                 // even where EXIF can't be written.
                 var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-                var result = await exifWriter.ApplyDateToFileAsync(physicalPath, dateUtc, ct);
+                var result = await exifWriter.ApplyDateToFileAsync(physicalPath, dateLocal, ct);
                 fileWritten = result.FileTouched;
                 reason = result.Reason;
 
@@ -106,8 +108,8 @@ public class UpdateCaptureDateEndpoint : IEndpoint
 
         return Results.Ok(new
         {
-            dateTaken = dateUtc,
-            capturedAt = dateUtc,
+            dateTaken = dateLocal,
+            capturedAt = dateLocal,
             fileWritten,
             reason
         });

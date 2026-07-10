@@ -27,7 +27,7 @@ public class CaptureDateInferenceService
     /// <summary>Where an inferred date came from — surfaced in task messages.</summary>
     public enum InferenceOrigin { FileName, FolderPath }
 
-    public sealed record InferenceResult(DateTime DateUtc, InferenceOrigin Origin);
+    public sealed record InferenceResult(DateTime DateLocal, InferenceOrigin Origin);
 
     /// <summary>
     /// Tries to infer the capture date from <paramref name="fileName"/> first
@@ -35,18 +35,15 @@ public class CaptureDateInferenceService
     /// virtual <paramref name="fullPath"/> folder segments. Returns null when
     /// nothing parseable/valid is found.
     /// </summary>
-    public async Task<InferenceResult?> TryInferAsync(string fileName, string fullPath, CancellationToken ct)
+    public Task<InferenceResult?> TryInferAsync(string fileName, string fullPath, CancellationToken ct)
     {
-        var tzId = await _settingsService.GetSettingAsync(
-            ExifExtractorService.KeyDefaultTimezone, Guid.Empty, "UTC");
-        var tz = ResolveTimezone(tzId);
-
+        // Filename/folder dates are local wall-clock; store them as-is (naive),
+        // same frame as EXIF DateTimeOriginal — no timezone conversion.
         var local = TryInferLocal(fileName, fullPath, out var origin);
-        if (local == null) return null;
+        if (local == null) return Task.FromResult<InferenceResult?>(null);
 
-        var utc = TimeZoneInfo.ConvertTimeToUtc(
-            DateTime.SpecifyKind(local.Value, DateTimeKind.Unspecified), tz);
-        return new InferenceResult(utc, origin);
+        return Task.FromResult<InferenceResult?>(
+            new InferenceResult(DateTime.SpecifyKind(local.Value, DateTimeKind.Unspecified), origin));
     }
 
     // ── Pure parsing core (unit-testable) ────────────────────────────────────

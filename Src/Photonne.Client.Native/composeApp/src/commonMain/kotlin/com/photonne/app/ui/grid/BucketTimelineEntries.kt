@@ -3,21 +3,19 @@ package com.photonne.app.ui.grid
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.timeline.TimelineBucketState
+import com.photonne.app.ui.timeline.captureLocalDate
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 /**
- * Server-bucket month key ("yyyy-MM") of an instant. Uses UTC on purpose:
- * the server groups buckets by the stored CapturedAt instant, so the client
- * must derive the same key or items would render under a neighbouring
- * month's header near midnight at month boundaries. Day-level headers inside
- * a loaded bucket still use the device timezone (cosmetic, see
- * docs/timeline-buckets.md).
+ * Server-bucket month key ("yyyy-MM") of an instant. Capture dates are the
+ * photo's local wall-clock (decoded via [captureLocalDate]); the server groups
+ * buckets on the same stored value, so client keys and headers — month and the
+ * per-day headers inside a loaded bucket alike — all derive from that one frame
+ * and can never disagree (see docs/timeline-buckets.md).
  */
 internal fun bucketKeyOf(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.UTC).date
+    val date = instant.captureLocalDate()
     return "${date.year}-${date.monthNumber.toString().padStart(2, '0')}"
 }
 

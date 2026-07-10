@@ -85,7 +85,7 @@ public class CaptureDateSuggestionEndpoint : IEndpoint
             CurrentDate = asset.CapturedAt,
             CurrentSource = asset.CapturedAtSource.ToString(),
             ExifDate = exifDate,
-            InferredDate = inferred?.DateUtc,
+            InferredDate = inferred?.DateLocal,
             InferredOrigin = inferred?.Origin.ToString(),
             FileDate = fileDate
         });

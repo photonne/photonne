@@ -194,7 +194,7 @@ public class RestoreDatesEndpoint : IEndpoint
                                 var inferred = await innerInference.TryInferAsync(asset.FileName, asset.FullPath, ct);
                                 if (inferred != null)
                                 {
-                                    newDate = inferred.DateUtc;
+                                    newDate = inferred.DateLocal;
                                     newSource = CaptureDateSource.Inferred;
                                 }
                             }

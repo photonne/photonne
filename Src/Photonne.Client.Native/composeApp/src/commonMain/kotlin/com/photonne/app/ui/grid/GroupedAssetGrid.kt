@@ -27,14 +27,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
+import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_year_count
 import com.photonne.app.ui.theme.SkeletonBlock
 import org.jetbrains.compose.resources.stringResource
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 /**
  * Sentinel returned by the server for assets that exist on disk but
@@ -63,29 +62,29 @@ internal sealed interface TimelineEntry {
 }
 
 internal fun monthKeyOf(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val date = instant.captureLocalDate()
     return "${date.year}-${date.monthNumber.toString().padStart(2, '0')}"
 }
 
 internal fun monthLabelOf(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val date = instant.captureLocalDate()
     return formatLocalizedMonth(date)
 }
 
 internal fun dayKeyOf(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val date = instant.captureLocalDate()
     val mm = date.monthNumber.toString().padStart(2, '0')
     val dd = date.dayOfMonth.toString().padStart(2, '0')
     return "${date.year}-$mm-$dd"
 }
 
 internal fun dayLabelOf(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val date = instant.captureLocalDate()
     return formatLocalizedDay(date)
 }
 
 internal fun yearKeyOf(instant: Instant): String =
-    instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.year.toString()
+    instant.captureLocalDate().year.toString()
 
 internal fun yearLabelOf(instant: Instant): String = yearKeyOf(instant)
 

@@ -24,6 +24,7 @@ public class MemoriesEndpoint : IEndpoint
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] AllowedFolderCache allowedFolders,
+        [FromServices] SettingsService settingsService,
         ClaimsPrincipal user,
         [FromQuery] bool? test,
         CancellationToken ct)
@@ -34,7 +35,13 @@ public class MemoriesEndpoint : IEndpoint
         var username = user.GetUsername();
         if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
 
-        var today = DateTime.UtcNow;
+        // "On this day" is a LOCAL-calendar concept: capture dates are stored as
+        // the photo's local wall-clock, so compare against the user's local
+        // today (from the configured timezone), not UtcNow — otherwise photos
+        // near midnight, and the whole first offset-hours of the local day, fall
+        // onto the wrong day.
+        var tz = await MetadataTimeZone.ResolveAsync(settingsService, ct);
+        var today = MetadataTimeZone.LocalNow(tz);
         var allowedIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, $"/assets/users/{username}", ct);
 

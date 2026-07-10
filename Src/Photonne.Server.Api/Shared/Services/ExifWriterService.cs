@@ -39,35 +39,35 @@ public class ExifWriterService
     }
 
     /// <summary>
-    /// Writes <paramref name="dateTakenUtc"/> into the file at <paramref name="filePath"/>.
-    /// The value is stored in the database as UTC; here it is converted back to the
-    /// configured timezone (matching how the extractor read it) before formatting
-    /// to the EXIF "yyyy:MM:dd HH:mm:ss" representation.
+    /// Writes <paramref name="dateTakenLocal"/> into the file at <paramref name="filePath"/>.
+    /// The value is stored in the database as the photo's LOCAL wall-clock
+    /// (naive), which is exactly the EXIF "yyyy:MM:dd HH:mm:ss" representation —
+    /// so it is written out verbatim, with no timezone conversion (the extractor
+    /// now reads it back the same way).
     /// </summary>
-    public async Task<ExifWriteResult> WriteDateTakenAsync(
+    public Task<ExifWriteResult> WriteDateTakenAsync(
         string filePath,
-        DateTime dateTakenUtc,
+        DateTime dateTakenLocal,
         CancellationToken cancellationToken = default)
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
         if (IsVideoFile(extension))
-            return new ExifWriteResult(false, "La escritura de metadatos en vídeos no está soportada; solo se actualizó la base de datos.");
+            return Task.FromResult(new ExifWriteResult(false, "La escritura de metadatos en vídeos no está soportada; solo se actualizó la base de datos."));
 
         if (!IsWritableImage(extension))
-            return new ExifWriteResult(false, $"El formato {extension} no admite escritura de EXIF fiable; solo se actualizó la base de datos.");
+            return Task.FromResult(new ExifWriteResult(false, $"El formato {extension} no admite escritura de EXIF fiable; solo se actualizó la base de datos."));
 
         if (!File.Exists(filePath))
-            return new ExifWriteResult(false, "El archivo físico no existe; solo se actualizó la base de datos.");
+            return Task.FromResult(new ExifWriteResult(false, "El archivo físico no existe; solo se actualizó la base de datos."));
 
-        var tzInfo = ResolveTimezone(await _settingsService.GetSettingAsync(
-            ExifExtractorService.KeyDefaultTimezone, Guid.Empty, "UTC"));
+        var exifString = dateTakenLocal.ToString("yyyy:MM:dd HH:mm:ss");
+        return WriteExifStringAsync(filePath, exifString, cancellationToken);
+    }
 
-        // DB stores UTC; EXIF stores local wall-clock in the configured timezone.
-        var local = TimeZoneInfo.ConvertTimeFromUtc(
-            DateTime.SpecifyKind(dateTakenUtc, DateTimeKind.Utc), tzInfo);
-        var exifString = local.ToString("yyyy:MM:dd HH:mm:ss");
-
+    private static async Task<ExifWriteResult> WriteExifStringAsync(
+        string filePath, string exifString, CancellationToken cancellationToken)
+    {
         try
         {
             await Task.Run(() =>
@@ -109,18 +109,25 @@ public class ExifWriterService
     /// </summary>
     public async Task<PhysicalDateResult> ApplyDateToFileAsync(
         string filePath,
-        DateTime dateTakenUtc,
+        DateTime dateTakenLocal,
         CancellationToken cancellationToken = default)
     {
         if (!File.Exists(filePath))
             return new PhysicalDateResult(false, false, "El archivo físico no existe; solo se actualizó la base de datos.");
 
-        var exif = await WriteDateTakenAsync(filePath, dateTakenUtc, cancellationToken);
+        var exif = await WriteDateTakenAsync(filePath, dateTakenLocal, cancellationToken);
+
+        // The EXIF tags carry the wall-clock verbatim, but the filesystem mtime
+        // is a genuine instant — convert the local wall-clock to real UTC so a
+        // later re-index (which turns the mtime back INTO local wall-clock) round-trips.
+        var tz = await MetadataTimeZone.ResolveAsync(_settingsService, cancellationToken);
+        var mtimeUtc = TimeZoneInfo.ConvertTimeToUtc(
+            DateTime.SpecifyKind(dateTakenLocal, DateTimeKind.Unspecified), tz);
 
         bool mtimeSet = false;
         try
         {
-            File.SetLastWriteTimeUtc(filePath, DateTime.SpecifyKind(dateTakenUtc, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(filePath, DateTime.SpecifyKind(mtimeUtc, DateTimeKind.Utc));
             mtimeSet = true;
         }
         catch (Exception ex)

@@ -210,9 +210,11 @@ public class ExifExtractorService
                     System.DateTime.TryParseExact(raw, "yyyy:MM:dd HH:mm:ss", null,
                         System.Globalization.DateTimeStyles.None, out var dt))
                 {
-                    // Treat the EXIF date as being in the configured timezone, then convert to UTC
-                    exif.DateTimeOriginal = System.TimeZoneInfo.ConvertTimeToUtc(
-                        System.DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), tzInfo);
+                    // EXIF DateTimeOriginal is the local wall-clock the camera
+                    // recorded (no zone). Store it AS-IS so "capture date" and
+                    // on-this-day stay in the photo's own local frame instead of
+                    // shifting with a configured timezone.
+                    exif.DateTimeOriginal = System.DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
                 }
             }
 
@@ -263,7 +265,10 @@ public class ExifExtractorService
                 qtMovieDir.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated, out var qtCreated) &&
                 qtCreated.Year > 1970)
             {
-                exif.DateTimeOriginal = System.DateTime.SpecifyKind(qtCreated, DateTimeKind.Utc);
+                // mvhd creation time is genuine UTC — convert it INTO the
+                // configured local timezone so videos land in the same
+                // wall-clock frame as photos' EXIF dates (which are stored as-is).
+                exif.DateTimeOriginal = MetadataTimeZone.ToLocalWallClock(qtCreated, tzInfo);
             }
         }
         else if (directory is QuickTimeMetadataHeaderDirectory qtMetaDir && options.Gps)
@@ -409,8 +414,8 @@ public class ExifExtractorService
                 System.DateTime.TryParseExact(raw, "yyyy:MM:dd HH:mm:ss", null,
                     System.Globalization.DateTimeStyles.None, out var dt))
             {
-                return System.TimeZoneInfo.ConvertTimeToUtc(
-                    System.DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), tzInfo);
+                // Local wall-clock, stored as-is (same convention as DateTimeOriginal).
+                return System.DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
             }
         }
         return null;

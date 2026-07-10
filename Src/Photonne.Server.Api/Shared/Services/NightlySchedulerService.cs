@@ -519,7 +519,8 @@ public class NightlySchedulerService : BackgroundService
                                 // while the disk may hold the rsync-preserved mtime.
                                 var fileInfo = new FileInfo(physicalPath);
                                 assetRow.RefreshFileDates(fileInfo.CreationTimeUtc, fileInfo.LastWriteTimeUtc);
-                                assetRow.CapturedAt = assetRow.EffectiveFileCreatedAt;
+                                var fsTz = await MetadataTimeZone.ResolveAsync(innerSettings, innerCt);
+                                assetRow.CapturedAt = MetadataTimeZone.ToLocalWallClock(assetRow.EffectiveFileCreatedAt, fsTz);
                             }
                         }
 

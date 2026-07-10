@@ -51,6 +51,28 @@ class AdminMetadataSettingsViewModel(
     }
 }
 
+/**
+ * Curated IANA timezone ids for the DefaultTimezone dropdown — the zone the
+ * server assumes when turning absolute timestamps (filesystem/video mvhd) into
+ * local wall-clock and when computing "on this day". Not exhaustive; a custom
+ * stored value is always appended so it stays selectable.
+ */
+private val COMMON_TIMEZONES = listOf(
+    "UTC",
+    "Europe/Madrid", "Europe/Lisbon", "Europe/London", "Europe/Paris",
+    "Europe/Berlin", "Europe/Rome", "Europe/Amsterdam", "Europe/Brussels",
+    "Europe/Zurich", "Europe/Vienna", "Europe/Warsaw", "Europe/Athens",
+    "Europe/Istanbul", "Europe/Moscow",
+    "Atlantic/Canary",
+    "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+    "America/Toronto", "America/Mexico_City", "America/Bogota", "America/Sao_Paulo",
+    "America/Argentina/Buenos_Aires",
+    "Africa/Casablanca", "Africa/Cairo", "Africa/Johannesburg",
+    "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Hong_Kong",
+    "Asia/Singapore", "Asia/Tokyo", "Asia/Seoul", "Asia/Jakarta",
+    "Australia/Perth", "Australia/Sydney", "Pacific/Auckland",
+)
+
 @Composable
 fun AdminMetadataSettingsScreen(viewModel: AdminMetadataSettingsViewModel) {
     val state by viewModel.state.collectAsState()
@@ -86,11 +108,17 @@ fun AdminMetadataSettingsScreen(viewModel: AdminMetadataSettingsViewModel) {
         ) { viewModel.set("MetadataSettings.ReadXmpSidecar", if (it) "true" else "false") }
 
         HorizontalDivider()
-        SettingTextField(
-            label = stringResource(Res.string.admin_settings_metadata_timezone),
-            value = state.get("MetadataSettings.DefaultTimezone"),
-            supporting = "IANA: UTC, Europe/Madrid, …"
-        ) { viewModel.set("MetadataSettings.DefaultTimezone", it) }
+        run {
+            val current = state.get("MetadataSettings.DefaultTimezone").ifBlank { "UTC" }
+            // Keep a stored custom value selectable even if it isn't in the
+            // curated list, so switching screens never silently drops it.
+            val options = (COMMON_TIMEZONES + current).distinct().map { it to it }
+            SettingDropdown(
+                label = stringResource(Res.string.admin_settings_metadata_timezone),
+                value = current,
+                options = options
+            ) { viewModel.set("MetadataSettings.DefaultTimezone", it) }
+        }
 
         HorizontalDivider()
         Text(

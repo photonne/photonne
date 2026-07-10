@@ -205,7 +205,8 @@ public class ExtractMetadataEndpoint : IEndpoint
                                                 // while the disk may hold the rsync-preserved mtime.
                                                 var fileInfo = new FileInfo(physicalPath);
                                                 assetRow.RefreshFileDates(fileInfo.CreationTimeUtc, fileInfo.LastWriteTimeUtc);
-                                                assetRow.CapturedAt = assetRow.EffectiveFileCreatedAt;
+                                                var fsTz = await MetadataTimeZone.ResolveAsync(innerSettings, ct);
+                                                assetRow.CapturedAt = MetadataTimeZone.ToLocalWallClock(assetRow.EffectiveFileCreatedAt, fsTz);
                                             }
                                         }
 

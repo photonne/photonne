@@ -46,7 +46,7 @@ fun MemoryGroupSheet(
     if (items.isEmpty()) return
     val zone = TimeZone.currentSystemDefault()
     val currentYear = Clock.System.now().toLocalDateTime(zone).date.year
-    val itemYear = items.first().fileCreatedAt.toLocalDateTime(zone).date.year
+    val itemYear = items.first().fileCreatedAt.captureLocalDate().year
     val yearsAgo = (currentYear - itemYear).coerceAtLeast(1)
     val label = if (yearsAgo == 1) stringResource(Res.string.timeline_memories_one_year_ago)
     else stringResource(Res.string.timeline_memories_years_ago, yearsAgo)
