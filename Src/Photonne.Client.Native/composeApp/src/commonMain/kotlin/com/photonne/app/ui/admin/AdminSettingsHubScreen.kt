@@ -5,7 +5,6 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.FolderDelete
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Info
@@ -59,7 +58,6 @@ enum class AdminSettingsEntry {
     Notifications,
     Server,
     Trash,
-    SharedTrash,
     UserDefaults,
     VersionCheck
 }
@@ -132,12 +130,6 @@ fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
             stringResource(Res.string.admin_settings_trash),
             stringResource(Res.string.admin_settings_trash_subtitle),
             Icons.Outlined.Delete
-        ),
-        AdminHubEntry(
-            AdminSettingsEntry.SharedTrash.name,
-            stringResource(Res.string.admin_shared_trash),
-            stringResource(Res.string.admin_shared_trash_subtitle),
-            Icons.Outlined.FolderDelete
         ),
         AdminHubEntry(
             AdminSettingsEntry.UserDefaults.name,
