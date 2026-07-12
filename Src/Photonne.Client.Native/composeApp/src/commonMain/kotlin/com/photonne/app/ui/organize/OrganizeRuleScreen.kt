@@ -10,25 +10,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,15 +47,16 @@ import org.koin.compose.viewmodel.koinViewModel
  * move is server-resolved and irreversible (physical file move), so it's gated
  * behind a confirmation.
  *
+ * The screen has no top bar of its own — the host (App.kt) provides it, matching
+ * the inbox — so it lays out as a scrollable body plus a pinned "Mover" bar.
+ *
  * @param destinations writable move-destination folders (from the folders VM).
  * @param onMoved receives the moved count; the caller refreshes the inbox badge
  *   and navigates back.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrganizeRuleScreen(
     destinations: List<FolderSummary>,
-    onBack: () -> Unit,
     onMoved: (Int) -> Unit,
     viewModel: OrganizeRuleViewModel = koinViewModel(),
 ) {
@@ -75,31 +70,10 @@ fun OrganizeRuleScreen(
     // The VM instance is reused across navigations; start blank each time.
     LaunchedEffect(Unit) { viewModel.reset() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Mover por condiciones") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            MoveBar(
-                count = state.previewCount,
-                path = state.targetFolderPath,
-                enabled = state.canMove,
-                isMoving = state.isMoving,
-                onMove = { showConfirm = true },
-            )
-        },
-    ) { padding ->
+    Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -144,6 +118,14 @@ fun OrganizeRuleScreen(
 
             Spacer(Modifier.height(24.dp))
         }
+
+        MoveBar(
+            count = state.previewCount,
+            path = state.targetFolderPath,
+            enabled = state.canMove,
+            isMoving = state.isMoving,
+            onMove = { showConfirm = true },
+        )
     }
 
     if (showFolderPicker) {
@@ -198,7 +180,7 @@ private fun DestinationRow(path: String?, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("Mover a", style = MaterialTheme.typography.titleSmall)
                 Text(

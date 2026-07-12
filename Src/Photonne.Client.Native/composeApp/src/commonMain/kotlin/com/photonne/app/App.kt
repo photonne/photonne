@@ -888,7 +888,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 }
             }
-            selectedTab == MainTab.Folders ->
+            selectedTab == MainTab.Folders && moreSubscreen == null ->
                 FoldersListTopBar(
                     onOpenFilters = { showFoldersFilters = true },
                     isSearchActive = foldersState.isSearchActive,
@@ -987,6 +987,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                         }
                     }
+                )
+            moreSubscreen == MoreSubscreen.OrganizeRule ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = "Mover por condiciones",
+                    onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox }
                 )
             moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -1591,7 +1596,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // the top level. Hidden during selection (which owns the bottom
             // bar) and for external libraries, which are read-only mirrors —
             // their folder structure is owned by another system.
-            selectedTab == MainTab.Folders && bottomBar == null &&
+            selectedTab == MainTab.Folders && moreSubscreen == null && bottomBar == null &&
                 foldersState.selectedTab != com.photonne.app.ui.folder.FoldersTab.Libraries &&
                 selectedFolder?.externalLibraryId == null ->
                 FloatingActionButton(onClick = { showCreateFolder = true }) {
@@ -1985,7 +1990,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.OrganizeRule ->
                         com.photonne.app.ui.organize.OrganizeRuleScreen(
                             destinations = foldersState.moveDestinations,
-                            onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
                             onMoved = {
                                 moreSubscreen = MoreSubscreen.OrganizeInbox
                                 organizeInboxViewModel.refresh()
