@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -253,6 +254,12 @@ internal fun GroupedAssetGrid(
      */
     userScrollEnabled: Boolean = true,
     cellSpacing: Dp = 2.dp,
+    /**
+     * Padding around the scrolling content. The immersive timeline reserves a
+     * top inset here (status bar + docked bar height) so the first row / memories
+     * strip clears the top bar while at rest, yet scrolls fully under it.
+     */
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
     // No load-more plumbing here anymore: with the bucket model every month
@@ -269,6 +276,7 @@ internal fun GroupedAssetGrid(
         state = state,
         userScrollEnabled = userScrollEnabled,
         verticalArrangement = Arrangement.spacedBy(cellSpacing),
+        contentPadding = contentPadding,
         modifier = modifier.fillMaxSize()
     ) {
         header?.invoke(this)

@@ -1,10 +1,15 @@
 package com.photonne.app.ui.main
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,12 +79,16 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -180,16 +189,62 @@ fun MainScaffold(
     bottomBar: (@Composable () -> Unit)? = null,
     floatingActionButton: @Composable () -> Unit = {},
     moreTabUnreadCount: Int = 0,
+    /**
+     * When true the content is NOT padded by the top system inset, so it draws
+     * to the very top of the screen (under the status bar). Used by the
+     * immersive timeline, whose floating top bar handles the status-bar inset
+     * itself. The bottom inset is still applied so content clears the nav bar.
+     */
+    edgeToEdgeTop: Boolean = false,
+    /**
+     * Immersive timeline: while false the bottom navigation slides down off
+     * screen (hidden on scroll), reappearing when it flips back to true. The
+     * slot still reserves the bar's height, so the grid never reflows.
+     */
+    bottomBarVisible: Boolean = true,
+    /**
+     * Immersive timeline: while true the content is NOT padded by the bottom
+     * inset either, so the grid draws full-bleed *behind* the bottom navigation
+     * (the bar overlays the photos and reveals them when it slides away). The
+     * grid itself reserves the bar's height at its scroll end so the last row
+     * still clears it.
+     */
+    edgeToEdgeBottom: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val resolvedBottomBar = bottomBar ?: {
+        MainNavigationBar(selectedTab, onTabSelected, moreTabUnreadCount)
+    }
     Scaffold(
         topBar = topBar,
-        bottomBar = bottomBar ?: {
-            MainNavigationBar(selectedTab, onTabSelected, moreTabUnreadCount)
+        bottomBar = {
+            var barHeightPx by remember { mutableStateOf(0) }
+            val offsetY by animateFloatAsState(
+                targetValue = if (bottomBarVisible) 0f else barHeightPx.toFloat(),
+                label = "bottomBarOffset"
+            )
+            Box(
+                modifier = Modifier
+                    .onSizeChanged { barHeightPx = it.height }
+                    .graphicsLayer { translationY = offsetY }
+            ) {
+                resolvedBottomBar()
+            }
         },
         floatingActionButton = floatingActionButton
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val layoutDirection = LocalLayoutDirection.current
+        val contentPadding = if (edgeToEdgeTop || edgeToEdgeBottom) {
+            PaddingValues(
+                start = padding.calculateStartPadding(layoutDirection),
+                top = if (edgeToEdgeTop) 0.dp else padding.calculateTopPadding(),
+                end = padding.calculateEndPadding(layoutDirection),
+                bottom = if (edgeToEdgeBottom) 0.dp else padding.calculateBottomPadding()
+            )
+        } else {
+            padding
+        }
+        Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
             content()
         }
     }
@@ -197,7 +252,9 @@ fun MainScaffold(
 
 // Altura del contenido de la barra inferior (sin contar el inset del sistema).
 // Material3 usa 80.dp por defecto; la compactamos para que se coma menos pantalla.
-private val CompactNavBarContentHeight = 72.dp
+// Público para que el timeline inmersivo reserve exactamente este alto al final
+// de su rejilla (la barra flota por encima a sangre completa).
+internal val CompactNavBarContentHeight = 72.dp
 
 @Composable
 private fun MainNavigationBar(
@@ -380,6 +437,82 @@ fun TimelineTopBar(
             }
         }
     )
+}
+
+/**
+ * Compact floating action pill shown over the timeline grid *while scrolled*
+ * (the docked [TimelineTopBar] takes over at the very top). It carries only the
+ * right-side actions — no wordmark — on a translucent rounded surface so the
+ * photos read through it, and it hugs the top-end corner rather than spanning
+ * the width. The caller positions it (top-end, status-bar inset) and fades it
+ * via a `graphicsLayer { alpha }`.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FloatingTimelineTopBar(
+    onJumpToDate: () -> Unit,
+    currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
+    onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
+    onOpenSearch: (() -> Unit)? = null,
+    deviceLoading: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(percent = 50),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 2.dp)
+        ) {
+            if (deviceLoading) {
+                val scanLabel = stringResource(Res.string.timeline_device_loading)
+                val tooltipState = rememberTooltipState()
+                val scope = rememberCoroutineScope()
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                    tooltip = { PlainTooltip { Text(scanLabel) } },
+                    state = tooltipState,
+                    enableUserInput = false
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable { scope.launch { tooltipState.show() } },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .semantics { contentDescription = scanLabel }
+                        )
+                    }
+                }
+            }
+            if (onOpenSearch != null) {
+                IconButton(onClick = onOpenSearch) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = stringResource(Res.string.tab_search)
+                    )
+                }
+            }
+            com.photonne.app.ui.timeline.TimelineZoomMenuAction(
+                current = currentZoom,
+                onSelect = onZoomSelected
+            )
+            IconButton(onClick = onJumpToDate) {
+                Icon(
+                    Icons.Outlined.CalendarMonth,
+                    contentDescription = stringResource(Res.string.action_jump_to_date)
+                )
+            }
+        }
+    }
 }
 
 /** Slim top bar for the Inicio (Hub) view — just the wordmark. */

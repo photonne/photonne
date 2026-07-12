@@ -169,7 +169,6 @@ import com.photonne.app.ui.main.MainScaffold
 import com.photonne.app.ui.main.MainTab
 import com.photonne.app.ui.main.MoreScreen
 import com.photonne.app.ui.main.MoreTopBar
-import com.photonne.app.ui.main.TimelineTopBar
 import com.photonne.app.ui.theme.PhotonneTheme
 import com.photonne.app.ui.timeline.TimelineScreen
 import com.photonne.app.ui.timeline.TimelineViewModel
@@ -482,7 +481,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val timelineZoomStore: com.photonne.app.data.settings.TimelineZoomStore = koinInject()
-    val timelineZoom by timelineZoomStore.value.collectAsState()
+    // Immersive timeline: TimelineScreen reports when its chrome hides on scroll
+    // so the shared bottom navigation can slide away in the same rhythm.
+    var timelineChromeVisible by remember { mutableStateOf(true) }
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
@@ -1283,14 +1284,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedTab == MainTab.More -> MoreTopBar(
                 onOpenUpload = { moreSubscreen = MoreSubscreen.Upload }
             )
-            else -> TimelineTopBar(
-                onJumpToDate = { showJumpToDate = true },
-                currentZoom = timelineZoom,
-                onZoomSelected = timelineZoomStore::update,
-                onOpenSearch = { selectedTab = MainTab.Search },
-                deviceLoading = deviceBackupState.isBackupEnabled &&
-                    deviceBackupState.isLoading
-            )
+            else -> {
+                // Immersive timeline: the Fotos grid bleeds to the top of the
+                // screen and TimelineScreen renders its own FloatingTimelineTopBar
+                // overlay (auto-hiding on scroll), so no Scaffold top bar here.
+            }
         }
     }
 
@@ -1663,7 +1661,24 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             topBar = topBar,
             bottomBar = bottomBar,
             floatingActionButton = floatingActionButton,
-            moreTabUnreadCount = notificationsState.unreadCount
+            moreTabUnreadCount = notificationsState.unreadCount,
+            // Immersive Fotos: let the grid draw under the status bar (its own
+            // floating top bar handles the inset). Selection mode keeps the
+            // solid Scaffold top bar, so it opts back into the normal inset.
+            edgeToEdgeTop = selectedTab == MainTab.Timeline &&
+                moreSubscreen == null &&
+                !timelineState.isSelectionActive,
+            // On the immersive timeline the bottom nav hides while scrolling
+            // down (driven by TimelineScreen's chrome), and always shows
+            // elsewhere.
+            bottomBarVisible = !(selectedTab == MainTab.Timeline &&
+                moreSubscreen == null &&
+                !timelineState.isSelectionActive) || timelineChromeVisible,
+            // Grid draws behind the bottom nav so photos are revealed when it
+            // slides away (always full-screen, the bar just covers them).
+            edgeToEdgeBottom = selectedTab == MainTab.Timeline &&
+                moreSubscreen == null &&
+                !timelineState.isSelectionActive
         ) {
             // Subscreens (People/Map/Explore facets, plus all the More-menu
             // destinations) render as a modal layer over whatever tab is
@@ -1694,6 +1709,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             selectedTab = MainTab.More
                             moreSubscreen = MoreSubscreen.Upload
                         },
+                        onJumpToDate = { showJumpToDate = true },
+                        onOpenSearch = { selectedTab = MainTab.Search },
+                        onChromeVisibleChange = { timelineChromeVisible = it },
                         pendingJumpDate = pendingJumpDate,
                         onJumpHandled = { pendingJumpDate = null },
                         memories = memoriesState.items,

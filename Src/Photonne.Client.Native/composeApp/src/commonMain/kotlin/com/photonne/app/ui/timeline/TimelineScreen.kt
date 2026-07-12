@@ -1,6 +1,7 @@
 package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,8 +19,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -52,6 +58,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
@@ -70,6 +79,9 @@ import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineRowEntry
+import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.FloatingTimelineTopBar
+import com.photonne.app.ui.main.TimelineTopBar
 import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.grid.bucketKeyOf
 import com.photonne.app.ui.grid.buildBucketEntries
@@ -122,6 +134,15 @@ fun TimelineScreen(
     onRefresh: () -> Unit = {},
     onToggleSelection: ((assetId: String) -> Unit)? = null,
     onOpenUpload: (() -> Unit)? = null,
+    /** Opens the "jump to date" picker from the floating top bar. */
+    onJumpToDate: () -> Unit = {},
+    /** Opens global search from the floating top bar. */
+    onOpenSearch: () -> Unit = {},
+    /**
+     * Reports the immersive-chrome visibility (hidden while scrolling down) so
+     * the host can slide the shared bottom navigation in the same rhythm.
+     */
+    onChromeVisibleChange: (Boolean) -> Unit = {},
     pendingJumpDate: Instant? = null,
     onJumpHandled: () -> Unit = {},
     /** On-this-day memories shown as a carousel pinned above the grid. */
@@ -132,6 +153,67 @@ fun TimelineScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
     val gridState = rememberLazyListState()
+
+    // Immersive chrome (floating top pill + bottom nav). It hides only while
+    // the user is actively scrolling DOWN, and comes back the moment they
+    // scroll up or the list settles — matching "disappears on scroll, returns
+    // when it stops". At the very top the bar is docked (full, with wordmark).
+    val atTop by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex == 0 &&
+                gridState.firstVisibleItemScrollOffset == 0
+        }
+    }
+    var chromeVisible by remember { mutableStateOf(true) }
+    // Small dead-zone so micro-scrolls and fling jitter don't flip the chrome.
+    val chromeThresholdPx = with(LocalDensity.current) { 10.dp.toPx() }
+    LaunchedEffect(gridState, chromeThresholdPx) {
+        var prevIndex = gridState.firstVisibleItemIndex
+        var prevOffset = gridState.firstVisibleItemScrollOffset
+        snapshotFlow {
+            gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
+        }.collect { (index, offset) ->
+            // Rows have variable heights, so we can't turn index into pixels.
+            // Within one row compare the offset; when the first visible index
+            // changes we crossed a boundary — take the index sign as direction.
+            val delta = if (index != prevIndex) {
+                (index - prevIndex).toFloat() * (chromeThresholdPx + 1f)
+            } else {
+                (offset - prevOffset).toFloat()
+            }
+            if (delta > chromeThresholdPx) chromeVisible = false
+            else if (delta < -chromeThresholdPx) chromeVisible = true
+            prevIndex = index
+            prevOffset = offset
+        }
+    }
+    // Bring the chrome back a beat after scrolling stops (and on first load).
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.isScrollInProgress }.collectLatest { scrolling ->
+            if (!scrolling) {
+                delay(160)
+                chromeVisible = true
+            }
+        }
+    }
+    // Parked at the very top always shows the (docked) bar.
+    LaunchedEffect(atTop) { if (atTop) chromeVisible = true }
+    // Report visibility up so the host can slide the bottom navigation in step.
+    LaunchedEffect(chromeVisible) { onChromeVisibleChange(chromeVisible) }
+    val chromeAlpha by animateFloatAsState(
+        targetValue = if (chromeVisible) 1f else 0f,
+        label = "timelineChromeAlpha"
+    )
+    // Space the docked bar occupies at the top: status bar + a standard app-bar
+    // height. The grid reserves this so the memories strip clears it at rest,
+    // and the lateral scrubber starts below the status-bar icons.
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val reservedTop = statusBarTop + 64.dp
+    // The grid draws full-bleed behind the bottom nav; reserve the bar's height
+    // (content + system inset) at the scroll end so the last row still clears it.
+    val reservedBottom = WindowInsets.navigationBars.asPaddingValues()
+        .calculateBottomPadding() + CompactNavBarContentHeight
+
     val zoomStore: TimelineZoomStore = koinInject()
     val zoomLevel by zoomStore.value.collectAsState()
     val deviceBackupViewModel: DeviceBackupViewModel = koinViewModel()
@@ -748,6 +830,17 @@ fun TimelineScreen(
                                 }
                             },
                             suppressThumbnails = isScrubbing,
+                            // Reserve the docked bar's height at rest so the
+                            // memories strip clears it; the padding scrolls away
+                            // so photos still bleed under the bar. Also reserve
+                            // the bottom nav's height at the scroll end (the grid
+                            // bleeds behind it otherwise). Selection mode uses the
+                            // solid Scaffold bars, so no reserve.
+                            contentPadding = if (state.isSelectionActive) {
+                                PaddingValues(0.dp)
+                            } else {
+                                PaddingValues(top = reservedTop, bottom = reservedBottom)
+                            },
                             header = if (hasMemoriesHeader) {
                                 {
                                     item(key = "memories-strip") {
@@ -831,7 +924,11 @@ fun TimelineScreen(
                         rows = rows,
                         headerItemCount = if (hasMemoriesHeader) 1 else 0,
                         onDraggingChange = { dragging -> isScrubbing = dragging },
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                        // Start below the status-bar icons so the handle/track
+                        // never rides over the phone's clock and indicators.
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(top = statusBarTop + 8.dp)
                     )
 
                     // Bottom-center so it never collides with the scrubber
@@ -839,16 +936,76 @@ fun TimelineScreen(
                     ScrollToTopButton(
                         gridState = gridState,
                         suppressed = isScrubbing || state.isSelectionActive,
+                        // Float above the bottom nav / system buttons rather than
+                        // over them (the grid is edge-to-edge at the bottom now).
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 16.dp)
+                            .padding(bottom = reservedBottom + 8.dp)
+                    )
+                }
+            }
+            // Immersive top chrome (skipped entirely during selection, where the
+            // solid AssetSelectionTopBar takes over via the Scaffold slot).
+            if (!state.isSelectionActive) {
+                // Persistent status-bar scrim so the phone's clock/indicators
+                // stay legible over photos once the docked bar has scrolled off.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(statusBarTop + 16.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                if (atTop) {
+                    // At the very top: docked bar, exactly like the classic
+                    // top bar (wordmark + actions, full width, opaque).
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .graphicsLayer { alpha = chromeAlpha }
+                    ) {
+                        TimelineTopBar(
+                            onJumpToDate = onJumpToDate,
+                            currentZoom = zoomLevel,
+                            onZoomSelected = zoomStore::update,
+                            onOpenSearch = onOpenSearch,
+                            deviceLoading = deviceBackupState.isBackupEnabled &&
+                                deviceBackupState.isLoading
+                        )
+                    }
+                } else if (chromeAlpha > 0.01f) {
+                    // Scrolled: compact translucent action pill hugging the
+                    // top-end corner. Skipped when faded out so it can't eat
+                    // taps meant for the photos underneath.
+                    FloatingTimelineTopBar(
+                        onJumpToDate = onJumpToDate,
+                        currentZoom = zoomLevel,
+                        onZoomSelected = zoomStore::update,
+                        onOpenSearch = onOpenSearch,
+                        deviceLoading = deviceBackupState.isBackupEnabled &&
+                            deviceBackupState.isLoading,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .windowInsetsPadding(WindowInsets.statusBars)
+                            .padding(top = 6.dp, end = 8.dp)
+                            .graphicsLayer { alpha = chromeAlpha }
                     )
                 }
             }
             state.error?.let {
                 com.photonne.app.ui.error.ErrorBanner(
                     error = it,
-                    modifier = Modifier.align(Alignment.TopCenter),
+                    // Clear the status-bar icons — the grid is edge-to-edge here.
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .windowInsetsPadding(WindowInsets.statusBars),
                     onRetry = onRefresh,
                 )
             }
