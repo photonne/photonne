@@ -3,11 +3,15 @@ package com.photonne.app.ui.main
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -55,9 +59,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -187,76 +195,108 @@ fun MainScaffold(
     }
 }
 
+// Altura del contenido de la barra inferior (sin contar el inset del sistema).
+// Material3 usa 80.dp por defecto; la compactamos para que se coma menos pantalla.
+private val CompactNavBarContentHeight = 72.dp
+
 @Composable
 private fun MainNavigationBar(
     selectedTab: MainTab,
     onTabSelected: (MainTab) -> Unit,
     moreTabUnreadCount: Int = 0
 ) {
-    NavigationBar {
-        val timelineActive = selectedTab == MainTab.Timeline
-        NavigationBarItem(
-            selected = timelineActive,
-            onClick = { onTabSelected(MainTab.Timeline) },
-            icon = {
-                Icon(
-                    if (timelineActive) Icons.Filled.PhotoLibrary
-                    else Icons.Outlined.PhotoLibrary,
-                    contentDescription = null
-                )
-            },
-            label = { Text(stringResource(Res.string.tab_timeline)) }
-        )
-        val albumsActive = selectedTab == MainTab.Albums
-        NavigationBarItem(
-            selected = albumsActive,
-            onClick = { onTabSelected(MainTab.Albums) },
-            icon = {
-                Icon(
-                    if (albumsActive) Icons.Filled.Collections
-                    else Icons.Outlined.Collections,
-                    contentDescription = null
-                )
-            },
-            label = { Text(stringResource(Res.string.tab_albums)) }
-        )
-        val foldersActive = selectedTab == MainTab.Folders
-        NavigationBarItem(
-            selected = foldersActive,
-            onClick = { onTabSelected(MainTab.Folders) },
-            icon = {
-                Icon(
-                    if (foldersActive) Icons.Filled.Folder else Icons.Outlined.Folder,
-                    contentDescription = null
-                )
-            },
-            label = { Text(stringResource(Res.string.tab_folders)) }
-        )
-        val moreActive = selectedTab == MainTab.More
-        NavigationBarItem(
-            selected = moreActive,
-            onClick = { onTabSelected(MainTab.More) },
-            icon = {
-                val moreIcon = if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView
-                if (moreTabUnreadCount > 0) {
-                    BadgedBox(
-                        badge = {
-                            Badge {
-                                Text(
-                                    if (moreTabUnreadCount > 99) "99+"
-                                    else moreTabUnreadCount.toString()
-                                )
+    val containerColor = NavigationBarDefaults.containerColor
+    // Sombreado del icono activo con el color primary de la app (icono en onPrimary para contraste).
+    val itemColors = NavigationBarItemDefaults.colors(
+        indicatorColor = MaterialTheme.colorScheme.primary,
+        selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+        selectedTextColor = MaterialTheme.colorScheme.primary
+    )
+    Surface(
+        color = containerColor,
+        contentColor = contentColorFor(containerColor),
+        tonalElevation = NavigationBarDefaults.Elevation
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(NavigationBarDefaults.windowInsets)
+                .height(CompactNavBarContentHeight)
+                .selectableGroup(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val timelineActive = selectedTab == MainTab.Timeline
+            NavigationBarItem(
+                modifier = Modifier.weight(1f),
+                colors = itemColors,
+                selected = timelineActive,
+                onClick = { onTabSelected(MainTab.Timeline) },
+                icon = {
+                    Icon(
+                        if (timelineActive) Icons.Filled.PhotoLibrary
+                        else Icons.Outlined.PhotoLibrary,
+                        contentDescription = null
+                    )
+                },
+                label = { Text(stringResource(Res.string.tab_timeline)) }
+            )
+            val albumsActive = selectedTab == MainTab.Albums
+            NavigationBarItem(
+                modifier = Modifier.weight(1f),
+                colors = itemColors,
+                selected = albumsActive,
+                onClick = { onTabSelected(MainTab.Albums) },
+                icon = {
+                    Icon(
+                        if (albumsActive) Icons.Filled.Collections
+                        else Icons.Outlined.Collections,
+                        contentDescription = null
+                    )
+                },
+                label = { Text(stringResource(Res.string.tab_albums)) }
+            )
+            val foldersActive = selectedTab == MainTab.Folders
+            NavigationBarItem(
+                modifier = Modifier.weight(1f),
+                colors = itemColors,
+                selected = foldersActive,
+                onClick = { onTabSelected(MainTab.Folders) },
+                icon = {
+                    Icon(
+                        if (foldersActive) Icons.Filled.Folder else Icons.Outlined.Folder,
+                        contentDescription = null
+                    )
+                },
+                label = { Text(stringResource(Res.string.tab_folders)) }
+            )
+            val moreActive = selectedTab == MainTab.More
+            NavigationBarItem(
+                modifier = Modifier.weight(1f),
+                colors = itemColors,
+                selected = moreActive,
+                onClick = { onTabSelected(MainTab.More) },
+                icon = {
+                    val moreIcon = if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView
+                    if (moreTabUnreadCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge {
+                                    Text(
+                                        if (moreTabUnreadCount > 99) "99+"
+                                        else moreTabUnreadCount.toString()
+                                    )
+                                }
                             }
+                        ) {
+                            Icon(moreIcon, contentDescription = null)
                         }
-                    ) {
+                    } else {
                         Icon(moreIcon, contentDescription = null)
                     }
-                } else {
-                    Icon(moreIcon, contentDescription = null)
-                }
-            },
-            label = { Text(stringResource(Res.string.tab_more)) }
-        )
+                },
+                label = { Text(stringResource(Res.string.tab_more)) }
+            )
+        }
     }
 }
 
