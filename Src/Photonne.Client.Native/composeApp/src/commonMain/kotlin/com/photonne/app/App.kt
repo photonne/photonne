@@ -484,6 +484,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
     val foldersViewModel: FoldersViewModel = koinViewModel()
+    val memoriesViewModel:
+        com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
     // La primera carga de las pantallas principales corre en el init de su
     // ViewModel contra la URL pública, antes de que el probe de reachability
     // decida LAN↔público. Desde dentro de la LAN de casa esa petición hace
@@ -499,6 +501,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 timelineViewModel.refresh()
                 albumsViewModel.refresh()
                 foldersViewModel.refresh()
+                memoriesViewModel.refresh()
             }
         }
     }
@@ -523,8 +526,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.utilities.UtilitiesLocationsViewModel = koinViewModel()
     val exploreFacetsViewModel:
         com.photonne.app.ui.explore.ExploreFacetsViewModel = koinViewModel()
-    val memoriesViewModel:
-        com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
     val memoriesState by memoriesViewModel.state.collectAsState()
     val notificationsViewModel:
         com.photonne.app.ui.notifications.NotificationsViewModel = koinViewModel()
