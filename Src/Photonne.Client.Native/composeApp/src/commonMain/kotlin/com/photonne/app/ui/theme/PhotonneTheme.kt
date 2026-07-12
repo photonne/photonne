@@ -44,6 +44,18 @@ private val OnSurfaceDark = Color(0xFFE2E8F0)
 private val OnSurfaceVariantDark = Color(0xFF94A3B8)
 private val SurfaceVariantDark = Color(0xFF1C1C20)
 
+// Near-black ladder for the surfaceContainer* tokens. Material3 leaves these
+// at a lavender-tinted grey (~0xFF211F26) by default, which is what made the
+// bottom navigation bar, sheets and cards read as light-grey chrome. Pin them
+// to near-black so tinted-elevation surfaces stay truly dark.
+private val SurfaceContainerLowestDark = Color(0xFF050506)
+private val SurfaceContainerLowDark = Color(0xFF0E0E10)
+private val SurfaceContainerDark = Color(0xFF141416)
+private val SurfaceContainerHighDark = Color(0xFF1A1A1D)
+private val SurfaceContainerHighestDark = Color(0xFF222226)
+private val SurfaceDimDark = Color(0xFF0A0A0C)
+private val SurfaceBrightDark = Color(0xFF29292E)
+
 private val LightColors = lightColorScheme(
     primary = GoldPrimaryLight,
     onPrimary = GoldOnPrimaryLight,
@@ -68,6 +80,16 @@ private val DarkColors = darkColorScheme(
     background = BackgroundDark,
     surface = SurfaceDark,
     surfaceVariant = SurfaceVariantDark,
+    surfaceContainerLowest = SurfaceContainerLowestDark,
+    surfaceContainerLow = SurfaceContainerLowDark,
+    surfaceContainer = SurfaceContainerDark,
+    surfaceContainerHigh = SurfaceContainerHighDark,
+    surfaceContainerHighest = SurfaceContainerHighestDark,
+    surfaceDim = SurfaceDimDark,
+    surfaceBright = SurfaceBrightDark,
+    // Kill the elevation tint so tonally-elevated surfaces (nav bar, sheets)
+    // don't get lightened/tinted back toward grey.
+    surfaceTint = SurfaceDark,
     onSurface = OnSurfaceDark,
     onSurfaceVariant = OnSurfaceVariantDark
 )
