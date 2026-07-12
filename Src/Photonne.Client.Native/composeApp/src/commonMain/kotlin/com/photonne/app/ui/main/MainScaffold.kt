@@ -1140,7 +1140,8 @@ fun MoreTopBar(onOpenUpload: (() -> Unit)? = null) {
 fun SettingsTopBar(
     title: String,
     subtitle: String? = null,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         navigationIcon = {
@@ -1162,7 +1163,8 @@ fun SettingsTopBar(
                     )
                 }
             }
-        }
+        },
+        actions = actions
     )
 }
 

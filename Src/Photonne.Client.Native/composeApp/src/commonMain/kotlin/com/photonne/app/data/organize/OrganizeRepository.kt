@@ -1,6 +1,8 @@
 package com.photonne.app.data.organize
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.SmartAlbumPreview
+import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.TimelinePage
 import kotlinx.datetime.Instant
 
@@ -28,4 +30,14 @@ class OrganizeRepository(
             assetIds = assetIds
         )
     }
+
+    /** Dry-run of a condition [rule] within the inbox: match count + a sample of
+     *  ids, for the live "N fotos coinciden" preview. */
+    suspend fun previewRule(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview =
+        api.previewOrganizeRule(rule, sampleSize)
+
+    /** Files every inbox asset matching [rule] into [targetFolderId] in one shot
+     *  (resolved server-side); returns how many were moved. */
+    suspend fun moveByRule(rule: SmartRule, targetFolderId: String): Int =
+        api.moveOrganizeRule(rule, targetFolderId)
 }

@@ -34,6 +34,7 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.OrganizeCountResponse
+import com.photonne.app.data.models.OrganizeRuleMoveResponse
 import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
@@ -93,6 +94,18 @@ internal data class SmartAlbumWriteRequest(
 internal data class SmartAlbumPreviewRequest(
     val rule: SmartRule,
     val sampleSize: Int,
+)
+
+@Serializable
+internal data class OrganizeRulePreviewRequest(
+    val rule: SmartRule,
+    val sampleSize: Int,
+)
+
+@Serializable
+internal data class OrganizeRuleMoveRequest(
+    val rule: SmartRule,
+    val targetFolderId: String,
 )
 
 @Serializable
@@ -280,6 +293,10 @@ interface PhotonneApi {
     suspend fun getOrganizeInbox(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
     /** Count of unorganized (MobileBackup) assets, for the entry-point badge. */
     suspend fun getOrganizeCount(): Int
+    /** Dry-run of a condition rule within the MobileBackup inbox: match count + sample. */
+    suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
+    /** Files every inbox asset matching [rule] into [targetFolderId]; returns the moved count. */
+    suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String): Int
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     suspend fun getMemories(): List<TimelineItem>
     suspend fun getAssetDetail(assetId: String): AssetDetail
@@ -805,6 +822,34 @@ class PhotonneApiClient(
             )
         }
         return response.body<OrganizeCountResponse>().count
+    }
+
+    override suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int): SmartAlbumPreview {
+        val response: HttpResponse = client.post("$baseUrl/api/organize/rule/preview") {
+            contentType(ContentType.Application.Json)
+            setBody(OrganizeRulePreviewRequest(rule = rule, sampleSize = sampleSize))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize rule preview failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String): Int {
+        val response: HttpResponse = client.post("$baseUrl/api/organize/rule/move") {
+            contentType(ContentType.Application.Json)
+            setBody(OrganizeRuleMoveRequest(rule = rule, targetFolderId = targetFolderId))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize rule move failed (${response.status.value})"
+            )
+        }
+        return response.body<OrganizeRuleMoveResponse>().moved
     }
 
     override suspend fun getUnsupportedFileContent(id: String): AssetContentBytes {

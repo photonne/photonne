@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
@@ -212,6 +213,7 @@ private enum class MoreSubscreen {
     UtilitiesLocations,
     UnsupportedFiles,
     OrganizeInbox,
+    OrganizeRule,
     ExploreMemories,
     ExploreScenes,
     ExploreObjects,
@@ -368,6 +370,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSystemRunTasks,
     MoreSubscreen.AdminSystemMaintenance,
     MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
+    MoreSubscreen.OrganizeRule -> MoreSubscreen.OrganizeInbox
     MoreSubscreen.Upload,
     MoreSubscreen.CreateSmartAlbum,
     MoreSubscreen.DeviceBackup,
@@ -975,6 +978,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = {
                         moreSubscreen = null
                         foldersViewModel.refreshOrganizeCount()
+                    },
+                    actions = {
+                        androidx.compose.material3.IconButton(onClick = { moreSubscreen = MoreSubscreen.OrganizeRule }) {
+                            Icon(
+                                Icons.Outlined.AutoAwesome,
+                                contentDescription = "Mover por condiciones"
+                            )
+                        }
                     }
                 )
             moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
@@ -1969,6 +1980,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 organizeInboxState.items.getOrNull(index)?.let {
                                     organizeInboxViewModel.toggleSelection(it.id)
                                 }
+                            }
+                        )
+                    MoreSubscreen.OrganizeRule ->
+                        com.photonne.app.ui.organize.OrganizeRuleScreen(
+                            destinations = foldersState.moveDestinations,
+                            onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                            onMoved = {
+                                moreSubscreen = MoreSubscreen.OrganizeInbox
+                                organizeInboxViewModel.refresh()
+                                foldersViewModel.refreshOrganizeCount()
                             }
                         )
                     MoreSubscreen.Utilities ->

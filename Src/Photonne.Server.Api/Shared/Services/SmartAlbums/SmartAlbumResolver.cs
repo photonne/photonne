@@ -51,6 +51,23 @@ public sealed class SmartAlbumResolver
     }
 
     /// <summary>
+    /// Applies a rule to a caller-supplied base query — expands folder subtrees,
+    /// compiles the rule owner-anchored, and filters <paramref name="baseQuery"/>
+    /// by it — WITHOUT the album base/visibility gate. The caller owns the base
+    /// set, so this is used where the album scope is the wrong gate: the
+    /// "Para organizar" inbox deliberately bypasses <see cref="AssetVisibilityService"/>
+    /// (see <c>Features.Organize.OrganizeQuery</c>) and passes its own MobileBackup
+    /// query as the base.
+    /// </summary>
+    public async Task<IQueryable<Asset>> ResolveWithinAsync(
+        SmartRuleNode root, IQueryable<Asset> baseQuery, Guid ownerId, CancellationToken ct)
+    {
+        await ExpandFoldersAsync(root, ct);
+        var rule = SmartRuleCompiler.Compile(root, _db, ownerId);
+        return baseQuery.Where(rule);
+    }
+
+    /// <summary>
     /// Rewrites every folder condition's <c>FolderIds</c> to include the whole
     /// subtree (unless <c>IncludeSubfolders == false</c>). Descendants are found
     /// by path prefix — folders carry a unique virtual <see cref="Folder.Path"/>,

@@ -1102,36 +1102,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta destino no encontrada." });
         }
 
-        var targetPhysicalPath = await settingsService.ResolvePhysicalPathAsync(targetFolder.Path);
-        Directory.CreateDirectory(targetPhysicalPath);
-
-        foreach (var asset in assets)
-        {
-            var sourcePhysicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
-            if (!File.Exists(sourcePhysicalPath))
-            {
-                continue;
-            }
-
-            var fileName = Path.GetFileName(sourcePhysicalPath);
-            var newPhysicalPath = Path.Combine(targetPhysicalPath, fileName);
-            if (File.Exists(newPhysicalPath))
-            {
-                var uniqueName = $"{Path.GetFileNameWithoutExtension(fileName)}_{Guid.NewGuid():N}{Path.GetExtension(fileName)}";
-                newPhysicalPath = Path.Combine(targetPhysicalPath, uniqueName);
-                fileName = uniqueName;
-            }
-
-            File.Move(sourcePhysicalPath, newPhysicalPath);
-
-            asset.FolderId = request.TargetFolderId;
-            asset.FileName = fileName;
-            asset.FullPath = await settingsService.VirtualizePathAsync(newPhysicalPath);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        cache.Remove($"folders:list:{userId}");
-        cache.Remove($"folders:tree:{userId}");
+        await FolderAssetMover.MoveAsync(dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken);
 
         return Results.NoContent();
     }
@@ -1247,7 +1218,9 @@ public class FoldersEndpoint : IEndpoint
         return await HasInheritedFolderPermissionAsync(dbContext, userId, folder, FolderPermissionKind.Read, ct);
     }
 
-    private static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
+    // internal: the Organize rule-move endpoint reuses this to gate the chosen
+    // destination folder by the same write rules as a manual folder move.
+    internal static async Task<bool> CanWriteFolderAsync(ApplicationDbContext dbContext, Guid userId, Guid folderId, bool isAdmin, CancellationToken ct)
     {
         var folder = await dbContext.Folders
             .AsNoTracking()
