@@ -481,7 +481,8 @@ fun TimelineScreen(
                         if (asset != null && !isYearView) {
                             val idx = findRowIndexForAsset(rows, asset.assetId)
                             if (idx >= 0) {
-                                // Land the row just below the pinned sticky header.
+                                // Land the row just below its (non-sticky) month
+                                // header so the date shows above it.
                                 val headerPx = with(density) { 56.dp.roundToPx() }
                                 runCatching { gridState.animateScrollToItem(idx, -headerPx) }
                                 pendingAssetAnchor = null

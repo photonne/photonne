@@ -48,7 +48,7 @@ import kotlinx.datetime.LocalDate
 /** Don't bother with a scrubber for content that barely scrolls. */
 private const val MIN_ROWS_FOR_SCRUBBER = 40
 
-/** Sticky-header band height — must match StickyMonthHeader. */
+/** Inline date-band height — must match MonthHeader in GroupedAssetGrid. */
 private const val HEADER_HEIGHT_DP = 56f
 
 /**
@@ -251,25 +251,45 @@ internal fun TimelineScrubber(
             }
         }
 
-        if (isDragging) {
-            val label = labels.getOrNull(rowIndexForFraction(prefix, dragFraction)).orEmpty()
-            if (label.isNotEmpty()) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.inverseSurface,
-                    tonalElevation = 4.dp,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(handleOffset)
-                        .padding(end = HandleTouchWidth + 8.dp)
-                ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
+        // Date pill next to the handle. Shown while scrubbing AND while
+        // scrolling (there's no inline header band anymore) so the current
+        // month is always legible; it rides the same fade as the whole
+        // scrubber via the parent's alpha. While dragging it follows the
+        // finger's target row; while scrolling it tracks the topmost row.
+        // derivedStateOf so it only recomposes when the month label changes,
+        // not every scroll frame.
+        val handleLabel by remember(prefix, labels) {
+            derivedStateOf {
+                val idx = if (isDragging) {
+                    rowIndexForFraction(prefix, dragFraction)
+                } else {
+                    (gridState.firstVisibleItemIndex - headerCount).coerceAtLeast(0)
                 }
+                labels.getOrNull(idx).orEmpty()
+            }
+        }
+        if (handleLabel.isNotEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                // Match the "scroll to top" pill / scrubber handle so the chrome
+                // reads as one system and adapts to light/dark automatically.
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 3.dp,
+                shadowElevation = 2.dp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(handleOffset)
+                    // Nudge down so it sits centred against the handle rather
+                    // than at its top edge (handle touch area is 64dp tall).
+                    .offset(y = 18.dp)
+                    .padding(end = HandleTouchWidth + 6.dp)
+            ) {
+                Text(
+                    text = handleLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
             }
         }
     }

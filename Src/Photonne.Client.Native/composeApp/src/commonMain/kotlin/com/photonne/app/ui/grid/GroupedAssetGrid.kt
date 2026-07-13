@@ -3,7 +3,6 @@ package com.photonne.app.ui.grid
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -282,8 +281,12 @@ internal fun GroupedAssetGrid(
         header?.invoke(this)
         segments.forEach { segment ->
             segment.header?.let { groupHeader ->
-                stickyHeader(key = "h:${groupHeader.key}") {
-                    StickyMonthHeader(title = groupHeader.title, count = groupHeader.count)
+                // Inline month/date band — NOT sticky: it scrolls away with the
+                // content instead of pinning at the top (so it never overlaps
+                // the status-bar icons or permanently eats the top). The
+                // scrubber still surfaces the current date while scrolling.
+                item(key = "h:${groupHeader.key}", contentType = "date-header") {
+                    MonthHeader(title = groupHeader.title, count = groupHeader.count)
                 }
             }
             items(
@@ -391,26 +394,17 @@ private fun SkeletonCellsRow(
 }
 
 /**
- * Solid sticky date header: an opaque surface band with the group title.
- * Uniform across server-indexed and on-device groups (no photo backdrop /
- * gradient) so the timeline reads cleanly while scrolling.
+ * Inline (non-sticky) date band: an opaque surface strip with the group title.
+ * Uniform across server-indexed and on-device groups so the timeline reads
+ * cleanly while scrolling; scrolls away with the content like any other row.
  */
 @Composable
-private fun StickyMonthHeader(title: String, count: Int? = null) {
-    // Swallow taps on the band itself so the user doesn't accidentally
-    // open whatever cell is scrolling behind the sticky header, and so
-    // the band reads as chrome rather than an interactive asset.
-    val interactionSource = remember { MutableInteractionSource() }
+private fun MonthHeader(title: String, count: Int? = null) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
             .background(MaterialTheme.colorScheme.surface)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = { /* consume — header is chrome, not an asset */ }
-            )
+            .height(56.dp)
     ) {
         Text(
             text = title,
