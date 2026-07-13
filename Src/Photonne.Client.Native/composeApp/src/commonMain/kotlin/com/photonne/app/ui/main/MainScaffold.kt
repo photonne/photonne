@@ -1,6 +1,7 @@
 package com.photonne.app.ui.main
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.outlined.AddToPhotos
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
@@ -219,14 +221,25 @@ fun MainScaffold(
         topBar = topBar,
         bottomBar = {
             var barHeightPx by remember { mutableStateOf(0) }
+            // Slide *and* fade in one gentle tween so the bar dissolves away
+            // instead of snapping off-screen (matches the top chrome's fade).
             val offsetY by animateFloatAsState(
                 targetValue = if (bottomBarVisible) 0f else barHeightPx.toFloat(),
+                animationSpec = tween(durationMillis = 280),
                 label = "bottomBarOffset"
+            )
+            val barAlpha by animateFloatAsState(
+                targetValue = if (bottomBarVisible) 1f else 0f,
+                animationSpec = tween(durationMillis = 280),
+                label = "bottomBarAlpha"
             )
             Box(
                 modifier = Modifier
                     .onSizeChanged { barHeightPx = it.height }
-                    .graphicsLayer { translationY = offsetY }
+                    .graphicsLayer {
+                        translationY = offsetY
+                        alpha = barAlpha
+                    }
             ) {
                 resolvedBottomBar()
             }
@@ -263,11 +276,12 @@ private fun MainNavigationBar(
     moreTabUnreadCount: Int = 0
 ) {
     val containerColor = NavigationBarDefaults.containerColor
-    // Sombreado del icono activo con el color primary de la app (icono en onPrimary para contraste).
+    // Elemento activo con un sombreado gris neutro que contrasta según el tema
+    // (claro/oscuro), en vez del color primary de la app.
     val itemColors = NavigationBarItemDefaults.colors(
-        indicatorColor = MaterialTheme.colorScheme.primary,
-        selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-        selectedTextColor = MaterialTheme.colorScheme.primary
+        indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+        selectedIconColor = MaterialTheme.colorScheme.onSurface,
+        selectedTextColor = MaterialTheme.colorScheme.onSurface
     )
     Surface(
         color = containerColor,
@@ -365,6 +379,7 @@ fun TimelineTopBar(
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
     onBack: (() -> Unit)? = null,
     onOpenSearch: (() -> Unit)? = null,
+    onOpenUpload: (() -> Unit)? = null,
     deviceLoading: Boolean = false
 ) {
     TopAppBar(
@@ -417,6 +432,14 @@ fun TimelineTopBar(
                     }
                 }
             }
+            if (onOpenUpload != null) {
+                IconButton(onClick = onOpenUpload) {
+                    Icon(
+                        Icons.Outlined.AddPhotoAlternate,
+                        contentDescription = stringResource(Res.string.upload_title)
+                    )
+                }
+            }
             if (onOpenSearch != null) {
                 IconButton(onClick = onOpenSearch) {
                     Icon(
@@ -454,6 +477,7 @@ fun FloatingTimelineTopBar(
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
+    onOpenUpload: (() -> Unit)? = null,
     deviceLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -491,6 +515,14 @@ fun FloatingTimelineTopBar(
                                 .semantics { contentDescription = scanLabel }
                         )
                     }
+                }
+            }
+            if (onOpenUpload != null) {
+                IconButton(onClick = onOpenUpload) {
+                    Icon(
+                        Icons.Outlined.AddPhotoAlternate,
+                        contentDescription = stringResource(Res.string.upload_title)
+                    )
                 }
             }
             if (onOpenSearch != null) {
@@ -986,11 +1018,10 @@ fun AlbumCardSelectionBottomBar(
 fun FoldersListTopBar(
     onOpenFilters: () -> Unit,
     isSearchActive: Boolean = false,
-    onToggleSearch: () -> Unit = {}
+    onToggleSearch: () -> Unit = {},
+    /** Create a root folder. Null hides the action (e.g. on the Libraries tab). */
+    onCreateFolder: (() -> Unit)? = null
 ) {
-    // Folder creation lives in a floating action button (see App.kt) so it
-    // stays reachable while browsing into subfolders, where this list top bar
-    // is replaced by FolderDetailTopBar.
     TopAppBar(
         title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
         actions = {
@@ -1005,6 +1036,14 @@ fun FoldersListTopBar(
                     Icons.Outlined.Tune,
                     contentDescription = stringResource(Res.string.folders_action_filters)
                 )
+            }
+            if (onCreateFolder != null) {
+                IconButton(onClick = onCreateFolder) {
+                    Icon(
+                        Icons.Outlined.CreateNewFolder,
+                        contentDescription = stringResource(Res.string.folder_action_new)
+                    )
+                }
             }
         }
     )
@@ -1142,7 +1181,9 @@ fun FolderDetailTopBar(
     // Per-user timeline opt-out. Only meaningful for shared folders.
     canToggleTimeline: Boolean = false,
     excludedFromTimeline: Boolean = false,
-    onToggleTimeline: () -> Unit = {}
+    onToggleTimeline: () -> Unit = {},
+    /** Create a subfolder of this folder. Null hides the action. */
+    onCreateSubfolder: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val hasMenu = canEdit || canDelete || canManageMembers || canMove || canToggleTimeline
@@ -1168,6 +1209,14 @@ fun FolderDetailTopBar(
             }
         },
         actions = {
+            if (onCreateSubfolder != null) {
+                IconButton(onClick = onCreateSubfolder) {
+                    Icon(
+                        Icons.Outlined.CreateNewFolder,
+                        contentDescription = stringResource(Res.string.folder_action_new)
+                    )
+                }
+            }
             if (hasMenu) {
                 Box {
                     IconButton(onClick = { menuOpen = true }) {

@@ -2,6 +2,7 @@ package com.photonne.app.ui.timeline
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -202,6 +203,7 @@ fun TimelineScreen(
     LaunchedEffect(chromeVisible) { onChromeVisibleChange(chromeVisible) }
     val chromeAlpha by animateFloatAsState(
         targetValue = if (chromeVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 280),
         label = "timelineChromeAlpha"
     )
     // Space the docked bar occupies at the top: status bar + a standard app-bar
@@ -924,11 +926,13 @@ fun TimelineScreen(
                         rows = rows,
                         headerItemCount = if (hasMemoriesHeader) 1 else 0,
                         onDraggingChange = { dragging -> isScrubbing = dragging },
-                        // Start below the status-bar icons so the handle/track
-                        // never rides over the phone's clock and indicators.
+                        // Start the track below the top chrome (status bar +
+                        // docked bar / floating action pill), which also hugs the
+                        // top-end corner. Otherwise the handle rides up behind the
+                        // pill and the two overlap; now the handle lands just under it.
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(top = statusBarTop + 8.dp)
+                            .padding(top = reservedTop + 8.dp)
                     )
 
                     // Bottom-center so it never collides with the scrubber
@@ -976,6 +980,7 @@ fun TimelineScreen(
                             currentZoom = zoomLevel,
                             onZoomSelected = zoomStore::update,
                             onOpenSearch = onOpenSearch,
+                            onOpenUpload = onOpenUpload,
                             deviceLoading = deviceBackupState.isBackupEnabled &&
                                 deviceBackupState.isLoading
                         )
@@ -989,6 +994,7 @@ fun TimelineScreen(
                         currentZoom = zoomLevel,
                         onZoomSelected = zoomStore::update,
                         onOpenSearch = onOpenSearch,
+                        onOpenUpload = onOpenUpload,
                         deviceLoading = deviceBackupState.isBackupEnabled &&
                             deviceBackupState.isLoading,
                         modifier = Modifier
@@ -1086,8 +1092,9 @@ private fun ScrollToTopButton(
     }
 }
 
-/** Rows scrolled past before the back-to-top pill can appear (~3 screens). */
-private const val SCROLL_TO_TOP_MIN_INDEX = 24
+/** Rows scrolled past before the back-to-top pill can appear — kept low so it
+ * shows almost as soon as the first rows leave the top of the screen. */
+private const val SCROLL_TO_TOP_MIN_INDEX = 3
 
 /** Where the tap teleports to before animating the rest of the way up. */
 private const val SCROLL_TO_TOP_SNAP_INDEX = 12

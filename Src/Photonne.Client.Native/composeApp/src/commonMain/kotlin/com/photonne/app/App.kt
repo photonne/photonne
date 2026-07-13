@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.AddBox
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -869,7 +867,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val nextIncluded = folder.excludedFromTimeline
                         foldersViewModel.setTimelineIncluded(folder.id, included = nextIncluded)
                         selectedFolder = folder.copy(excludedFromTimeline = !nextIncluded)
-                    }
+                    },
+                    // Create a subfolder of the current folder — excluded for
+                    // external libraries (read-only mirrors), as the FAB was.
+                    onCreateSubfolder = if (folder.externalLibraryId == null) {
+                        { showCreateFolder = true }
+                    } else null
                 )
             }
             selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
@@ -893,7 +896,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 FoldersListTopBar(
                     onOpenFilters = { showFoldersFilters = true },
                     isSearchActive = foldersState.isSearchActive,
-                    onToggleSearch = foldersViewModel::toggleSearch
+                    onToggleSearch = foldersViewModel::toggleSearch,
+                    // Create a root folder — hidden on the Libraries tab (you
+                    // don't create folders inside external-library mirrors).
+                    onCreateFolder = if (
+                        foldersState.selectedTab != com.photonne.app.ui.folder.FoldersTab.Libraries
+                    ) {
+                        { showCreateFolder = true }
+                    } else null
                 )
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
                 AssetSelectionTopBar(
@@ -1571,38 +1581,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         else -> null
     }
 
-    // Primary upload entry point on Timeline — shown only when the timeline
-    // is the active tab and there's no overriding bottom bar (selection mode
-    // takes the bottom bar and would crash into the FAB).
+    // The Timeline upload entry point now lives among the immersive top-bar
+    // actions (see TimelineTopBar / FloatingTimelineTopBar), so it no longer
+    // has a FAB here.
     val floatingActionButton: @Composable () -> Unit = {
         when {
-            selectedTab == MainTab.Timeline && bottomBar == null ->
-                FloatingActionButton(
-                    onClick = {
-                        selectedTab = MainTab.More
-                        moreSubscreen = MoreSubscreen.Upload
-                    }
-                ) {
-                    Icon(
-                        Icons.Outlined.AddPhotoAlternate,
-                        contentDescription = stringResource(Res.string.upload_title)
-                    )
-                }
-            // Folder creation as a FAB so it stays reachable while browsing
-            // into subfolders (where the list top bar is gone). Creates a
-            // subfolder of the currently opened folder, or a root folder at
-            // the top level. Hidden during selection (which owns the bottom
-            // bar) and for external libraries, which are read-only mirrors —
-            // their folder structure is owned by another system.
-            selectedTab == MainTab.Folders && moreSubscreen == null && bottomBar == null &&
-                foldersState.selectedTab != com.photonne.app.ui.folder.FoldersTab.Libraries &&
-                selectedFolder?.externalLibraryId == null ->
-                FloatingActionButton(onClick = { showCreateFolder = true }) {
-                    Icon(
-                        Icons.Outlined.CreateNewFolder,
-                        contentDescription = stringResource(Res.string.folder_action_new)
-                    )
-                }
+            // Folder creation now lives in the Folders top bars (list + detail),
+            // not a FAB — see FoldersListTopBar / FolderDetailTopBar.
             // Album creation as a FAB, matching the Timeline upload and Folders
             // create patterns. Only on the albums list (not an open album or a
             // More subscreen) and hidden during selection, which owns the
