@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,6 +62,9 @@ fun AssetGrid(
     onItemClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
+    /** Padding around the grid content — e.g. to reserve the immersive nav's
+     * height at the scroll end so the last row clears the overlaid bar. */
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     hasMore: Boolean = false,
     isAppending: Boolean = false,
     isInitialLoading: Boolean = false,
@@ -88,6 +92,7 @@ fun AssetGrid(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 110.dp),
         state = gridState,
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier.fillMaxSize()

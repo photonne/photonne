@@ -11,17 +11,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -80,6 +85,8 @@ import com.photonne.app.resources.folders_shared_empty
 import com.photonne.app.resources.folders_tab_libraries
 import com.photonne.app.resources.folders_tab_personal
 import com.photonne.app.resources.folders_tab_shared
+import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -89,7 +96,15 @@ import org.koin.compose.viewmodel.koinViewModel
 fun FoldersListScreen(
     onFolderClick: (FolderSummary) -> Unit,
     onFolderLongPress: (FolderSummary) -> Unit,
-    onOpenOrganize: () -> Unit
+    onOpenOrganize: () -> Unit,
+    /**
+     * Immersive bottom nav: while true the active folder list drives the
+     * hide-on-scroll chrome (reported via [onChromeVisibleChange]) and reserves
+     * the nav's height at its scroll end so it draws edge-to-edge behind the
+     * bar, like Fotos.
+     */
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val viewModel: FoldersViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -129,7 +144,9 @@ fun FoldersListScreen(
                                 emptyTitle = stringResource(Res.string.folders_empty_title),
                                 emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
                                 onFolderClick = onFolderClick,
-                                onFolderLongPress = onFolderLongPress
+                                onFolderLongPress = onFolderLongPress,
+                                immersive = immersive,
+                                onChromeVisibleChange = onChromeVisibleChange
                             )
                         }
                     }
@@ -141,7 +158,9 @@ fun FoldersListScreen(
                         emptyTitle = stringResource(Res.string.folders_empty_title),
                         emptySubtitle = stringResource(Res.string.folders_shared_empty),
                         onFolderClick = onFolderClick,
-                        onFolderLongPress = onFolderLongPress
+                        onFolderLongPress = onFolderLongPress,
+                        immersive = immersive,
+                        onChromeVisibleChange = onChromeVisibleChange
                     )
                     FoldersTab.Libraries -> if (state.hasActiveQuery) {
                         FolderListContent(
@@ -152,7 +171,9 @@ fun FoldersListScreen(
                             emptyTitle = stringResource(Res.string.folders_empty_title),
                             emptySubtitle = stringResource(Res.string.folders_libraries_empty),
                             onFolderClick = onFolderClick,
-                            onFolderLongPress = onFolderLongPress
+                            onFolderLongPress = onFolderLongPress,
+                            immersive = immersive,
+                            onChromeVisibleChange = onChromeVisibleChange
                         )
                     } else {
                         LibrariesContent(
@@ -161,7 +182,9 @@ fun FoldersListScreen(
                             errorMessage = state.error?.userMessage,
                             onLibraryClick = { lib ->
                                 viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
-                            }
+                            },
+                            immersive = immersive,
+                            onChromeVisibleChange = onChromeVisibleChange
                         )
                     }
                 }
@@ -234,8 +257,33 @@ private fun FolderListContent(
     emptyTitle: String,
     emptySubtitle: String,
     onFolderClick: (FolderSummary) -> Unit,
-    onFolderLongPress: (FolderSummary) -> Unit
+    onFolderLongPress: (FolderSummary) -> Unit,
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val isGrid = state.viewMode == FolderViewMode.Grid
+    val hasList = folders.isNotEmpty()
+    if (immersive && hasList) {
+        ImmersiveChromeEffect(
+            firstVisibleItemIndex = {
+                if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
+            },
+            firstVisibleItemScrollOffset = {
+                if (isGrid) gridState.firstVisibleItemScrollOffset
+                else listState.firstVisibleItemScrollOffset
+            },
+            isScrollInProgress = {
+                if (isGrid) gridState.isScrollInProgress else listState.isScrollInProgress
+            },
+            onChromeVisibleChange = onChromeVisibleChange
+        )
+    }
+    val reservedBottom = if (immersive) {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+            CompactNavBarContentHeight
+    } else null
     when {
         isLoading && folders.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -258,8 +306,12 @@ private fun FolderListContent(
             }
         else -> when (state.viewMode) {
             FolderViewMode.List -> LazyColumn(
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
-                contentPadding = PaddingValues(vertical = 8.dp),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = reservedBottom ?: 8.dp
+                ),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(folders, key = { it.id }) { folder ->
@@ -272,10 +324,16 @@ private fun FolderListContent(
                 }
             }
             FolderViewMode.Grid -> LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Adaptive(minSize = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = reservedBottom ?: 16.dp
+                ),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(folders, key = { it.id }) { folder ->
@@ -296,8 +354,23 @@ private fun LibrariesContent(
     libraries: List<ExternalLibraryDto>,
     isLoading: Boolean,
     errorMessage: String?,
-    onLibraryClick: (ExternalLibraryDto) -> Unit
+    onLibraryClick: (ExternalLibraryDto) -> Unit,
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
+    val listState = rememberLazyListState()
+    if (immersive && libraries.isNotEmpty()) {
+        ImmersiveChromeEffect(
+            firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+            firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+            isScrollInProgress = { listState.isScrollInProgress },
+            onChromeVisibleChange = onChromeVisibleChange
+        )
+    }
+    val reservedBottom = if (immersive) {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+            CompactNavBarContentHeight
+    } else null
     when {
         isLoading && libraries.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -321,8 +394,12 @@ private fun LibrariesContent(
                 )
             }
         else -> LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(vertical = 8.dp),
+            contentPadding = PaddingValues(
+                top = 8.dp,
+                bottom = reservedBottom ?: 8.dp
+            ),
             modifier = Modifier.fillMaxSize()
         ) {
             items(libraries, key = { it.id }) { lib ->

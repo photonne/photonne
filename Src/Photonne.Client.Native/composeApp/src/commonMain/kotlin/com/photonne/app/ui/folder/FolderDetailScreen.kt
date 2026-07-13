@@ -7,13 +7,18 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +46,8 @@ import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -54,10 +61,35 @@ fun FolderDetailScreen(
     onItemLongClick: (Int) -> Unit,
     onSubfolderClick: (FolderSummary) -> Unit,
     onSubfolderLongPress: (FolderSummary) -> Unit,
-    viewModel: FolderDetailViewModel
+    viewModel: FolderDetailViewModel,
+    /**
+     * Immersive bottom nav: while true the photo grid drives the hide-on-scroll
+     * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
+     * at its scroll end so it draws edge-to-edge behind the bar, like Fotos.
+     */
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
+    val gridState = rememberLazyGridState()
+    // Only drive the immersive chrome when the photo grid is what's on screen —
+    // a subfolders-only view keeps the nav docked.
+    val gridActive = immersive && state.items.isNotEmpty()
+    if (gridActive) {
+        ImmersiveChromeEffect(
+            firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+            firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+            isScrollInProgress = { gridState.isScrollInProgress },
+            onChromeVisibleChange = onChromeVisibleChange
+        )
+    }
+    val gridContentPadding = if (immersive) {
+        PaddingValues(
+            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                CompactNavBarContentHeight
+        )
+    } else PaddingValues(0.dp)
 
     LaunchedEffect(folderId) { viewModel.open(folderId, folderName, parentFolderId) }
 
@@ -107,6 +139,8 @@ fun FolderDetailScreen(
                 AssetGrid(
                     items = state.items,
                     baseUrl = apiBaseUrl,
+                    gridState = gridState,
+                    contentPadding = gridContentPadding,
                     onItemClick = onItemClick,
                     onItemLongClick = onItemLongClick,
                     selectedIds = state.selection,

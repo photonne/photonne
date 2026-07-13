@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +25,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -83,6 +88,8 @@ import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.people_title
+import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.TimeZone
@@ -98,7 +105,14 @@ fun AlbumsListScreen(
     onOpenPeople: () -> Unit = {},
     onOpenMap: () -> Unit = {},
     onOpenScenes: () -> Unit = {},
-    onOpenObjects: () -> Unit = {}
+    onOpenObjects: () -> Unit = {},
+    /**
+     * Immersive bottom nav: while true the albums list drives the hide-on-scroll
+     * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
+     * at its scroll end so it can draw edge-to-edge behind the bar, like Fotos.
+     */
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val viewModel: AlbumsViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
@@ -163,7 +177,9 @@ fun AlbumsListScreen(
                         state = state,
                         apiBaseUrl = apiBaseUrl,
                         onClick = onAlbumClick,
-                        onLongPress = onAlbumLongPress
+                        onLongPress = onAlbumLongPress,
+                        immersive = immersive,
+                        onChromeVisibleChange = onChromeVisibleChange
                     )
                 }
             }
@@ -218,15 +234,47 @@ private fun AlbumsContent(
     state: AlbumsUiState,
     apiBaseUrl: String,
     onClick: (AlbumSummary) -> Unit,
-    onLongPress: (AlbumSummary) -> Unit
+    onLongPress: (AlbumSummary) -> Unit,
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val groups = if (state.groupByYear) groupByYear(albums) else emptyList()
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val isGrid = state.viewMode == AlbumViewMode.Grid
+    if (immersive) {
+        ImmersiveChromeEffect(
+            firstVisibleItemIndex = {
+                if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
+            },
+            firstVisibleItemScrollOffset = {
+                if (isGrid) gridState.firstVisibleItemScrollOffset
+                else listState.firstVisibleItemScrollOffset
+            },
+            isScrollInProgress = {
+                if (isGrid) gridState.isScrollInProgress else listState.isScrollInProgress
+            },
+            onChromeVisibleChange = onChromeVisibleChange
+        )
+    }
+    // Reserve the bottom nav's height at the scroll end so the last row clears
+    // it while the grid draws full-bleed behind the (overlaid) bar.
+    val reservedBottom = if (immersive) {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+            CompactNavBarContentHeight
+    } else null
     when (state.viewMode) {
         AlbumViewMode.Grid -> LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Adaptive(minSize = 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp,
+                bottom = reservedBottom ?: 16.dp
+            ),
             modifier = Modifier.fillMaxSize()
         ) {
             if (state.groupByYear) {
@@ -260,8 +308,12 @@ private fun AlbumsContent(
             }
         }
         AlbumViewMode.List -> LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(vertical = 8.dp),
+            contentPadding = PaddingValues(
+                top = 8.dp,
+                bottom = reservedBottom ?: 8.dp
+            ),
             modifier = Modifier.fillMaxSize()
         ) {
             if (state.groupByYear) {

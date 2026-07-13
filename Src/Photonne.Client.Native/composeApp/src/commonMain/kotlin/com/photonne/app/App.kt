@@ -479,9 +479,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     }
     val timelineViewModel: TimelineViewModel = koinViewModel()
     val timelineZoomStore: com.photonne.app.data.settings.TimelineZoomStore = koinInject()
-    // Immersive timeline: TimelineScreen reports when its chrome hides on scroll
-    // so the shared bottom navigation can slide away in the same rhythm.
+    // Immersive tabs: the active list reports when its chrome hides on scroll
+    // so the shared bottom navigation can slide away in the same rhythm. Fotos,
+    // Álbumes and Carpetas each drive their own flag.
     var timelineChromeVisible by remember { mutableStateOf(true) }
+    var albumsChromeVisible by remember { mutableStateOf(true) }
+    var foldersChromeVisible by remember { mutableStateOf(true) }
+    // Same, but for the photo grids inside an open album / folder.
+    var albumDetailChromeVisible by remember { mutableStateOf(true) }
+    var folderDetailChromeVisible by remember { mutableStateOf(true) }
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
@@ -1620,6 +1626,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
     }
 
+    // Which primary tab is currently showing its immersive scrollable list (no
+    // open detail, no selection, no overriding subscreen). Each drives the
+    // shared bottom nav's hide-on-scroll + edge-to-edge behaviour.
+    val timelineImmersive = selectedTab == MainTab.Timeline &&
+        moreSubscreen == null &&
+        !timelineState.isSelectionActive
+    val albumsImmersive = selectedTab == MainTab.Albums &&
+        moreSubscreen == null &&
+        selectedAlbum == null &&
+        !albumsState.isSelectionActive &&
+        // "Mis enlaces" is a different screen with its own scroller; keep the
+        // nav docked there rather than half-wiring it.
+        albumsState.selectedTab != com.photonne.app.ui.album.AlbumsTab.MyLinks
+    val foldersImmersive = selectedTab == MainTab.Folders &&
+        moreSubscreen == null &&
+        selectedFolder == null &&
+        !foldersState.isSelectionActive
+    // Inside an open album / folder: the photo grid gets the same immersive
+    // treatment (nav hides on scroll, grid bleeds behind it), unless a
+    // selection is active (which shows its own bottom action bar).
+    val albumDetailImmersive = selectedTab == MainTab.Albums &&
+        moreSubscreen == null &&
+        selectedAlbum != null &&
+        !albumDetailState.isSelectionActive
+    val folderDetailImmersive = selectedTab == MainTab.Folders &&
+        moreSubscreen == null &&
+        selectedFolder != null &&
+        !folderDetailState.isSelectionActive &&
+        !folderDetailState.isSubfolderSelectionActive
+
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(
         LocalSharedTransitionScope provides this,
@@ -1648,22 +1684,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             floatingActionButton = floatingActionButton,
             moreTabUnreadCount = notificationsState.unreadCount,
             // Immersive Fotos: let the grid draw under the status bar (its own
-            // floating top bar handles the inset). Selection mode keeps the
-            // solid Scaffold top bar, so it opts back into the normal inset.
-            edgeToEdgeTop = selectedTab == MainTab.Timeline &&
-                moreSubscreen == null &&
-                !timelineState.isSelectionActive,
-            // On the immersive timeline the bottom nav hides while scrolling
-            // down (driven by TimelineScreen's chrome), and always shows
-            // elsewhere.
-            bottomBarVisible = !(selectedTab == MainTab.Timeline &&
-                moreSubscreen == null &&
-                !timelineState.isSelectionActive) || timelineChromeVisible,
-            // Grid draws behind the bottom nav so photos are revealed when it
-            // slides away (always full-screen, the bar just covers them).
-            edgeToEdgeBottom = selectedTab == MainTab.Timeline &&
-                moreSubscreen == null &&
-                !timelineState.isSelectionActive
+            // floating top bar handles the inset). Only Fotos goes edge-to-edge
+            // at the top; Álbumes/Carpetas keep their solid top bar.
+            edgeToEdgeTop = timelineImmersive,
+            // On the immersive tabs the bottom nav hides while scrolling down
+            // (driven by each screen's chrome), and always shows elsewhere.
+            bottomBarVisible = when {
+                timelineImmersive -> timelineChromeVisible
+                albumsImmersive -> albumsChromeVisible
+                foldersImmersive -> foldersChromeVisible
+                albumDetailImmersive -> albumDetailChromeVisible
+                folderDetailImmersive -> folderDetailChromeVisible
+                else -> true
+            },
+            // The grid draws behind the bottom nav so content is revealed when
+            // it slides away (always full-screen, the bar just covers it).
+            edgeToEdgeBottom = timelineImmersive || albumsImmersive || foldersImmersive ||
+                albumDetailImmersive || folderDetailImmersive
         ) {
             // Subscreens (People/Map/Explore facets, plus all the More-menu
             // destinations) render as a modal layer over whatever tab is
@@ -1740,7 +1777,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             },
                             onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                             onOpenScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
-                            onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects }
+                            onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
+                            immersive = albumsImmersive,
+                            onChromeVisibleChange = { albumsChromeVisible = it }
                         )
                     } else {
                         AlbumDetailScreen(
@@ -1770,7 +1809,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 showMembers = true
                             },
                             onLeave = { showLeaveAlbum = true },
-                            viewModel = albumDetailViewModel
+                            viewModel = albumDetailViewModel,
+                            immersive = albumDetailImmersive,
+                            onChromeVisibleChange = { albumDetailChromeVisible = it }
                         )
                     }
                 }
@@ -1792,7 +1833,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onFolderLongPress = { folder ->
                                 foldersViewModel.selectFolder(folder.id)
                             },
-                            onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox }
+                            onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                            immersive = foldersImmersive,
+                            onChromeVisibleChange = { foldersChromeVisible = it }
                         )
                     } else {
                         com.photonne.app.ui.folder.FolderDetailScreen(
@@ -1835,7 +1878,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onSubfolderLongPress = { subfolder ->
                                 folderDetailViewModel.selectSubfolder(subfolder.id)
                             },
-                            viewModel = folderDetailViewModel
+                            viewModel = folderDetailViewModel,
+                            immersive = folderDetailImmersive,
+                            onChromeVisibleChange = { folderDetailChromeVisible = it }
                         )
                     }
                 }

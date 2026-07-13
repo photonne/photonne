@@ -4,14 +4,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -63,6 +68,8 @@ import com.photonne.app.resources.album_hero_photos
 import com.photonne.app.resources.album_hero_shared
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.formatLocalizedMonth
+import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.Instant
@@ -81,10 +88,32 @@ fun AlbumDetailScreen(
     onDelete: () -> Unit,
     onManageMembers: () -> Unit,
     onLeave: () -> Unit,
-    viewModel: AlbumDetailViewModel
+    viewModel: AlbumDetailViewModel,
+    /**
+     * Immersive bottom nav: while true the photo grid drives the hide-on-scroll
+     * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
+     * at its scroll end so it draws edge-to-edge behind the bar, like Fotos.
+     */
+    immersive: Boolean = false,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
+    val gridState = rememberLazyGridState()
+    if (immersive) {
+        ImmersiveChromeEffect(
+            firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+            firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+            isScrollInProgress = { gridState.isScrollInProgress },
+            onChromeVisibleChange = onChromeVisibleChange
+        )
+    }
+    val gridContentPadding = if (immersive) {
+        PaddingValues(
+            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                CompactNavBarContentHeight
+        )
+    } else PaddingValues(0.dp)
 
     LaunchedEffect(album.id) { viewModel.open(album.id, album.name, album.description) }
 
@@ -160,6 +189,8 @@ fun AlbumDetailScreen(
             else -> AssetGrid(
                 items = state.items,
                 baseUrl = apiBaseUrl,
+                gridState = gridState,
+                contentPadding = gridContentPadding,
                 onItemClick = { index ->
                     if (state.isSelectionActive) {
                         state.items.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
