@@ -240,17 +240,24 @@ fun AssetDetailScreen(
     var bottomChromeHeightPx by remember { mutableStateOf(0) }
     val bottomChromeHeight = with(density) { bottomChromeHeightPx.toDp() }
 
+    // The slideshow advances in a loop INSIDE one effect. It must not be keyed on
+    // pagerState.currentPage: the pager flips that at the half-way point of the
+    // very animation this effect is running, which would restart the effect and
+    // cancel animateScrollToPage mid-flight, freezing the asset half-way across
+    // the screen. currentPage is read inside the coroutine instead, so each hop
+    // starts from wherever the user (or the previous hop) left the pager.
     LaunchedEffect(
         slideshowActive,
         slideshowPaused,
         slideshowIntervalSec,
-        pagerState.currentPage,
         items.size
     ) {
         if (!slideshowActive || slideshowPaused || items.isEmpty()) return@LaunchedEffect
-        delay(slideshowIntervalSec * 1000L)
-        val next = (pagerState.currentPage + 1) % items.size
-        pagerState.animateScrollToPage(next)
+        while (true) {
+            delay(slideshowIntervalSec * 1000L)
+            val next = (pagerState.currentPage + 1) % items.size
+            pagerState.animateScrollToPage(next)
+        }
     }
 
     LaunchedEffect(pagerState, items) {
