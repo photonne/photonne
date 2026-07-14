@@ -80,6 +80,16 @@ public static class DependencyInjection
         builder.Services.AddSingleton<FaceClusteringQueue>();
         builder.Services.AddHostedService<FaceClusteringBackgroundService>();
 
+        // Memories. Generator registration order is the order they run; it has no
+        // bearing on the feed, which sorts by score.
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.OnThisDayGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.ThisMonthGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.FavoritesOfYearGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.MemoryGenerationService>();
+
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {
             var ml = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MlOptions>>().Value;

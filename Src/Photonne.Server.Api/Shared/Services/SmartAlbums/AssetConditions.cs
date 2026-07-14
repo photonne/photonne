@@ -37,6 +37,12 @@ public static class AssetConditions
     /// Capture-date range on <see cref="Asset.CapturedAt"/>. <paramref name="to"/>
     /// includes the whole selected day. Returns <see cref="PredicateBuilder.True{T}"/>
     /// when both bounds are null. Matches the search endpoint's UTC handling.
+    ///
+    /// NOTE: the ToUniversalTime() calls below shift a Kind.Unspecified bound by
+    /// the SERVER's offset, while CapturedAt holds the photo's own naive local
+    /// wall-clock — so this drifts on any host whose TZ isn't UTC. Kept for the
+    /// search callers that already pass bounds in that frame; new code that
+    /// reasons about a local calendar wants <see cref="CapturedBetweenLocal"/>.
     /// </summary>
     public static Expression<Func<Asset, bool>> CapturedBetween(DateTime? from, DateTime? to)
     {
@@ -50,6 +56,35 @@ public static class AssetConditions
         {
             var toUtc = to.Value.ToUniversalTime().Date.AddDays(1);
             predicate = predicate.And(a => a.CapturedAt < toUtc);
+        }
+        return predicate;
+    }
+
+    /// <summary>
+    /// Capture-date range compared in the SAME frame the column is stored in:
+    /// <see cref="Asset.CapturedAt"/> is the photo's own naive local wall-clock,
+    /// so the bounds must be wall-clock too. <paramref name="to"/> includes the
+    /// whole selected day.
+    ///
+    /// Use this — not <see cref="CapturedBetween"/> — for anything that reasons
+    /// about a local calendar (memories, "favourites of 2023"). CapturedBetween
+    /// runs the bounds through ToUniversalTime(), which reads a Kind.Unspecified
+    /// bound as *server* local time and shifts the window by the host's offset.
+    /// It is preserved as-is because the search endpoint's callers pass bounds in
+    /// that frame already.
+    /// </summary>
+    public static Expression<Func<Asset, bool>> CapturedBetweenLocal(DateTime? from, DateTime? to)
+    {
+        var predicate = PredicateBuilder.True<Asset>();
+        if (from.HasValue)
+        {
+            var fromLocal = from.Value;
+            predicate = predicate.And(a => a.CapturedAt >= fromLocal);
+        }
+        if (to.HasValue)
+        {
+            var toLocal = to.Value.Date.AddDays(1);
+            predicate = predicate.And(a => a.CapturedAt < toLocal);
         }
         return predicate;
     }

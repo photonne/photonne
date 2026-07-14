@@ -29,6 +29,7 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   ImageEmbedding.Enabled        — enqueue CLIP embedding backfill (default: false)
 ///   ImageEmbedding.Mode           — "missing" | "all" (default: "missing")
 ///   TrashCleanup.Enabled          — apply trash retention/quota policy (default: false); uses TrashSettings.*
+///   Memories.Enabled              — regenerate the per-user Recuerdos feed (default: true)
 ///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
 /// </summary>
 public class NightlySchedulerService : BackgroundService
@@ -149,6 +150,9 @@ public class NightlySchedulerService : BackgroundService
         var embEnabled   = await settings.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Enabled",      Guid.Empty, "false");
         var embMode      = await settings.GetSettingAsync("NightlyTaskSettings.ImageEmbedding.Mode",         Guid.Empty, "missing");
         var trashCleanupEnabled = await settings.GetSettingAsync("NightlyTaskSettings.TrashCleanup.Enabled", Guid.Empty, "false");
+        // Defaults to true: it's a handful of queries per user over data that's
+        // already indexed, and a Recuerdos feed nobody turned on is an empty tab.
+        var memoriesEnabled = await settings.GetSettingAsync("NightlyTaskSettings.Memories.Enabled", Guid.Empty, "true");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
@@ -178,6 +182,62 @@ public class NightlySchedulerService : BackgroundService
         // over-quota trash (personal + shared) per TrashSettings.*.
         if (trashCleanupEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunTrashCleanupAsync(ct);
+
+        // Memories last: person-driven memories read Person/UserFaceAssignment,
+        // so they want the night's clustering to have already landed.
+        if (memoriesEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunMemoriesAsync(ct);
+    }
+
+    /// <summary>Regenerates every user's Recuerdos feed. Per-user by necessity:
+    /// face identity is private, so the same shared photo yields different
+    /// memories for different people.</summary>
+    private async Task RunMemoriesAsync(CancellationToken ct)
+    {
+        Console.WriteLine("[NIGHTLY] Memories generation started.");
+        int created = 0, updated = 0, removed = 0, usersProcessed = 0, usersFailed = 0;
+
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var userIds = await dbContext.Users
+            .Where(u => u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        foreach (var userId in userIds)
+        {
+            if (ct.IsCancellationRequested) break;
+            try
+            {
+                // A scope per user: MemoryGenerationService depends on
+                // AssetVisibilityService, which caches permission snapshots on the
+                // instance and must never be shared across users.
+                using var userScope = _scopeFactory.CreateScope();
+                var generation = userScope.ServiceProvider
+                    .GetRequiredService<Features.Memories.Generation.MemoryGenerationService>();
+
+                var result = await generation.RunForUserAsync(userId, ct);
+                created += result.Created;
+                updated += result.Updated;
+                removed += result.Removed;
+                usersProcessed++;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                usersFailed++;
+                Console.WriteLine($"[NIGHTLY] Memories error for user {userId}: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[NIGHTLY] Memories done — users:{usersProcessed} created:{created} updated:{updated} removed:{removed} failed:{usersFailed}.");
+
+        await NotifyAdminsAsync(
+            usersFailed > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
+            "Tarea nocturna: recuerdos",
+            $"Procesados {usersProcessed} usuario(s): {created} recuerdo(s) nuevos, {updated} actualizados, {removed} retirados, {usersFailed} error(es).",
+            ct);
     }
 
     /// <summary>Applies the trash retention/quota policy overnight, reusing the

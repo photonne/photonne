@@ -61,6 +61,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<AssetClassifiedScene> AssetClassifiedScenes { get; set; }
     public DbSet<AssetRecognizedTextLine> AssetRecognizedTextLines { get; set; }
     public DbSet<AssetEmbedding> AssetEmbeddings { get; set; }
+    /// <summary>Generated stories, precomputed nightly per user. Unprefixed (not
+    /// AssetMemory) because a Memory spans many assets and carries user state
+    /// (IsDismissed) — same reasoning that makes Face a first-class entity.</summary>
+    public DbSet<Memory> Memories { get; set; }
+    public DbSet<MemoryAsset> MemoryAssets { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -708,6 +713,56 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.ExpiresAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.RevokedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
+        });
+
+        // Configure Memory entity (generated story, one row per user).
+        modelBuilder.Entity<Memory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Subtitle).HasMaxLength(200);
+            entity.Property(e => e.DedupeKey).IsRequired().HasMaxLength(200);
+
+            entity.HasOne(e => e.Owner)
+                .WithMany()
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // SetNull, not Cascade: deleting the cover photo must not take the
+            // whole memory with it — the generator picks a new cover next run.
+            entity.HasOne(e => e.CoverAsset)
+                .WithMany()
+                .HasForeignKey(e => e.CoverAssetId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // The upsert contract: one memory per (owner, natural key).
+            entity.HasIndex(e => new { e.OwnerId, e.DedupeKey }).IsUnique();
+            // The feed query, in its exact shape.
+            entity.HasIndex(e => new { e.OwnerId, e.IsDismissed, e.Score })
+                .IsDescending(false, false, true);
+
+            entity.Property(e => e.WindowStart).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.WindowEnd).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.FirstGeneratedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.LastGeneratedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure MemoryAsset entity (ordered membership; replaced on every run).
+        modelBuilder.Entity<MemoryAsset>(entity =>
+        {
+            entity.HasKey(e => new { e.MemoryId, e.AssetId });
+
+            entity.HasOne(e => e.Memory)
+                .WithMany(m => m.Assets)
+                .HasForeignKey(e => e.MemoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Asset)
+                .WithMany()
+                .HasForeignKey(e => e.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.AssetId);
         });
     }
 }
