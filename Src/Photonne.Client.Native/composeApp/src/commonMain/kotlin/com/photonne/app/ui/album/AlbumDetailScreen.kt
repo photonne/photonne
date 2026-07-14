@@ -15,10 +15,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Group
@@ -62,13 +64,16 @@ import com.photonne.app.resources.action_leave
 import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_action_album_actions
 import com.photonne.app.resources.album_action_members
+import com.photonne.app.resources.album_action_sort
 import com.photonne.app.resources.album_empty_subtitle
 import com.photonne.app.resources.album_empty_title
 import com.photonne.app.resources.album_hero_photos
 import com.photonne.app.resources.album_hero_shared
+import com.photonne.app.ui.grid.AlbumGridScrubber
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -100,6 +105,7 @@ fun AlbumDetailScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
     val gridState = rememberLazyGridState()
+    var showSortSheet by rememberSaveable { mutableStateOf(false) }
     if (immersive) {
         ImmersiveChromeEffect(
             firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
@@ -143,6 +149,7 @@ fun AlbumDetailScreen(
                 canManageMembers = album.isOwner || album.canManagePermissions,
                 canLeave = !album.isOwner,
                 onBack = onBack,
+                onSort = { showSortSheet = true },
                 onShare = onShare,
                 onEdit = onEdit,
                 onDelete = onDelete,
@@ -186,26 +193,66 @@ fun AlbumDetailScreen(
                         subtitle = stringResource(Res.string.album_empty_subtitle)
                     )
                 }
-            else -> AssetGrid(
-                items = state.items,
-                baseUrl = apiBaseUrl,
-                gridState = gridState,
-                contentPadding = gridContentPadding,
-                onItemClick = { index ->
-                    if (state.isSelectionActive) {
-                        state.items.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
-                    } else {
-                        onItemClick(index)
-                    }
-                },
-                onItemLongClick = { index ->
-                    state.items.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
-                },
-                selectedIds = state.selection,
-                modifier = Modifier.fillMaxWidth(),
-                header = hero
-            )
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Solid backdrop: the grid's 2dp inter-cell gaps are
+                    // transparent and the detail draws over the albums list, so
+                    // without this the previous screen bleeds through the lines.
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                val displayItems = state.displayItems
+                AssetGrid(
+                    items = displayItems,
+                    baseUrl = apiBaseUrl,
+                    gridState = gridState,
+                    contentPadding = gridContentPadding,
+                    onItemClick = { index ->
+                        if (state.isSelectionActive) {
+                            displayItems.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
+                        } else {
+                            onItemClick(index)
+                        }
+                    },
+                    onItemLongClick = { index ->
+                        displayItems.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
+                    },
+                    selectedIds = state.selection,
+                    modifier = Modifier.fillMaxWidth(),
+                    header = hero
+                )
+                AlbumGridScrubber(
+                    gridState = gridState,
+                    cellCount = displayItems.size,
+                    headerCount = 1,
+                    // Always surface the capture month of the topmost photo so the
+                    // user can see "which date am I in" — the whole point of the
+                    // scrubber. In album/custom order it isn't strictly monotonic,
+                    // but it still answers the question and is discoverable without
+                    // first opening the sort sheet.
+                    labelForCellIndex = { i ->
+                        displayItems.getOrNull(i)?.fileCreatedAt
+                            ?.captureLocalDate()?.let(::formatLocalizedMonth)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                        )
+                        .padding(bottom = gridContentPadding.calculateBottomPadding())
+                )
+            }
         }
+    }
+
+    if (showSortSheet) {
+        AlbumDetailSortSheet(
+            sort = state.sort,
+            direction = state.direction,
+            onDismiss = { showSortSheet = false },
+            onSortChange = viewModel::setSort,
+            onDirectionChange = viewModel::setDirection
+        )
     }
 }
 
@@ -228,6 +275,7 @@ private fun AlbumHero(
     canManageMembers: Boolean,
     canLeave: Boolean,
     onBack: () -> Unit,
+    onSort: () -> Unit,
     onShare: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -247,7 +295,7 @@ private fun AlbumHero(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    .blur(20.dp)
+                    .blur(8.dp)
             )
         }
 
@@ -280,6 +328,13 @@ private fun AlbumHero(
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onSort) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = stringResource(Res.string.album_action_sort),
+                        tint = Color.White
+                    )
+                }
                 if (canShare) {
                     IconButton(onClick = onShare) {
                         Icon(

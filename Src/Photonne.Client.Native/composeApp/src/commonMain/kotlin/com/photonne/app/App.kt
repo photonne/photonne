@@ -1786,7 +1786,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             album = openedAlbum,
                             onItemClick = { index ->
                                 assetDetail = AssetDetailContext(
-                                    items = albumDetailState.items,
+                                    // Grid renders the re-sorted displayItems, so
+                                    // the tapped index is into that list — not the
+                                    // raw server-order items.
+                                    items = albumDetailState.displayItems,
                                     startIndex = index,
                                     source = AssetDetailContext.Source.Album,
                                     hasMore = false,

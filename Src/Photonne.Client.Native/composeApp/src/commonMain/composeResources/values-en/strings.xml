@@ -109,6 +109,8 @@
     <string name="albums_action_filters">View options</string>
     <string name="albums_sort_date">Date</string>
     <string name="albums_sort_name">Name</string>
+    <string name="album_sort_album_order">Album order</string>
+    <string name="album_action_sort">Sort photos</string>
     <string name="albums_filters_group_by_year">Group by year</string>
     <string name="action_collaborators">Collaborators</string>
     <string name="action_rename">Rename</string>

@@ -8,6 +8,10 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.util.SortDirection
+import com.photonne.app.ui.util.applyDirection
+import com.photonne.app.ui.util.parseSortDirection
+import com.russhwolf.settings.Settings
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,11 +20,21 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
+enum class AlbumDetailSort { Album, Date }
+
+/** Natural default direction when a criterion is freshly picked. */
+fun AlbumDetailSort.defaultDirection(): SortDirection = when (this) {
+    AlbumDetailSort.Album -> SortDirection.Ascending // as returned by the server
+    AlbumDetailSort.Date -> SortDirection.Descending // newest first
+}
+
 data class AlbumDetailUiState(
     val albumId: String? = null,
     val albumName: String? = null,
     val albumDescription: String? = null,
     val items: List<TimelineItem> = emptyList(),
+    val sort: AlbumDetailSort = AlbumDetailSort.Album,
+    val direction: SortDirection = SortDirection.Ascending,
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     val isBulkMutating: Boolean = false,
@@ -28,16 +42,57 @@ data class AlbumDetailUiState(
     val selection: Set<String> = emptySet(),
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
+
+    /**
+     * The ordered list every consumer renders and indexes against — the grid,
+     * the selection handlers AND the asset viewer's start index. Keeping this
+     * on the state (rather than sorting inside the screen) is what keeps a tap
+     * in a re-sorted album opening the right photo.
+     *
+     * Album order ascending == server order; [applyDirection] reverses it.
+     * Date sort is stable, so equal-timestamp assets keep their server order.
+     */
+    val displayItems: List<TimelineItem> get() = when (sort) {
+        AlbumDetailSort.Album -> items.applyDirection(direction)
+        AlbumDetailSort.Date -> items.sortedBy { it.fileCreatedAt }.applyDirection(direction)
+    }
 }
 
 class AlbumDetailViewModel(
     private val repository: AlbumsRepository,
     private val assetRepository: AssetDetailRepository,
+    private val settings: Settings,
     private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(AlbumDetailUiState())
+    private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<AlbumDetailUiState> = _state.asStateFlow()
+
+    /** Sort/direction are a global preference shared across all albums. */
+    private fun loadInitialState(): AlbumDetailUiState {
+        val sort = settings.getStringOrNull(KEY_SORT)
+            ?.let { runCatching { AlbumDetailSort.valueOf(it) }.getOrNull() }
+            ?: AlbumDetailSort.Album
+        val direction = parseSortDirection(
+            settings.getStringOrNull(KEY_DIRECTION),
+            sort.defaultDirection()
+        )
+        return AlbumDetailUiState(sort = sort, direction = direction)
+    }
+
+    fun setSort(sort: AlbumDetailSort) {
+        // Picking a criterion resets to its natural direction; the user can then
+        // flip it explicitly with setDirection.
+        val direction = sort.defaultDirection()
+        settings.putString(KEY_SORT, sort.name)
+        settings.putString(KEY_DIRECTION, direction.name)
+        _state.update { it.copy(sort = sort, direction = direction) }
+    }
+
+    fun setDirection(direction: SortDirection) {
+        settings.putString(KEY_DIRECTION, direction.name)
+        _state.update { it.copy(direction = direction) }
+    }
 
     fun open(albumId: String, name: String, description: String? = null) {
         if (_state.value.albumId == albumId && _state.value.items.isNotEmpty()) {
@@ -48,6 +103,10 @@ class AlbumDetailViewModel(
             albumId = albumId,
             albumName = name,
             albumDescription = description,
+            // Carry the chosen sort across the reset so entering an album never
+            // silently reverts the user's ordering to the default.
+            sort = _state.value.sort,
+            direction = _state.value.direction,
             isLoading = true
         )
         viewModelScope.launch {
@@ -382,6 +441,11 @@ class AlbumDetailViewModel(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    private companion object {
+        private const val KEY_SORT = "photonne.albumDetail.sort"
+        private const val KEY_DIRECTION = "photonne.albumDetail.sortDirection"
     }
 
 }
