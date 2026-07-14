@@ -40,7 +40,7 @@ class MemoriesRepository(
     private data class FakeGroup(val yearsAgo: Int, val count: Int)
 
     private companion object {
-        // Same-day clusters to exercise the grouping in MemoriesCarousel.
+        // Same-day clusters to exercise the grouping in MemoriesStrip.
         val FAKE_GROUPS = listOf(
             FakeGroup(yearsAgo = 1, count = 3),
             FakeGroup(yearsAgo = 2, count = 1),

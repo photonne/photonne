@@ -2,31 +2,12 @@
 <resources>
     <string name="app_name">Photonne</string>
 
-    <string name="tab_home">Home</string>
     <string name="tab_timeline">Photos</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_more">More</string>
 
-    <string name="hub_greeting_morning">Good morning</string>
-    <string name="hub_greeting_afternoon">Good afternoon</string>
-    <string name="hub_greeting_evening">Good evening</string>
-    <string name="hub_greeting_with_name">%1$s, %2$s</string>
-    <string name="hub_totals_photos">%1$s photos</string>
-    <string name="hub_totals_videos">%1$s videos</string>
-    <string name="hub_totals_storage">%1$s</string>
     <string name="hub_section_memories">On this day…</string>
-    <string name="hub_section_recents">Recent</string>
-    <string name="hub_section_people">People</string>
-    <string name="hub_section_explore">Explore</string>
-    <string name="hub_section_shortcuts">Shortcuts</string>
     <string name="hub_action_see_all">See all</string>
-    <string name="hub_action_open_library">All photos</string>
-    <string name="hub_action_search">Search</string>
-    <string name="hub_action_map">Map</string>
-    <string name="hub_action_albums">Albums</string>
-    <string name="hub_action_upload">Upload</string>
-    <string name="hub_facet_assets">%1$d photos</string>
-    <string name="hub_person_unnamed">Unnamed</string>
 
     <string name="action_refresh">Refresh</string>
     <string name="action_account">Account</string>
@@ -50,7 +31,6 @@
     <string name="timeline_empty_action_upload">Upload photos</string>
     <string name="timeline_device_loading">Finding device photos…</string>
     <string name="timeline_scroll_to_top">Back to top</string>
-    <string name="timeline_memories_section">Memories</string>
     <string name="timeline_memories_one_year_ago">1 year ago</string>
     <string name="timeline_memories_years_ago">%1$d years ago</string>
 

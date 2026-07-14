@@ -60,7 +60,7 @@ fun ExploreMemoriesScreen(
 
     val zone = remember { TimeZone.currentSystemDefault() }
     val currentYear = remember { Clock.System.now().toLocalDateTime(zone).date.year }
-    val groups = remember(state.items) { groupMemoriesByDay(state.items, zone, currentYear) }
+    val groups = remember(state.items) { groupMemoriesByDay(state.items, currentYear) }
 
     PhotonneRefreshableScreen(
         isRefreshing = state.isLoading && state.items.isNotEmpty(),

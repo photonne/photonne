@@ -75,7 +75,7 @@ fun MemoriesStrip(
 ) {
     val zone = TimeZone.currentSystemDefault()
     val currentYear = Clock.System.now().toLocalDateTime(zone).date.year
-    val groups = remember(memories) { groupMemoriesByDay(memories, zone, currentYear) }
+    val groups = remember(memories) { groupMemoriesByDay(memories, currentYear) }
     if (groups.isEmpty()) return
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 20.dp)) {

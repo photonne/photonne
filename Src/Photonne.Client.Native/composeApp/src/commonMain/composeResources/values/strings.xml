@@ -2,31 +2,12 @@
 <resources>
     <string name="app_name">Photonne</string>
 
-    <string name="tab_home">Inicio</string>
     <string name="tab_timeline">Fotos</string>
     <string name="tab_albums">Álbumes</string>
     <string name="tab_more">Más</string>
 
-    <string name="hub_greeting_morning">Buenos días</string>
-    <string name="hub_greeting_afternoon">Buenas tardes</string>
-    <string name="hub_greeting_evening">Buenas noches</string>
-    <string name="hub_greeting_with_name">%1$s, %2$s</string>
-    <string name="hub_totals_photos">%1$s fotos</string>
-    <string name="hub_totals_videos">%1$s vídeos</string>
-    <string name="hub_totals_storage">%1$s</string>
     <string name="hub_section_memories">Hoy hace…</string>
-    <string name="hub_section_recents">Recientes</string>
-    <string name="hub_section_people">Personas</string>
-    <string name="hub_section_explore">Explora</string>
-    <string name="hub_section_shortcuts">Atajos</string>
     <string name="hub_action_see_all">Ver todo</string>
-    <string name="hub_action_open_library">Toda la biblioteca</string>
-    <string name="hub_action_search">Buscar</string>
-    <string name="hub_action_map">Mapa</string>
-    <string name="hub_action_albums">Álbumes</string>
-    <string name="hub_action_upload">Subir</string>
-    <string name="hub_facet_assets">%1$d fotos</string>
-    <string name="hub_person_unnamed">Sin nombre</string>
 
     <string name="action_refresh">Refrescar</string>
     <string name="action_account">Cuenta</string>
@@ -50,7 +31,6 @@
     <string name="timeline_empty_action_upload">Subir fotos</string>
     <string name="timeline_device_loading">Buscando fotos del dispositivo…</string>
     <string name="timeline_scroll_to_top">Volver arriba</string>
-    <string name="timeline_memories_section">Recuerdos</string>
     <string name="timeline_memories_one_year_ago">Hace 1 año</string>
     <string name="timeline_memories_years_ago">Hace %1$d años</string>
 
