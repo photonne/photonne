@@ -88,6 +88,14 @@ public static class DependencyInjection
                                    Features.Memories.Generation.ThisMonthGenerator>();
         builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
                                    Features.Memories.Generation.FavoritesOfYearGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.PersonThroughYearsGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.PeopleTogetherGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.CuratedSceneGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.PetsAndFoodGenerator>();
         builder.Services.AddScoped<Features.Memories.Generation.MemoryGenerationService>();
 
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>

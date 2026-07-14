@@ -112,6 +112,37 @@ public static class AssetConditions
         return a => a.ClassifiedScenes.Any(s => s.Label.ToLower() == normalized);
     }
 
+    /// <summary>
+    /// Has any of <paramref name="labels"/> as a detected object, scoring at least
+    /// <paramref name="minConfidence"/>.
+    /// </summary>
+    public static Expression<Func<Asset, bool>> HasAnyObjectAbove(
+        IReadOnlyList<string> labels, float minConfidence)
+    {
+        var normalized = labels.Select(l => l.Trim().ToLowerInvariant()).ToList();
+        return a => a.DetectedObjects.Any(o =>
+            normalized.Contains(o.Label.ToLower()) && o.Confidence >= minConfidence);
+    }
+
+    /// <summary>
+    /// Has any of <paramref name="labels"/> as a classified scene, scoring at least
+    /// <paramref name="minConfidence"/>.
+    ///
+    /// The confidence floor is the whole point. The pipeline stores up to 5 scenes
+    /// per asset from a score of 0.15 (Ml.SceneClassification.MinScore), which is
+    /// a fine bar for "let the user search for it" and a terrible one for "build a
+    /// keepsake out of it": at 0.15 across 365 softmax classes the model is barely
+    /// guessing. <see cref="HasScene"/> stays unfiltered because smart-album rules
+    /// have no confidence knob and their users expect recall.
+    /// </summary>
+    public static Expression<Func<Asset, bool>> HasAnySceneAbove(
+        IReadOnlyList<string> labels, float minConfidence)
+    {
+        var normalized = labels.Select(l => l.Trim().ToLowerInvariant()).ToList();
+        return a => a.ClassifiedScenes.Any(s =>
+            normalized.Contains(s.Label.ToLower()) && s.Confidence >= minConfidence);
+    }
+
     /// <summary>Has a manual user tag with the given id.</summary>
     public static Expression<Func<Asset, bool>> HasUserTag(Guid userTagId) =>
         a => a.UserTags.Any(ut => ut.UserTagId == userTagId);
