@@ -9,6 +9,7 @@ import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.AssetContentBytes
 import com.photonne.app.data.models.AssetDetail
+import com.photonne.app.data.models.Attribution
 import com.photonne.app.data.models.AssetPage
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
@@ -302,6 +303,8 @@ interface PhotonneApi {
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     /** Live "on this day" query — what the timeline strip shows. */
     suspend fun getMemories(): List<TimelineItem>
+    /** Third-party datasets this server bundles, and their licences. Public. */
+    suspend fun getAttributions(): List<Attribution>
     /** The generated Recuerdos feed, best first. [kind] filters to one MemoryKind. */
     suspend fun getMemoryFeed(kind: String? = null, limit: Int = 50): List<Memory>
     /** One memory with its assets, in display order (index 0 is the cover). */
@@ -908,6 +911,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Memories fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getAttributions(): List<Attribution> {
+        val response: HttpResponse = client.get("$baseUrl/api/attributions")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Attributions fetch failed (${response.status.value})"
             )
         }
         return response.body()

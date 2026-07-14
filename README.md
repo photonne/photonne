@@ -442,6 +442,17 @@ GitHub Actions publica automáticamente las dos imágenes Docker en cada push a
 
 GNU Affero General Public License v3.0 — ver [LICENSE](LICENSE) para más detalles.
 
+### Datos de terceros
+
+La imagen del servidor incluye el dataset **cities500** de [GeoNames](https://www.geonames.org/),
+usado para resolver nombres de lugar sin conexión a partir de las coordenadas GPS de las fotos.
+
+> Datos de lugares © GeoNames, bajo licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+La atribución es una condición de la licencia, no una cortesía: redistribuir el dataset dentro
+de la imagen solo está permitido si se acredita. El servidor la expone además en
+`GET /api/attributions` (público) y la app la muestra en la pestaña Más.
+
 --
 
 Created by: Marc Caralps Fontrubí

@@ -19,6 +19,11 @@ namespace Photonne.Server.Api;
 
 public static class DependencyInjection
 {
+    /// <summary>Where the Dockerfile's geodata stage bakes the GeoNames extract.
+    /// Overridable via Geo:CitiesPath so an operator can mount a newer release
+    /// (or a trimmed one) without rebuilding the image.</summary>
+    private const string DefaultCitiesPath = "/opt/geo/cities.tsv.gz";
+
     public static void AddApplicationServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddMemoryCache();
@@ -97,6 +102,14 @@ public static class DependencyInjection
         builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
                                    Features.Memories.Generation.PetsAndFoodGenerator>();
         builder.Services.AddScoped<Features.Memories.Generation.MemoryGenerationService>();
+
+        // Reverse geocoding. The geocoder is a singleton because it owns the
+        // ~200k-city index — one parse per process, lazily on first lookup. The
+        // resolver is scoped: it writes Place rows through the request's DbContext.
+        builder.Services.AddSingleton(sp => new Shared.Services.Geo.ReverseGeocoder(
+            sp.GetRequiredService<IConfiguration>()["Geo:CitiesPath"] ?? DefaultCitiesPath));
+        builder.Services.AddScoped<Shared.Services.Geo.PlaceResolver>();
+        builder.Services.AddScoped<Shared.Services.Geo.GeocodeBackfillRunner>();
 
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {

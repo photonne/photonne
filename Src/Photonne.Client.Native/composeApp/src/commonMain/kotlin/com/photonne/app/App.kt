@@ -503,6 +503,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // so they get one ViewModel each.
     val memoryFeedViewModel:
         com.photonne.app.ui.memories.MemoryFeedViewModel = koinViewModel()
+
+    // Third-party data notices for the Más footer. Fetched rather than hardcoded
+    // because only the server knows what its image actually bundles: a build that
+    // couldn't download GeoNames must not credit data it doesn't have. Failure is
+    // silent — an unreachable server has bigger problems than a missing credit,
+    // and the README carries the attribution regardless.
+    val photonneApi: com.photonne.app.data.api.PhotonneApi = koinInject()
+    var attributions by remember {
+        mutableStateOf<List<com.photonne.app.data.models.Attribution>>(emptyList())
+    }
+    LaunchedEffect(apiBaseUrl) {
+        runCatching { photonneApi.getAttributions() }
+            .onSuccess { attributions = it }
+    }
     // La primera carga de las pantallas principales corre en el init de su
     // ViewModel contra la URL pública, antes de que el probe de reachability
     // decida LAN↔público. Desde dentro de la LAN de casa esa petición hace
@@ -1939,7 +1953,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     { moreSubscreen = MoreSubscreen.Administration }
                                 } else {
                                     null
-                                }
+                                },
+                                attributions = attributions
                             )
                         }
                     }

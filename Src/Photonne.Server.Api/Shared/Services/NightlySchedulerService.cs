@@ -29,6 +29,7 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   ImageEmbedding.Enabled        — enqueue CLIP embedding backfill (default: false)
 ///   ImageEmbedding.Mode           — "missing" | "all" (default: "missing")
 ///   TrashCleanup.Enabled          — apply trash retention/quota policy (default: false); uses TrashSettings.*
+///   ReverseGeocode.Enabled        — resolve place names for geolocated assets (default: true)
 ///   Memories.Enabled              — regenerate the per-user Recuerdos feed (default: true)
 ///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
 /// </summary>
@@ -153,6 +154,8 @@ public class NightlySchedulerService : BackgroundService
         // Defaults to true: it's a handful of queries per user over data that's
         // already indexed, and a Recuerdos feed nobody turned on is an empty tab.
         var memoriesEnabled = await settings.GetSettingAsync("NightlyTaskSettings.Memories.Enabled", Guid.Empty, "true");
+        // Also true by default — an in-memory lookup with no model behind it.
+        var geocodeEnabled = await settings.GetSettingAsync("NightlyTaskSettings.ReverseGeocode.Enabled", Guid.Empty, "true");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
@@ -183,10 +186,53 @@ public class NightlySchedulerService : BackgroundService
         if (trashCleanupEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunTrashCleanupAsync(ct);
 
+        // Before memories: trip memories are built from resolved places, so the
+        // geocoding has to land first to be visible the same night.
+        if (geocodeEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunReverseGeocodeAsync(ct);
+
         // Memories last: person-driven memories read Person/UserFaceAssignment,
         // so they want the night's clustering to have already landed.
         if (memoriesEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMemoriesAsync(ct);
+    }
+
+    /// <summary>Resolves place names for anything indexed before the dataset
+    /// existed. A no-op once the library has caught up, since the pending query
+    /// comes back empty.</summary>
+    private async Task RunReverseGeocodeAsync(CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var geocoder = scope.ServiceProvider.GetRequiredService<Geo.ReverseGeocoder>();
+        if (!geocoder.IsAvailable) return;
+
+        var runner = scope.ServiceProvider.GetRequiredService<Geo.GeocodeBackfillRunner>();
+        var pending = await runner.PendingCountAsync(ct);
+        if (pending == 0) return;
+
+        Console.WriteLine($"[NIGHTLY] Reverse geocoding started ({pending} pending).");
+
+        try
+        {
+            var result = await runner.RunAsync(max: null, ct);
+            Console.WriteLine($"[NIGHTLY] Reverse geocoding done — processed:{result.Processed} matched:{result.Matched} pending:{result.Pending}.");
+
+            await NotifyAdminsAsync(
+                NotificationType.JobCompleted,
+                "Tarea nocturna: lugares",
+                $"Geocodificados {result.Processed} asset(s), {result.Matched} con lugar reconocido.",
+                ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] Reverse geocoding error: {ex.Message}");
+            await NotifyAdminsAsync(
+                NotificationType.JobFailed,
+                "Tarea nocturna: lugares",
+                $"Error geocodificando: {Truncate(ex.Message, 200)}",
+                ct);
+        }
     }
 
     /// <summary>Regenerates every user's Recuerdos feed. Per-user by necessity:

@@ -66,6 +66,8 @@ public class ApplicationDbContext : DbContext
     /// (IsDismissed) — same reasoning that makes Face a first-class entity.</summary>
     public DbSet<Memory> Memories { get; set; }
     public DbSet<MemoryAsset> MemoryAssets { get; set; }
+    /// <summary>GeoNames places, materialized on demand as photos are geocoded.</summary>
+    public DbSet<Place> Places { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -234,8 +236,33 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.AssetId).IsUnique();
+
+            // SetNull so re-importing a newer GeoNames release can retire a place
+            // without deleting the EXIF row that pointed at it.
+            entity.HasOne(e => e.Place)
+                .WithMany()
+                .HasForeignKey(e => e.PlaceId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.PlaceId);
+            // The backfill's resume query: "geolocated but never geocoded".
+            entity.HasIndex(e => e.GeocodedAt);
+
             entity.Property(e => e.DateTimeOriginal).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
             entity.Property(e => e.ExtractedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.GeocodedAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
+        });
+
+        // Configure Place entity (GeoNames populated place, created on demand).
+        modelBuilder.Entity<Place>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CountryCode).IsRequired().HasMaxLength(2);
+
+            // The natural key. Unique so a concurrent geocode can't insert the
+            // same city twice — the workers run in parallel over one library.
+            entity.HasIndex(e => e.GeonameId).IsUnique();
         });
 
         // Configure AssetThumbnail entity

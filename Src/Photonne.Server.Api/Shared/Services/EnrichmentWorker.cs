@@ -280,6 +280,12 @@ public class EnrichmentWorker : BackgroundService
                 if (existing != null) dbContext.AssetExifs.Remove(existing);
                 dbContext.AssetExifs.Add(exif);
 
+                // Reverse-geocode inline rather than as its own enrichment type:
+                // it's an in-process lookup against an index already in RAM, with
+                // no I/O and no model, so a separate task type, queue and
+                // *CompletedAt column would be pure ceremony around a microsecond.
+                await GeocodeAsync(sp, exif, ct);
+
                 // Set the display timestamp used by the timeline, gated by
                 // provenance: real EXIF replaces FileSystem/Inferred dates but
                 // never a Manual edit; the filesystem fallback (min of
@@ -510,6 +516,38 @@ public class EnrichmentWorker : BackgroundService
         _logger.LogInformation(
             "Migrated TaskSettings.FaceDetectionWorkers={Value} → TaskSettings.FaceRecognitionWorkers",
             legacyValue);
+    }
+
+    /// <summary>
+    /// Fills in <see cref="AssetExif.PlaceId"/> from the photo's coordinates.
+    ///
+    /// Sets <see cref="AssetExif.GeocodedAt"/> even when nothing is found — the
+    /// stamp means "we looked", not "we succeeded", which is what lets the
+    /// backfill skip a mid-Atlantic photo instead of retrying it every night.
+    /// It stays null when there's no dataset at all, so baking one in later
+    /// leaves every photo eligible.
+    ///
+    /// Never throws into the EXIF task: a missing place name must not fail an
+    /// extraction that otherwise worked.
+    /// </summary>
+    internal static async Task GeocodeAsync(IServiceProvider sp, AssetExif exif, CancellationToken ct)
+    {
+        var resolver = sp.GetRequiredService<Geo.PlaceResolver>();
+        if (!resolver.IsAvailable) return;
+        if (exif.Latitude is null || exif.Longitude is null) return;
+
+        try
+        {
+            var resolved = await resolver.ResolveAsync(exif.Latitude, exif.Longitude, ct);
+            exif.PlaceId = resolved.PlaceId;
+            exif.GeocodeDistanceMeters = resolved.DistanceMeters;
+            exif.GeocodedAt = DateTime.UtcNow;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GEO] Geocode failed for asset {exif.AssetId}: {ex.Message}");
+        }
     }
 
     private async Task<WorkerCounts> ReadWorkerCountsAsync(CancellationToken ct)

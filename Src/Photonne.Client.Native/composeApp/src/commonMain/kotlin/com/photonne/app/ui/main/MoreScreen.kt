@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.PhotonneVersion
+import com.photonne.app.data.models.Attribution
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_settings_title
@@ -99,7 +100,10 @@ fun MoreScreen(
     onOpenNotifications: () -> Unit,
     notificationsUnreadCount: Int = 0,
     onOpenAccountSettings: () -> Unit,
-    onOpenAdministration: (() -> Unit)? = null
+    onOpenAdministration: (() -> Unit)? = null,
+    /** Third-party data notices from the server, shown under the version. Empty
+     *  when the server bundles none — see [com.photonne.app.data.models.Attribution]. */
+    attributions: List<Attribution> = emptyList()
 ) {
     // Shortcuts grouped into titled sections (Gestión / Acciones) so the grid
     // reads cleanly instead of one ragged block; each section lays its own
@@ -262,6 +266,30 @@ fun MoreScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             )
+        }
+
+        // Third-party data credits. Not decoration: the server image bundles
+        // GeoNames' cities500 under CC BY 4.0, and redistributing it is only
+        // permitted because it's attributed. The notices are written by the
+        // server — it's the one that knows what it actually ships.
+        if (attributions.isNotEmpty()) {
+            item("attributions") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    for (attribution in attributions) {
+                        Text(
+                            text = attribution.notice,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
     }
 }
