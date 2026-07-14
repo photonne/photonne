@@ -619,6 +619,12 @@ interface PhotonneApi {
         cleanup: Boolean,
         physical: Boolean
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.DuplicatesStreamEvent>
+    suspend fun adminMaintenanceStream(
+        kind: String,
+        dryRun: Boolean = false
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MaintenanceStreamEvent>
+    suspend fun adminFaceClusteringStream():
+        kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MaintenanceStreamEvent>
 
     // Background task registry — lets the UI reconnect to a running task
     // after the user leaves and re-opens an admin screen (or the app).
@@ -636,6 +642,9 @@ interface PhotonneApi {
     suspend fun resumeDateRestoreTaskStream(
         id: String
     ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MetadataStreamEvent>
+    suspend fun resumeMaintenanceTaskStream(
+        id: String
+    ): kotlinx.coroutines.flow.Flow<com.photonne.app.data.models.MaintenanceStreamEvent>
 
     // Database backup / restore --------------------------------------------
     suspend fun adminDownloadBackup(level: String): com.photonne.app.data.models.AssetContentBytes
@@ -2815,6 +2824,54 @@ class PhotonneApiClient(
             }
         }
     }
+
+    override suspend fun adminMaintenanceStream(
+        kind: String,
+        dryRun: Boolean
+    ): Flow<com.photonne.app.data.models.MaintenanceStreamEvent> = flow {
+        client.prepareGet("$baseUrl/api/admin/maintenance/$kind/stream") {
+            disableStreamTimeouts()
+            parameter("dryRun", dryRun)
+        }.execute { response ->
+            ensureStreamSuccess(response, "Maintenance stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching {
+                    streamJson.decodeFromString(
+                        com.photonne.app.data.models.MaintenanceStreamEvent.serializer(),
+                        line
+                    )
+                }.getOrNull()?.let { emit(it) }
+            }
+        }
+    }
+
+    override suspend fun adminFaceClusteringStream():
+        Flow<com.photonne.app.data.models.MaintenanceStreamEvent> = flow {
+        client.prepareGet("$baseUrl/api/admin/maintenance/face-clustering/stream") {
+            disableStreamTimeouts()
+        }.execute { response ->
+            ensureStreamSuccess(response, "Face clustering stream failed")
+            val channel = response.bodyAsChannel()
+            while (true) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.isBlank()) continue
+                runCatching {
+                    streamJson.decodeFromString(
+                        com.photonne.app.data.models.MaintenanceStreamEvent.serializer(),
+                        line
+                    )
+                }.getOrNull()?.let { emit(it) }
+            }
+        }
+    }
+
+    override suspend fun resumeMaintenanceTaskStream(
+        id: String
+    ): Flow<com.photonne.app.data.models.MaintenanceStreamEvent> =
+        streamJsonLines("$baseUrl/api/tasks/$id/stream")
 
     override suspend fun adminDownloadBackup(
         level: String

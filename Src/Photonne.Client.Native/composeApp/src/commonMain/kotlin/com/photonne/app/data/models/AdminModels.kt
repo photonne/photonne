@@ -305,6 +305,22 @@ data class DuplicatesStreamEvent(
     val taskId: String? = null
 )
 
+/**
+ * Per-line JSON body streamed by the admin maintenance tasks
+ * (`GET /api/admin/maintenance/{kind}/stream` and `.../face-clustering/stream`).
+ * `processed`/`affected` carry the running counts that the legacy synchronous
+ * endpoint only returned once, at the end, in [MaintenanceTaskResult].
+ */
+@Serializable
+data class MaintenanceStreamEvent(
+    val message: String = "",
+    val percentage: Double = 0.0,
+    val processed: Int = 0,
+    val affected: Int = 0,
+    val isCompleted: Boolean = false,
+    val taskId: String? = null
+)
+
 // Mirrors the anonymous projection returned by `GET /api/tasks` on the
 // server (BackgroundTasksEndpoint.cs). The server keeps finished tasks
 // for ~1h so clients can reconnect to a buffered stream after the user

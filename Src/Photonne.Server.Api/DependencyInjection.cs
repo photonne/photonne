@@ -34,6 +34,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<CaptureDateInferenceService>();
         builder.Services.AddScoped<ThumbnailGeneratorService>();
         builder.Services.AddScoped<MediaRecognitionService>();
+        builder.Services.AddScoped<Photonne.Server.Api.Features.Maintenance.MaintenanceService>();
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddScoped<UserStorageService>();
         builder.Services.AddSingleton<EnrichmentQueue>();

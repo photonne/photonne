@@ -17,6 +17,7 @@ import com.photonne.app.data.models.GlobalReclusterResponse
 import com.photonne.app.data.models.IndexStreamEvent
 import com.photonne.app.data.models.LibraryPermissionDto
 import com.photonne.app.data.models.LibraryScanProgress
+import com.photonne.app.data.models.MaintenanceStreamEvent
 import com.photonne.app.data.models.MaintenanceTaskResult
 import com.photonne.app.data.models.MetadataStreamEvent
 import com.photonne.app.data.models.MlPendingTotalResponse
@@ -236,6 +237,14 @@ class AdminRepository(private val api: PhotonneApi) {
         physical: Boolean
     ): Flow<DuplicatesStreamEvent> = api.adminDuplicatesStream(cleanup = cleanup, physical = physical)
 
+    suspend fun maintenanceStream(
+        kind: String,
+        dryRun: Boolean = false
+    ): Flow<MaintenanceStreamEvent> = api.adminMaintenanceStream(kind, dryRun)
+
+    suspend fun faceClusteringStream(): Flow<MaintenanceStreamEvent> =
+        api.adminFaceClusteringStream()
+
     // --- Background task registry ---
 
     suspend fun listBackgroundTasks(): List<BackgroundTaskDto> = api.listBackgroundTasks()
@@ -264,6 +273,9 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun resumeDateRestoreTaskStream(id: String): Flow<MetadataStreamEvent> =
         api.resumeDateRestoreTaskStream(id)
+
+    suspend fun resumeMaintenanceTaskStream(id: String): Flow<MaintenanceStreamEvent> =
+        api.resumeMaintenanceTaskStream(id)
 
     // --- Backup / restore ---
 

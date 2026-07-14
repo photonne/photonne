@@ -482,13 +482,21 @@ class AdminRunTasksViewModel(
         _state.update { it.copy(dateRestoreDryRun = value) }
     }
 
-    /** Triggers the face-recognition clustering pass server-side
-     *  (`POST /api/admin/maintenance/face-clustering/run`). Independent
-     *  from the face backfill loop — clustering operates on already-
-     *  detected faces, so it makes sense as a separate hub action. */
+    /** Triggers the face-recognition clustering pass server-side as a
+     *  background task (`GET /api/admin/maintenance/face-clustering/stream`).
+     *  Fire-and-forget: opens the stream just long enough to register the
+     *  task entry, then drops the connection — the worker keeps running on
+     *  `Task.Run` and surfaces in `/api/tasks`. This replaces the old
+     *  synchronous POST that iterated every owner inline and tripped the
+     *  client's socket timeout on large libraries. Independent from the face
+     *  backfill loop — clustering operates on already-detected faces. */
     fun runFaceClustering() {
         viewModelScope.launch {
-            runCatching { repository.runFaceClustering() }
+            runCatching {
+                withTimeoutOrNull(TriggerTimeoutMs) {
+                    repository.faceClusteringStream().take(1).collect {}
+                }
+            }
             refresh(showLoading = false)
         }
     }
