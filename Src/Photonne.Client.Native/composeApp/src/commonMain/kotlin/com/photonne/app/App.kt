@@ -2,7 +2,11 @@
 
 package com.photonne.app
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -775,6 +779,59 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
     }
 
+    // ---- Horizontal swipe between the four primary tabs ----
+    // The bottom-nav tabs, in bar order, become pages of a HorizontalPager so a
+    // left/right drag glides between Fotos · Álbumes · Carpetas · Más. Buscar is
+    // not a nav tab (it has no page); it opens as an overlay like the detail
+    // screens and subscreens do.
+    val navTabs = remember {
+        listOf(MainTab.Timeline, MainTab.Albums, MainTab.Folders, MainTab.More)
+    }
+    val mainPagerState = rememberPagerState(
+        initialPage = navTabs.indexOf(selectedTab).coerceAtLeast(0),
+        pageCount = { navTabs.size }
+    )
+    // Only allow the horizontal tab-swipe on a bare top-level tab: never while a
+    // detail, Buscar, a subscreen or a multi-select session owns the screen —
+    // those render as an opaque overlay and take the horizontal gesture (paging
+    // through photos, panning a map, selecting items) for themselves.
+    val canSwipeTabs = moreSubscreen == null &&
+        selectedTab != MainTab.Search &&
+        selectedAlbum == null &&
+        selectedFolder == null &&
+        !timelineState.isSelectionActive &&
+        !albumsState.isSelectionActive &&
+        !foldersState.isSelectionActive
+    // The tab whose chrome (top bar + immersive edge-to-edge padding) should show
+    // *right now*. While a swipe is in flight we follow the pager's most-visible
+    // page (which flips at the half-way point) rather than `selectedTab` (which
+    // only updates once the swipe settles): otherwise the incoming page snaps its
+    // top padding on landing and the grid jumps up by the app-bar height. Any
+    // overlay (detail / Buscar / subscreen / selection) pins it back to
+    // selectedTab so those never inherit a neighbour's chrome mid-drag.
+    val chromeTab = if (canSwipeTabs) {
+        navTabs.getOrNull(mainPagerState.currentPage) ?: selectedTab
+    } else {
+        selectedTab
+    }
+    // Whether an opaque overlay (drill-down / Buscar / More subscreen) is covering
+    // the pager base layer. When true the overlay must paint its own solid
+    // background, otherwise the tab body underneath shows through — the pager
+    // keeps all top-level bodies composed behind it.
+    val overlayVisible = moreSubscreen != null ||
+        (selectedTab == MainTab.Albums && selectedAlbum != null) ||
+        (selectedTab == MainTab.Folders && selectedFolder != null) ||
+        selectedTab == MainTab.Search
+    // The pager runs edge-to-edge at the top whenever a bare top-level tab is
+    // showing: each page then paints its own top bar inside itself (so it slides
+    // with the content, no shared Scaffold bar snapping the grid down). It drops
+    // back to a padded Scaffold bar only while a selection is active on the
+    // visible tab (or an overlay is up) — those need the docked Scaffold bar.
+    val pagerBareTop = !overlayVisible &&
+        !(chromeTab == MainTab.Timeline && timelineState.isSelectionActive) &&
+        !(chromeTab == MainTab.Albums && albumsState.isSelectionActive) &&
+        !(chromeTab == MainTab.Folders && foldersState.isSelectionActive)
+
     val topBar: @Composable () -> Unit = {
         when {
             selectedTab == MainTab.Timeline &&
@@ -819,11 +876,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 }
             }
-            selectedTab == MainTab.Albums && moreSubscreen == null -> AlbumsListTopBar(
-                onOpenFilters = { showAlbumsFilters = true },
-                isSearchActive = albumsState.isSearchActive,
-                onToggleSearch = albumsViewModel::toggleSearch
-            )
+            // (Bare Álbumes list bar now lives inside the pager page so it slides
+            // with the content — see the pager's MainTab.Albums branch.)
             selectedTab == MainTab.Folders && selectedFolder != null &&
                 folderDetailState.isSelectionActive ->
                 AssetSelectionTopBar(
@@ -898,19 +952,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                 }
             }
-            selectedTab == MainTab.Folders && moreSubscreen == null ->
-                FoldersListTopBar(
-                    onOpenFilters = { showFoldersFilters = true },
-                    isSearchActive = foldersState.isSearchActive,
-                    onToggleSearch = foldersViewModel::toggleSearch,
-                    // Create a root folder — hidden on the Libraries tab (you
-                    // don't create folders inside external-library mirrors).
-                    onCreateFolder = if (
-                        foldersState.selectedTab != com.photonne.app.ui.folder.FoldersTab.Libraries
-                    ) {
-                        { showCreateFolder = true }
-                    } else null
-                )
+            // (Bare Carpetas list bar now lives inside the pager page.)
             selectedTab == MainTab.Search && searchState.isSelectionActive ->
                 AssetSelectionTopBar(
                     selectedCount = searchState.selection.size,
@@ -1297,13 +1339,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onBack = { moreSubscreen = parent },
                 )
             }
-            selectedTab == MainTab.More -> MoreTopBar(
-                onOpenUpload = { moreSubscreen = MoreSubscreen.Upload }
-            )
             else -> {
-                // Immersive timeline: the Fotos grid bleeds to the top of the
-                // screen and TimelineScreen renders its own FloatingTimelineTopBar
-                // overlay (auto-hiding on scroll), so no Scaffold top bar here.
+                // Every bare top-level tab now renders its own top bar *inside*
+                // its pager page (Fotos its floating bar; Álbumes/Carpetas/Más a
+                // docked bar in a Column) so the bar slides with the content and
+                // the Scaffold reserves no shared top space — no top bar here.
             }
         }
     }
@@ -1628,24 +1668,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
 
     // Which primary tab is currently showing its immersive scrollable list (no
     // open detail, no selection, no overriding subscreen). Each drives the
-    // shared bottom nav's hide-on-scroll + edge-to-edge behaviour.
-    val timelineImmersive = selectedTab == MainTab.Timeline &&
+    // shared bottom nav's hide-on-scroll + edge-to-edge behaviour. Keyed off
+    // [chromeTab] so the padding tracks the swipe instead of snapping on settle.
+    val timelineImmersive = chromeTab == MainTab.Timeline &&
         moreSubscreen == null &&
         !timelineState.isSelectionActive
-    val albumsImmersive = selectedTab == MainTab.Albums &&
+    val albumsImmersive = chromeTab == MainTab.Albums &&
         moreSubscreen == null &&
         selectedAlbum == null &&
         !albumsState.isSelectionActive &&
         // "Mis enlaces" is a different screen with its own scroller; keep the
         // nav docked there rather than half-wiring it.
         albumsState.selectedTab != com.photonne.app.ui.album.AlbumsTab.MyLinks
-    val foldersImmersive = selectedTab == MainTab.Folders &&
+    val foldersImmersive = chromeTab == MainTab.Folders &&
         moreSubscreen == null &&
         selectedFolder == null &&
         !foldersState.isSelectionActive
     // Inside an open album / folder: the photo grid gets the same immersive
     // treatment (nav hides on scroll, grid bleeds behind it), unless a
-    // selection is active (which shows its own bottom action bar).
+    // selection is active (which shows its own bottom action bar). These are
+    // overlays, so they stay keyed off selectedTab.
     val albumDetailImmersive = selectedTab == MainTab.Albums &&
         moreSubscreen == null &&
         selectedAlbum != null &&
@@ -1656,6 +1698,38 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         !folderDetailState.isSelectionActive &&
         !folderDetailState.isSubfolderSelectionActive
 
+    // Shared tab-switch side effects, run by both a nav tap and a settled swipe:
+    // drop any open subscreen / person layer, collapse an open detail when the
+    // same tab is re-selected, and clear the other tabs' multi-selection.
+    val switchTab: (MainTab) -> Unit = { tab ->
+        moreSubscreen = null
+        selectedPerson = null
+        if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
+        if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
+            selectedFolder = null
+            folderBackStack.clear()
+        }
+        if (tab != MainTab.Albums) albumsViewModel.clearSelection()
+        if (tab != MainTab.Folders) foldersViewModel.clearSelection()
+        selectedTab = tab
+    }
+    // Tap on a nav tab (or any programmatic tab change) glides the pager over.
+    LaunchedEffect(selectedTab) {
+        val idx = navTabs.indexOf(selectedTab)
+        if (idx >= 0 && mainPagerState.currentPage != idx) {
+            mainPagerState.animateScrollToPage(idx)
+        }
+    }
+    // A settled swipe adopts that page as the active tab, running the same side
+    // effects a tap would. Guarded so a programmatic settle (or being parked on
+    // Buscar) never fights the effect above.
+    LaunchedEffect(mainPagerState.settledPage) {
+        val tab = navTabs.getOrNull(mainPagerState.settledPage)
+        if (tab != null && tab != selectedTab && selectedTab in navTabs) {
+            switchTab(tab)
+        }
+    }
+
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(
         LocalSharedTransitionScope provides this,
@@ -1664,29 +1738,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     Box(modifier = Modifier.fillMaxSize()) {
         MainScaffold(
             selectedTab = selectedTab,
-            onTabSelected = { tab ->
-                // Tapping any bottom-nav tab dismisses an open subscreen layer
-                // (People / Map / Explore facets, or any More destination) so
-                // it never lingers over the newly selected tab.
-                moreSubscreen = null
-                selectedPerson = null
-                if (tab == MainTab.Albums && selectedTab == MainTab.Albums) selectedAlbum = null
-                if (tab == MainTab.Folders && selectedTab == MainTab.Folders) {
-                    selectedFolder = null
-                    folderBackStack.clear()
-                }
-                if (tab != MainTab.Albums) albumsViewModel.clearSelection()
-                if (tab != MainTab.Folders) foldersViewModel.clearSelection()
-                selectedTab = tab
-            },
+            // Tapping any bottom-nav tab also dismisses an open subscreen layer
+            // (People / Map / Explore facets, or any More destination) so it
+            // never lingers over the newly selected tab — see [switchTab].
+            onTabSelected = { tab -> switchTab(tab) },
             topBar = topBar,
             bottomBar = bottomBar,
             floatingActionButton = floatingActionButton,
             moreTabUnreadCount = notificationsState.unreadCount,
-            // Immersive Fotos: let the grid draw under the status bar (its own
-            // floating top bar handles the inset). Only Fotos goes edge-to-edge
-            // at the top; Álbumes/Carpetas keep their solid top bar.
-            edgeToEdgeTop = timelineImmersive,
+            // Every bare pager tab draws to the top of the screen and paints its
+            // own top bar inside its page (Fotos' floating bar; Álbumes/Carpetas/
+            // Más a docked bar) so the bar travels with the swipe. The Scaffold
+            // only reserves top space again for a selection/overlay bar.
+            edgeToEdgeTop = pagerBareTop,
             // On the immersive tabs the bottom nav hides while scrolling down
             // (driven by each screen's chrome), and always shows elsewhere.
             bottomBarVisible = when {
@@ -1702,14 +1766,22 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             edgeToEdgeBottom = timelineImmersive || albumsImmersive || foldersImmersive ||
                 albumDetailImmersive || folderDetailImmersive
         ) {
-            // Subscreens (People/Map/Explore facets, plus all the More-menu
-            // destinations) render as a modal layer over whatever tab is
-            // active: opening "Personas" from the Albums tab keeps the bottom
-            // nav on Álbumes and returns there on back. Each primary tab is
-            // therefore guarded with `moreSubscreen == null`, and the `else`
-            // renders the active subscreen (or the More grid when null).
-            when {
-                selectedTab == MainTab.Timeline && moreSubscreen == null -> TimelineScreen(
+            Box(modifier = Modifier.fillMaxSize()) {
+            // Base layer: the four primary tabs live in a HorizontalPager so a
+            // left/right swipe glides between Fotos · Álbumes · Carpetas · Más
+            // (continuous drag; the neighbour page peeks in under the finger).
+            HorizontalPager(
+                state = mainPagerState,
+                userScrollEnabled = canSwipeTabs,
+                // Keep the immediate-neighbour pages composed so a swipe (or a
+                // return to a tab) doesn't dispose + rebuild the heavy Timeline
+                // grid — that rebuild is what reset the chrome and re-fetched
+                // buckets, reading as a jump + flash.
+                beyondViewportPageCount = 1,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (navTabs.getOrNull(page)) {
+                    MainTab.Timeline -> TimelineScreen(
                         state = timelineState,
                         onOpenAsset = { mergedItems, mergedIndex ->
                             assetDetail = AssetDetailContext(
@@ -1749,39 +1821,142 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onSeeAllMemories = { moreSubscreen = MoreSubscreen.ExploreMemories }
                     )
+                    MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
+                        // Docked top bar lives *inside* the page so it slides with
+                        // the content during a swipe, instead of a shared Scaffold
+                        // bar that pops in a frame late and shoves the grid down.
+                        // Hidden while a card is selected — the Scaffold shows the
+                        // selection bar then (and the page is padded to clear it).
+                        if (!albumsState.isSelectionActive) {
+                            AlbumsListTopBar(
+                                onOpenFilters = { showAlbumsFilters = true },
+                                isSearchActive = albumsState.isSearchActive,
+                                onToggleSearch = albumsViewModel::toggleSearch
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            AlbumsListScreen(
+                                onAlbumClick = { album ->
+                                    if (albumsState.isSelectionActive) {
+                                        if (albumsState.selectedAlbumId == album.id) {
+                                            albumsViewModel.clearSelection()
+                                        } else {
+                                            albumsViewModel.selectAlbum(album.id)
+                                        }
+                                    } else {
+                                        selectedAlbum = album
+                                    }
+                                },
+                                onAlbumLongPress = { album ->
+                                    albumsViewModel.selectAlbum(album.id)
+                                },
+                                onCreateAlbum = { showCreateAlbum = true },
+                                // Explorar cards open their screen as a modal layer
+                                // over the Albums tab (no tab switch) so back
+                                // returns here and the bottom nav stays on Álbumes.
+                                onOpenPeople = {
+                                    selectedPerson = null
+                                    moreSubscreen = MoreSubscreen.People
+                                },
+                                onOpenMap = { moreSubscreen = MoreSubscreen.Map },
+                                onOpenScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
+                                onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
+                                immersive = albumsImmersive,
+                                onChromeVisibleChange = { albumsChromeVisible = it }
+                            )
+                        }
+                    }
+                    MainTab.Folders -> Column(modifier = Modifier.fillMaxSize()) {
+                        if (!foldersState.isSelectionActive) {
+                            FoldersListTopBar(
+                                onOpenFilters = { showFoldersFilters = true },
+                                isSearchActive = foldersState.isSearchActive,
+                                onToggleSearch = foldersViewModel::toggleSearch,
+                                // Create a root folder — hidden on the Libraries
+                                // tab (no folders inside external-library mirrors).
+                                onCreateFolder = if (
+                                    foldersState.selectedTab !=
+                                        com.photonne.app.ui.folder.FoldersTab.Libraries
+                                ) {
+                                    { showCreateFolder = true }
+                                } else null
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            com.photonne.app.ui.folder.FoldersListScreen(
+                                onFolderClick = { folder ->
+                                    if (foldersState.isSelectionActive) {
+                                        if (foldersState.selectedFolderId == folder.id) {
+                                            foldersViewModel.clearSelection()
+                                        } else {
+                                            foldersViewModel.selectFolder(folder.id)
+                                        }
+                                    } else {
+                                        selectedFolder = folder
+                                    }
+                                },
+                                onFolderLongPress = { folder ->
+                                    foldersViewModel.selectFolder(folder.id)
+                                },
+                                onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                                immersive = foldersImmersive,
+                                onChromeVisibleChange = { foldersChromeVisible = it }
+                            )
+                        }
+                    }
+                    else -> Column(modifier = Modifier.fillMaxSize()) {
+                        MoreTopBar(
+                            onOpenUpload = { moreSubscreen = MoreSubscreen.Upload }
+                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            MoreScreen(
+                                user = user.user,
+                                onLogout = onLogout,
+                                onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
+                                onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
+                                onOpenTrash = {
+                                    trashTab = com.photonne.app.ui.library.TrashTab.Personal
+                                    moreSubscreen = MoreSubscreen.Trash
+                                },
+                                onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
+                                onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
+                                onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                                onOpenNotifications = {
+                                    moreSubscreen = MoreSubscreen.Notifications
+                                },
+                                notificationsUnreadCount = notificationsState.unreadCount,
+                                onOpenAccountSettings = {
+                                    moreSubscreen = MoreSubscreen.AccountSettings
+                                },
+                                onOpenAdministration = if (
+                                    user.user.role.equals("Admin", ignoreCase = true)
+                                ) {
+                                    { moreSubscreen = MoreSubscreen.Administration }
+                                } else {
+                                    null
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            // Overlay layer, drawn over the pager: drill-downs (album/folder
+            // detail), Buscar and every More subscreen. Rendered inside an opaque
+            // full-bleed Box only while one is active, so it fully hides the
+            // pager base (which keeps every top-level body composed behind it) —
+            // without it the tab underneath shows through and the two mix.
+            if (overlayVisible) Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+            when {
+                selectedTab == MainTab.Timeline && moreSubscreen == null -> {
+                    // shown by the pager base layer
+                }
                 selectedTab == MainTab.Albums && moreSubscreen == null -> {
                     val openedAlbum = selectedAlbum
-                    if (openedAlbum == null) {
-                        AlbumsListScreen(
-                            onAlbumClick = { album ->
-                                if (albumsState.isSelectionActive) {
-                                    if (albumsState.selectedAlbumId == album.id) {
-                                        albumsViewModel.clearSelection()
-                                    } else {
-                                        albumsViewModel.selectAlbum(album.id)
-                                    }
-                                } else {
-                                    selectedAlbum = album
-                                }
-                            },
-                            onAlbumLongPress = { album ->
-                                albumsViewModel.selectAlbum(album.id)
-                            },
-                            onCreateAlbum = { showCreateAlbum = true },
-                            // Explorar cards open their screen as a modal layer
-                            // over the Albums tab (no tab switch) so back returns
-                            // here and the bottom nav stays on Álbumes.
-                            onOpenPeople = {
-                                selectedPerson = null
-                                moreSubscreen = MoreSubscreen.People
-                            },
-                            onOpenMap = { moreSubscreen = MoreSubscreen.Map },
-                            onOpenScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
-                            onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
-                            immersive = albumsImmersive,
-                            onChromeVisibleChange = { albumsChromeVisible = it }
-                        )
-                    } else {
+                    if (openedAlbum != null) {
                         AlbumDetailScreen(
                             album = openedAlbum,
                             onItemClick = { index ->
@@ -1820,27 +1995,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
                 selectedTab == MainTab.Folders && moreSubscreen == null -> {
                     val openedFolder = selectedFolder
-                    if (openedFolder == null) {
-                        com.photonne.app.ui.folder.FoldersListScreen(
-                            onFolderClick = { folder ->
-                                if (foldersState.isSelectionActive) {
-                                    if (foldersState.selectedFolderId == folder.id) {
-                                        foldersViewModel.clearSelection()
-                                    } else {
-                                        foldersViewModel.selectFolder(folder.id)
-                                    }
-                                } else {
-                                    selectedFolder = folder
-                                }
-                            },
-                            onFolderLongPress = { folder ->
-                                foldersViewModel.selectFolder(folder.id)
-                            },
-                            onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox },
-                            immersive = foldersImmersive,
-                            onChromeVisibleChange = { foldersChromeVisible = it }
-                        )
-                    } else {
+                    if (openedFolder != null) {
                         com.photonne.app.ui.folder.FolderDetailScreen(
                             folderId = openedFolder.id,
                             folderName = openedFolder.name.ifBlank { openedFolder.path },
@@ -1917,33 +2072,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 )
                 else -> when (moreSubscreen) {
-                    null -> MoreScreen(
-                        user = user.user,
-                        onLogout = onLogout,
-                        onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
-                        onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
-                        onOpenTrash = {
-                            trashTab = com.photonne.app.ui.library.TrashTab.Personal
-                            moreSubscreen = MoreSubscreen.Trash
-                        },
-                        onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
-                        onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
-                        onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
-                        onOpenNotifications = {
-                            moreSubscreen = MoreSubscreen.Notifications
-                        },
-                        notificationsUnreadCount = notificationsState.unreadCount,
-                        onOpenAccountSettings = {
-                            moreSubscreen = MoreSubscreen.AccountSettings
-                        },
-                        onOpenAdministration = if (
-                            user.user.role.equals("Admin", ignoreCase = true)
-                        ) {
-                            { moreSubscreen = MoreSubscreen.Administration }
-                        } else {
-                            null
-                        }
-                    )
+                    null -> {
+                        // The More grid is shown by the pager base layer; a
+                        // non-null subscreen renders its screen on top.
+                    }
                     MoreSubscreen.CreateSmartAlbum -> com.photonne.app.ui.album.smart.SmartAlbumEditorScreen(
                         onBack = { moreSubscreen = null },
                         onCreated = { newAlbum ->
@@ -2618,6 +2750,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             viewModel = adminBackupViewModel
                         )
                 }
+            }
+            }
             }
         }
 

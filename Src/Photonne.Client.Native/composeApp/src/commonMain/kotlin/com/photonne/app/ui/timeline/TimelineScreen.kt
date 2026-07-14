@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -165,7 +166,10 @@ fun TimelineScreen(
                 gridState.firstVisibleItemScrollOffset == 0
         }
     }
-    var chromeVisible by remember { mutableStateOf(true) }
+    // rememberSaveable so the pager keeps the chrome's shown/hidden state when
+    // this page scrolls off and back — otherwise it reset to `true` on return,
+    // re-firing the fade + the onChromeVisibleChange hop (the "jump/flash").
+    var chromeVisible by rememberSaveable { mutableStateOf(true) }
     // Small dead-zone so micro-scrolls and fling jitter don't flip the chrome.
     val chromeThresholdPx = with(LocalDensity.current) { 10.dp.toPx() }
     LaunchedEffect(gridState, chromeThresholdPx) {
