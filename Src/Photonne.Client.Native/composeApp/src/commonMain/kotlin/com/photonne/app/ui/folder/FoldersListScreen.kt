@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -85,7 +82,7 @@ import com.photonne.app.resources.folders_shared_empty
 import com.photonne.app.resources.folders_tab_libraries
 import com.photonne.app.resources.folders_tab_personal
 import com.photonne.app.resources.folders_tab_shared
-import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -280,10 +277,7 @@ private fun FolderListContent(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    val reservedBottom = if (immersive) {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-            CompactNavBarContentHeight
-    } else null
+    val reservedBottom = if (immersive) floatingNavBarReservedHeight() else null
     when {
         isLoading && folders.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -367,10 +361,7 @@ private fun LibrariesContent(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    val reservedBottom = if (immersive) {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-            CompactNavBarContentHeight
-    } else null
+    val reservedBottom = if (immersive) floatingNavBarReservedHeight() else null
     when {
         isLoading && libraries.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

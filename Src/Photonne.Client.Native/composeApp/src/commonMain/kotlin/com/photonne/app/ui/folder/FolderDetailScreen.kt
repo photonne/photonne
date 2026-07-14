@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,7 +43,7 @@ import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
 import com.photonne.app.ui.grid.AssetGrid
-import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -84,11 +81,8 @@ fun FolderDetailScreen(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    val gridContentPadding = if (immersive) {
-        PaddingValues(
-            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-                CompactNavBarContentHeight
-        )
+    val immersiveContentPadding = if (immersive) {
+        PaddingValues(bottom = floatingNavBarReservedHeight())
     } else PaddingValues(0.dp)
 
     LaunchedEffect(folderId) { viewModel.open(folderId, folderName, parentFolderId) }
@@ -119,20 +113,29 @@ fun FolderDetailScreen(
                     subtitle = stringResource(Res.string.folders_empty_subtitle)
                 )
             state.items.isEmpty() && state.subFolders.isNotEmpty() ->
+                // Sin rejilla, esta lista es la que llega al fondo de la
+                // pantalla: reserva ella el hueco de la nav flotante, que aquí
+                // además no se esconde al hacer scroll (ver gridActive).
                 SubfolderList(
                     subFolders = state.subFolders,
                     selectedSubfolderId = state.selectedSubfolderId,
                     onSubfolderClick = onSubfolderClick,
-                    onSubfolderLongPress = onSubfolderLongPress
+                    onSubfolderLongPress = onSubfolderLongPress,
+                    contentPadding = immersiveContentPadding
                 )
             else -> Column(modifier = Modifier.fillMaxSize()) {
                 if (state.subFolders.isNotEmpty()) {
+                    // Esta lista se queda con toda la altura del Column, así que
+                    // en la práctica es ella la que llega al fondo: reserva el
+                    // hueco de la nav flotante o sus últimas filas quedan
+                    // debajo, sin scroll con el que rescatarlas.
                     SubfolderList(
                         subFolders = state.subFolders,
                         selectedSubfolderId = state.selectedSubfolderId,
                         onSubfolderClick = onSubfolderClick,
                         onSubfolderLongPress = onSubfolderLongPress,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = immersiveContentPadding
                     )
                     HorizontalDivider()
                 }
@@ -140,7 +143,7 @@ fun FolderDetailScreen(
                     items = state.items,
                     baseUrl = apiBaseUrl,
                     gridState = gridState,
-                    contentPadding = gridContentPadding,
+                    contentPadding = immersiveContentPadding,
                     onItemClick = onItemClick,
                     onItemLongClick = onItemLongClick,
                     selectedIds = state.selection,
@@ -157,10 +160,12 @@ private fun SubfolderList(
     selectedSubfolderId: String?,
     onSubfolderClick: (FolderSummary) -> Unit,
     onSubfolderLongPress: (FolderSummary) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     LazyColumn(
         modifier = modifier,
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         items(subFolders, key = { it.id }) { folder ->

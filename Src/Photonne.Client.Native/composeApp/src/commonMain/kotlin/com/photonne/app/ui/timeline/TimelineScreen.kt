@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -81,7 +80,7 @@ import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineRowEntry
-import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.FloatingTimelineTopBar
 import com.photonne.app.ui.main.TimelineTopBar
 import com.photonne.app.ui.grid.assetCellKey
@@ -215,10 +214,9 @@ fun TimelineScreen(
     // and the lateral scrubber starts below the status-bar icons.
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val reservedTop = statusBarTop + 64.dp
-    // The grid draws full-bleed behind the bottom nav; reserve the bar's height
-    // (content + system inset) at the scroll end so the last row still clears it.
-    val reservedBottom = WindowInsets.navigationBars.asPaddingValues()
-        .calculateBottomPadding() + CompactNavBarContentHeight
+    // The grid draws full-bleed behind the floating bottom nav; reserve the bar's
+    // full height at the scroll end so the last row still clears it.
+    val reservedBottom = floatingNavBarReservedHeight()
 
     val zoomStore: TimelineZoomStore = koinInject()
     val zoomLevel by zoomStore.value.collectAsState()

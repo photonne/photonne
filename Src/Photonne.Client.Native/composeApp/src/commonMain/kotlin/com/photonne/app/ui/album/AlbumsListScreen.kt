@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -88,7 +85,7 @@ import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.map_title
 import com.photonne.app.resources.people_title
-import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -259,10 +256,7 @@ private fun AlbumsContent(
     }
     // Reserve the bottom nav's height at the scroll end so the last row clears
     // it while the grid draws full-bleed behind the (overlaid) bar.
-    val reservedBottom = if (immersive) {
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-            CompactNavBarContentHeight
-    } else null
+    val reservedBottom = if (immersive) floatingNavBarReservedHeight() else null
     when (state.viewMode) {
         AlbumViewMode.Grid -> LazyVerticalGrid(
             state = gridState,

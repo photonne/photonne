@@ -1,22 +1,31 @@
 package com.photonne.app.ui.main
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -79,6 +88,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,10 +97,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -169,6 +182,7 @@ import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
 import com.photonne.app.resources.timeline_device_loading
 import com.photonne.app.resources.upload_title
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.theme.photonneLogoPainter
 import kotlinx.coroutines.launch
@@ -221,25 +235,28 @@ fun MainScaffold(
         topBar = topBar,
         bottomBar = {
             var barHeightPx by remember { mutableStateOf(0) }
-            // Slide *and* fade in one gentle tween so the bar dissolves away
-            // instead of snapping off-screen (matches the top chrome's fade).
+            // The bar only slides — no fade. Fading it out mid-slide read as a
+            // cut rather than as movement, so the capsule now travels the whole
+            // way out on a spring, which decelerates naturally instead of
+            // running a fixed curve to a hard stop.
+            //
+            // It travels a bit past its own height because the capsule's shadow
+            // draws *outside* its bounds: stopping at exactly barHeightPx would
+            // park that shadow on the screen edge as a faint halo (the alpha
+            // used to hide it).
+            val shadowSlackPx = with(LocalDensity.current) { 12.dp.toPx() }
             val offsetY by animateFloatAsState(
-                targetValue = if (bottomBarVisible) 0f else barHeightPx.toFloat(),
-                animationSpec = tween(durationMillis = 280),
+                targetValue = if (bottomBarVisible) 0f else barHeightPx + shadowSlackPx,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
                 label = "bottomBarOffset"
-            )
-            val barAlpha by animateFloatAsState(
-                targetValue = if (bottomBarVisible) 1f else 0f,
-                animationSpec = tween(durationMillis = 280),
-                label = "bottomBarAlpha"
             )
             Box(
                 modifier = Modifier
                     .onSizeChanged { barHeightPx = it.height }
-                    .graphicsLayer {
-                        translationY = offsetY
-                        alpha = barAlpha
-                    }
+                    .graphicsLayer { translationY = offsetY }
             ) {
                 resolvedBottomBar()
             }
@@ -263,11 +280,36 @@ fun MainScaffold(
     }
 }
 
-// Altura del contenido de la barra inferior (sin contar el inset del sistema).
-// Material3 usa 80.dp por defecto; la compactamos para que se coma menos pantalla.
-// Público para que el timeline inmersivo reserve exactamente este alto al final
-// de su rejilla (la barra flota por encima a sangre completa).
-internal val CompactNavBarContentHeight = 72.dp
+// Altura del contenido de la barra inferior (sin contar el inset del sistema ni
+// los márgenes de la cápsula). Material3 usa 80.dp por defecto; la compactamos
+// para que se coma menos pantalla.
+private val CompactNavBarContentHeight = 64.dp
+
+// Márgenes que despegan la cápsula de los bordes de la pantalla.
+private val FloatingNavBarHorizontalMargin = 12.dp
+private val FloatingNavBarBottomMargin = 8.dp
+// Aire entre el final del contenido y el borde de la cápsula. Reservar solo su
+// altura exacta deja el último elemento pegado debajo: como la cápsula es
+// translúcida y su sombra se derrama hacia arriba, eso se lee como "tapado"
+// aunque técnicamente quede libre.
+private val FloatingNavBarContentGap = 12.dp
+// Cápsula completa, a juego con la píldora flotante del timeline.
+private val FloatingNavBarShape = RoundedCornerShape(percent = 50)
+// Aire entre el borde de la cápsula y el sombreado del elemento activo. Deja el
+// pill del ítem en 48.dp de alto: el mínimo táctil, que es el que manda aquí.
+private val FloatingNavItemMargin = 8.dp
+
+/**
+ * Hueco que debe reservar al final de su scroll una pantalla que dibuja a
+ * sangre por debajo de la nav flotante: todo lo que ocupa la cápsula (inset del
+ * sistema + su margen + su contenido) más un respiro, para que el último
+ * elemento no quede lamiendo el borde de la barra.
+ */
+@Composable
+internal fun floatingNavBarReservedHeight(): Dp =
+    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+        FloatingNavBarBottomMargin + CompactNavBarContentHeight +
+        FloatingNavBarContentGap
 
 @Composable
 private fun MainNavigationBar(
@@ -275,98 +317,152 @@ private fun MainNavigationBar(
     onTabSelected: (MainTab) -> Unit,
     moreTabUnreadCount: Int = 0
 ) {
-    val containerColor = NavigationBarDefaults.containerColor
-    // Elemento activo con un sombreado gris neutro que contrasta según el tema
-    // (claro/oscuro), en vez del color primary de la app.
-    val itemColors = NavigationBarItemDefaults.colors(
-        indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-        selectedIconColor = MaterialTheme.colorScheme.onSurface,
-        selectedTextColor = MaterialTheme.colorScheme.onSurface
-    )
-    Surface(
-        color = containerColor,
-        contentColor = contentColorFor(containerColor),
-        tonalElevation = NavigationBarDefaults.Elevation
+    // El inset del sistema y los márgenes van *fuera* de la Surface: es lo que la
+    // despega de los bordes y la hace flotar, en vez de que pinte el fondo por
+    // detrás del inset como haría una barra acoplada.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(NavigationBarDefaults.windowInsets)
+            .padding(
+                start = FloatingNavBarHorizontalMargin,
+                end = FloatingNavBarHorizontalMargin,
+                bottom = FloatingNavBarBottomMargin
+            )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(NavigationBarDefaults.windowInsets)
-                .height(CompactNavBarContentHeight)
-                .selectableGroup(),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            shape = FloatingNavBarShape,
+            // Mismo token que la barra acoplada usaba vía NavigationBarDefaults,
+            // solo que translúcido para que las fotos se lean por debajo. Ojo:
+            // `tonalElevation` sería un no-op aquí — Surface solo lo aplica cuando
+            // el color es exactamente `colorScheme.surface`, y este lleva alpha.
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
+            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
+            shadowElevation = 6.dp
         ) {
-            val timelineActive = selectedTab == MainTab.Timeline
-            NavigationBarItem(
-                modifier = Modifier.weight(1f),
-                colors = itemColors,
-                selected = timelineActive,
-                onClick = { onTabSelected(MainTab.Timeline) },
-                icon = {
-                    Icon(
-                        if (timelineActive) Icons.Filled.PhotoLibrary
-                        else Icons.Outlined.PhotoLibrary,
-                        contentDescription = null
-                    )
-                },
-                label = { Text(stringResource(Res.string.tab_timeline)) }
-            )
-            val albumsActive = selectedTab == MainTab.Albums
-            NavigationBarItem(
-                modifier = Modifier.weight(1f),
-                colors = itemColors,
-                selected = albumsActive,
-                onClick = { onTabSelected(MainTab.Albums) },
-                icon = {
-                    Icon(
-                        if (albumsActive) Icons.Filled.Collections
-                        else Icons.Outlined.Collections,
-                        contentDescription = null
-                    )
-                },
-                label = { Text(stringResource(Res.string.tab_albums)) }
-            )
-            val foldersActive = selectedTab == MainTab.Folders
-            NavigationBarItem(
-                modifier = Modifier.weight(1f),
-                colors = itemColors,
-                selected = foldersActive,
-                onClick = { onTabSelected(MainTab.Folders) },
-                icon = {
-                    Icon(
-                        if (foldersActive) Icons.Filled.Folder else Icons.Outlined.Folder,
-                        contentDescription = null
-                    )
-                },
-                label = { Text(stringResource(Res.string.tab_folders)) }
-            )
-            val moreActive = selectedTab == MainTab.More
-            NavigationBarItem(
-                modifier = Modifier.weight(1f),
-                colors = itemColors,
-                selected = moreActive,
-                onClick = { onTabSelected(MainTab.More) },
-                icon = {
-                    val moreIcon = if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView
-                    if (moreTabUnreadCount > 0) {
-                        BadgedBox(
-                            badge = {
-                                Badge {
-                                    Text(
-                                        if (moreTabUnreadCount > 99) "99+"
-                                        else moreTabUnreadCount.toString()
-                                    )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CompactNavBarContentHeight)
+                    .selectableGroup(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val timelineActive = selectedTab == MainTab.Timeline
+                FloatingNavBarItem(
+                    selected = timelineActive,
+                    onClick = { onTabSelected(MainTab.Timeline) },
+                    label = stringResource(Res.string.tab_timeline),
+                    icon = {
+                        Icon(
+                            if (timelineActive) Icons.Filled.PhotoLibrary
+                            else Icons.Outlined.PhotoLibrary,
+                            contentDescription = null
+                        )
+                    }
+                )
+                val albumsActive = selectedTab == MainTab.Albums
+                FloatingNavBarItem(
+                    selected = albumsActive,
+                    onClick = { onTabSelected(MainTab.Albums) },
+                    label = stringResource(Res.string.tab_albums),
+                    icon = {
+                        Icon(
+                            if (albumsActive) Icons.Filled.Collections
+                            else Icons.Outlined.Collections,
+                            contentDescription = null
+                        )
+                    }
+                )
+                val foldersActive = selectedTab == MainTab.Folders
+                FloatingNavBarItem(
+                    selected = foldersActive,
+                    onClick = { onTabSelected(MainTab.Folders) },
+                    label = stringResource(Res.string.tab_folders),
+                    icon = {
+                        Icon(
+                            if (foldersActive) Icons.Filled.Folder else Icons.Outlined.Folder,
+                            contentDescription = null
+                        )
+                    }
+                )
+                val moreActive = selectedTab == MainTab.More
+                FloatingNavBarItem(
+                    selected = moreActive,
+                    onClick = { onTabSelected(MainTab.More) },
+                    label = stringResource(Res.string.tab_more),
+                    icon = {
+                        val moreIcon = if (moreActive) Icons.Filled.GridView else Icons.Outlined.GridView
+                        if (moreTabUnreadCount > 0) {
+                            BadgedBox(
+                                badge = {
+                                    Badge {
+                                        Text(
+                                            if (moreTabUnreadCount > 99) "99+"
+                                            else moreTabUnreadCount.toString()
+                                        )
+                                    }
                                 }
+                            ) {
+                                Icon(moreIcon, contentDescription = null)
                             }
-                        ) {
+                        } else {
                             Icon(moreIcon, contentDescription = null)
                         }
-                    } else {
-                        Icon(moreIcon, contentDescription = null)
                     }
-                },
-                label = { Text(stringResource(Res.string.tab_more)) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Un botón de la nav flotante. No usamos [NavigationBarItem] porque su
+ * indicador solo envuelve el icono y no es configurable: aquí el sombreado del
+ * elemento activo cubre el botón entero (icono + etiqueta).
+ *
+ * El área táctil es el propio pill (48.dp de alto, el mínimo recomendado), así
+ * el ripple queda recortado a la forma que se ve en vez de derramarse por toda
+ * la celda.
+ */
+@Composable
+private fun RowScope.FloatingNavBarItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    icon: @Composable () -> Unit
+) {
+    // Sombreado gris neutro que contrasta según el tema (claro/oscuro), en vez
+    // del color primary de la app.
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .padding(horizontal = 4.dp, vertical = FloatingNavItemMargin)
+            .clip(FloatingNavBarShape)
+            .background(
+                if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
             )
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                icon()
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

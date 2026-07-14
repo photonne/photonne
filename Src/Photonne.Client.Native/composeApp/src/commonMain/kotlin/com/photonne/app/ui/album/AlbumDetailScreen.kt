@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -72,7 +71,7 @@ import com.photonne.app.resources.album_hero_shared
 import com.photonne.app.ui.grid.AlbumGridScrubber
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.formatLocalizedMonth
-import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
@@ -115,10 +114,7 @@ fun AlbumDetailScreen(
         )
     }
     val gridContentPadding = if (immersive) {
-        PaddingValues(
-            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-                CompactNavBarContentHeight
-        )
+        PaddingValues(bottom = floatingNavBarReservedHeight())
     } else PaddingValues(0.dp)
 
     LaunchedEffect(album.id) { viewModel.open(album.id, album.name, album.description) }
