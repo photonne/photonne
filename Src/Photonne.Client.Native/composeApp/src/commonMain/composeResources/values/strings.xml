@@ -6,8 +6,8 @@
     <string name="tab_albums">Álbumes</string>
     <string name="tab_more">Más</string>
 
-    <string name="hub_section_memories">Hoy hace…</string>
-    <string name="hub_action_see_all">Ver todo</string>
+    <string name="memories_strip_title">Recuerdos</string>
+    <string name="memories_strip_see_all">Ver todos los recuerdos</string>
 
     <string name="action_refresh">Refrescar</string>
     <string name="action_account">Cuenta</string>
@@ -1015,6 +1015,13 @@
     <string name="notifications_time_minutes_ago">Hace %1$d min</string>
     <string name="notifications_time_hours_ago">Hace %1$dh</string>
     <string name="notifications_time_days_ago">Hace %1$dd</string>
+
+    <string name="memories_section_today">Hoy hace…</string>
+    <string name="memories_section_people">Personas</string>
+    <string name="memories_section_trips">Viajes</string>
+    <string name="memories_section_this_month">Este mes</string>
+    <string name="memories_section_favorites">Tus favoritas</string>
+    <string name="memories_section_places">Lugares y aficiones</string>
 
     <string name="explore_memories_empty">No hay recuerdos por mostrar aún.</string>
     <string name="explore_memories_group_count">%1$d fotos</string>

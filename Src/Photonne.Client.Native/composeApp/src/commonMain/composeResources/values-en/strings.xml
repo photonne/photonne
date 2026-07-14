@@ -6,8 +6,8 @@
     <string name="tab_albums">Albums</string>
     <string name="tab_more">More</string>
 
-    <string name="hub_section_memories">On this day…</string>
-    <string name="hub_action_see_all">See all</string>
+    <string name="memories_strip_title">Memories</string>
+    <string name="memories_strip_see_all">See all memories</string>
 
     <string name="action_refresh">Refresh</string>
     <string name="action_account">Account</string>
@@ -1015,4 +1015,11 @@
     <string name="organize_inbox_header">Move them into a folder to file them away.</string>
     <string name="organize_inbox_empty_title">All organized</string>
     <string name="organize_inbox_empty_subtitle">Nothing left in MobileBackup to file.</string>
+
+    <string name="memories_section_today">On this day…</string>
+    <string name="memories_section_people">People</string>
+    <string name="memories_section_trips">Trips</string>
+    <string name="memories_section_this_month">This month</string>
+    <string name="memories_section_favorites">Your favourites</string>
+    <string name="memories_section_places">Places and hobbies</string>
 </resources>

@@ -14,6 +14,8 @@ import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.LoginRequest
 import com.photonne.app.data.models.LoginResponse
 import com.photonne.app.data.models.MapPoint
+import com.photonne.app.data.models.Memory
+import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.data.models.ObjectLabel
 import com.photonne.app.data.models.AssignFaceResponse
 import com.photonne.app.data.models.BulkSuggestionResult
@@ -298,7 +300,12 @@ interface PhotonneApi {
     /** Files every inbox asset matching [rule] into [targetFolderId]; returns the moved count. */
     suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String): Int
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
+    /** Live "on this day" query — what the timeline strip shows. */
     suspend fun getMemories(): List<TimelineItem>
+    /** The generated Recuerdos feed, best first. [kind] filters to one MemoryKind. */
+    suspend fun getMemoryFeed(kind: String? = null, limit: Int = 50): List<Memory>
+    /** One memory with its assets, in display order (index 0 is the cover). */
+    suspend fun getMemory(id: String): MemoryDetail
     suspend fun getAssetDetail(assetId: String): AssetDetail
     suspend fun toggleFavorite(assetId: String): Boolean
     suspend fun updateAssetDescription(assetId: String, description: String?)
@@ -901,6 +908,31 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Memories fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getMemoryFeed(kind: String?, limit: Int): List<Memory> {
+        val response: HttpResponse = client.get("$baseUrl/api/memories") {
+            if (!kind.isNullOrBlank()) parameter("kind", kind)
+            parameter("limit", limit)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Memory feed fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getMemory(id: String): MemoryDetail {
+        val response: HttpResponse = client.get("$baseUrl/api/memories/$id")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Memory fetch failed (${response.status.value})"
             )
         }
         return response.body()

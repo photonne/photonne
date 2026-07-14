@@ -1,6 +1,8 @@
 package com.photonne.app.data.timeline
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.Memory
+import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.di.PhotonneAppConfig
 import kotlinx.datetime.Instant
@@ -9,10 +11,21 @@ class MemoriesRepository(
     private val api: PhotonneApi,
     private val config: PhotonneAppConfig
 ) {
+    /**
+     * The timeline strip's source: a live "on this day" query. Deliberately NOT
+     * the generated feed — the strip only ever shows today's anniversaries, and
+     * this way it keeps working the moment a photo is added, without waiting for
+     * the nightly pass.
+     */
     suspend fun list(): List<TimelineItem> {
         if (config.useFakeMemories) return fakeMemoriesFromTimeline()
         return api.getMemories()
     }
+
+    /** The Recuerdos section's source: every generated memory, best first. */
+    suspend fun feed(kind: String? = null): List<Memory> = api.getMemoryFeed(kind)
+
+    suspend fun detail(id: String): MemoryDetail = api.getMemory(id)
 
     private suspend fun fakeMemoriesFromTimeline(): List<TimelineItem> {
         val total = FAKE_GROUPS.sumOf { it.count }

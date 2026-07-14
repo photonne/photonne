@@ -6,6 +6,7 @@ import androidx.compose.animation.core.AnimationEndReason
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,9 +22,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,24 +38,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.hub_action_see_all
-import com.photonne.app.resources.hub_section_memories
+import com.photonne.app.resources.explore_memories_group_count
+import com.photonne.app.resources.memories_strip_see_all
+import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.timeline_memories_one_year_ago
 import com.photonne.app.resources.timeline_memories_years_ago
+import com.photonne.app.ui.memories.MemoryCardFace
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
-import com.photonne.app.ui.theme.MemoryCardShape
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -62,9 +66,15 @@ import org.jetbrains.compose.resources.stringResource
 private const val StoryDurationMs = 5000L
 
 /**
- * "Hoy hace…" cinematic memories carousel, pinned above the photo grid on
- * the Fotos timeline. Extracted from the old Hub landing; each page is an
- * on-this-day group that opens the asset viewer at its cover when tapped.
+ * Cinematic memories carousel, pinned above the photo grid on the Fotos
+ * timeline. Each page is an on-this-day group that opens the asset viewer at its
+ * cover when tapped.
+ *
+ * Deliberately shows ONLY today's anniversaries, live from /api/assets/memories:
+ * it's the teaser, and [onSeeAll] leads to the Recuerdos section, which holds
+ * everything else (people, trips, favourites). That split is what makes the
+ * header's chevron worth following — it used to open a screen showing these very
+ * same groups in a list.
  */
 @Composable
 fun MemoriesStrip(
@@ -78,21 +88,49 @@ fun MemoriesStrip(
     val groups = remember(memories) { groupMemoriesByDay(memories, currentYear) }
     if (groups.isEmpty()) return
 
+    // The chevron is decorative; the whole title row carries the label instead,
+    // so screen readers announce one button rather than an unlabelled icon.
+    val seeAllLabel = stringResource(Res.string.memories_strip_see_all)
+
     Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 20.dp)) {
+        // Title + chevron are one tap target, sized to their content and pinned
+        // left. Deliberately NOT a full-width clickable row: the scrubber lives
+        // against the right edge (see TimelineScrubber), and a header hit area
+        // reaching that far would fight it for the same touches. The chevron is
+        // the app's idiom for "there's more inside" (FoldersListScreen,
+        // AccountSettingsScreen), which the old TextButton never was.
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+            modifier = Modifier
+                .padding(start = 16.dp)
+                .then(
+                    if (onSeeAll != null) {
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onSeeAll)
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = seeAllLabel
+                            }
+                    } else Modifier
+                )
+                // 12dp around a titleMedium clears Material's 48dp minimum target.
+                // A bare clickable doesn't apply minimumInteractiveComponentSize
+                // the way TextButton did, so the padding has to earn it.
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(Res.string.hub_section_memories),
+                text = stringResource(Res.string.memories_strip_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
             )
             if (onSeeAll != null) {
-                TextButton(onClick = onSeeAll) {
-                    Text(stringResource(Res.string.hub_action_see_all))
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 2.dp)
+                )
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -209,11 +247,18 @@ private fun StoryCard(
     val kenBurnsScale = 1f + (if (isActive) storyProgress else 0f) * 0.10f
     val kenBurnsPan = (if (isActive) storyProgress else 0f) * 24f
 
-    Box(
+    // Cover art, gradient, keepsake corners and caption come from the shared
+    // face — the same one the Recuerdos section uses. Only the motion and the
+    // story chrome are the strip's own.
+    MemoryCardFace(
+        coverUrl = if (cover.hasThumbnails)
+            "$baseUrl/api/assets/${cover.id}/thumbnail?size=Large" else null,
+        contentDescription = cover.fileName,
+        title = label,
+        subtitle = if (group.count > 1)
+            stringResource(Res.string.explore_memories_group_count, group.count) else null,
         modifier = Modifier
             .fillMaxSize()
-            .clip(MemoryCardShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(group.cover.id) {
                 detectTapGestures(
                     onPress = {
@@ -227,41 +272,16 @@ private fun StoryCard(
                         }
                     }
                 )
+            },
+        imageModifier = Modifier
+            .graphicsLayer {
+                scaleX = kenBurnsScale
+                scaleY = kenBurnsScale
+                translationX = -kenBurnsPan
             }
+            .then(coverSharedMod),
+        onCoverLoaded = onCoverLoaded,
     ) {
-        if (cover.hasThumbnails) {
-            AsyncImage(
-                model = "$baseUrl/api/assets/${cover.id}/thumbnail?size=Large",
-                contentDescription = cover.fileName,
-                contentScale = ContentScale.Crop,
-                onState = { state ->
-                    if (state is AsyncImagePainter.State.Success) onCoverLoaded()
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = kenBurnsScale
-                        scaleY = kenBurnsScale
-                        translationX = -kenBurnsPan
-                    }
-                    .then(coverSharedMod)
-            )
-        }
-        // Bottom gradient so the white label keeps contrast on light covers
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.0f),
-                            Color.Black.copy(alpha = 0.55f)
-                        ),
-                        startY = 0f,
-                        endY = Float.POSITIVE_INFINITY
-                    )
-                )
-        )
         // Top progress segments — one per memory group, current one fills.
         Row(
             modifier = Modifier
@@ -276,26 +296,6 @@ private fun StoryCard(
                     else -> storyProgress
                 }
                 StorySegment(fill = fill, modifier = Modifier.weight(1f))
-            }
-        }
-        // Caption
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = label,
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge
-            )
-            if (group.count > 1) {
-                Text(
-                    text = "${group.count} fotos",
-                    color = Color.White.copy(alpha = 0.85f),
-                    style = MaterialTheme.typography.labelMedium
-                )
             }
         }
     }

@@ -215,7 +215,7 @@ private enum class MoreSubscreen {
     UnsupportedFiles,
     OrganizeInbox,
     OrganizeRule,
-    ExploreMemories,
+    Memories,
     ExploreScenes,
     ExploreObjects,
     AccountSettings,
@@ -339,7 +339,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.UtilitiesDuplicates,
     MoreSubscreen.UtilitiesLargeFiles,
     MoreSubscreen.UtilitiesLocations -> MoreSubscreen.Utilities
-    MoreSubscreen.ExploreMemories,
+    MoreSubscreen.Memories,
     MoreSubscreen.ExploreScenes,
     MoreSubscreen.ExploreObjects -> null
     MoreSubscreen.PeopleSuggestions -> MoreSubscreen.People
@@ -498,6 +498,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val foldersViewModel: FoldersViewModel = koinViewModel()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
+    // The timeline strip's live "on this day" list (above) and the Recuerdos
+    // section's generated feed are different requests with different lifetimes,
+    // so they get one ViewModel each.
+    val memoryFeedViewModel:
+        com.photonne.app.ui.memories.MemoryFeedViewModel = koinViewModel()
     // La primera carga de las pantallas principales corre en el init de su
     // ViewModel contra la URL pública, antes de que el probe de reachability
     // decida LAN↔público. Desde dentro de la LAN de casa esa petición hace
@@ -1067,7 +1072,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.utilities_section_locations),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
-            moreSubscreen == MoreSubscreen.ExploreMemories ->
+            moreSubscreen == MoreSubscreen.Memories ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.explore_section_memories),
                     onBack = { moreSubscreen = null }
@@ -1819,7 +1824,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onFavoriteChanged = timelineViewModel::setFavorite
                             )
                         },
-                        onSeeAllMemories = { moreSubscreen = MoreSubscreen.ExploreMemories }
+                        onSeeAllMemories = { moreSubscreen = MoreSubscreen.Memories }
                     )
                     MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
                         // Docked top bar lives *inside* the page so it slides with
@@ -2230,13 +2235,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
                             viewModel = utilitiesLocationsViewModel
                         )
-                    MoreSubscreen.ExploreMemories ->
-                        com.photonne.app.ui.explore.ExploreMemoriesScreen(
-                            viewModel = memoriesViewModel,
+                    MoreSubscreen.Memories ->
+                        com.photonne.app.ui.memories.MemoriesScreen(
+                            viewModel = memoryFeedViewModel,
                             baseUrl = apiBaseUrl,
-                            onGroupClick = { groupItems ->
+                            onOpenMemory = { memoryItems ->
                                 assetDetail = AssetDetailContext(
-                                    items = groupItems,
+                                    items = memoryItems,
                                     startIndex = 0,
                                     source = AssetDetailContext.Source.Timeline,
                                     hasMore = false,

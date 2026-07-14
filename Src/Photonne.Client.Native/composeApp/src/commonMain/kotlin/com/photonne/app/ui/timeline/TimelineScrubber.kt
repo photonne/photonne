@@ -142,8 +142,11 @@ internal fun TimelineScrubber(
         }
     }
 
-    // At the very top the handle/date bubble sits right over the Memories
-    // "Ver todo" button, so get out of its way immediately there.
+    // At the very top the handle/date bubble sits right over the Memories strip,
+    // so get out of its way immediately there instead of lingering for the usual
+    // fade-out delay. (It used to be the strip's "Ver todo" button it collided
+    // with; that's now a chevron pinned to the left of the header, clear of this
+    // column — the strip's cover art is still worth not covering.)
     val atTop by remember {
         derivedStateOf {
             gridState.firstVisibleItemIndex == 0 &&
