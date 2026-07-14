@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
@@ -72,17 +71,18 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
             [FromServices] BackgroundTaskManager backgroundTaskManager,
             HttpContext http,
             CancellationToken cancellationToken) =>
-            StreamClustering(serviceProvider, backgroundTaskManager,
+            StreamClustering(serviceProvider, backgroundTaskManager, http,
                 AdminEndpointHelpers.GetUserId(http), cancellationToken))
             .WithName("FaceClusteringStream")
             .WithDescription("Streams progress for the global face re-clustering pass, run as a background job.");
     }
 
-    private async IAsyncEnumerable<MaintenanceProgressUpdate> StreamClustering(
+    private Task StreamClustering(
         IServiceProvider serviceProvider,
         BackgroundTaskManager backgroundTaskManager,
+        HttpContext httpContext,
         Guid userId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var entry = backgroundTaskManager.GetOrCreateRunning(BackgroundTaskType.FaceClustering, null, out var created);
         var taskCt = entry.Cts.Token;
@@ -187,13 +187,9 @@ public class FaceClusteringRunGlobalEndpoint : IEndpoint
             }, taskCt);
         }
 
-        await foreach (var json in entry.StreamAsync(0, cancellationToken))
-        {
-            MaintenanceProgressUpdate? upd;
-            try { upd = JsonSerializer.Deserialize<MaintenanceProgressUpdate>(json, _jsonOptions); }
-            catch { continue; }
-            if (upd != null) yield return upd;
-        }
+        // NDJSON so the Native line-reader gets live progress (an IAsyncEnumerable
+        // return would serialize as a single compact JSON array it can't stream).
+        return BackgroundTaskStreaming.WriteNdjsonAsync(httpContext, entry, cancellationToken);
     }
 
     private static async Task<IResult> Handle(

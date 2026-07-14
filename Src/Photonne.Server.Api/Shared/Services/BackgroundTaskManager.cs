@@ -1,9 +1,35 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Photonne.Server.Api.Shared.Services;
 
 public enum BackgroundTaskType { IndexAssets, Thumbnails, Metadata, LibraryScan, DateRestore, Maintenance, FaceClustering }
+
+/// <summary>
+/// Streams a background task's updates to the HTTP response as newline-delimited
+/// JSON (one object per line, flushed after each). This is what the Native client
+/// reads with `readUTF8Line()`. NOTE: returning an `IAsyncEnumerable&lt;T&gt;` from a
+/// minimal-API handler instead serializes as a single compact JSON array with no
+/// newlines, which the line-based client can't parse incrementally — so tasks
+/// that want live per-event progress on Native must write NDJSON explicitly.
+/// </summary>
+public static class BackgroundTaskStreaming
+{
+    public static async Task WriteNdjsonAsync(
+        Microsoft.AspNetCore.Http.HttpContext http,
+        BackgroundTaskEntry entry,
+        CancellationToken ct)
+    {
+        http.Response.ContentType = "application/x-ndjson; charset=utf-8";
+        await foreach (var json in entry.StreamAsync(0, ct))
+        {
+            var bytes = Encoding.UTF8.GetBytes(json + "\n");
+            await http.Response.Body.WriteAsync(bytes, ct);
+            await http.Response.Body.FlushAsync(ct);
+        }
+    }
+}
 
 /// <summary>
 /// Tracks a single background admin task that survives HTTP disconnections.

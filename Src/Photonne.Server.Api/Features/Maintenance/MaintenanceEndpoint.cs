@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
@@ -72,7 +71,7 @@ public class MaintenanceEndpoint : IEndpoint
             [FromServices] BackgroundTaskManager backgroundTaskManager,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
-            HandleStream(kind, dryRun ?? false, serviceProvider, backgroundTaskManager,
+            HandleStream(kind, dryRun ?? false, serviceProvider, backgroundTaskManager, httpContext,
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
             .WithName("MaintenanceTaskStream")
@@ -86,13 +85,14 @@ public class MaintenanceEndpoint : IEndpoint
         return Results.Ok(await task);
     }
 
-    private async IAsyncEnumerable<MaintenanceProgressUpdate> HandleStream(
+    private Task HandleStream(
         string kind,
         bool dryRun,
         IServiceProvider serviceProvider,
         BackgroundTaskManager backgroundTaskManager,
+        HttpContext httpContext,
         Guid userId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         // One maintenance task at a time (dedup by type). The concrete kind lives
         // in Parameters so the task surfaces in /api/tasks and the client can
@@ -159,7 +159,7 @@ public class MaintenanceEndpoint : IEndpoint
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[MAINTENANCE] Error fatal en '{kind}': {ex.Message}");
+                    Console.WriteLine($"[MAINTENANCE] Error fatal en '{kind}': {ex}");
                     Send(new MaintenanceProgressUpdate { Message = $"Error: {ex.Message}", IsCompleted = true });
                     entry.Finish("Failed");
 
@@ -182,14 +182,10 @@ public class MaintenanceEndpoint : IEndpoint
 
         // Single streaming path for both the creating request and any late
         // subscribers: replay buffered updates from the start, then live ones
-        // until the worker calls Finish(). Dropping this connection (user leaves
-        // the screen) never touches taskCt, so the worker runs on.
-        await foreach (var json in entry.StreamAsync(0, cancellationToken))
-        {
-            MaintenanceProgressUpdate? upd;
-            try { upd = JsonSerializer.Deserialize<MaintenanceProgressUpdate>(json, _jsonOptions); }
-            catch { continue; }
-            if (upd != null) yield return upd;
-        }
+        // until the worker calls Finish(). Written as NDJSON (one object per line,
+        // flushed) so the Native line-reader gets live progress. Dropping this
+        // connection (user leaves the screen) never touches taskCt, so the worker
+        // runs on.
+        return BackgroundTaskStreaming.WriteNdjsonAsync(httpContext, entry, cancellationToken);
     }
 }

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.data.models.MaintenanceStreamEvent
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.admin_maintenance_action_empty_trash
@@ -41,42 +42,36 @@ import com.photonne.app.resources.admin_maintenance_desc_purge_missing
 import com.photonne.app.resources.admin_maintenance_desc_recalculate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 
-/** Result of the most recent finished run of a maintenance action, surfaced
- *  from the server's finished [com.photonne.app.data.models.BackgroundTaskDto]. */
+/** Result of the most recent finished run of a maintenance action. */
 data class MaintenanceResultUi(val message: String, val success: Boolean)
 
 data class AdminMaintenanceUiState(
-    // Slug of the maintenance action currently running server-side (from the
-    // task's `parameters["kind"]`), null when nothing is running.
+    // Slug of the maintenance action currently running, null when nothing runs.
     val runningKind: String? = null,
     val runningTaskId: String? = null,
     val progress: Double = 0.0,        // 0..100
     val progressMessage: String = "",
-    // Kinds the client is optimistically triggering, before the server task
-    // shows up in the registry — keeps the button disabled during the gap.
-    val triggering: Set<String> = emptySet(),
     val cancelling: Boolean = false,
     val lastResults: Map<String, MaintenanceResultUi> = emptyMap(),
     val errorMessage: String? = null,
 )
 
 /**
- * Maintenance actions no longer run as one long synchronous POST (which tripped
- * the client's 30 s socket timeout on large libraries). Instead [run] triggers a
- * background task on the server (`GET /api/admin/maintenance/{kind}/stream`) and
- * drops the connection; progress is then read by polling `/api/tasks`, exactly
- * like the "Ejecutar tareas" hub. This makes the work survive navigation and the
- * connection dropping, and shows live progress with a cancel button.
+ * Maintenance actions run as background tasks on the server
+ * (`GET /api/admin/maintenance/{kind}/stream`, NDJSON progress) instead of one
+ * long synchronous POST that tripped the client's 30 s socket timeout. The VM
+ * collects the stream directly for live progress; the work keeps running on the
+ * server even if the connection drops, and a light poll of `/api/tasks`
+ * re-attaches a follower when returning to the screen (or after a drop).
  */
 class AdminMaintenanceViewModel(
     private val repository: AdminRepository
@@ -84,6 +79,7 @@ class AdminMaintenanceViewModel(
     private val _state = MutableStateFlow(AdminMaintenanceUiState())
     val state: StateFlow<AdminMaintenanceUiState> = _state.asStateFlow()
 
+    private var followJob: Job? = null
     private var pollJob: Job? = null
 
     fun startPolling() {
@@ -106,42 +102,64 @@ class AdminMaintenanceViewModel(
         super.onCleared()
     }
 
-    /**
-     * Fire-and-forget trigger: open the streaming endpoint just long enough for
-     * the server to register the task in [BackgroundTaskManager], then drop the
-     * connection. [withTimeoutOrNull] bounds the wait because the first NDJSON
-     * event may lag behind the initial table scan.
-     */
     fun run(kind: String) {
-        if (_state.value.runningKind != null || _state.value.triggering.isNotEmpty()) return
-        _state.update { it.copy(triggering = it.triggering + kind, errorMessage = null) }
-        viewModelScope.launch {
+        if (_state.value.runningKind != null || followJob?.isActive == true) return
+        follow(kind) { repository.maintenanceStream(kind) }
+    }
+
+    /** Collects a maintenance progress stream (fresh run or a resume of an
+     *  already-running task) and mirrors each NDJSON event into the UI state. */
+    private fun follow(kind: String, streamProvider: suspend () -> Flow<MaintenanceStreamEvent>) {
+        _state.update { it.copy(runningKind = kind, progress = 0.0, progressMessage = "", errorMessage = null) }
+        followJob = viewModelScope.launch {
             runCatching {
-                withTimeoutOrNull(TriggerTimeoutMs) {
-                    repository.maintenanceStream(kind).take(1).collect {}
+                streamProvider().collect { ev ->
+                    if (ev.isCompleted) {
+                        _state.update {
+                            it.copy(
+                                runningKind = null,
+                                runningTaskId = null,
+                                progress = 0.0,
+                                progressMessage = "",
+                                lastResults = it.lastResults +
+                                    (kind to MaintenanceResultUi(ev.message, !ev.message.startsWith("Error"))),
+                            )
+                        }
+                    } else {
+                        _state.update {
+                            it.copy(
+                                runningKind = kind,
+                                runningTaskId = ev.taskId ?: it.runningTaskId,
+                                progress = ev.percentage,
+                                progressMessage = ev.message,
+                            )
+                        }
+                    }
                 }
             }.onFailure { error ->
                 _state.update { it.copy(errorMessage = error.message ?: "Maintenance task failed") }
             }
-            refresh()
-            _state.update { it.copy(triggering = it.triggering - kind) }
-            startPolling()
+            // Stream ended without a completion event (connection dropped) — the
+            // task may still run server-side, so clear the local running flag and
+            // let the poll loop re-attach a follower.
+            if (_state.value.runningKind == kind) {
+                _state.update { it.copy(runningKind = null, runningTaskId = null, progressMessage = "") }
+            }
         }
     }
 
     fun cancel() {
-        val id = _state.value.runningTaskId ?: return
-        _state.update { it.copy(cancelling = true) }
-        viewModelScope.launch {
-            runCatching { repository.cancelBackgroundTask(id) }
-            refresh()
-            _state.update { it.copy(cancelling = false) }
+        val id = _state.value.runningTaskId
+        followJob?.cancel()
+        followJob = null
+        _state.update { it.copy(runningKind = null, runningTaskId = null, progressMessage = "", cancelling = false) }
+        if (id != null) {
+            viewModelScope.launch { runCatching { repository.cancelBackgroundTask(id) } }
         }
     }
 
-    /** Reads the maintenance tasks from `/api/tasks`: reflects the running one as
-     *  live progress and records the latest finished result per kind. This both
-     *  drives the progress bar and re-attaches after the user navigates back. */
+    /** Records finished results from `/api/tasks` and re-attaches a follower to a
+     *  running maintenance task that has none (e.g. after navigating back). */
     private suspend fun refresh() {
         val tasks = runCatching { repository.listBackgroundTasks() }.getOrNull() ?: return
         val maintenance = tasks.filter { it.type == "Maintenance" }
@@ -149,27 +167,22 @@ class AdminMaintenanceViewModel(
         val results = _state.value.lastResults.toMutableMap()
         maintenance.filter { !it.isRunning }.forEach { dto ->
             val kind = dto.parameters["kind"] ?: return@forEach
-            results[kind] = MaintenanceResultUi(
-                message = dto.lastMessage,
-                success = dto.status == "Completed"
-            )
+            results[kind] = MaintenanceResultUi(dto.lastMessage, dto.status == "Completed")
+        }
+        if (results != _state.value.lastResults) {
+            _state.update { it.copy(lastResults = results) }
         }
 
         val running = maintenance.firstOrNull { it.isRunning }
-        _state.update {
-            it.copy(
-                runningKind = running?.parameters?.get("kind"),
-                runningTaskId = running?.id,
-                progress = running?.percentage ?: 0.0,
-                progressMessage = running?.lastMessage ?: "",
-                lastResults = results
-            )
+        if (running != null && followJob?.isActive != true) {
+            val kind = running.parameters["kind"] ?: return
+            val id = running.id
+            follow(kind) { repository.resumeMaintenanceTaskStream(id) }
         }
     }
 
     private companion object {
-        const val PollIntervalMs = 2_000L
-        const val TriggerTimeoutMs = 8_000L
+        const val PollIntervalMs = 3_000L
     }
 }
 
@@ -216,7 +229,7 @@ fun AdminMaintenanceScreen(viewModel: AdminMaintenanceViewModel) {
         )
     )
 
-    val busy = state.runningKind != null || state.triggering.isNotEmpty()
+    val busy = state.runningKind != null
 
     Column(
         modifier = Modifier
@@ -229,7 +242,7 @@ fun AdminMaintenanceScreen(viewModel: AdminMaintenanceViewModel) {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
         actions.forEach { action ->
-            val isThisRunning = state.runningKind == action.kind || action.kind in state.triggering
+            val isThisRunning = state.runningKind == action.kind
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -264,8 +277,8 @@ fun AdminMaintenanceScreen(viewModel: AdminMaintenanceViewModel) {
                         }
                     } else {
                         state.lastResults[action.kind]?.let { result ->
-                            Spacer(Modifier.size(8.dp))
                             if (result.message.isNotBlank()) {
+                                Spacer(Modifier.size(8.dp))
                                 Text(
                                     result.message,
                                     style = MaterialTheme.typography.bodySmall,
@@ -285,7 +298,7 @@ fun AdminMaintenanceScreen(viewModel: AdminMaintenanceViewModel) {
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (state.runningKind == action.kind && state.runningTaskId != null) {
+                        if (isThisRunning) {
                             OutlinedButton(
                                 onClick = { viewModel.cancel() },
                                 enabled = !state.cancelling
