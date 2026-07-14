@@ -81,7 +81,6 @@ import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
-import com.photonne.app.ui.main.FloatingTimelineTopBar
 import com.photonne.app.ui.main.TimelineTopBar
 import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.grid.bucketKeyOf
@@ -970,29 +969,13 @@ fun TimelineScreen(
                             )
                         )
                 )
-                if (atTop) {
-                    // At the very top: docked bar, exactly like the classic
-                    // top bar (wordmark + actions, full width, opaque).
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .graphicsLayer { alpha = chromeAlpha }
-                    ) {
-                        TimelineTopBar(
-                            onJumpToDate = onJumpToDate,
-                            currentZoom = zoomLevel,
-                            onZoomSelected = zoomStore::update,
-                            onOpenSearch = onOpenSearch,
-                            onOpenUpload = onOpenUpload,
-                            deviceLoading = deviceBackupState.isBackupEnabled &&
-                                deviceBackupState.isLoading
-                        )
-                    }
-                } else if (chromeAlpha > 0.01f) {
-                    // Scrolled: compact translucent action pill hugging the
-                    // top-end corner. Skipped when faded out so it can't eat
+                if (chromeAlpha > 0.01f) {
+                    // One bar for both states — docked wordmark at the very top,
+                    // translucent pill once scrolled — so the action icons stay
+                    // put across the swap. Skipped when faded out so it can't eat
                     // taps meant for the photos underneath.
-                    FloatingTimelineTopBar(
+                    TimelineTopBar(
+                        atTop = atTop,
                         onJumpToDate = onJumpToDate,
                         currentZoom = zoomLevel,
                         onZoomSelected = zoomStore::update,
@@ -1001,9 +984,7 @@ fun TimelineScreen(
                         deviceLoading = deviceBackupState.isBackupEnabled &&
                             deviceBackupState.isLoading,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .windowInsetsPadding(WindowInsets.statusBars)
-                            .padding(top = 6.dp, end = 8.dp)
+                            .align(Alignment.TopCenter)
                             .graphicsLayer { alpha = chromeAlpha }
                     )
                 }

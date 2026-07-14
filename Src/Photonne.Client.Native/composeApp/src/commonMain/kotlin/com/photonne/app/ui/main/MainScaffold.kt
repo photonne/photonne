@@ -3,6 +3,7 @@ package com.photonne.app.ui.main
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -467,108 +469,24 @@ private fun RowScope.FloatingNavBarItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TimelineTopBar(
-    onJumpToDate: () -> Unit,
-    currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
-    onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
-    onBack: (() -> Unit)? = null,
-    onOpenSearch: (() -> Unit)? = null,
-    onOpenUpload: (() -> Unit)? = null,
-    deviceLoading: Boolean = false
-) {
-    TopAppBar(
-        navigationIcon = {
-            if (onBack != null) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = stringResource(Res.string.action_close)
-                    )
-                }
-            }
-        },
-        title = {
-            Image(
-                painter = photonneLogoPainter(),
-                contentDescription = stringResource(Res.string.app_name),
-                modifier = Modifier.height(32.dp)
-            )
-        },
-        actions = {
-            // Discreet spinner while the first device-gallery scan runs. Sits
-            // among the actions so it never overlaps the wordmark (the old
-            // floating pill did), and reads the same whether or not the
-            // Recuerdos strip is present.
-            if (deviceLoading) {
-                val scanLabel = stringResource(Res.string.timeline_device_loading)
-                val tooltipState = rememberTooltipState()
-                val scope = rememberCoroutineScope()
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-                    tooltip = { PlainTooltip { Text(scanLabel) } },
-                    state = tooltipState,
-                    // Long-press is meaningless for a progress spinner on mobile;
-                    // reveal the label on a plain tap instead (see clickable below).
-                    enableUserInput = false
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clickable { scope.launch { tooltipState.show() } },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .semantics { contentDescription = scanLabel }
-                        )
-                    }
-                }
-            }
-            if (onOpenUpload != null) {
-                IconButton(onClick = onOpenUpload) {
-                    Icon(
-                        Icons.Outlined.AddPhotoAlternate,
-                        contentDescription = stringResource(Res.string.upload_title)
-                    )
-                }
-            }
-            if (onOpenSearch != null) {
-                IconButton(onClick = onOpenSearch) {
-                    Icon(
-                        Icons.Outlined.Search,
-                        contentDescription = stringResource(Res.string.tab_search)
-                    )
-                }
-            }
-            com.photonne.app.ui.timeline.TimelineZoomMenuAction(
-                current = currentZoom,
-                onSelect = onZoomSelected
-            )
-            IconButton(onClick = onJumpToDate) {
-                Icon(
-                    Icons.Outlined.CalendarMonth,
-                    contentDescription = stringResource(Res.string.action_jump_to_date)
-                )
-            }
-        }
-    )
-}
-
 /**
- * Compact floating action pill shown over the timeline grid *while scrolled*
- * (the docked [TimelineTopBar] takes over at the very top). It carries only the
- * right-side actions — no wordmark — on a translucent rounded surface so the
- * photos read through it, and it hugs the top-end corner rather than spanning
- * the width. The caller positions it (top-end, status-bar inset) and fades it
+ * Top chrome for the timeline. At the very top it reads as a docked, opaque bar
+ * carrying the wordmark; once the grid is scrolled the bar dissolves into a
+ * compact translucent pill hugging the top-end corner, so the photos read
+ * through it. The caller supplies the [atTop] state and fades the whole thing
  * via a `graphicsLayer { alpha }`.
+ *
+ * The action icons are rendered **once**, at a position that does not depend on
+ * which backdrop is showing — only the backdrop behind them crossfades. Two
+ * separate rows (one inside a docked `TopAppBar`, one inside the pill) is what
+ * used to make the icons slide sideways on every swap: M3 insets a `TopAppBar`'s
+ * actions by its own private 4.dp, while the pill's outer + inner margins added
+ * up to 10.dp.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FloatingTimelineTopBar(
+fun TimelineTopBar(
+    atTop: Boolean,
     onJumpToDate: () -> Unit,
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
@@ -577,67 +495,103 @@ fun FloatingTimelineTopBar(
     deviceLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(percent = 50),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-        tonalElevation = 3.dp,
-        shadowElevation = 4.dp
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 2.dp)
+    val dockedFraction by animateFloatAsState(
+        targetValue = if (atTop) 1f else 0f,
+        animationSpec = tween(durationMillis = 280),
+        label = "timelineTopBarDocked"
+    )
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Docked backdrop: a real TopAppBar, so the wordmark keeps its stock M3
+        // placement and the bar its stock 64.dp height. It carries no actions —
+        // those are the shared row below. Dropped once fully faded, or its
+        // Surface would keep swallowing taps meant for the photos underneath.
+        if (dockedFraction > 0.01f) {
+            TopAppBar(
+                title = {
+                    Image(
+                        painter = photonneLogoPainter(),
+                        contentDescription = stringResource(Res.string.app_name),
+                        modifier = Modifier.height(32.dp)
+                    )
+                },
+                modifier = Modifier.graphicsLayer { alpha = dockedFraction }
+            )
+        }
+        // The one and only actions row. `top = 8.dp` lands its centre exactly on
+        // the docked bar's own action centre ((64.dp bar - 48.dp icons) / 2), so
+        // nothing shifts vertically either when the backdrop swaps.
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 8.dp, end = 8.dp),
+            shape = RoundedCornerShape(percent = 50),
+            // Fades in as the docked backdrop fades out. No tonalElevation: it's
+            // a no-op under a colour that carries alpha.
+            color = MaterialTheme.colorScheme.surface
+                .copy(alpha = 0.72f * (1f - dockedFraction)),
+            shadowElevation = 4.dp * (1f - dockedFraction)
         ) {
-            if (deviceLoading) {
-                val scanLabel = stringResource(Res.string.timeline_device_loading)
-                val tooltipState = rememberTooltipState()
-                val scope = rememberCoroutineScope()
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-                    tooltip = { PlainTooltip { Text(scanLabel) } },
-                    state = tooltipState,
-                    enableUserInput = false
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clickable { scope.launch { tooltipState.show() } },
-                        contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 2.dp)
+            ) {
+                // Discreet spinner while the first device-gallery scan runs. Sits
+                // among the actions so it never overlaps the wordmark, and reads
+                // the same whether or not the Recuerdos strip is present.
+                if (deviceLoading) {
+                    val scanLabel = stringResource(Res.string.timeline_device_loading)
+                    val tooltipState = rememberTooltipState()
+                    val scope = rememberCoroutineScope()
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = { PlainTooltip { Text(scanLabel) } },
+                        state = tooltipState,
+                        // Long-press is meaningless for a progress spinner on mobile;
+                        // reveal the label on a plain tap instead (see clickable below).
+                        enableUserInput = false
                     ) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
+                        Box(
                             modifier = Modifier
-                                .size(18.dp)
-                                .semantics { contentDescription = scanLabel }
+                                .size(48.dp)
+                                .clickable { scope.launch { tooltipState.show() } },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .semantics { contentDescription = scanLabel }
+                            )
+                        }
+                    }
+                }
+                if (onOpenUpload != null) {
+                    IconButton(onClick = onOpenUpload) {
+                        Icon(
+                            Icons.Outlined.AddPhotoAlternate,
+                            contentDescription = stringResource(Res.string.upload_title)
                         )
                     }
                 }
-            }
-            if (onOpenUpload != null) {
-                IconButton(onClick = onOpenUpload) {
-                    Icon(
-                        Icons.Outlined.AddPhotoAlternate,
-                        contentDescription = stringResource(Res.string.upload_title)
-                    )
+                if (onOpenSearch != null) {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = stringResource(Res.string.tab_search)
+                        )
+                    }
                 }
-            }
-            if (onOpenSearch != null) {
-                IconButton(onClick = onOpenSearch) {
-                    Icon(
-                        Icons.Outlined.Search,
-                        contentDescription = stringResource(Res.string.tab_search)
-                    )
-                }
-            }
-            com.photonne.app.ui.timeline.TimelineZoomMenuAction(
-                current = currentZoom,
-                onSelect = onZoomSelected
-            )
-            IconButton(onClick = onJumpToDate) {
-                Icon(
-                    Icons.Outlined.CalendarMonth,
-                    contentDescription = stringResource(Res.string.action_jump_to_date)
+                com.photonne.app.ui.timeline.TimelineZoomMenuAction(
+                    current = currentZoom,
+                    onSelect = onZoomSelected
                 )
+                IconButton(onClick = onJumpToDate) {
+                    Icon(
+                        Icons.Outlined.CalendarMonth,
+                        contentDescription = stringResource(Res.string.action_jump_to_date)
+                    )
+                }
             }
         }
     }
