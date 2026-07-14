@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -300,6 +301,16 @@ private val FloatingNavBarShape = RoundedCornerShape(percent = 50)
 // Aire entre el borde de la cápsula y el sombreado del elemento activo. Deja el
 // pill del ítem en 48.dp de alto: el mínimo táctil, que es el que manda aquí.
 private val FloatingNavItemMargin = 8.dp
+// Aire entre el pill del primer/último ítem y el borde de la cápsula, a juego
+// con el margen vertical para que el sombreado quede centrado en ella.
+private val FloatingNavBarItemsPadding = 8.dp
+// Hueco entre pills. Como la cápsula ya no reparte el ancho de la pantalla,
+// este gap es lo único que separa un ítem del siguiente.
+private val FloatingNavItemGap = 4.dp
+// El pill se ajusta a su etiqueta, pero no baja de aquí: sin un mínimo, "Más"
+// quedaría bastante más estrecho que "Carpetas" y la fila se leería irregular.
+private val FloatingNavItemMinWidth = 68.dp
+private val FloatingNavItemContentPadding = 16.dp
 
 /**
  * Hueco que debe reservar al final de su scroll una pantalla que dibuja a
@@ -321,7 +332,9 @@ private fun MainNavigationBar(
 ) {
     // El inset del sistema y los márgenes van *fuera* de la Surface: es lo que la
     // despega de los bordes y la hace flotar, en vez de que pinte el fondo por
-    // detrás del inset como haría una barra acoplada.
+    // detrás del inset como haría una barra acoplada. La cápsula se ajusta a sus
+    // ítems y va centrada; el margen horizontal solo es el tope por si la fila
+    // llegara a rozar los bordes (etiquetas largas, pantalla estrecha).
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -330,7 +343,8 @@ private fun MainNavigationBar(
                 start = FloatingNavBarHorizontalMargin,
                 end = FloatingNavBarHorizontalMargin,
                 bottom = FloatingNavBarBottomMargin
-            )
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             shape = FloatingNavBarShape,
@@ -344,10 +358,11 @@ private fun MainNavigationBar(
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .height(CompactNavBarContentHeight)
+                    .padding(horizontal = FloatingNavBarItemsPadding)
                     .selectableGroup(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(FloatingNavItemGap)
             ) {
                 val timelineActive = selectedTab == MainTab.Timeline
                 FloatingNavBarItem(
@@ -425,9 +440,12 @@ private fun MainNavigationBar(
  * El área táctil es el propio pill (48.dp de alto, el mínimo recomendado), así
  * el ripple queda recortado a la forma que se ve en vez de derramarse por toda
  * la celda.
+ *
+ * El pill se mide por su contenido (con un mínimo) en vez de repartirse el ancho
+ * de la pantalla: es lo que mantiene la cápsula pegada a sus ítems.
  */
 @Composable
-private fun RowScope.FloatingNavBarItem(
+private fun FloatingNavBarItem(
     selected: Boolean,
     onClick: () -> Unit,
     label: String,
@@ -442,14 +460,15 @@ private fun RowScope.FloatingNavBarItem(
     }
     Box(
         modifier = Modifier
-            .weight(1f)
             .fillMaxHeight()
-            .padding(horizontal = 4.dp, vertical = FloatingNavItemMargin)
+            .padding(vertical = FloatingNavItemMargin)
             .clip(FloatingNavBarShape)
             .background(
                 if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
             )
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick),
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .widthIn(min = FloatingNavItemMinWidth)
+            .padding(horizontal = FloatingNavItemContentPadding),
         contentAlignment = Alignment.Center
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
