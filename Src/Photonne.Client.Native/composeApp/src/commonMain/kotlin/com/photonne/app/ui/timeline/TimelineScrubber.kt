@@ -142,11 +142,22 @@ internal fun TimelineScrubber(
         }
     }
 
+    // At the very top the handle/date bubble sits right over the Memories
+    // "Ver todo" button, so get out of its way immediately there.
+    val atTop by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex == 0 &&
+                gridState.firstVisibleItemScrollOffset == 0
+        }
+    }
+
     // Visible while scrolling/scrubbing; fades out shortly after.
     val active = isDragging || gridState.isScrollInProgress
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(active) {
-        if (active) {
+    LaunchedEffect(active, atTop) {
+        if (atTop && !isDragging) {
+            visible = false
+        } else if (active) {
             visible = true
         } else {
             delay(1500)
