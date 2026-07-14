@@ -154,6 +154,16 @@ public class ExifExtractorService
                 }
             }
 
+            // Stamp the provenance once, here, rather than at each of the three
+            // places above that can set coordinates (EXIF GPS tags, the XYZ
+            // fallback, video ISO6709). Anything measured is Exif; anything else
+            // stays None and becomes a candidate for interpolation. Getting this
+            // wrong would be quiet and nasty: a real fix left marked None can't
+            // anchor an inference, and interpolation would silently do nothing.
+            exif.LocationSource = exif.Latitude != null && exif.Longitude != null
+                ? LocationSource.Exif
+                : LocationSource.None;
+
             return exif;
         }
         catch

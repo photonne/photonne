@@ -29,6 +29,7 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   ImageEmbedding.Enabled        — enqueue CLIP embedding backfill (default: false)
 ///   ImageEmbedding.Mode           — "missing" | "all" (default: "missing")
 ///   TrashCleanup.Enabled          — apply trash retention/quota policy (default: false); uses TrashSettings.*
+///   InterpolateLocations.Enabled  — infer coordinates from nearby geotagged photos (default: true)
 ///   ReverseGeocode.Enabled        — resolve place names for geolocated assets (default: true)
 ///   Memories.Enabled              — regenerate the per-user Recuerdos feed (default: true)
 ///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
@@ -156,6 +157,7 @@ public class NightlySchedulerService : BackgroundService
         var memoriesEnabled = await settings.GetSettingAsync("NightlyTaskSettings.Memories.Enabled", Guid.Empty, "true");
         // Also true by default — an in-memory lookup with no model behind it.
         var geocodeEnabled = await settings.GetSettingAsync("NightlyTaskSettings.ReverseGeocode.Enabled", Guid.Empty, "true");
+        var interpolateEnabled = await settings.GetSettingAsync("NightlyTaskSettings.InterpolateLocations.Enabled", Guid.Empty, "true");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
@@ -186,6 +188,12 @@ public class NightlySchedulerService : BackgroundService
         if (trashCleanupEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunTrashCleanupAsync(ct);
 
+        // Order matters for the next three: interpolation gives photos coordinates,
+        // geocoding turns coordinates into place names, memories read the places.
+        // Run them the other way round and everything lands one night late.
+        if (interpolateEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunInterpolateLocationsAsync(ct);
+
         // Before memories: trip memories are built from resolved places, so the
         // geocoding has to land first to be visible the same night.
         if (geocodeEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
@@ -195,6 +203,44 @@ public class NightlySchedulerService : BackgroundService
         // so they want the night's clustering to have already landed.
         if (memoriesEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMemoriesAsync(ct);
+    }
+
+    /// <summary>Fills in coordinates for photos shot alongside geotagged ones —
+    /// the camera shots in between the phone shots. Without it, trip detection
+    /// sees holes where a whole day was shot on a camera and splits one trip into
+    /// several.</summary>
+    private async Task RunInterpolateLocationsAsync(CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var runner = scope.ServiceProvider.GetRequiredService<Geo.LocationInterpolationRunner>();
+
+        var candidates = await runner.CandidateCountAsync(ct);
+        if (candidates == 0) return;
+
+        Console.WriteLine($"[NIGHTLY] Location interpolation started ({candidates} without coordinates).");
+
+        try
+        {
+            var result = await runner.RunAsync(ct);
+            Console.WriteLine($"[NIGHTLY] Location interpolation done — filled:{result.Filled} left:{result.Skipped}.");
+
+            if (result.Filled > 0)
+                await NotifyAdminsAsync(
+                    NotificationType.JobCompleted,
+                    "Tarea nocturna: ubicaciones inferidas",
+                    $"Se han inferido coordenadas para {result.Filled} foto(s) a partir de otras tomadas al mismo tiempo. {result.Skipped} se han quedado sin ubicación por falta de referencias fiables.",
+                    ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] Location interpolation error: {ex.Message}");
+            await NotifyAdminsAsync(
+                NotificationType.JobFailed,
+                "Tarea nocturna: ubicaciones inferidas",
+                $"Error infiriendo ubicaciones: {Truncate(ex.Message, 200)}",
+                ct);
+        }
     }
 
     /// <summary>Resolves place names for anything indexed before the dataset

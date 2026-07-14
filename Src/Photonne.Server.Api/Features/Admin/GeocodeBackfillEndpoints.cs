@@ -58,5 +58,20 @@ public class GeocodeBackfillEndpoint : IEndpoint
         })
         .WithName("RunReverseGeocodeBackfill")
         .WithDescription("Resolves place names for geolocated assets that have none");
+
+        group.MapPost("/interpolate-locations", async (
+            [FromServices] LocationInterpolationRunner runner,
+            CancellationToken ct) =>
+        {
+            var result = await runner.RunAsync(ct);
+            return Results.Ok(new
+            {
+                result.Filled,
+                result.Skipped,
+                message = $"Inferidas {result.Filled} ubicacion(es); {result.Skipped} sin referencias fiables.",
+            });
+        })
+        .WithName("RunLocationInterpolation")
+        .WithDescription("Infers coordinates for photos taken alongside geotagged ones");
     }
 }

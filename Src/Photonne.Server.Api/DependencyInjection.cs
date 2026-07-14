@@ -110,6 +110,7 @@ public static class DependencyInjection
             sp.GetRequiredService<IConfiguration>()["Geo:CitiesPath"] ?? DefaultCitiesPath));
         builder.Services.AddScoped<Shared.Services.Geo.PlaceResolver>();
         builder.Services.AddScoped<Shared.Services.Geo.GeocodeBackfillRunner>();
+        builder.Services.AddScoped<Shared.Services.Geo.LocationInterpolationRunner>();
 
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {
