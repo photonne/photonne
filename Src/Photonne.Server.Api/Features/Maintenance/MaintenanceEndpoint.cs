@@ -75,7 +75,7 @@ public class MaintenanceEndpoint : IEndpoint
                 Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : Guid.Empty,
                 cancellationToken))
             .WithName("MaintenanceTaskStream")
-            .WithDescription("Streams progress for a maintenance task (orphan-thumbnails, missing-files, recalculate-sizes, empty-trash, purge-missing) run as a background job.");
+            .WithDescription("Streams progress for a maintenance task (orphan-thumbnails, missing-files, recalculate-sizes, empty-trash, purge-missing, interpolate-locations, reverse-geocode, detect-trips, generate-memories) run as a background job.");
     }
 
     private static async Task<IResult> RunSync(MaintenanceService svc, string kind, bool dryRun, CancellationToken ct)

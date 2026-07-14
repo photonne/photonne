@@ -503,6 +503,8 @@
     <string name="admin_run_tasks_pending_format">%1$d sin procesar · %2$d en cola</string>
     <string name="admin_run_tasks_section_pipeline">Procesamiento</string>
     <string name="admin_run_tasks_section_ai">Análisis con IA</string>
+    <string name="admin_run_tasks_section_memories">Recuerdos y lugares</string>
+    <string name="admin_run_tasks_section_memories_subtitle">Cada una alimenta a la siguiente, en este orden</string>
     <string name="admin_run_tasks_section_other">Otras</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets sin analizar por alguna IA</string>
     <string name="admin_run_tasks_ai_progress_format">%1$s · %2$d en cola</string>
@@ -701,6 +703,14 @@
     <string name="admin_system_thumbnails_subtitle">Crear o regenerar miniaturas</string>
     <string name="admin_system_duplicates">Detección de duplicados</string>
     <string name="admin_system_duplicates_subtitle">Encontrar y limpiar copias repetidas</string>
+    <string name="admin_system_interpolate">Inferir ubicaciones</string>
+    <string name="admin_system_interpolate_subtitle">Dar coordenadas a las fotos hechas junto a otras con GPS</string>
+    <string name="admin_system_geocode">Lugares</string>
+    <string name="admin_system_geocode_subtitle">Poner nombre de ciudad a las coordenadas</string>
+    <string name="admin_system_trips">Detectar viajes</string>
+    <string name="admin_system_trips_subtitle">Buscar rachas de fotos lejos de casa</string>
+    <string name="admin_system_memories">Generar recuerdos</string>
+    <string name="admin_system_memories_subtitle">Rehacer la sección de Recuerdos de cada usuario</string>
     <string name="admin_system_media_recognition">Live Photos</string>
     <string name="admin_system_media_recognition_subtitle">Re-emparejar fotos y vídeos de Live Photos</string>
     <string name="admin_system_face">Reconocimiento facial</string>

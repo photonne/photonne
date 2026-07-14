@@ -503,6 +503,8 @@
     <string name="admin_run_tasks_pending_format">%1$d unprocessed · %2$d in queue</string>
     <string name="admin_run_tasks_section_pipeline">Processing</string>
     <string name="admin_run_tasks_section_ai">AI analysis</string>
+    <string name="admin_run_tasks_section_memories">Memories and places</string>
+    <string name="admin_run_tasks_section_memories_subtitle">Each one feeds the next, in this order</string>
     <string name="admin_run_tasks_section_other">Other</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets missing at least one AI pass</string>
     <string name="admin_run_tasks_ai_progress_format">%1$s · %2$d in queue</string>
@@ -688,6 +690,14 @@
     <string name="admin_system_thumbnails_subtitle">Create or regenerate thumbnails</string>
     <string name="admin_system_duplicates">Detect duplicates</string>
     <string name="admin_system_duplicates_subtitle">Find and clean up duplicates</string>
+    <string name="admin_system_interpolate">Infer locations</string>
+    <string name="admin_system_interpolate_subtitle">Give coordinates to photos shot alongside geotagged ones</string>
+    <string name="admin_system_geocode">Places</string>
+    <string name="admin_system_geocode_subtitle">Turn coordinates into city names</string>
+    <string name="admin_system_trips">Detect trips</string>
+    <string name="admin_system_trips_subtitle">Look for runs of photos away from home</string>
+    <string name="admin_system_memories">Generate memories</string>
+    <string name="admin_system_memories_subtitle">Rebuild every user's Memories section</string>
     <string name="admin_system_media_recognition">Live Photos</string>
     <string name="admin_system_media_recognition_subtitle">Re-pair Live Photo stills and clips</string>
     <string name="admin_system_face">Face recognition</string>

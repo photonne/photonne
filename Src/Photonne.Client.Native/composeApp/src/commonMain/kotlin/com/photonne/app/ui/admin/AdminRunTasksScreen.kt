@@ -15,15 +15,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.MotionPhotosOn
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.GroupWork
@@ -63,6 +67,8 @@ import com.photonne.app.resources.admin_run_tasks_last_run_format
 import com.photonne.app.resources.admin_run_tasks_last_run_never
 import com.photonne.app.resources.admin_run_tasks_pending_format
 import com.photonne.app.resources.admin_run_tasks_section_ai
+import com.photonne.app.resources.admin_run_tasks_section_memories
+import com.photonne.app.resources.admin_run_tasks_section_memories_subtitle
 import com.photonne.app.resources.admin_run_tasks_section_other
 import com.photonne.app.resources.admin_run_tasks_section_pipeline
 import com.photonne.app.resources.admin_run_tasks_status_in_progress
@@ -88,8 +94,16 @@ import com.photonne.app.resources.admin_system_face
 import com.photonne.app.resources.admin_system_face_subtitle
 import com.photonne.app.resources.admin_system_index
 import com.photonne.app.resources.admin_system_index_subtitle
+import com.photonne.app.resources.admin_system_geocode
+import com.photonne.app.resources.admin_system_geocode_subtitle
+import com.photonne.app.resources.admin_system_interpolate
+import com.photonne.app.resources.admin_system_interpolate_subtitle
 import com.photonne.app.resources.admin_system_media_recognition
 import com.photonne.app.resources.admin_system_media_recognition_subtitle
+import com.photonne.app.resources.admin_system_memories
+import com.photonne.app.resources.admin_system_memories_subtitle
+import com.photonne.app.resources.admin_system_trips
+import com.photonne.app.resources.admin_system_trips_subtitle
 import com.photonne.app.resources.admin_system_metadata
 import com.photonne.app.resources.admin_system_metadata_subtitle
 import com.photonne.app.resources.admin_system_object
@@ -129,10 +143,14 @@ import org.jetbrains.compose.resources.stringResource
  *   Thumbnails. ML can only run on assets that have completed this
  *   pipeline, so they belong at the top.
  * - [Ai]: the five ML enrichments. Each consumes already-indexed assets.
+ * - [Memories]: the nightly Recuerdos chain, on demand. Listed in
+ *   dependency order — coordinates → place names → trips → memories —
+ *   because running one out of order just means it reads yesterday's
+ *   input and lands a night late.
  * - [Other]: occasional maintenance tasks that aren't part of the
  *   forward pipeline (duplicates today, room for more later).
  */
-enum class AdminRunTaskSection { Pipeline, Ai, Other }
+enum class AdminRunTaskSection { Pipeline, Ai, Memories, Other }
 
 /** Identifies one of the five ML backfill endpoints
  *  (`/api/admin/maintenance/{kind}/backfill`). Used as the API path
@@ -165,6 +183,11 @@ enum class AdminRunTask(
     // the enum on `BackgroundTaskManager`). Null for ML / Other tasks
     // that don't register with that manager.
     val backgroundType: String?,
+    // URL slug of the maintenance kind behind this task, for the rows backed
+    // by `/api/admin/maintenance/{kind}/stream`. These all register under the
+    // same backgroundType ("Maintenance"), so `kind` — not type — is what
+    // tells one running maintenance row from another.
+    val maintenanceKind: String? = null,
 ) {
     IndexAssets(
         titleRes = Res.string.admin_system_index,
@@ -238,6 +261,42 @@ enum class AdminRunTask(
         section = AdminRunTaskSection.Ai,
         backgroundType = null,
     ),
+    InterpolateLocations(
+        titleRes = Res.string.admin_system_interpolate,
+        subtitleRes = Res.string.admin_system_interpolate_subtitle,
+        icon = Icons.Outlined.MyLocation,
+        backfillKind = null,
+        section = AdminRunTaskSection.Memories,
+        backgroundType = "Maintenance",
+        maintenanceKind = "interpolate-locations",
+    ),
+    ReverseGeocode(
+        titleRes = Res.string.admin_system_geocode,
+        subtitleRes = Res.string.admin_system_geocode_subtitle,
+        icon = Icons.Outlined.Place,
+        backfillKind = null,
+        section = AdminRunTaskSection.Memories,
+        backgroundType = "Maintenance",
+        maintenanceKind = "reverse-geocode",
+    ),
+    DetectTrips(
+        titleRes = Res.string.admin_system_trips,
+        subtitleRes = Res.string.admin_system_trips_subtitle,
+        icon = Icons.Outlined.Flight,
+        backfillKind = null,
+        section = AdminRunTaskSection.Memories,
+        backgroundType = "Maintenance",
+        maintenanceKind = "detect-trips",
+    ),
+    GenerateMemories(
+        titleRes = Res.string.admin_system_memories,
+        subtitleRes = Res.string.admin_system_memories_subtitle,
+        icon = Icons.Outlined.AutoAwesome,
+        backfillKind = null,
+        section = AdminRunTaskSection.Memories,
+        backgroundType = "Maintenance",
+        maintenanceKind = "generate-memories",
+    ),
     DetectDuplicates(
         titleRes = Res.string.admin_system_duplicates,
         subtitleRes = Res.string.admin_system_duplicates_subtitle,
@@ -257,6 +316,10 @@ enum class AdminRunTask(
 }
 
 private const val PollIntervalMs = 10_000L
+
+/** `BackgroundTaskType.Maintenance` on the server — the type every maintenance
+ *  kind shares. */
+private const val MaintenanceTaskType = "Maintenance"
 
 // Maximum time we wait for the streaming endpoint's first event after a
 // Start tap before falling through to refresh. The server registers the
@@ -445,7 +508,9 @@ class AdminRunTasksViewModel(
                             ).take(1).collect {}
                         AdminRunTask.DetectDuplicates ->
                             repository.duplicatesStream(cleanup = false, physical = false).take(1).collect {}
-                        else -> {}
+                        else -> task.maintenanceKind?.let {
+                            repository.maintenanceStream(it).take(1).collect {}
+                        }
                     }
                 }
             }
@@ -763,6 +828,7 @@ fun AdminRunTasksScreen(
 
     val pipelineTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Pipeline } }
     val aiTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Ai } }
+    val memoriesTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Memories } }
     val otherTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Other } }
 
     // Index server-side task DTOs by type for O(1) lookup per row. Live
@@ -773,6 +839,19 @@ fun AdminRunTasksScreen(
     val lastFinishedByType = state.backgroundTasks
         .filter { !it.isRunning && it.finishedAt != null }
         .groupBy { it.type }
+        .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
+
+    // Maintenance rows key off `parameters["kind"]`, not type: every maintenance
+    // task registers as type "Maintenance", so matching by type would light up
+    // all four Recuerdos rows the moment any one of them ran.
+    val runningByKind = state.backgroundTasks
+        .filter { it.isRunning && it.type == MaintenanceTaskType }
+        .mapNotNull { dto -> dto.parameters["kind"]?.let { it to dto } }
+        .toMap()
+    val lastFinishedByKind = state.backgroundTasks
+        .filter { !it.isRunning && it.type == MaintenanceTaskType && it.finishedAt != null }
+        .mapNotNull { dto -> dto.parameters["kind"]?.let { it to dto } }
+        .groupBy({ it.first }, { it.second })
         .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
 
     LazyColumn(
@@ -885,6 +964,32 @@ fun AdminRunTasksScreen(
                 } else null,
                 onCancelAi = { viewModel.cancelMlQueue(task) },
                 onCancel = null
+            )
+        }
+
+        item {
+            SectionHeader(
+                stringResource(Res.string.admin_run_tasks_section_memories),
+                stringResource(Res.string.admin_run_tasks_section_memories_subtitle)
+            )
+        }
+        items(memoriesTasks) { task ->
+            val kind = task.maintenanceKind
+            TaskRow(
+                task = task,
+                running = kind?.let { runningByKind[it] },
+                aiInProgress = false,
+                lastFinished = kind?.let { lastFinishedByKind[it] },
+                nowMs = nowMs,
+                pending = null,
+                isTriggering = task in state.triggering,
+                enqueuingProgress = null,
+                sessionBaseline = null,
+                onOpen = null,
+                onStart = { viewModel.triggerTask(task) },
+                onSecondary = null,
+                onCancelAi = null,
+                onCancel = { dto -> viewModel.cancelTask(dto.id) }
             )
         }
 
@@ -1235,7 +1340,8 @@ private fun TaskRowSubtitle(
                 } else stringResource(Res.string.admin_run_tasks_last_run_never)
             }
             task.section == AdminRunTaskSection.Other ||
-                task.section == AdminRunTaskSection.Pipeline ->
+                task.section == AdminRunTaskSection.Pipeline ||
+                task.section == AdminRunTaskSection.Memories ->
                 stringResource(Res.string.admin_run_tasks_last_run_never)
             else -> ""
         }

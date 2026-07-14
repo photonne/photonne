@@ -18,17 +18,26 @@ namespace Photonne.Server.Api.Features.Maintenance;
 /// The logic is identical to the former MaintenanceEndpoint handlers; only the
 /// per-iteration progress emission is new.
 /// </summary>
-public class MaintenanceService
+public partial class MaintenanceService
 {
     private const string ThumbnailsBasePath = "/data/thumbnails";
 
     private readonly ApplicationDbContext _dbContext;
     private readonly SettingsService _settingsService;
 
-    public MaintenanceService(ApplicationDbContext dbContext, SettingsService settingsService)
+    /// <summary>Only the memories/places tasks use it, and only because they run
+    /// per user: AssetVisibilityService caches a permission snapshot per instance,
+    /// so each user needs a scope of their own (see MaintenanceService.Memories).</summary>
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public MaintenanceService(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        IServiceScopeFactory scopeFactory)
     {
         _dbContext = dbContext;
         _settingsService = settingsService;
+        _scopeFactory = scopeFactory;
     }
 
     /// <summary>Runs the task identified by <paramref name="kind"/> (the URL slug).
@@ -44,6 +53,13 @@ public class MaintenanceService
         "recalculate-sizes" => RecalculateSizesAsync(onProgress, ct),
         "empty-trash" => EmptyGlobalTrashAsync(onProgress, ct),
         "purge-missing" => PurgeMissingAsync(dryRun, onProgress, ct),
+        // Memories and places. Same nightly work, on demand — see
+        // MaintenanceService.Memories.cs. Their order here is their dependency
+        // order: coordinates → place names → trips → memories.
+        "interpolate-locations" => InterpolateLocationsAsync(onProgress, ct),
+        "reverse-geocode" => ReverseGeocodeAsync(onProgress, ct),
+        "detect-trips" => DetectTripsAsync(onProgress, ct),
+        "generate-memories" => GenerateMemoriesAsync(onProgress, ct),
         _ => null
     };
 
