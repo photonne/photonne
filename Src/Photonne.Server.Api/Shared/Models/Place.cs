@@ -27,9 +27,16 @@ public class Place
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// ISO 3166-1 alpha-2. The country's NAME is not stored: .NET's RegionInfo
-    /// already renders it, localized, from this code — so persisting "Italy"
-    /// would just be an English string we'd have to translate later anyway.
+    /// ISO 3166-1 alpha-2. The country's NAME is not stored, and — contrary to
+    /// what an earlier version of this comment claimed — .NET cannot render it:
+    /// RegionInfo.DisplayName ignores CurrentUICulture and falls back to the
+    /// NATIVE name, so "JP" comes out as 日本 and "MA" as المغرب regardless of
+    /// the culture you ask in. ("IT" → "Italia" only works by coincidence.)
+    ///
+    /// So nothing user-facing may derive a country name from this code without
+    /// bringing its own translations. Trip titles are built from city names for
+    /// exactly this reason. The code is still worth keeping: it disambiguates
+    /// same-named cities and groups places by country for free.
     /// </summary>
     [Required]
     [MaxLength(2)]

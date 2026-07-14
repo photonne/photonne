@@ -68,6 +68,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<MemoryAsset> MemoryAssets { get; set; }
     /// <summary>GeoNames places, materialized on demand as photos are geocoded.</summary>
     public DbSet<Place> Places { get; set; }
+    /// <summary>Detected time+place clusters away from home. Persisted rather than
+    /// re-derived so their names and boundaries don't flicker night to night.</summary>
+    public DbSet<Trip> Trips { get; set; }
+    public DbSet<TripPlace> TripPlaces { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -263,6 +267,42 @@ public class ApplicationDbContext : DbContext
             // The natural key. Unique so a concurrent geocode can't insert the
             // same city twice — the workers run in parallel over one library.
             entity.HasIndex(e => e.GeonameId).IsUnique();
+        });
+
+        // Configure Trip entity (detected time+place cluster away from home).
+        modelBuilder.Entity<Trip>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.DedupeKey).IsRequired().HasMaxLength(200);
+
+            entity.HasOne(e => e.Owner)
+                .WithMany()
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // The upsert contract, same shape as Memory's.
+            entity.HasIndex(e => new { e.OwnerId, e.DedupeKey }).IsUnique();
+
+            entity.Property(e => e.WindowStart).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.WindowEnd).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+            entity.Property(e => e.DetectedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
+        });
+
+        // Configure TripPlace entity (per-place asset counts; rebuilt each run).
+        modelBuilder.Entity<TripPlace>(entity =>
+        {
+            entity.HasKey(e => new { e.TripId, e.PlaceId });
+
+            entity.HasOne(e => e.Trip)
+                .WithMany(t => t.Places)
+                .HasForeignKey(e => e.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Place)
+                .WithMany()
+                .HasForeignKey(e => e.PlaceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure AssetThumbnail entity

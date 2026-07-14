@@ -158,6 +158,7 @@ public class NightlySchedulerService : BackgroundService
         // Also true by default — an in-memory lookup with no model behind it.
         var geocodeEnabled = await settings.GetSettingAsync("NightlyTaskSettings.ReverseGeocode.Enabled", Guid.Empty, "true");
         var interpolateEnabled = await settings.GetSettingAsync("NightlyTaskSettings.InterpolateLocations.Enabled", Guid.Empty, "true");
+        var tripsEnabled = await settings.GetSettingAsync("NightlyTaskSettings.TripDetection.Enabled", Guid.Empty, "true");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
@@ -188,16 +189,18 @@ public class NightlySchedulerService : BackgroundService
         if (trashCleanupEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunTrashCleanupAsync(ct);
 
-        // Order matters for the next three: interpolation gives photos coordinates,
-        // geocoding turns coordinates into place names, memories read the places.
-        // Run them the other way round and everything lands one night late.
+        // Order matters for the next four: interpolation gives photos coordinates,
+        // geocoding turns coordinates into place names, trip detection reads both,
+        // memories read the trips. Run them the other way round and everything
+        // lands one night late.
         if (interpolateEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunInterpolateLocationsAsync(ct);
 
-        // Before memories: trip memories are built from resolved places, so the
-        // geocoding has to land first to be visible the same night.
         if (geocodeEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunReverseGeocodeAsync(ct);
+
+        if (tripsEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunTripDetectionAsync(ct);
 
         // Memories last: person-driven memories read Person/UserFaceAssignment,
         // so they want the night's clustering to have already landed.
@@ -279,6 +282,63 @@ public class NightlySchedulerService : BackgroundService
                 $"Error geocodificando: {Truncate(ex.Message, 200)}",
                 ct);
         }
+    }
+
+    /// <summary>Finds each user's trips from their geolocated photos. Per-user
+    /// because home is: the same week is a holiday for the visitor and an ordinary
+    /// week for the host.</summary>
+    private async Task RunTripDetectionAsync(CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var geocoder = scope.ServiceProvider.GetRequiredService<Geo.ReverseGeocoder>();
+
+        // Trips detect fine without place names, but every one of them would be
+        // titled "Viaje de julio de 2019". Not worth a nightly sweep.
+        if (!geocoder.IsAvailable) return;
+
+        var settings = scope.ServiceProvider.GetRequiredService<SettingsService>();
+        var tz = await MetadataTimeZone.ResolveAsync(settings, ct);
+        var localToday = MetadataTimeZone.LocalNow(tz);
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var userIds = await dbContext.Users
+            .Where(u => u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        Console.WriteLine("[NIGHTLY] Trip detection started.");
+        int created = 0, updated = 0, removed = 0, withoutHome = 0, usersFailed = 0;
+
+        foreach (var userId in userIds)
+        {
+            if (ct.IsCancellationRequested) break;
+            try
+            {
+                using var userScope = _scopeFactory.CreateScope();
+                var detection = userScope.ServiceProvider.GetRequiredService<Geo.TripDetectionService>();
+
+                var result = await detection.RunForUserAsync(userId, localToday, ct);
+                created += result.Created;
+                updated += result.Updated;
+                removed += result.Removed;
+                if (!result.HomeFound) withoutHome++;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                usersFailed++;
+                Console.WriteLine($"[NIGHTLY] Trip detection error for user {userId}: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[NIGHTLY] Trip detection done — created:{created} updated:{updated} removed:{removed} no-home:{withoutHome} failed:{usersFailed}.");
+
+        if (created > 0)
+            await NotifyAdminsAsync(
+                NotificationType.JobCompleted,
+                "Tarea nocturna: viajes",
+                $"Se han detectado {created} viaje(s) nuevo(s).",
+                ct);
     }
 
     /// <summary>Regenerates every user's Recuerdos feed. Per-user by necessity:

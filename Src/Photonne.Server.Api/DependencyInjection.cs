@@ -101,6 +101,8 @@ public static class DependencyInjection
                                    Features.Memories.Generation.CuratedSceneGenerator>();
         builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
                                    Features.Memories.Generation.PetsAndFoodGenerator>();
+        builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
+                                   Features.Memories.Generation.TripMemoryGenerator>();
         builder.Services.AddScoped<Features.Memories.Generation.MemoryGenerationService>();
 
         // Reverse geocoding. The geocoder is a singleton because it owns the
@@ -111,6 +113,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<Shared.Services.Geo.PlaceResolver>();
         builder.Services.AddScoped<Shared.Services.Geo.GeocodeBackfillRunner>();
         builder.Services.AddScoped<Shared.Services.Geo.LocationInterpolationRunner>();
+        builder.Services.AddScoped<Shared.Services.Geo.TripDetectionService>();
 
         builder.Services.AddHttpClient<IObjectDetectionClient, ObjectDetectionClient>((sp, client) =>
         {
