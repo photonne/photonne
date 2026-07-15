@@ -1,5 +1,6 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BrokenImage
@@ -57,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1253,6 +1256,12 @@ data class SecondaryAction(
  * A task group's header: tap anywhere to fold it away. Carries the task count
  * so a folded group still says how much is in there, and a live dot when work
  * is running inside one — folding a group hides its rows, not its work.
+ *
+ * Deliberately not a card, unlike everything else on this screen: the header
+ * has to read as the parent of the task cards under it, and two nested cards
+ * read as siblings. It earns its weight from [titleMedium] — matching the task
+ * titles rather than sitting below them — plus the space above it, which is
+ * what actually separates one group from the previous group's last row.
  */
 @Composable
 private fun SectionHeader(
@@ -1266,26 +1275,27 @@ private fun SectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onToggle)
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(horizontal = 4.dp)
+            .padding(top = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    "$count",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                SectionCountPill(count)
                 if (showLiveDot) LiveDot(active = true)
             }
             if (!subtitle.isNullOrBlank()) {
@@ -1303,6 +1313,24 @@ private fun SectionHeader(
                 else Res.string.admin_run_tasks_section_expand
             ),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** How many tasks live in a group, as a shape rather than a loose number —
+ *  a bare "5" next to a title reads as part of the title. */
+@Composable
+private fun SectionCountPill(count: Int) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(
+            "$count",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
