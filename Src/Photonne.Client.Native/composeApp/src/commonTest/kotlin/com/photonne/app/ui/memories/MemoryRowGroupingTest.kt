@@ -2,7 +2,9 @@ package com.photonne.app.ui.memories
 
 import com.photonne.app.data.models.Memory
 import com.photonne.app.data.models.MemoryKind
-import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -21,24 +23,28 @@ class MemoryRowGroupingTest {
         themeKey: String = "",
         groupTitle: String = "",
         cardLabel: String? = null,
-    ) = Memory(
-        id = id,
-        kind = kind.wire,
-        title = title,
-        themeKey = themeKey,
-        groupTitle = groupTitle,
-        cardLabel = cardLabel,
-        windowStart = Instant.fromEpochSeconds(0),
-        windowEnd = Instant.fromEpochSeconds(0),
-    )
+        year: Int = 2020,
+    ): Memory {
+        val window = LocalDateTime(year, 6, 1, 12, 0).toInstant(TimeZone.UTC)
+        return Memory(
+            id = id,
+            kind = kind.wire,
+            title = title,
+            themeKey = themeKey,
+            groupTitle = groupTitle,
+            cardLabel = cardLabel,
+            windowStart = window,
+            windowEnd = window,
+        )
+    }
 
     @Test
     fun `themed memories fold into one row per theme, years inside`() {
         val rows = groupIntoRows(
             listOf(
-                memory("1", MemoryKind.CuratedScene, "Días de playa de 2024", "scene:beach", "Días de playa", "2024"),
-                memory("2", MemoryKind.PetsAndFood, "Tus mascotas en 2023", "object:pets", "Tus mascotas", "2023"),
-                memory("3", MemoryKind.CuratedScene, "Días de playa de 2021", "scene:beach", "Días de playa", "2021"),
+                memory("1", MemoryKind.CuratedScene, "Días de playa de 2024", "scene:beach", "Días de playa", "2024", year = 2024),
+                memory("2", MemoryKind.PetsAndFood, "Tus mascotas en 2023", "object:pets", "Tus mascotas", "2023", year = 2023),
+                memory("3", MemoryKind.CuratedScene, "Días de playa de 2021", "scene:beach", "Días de playa", "2021", year = 2021),
             )
         )
 
@@ -48,6 +54,55 @@ class MemoryRowGroupingTest {
         // Titled by the server, so the screen has nothing to resolve.
         assertNull(beach.sectionId)
         assertEquals(2, rows.size)
+    }
+
+    /**
+     * The server hands these back by score, which interleaves the years. A row of
+     * periods is read as a timeline, so out of order it looks broken rather than
+     * ranked.
+     */
+    @Test
+    fun `a row of periods runs newest first, not by score`() {
+        val rows = groupIntoRows(
+            listOf(
+                // Score order, exactly as the feed returns it.
+                memory("1", MemoryKind.CuratedScene, "Días de playa de 2021", "scene:beach", "Días de playa", "2021", year = 2021),
+                memory("2", MemoryKind.CuratedScene, "Días de playa de 2024", "scene:beach", "Días de playa", "2024", year = 2024),
+                memory("3", MemoryKind.CuratedScene, "Días de playa de 2019", "scene:beach", "Días de playa", "2019", year = 2019),
+                memory("4", MemoryKind.CuratedScene, "Días de playa de 2023", "scene:beach", "Días de playa", "2023", year = 2023),
+            )
+        )
+
+        assertEquals(listOf("2024", "2023", "2021", "2019"), rows.single().memories.map { it.cardLabel })
+    }
+
+    @Test
+    fun `the months row runs newest first too`() {
+        val rows = groupIntoRows(
+            listOf(
+                memory("1", MemoryKind.ThisMonth, "Julio de 2018", "month", "Este mes", "2018", year = 2018),
+                memory("2", MemoryKind.ThisMonth, "Julio de 2023", "month", "Este mes", "2023", year = 2023),
+                memory("3", MemoryKind.ThisMonth, "Julio de 2021", "month", "Este mes", "2021", year = 2021),
+            )
+        )
+
+        assertEquals(listOf("2023", "2021", "2018"), rows.single().memories.map { it.cardLabel })
+    }
+
+    /**
+     * People are the exception: those cards are people, not periods, so the
+     * server's ranking is the point — your daughter before an acquaintance.
+     */
+    @Test
+    fun `the people row keeps the server's ranking`() {
+        val rows = groupIntoRows(
+            listOf(
+                memory("1", MemoryKind.PersonThroughYears, "Martina a lo largo de los años", "people", "Personas", "Martina", year = 2019),
+                memory("2", MemoryKind.PersonThroughYears, "Joan a lo largo de los años", "people", "Personas", "Joan", year = 2024),
+            )
+        )
+
+        assertEquals(listOf("Martina", "Joan"), rows.single().memories.map { it.cardLabel })
     }
 
     @Test

@@ -153,7 +153,13 @@ class MemoryFeedViewModel(
  * Row order is deliberately NOT the score. It's the declared [MemorySectionId]
  * order, then the header alphabetically: the whole point is that "Días de playa"
  * is where you left it yesterday, and a ranking that re-sorts itself every night
- * can't promise that. Within a row the server's ranking survives untouched.
+ * can't promise that.
+ *
+ * Neither is the order inside a row. Those cards are a period each — a year, a
+ * month, a trip — so the row reads as a timeline, and the score interleaves them
+ * (2021, 2024, 2019) in a way that reads as a bug rather than as a ranking. Newest
+ * first. [MemorySectionId.People] is the exception: its cards are people, not
+ * periods, and there the server's ranking is the whole point of the order.
  *
  * A file-level function, not a method: it's the one piece of this screen with
  * real logic, and this way it's testable without standing up a ViewModel.
@@ -183,7 +189,8 @@ internal fun groupIntoRows(memories: List<Memory>): List<MemoryRow> =
                 key = rowKey.key,
                 title = if (isThemed) items.first().groupTitle else "",
                 sectionId = if (isThemed) null else rowKey.section,
-                memories = items,
+                memories = if (rowKey.section == MemorySectionId.People) items
+                else items.sortedByDescending { it.windowEnd },
             )
         }
 
