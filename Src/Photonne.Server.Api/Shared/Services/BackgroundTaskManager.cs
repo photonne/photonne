@@ -161,12 +161,18 @@ public class BackgroundTaskManager
     }
 
     /// <summary>
-    /// Atomically returns the running task of <paramref name="type"/> if one
-    /// exists, or registers a fresh one. <paramref name="created"/> is true only
-    /// when a new entry was registered — callers use it to decide whether to
-    /// spin up the worker or merely attach to the in-flight run. The check and
-    /// the registration happen under a lock so two concurrent trigger requests
-    /// can't both start a worker for the same task type.
+    /// Atomically returns the running task of <paramref name="type"/> and the same
+    /// "kind" if one exists, or registers a fresh one. <paramref name="created"/>
+    /// is true only when a new entry was registered — callers use it to decide
+    /// whether to spin up the worker or merely attach to the in-flight run. The
+    /// check and the registration happen under a lock so two concurrent trigger
+    /// requests can't both start a worker for the same task.
+    ///
+    /// The "kind" is part of the identity, not just the type. Every maintenance
+    /// task registers as Maintenance, so matching on type alone meant asking for
+    /// one kind while another ran silently attached you to the running one and
+    /// never ran what you asked for — a button that does nothing, with nothing
+    /// logged to say why.
     /// </summary>
     public BackgroundTaskEntry GetOrCreateRunning(
         BackgroundTaskType type,
@@ -175,7 +181,9 @@ public class BackgroundTaskManager
     {
         lock (_registerLock)
         {
-            var running = _tasks.Values.FirstOrDefault(e => e.Type == type && e.Status == "Running");
+            var kind = Kind(parameters);
+            var running = _tasks.Values.FirstOrDefault(e =>
+                e.Type == type && e.Status == "Running" && Kind(e.Parameters) == kind);
             if (running != null)
             {
                 created = false;
@@ -193,6 +201,11 @@ public class BackgroundTaskManager
             return entry;
         }
     }
+
+    /// <summary>The sub-identity within a type, for the types that have one
+    /// (maintenance kinds). Null for types where the type IS the identity.</summary>
+    private static string? Kind(IReadOnlyDictionary<string, string>? parameters) =>
+        parameters is not null && parameters.TryGetValue("kind", out var kind) ? kind : null;
 
     public BackgroundTaskEntry? Get(Guid id) => _tasks.TryGetValue(id, out var e) ? e : null;
 

@@ -1256,6 +1256,20 @@ private fun TaskRow(
                     )
                 }
             }
+
+            // What the last run actually said. Without this the row reports
+            // "Última ejecución hace 2 min" whether the task did the work or
+            // died on the first line, which makes a failing task and a dead
+            // button look exactly the same.
+            if (!isActive && lastFinished != null && lastFinished.lastMessage.isNotBlank()) {
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    lastFinished.lastMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (lastFinished.status == "Failed") MaterialTheme.colorScheme.error
+                            else contentColor.copy(alpha = 0.75f)
+                )
+            }
         }
     }
 }

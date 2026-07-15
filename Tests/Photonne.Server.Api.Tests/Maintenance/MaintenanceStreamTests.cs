@@ -61,6 +61,14 @@ public sealed class MaintenanceStreamTests : IntegrationTestBase
     [InlineData("orphan-thumbnails")]
     [InlineData("empty-trash")]
     [InlineData("purge-missing")]
+    // The memories/places chain. Listed here because a kind that isn't in
+    // MaintenanceService's switch doesn't 404 — it registers a task, dies with
+    // "Tarea de mantenimiento desconocida" and looks, from the hub, exactly like
+    // a button that does nothing.
+    [InlineData("interpolate-locations")]
+    [InlineData("reverse-geocode")]
+    [InlineData("detect-trips")]
+    [InlineData("generate-memories")]
     public async Task Stream_Task_CompletesWithoutError(string kind)
     {
         var adminClient = await LoginAsAdminAsync();
@@ -76,6 +84,31 @@ public sealed class MaintenanceStreamTests : IntegrationTestBase
         Assert.True(last.GetProperty("isCompleted").GetBoolean());
         Assert.False(last.GetProperty("message").GetString()!.StartsWith("Error:"),
             $"{kind}: {last.GetProperty("message").GetString()}");
+    }
+
+    [Fact]
+    public async Task Stream_AKindIsNotBlockedByAnotherKindStillRunning()
+    {
+        // The registry deduped by task TYPE, and every maintenance kind shares
+        // the type "Maintenance" — so asking for one kind while another ran
+        // attached you to the running one and never ran what you asked for.
+        var adminClient = await LoginAsAdminAsync();
+
+        var first = adminClient.GetAsync(
+            "/api/admin/maintenance/recalculate-sizes/stream",
+            HttpCompletionOption.ResponseHeadersRead);
+        var second = await adminClient.GetAsync(
+            "/api/admin/maintenance/orphan-thumbnails/stream",
+            HttpCompletionOption.ResponseHeadersRead);
+
+        var secondEvents = ParseNdjson(await second.Content.ReadAsStringAsync());
+        var firstEvents = ParseNdjson(await (await first).Content.ReadAsStringAsync());
+
+        // Each stream must belong to its own task, not share one entry.
+        var firstId = firstEvents[0].GetProperty("taskId").GetString();
+        var secondId = secondEvents[0].GetProperty("taskId").GetString();
+        Assert.NotEqual(firstId, secondId);
+        Assert.True(secondEvents[^1].GetProperty("isCompleted").GetBoolean());
     }
 
     [Fact]
