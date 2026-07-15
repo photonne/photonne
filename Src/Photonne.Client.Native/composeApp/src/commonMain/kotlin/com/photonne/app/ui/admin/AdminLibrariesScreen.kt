@@ -25,7 +25,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -47,7 +46,6 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.admin_libraries_action_delete
-import com.photonne.app.resources.admin_libraries_action_new
 import com.photonne.app.resources.admin_libraries_action_permissions
 import com.photonne.app.resources.admin_libraries_action_scan
 import com.photonne.app.resources.admin_libraries_asset_count
@@ -64,109 +62,97 @@ import org.jetbrains.compose.resources.stringResource
 fun AdminLibrariesScreen(
     viewModel: AdminLibrariesViewModel,
     knownUsers: List<UserDto>,
-    onCreate: () -> Unit,
     onEdit: (ExternalLibraryDto) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            state.statusMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+    Column(modifier = Modifier.fillMaxSize()) {
+        state.statusMessage?.let { msg ->
+            Text(
+                msg,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+        }
+        state.error?.userMessage?.let { msg ->
+            Text(
+                msg,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+        }
+        state.scanProgress?.let { progress ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
-            }
-            state.error?.userMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-            state.scanProgress?.let { progress ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                stringResource(
-                                    Res.string.admin_libraries_scan_progress,
-                                    progress.percentage
-                                ),
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = viewModel::cancelScan) {
-                                Icon(Icons.Filled.Close, contentDescription = null)
-                            }
-                        }
-                        Text(progress.message, style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.height(4.dp))
-                        LinearProgressIndicator(
-                            progress = { (progress.percentage / 100f).coerceIn(0f, 1f) },
-                            modifier = Modifier.fillMaxWidth().height(6.dp)
-                        )
-                    }
-                }
-            }
-
-            when {
-                state.isLoading && state.libraries.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                state.libraries.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            stringResource(Res.string.admin_libraries_empty),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            stringResource(
+                                Res.string.admin_libraries_scan_progress,
+                                progress.percentage
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f)
                         )
-                    }
-                else ->
-                    LazyColumn(
-                        contentPadding = PaddingValues(
-                            start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(state.libraries, key = { it.id }) { lib ->
-                            LibraryCard(
-                                library = lib,
-                                onEdit = { onEdit(lib) },
-                                onScan = { viewModel.startScan(lib.id) },
-                                onPermissions = {
-                                    viewModel.openPermissions(lib.id, knownUsers)
-                                }
-                            )
+                        IconButton(onClick = viewModel::cancelScan) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
                         }
                     }
+                    Text(progress.message, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { (progress.percentage / 100f).coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(6.dp)
+                    )
+                }
             }
         }
 
-        ExtendedFloatingActionButton(
-            onClick = onCreate,
-            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-            text = { Text(stringResource(Res.string.admin_libraries_action_new)) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        )
+        when {
+            state.isLoading && state.libraries.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            state.libraries.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(Res.string.admin_libraries_empty),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            else ->
+                LazyColumn(
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(state.libraries, key = { it.id }) { lib ->
+                        LibraryCard(
+                            library = lib,
+                            onEdit = { onEdit(lib) },
+                            onScan = { viewModel.startScan(lib.id) },
+                            onPermissions = {
+                                viewModel.openPermissions(lib.id, knownUsers)
+                            }
+                        )
+                    }
+                }
+        }
     }
 
     if (state.permissionsLibraryId != null) {

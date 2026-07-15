@@ -55,6 +55,10 @@
     <string name="album_field_name">Name</string>
     <string name="album_field_description">Description (optional)</string>
     <string name="album_action_new">New album</string>
+    <string name="album_type_manual_title">Album</string>
+    <string name="album_type_manual_subtitle">You pick the photos yourself, one by one.</string>
+    <string name="album_type_smart_title">Smart album</string>
+    <string name="album_type_smart_subtitle">Fills itself from a condition (people, folders, dates…).</string>
     <string name="album_action_edit">Edit album</string>
     <string name="album_action_members">Members</string>
     <string name="album_action_album_actions">Album actions</string>

@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -21,8 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_refresh
-import com.photonne.app.resources.admin_user_action_new
 import com.photonne.app.resources.admin_user_inactive_badge
 import com.photonne.app.resources.admin_user_last_login
 import com.photonne.app.resources.admin_user_never_logged_in
@@ -50,79 +45,67 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun AdminUsersScreen(
     viewModel: AdminUsersViewModel,
-    onCreate: () -> Unit,
     onEdit: (UserDto) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            state.statusMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-            state.error?.userMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-
-            when {
-                state.isLoading && state.users.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                state.users.isEmpty() && state.error?.userMessage == null ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                stringResource(Res.string.admin_users_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Button(onClick = viewModel::refresh) {
-                                Text(stringResource(Res.string.action_refresh))
-                            }
-                        }
-                    }
-                else ->
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.users, key = { it.id }) { user ->
-                            UserRow(user = user, onClick = { onEdit(user) })
-                        }
-                    }
-            }
+    Column(modifier = Modifier.fillMaxSize()) {
+        state.statusMessage?.let { msg ->
+            Text(
+                msg,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+        }
+        state.error?.userMessage?.let { msg ->
+            Text(
+                msg,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            )
         }
 
-        ExtendedFloatingActionButton(
-            onClick = onCreate,
-            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-            text = { Text(stringResource(Res.string.admin_user_action_new)) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        )
+        when {
+            state.isLoading && state.users.isEmpty() ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            state.users.isEmpty() && state.error?.userMessage == null ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            stringResource(Res.string.admin_users_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(onClick = viewModel::refresh) {
+                            Text(stringResource(Res.string.action_refresh))
+                        }
+                    }
+                }
+            else ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(state.users, key = { it.id }) { user ->
+                        UserRow(user = user, onClick = { onEdit(user) })
+                    }
+                }
+        }
     }
 }
 

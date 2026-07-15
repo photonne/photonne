@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.AddToPhotos
@@ -74,6 +75,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -104,6 +106,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -209,7 +212,6 @@ fun MainScaffold(
     onTabSelected: (MainTab) -> Unit,
     topBar: @Composable () -> Unit,
     bottomBar: (@Composable () -> Unit)? = null,
-    floatingActionButton: @Composable () -> Unit = {},
     moreTabUnreadCount: Int = 0,
     /**
      * When true the content is NOT padded by the top system inset, so it draws
@@ -266,8 +268,7 @@ fun MainScaffold(
             ) {
                 resolvedBottomBar()
             }
-        },
-        floatingActionButton = floatingActionButton
+        }
     ) { padding ->
         val layoutDirection = LocalLayoutDirection.current
         val contentPadding = if (edgeToEdgeTop || edgeToEdgeBottom) {
@@ -492,6 +493,30 @@ private fun FloatingNavBarItem(
 }
 
 /**
+ * The one and only "add something here" affordance, shared by every top bar that
+ * has one (upload on Fotos/Más, new album, new folder/subfolder, new admin user/
+ * library). It used to be three patterns — a Scaffold FAB, a plain [IconButton]
+ * and a hand-placed `ExtendedFloatingActionButton` — for the same idea.
+ *
+ * Tonal rather than a `primary`-filled button: it has to sit on the timeline's
+ * translucent pill without turning into a blob, while still reading as something
+ * other than the flat icons beside it.
+ *
+ * Callers put it **first** in their `actions` row. It occupies the same 48.dp as
+ * an [IconButton], so it drops into an existing row without shifting anything.
+ */
+@Composable
+fun CreateAction(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    FilledTonalIconButton(onClick = onClick) {
+        Icon(icon, contentDescription = contentDescription)
+    }
+}
+
+/**
  * Top chrome for the timeline. At the very top it reads as a docked, opaque bar
  * carrying the wordmark; once the grid is scrolled the bar dissolves into a
  * compact translucent pill hugging the top-end corner, so the photos read
@@ -558,6 +583,15 @@ fun TimelineTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 2.dp)
             ) {
+                // First of the actions, ahead of the scan spinner: anchored here it
+                // keeps its place when the spinner comes and goes.
+                if (onOpenUpload != null) {
+                    CreateAction(
+                        icon = Icons.Outlined.AddPhotoAlternate,
+                        contentDescription = stringResource(Res.string.upload_title),
+                        onClick = onOpenUpload
+                    )
+                }
                 // Discreet spinner while the first device-gallery scan runs. Sits
                 // among the actions so it never overlaps the wordmark, and reads
                 // the same whether or not the Recuerdos strip is present.
@@ -586,14 +620,6 @@ fun TimelineTopBar(
                                     .semantics { contentDescription = scanLabel }
                             )
                         }
-                    }
-                }
-                if (onOpenUpload != null) {
-                    IconButton(onClick = onOpenUpload) {
-                        Icon(
-                            Icons.Outlined.AddPhotoAlternate,
-                            contentDescription = stringResource(Res.string.upload_title)
-                        )
                     }
                 }
                 if (onOpenSearch != null) {
@@ -956,7 +982,9 @@ fun AlbumsListTopBar(
     onOpenFilters: () -> Unit,
     isFilterActive: Boolean = false,
     isSearchActive: Boolean = false,
-    onToggleSearch: () -> Unit = {}
+    onToggleSearch: () -> Unit = {},
+    /** Opens the album-type chooser. Null hides the action. */
+    onCreateAlbum: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = {
@@ -966,6 +994,13 @@ fun AlbumsListTopBar(
             )
         },
         actions = {
+            if (onCreateAlbum != null) {
+                CreateAction(
+                    icon = Icons.Outlined.AddBox,
+                    contentDescription = stringResource(Res.string.album_action_new),
+                    onClick = onCreateAlbum
+                )
+            }
             IconButton(onClick = onToggleSearch) {
                 Icon(
                     imageVector = if (isSearchActive) Icons.Filled.Search else Icons.Outlined.Search,
@@ -1109,6 +1144,13 @@ fun FoldersListTopBar(
     TopAppBar(
         title = { Text(stringResource(Res.string.folders_title), style = MaterialTheme.typography.titleMedium) },
         actions = {
+            if (onCreateFolder != null) {
+                CreateAction(
+                    icon = Icons.Outlined.CreateNewFolder,
+                    contentDescription = stringResource(Res.string.folder_action_new),
+                    onClick = onCreateFolder
+                )
+            }
             IconButton(onClick = onToggleSearch) {
                 Icon(
                     imageVector = if (isSearchActive) Icons.Filled.Search else Icons.Outlined.Search,
@@ -1125,14 +1167,6 @@ fun FoldersListTopBar(
                     tint = if (isFilterActive) MaterialTheme.colorScheme.primary
                     else LocalContentColor.current
                 )
-            }
-            if (onCreateFolder != null) {
-                IconButton(onClick = onCreateFolder) {
-                    Icon(
-                        Icons.Outlined.CreateNewFolder,
-                        contentDescription = stringResource(Res.string.folder_action_new)
-                    )
-                }
             }
         }
     )
@@ -1299,12 +1333,11 @@ fun FolderDetailTopBar(
         },
         actions = {
             if (onCreateSubfolder != null) {
-                IconButton(onClick = onCreateSubfolder) {
-                    Icon(
-                        Icons.Outlined.CreateNewFolder,
-                        contentDescription = stringResource(Res.string.folder_action_new)
-                    )
-                }
+                CreateAction(
+                    icon = Icons.Outlined.CreateNewFolder,
+                    contentDescription = stringResource(Res.string.folder_action_new),
+                    onClick = onCreateSubfolder
+                )
             }
             if (hasMenu) {
                 Box {
@@ -1431,15 +1464,14 @@ fun SearchTopBar() {
 @Composable
 fun MoreTopBar(onOpenUpload: (() -> Unit)? = null) {
     TopAppBar(
-        title = { Text("Más", style = MaterialTheme.typography.titleMedium) },
+        title = { Text(stringResource(Res.string.tab_more), style = MaterialTheme.typography.titleMedium) },
         actions = {
             if (onOpenUpload != null) {
-                IconButton(onClick = onOpenUpload) {
-                    Icon(
-                        Icons.Outlined.AddPhotoAlternate,
-                        contentDescription = stringResource(Res.string.upload_title)
-                    )
-                }
+                CreateAction(
+                    icon = Icons.Outlined.AddPhotoAlternate,
+                    contentDescription = stringResource(Res.string.upload_title),
+                    onClick = onOpenUpload
+                )
             }
         }
     )

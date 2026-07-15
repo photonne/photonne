@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -888,7 +888,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenFilters = { showAlbumsFilters = true },
                         isFilterActive = albumsState.isFilterActive,
                         isSearchActive = albumsState.isSearchActive,
-                        onToggleSearch = albumsViewModel::toggleSearch
+                        onToggleSearch = albumsViewModel::toggleSearch,
+                        onCreateAlbum = { showAlbumTypeChooser = true }
                     )
                 }
             }
@@ -964,7 +965,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenFilters = { showFoldersFilters = true },
                         isFilterActive = foldersState.isFilterActive,
                         isSearchActive = foldersState.isSearchActive,
-                        onToggleSearch = foldersViewModel::toggleSearch
+                        onToggleSearch = foldersViewModel::toggleSearch,
+                        onCreateFolder = if (
+                            foldersState.scope !=
+                                com.photonne.app.ui.folder.FoldersScope.External
+                        ) {
+                            { showCreateFolder = true }
+                        } else null
                     )
                 }
             }
@@ -1293,6 +1300,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_users),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    actions = {
+                        com.photonne.app.ui.main.CreateAction(
+                            icon = Icons.Outlined.PersonAdd,
+                            contentDescription = stringResource(Res.string.admin_user_action_new),
+                            onClick = {
+                                adminUserEditorId = null
+                                adminUsersViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminUserEditor
+                            }
+                        )
+                    }
                 )
             moreSubscreen == MoreSubscreen.AdminUserEditor ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -1310,6 +1328,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.admin_section_libraries),
                     onBack = { moreSubscreen = MoreSubscreen.Administration },
+                    actions = {
+                        com.photonne.app.ui.main.CreateAction(
+                            icon = Icons.Outlined.CreateNewFolder,
+                            contentDescription = stringResource(
+                                Res.string.admin_libraries_action_new
+                            ),
+                            onClick = {
+                                adminLibraryEditorId = null
+                                adminLibrariesViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
+                            }
+                        )
+                    }
                 )
             moreSubscreen == MoreSubscreen.AdminLibraryEditor ->
                 com.photonne.app.ui.main.SettingsTopBar(
@@ -1652,27 +1683,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         else -> null
     }
 
-    // The Timeline upload entry point now lives among the immersive top-bar
-    // actions (see TimelineTopBar / FloatingTimelineTopBar), so it no longer
-    // has a FAB here.
-    val floatingActionButton: @Composable () -> Unit = {
-        when {
-            // Folder creation now lives in the Folders top bars (list + detail),
-            // not a FAB — see FoldersListTopBar / FolderDetailTopBar.
-            // Album creation as a FAB, matching the Timeline upload and Folders
-            // create patterns. Only on the albums list (not an open album or a
-            // More subscreen) and hidden during selection, which owns the
-            // bottom bar.
-            selectedTab == MainTab.Albums && bottomBar == null &&
-                selectedAlbum == null && moreSubscreen == null ->
-                FloatingActionButton(onClick = { showAlbumTypeChooser = true }) {
-                    Icon(
-                        Icons.Outlined.AddBox,
-                        contentDescription = stringResource(Res.string.album_action_new)
-                    )
-                }
-        }
-    }
+    // Every "add something here" entry point now lives as the first action of its
+    // own top bar (see CreateAction), so there is no FAB anywhere in the shell —
+    // one pattern instead of three, and nothing floating over the bottom nav.
 
     // On open: pre-populate the morph target synchronously so the grid
     // thumbnail has a sharedElement bounds source ready before the
@@ -1766,7 +1779,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             onTabSelected = { tab -> switchTab(tab) },
             topBar = topBar,
             bottomBar = bottomBar,
-            floatingActionButton = floatingActionButton,
             moreTabUnreadCount = notificationsState.unreadCount,
             // Every bare pager tab draws to the top of the screen and paints its
             // own top bar inside its page (Fotos' floating bar; Álbumes/Carpetas/
@@ -1854,7 +1866,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onOpenFilters = { showAlbumsFilters = true },
                                 isFilterActive = albumsState.isFilterActive,
                                 isSearchActive = albumsState.isSearchActive,
-                                onToggleSearch = albumsViewModel::toggleSearch
+                                onToggleSearch = albumsViewModel::toggleSearch,
+                                onCreateAlbum = { showAlbumTypeChooser = true }
                             )
                         }
                         Box(modifier = Modifier.weight(1f)) {
@@ -2571,11 +2584,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AdminUsers ->
                         com.photonne.app.ui.admin.AdminUsersScreen(
                             viewModel = adminUsersViewModel,
-                            onCreate = {
-                                adminUserEditorId = null
-                                adminUsersViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminUserEditor
-                            },
                             onEdit = { user ->
                                 adminUserEditorId = user.id
                                 adminUsersViewModel.clearMessages()
@@ -2597,11 +2605,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.admin.AdminLibrariesScreen(
                             viewModel = adminLibrariesViewModel,
                             knownUsers = usersState.users,
-                            onCreate = {
-                                adminLibraryEditorId = null
-                                adminLibrariesViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
-                            },
                             onEdit = { library ->
                                 adminLibraryEditorId = library.id
                                 adminLibrariesViewModel.clearMessages()

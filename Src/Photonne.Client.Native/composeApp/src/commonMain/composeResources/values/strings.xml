@@ -55,6 +55,10 @@
     <string name="album_field_name">Nombre</string>
     <string name="album_field_description">Descripción (opcional)</string>
     <string name="album_action_new">Nuevo álbum</string>
+    <string name="album_type_manual_title">Álbum</string>
+    <string name="album_type_manual_subtitle">Eliges tú las fotos, una a una.</string>
+    <string name="album_type_smart_title">Álbum inteligente</string>
+    <string name="album_type_smart_subtitle">Se rellena solo con una condición (personas, carpetas, fechas…).</string>
     <string name="album_action_edit">Editar álbum</string>
     <string name="album_action_members">Miembros</string>
     <string name="album_action_album_actions">Acciones del álbum</string>
