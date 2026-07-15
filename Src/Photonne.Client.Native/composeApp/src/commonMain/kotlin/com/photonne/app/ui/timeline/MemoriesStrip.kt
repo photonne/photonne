@@ -1,6 +1,5 @@
 package com.photonne.app.ui.timeline
 
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationEndReason
 import androidx.compose.animation.core.LinearEasing
@@ -56,8 +55,6 @@ import com.photonne.app.resources.timeline_memories_one_year_ago
 import com.photonne.app.resources.timeline_memories_years_ago
 import com.photonne.app.ui.memories.MemoryCardFace
 import com.photonne.app.ui.memories.MemoryDetailContext
-import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
-import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -222,7 +219,6 @@ fun MemoriesStrip(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun StoryCard(
     group: MemoryGroup,
@@ -237,24 +233,6 @@ private fun StoryCard(
     onClick: () -> Unit
 ) {
     val cover = group.cover
-    val sharedScope = LocalSharedTransitionScope.current
-    val currentDetailId = LocalCurrentDetailAssetId.current
-    // cover == group.items[0], and tapping the card opens the viewer at
-    // index 0 — so the morph key matches when the viewer mounts.
-    val coverSharedMod: Modifier = if (sharedScope != null && currentDetailId != null) {
-        val sharedKey = remember(cover.id) { "asset-${cover.id}" }
-        with(sharedScope) {
-            Modifier.sharedElementWithCallerManagedVisibility(
-                sharedContentState = rememberSharedContentState(key = sharedKey),
-                visible = currentDetailId != cover.id,
-                boundsTransform = { _, _ ->
-                    androidx.compose.animation.core.tween(durationMillis = 320)
-                }
-            )
-        }
-    } else {
-        Modifier
-    }
     // Ken Burns: when the slide is the active one, scale lerps 1.0 → 1.10
     // and pans slightly using the same progress driver so the motion lines
     // up exactly with the time the slide is on screen.
@@ -292,8 +270,7 @@ private fun StoryCard(
                 scaleX = kenBurnsScale
                 scaleY = kenBurnsScale
                 translationX = -kenBurnsPan
-            }
-            .then(coverSharedMod),
+            },
         onCoverLoaded = onCoverLoaded,
     ) {
         // Top progress segments — one per memory group, current one fills.
