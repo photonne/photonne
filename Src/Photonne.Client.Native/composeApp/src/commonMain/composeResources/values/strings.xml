@@ -26,7 +26,7 @@
     <string name="action_invite">Invitar</string>
     <string name="action_more">Más acciones</string>
 
-    <string name="timeline_empty_title">No hay assets en la línea de tiempo</string>
+    <string name="timeline_empty_title">No hay assets en el timeline</string>
     <string name="timeline_empty_subtitle">Indexa una carpeta desde la app web o sube tus primeras fotos.</string>
     <string name="timeline_empty_action_upload">Subir fotos</string>
     <string name="timeline_device_loading">Buscando fotos del dispositivo…</string>
@@ -254,7 +254,7 @@
     <string name="archive_action_unarchive">Desarchivar</string>
     <string name="archive_action_unarchive_all">Desarchivar todo</string>
     <string name="archive_action_unarchive_all_title">Desarchivar todo</string>
-    <string name="archive_action_unarchive_all_message">Se devolverán a la línea de tiempo todos los elementos archivados.</string>
+    <string name="archive_action_unarchive_all_message">Se devolverán al timeline todos los elementos archivados.</string>
 
     <string name="trash_title">Papelera</string>
     <string name="trash_tab_personal">Personal</string>

@@ -89,7 +89,7 @@ class TimelineViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            error = errorFactory.from(error, "Error al cargar la línea de tiempo")
+                            error = errorFactory.from(error, "Error al cargar el timeline")
                         )
                     }
                 }
@@ -107,7 +107,7 @@ class TimelineViewModel(
             runCatching { store.ensureLoaded(bucketKeys) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Error al cargar la línea de tiempo"))
+                        it.copy(error = errorFactory.from(error, "Error al cargar el timeline"))
                     }
                 }
         }
@@ -123,7 +123,7 @@ class TimelineViewModel(
             runCatching { store.ensureYearSummaries(sample) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Error al cargar la línea de tiempo"))
+                        it.copy(error = errorFactory.from(error, "Error al cargar el timeline"))
                     }
                 }
         }
