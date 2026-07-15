@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class AlbumsTab { Mine, Shared, MyLinks }
+/** Which slice of the album list the user is looking at. */
+enum class AlbumsScope { All, Mine, Shared }
 
 enum class AlbumSort { Date, Name }
 
@@ -33,7 +34,7 @@ enum class AlbumViewMode { Grid, List }
 
 data class AlbumsUiState(
     val albums: List<AlbumSummary> = emptyList(),
-    val selectedTab: AlbumsTab = AlbumsTab.Mine,
+    val scope: AlbumsScope = AlbumsScope.All,
     val sort: AlbumSort = AlbumSort.Date,
     val direction: SortDirection = SortDirection.Descending,
     val viewMode: AlbumViewMode = AlbumViewMode.Grid,
@@ -49,19 +50,24 @@ data class AlbumsUiState(
 
     val hasActiveQuery: Boolean get() = searchQuery.isNotBlank()
 
+    /** Scope hides albums, so the Tune icon has to advertise it. */
+    val isFilterActive: Boolean get() = scope != AlbumsScope.All
+
     val visibleAlbums: List<AlbumSummary> get() {
-        val tabFiltered = when (selectedTab) {
-            AlbumsTab.Mine -> albums.filter { it.isOwner && !it.isShared }
-            AlbumsTab.Shared -> albums.filter { !it.isOwner || it.isShared }
-            AlbumsTab.MyLinks -> albums.filter { it.isOwner && it.hasActiveShareLink }
+        // Mine and Shared partition the list exactly: every album is either
+        // mine-and-private or shared in one direction or the other.
+        val scopeFiltered = when (scope) {
+            AlbumsScope.All -> albums
+            AlbumsScope.Mine -> albums.filter { it.isOwner && !it.isShared }
+            AlbumsScope.Shared -> albums.filter { !it.isOwner || it.isShared }
         }
         val queryFiltered = if (hasActiveQuery) {
             val needle = searchQuery.trim().lowercase()
-            tabFiltered.filter { album ->
+            scopeFiltered.filter { album ->
                 album.name.lowercase().contains(needle) ||
                     (album.description?.lowercase()?.contains(needle) == true)
             }
-        } else tabFiltered
+        } else scopeFiltered
         val ascending = when (sort) {
             AlbumSort.Date -> queryFiltered.sortedBy { it.createdAt }
             AlbumSort.Name -> queryFiltered.sortedByNatural { it.name }
@@ -109,8 +115,14 @@ class AlbumsViewModel(
         )
     }
 
-    fun selectTab(tab: AlbumsTab) {
-        _state.update { it.copy(selectedTab = tab, selectedAlbumId = null) }
+    /**
+     * Deliberately not persisted, unlike sort/direction/view mode: those are
+     * presentational, this one hides albums. A subtractive filter restored
+     * weeks later — with only a tinted Tune icon to explain it — reads as
+     * missing data.
+     */
+    fun setScope(scope: AlbumsScope) {
+        _state.update { it.copy(scope = scope, selectedAlbumId = null) }
     }
 
     fun toggleSearch() {

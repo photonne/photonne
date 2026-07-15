@@ -18,13 +18,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.filters_direction_label
+import com.photonne.app.resources.filters_scope_label
 import com.photonne.app.resources.filters_sort_ascending
 import com.photonne.app.resources.filters_sort_descending
 import com.photonne.app.resources.filters_sort_label
 import com.photonne.app.resources.filters_title
 import com.photonne.app.resources.filters_view_label
+import com.photonne.app.resources.folders_scope_all
+import com.photonne.app.resources.folders_scope_external
 import com.photonne.app.resources.folders_sort_asset_count
 import com.photonne.app.resources.folders_sort_name
+import com.photonne.app.resources.folders_scope_personal
+import com.photonne.app.resources.folders_scope_shared
 import com.photonne.app.resources.view_mode_grid
 import com.photonne.app.resources.view_mode_list
 import com.photonne.app.ui.util.SegmentOption
@@ -37,6 +42,7 @@ import org.jetbrains.compose.resources.stringResource
 fun FoldersFiltersSheet(
     state: FoldersUiState,
     onDismiss: () -> Unit,
+    onScopeChange: (FoldersScope) -> Unit,
     onSortChange: (FolderSort) -> Unit,
     onDirectionChange: (SortDirection) -> Unit,
     onViewModeChange: (FolderViewMode) -> Unit
@@ -54,6 +60,32 @@ fun FoldersFiltersSheet(
                 stringResource(Res.string.filters_title),
                 style = MaterialTheme.typography.titleLarge
             )
+
+            SectionLabel(stringResource(Res.string.filters_scope_label))
+            SegmentedChoiceRow(
+                options = listOf(
+                    SegmentOption(FoldersScope.All, stringResource(Res.string.folders_scope_all)),
+                    SegmentOption(
+                        FoldersScope.Personal,
+                        stringResource(Res.string.folders_scope_personal)
+                    ),
+                    SegmentOption(
+                        FoldersScope.Shared,
+                        stringResource(Res.string.folders_scope_shared)
+                    ),
+                    SegmentOption(
+                        FoldersScope.External,
+                        stringResource(Res.string.folders_scope_external)
+                    )
+                ),
+                selected = state.scope,
+                onSelect = onScopeChange,
+                // Four segments: the leading icon slot would ellipsise
+                // "Compartidas" on a narrow phone.
+                showSelectionIcon = false
+            )
+
+            HorizontalDivider()
 
             SectionLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FolderOff
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
@@ -59,6 +60,7 @@ import com.photonne.app.resources.more_section_manage
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.trash_title
+import com.photonne.app.resources.my_links_title
 import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
@@ -95,6 +97,7 @@ fun MoreScreen(
     onOpenArchived: () -> Unit,
     onOpenTrash: () -> Unit,
     onOpenUtilities: () -> Unit,
+    onOpenMyLinks: () -> Unit,
     onOpenUnsupportedFiles: () -> Unit,
     onOpenDeviceBackup: () -> Unit,
     onOpenNotifications: () -> Unit,
@@ -214,9 +217,18 @@ fun MoreScreen(
                     }
                 }
             }
-            // "Otros archivos" reads as a lightweight horizontal row under the
-            // Gestión grid — its label is too long for a narrow square tile.
+            // Lightweight horizontal rows under the Gestión grid — their labels
+            // are too long for a narrow square tile. "Mis enlaces" first: it's
+            // where you manage links you created, while "Otros archivos" is a
+            // read-only dead end.
             if (section.key == "manage") {
+                item("my-links-link") {
+                    ManageLinkRow(
+                        icon = Icons.Outlined.Share,
+                        label = stringResource(Res.string.my_links_title),
+                        onClick = onOpenMyLinks
+                    )
+                }
                 item("unsupported-files-link") {
                     ManageLinkRow(
                         icon = Icons.Outlined.FolderOff,

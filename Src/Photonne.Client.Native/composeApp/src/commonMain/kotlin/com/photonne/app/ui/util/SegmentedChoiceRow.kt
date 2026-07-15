@@ -25,6 +25,11 @@ data class SegmentOption<T>(
  * short set of mutually-exclusive options so they span the sheet width instead
  * of clustering as loose chips on the left. Options with an [icon][SegmentOption.icon]
  * show it in the leading slot; otherwise the selected segment shows a check.
+ *
+ * [showSelectionIcon] drops the leading slot entirely, buying roughly 24dp per
+ * segment for the label. Worth it past three segments, where the labels start
+ * ellipsising on a narrow phone; the active segment still reads clearly from
+ * its primary-coloured container.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +37,8 @@ fun <T> SegmentedChoiceRow(
     options: List<SegmentOption<T>>,
     selected: T,
     onSelect: (T) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showSelectionIcon: Boolean = true
 ) {
     // Highlight the active segment with the app's primary colour so the current
     // choice stands out more than Material's default (soft secondaryContainer).
@@ -52,7 +58,7 @@ fun <T> SegmentedChoiceRow(
                 icon = {
                     if (option.icon != null) {
                         Icon(imageVector = option.icon, contentDescription = null)
-                    } else {
+                    } else if (showSelectionIcon) {
                         SegmentedButtonDefaults.Icon(isSelected)
                     }
                 },

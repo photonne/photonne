@@ -66,6 +66,7 @@ import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
@@ -118,7 +119,9 @@ import com.photonne.app.resources.action_share
 import com.photonne.app.resources.album_card_action_leave
 import com.photonne.app.resources.albums_action_filters
 import com.photonne.app.resources.albums_action_search
+import com.photonne.app.resources.albums_title
 import com.photonne.app.resources.notifications_action_mark_all_read
+import com.photonne.app.resources.filters_action_active
 import com.photonne.app.resources.folders_action_filters
 import com.photonne.app.resources.folders_action_search
 import com.photonne.app.resources.archive_action_unarchive
@@ -951,11 +954,17 @@ private fun SelectionLabel(text: String, color: Color = Color.Unspecified) {
 @Composable
 fun AlbumsListTopBar(
     onOpenFilters: () -> Unit,
+    isFilterActive: Boolean = false,
     isSearchActive: Boolean = false,
     onToggleSearch: () -> Unit = {}
 ) {
     TopAppBar(
-        title = { Text("Álbumes", style = MaterialTheme.typography.titleMedium) },
+        title = {
+            Text(
+                stringResource(Res.string.albums_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
         actions = {
             IconButton(onClick = onToggleSearch) {
                 Icon(
@@ -965,8 +974,13 @@ fun AlbumsListTopBar(
             }
             IconButton(onClick = onOpenFilters) {
                 Icon(
-                    Icons.Outlined.Tune,
-                    contentDescription = stringResource(Res.string.albums_action_filters)
+                    imageVector = if (isFilterActive) Icons.Filled.Tune else Icons.Outlined.Tune,
+                    contentDescription = stringResource(
+                        if (isFilterActive) Res.string.filters_action_active
+                        else Res.string.albums_action_filters
+                    ),
+                    tint = if (isFilterActive) MaterialTheme.colorScheme.primary
+                    else LocalContentColor.current
                 )
             }
         }
@@ -1086,9 +1100,10 @@ fun AlbumCardSelectionBottomBar(
 @Composable
 fun FoldersListTopBar(
     onOpenFilters: () -> Unit,
+    isFilterActive: Boolean = false,
     isSearchActive: Boolean = false,
     onToggleSearch: () -> Unit = {},
-    /** Create a root folder. Null hides the action (e.g. on the Libraries tab). */
+    /** Create a root folder. Null hides the action (e.g. while showing Externas). */
     onCreateFolder: (() -> Unit)? = null
 ) {
     TopAppBar(
@@ -1102,8 +1117,13 @@ fun FoldersListTopBar(
             }
             IconButton(onClick = onOpenFilters) {
                 Icon(
-                    Icons.Outlined.Tune,
-                    contentDescription = stringResource(Res.string.folders_action_filters)
+                    imageVector = if (isFilterActive) Icons.Filled.Tune else Icons.Outlined.Tune,
+                    contentDescription = stringResource(
+                        if (isFilterActive) Res.string.filters_action_active
+                        else Res.string.folders_action_filters
+                    ),
+                    tint = if (isFilterActive) MaterialTheme.colorScheme.primary
+                    else LocalContentColor.current
                 )
             }
             if (onCreateFolder != null) {

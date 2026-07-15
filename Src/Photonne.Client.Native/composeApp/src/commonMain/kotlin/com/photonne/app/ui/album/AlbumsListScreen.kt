@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
@@ -39,13 +40,10 @@ import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,14 +70,12 @@ import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.albums_empty_action_create
 import com.photonne.app.resources.albums_empty_subtitle
 import com.photonne.app.resources.albums_empty_title
-import com.photonne.app.resources.albums_my_links_empty
 import com.photonne.app.resources.albums_search_empty_subtitle
 import com.photonne.app.resources.albums_search_empty_title
 import com.photonne.app.resources.albums_search_placeholder
 import com.photonne.app.resources.albums_shared_empty
-import com.photonne.app.resources.albums_tab_mine
-import com.photonne.app.resources.albums_tab_my_links
-import com.photonne.app.resources.albums_tab_shared
+import com.photonne.app.resources.albums_badge_shared
+import com.photonne.app.resources.album_share_link_badge
 import com.photonne.app.resources.explore_section_objects
 import com.photonne.app.resources.explore_section_scenes
 import com.photonne.app.resources.explore_title
@@ -88,6 +84,8 @@ import com.photonne.app.resources.people_title
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
+import com.photonne.app.ui.theme.MetaBadge
+import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -118,22 +116,15 @@ fun AlbumsListScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Automatic asset groupings (People / Map / Scenes / Objects) sit
-        // above the manual-album tabs: both are "collections of assets", so
-        // the Albums tab is the single home for browsing by grouping. Tapping
-        // a card opens its full screen as a modal layer over this tab.
+        // above the album list: both are "collections of assets", so the
+        // Albums tab is the single home for browsing by grouping. Tapping a
+        // card opens its full screen as a modal layer over this tab.
         ExploreRow(
             onOpenPeople = onOpenPeople,
             onOpenMap = onOpenMap,
             onOpenScenes = onOpenScenes,
             onOpenObjects = onOpenObjects
         )
-        AlbumsTabBar(selected = state.selectedTab, onSelect = viewModel::selectTab)
-        // "My links" lists share links (not albums), so it has its own screen + view model
-        // rather than reusing the album grid/search below.
-        if (state.selectedTab == AlbumsTab.MyLinks) {
-            MyLinksTab(modifier = Modifier.fillMaxWidth().weight(1f))
-            return@Column
-        }
         if (state.isSearchActive) {
             AlbumsSearchField(
                 query = state.searchQuery,
@@ -166,7 +157,7 @@ fun AlbumsListScreen(
                     visible.isEmpty() && state.hasActiveQuery ->
                         EmptySearchState(query = state.searchQuery.trim())
                     visible.isEmpty() -> EmptyAlbumsState(
-                        tab = state.selectedTab,
+                        scope = state.scope,
                         onCreateAlbum = onCreateAlbum
                     )
                     else -> AlbumsContent(
@@ -239,6 +230,14 @@ private fun AlbumsContent(
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
     val isGrid = state.viewMode == AlbumViewMode.Grid
+    // One list now serves every scope, so the scroll position survives a filter
+    // change and would otherwise land on an index the shorter list doesn't have
+    // — which also leaves ImmersiveChromeEffect reading a stale first-visible
+    // index and the chrome stuck hidden.
+    LaunchedEffect(state.scope) {
+        listState.scrollToItem(0)
+        gridState.scrollToItem(0)
+    }
     if (immersive) {
         ImmersiveChromeEffect(
             firstVisibleItemIndex = {
@@ -444,41 +443,18 @@ private fun ExploreCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AlbumsTabBar(selected: AlbumsTab, onSelect: (AlbumsTab) -> Unit) {
-    val tabs = AlbumsTab.values()
-    PrimaryTabRow(selectedTabIndex = tabs.indexOf(selected)) {
-        tabs.forEach { tab ->
-            Tab(
-                selected = tab == selected,
-                onClick = { onSelect(tab) },
-                text = {
-                    Text(
-                        when (tab) {
-                            AlbumsTab.Mine -> stringResource(Res.string.albums_tab_mine)
-                            AlbumsTab.Shared -> stringResource(Res.string.albums_tab_shared)
-                            AlbumsTab.MyLinks -> stringResource(Res.string.albums_tab_my_links)
-                        }
-                    )
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyAlbumsState(tab: AlbumsTab, onCreateAlbum: (() -> Unit)?) {
+private fun EmptyAlbumsState(scope: AlbumsScope, onCreateAlbum: (() -> Unit)?) {
     val title = stringResource(Res.string.albums_empty_title)
-    val subtitle = when (tab) {
-        AlbumsTab.Mine -> stringResource(Res.string.albums_empty_subtitle)
-        AlbumsTab.Shared -> stringResource(Res.string.albums_shared_empty)
-        AlbumsTab.MyLinks -> stringResource(Res.string.albums_my_links_empty)
+    val subtitle = when (scope) {
+        AlbumsScope.All, AlbumsScope.Mine -> stringResource(Res.string.albums_empty_subtitle)
+        AlbumsScope.Shared -> stringResource(Res.string.albums_shared_empty)
     }
-    // CTA only on "Mine" — Shared and MyLinks empty states depend on
-    // other people inviting/sharing, so a Create button there would
-    // promise something the user can't actually trigger.
-    val action = onCreateAlbum?.takeIf { tab == AlbumsTab.Mine }
+    // CTA everywhere but "Compartidos", whose empty state depends on someone
+    // else sharing with you — a Create button there would promise something the
+    // user can't actually trigger. Under "Todos" an empty list means no albums
+    // at all, so creating one is exactly the right move.
+    val action = onCreateAlbum?.takeIf { scope != AlbumsScope.Shared }
     SharedEmptyState(
         icon = Icons.Outlined.Collections,
         title = title,
@@ -547,19 +523,22 @@ private fun AlbumCard(
                     style = MaterialTheme.typography.labelSmall
                 )
             }
-            if (album.hasActiveShareLink) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
-                        .padding(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Share,
-                        contentDescription = "Public share link active",
-                        tint = Color.White,
-                        modifier = Modifier.padding(horizontal = 2.dp)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (album.isShared || !album.isOwner) {
+                    OverlayIconBadge(
+                        icon = Icons.Filled.Person,
+                        contentDescription = stringResource(Res.string.albums_badge_shared)
+                    )
+                }
+                if (album.hasActiveShareLink) {
+                    OverlayIconBadge(
+                        icon = Icons.Filled.Share,
+                        contentDescription = stringResource(Res.string.album_share_link_badge)
                     )
                 }
             }
@@ -658,11 +637,25 @@ private fun AlbumRow(
                     maxLines = 1
                 )
             }
-            Text(
-                text = stringResource(Res.string.albums_count_format, album.assetCount),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(Res.string.albums_count_format, album.assetCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                // List mode used to show no qualifiers at all, so switching to it
+                // silently dropped what the grid told you about an album.
+                if (album.isShared || !album.isOwner) {
+                    MetaBadge(stringResource(Res.string.albums_badge_shared), Icons.Filled.Person)
+                }
+                if (album.hasActiveShareLink) {
+                    MetaBadge(stringResource(Res.string.album_share_link_badge), Icons.Filled.Share)
+                }
+            }
         }
     }
 }

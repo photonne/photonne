@@ -44,12 +44,13 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.SentShareLink
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
-import com.photonne.app.resources.albums_my_links_empty
+import com.photonne.app.resources.my_links_empty_subtitle
 import com.photonne.app.resources.my_links_empty_title
 import com.photonne.app.resources.share_action_copy
 import com.photonne.app.resources.share_action_edit
 import com.photonne.app.resources.share_action_revoke
 import com.photonne.app.resources.share_attribute_expiry_format
+import com.photonne.app.resources.share_attribute_max_views_format
 import com.photonne.app.resources.share_attribute_no_downloads
 import com.photonne.app.resources.share_attribute_password
 import com.photonne.app.resources.share_attribute_views_format
@@ -65,12 +66,15 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * "My links" tab: lists every public share link the user has created across all albums and
- * lets them act on the link itself (copy / edit settings / revoke) without first opening the
- * owning album. See [SentSharesViewModel].
+ * "Mis enlaces" (More → Mis enlaces): lists every public share link the user has created —
+ * for albums *and* for individual assets — and lets them act on the link itself (copy /
+ * edit settings / revoke) without first opening whatever it points at. See [SentSharesViewModel].
+ *
+ * Lives under More rather than Álbumes because a share link isn't an album: it has its own
+ * shape, its own actions, and it isn't always about an album at all.
  */
 @Composable
-fun MyLinksTab(modifier: Modifier = Modifier) {
+fun MyLinksScreen(modifier: Modifier = Modifier) {
     val viewModel: SentSharesViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
@@ -105,7 +109,7 @@ fun MyLinksTab(modifier: Modifier = Modifier) {
                 state.links.isEmpty() -> SharedEmptyState(
                     icon = Icons.Filled.Share,
                     title = stringResource(Res.string.my_links_empty_title),
-                    subtitle = stringResource(Res.string.albums_my_links_empty)
+                    subtitle = stringResource(Res.string.my_links_empty_subtitle)
                 )
                 else -> LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -227,10 +231,14 @@ private fun MyLinkRow(
             val noDownloadsAttr = stringResource(Res.string.share_attribute_no_downloads)
             val viewsAttr = stringResource(Res.string.share_attribute_views_format, link.viewCount)
             val expiryPrefix = stringResource(Res.string.share_attribute_expiry_format, "").trim()
+            val maxViewsAttr = stringResource(
+                Res.string.share_attribute_max_views_format,
+                link.maxViews ?: 0
+            )
             val attrs = buildList {
                 if (link.hasPassword) add(passwordAttr)
                 link.expiresAt?.let { add("$expiryPrefix ${formatDate(it)}") }
-                link.maxViews?.let { add("máx $it") }
+                link.maxViews?.let { add(maxViewsAttr) }
                 add(viewsAttr)
                 if (!link.allowDownload) add(noDownloadsAttr)
             }

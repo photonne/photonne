@@ -1,6 +1,5 @@
 package com.photonne.app.ui.folder
 
-import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.ui.util.SortDirection
 import com.photonne.app.ui.util.applyDirection
@@ -40,18 +39,6 @@ internal fun sortFolders(
     val ascending = when (sort) {
         FolderSort.Name -> folders.sortedByNatural { it.name.ifBlank { it.path } }
         FolderSort.AssetCount -> folders.sortedBy { it.assetCount }
-    }
-    return ascending.applyDirection(direction)
-}
-
-internal fun sortLibraries(
-    libs: List<ExternalLibraryDto>,
-    sort: FolderSort,
-    direction: SortDirection
-): List<ExternalLibraryDto> {
-    val ascending = when (sort) {
-        FolderSort.Name -> libs.sortedByNatural { it.name }
-        FolderSort.AssetCount -> libs.sortedBy { it.assetCount }
     }
     return ascending.applyDirection(direction)
 }

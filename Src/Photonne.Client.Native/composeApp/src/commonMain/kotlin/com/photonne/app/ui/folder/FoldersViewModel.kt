@@ -7,43 +7,41 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
-import com.photonne.app.data.folder.filterPersonalFolders
-import com.photonne.app.data.folder.filterSharedFolders
 import com.photonne.app.data.folder.moveDestinationFolders
 import com.photonne.app.data.organize.OrganizeRepository
-import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.ui.util.SortDirection
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
-
-enum class FoldersTab { Personal, Shared, Libraries }
 
 enum class FolderSort { Name, AssetCount }
 
 enum class FolderViewMode { List, Grid }
 
 data class FoldersUiState(
+    // Top-level entries per bucket: direct children of the user's home, of the
+    // shared space, and one root per external library.
     val personalFolders: List<FolderSummary> = emptyList(),
     val sharedFolders: List<FolderSummary> = emptyList(),
+    val externalRoots: List<FolderSummary> = emptyList(),
+    // Same subtrees at full depth. Search only: the list browses roots, but the
+    // search field looks all the way down.
+    val personalDescendants: List<FolderSummary> = emptyList(),
+    val sharedDescendants: List<FolderSummary> = emptyList(),
+    val externalDescendants: List<FolderSummary> = emptyList(),
     // Full-depth writable destinations (personal + shared subtrees) for the
     // move picker, which renders them as an indented tree.
     val moveDestinations: List<FolderSummary> = emptyList(),
     // Live count of unorganized (MobileBackup) assets, shown on the "Para
-    // organizar" entry card in the Personal tab.
+    // organizar" entry card.
     val organizePendingCount: Int = 0,
-    val libraries: List<ExternalLibraryDto> = emptyList(),
-    val libraryFolders: List<FolderSummary> = emptyList(),
-    val libraryRoots: Map<String, FolderSummary> = emptyMap(),
-    val selectedTab: FoldersTab = FoldersTab.Personal,
+    val scope: FoldersScope = FoldersScope.All,
     val sort: FolderSort = FolderSort.Name,
     val direction: SortDirection = SortDirection.Ascending,
     val viewMode: FolderViewMode = FolderViewMode.List,
@@ -58,39 +56,58 @@ data class FoldersUiState(
 
     val hasActiveQuery: Boolean get() = searchQuery.isNotBlank()
 
-    val visiblePersonalFolders: List<FolderSummary>
-        get() = personalFolders.filterByQuery(searchQuery)
+    /** Scope hides folders, so the Tune icon has to advertise it. */
+    val isFilterActive: Boolean get() = scope != FoldersScope.All
 
-    val visibleSharedFolders: List<FolderSummary>
-        get() = sharedFolders.filterByQuery(searchQuery)
-
-    val visibleLibraries: List<ExternalLibraryDto>
+    /**
+     * The single list the screen renders.
+     *
+     * `distinctBy` is a guard, not a tidy-up: the buckets are disjoint only as
+     * long as the server keeps `isShared` and `externalLibraryId` consistent
+     * with the path, and a duplicate id would make `LazyColumn` throw rather
+     * than merely repeat a row.
+     */
+    val visibleFolders: List<FolderSummary>
         get() {
-            if (!hasActiveQuery) return libraries
-            val needle = searchQuery.trim().lowercase()
-            return libraries.filter { it.name.lowercase().contains(needle) }
+            val source = if (hasActiveQuery) searchSource() else scopedRoots()
+            return sortFolders(
+                source.distinctBy { it.id }.filterByQuery(searchQuery),
+                sort,
+                direction
+            )
         }
 
-    val visibleLibraryFolders: List<FolderSummary>
-        get() = libraryFolders.filterByQuery(searchQuery)
+    /**
+     * The folder behind [selectedFolderId], looked up across every bucket at
+     * full depth — a long-press can land on an external root or, while
+     * searching, on a folder nested well below any root.
+     */
+    fun findFolder(id: String?): FolderSummary? {
+        if (id == null) return null
+        return personalDescendants.firstOrNull { it.id == id }
+            ?: sharedDescendants.firstOrNull { it.id == id }
+            ?: externalDescendants.firstOrNull { it.id == id }
+    }
+
+    private fun scopedRoots(): List<FolderSummary> = when (scope) {
+        FoldersScope.All -> personalFolders + sharedFolders + externalRoots
+        FoldersScope.Personal -> personalFolders
+        FoldersScope.Shared -> sharedFolders
+        FoldersScope.External -> externalRoots
+    }
+
+    private fun searchSource(): List<FolderSummary> = when (scope) {
+        FoldersScope.All -> personalDescendants + sharedDescendants + externalDescendants
+        FoldersScope.Personal -> personalDescendants
+        FoldersScope.Shared -> sharedDescendants
+        FoldersScope.External -> externalDescendants
+    }
 }
 
 private fun List<FolderSummary>.filterByQuery(query: String): List<FolderSummary> {
     if (query.isBlank()) return this
     val needle = query.trim().lowercase()
-    return flattenFolders()
-        .distinctBy { it.id }
-        .filter { folder -> folder.name.lowercase().contains(needle) }
-}
-
-private fun List<FolderSummary>.flattenFolders(): List<FolderSummary> {
-    val out = mutableListOf<FolderSummary>()
-    fun visit(folder: FolderSummary) {
-        out.add(folder)
-        folder.subFolders.forEach(::visit)
-    }
-    forEach(::visit)
-    return out
+    return filter { folder -> folder.name.lowercase().contains(needle) }
 }
 
 class FoldersViewModel(
@@ -130,8 +147,14 @@ class FoldersViewModel(
         return FoldersUiState(sort = sort, direction = direction, viewMode = viewMode)
     }
 
-    fun selectTab(tab: FoldersTab) {
-        _state.update { it.copy(selectedTab = tab, selectedFolderId = null) }
+    /**
+     * Deliberately not persisted, unlike sort/direction/view mode: those are
+     * presentational, this one hides folders. A subtractive filter restored
+     * weeks later — with only a tinted Tune icon to explain it — reads as
+     * missing data.
+     */
+    fun setScope(scope: FoldersScope) {
+        _state.update { it.copy(scope = scope, selectedFolderId = null) }
     }
 
     fun toggleSearch() {
@@ -176,49 +199,21 @@ class FoldersViewModel(
 
     fun refresh() {
         refreshOrganizeCount()
-        val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
         refreshJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
         refreshJob = viewModelScope.launch {
-            runCatching {
-                // supervisorScope keeps a child failure (e.g. /folders → 500)
-                // from cancelling the parent launch and escaping runCatching
-                // via the structured-concurrency channel — without it the
-                // PhotonneApiException reaches the uncaught handler and the
-                // process dies.
-                supervisorScope {
-                    val folders = async { repository.list() }
-                    val libs = async {
-                        runCatching { repository.listExternalLibraries() }.getOrDefault(emptyList())
-                    }
-                    folders.await() to libs.await()
-                }
-            }
-                .onSuccess { (folders, libs) ->
+            runCatching { repository.list() }
+                .onSuccess { folders ->
                     allFolders = folders
-                    val personalChildren = if (username.isNullOrBlank()) emptyList()
-                        else filterPersonalFolders(folders, username)
-                    val sort = _state.value.sort
-                    val direction = _state.value.direction
-                    val personal = sortFolders(personalChildren.filter { !it.isShared }, sort, direction)
-                    val shared = sortFolders(filterSharedFolders(folders), sort, direction)
-                    val libRoots = resolveLibraryRoots(folders)
-                    val libFolders =
-                        sortFolders(folders.filter { it.externalLibraryId != null }, sort, direction)
                     _state.update {
                         it.copy(
-                            personalFolders = personal,
-                            sharedFolders = shared,
-                            moveDestinations = sortFolders(moveDestinationFolders(folders), sort, direction),
-                            libraries = sortLibraries(libs, sort, direction),
-                            libraryFolders = libFolders,
-                            libraryRoots = libRoots,
                             isLoading = false,
                             selectedFolderId = it.selectedFolderId?.takeIf { id ->
                                 folders.any { f -> f.id == id }
                             }
                         )
                     }
+                    repartition()
                 }
                 .onFailure { error ->
                     // A refresh() that supersedes this one (e.g. the effective
@@ -235,9 +230,6 @@ class FoldersViewModel(
                 }
         }
     }
-
-    fun resolveLibraryRoot(libraryId: String): FolderSummary? =
-        _state.value.libraryRoots[libraryId]
 
     fun create(
         name: String,
@@ -370,23 +362,30 @@ class FoldersViewModel(
         _state.update { it.copy(error = null) }
     }
 
+    /**
+     * Single place the folder list is split into buckets, so a mutation applied
+     * to [allFolders] can't leave one of them stale.
+     *
+     * The stored lists stay sorted because the folder pickers read them
+     * directly; [FoldersUiState.visibleFolders] sorts again because "Todas"
+     * concatenates three buckets and a concatenation of sorted lists isn't
+     * sorted.
+     */
     private fun repartition() {
         val username = (authState.state.value as? AuthState.Authenticated)?.user?.username
-        val personalChildren = if (username.isNullOrBlank()) emptyList()
-            else filterPersonalFolders(allFolders, username)
+        val partition = partitionFolders(allFolders, username)
         val sort = _state.value.sort
         val direction = _state.value.direction
-        val personal = sortFolders(personalChildren.filter { !it.isShared }, sort, direction)
-        val shared = sortFolders(filterSharedFolders(allFolders), sort, direction)
-        val libFolders =
-            sortFolders(allFolders.filter { it.externalLibraryId != null }, sort, direction)
+        fun sorted(folders: List<FolderSummary>) = sortFolders(folders, sort, direction)
         _state.update {
             it.copy(
-                personalFolders = personal,
-                sharedFolders = shared,
-                moveDestinations = sortFolders(moveDestinationFolders(allFolders), sort, direction),
-                libraryFolders = libFolders,
-                libraries = sortLibraries(it.libraries, sort, direction)
+                personalFolders = sorted(partition.personalRoots),
+                sharedFolders = sorted(partition.sharedRoots),
+                externalRoots = sorted(partition.externalRoots),
+                personalDescendants = partition.personalDescendants,
+                sharedDescendants = partition.sharedDescendants,
+                externalDescendants = partition.externalDescendants,
+                moveDestinations = sorted(moveDestinationFolders(allFolders))
             )
         }
     }
@@ -394,16 +393,5 @@ class FoldersViewModel(
     private companion object {
         private const val KEY_VIEW_MODE = "photonne.folders.viewMode"
     }
-}
-
-private fun resolveLibraryRoots(folders: List<FolderSummary>): Map<String, FolderSummary> {
-    val byId = folders.associateBy { it.id }
-    return folders
-        .filter { folder ->
-            val libId = folder.externalLibraryId ?: return@filter false
-            val parentId = folder.parentFolderId ?: return@filter true
-            byId[parentId]?.externalLibraryId != libId
-        }
-        .associateBy { it.externalLibraryId!! }
 }
 

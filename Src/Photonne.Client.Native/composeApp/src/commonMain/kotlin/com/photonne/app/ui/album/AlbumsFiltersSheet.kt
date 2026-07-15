@@ -21,9 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_filters_group_by_year
+import com.photonne.app.resources.albums_scope_all
 import com.photonne.app.resources.albums_sort_date
 import com.photonne.app.resources.albums_sort_name
+import com.photonne.app.resources.albums_scope_mine
+import com.photonne.app.resources.albums_scope_shared
 import com.photonne.app.resources.filters_direction_label
+import com.photonne.app.resources.filters_scope_label
 import com.photonne.app.resources.filters_sort_ascending
 import com.photonne.app.resources.filters_sort_descending
 import com.photonne.app.resources.filters_sort_label
@@ -41,6 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 fun AlbumsFiltersSheet(
     state: AlbumsUiState,
     onDismiss: () -> Unit,
+    onScopeChange: (AlbumsScope) -> Unit,
     onSortChange: (AlbumSort) -> Unit,
     onDirectionChange: (SortDirection) -> Unit,
     onViewModeChange: (AlbumViewMode) -> Unit,
@@ -59,6 +64,22 @@ fun AlbumsFiltersSheet(
                 stringResource(Res.string.filters_title),
                 style = MaterialTheme.typography.titleLarge
             )
+
+            SectionLabel(stringResource(Res.string.filters_scope_label))
+            SegmentedChoiceRow(
+                options = listOf(
+                    SegmentOption(AlbumsScope.All, stringResource(Res.string.albums_scope_all)),
+                    SegmentOption(AlbumsScope.Mine, stringResource(Res.string.albums_scope_mine)),
+                    SegmentOption(
+                        AlbumsScope.Shared,
+                        stringResource(Res.string.albums_scope_shared)
+                    )
+                ),
+                selected = state.scope,
+                onSelect = onScopeChange
+            )
+
+            HorizontalDivider()
 
             SectionLabel(stringResource(Res.string.filters_sort_label))
             SegmentedChoiceRow(

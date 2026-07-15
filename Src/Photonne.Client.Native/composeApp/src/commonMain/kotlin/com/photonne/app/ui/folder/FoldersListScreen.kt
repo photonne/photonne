@@ -39,13 +39,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,7 +58,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.photonne.app.data.models.ExternalLibraryDto
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
@@ -74,17 +70,16 @@ import com.photonne.app.resources.folder_timeline_excluded_badge
 import com.photonne.app.resources.folders_action_search
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
-import com.photonne.app.resources.folders_libraries_empty
+import com.photonne.app.resources.folders_external_empty
 import com.photonne.app.resources.folders_search_empty_subtitle
 import com.photonne.app.resources.folders_search_empty_title
 import com.photonne.app.resources.folders_search_placeholder
 import com.photonne.app.resources.folders_shared_empty
-import com.photonne.app.resources.folders_tab_libraries
-import com.photonne.app.resources.folders_tab_personal
-import com.photonne.app.resources.folders_tab_shared
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
+import com.photonne.app.ui.theme.MetaBadge
+import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -106,11 +101,8 @@ fun FoldersListScreen(
     val viewModel: FoldersViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 
+    val folders = state.visibleFolders
     Column(modifier = Modifier.fillMaxSize()) {
-        FoldersTabBar(
-            selected = state.selectedTab,
-            onSelect = viewModel::selectTab
-        )
         if (state.isSearchActive) {
             FoldersSearchField(
                 query = state.searchQuery,
@@ -119,71 +111,43 @@ fun FoldersListScreen(
             )
         }
         PhotonneRefreshableScreen(
-            isRefreshing = state.isLoading && state.personalFolders.isNotEmpty(),
+            isRefreshing = state.isLoading && folders.isNotEmpty(),
             onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxWidth().weight(1f)
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (state.selectedTab) {
-                    FoldersTab.Personal -> Column(modifier = Modifier.fillMaxSize()) {
-                        if (state.organizePendingCount > 0 && !state.hasActiveQuery) {
-                            OrganizeInboxCard(
-                                count = state.organizePendingCount,
-                                onClick = onOpenOrganize
-                            )
-                        }
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                            FolderListContent(
-                                folders = state.visiblePersonalFolders,
-                                state = state,
-                                isLoading = state.isLoading,
-                                errorMessage = state.error?.userMessage,
-                                emptyTitle = stringResource(Res.string.folders_empty_title),
-                                emptySubtitle = stringResource(Res.string.folders_empty_subtitle),
-                                onFolderClick = onFolderClick,
-                                onFolderLongPress = onFolderLongPress,
-                                immersive = immersive,
-                                onChromeVisibleChange = onChromeVisibleChange
-                            )
-                        }
-                    }
-                    FoldersTab.Shared -> FolderListContent(
-                        folders = state.visibleSharedFolders,
+            Column(modifier = Modifier.fillMaxSize()) {
+                // The inbox holds personal assets, so it makes no sense framed
+                // by Compartidas/Externas — but it has to survive "Todas",
+                // which is the default the user lands on.
+                val showInbox = state.organizePendingCount > 0 &&
+                    !state.hasActiveQuery &&
+                    (state.scope == FoldersScope.All || state.scope == FoldersScope.Personal)
+                if (showInbox) {
+                    OrganizeInboxCard(
+                        count = state.organizePendingCount,
+                        onClick = onOpenOrganize
+                    )
+                }
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    FolderListContent(
+                        folders = folders,
                         state = state,
                         isLoading = state.isLoading,
                         errorMessage = state.error?.userMessage,
                         emptyTitle = stringResource(Res.string.folders_empty_title),
-                        emptySubtitle = stringResource(Res.string.folders_shared_empty),
+                        emptySubtitle = when (state.scope) {
+                            FoldersScope.All, FoldersScope.Personal ->
+                                stringResource(Res.string.folders_empty_subtitle)
+                            FoldersScope.Shared ->
+                                stringResource(Res.string.folders_shared_empty)
+                            FoldersScope.External ->
+                                stringResource(Res.string.folders_external_empty)
+                        },
                         onFolderClick = onFolderClick,
                         onFolderLongPress = onFolderLongPress,
                         immersive = immersive,
                         onChromeVisibleChange = onChromeVisibleChange
                     )
-                    FoldersTab.Libraries -> if (state.hasActiveQuery) {
-                        FolderListContent(
-                            folders = state.visibleLibraryFolders,
-                            state = state,
-                            isLoading = state.isLoading,
-                            errorMessage = state.error?.userMessage,
-                            emptyTitle = stringResource(Res.string.folders_empty_title),
-                            emptySubtitle = stringResource(Res.string.folders_libraries_empty),
-                            onFolderClick = onFolderClick,
-                            onFolderLongPress = onFolderLongPress,
-                            immersive = immersive,
-                            onChromeVisibleChange = onChromeVisibleChange
-                        )
-                    } else {
-                        LibrariesContent(
-                            libraries = state.visibleLibraries,
-                            isLoading = state.isLoading,
-                            errorMessage = state.error?.userMessage,
-                            onLibraryClick = { lib ->
-                                viewModel.resolveLibraryRoot(lib.id)?.let(onFolderClick)
-                            },
-                            immersive = immersive,
-                            onChromeVisibleChange = onChromeVisibleChange
-                        )
-                    }
                 }
             }
         }
@@ -222,29 +186,6 @@ private fun FoldersSearchField(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FoldersTabBar(selected: FoldersTab, onSelect: (FoldersTab) -> Unit) {
-    val tabs = FoldersTab.values()
-    PrimaryTabRow(selectedTabIndex = tabs.indexOf(selected)) {
-        tabs.forEach { tab ->
-            Tab(
-                selected = tab == selected,
-                onClick = { onSelect(tab) },
-                text = {
-                    Text(
-                        when (tab) {
-                            FoldersTab.Personal -> stringResource(Res.string.folders_tab_personal)
-                            FoldersTab.Shared -> stringResource(Res.string.folders_tab_shared)
-                            FoldersTab.Libraries -> stringResource(Res.string.folders_tab_libraries)
-                        }
-                    )
-                }
-            )
-        }
-    }
-}
-
 @Composable
 private fun FolderListContent(
     folders: List<FolderSummary>,
@@ -262,6 +203,14 @@ private fun FolderListContent(
     val listState = rememberLazyListState()
     val isGrid = state.viewMode == FolderViewMode.Grid
     val hasList = folders.isNotEmpty()
+    // One list now serves every scope, so the scroll position survives a filter
+    // change and would otherwise land on an index the shorter list doesn't have
+    // — which also leaves ImmersiveChromeEffect reading a stale first-visible
+    // index and the chrome stuck hidden.
+    LaunchedEffect(state.scope) {
+        listState.scrollToItem(0)
+        gridState.scrollToItem(0)
+    }
     if (immersive && hasList) {
         ImmersiveChromeEffect(
             firstVisibleItemIndex = {
@@ -343,63 +292,6 @@ private fun FolderListContent(
     }
 }
 
-@Composable
-private fun LibrariesContent(
-    libraries: List<ExternalLibraryDto>,
-    isLoading: Boolean,
-    errorMessage: String?,
-    onLibraryClick: (ExternalLibraryDto) -> Unit,
-    immersive: Boolean = false,
-    onChromeVisibleChange: (Boolean) -> Unit = {}
-) {
-    val listState = rememberLazyListState()
-    if (immersive && libraries.isNotEmpty()) {
-        ImmersiveChromeEffect(
-            firstVisibleItemIndex = { listState.firstVisibleItemIndex },
-            firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
-            isScrollInProgress = { listState.isScrollInProgress },
-            onChromeVisibleChange = onChromeVisibleChange
-        )
-    }
-    val reservedBottom = if (immersive) floatingNavBarReservedHeight() else null
-    when {
-        isLoading && libraries.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        libraries.isEmpty() && errorMessage == null ->
-            SharedEmptyState(
-                icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                title = stringResource(Res.string.folders_tab_libraries),
-                subtitle = stringResource(Res.string.folders_libraries_empty)
-            )
-        errorMessage != null && libraries.isEmpty() ->
-            Box(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
-            }
-        else -> LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = PaddingValues(
-                top = 8.dp,
-                bottom = reservedBottom ?: 8.dp
-            ),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(libraries, key = { it.id }) { lib ->
-                LibraryRow(library = lib, onClick = { onLibraryClick(lib) })
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderRow(
@@ -460,13 +352,13 @@ private fun FolderRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (folder.isShared) {
-                    Badge(stringResource(Res.string.folder_shared_badge), Icons.Filled.Person)
+                    MetaBadge(stringResource(Res.string.folder_shared_badge), Icons.Filled.Person)
                 }
                 if (folder.externalLibraryId != null) {
-                    Badge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
+                    MetaBadge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
                 }
                 if (folder.excludedFromTimeline) {
-                    Badge(stringResource(Res.string.folder_timeline_excluded_badge), Icons.Outlined.VisibilityOff)
+                    MetaBadge(stringResource(Res.string.folder_timeline_excluded_badge), Icons.Outlined.VisibilityOff)
                 }
             }
         }
@@ -528,32 +420,22 @@ private fun FolderCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (folder.excludedFromTimeline) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
-                            .padding(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.VisibilityOff,
-                            contentDescription = stringResource(Res.string.folder_timeline_excluded_badge),
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
+                    OverlayIconBadge(
+                        icon = Icons.Outlined.VisibilityOff,
+                        contentDescription = stringResource(Res.string.folder_timeline_excluded_badge)
+                    )
                 }
                 if (folder.isShared) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(50))
-                            .padding(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = stringResource(Res.string.folder_shared_badge),
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
+                    OverlayIconBadge(
+                        icon = Icons.Filled.Person,
+                        contentDescription = stringResource(Res.string.folder_shared_badge)
+                    )
+                }
+                if (folder.externalLibraryId != null) {
+                    OverlayIconBadge(
+                        icon = Icons.AutoMirrored.Filled.LibraryBooks,
+                        contentDescription = stringResource(Res.string.folder_external_badge)
+                    )
                 }
             }
             if (isSelected) {
@@ -574,75 +456,6 @@ private fun FolderCard(
             text = folder.name.ifBlank { folder.path },
             style = MaterialTheme.typography.titleSmall,
             maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun LibraryRow(library: ExternalLibraryDto, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.LibraryBooks,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = library.name,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1
-            )
-            Text(
-                text = library.path,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-            Text(
-                text = stringResource(Res.string.albums_count_format, library.assetCount),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun Badge(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.size(12.dp)
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            style = MaterialTheme.typography.labelSmall
         )
     }
 }

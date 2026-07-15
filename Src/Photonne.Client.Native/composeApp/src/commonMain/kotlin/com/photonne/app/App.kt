@@ -112,6 +112,7 @@ import com.photonne.app.resources.utilities_section_duplicates
 import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_title
+import com.photonne.app.resources.my_links_title
 import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.explore_section_memories
@@ -212,6 +213,7 @@ private enum class MoreSubscreen {
     UtilitiesDuplicates,
     UtilitiesLargeFiles,
     UtilitiesLocations,
+    MyLinks,
     UnsupportedFiles,
     OrganizeInbox,
     OrganizeRule,
@@ -381,6 +383,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.Archived,
     MoreSubscreen.Trash,
     MoreSubscreen.Utilities,
+    MoreSubscreen.MyLinks,
     MoreSubscreen.UnsupportedFiles,
     MoreSubscreen.OrganizeInbox,
     MoreSubscreen.AccountSettings,
@@ -890,6 +893,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 } else {
                     AlbumsListTopBar(
                         onOpenFilters = { showAlbumsFilters = true },
+                        isFilterActive = albumsState.isFilterActive,
                         isSearchActive = albumsState.isSearchActive,
                         onToggleSearch = albumsViewModel::toggleSearch
                     )
@@ -955,8 +959,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 )
             }
             selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
-                val target = (foldersState.personalFolders + foldersState.sharedFolders)
-                    .firstOrNull { it.id == foldersState.selectedFolderId }
+                val target = foldersState.findFolder(foldersState.selectedFolderId)
                 if (target != null) {
                     com.photonne.app.ui.main.FolderCardSelectionTopBar(
                         folderName = target.name.ifBlank { target.path },
@@ -966,6 +969,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 } else {
                     FoldersListTopBar(
                         onOpenFilters = { showFoldersFilters = true },
+                        isFilterActive = foldersState.isFilterActive,
                         isSearchActive = foldersState.isSearchActive,
                         onToggleSearch = foldersViewModel::toggleSearch
                     )
@@ -1034,6 +1038,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             moreSubscreen == MoreSubscreen.Utilities ->
                 com.photonne.app.ui.main.SettingsTopBar(
                     title = stringResource(Res.string.utilities_title),
+                    onBack = { moreSubscreen = null }
+                )
+            moreSubscreen == MoreSubscreen.MyLinks ->
+                com.photonne.app.ui.main.SettingsTopBar(
+                    title = stringResource(Res.string.my_links_title),
                     onBack = { moreSubscreen = null }
                 )
             moreSubscreen == MoreSubscreen.UnsupportedFiles ->
@@ -1609,14 +1618,18 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             } else null
         }
         selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
-            val target = (foldersState.personalFolders + foldersState.sharedFolders)
-                .firstOrNull { it.id == foldersState.selectedFolderId }
+            val target = foldersState.findFolder(foldersState.selectedFolderId)
             if (target != null) {
+                // An external library is a read-only mirror of a host path, but
+                // the server still reports IsOwner for an admin on any shared
+                // path — so gate the destructive actions on the library id too,
+                // the way canToggleTimeline already does.
+                val isExternal = target.externalLibraryId != null
                 {
                     com.photonne.app.ui.main.FolderCardSelectionBottomBar(
                         canManageMembers = target.isOwner && target.isShared,
-                        canRename = target.isOwner,
-                        canDelete = target.isOwner,
+                        canRename = target.isOwner && !isExternal,
+                        canDelete = target.isOwner && !isExternal,
                         isMutating = foldersState.isMutating,
                         onManageMembers = {
                             pendingActionFolder = target
@@ -1695,10 +1708,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumsImmersive = chromeTab == MainTab.Albums &&
         moreSubscreen == null &&
         selectedAlbum == null &&
-        !albumsState.isSelectionActive &&
-        // "Mis enlaces" is a different screen with its own scroller; keep the
-        // nav docked there rather than half-wiring it.
-        albumsState.selectedTab != com.photonne.app.ui.album.AlbumsTab.MyLinks
+        !albumsState.isSelectionActive
     val foldersImmersive = chromeTab == MainTab.Folders &&
         moreSubscreen == null &&
         selectedFolder == null &&
@@ -1849,6 +1859,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         if (!albumsState.isSelectionActive) {
                             AlbumsListTopBar(
                                 onOpenFilters = { showAlbumsFilters = true },
+                                isFilterActive = albumsState.isFilterActive,
                                 isSearchActive = albumsState.isSearchActive,
                                 onToggleSearch = albumsViewModel::toggleSearch
                             )
@@ -1889,13 +1900,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         if (!foldersState.isSelectionActive) {
                             FoldersListTopBar(
                                 onOpenFilters = { showFoldersFilters = true },
+                                isFilterActive = foldersState.isFilterActive,
                                 isSearchActive = foldersState.isSearchActive,
                                 onToggleSearch = foldersViewModel::toggleSearch,
-                                // Create a root folder — hidden on the Libraries
-                                // tab (no folders inside external-library mirrors).
+                                // Create a root folder — hidden only while
+                                // showing Externas (no writing into an
+                                // external-library mirror). A blacklist, not a
+                                // whitelist: "Todas" is the default, and the
+                                // action has to survive it.
                                 onCreateFolder = if (
-                                    foldersState.selectedTab !=
-                                        com.photonne.app.ui.folder.FoldersTab.Libraries
+                                    foldersState.scope !=
+                                        com.photonne.app.ui.folder.FoldersScope.External
                                 ) {
                                     { showCreateFolder = true }
                                 } else null
@@ -1938,6 +1953,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     moreSubscreen = MoreSubscreen.Trash
                                 },
                                 onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
+                                onOpenMyLinks = { moreSubscreen = MoreSubscreen.MyLinks },
                                 onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
                                 onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
                                 onOpenNotifications = {
@@ -2152,6 +2168,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.devicebackup.EnrichmentStatusScreen(
                             viewModel = enrichmentStatusViewModel
                         )
+                    MoreSubscreen.MyLinks ->
+                        com.photonne.app.ui.album.MyLinksScreen()
                     MoreSubscreen.UnsupportedFiles ->
                         com.photonne.app.ui.library.UnsupportedFilesScreen(
                             state = unsupportedFilesState,
@@ -3427,6 +3445,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.album.AlbumsFiltersSheet(
             state = albumsState,
             onDismiss = { showAlbumsFilters = false },
+            onScopeChange = albumsViewModel::setScope,
             onSortChange = albumsViewModel::setSort,
             onDirectionChange = albumsViewModel::setDirection,
             onViewModeChange = albumsViewModel::setViewMode,
@@ -3438,6 +3457,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.folder.FoldersFiltersSheet(
             state = foldersState,
             onDismiss = { showFoldersFilters = false },
+            onScopeChange = foldersViewModel::setScope,
             onSortChange = foldersViewModel::setSort,
             onDirectionChange = foldersViewModel::setDirection,
             onViewModeChange = foldersViewModel::setViewMode
