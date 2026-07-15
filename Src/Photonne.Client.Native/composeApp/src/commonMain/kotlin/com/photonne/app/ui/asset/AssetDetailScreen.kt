@@ -12,7 +12,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -104,6 +103,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import com.photonne.app.ui.main.CompactNavBarContentHeight
+import com.photonne.app.ui.main.FloatingNavBarBottomMargin
+import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
+import com.photonne.app.ui.main.FloatingNavBarShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -232,9 +235,8 @@ fun AssetDetailScreen(
     // bottom strip/actions) so the asset can be viewed edge to edge, matching
     // the iOS Photos / Google Photos gallery. Starts visible.
     var chromeVisible by remember { mutableStateOf(true) }
-    // Measured chrome heights. On iOS the video surface paints over all Compose
-    // content (see videoSurfaceRendersOnTop), so it's inset by these to sit
-    // between the top bar and the bottom controls instead of hiding them.
+    // Alto medido de cada cápsula flotante, inset del sistema y márgenes
+    // incluidos: es el hueco del que el asset se aparta para dejarle sitio.
     var topChromeHeightPx by remember { mutableStateOf(0) }
     val topChromeHeight = with(density) { topChromeHeightPx.toDp() }
     var bottomChromeHeightPx by remember { mutableStateOf(0) }
@@ -370,6 +372,14 @@ fun AssetDetailScreen(
             val metadataMinHeightDp = maxHeight - headerHeightDp
             val authHeaders = remember(tokenStorage) { authHeadersFor(tokenStorage) }
 
+            // El asset va a sangre y el cromo se le apoya encima. Se probó a que
+            // le dejara sitio (caja = pantalla menos cromo) y no salió: la foto
+            // quedaba descolgada de la barra superior, y como el inset tenía que
+            // apagarse con el zoom para no mover la caja bajo la transformación de
+            // la imagen, cruzar el umbral de zoom daba un salto donde antes había
+            // un gesto continuo. El cromo se lee igual porque cada pieza trae su
+            // propio fondo sólido.
+
             // One playback for whichever video is current, hoisted here so both
             // the surface (in the pager page) and the controls (in the bottom
             // chrome) drive the same instance. Null for photos, so no player is
@@ -498,7 +508,9 @@ fun AssetDetailScreen(
                         videoPlayback = if (isCurrent) videoPlayback else null,
                         // On iOS the surface paints over Compose, so inset it to
                         // clear the visible chrome (full-screen once chrome hides);
-                        // Android composes in z-order and needs no inset.
+                        // Android composes in z-order and needs no inset. Es el
+                        // único sitio donde el asset se aparta del cromo: para la
+                        // foto no hace falta porque Compose la compone debajo.
                         videoTopInset = if (
                             videoSurfaceRendersOnTop && chromeVisible && !landscapeMode && !infoOpen
                         ) topChromeHeight else 0.dp,
@@ -584,15 +596,35 @@ fun AssetDetailScreen(
             // Skip the top bar entirely once faded out so it can't intercept
             // taps meant for the asset underneath (immersive mode).
             if (chromeAlpha > 0.01f) {
+            // Cápsula superior, espejo de la de acciones: mismos tokens, mismo
+            // color, márgenes simétricos. El inset del sistema y los márgenes van
+            // fuera de la Surface (patrón de la nav flotante), así que el
+            // TopAppBar de dentro renuncia a los suyos con WindowInsets(0) o los
+            // aplicaría por segunda vez.
+            //
+            // La medida incluye inset + margen + cápsula: es el hueco que el asset
+            // se aparta por arriba.
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .graphicsLayer { alpha = chromeAlpha }
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(
+                        start = FloatingNavBarHorizontalMargin,
+                        end = FloatingNavBarHorizontalMargin,
+                        top = FloatingNavBarBottomMargin
+                    )
                     .onSizeChanged { topChromeHeightPx = it.height }
             ) {
-                ChromeBackground()
+                Surface(
+                    shape = FloatingNavBarShape,
+                    color = ViewerCapsuleColor,
+                    contentColor = Color.White,
+                    shadowElevation = 6.dp
+                ) {
                 TopAppBar(
+                    windowInsets = WindowInsets(0),
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         titleContentColor = Color.White,
@@ -604,14 +636,10 @@ fun AssetDetailScreen(
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
                         }
                     },
-                    title = {
-                        Text(
-                            text = currentItem?.fileName ?: "",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
-                            maxLines = 1
-                        )
-                    },
+                    // Sin título: el nombre del fichero vive en el panel de info,
+                    // que es donde se va a buscar. En la cápsula solo robaba ancho
+                    // a las acciones.
+                    title = {},
                     actions = {
                         val isLocalOnly = currentItem?.isLocalOnly == true
                         // Landscape toggle (photos and videos): the ONLY way in
@@ -721,16 +749,21 @@ fun AssetDetailScreen(
                         }
                     }
                 )
+                }
             }
             }
 
             if (currentItem != null && !slideshowActive && chromeAlpha > 0.01f) {
+                // Sin velo: nada se apoya ya sobre la foto, así que no hay nada que
+                // velar. Las piezas se separan entre sí con el mismo aire que las
+                // separa del asset.
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .graphicsLayer { alpha = chromeAlpha }
-                        .onSizeChanged { bottomChromeHeightPx = it.height }
+                        .onSizeChanged { bottomChromeHeightPx = it.height },
+                    verticalArrangement = Arrangement.spacedBy(ChromeGap)
                 ) {
                     // On a video, a floating play/pause + time readout and a
                     // full-width scrubber sit ABOVE the filmstrip — which stays
@@ -976,7 +1009,9 @@ private fun AssetPage(
                 VideoPage(
                     playback = videoPlayback,
                     fillCrop = videoFillCrop,
-                    onTap = onToggleChrome
+                    onTap = onToggleChrome,
+                    topInset = videoTopInset,
+                    bottomInset = videoBottomInset
                 )
             }
             item.isVideo -> {
@@ -2156,10 +2191,10 @@ private fun SlideshowControls(
 }
 
 /**
- * Horizontal thumbnail strip that sits above [AssetActionsBottomBar] and
- * partially overlays the photo. The strip itself is transparent — only the
- * thumbnails occlude the image — so the bottom of the photo bleeds through
- * the gaps and the bar stack feels like a floating element.
+ * Horizontal thumbnail strip that sits above [AssetActionsBottomBar], separada de
+ * él por [ChromeGap]. La tira no tiene cuerpo propio: solo ocluyen las miniaturas,
+ * y la foto se ve entre sus huecos. Lo que sí son es opacas — ver la rampa de
+ * escala más abajo.
  *
  * The strip's scroll position is driven by the pager (not the user) so the
  * centered slot stays aligned with the currently visible photo while the
@@ -2260,7 +2295,6 @@ private fun AssetThumbnailStrip(
                 // the centred slot grows well past its box so the current asset
                 // reads as clearly larger than the rest.
                 val scale = lerp(0.94f, centerScale, proximity)
-                val alpha = lerp(0.55f, 1f, proximity)
                 // Push each side rigidly away from the centre by the bulge so
                 // the grown centre opens a gap instead of covering its
                 // neighbours; clamped to ±1 slot it tapers smoothly mid-scrub.
@@ -2269,10 +2303,13 @@ private fun AssetThumbnailStrip(
                     modifier = Modifier
                         .width(slotWidth)
                         .height(slotWidth)
+                        // Sin rampa de alpha: la escala ya marca cuál es la actual.
+                        // Atenuar las vecinas al 55% dejaba ver la foto a través de
+                        // ellas, y una miniatura translúcida sobre otra imagen se
+                        // lee como suciedad, no como profundidad.
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
-                            this.alpha = alpha
                             translationX = push
                         }
                         .clip(RoundedCornerShape(5.dp))
@@ -2292,18 +2329,18 @@ private fun AssetThumbnailStrip(
 }
 
 /**
- * Background slot shared by the top and bottom chrome bars: a flat
- * translucent black scrim so the photo the pager draws behind shows through
- * directly (no blurred copy of the asset stamped on top).
+ * Color base del cromo del visor. Es el mismo near-black al que el tema fija
+ * `surfaceContainer` en oscuro, pero literal y no vía el tema: en claro ese token
+ * se queda en el gris de Material y aquí los iconos son blancos, así que una
+ * cápsula clara los borraría.
  */
-@Composable
-private fun BoxScope.ChromeBackground() {
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .background(Color.Black.copy(alpha = 0.4f))
-    )
-}
+private val ViewerChromeColor = Color(0xFF141416)
+
+/** Cápsulas de acciones: translúcidas, como la nav flotante (que va al 90%). */
+private val ViewerCapsuleColor = ViewerChromeColor.copy(alpha = 0.92f)
+
+/** Aire entre el asset y el cromo flotante, y entre las piezas del cromo. */
+private val ChromeGap = 12.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2323,13 +2360,35 @@ private fun AssetActionsBottomBar(
     onArchive: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        ChromeBackground()
+    // Cápsula flotante, misma geometría que la nav y que la barra de selección:
+    // el inset y los márgenes van *fuera* de la Surface, que es lo que la despega
+    // de los bordes en vez de pintar el fondo por detrás del inset.
+    //
+    // El color sí es propio del visor y no `surfaceContainer`: aquí el cromo es
+    // blanco sobre la foto, y el token del tema es un gris claro en modo claro
+    // (LightColors no lo fija, así que se queda en el gris de Material) — una
+    // cápsula clara dejaría los iconos blancos invisibles y pelearía con la barra
+    // superior, que sigue siendo blanca sobre velo.
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(
+                start = FloatingNavBarHorizontalMargin,
+                end = FloatingNavBarHorizontalMargin,
+                bottom = FloatingNavBarBottomMargin
+            )
+    ) {
+        Surface(
+            shape = FloatingNavBarShape,
+            color = ViewerCapsuleColor,
+            contentColor = Color.White,
+            shadowElevation = 6.dp
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .height(64.dp)
+                .height(CompactNavBarContentHeight)
                 .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
@@ -2416,6 +2475,7 @@ private fun AssetActionsBottomBar(
                     }
                 }
             }
+        }
         }
     }
 }
