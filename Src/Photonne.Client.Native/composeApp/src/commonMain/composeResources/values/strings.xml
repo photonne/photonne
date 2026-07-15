@@ -1048,6 +1048,16 @@
     <string name="notifications_time_hours_ago">Hace %1$dh</string>
     <string name="notifications_time_days_ago">Hace %1$dd</string>
 
+    <!-- Fallback headings for the Recuerdos rows: used only when the server sends
+         no theme title of its own (one older than the grouping, or one whose
+         memories haven't been regenerated since). -->
+    <string name="memories_section_today">Hoy hace…</string>
+    <string name="memories_section_people">Personas</string>
+    <string name="memories_section_trips">Viajes</string>
+    <string name="memories_section_this_month">Este mes</string>
+    <string name="memories_section_favorites">Tus favoritas</string>
+    <string name="memories_section_places">Lugares y aficiones</string>
+
     <string name="explore_memories_empty">No hay recuerdos por mostrar aún.</string>
     <string name="explore_memories_group_count">%1$d fotos</string>
     <string name="explore_places_coming_soon">Lugares estará disponible cuando se añada la geocodificación inversa al servidor.</string>

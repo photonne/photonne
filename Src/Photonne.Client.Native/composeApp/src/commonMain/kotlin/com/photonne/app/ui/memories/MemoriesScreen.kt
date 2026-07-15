@@ -29,8 +29,15 @@ import com.photonne.app.data.models.Memory
 import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_memories_empty
+import com.photonne.app.resources.memories_section_favorites
+import com.photonne.app.resources.memories_section_people
+import com.photonne.app.resources.memories_section_places
+import com.photonne.app.resources.memories_section_this_month
+import com.photonne.app.resources.memories_section_today
+import com.photonne.app.resources.memories_section_trips
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Wide enough to read a cover, narrow enough that the next one peeks in and
@@ -80,13 +87,16 @@ fun MemoriesScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
 
+            // The top padding is the screen's own: a row's breathing room comes
+            // from its header, so a headerless row would otherwise sit its cards
+            // flush against the title bar.
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
             ) {
                 items(
                     items = state.rows,
-                    key = { row -> "row:${row.themeKey}" },
+                    key = { row -> "row:${row.key}" },
                 ) { row ->
                     MemoryThemeRow(
                         row = row,
@@ -107,11 +117,15 @@ private fun MemoryThemeRow(
     openingId: String?,
     onClick: (Memory) -> Unit,
 ) {
-    // No header for the catch-all row: those are memories the server hasn't
-    // grouped, and inventing a heading for them would be worse than silence.
-    if (row.title.isNotEmpty()) {
+    // The server's theme title, or — when it didn't send one — this build's name
+    // for the section the cards fall in. Every row gets a header one way or the
+    // other: a strip of covers with nothing above it says nothing about itself.
+    val header = row.title.ifEmpty {
+        row.sectionId?.let { sectionTitleOf(it) }?.let { stringResource(it) }.orEmpty()
+    }
+    if (header.isNotEmpty()) {
         Text(
-            text = row.title,
+            text = header,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
@@ -165,4 +179,22 @@ private fun MemoryRowCard(
             }
         }
     }
+}
+
+/**
+ * This build's name for a section, used only when the server sent no theme title.
+ * These are the app's own groupings — not the server's catalogue of themes — so
+ * naming them here is the one place the client gets to write the copy.
+ *
+ * Null for [MemorySectionId.Other]: kinds this build has never heard of. There is
+ * genuinely nothing to call those.
+ */
+private fun sectionTitleOf(id: MemorySectionId): StringResource? = when (id) {
+    MemorySectionId.Today -> Res.string.memories_section_today
+    MemorySectionId.People -> Res.string.memories_section_people
+    MemorySectionId.Trips -> Res.string.memories_section_trips
+    MemorySectionId.ThisMonth -> Res.string.memories_section_this_month
+    MemorySectionId.Favorites -> Res.string.memories_section_favorites
+    MemorySectionId.Things -> Res.string.memories_section_places
+    MemorySectionId.Other -> null
 }

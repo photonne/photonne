@@ -51,13 +51,19 @@ enum class MemorySectionId {
 /**
  * One row of the feed: a theme, and its cards. For a themed row the cards are its
  * years ("Días de playa" → 2024, 2023, 2021); for "Personas" they're the people.
- *
- * [title] is empty for the catch-all row of memories the server hasn't grouped —
- * it renders without a header rather than inventing one.
  */
 data class MemoryRow(
-    val themeKey: String,
+    /** Stable identity for the list key. The server's theme, or the section's name. */
+    val key: String,
+    /** The server's rendered header. Empty when it didn't send one — see [sectionId]. */
     val title: String,
+    /**
+     * Set only when [title] is empty: a server older than the grouping, or rows
+     * the nightly pass hasn't refreshed yet. The screen titles these from its own
+     * strings, which is the one thing the client is allowed to name — these are
+     * the app's own sections, not the server's catalogue of themes.
+     */
+    val sectionId: MemorySectionId?,
     val memories: List<Memory>,
 )
 
@@ -134,35 +140,52 @@ class MemoryFeedViewModel(
         }
     }
 
-    /**
-     * Folds the flat feed into one row per theme.
-     *
-     * The server sorts purely by score, which answers "what's best" but reads as
-     * a jumble down a screen: fifty full-width cards where "Días de playa" turns
-     * up at positions 3, 17 and 31. The theme was always there — it just lived
-     * inside the title text. Now it's a row.
-     *
-     * Row order is deliberately NOT the score. It's the declared
-     * [MemorySectionId] order, then alphabetical inside it: the whole point is
-     * that "Días de playa" is where you left it yesterday, and a ranking that
-     * re-sorts itself every night can't promise that. Within a row the server's
-     * ranking survives untouched.
-     */
-    private fun groupIntoRows(memories: List<Memory>): List<MemoryRow> =
-        memories
-            .groupBy { it.themeKey }
-            .map { (themeKey, items) ->
-                // Ungrouped memories (older server, or rows the nightly pass
-                // hasn't refreshed since the grouping shipped) collapse into one
-                // headerless row instead of one row each.
-                val section = if (themeKey.isEmpty()) {
-                    MemorySectionId.Other
-                } else {
-                    MemorySectionId.of(MemoryKind.from(items.first().kind))
-                }
-                val title = if (themeKey.isEmpty()) "" else items.first().groupTitle
-                Triple(section, title, MemoryRow(themeKey, title, items))
-            }
-            .sortedWith(compareBy({ it.first.ordinal }, { it.second }))
-            .map { it.third }
 }
+
+/**
+ * Folds the flat feed into one row per theme.
+ *
+ * The server sorts purely by score, which answers "what's best" but reads as a
+ * jumble down a screen: fifty full-width cards where "Días de playa" turns up at
+ * positions 3, 17 and 31. The theme was always there — it just lived inside the
+ * title text. Now it's a row.
+ *
+ * Row order is deliberately NOT the score. It's the declared [MemorySectionId]
+ * order, then the header alphabetically: the whole point is that "Días de playa"
+ * is where you left it yesterday, and a ranking that re-sorts itself every night
+ * can't promise that. Within a row the server's ranking survives untouched.
+ *
+ * A file-level function, not a method: it's the one piece of this screen with
+ * real logic, and this way it's testable without standing up a ViewModel.
+ */
+internal fun groupIntoRows(memories: List<Memory>): List<MemoryRow> =
+    memories
+        .groupBy { memory ->
+            val section = MemorySectionId.of(MemoryKind.from(memory.kind))
+            // Without a theme there is nothing finer to group by, so the row
+            // falls back to the app's own section. Coarser — "Personas" instead
+            // of a row per theme — but it still has a header and still holds its
+            // place. A server that predates the grouping, or one deployed but not
+            // yet regenerated, degrades to the shape this section had before,
+            // rather than to one anonymous strip.
+            RowKey(section, memory.themeKey.ifEmpty { section.name })
+        }
+        .toList()
+        .sortedWith(
+            compareBy(
+                { (rowKey, _) -> rowKey.section.ordinal },
+                { (_, items) -> items.first().groupTitle },
+            )
+        )
+        .map { (rowKey, items) ->
+            val isThemed = rowKey.key != rowKey.section.name
+            MemoryRow(
+                key = rowKey.key,
+                title = if (isThemed) items.first().groupTitle else "",
+                sectionId = if (isThemed) null else rowKey.section,
+                memories = items,
+            )
+        }
+
+/** A row's identity, carrying the section that orders it. */
+private data class RowKey(val section: MemorySectionId, val key: String)
