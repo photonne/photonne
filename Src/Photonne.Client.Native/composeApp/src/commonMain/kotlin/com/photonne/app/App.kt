@@ -68,7 +68,6 @@ import com.photonne.app.resources.admin_system_duplicates
 import com.photonne.app.resources.admin_system_embedding
 import com.photonne.app.resources.admin_system_face
 import com.photonne.app.resources.admin_system_index
-import com.photonne.app.resources.admin_system_maintenance
 import com.photonne.app.resources.admin_system_metadata
 import com.photonne.app.resources.admin_system_object
 import com.photonne.app.resources.admin_system_scene
@@ -249,7 +248,6 @@ private enum class MoreSubscreen {
     AdminSystemHub,
     AdminSystemRunTasks,
     AdminSystemDuplicates,
-    AdminSystemMaintenance,
     AdminSystemBackup
 }
 
@@ -284,7 +282,6 @@ private fun isAdminRunTasksDetail(subscreen: MoreSubscreen?): Boolean = when (su
 private fun isAdminSystemSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
     MoreSubscreen.AdminSystemRunTasks,
     MoreSubscreen.AdminSystemDuplicates,
-    MoreSubscreen.AdminSystemMaintenance,
     MoreSubscreen.AdminSystemBackup -> true
     else -> false
 }
@@ -326,7 +323,6 @@ private fun adminSystemSubpageMeta(
 ): Pair<org.jetbrains.compose.resources.StringResource, Unit> = when (subscreen) {
     MoreSubscreen.AdminSystemRunTasks -> Res.string.admin_system_run_tasks to Unit
     MoreSubscreen.AdminSystemDuplicates -> Res.string.admin_system_duplicates to Unit
-    MoreSubscreen.AdminSystemMaintenance -> Res.string.admin_system_maintenance to Unit
     MoreSubscreen.AdminSystemBackup -> Res.string.admin_system_backup to Unit
     else -> Res.string.admin_section_system to Unit
 }
@@ -371,7 +367,6 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSettingsVersion -> MoreSubscreen.AdminSettingsHub
     MoreSubscreen.AdminSystemDuplicates -> MoreSubscreen.AdminSystemRunTasks
     MoreSubscreen.AdminSystemRunTasks,
-    MoreSubscreen.AdminSystemMaintenance,
     MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
     MoreSubscreen.OrganizeRule -> MoreSubscreen.OrganizeInbox
     MoreSubscreen.Upload,
@@ -606,8 +601,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         com.photonne.app.ui.admin.AdminUserDefaultsViewModel = koinViewModel()
     val adminDuplicatesViewModel:
         com.photonne.app.ui.admin.AdminDuplicatesViewModel = koinViewModel()
-    val adminMaintenanceViewModel:
-        com.photonne.app.ui.admin.AdminMaintenanceViewModel = koinViewModel()
     val adminBackupViewModel:
         com.photonne.app.ui.admin.AdminBackupViewModel = koinViewModel()
     val timelineState by timelineViewModel.state.collectAsState()
@@ -2751,8 +2744,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 moreSubscreen = when (entry) {
                                     com.photonne.app.ui.admin.AdminSystemEntry.RunTasks ->
                                         MoreSubscreen.AdminSystemRunTasks
-                                    com.photonne.app.ui.admin.AdminSystemEntry.Maintenance ->
-                                        MoreSubscreen.AdminSystemMaintenance
                                     com.photonne.app.ui.admin.AdminSystemEntry.Backup ->
                                         MoreSubscreen.AdminSystemBackup
                                 }
@@ -2778,10 +2769,6 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.AdminSystemDuplicates ->
                         com.photonne.app.ui.admin.AdminDuplicatesScreen(
                             viewModel = adminDuplicatesViewModel
-                        )
-                    MoreSubscreen.AdminSystemMaintenance ->
-                        com.photonne.app.ui.admin.AdminMaintenanceScreen(
-                            viewModel = adminMaintenanceViewModel
                         )
                     MoreSubscreen.AdminSystemBackup ->
                         com.photonne.app.ui.admin.AdminBackupScreen(

@@ -2,21 +2,17 @@ package com.photonne.app.ui.admin
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
-import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.runtime.Composable
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_backup
 import com.photonne.app.resources.admin_system_backup_subtitle
-import com.photonne.app.resources.admin_system_maintenance
-import com.photonne.app.resources.admin_system_maintenance_subtitle
 import com.photonne.app.resources.admin_system_run_tasks
 import com.photonne.app.resources.admin_system_run_tasks_subtitle
 import org.jetbrains.compose.resources.stringResource
 
 enum class AdminSystemEntry {
     RunTasks,
-    Maintenance,
     Backup,
 }
 
@@ -28,12 +24,6 @@ fun AdminSystemHubScreen(onOpen: (AdminSystemEntry) -> Unit) {
             stringResource(Res.string.admin_system_run_tasks),
             stringResource(Res.string.admin_system_run_tasks_subtitle),
             Icons.Outlined.PlayArrow
-        ),
-        AdminHubEntry(
-            AdminSystemEntry.Maintenance.name,
-            stringResource(Res.string.admin_system_maintenance),
-            stringResource(Res.string.admin_system_maintenance_subtitle),
-            Icons.Outlined.Build
         ),
         AdminHubEntry(
             AdminSystemEntry.Backup.name,

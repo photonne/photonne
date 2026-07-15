@@ -507,13 +507,25 @@
     <string name="admin_settings_nightly_batch_size_hint">Default for manual backfill runs from System. Each run can override it.</string>
 
     <string name="admin_system_run_tasks">Run tasks</string>
-    <string name="admin_system_run_tasks_subtitle">Indexing, thumbnails, duplicates, ML…</string>
+    <string name="admin_system_run_tasks_subtitle">Index, analyse, repair and clean up</string>
     <string name="admin_run_tasks_pending_format">%1$d unprocessed · %2$d in queue</string>
-    <string name="admin_run_tasks_section_pipeline">Processing</string>
+    <string name="admin_run_tasks_section_new_photos">New photos</string>
+    <string name="admin_run_tasks_section_new_photos_subtitle">When you've added files, in this order</string>
     <string name="admin_run_tasks_section_ai">AI analysis</string>
     <string name="admin_run_tasks_section_memories">Memories and places</string>
     <string name="admin_run_tasks_section_memories_subtitle">Each one feeds the next, in this order</string>
-    <string name="admin_run_tasks_section_other">Other</string>
+    <string name="admin_run_tasks_section_repair">Repair</string>
+    <string name="admin_run_tasks_section_repair_subtitle">When something is already wrong</string>
+    <string name="admin_run_tasks_section_cleanup">Clean up</string>
+    <string name="admin_run_tasks_section_cleanup_subtitle">Frees space. This group deletes.</string>
+    <string name="admin_run_tasks_section_expand">Expand</string>
+    <string name="admin_run_tasks_section_collapse">Collapse</string>
+    <string name="admin_run_tasks_purge_dry_run">Dry run (counts, deletes nothing)</string>
+    <string name="admin_run_tasks_confirm_empty_trash_title">Empty the trash?</string>
+    <string name="admin_run_tasks_confirm_empty_trash_message">This permanently deletes everything in every user's trash, not just yours. It cannot be undone.</string>
+    <string name="admin_run_tasks_confirm_purge_title">Purge assets with no file?</string>
+    <string name="admin_run_tasks_confirm_purge_message">This deletes from the database the assets marked as missing and the folders whose directory no longer exists, along with their albums and faces. It cannot be undone. If in doubt, run it with "Dry run" first.</string>
+    <string name="admin_run_tasks_confirm_run">Run</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets missing at least one AI pass</string>
     <string name="admin_run_tasks_ai_progress_format">%1$s · %2$d in queue</string>
     <string name="admin_run_tasks_ai_enqueuing_format">Queueing %1$d / %2$d</string>
@@ -718,8 +730,6 @@
     <string name="admin_system_text_subtitle">Recognize text in images</string>
     <string name="admin_system_embedding">Smart search (CLIP)</string>
     <string name="admin_system_embedding_subtitle">Compute embeddings for semantic search</string>
-    <string name="admin_system_maintenance">Maintenance</string>
-    <string name="admin_system_maintenance_subtitle">Orphans, missing files, sizes…</string>
     <string name="admin_system_backup">Backup</string>
     <string name="admin_system_backup_subtitle">Export and import the database</string>
 

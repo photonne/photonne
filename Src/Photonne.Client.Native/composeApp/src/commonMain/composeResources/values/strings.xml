@@ -507,13 +507,25 @@
     <string name="admin_settings_nightly_batch_size_hint">Valor por defecto para ejecuciones manuales de backfill desde Sistema. Cada ejecución puede sobreescribirlo.</string>
 
     <string name="admin_system_run_tasks">Ejecutar tareas</string>
-    <string name="admin_system_run_tasks_subtitle">Indexar, miniaturas, duplicados, ML…</string>
+    <string name="admin_system_run_tasks_subtitle">Indexar, analizar, reparar y limpiar</string>
     <string name="admin_run_tasks_pending_format">%1$d sin procesar · %2$d en cola</string>
-    <string name="admin_run_tasks_section_pipeline">Procesamiento</string>
+    <string name="admin_run_tasks_section_new_photos">Fotos nuevas</string>
+    <string name="admin_run_tasks_section_new_photos_subtitle">Cuando has añadido archivos, en este orden</string>
     <string name="admin_run_tasks_section_ai">Análisis con IA</string>
     <string name="admin_run_tasks_section_memories">Recuerdos y lugares</string>
     <string name="admin_run_tasks_section_memories_subtitle">Cada una alimenta a la siguiente, en este orden</string>
-    <string name="admin_run_tasks_section_other">Otras</string>
+    <string name="admin_run_tasks_section_repair">Reparar</string>
+    <string name="admin_run_tasks_section_repair_subtitle">Cuando algo ya está mal</string>
+    <string name="admin_run_tasks_section_cleanup">Limpiar</string>
+    <string name="admin_run_tasks_section_cleanup_subtitle">Libera espacio. Aquí sí se borra.</string>
+    <string name="admin_run_tasks_section_expand">Desplegar</string>
+    <string name="admin_run_tasks_section_collapse">Plegar</string>
+    <string name="admin_run_tasks_purge_dry_run">Solo simular (cuenta, no borra)</string>
+    <string name="admin_run_tasks_confirm_empty_trash_title">¿Vaciar las papeleras?</string>
+    <string name="admin_run_tasks_confirm_empty_trash_message">Se eliminará de forma permanente todo lo que haya en la papelera de cualquier usuario, no solo la tuya. No se puede deshacer.</string>
+    <string name="admin_run_tasks_confirm_purge_title">¿Purgar los assets sin archivo?</string>
+    <string name="admin_run_tasks_confirm_purge_message">Se eliminarán de la base de datos los assets marcados como ausentes y las carpetas cuyo directorio ya no exista, con sus álbumes y sus caras. No se puede deshacer. Si dudas, ejecútalo antes con «Solo simular».</string>
+    <string name="admin_run_tasks_confirm_run">Ejecutar</string>
     <string name="admin_run_tasks_ai_subtitle_format">%1$d assets sin analizar por alguna IA</string>
     <string name="admin_run_tasks_ai_progress_format">%1$s · %2$d en cola</string>
     <string name="admin_run_tasks_ai_enqueuing_format">Encolando %1$d / %2$d</string>
@@ -731,8 +743,6 @@
     <string name="admin_system_text_subtitle">Reconocer texto en imágenes</string>
     <string name="admin_system_embedding">Búsqueda inteligente (CLIP)</string>
     <string name="admin_system_embedding_subtitle">Calcular embeddings para búsqueda semántica</string>
-    <string name="admin_system_maintenance">Mantenimiento</string>
-    <string name="admin_system_maintenance_subtitle">Huérfanos, ficheros perdidos, tamaños…</string>
     <string name="admin_system_backup">Copia de seguridad</string>
     <string name="admin_system_backup_subtitle">Exportar e importar la base de datos</string>
 

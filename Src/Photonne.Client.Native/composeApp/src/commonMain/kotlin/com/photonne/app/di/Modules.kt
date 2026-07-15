@@ -65,7 +65,6 @@ import com.photonne.app.ui.admin.AdminTextRecognitionSettingsViewModel
 
 import com.photonne.app.ui.admin.AdminImageSettingsViewModel
 import com.photonne.app.ui.admin.AdminLibrariesViewModel
-import com.photonne.app.ui.admin.AdminMaintenanceViewModel
 import com.photonne.app.ui.admin.AdminMetadataSettingsViewModel
 import com.photonne.app.ui.admin.AdminNightlySettingsViewModel
 import com.photonne.app.ui.admin.AdminNotificationSettingsViewModel
@@ -219,7 +218,6 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminSharedTrashViewModel)
     viewModelOf(::AdminUserDefaultsViewModel)
     viewModelOf(::AdminDuplicatesViewModel)
-    viewModelOf(::AdminMaintenanceViewModel)
     viewModelOf(::AdminFaceRecognitionSettingsViewModel)
     viewModelOf(::AdminObjectDetectionSettingsViewModel)
     viewModelOf(::AdminSceneClassificationSettingsViewModel)

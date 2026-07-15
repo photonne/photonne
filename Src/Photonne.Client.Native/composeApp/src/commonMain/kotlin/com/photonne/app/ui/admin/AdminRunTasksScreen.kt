@@ -16,9 +16,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Image
@@ -29,6 +34,8 @@ import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.GroupWork
 import androidx.compose.material.icons.outlined.Sync
@@ -68,9 +75,31 @@ import com.photonne.app.resources.admin_run_tasks_last_run_never
 import com.photonne.app.resources.admin_run_tasks_pending_format
 import com.photonne.app.resources.admin_run_tasks_section_ai
 import com.photonne.app.resources.admin_run_tasks_section_memories
+import com.photonne.app.resources.admin_run_tasks_confirm_empty_trash_message
+import com.photonne.app.resources.admin_run_tasks_confirm_empty_trash_title
+import com.photonne.app.resources.admin_run_tasks_confirm_purge_message
+import com.photonne.app.resources.admin_run_tasks_confirm_purge_title
+import com.photonne.app.resources.admin_run_tasks_confirm_run
+import com.photonne.app.resources.admin_run_tasks_purge_dry_run
+import com.photonne.app.resources.admin_run_tasks_section_cleanup
+import com.photonne.app.resources.admin_run_tasks_section_cleanup_subtitle
+import com.photonne.app.resources.admin_run_tasks_section_collapse
+import com.photonne.app.resources.admin_run_tasks_section_expand
+import com.photonne.app.resources.admin_run_tasks_section_new_photos
+import com.photonne.app.resources.admin_run_tasks_section_new_photos_subtitle
+import com.photonne.app.resources.admin_run_tasks_section_repair
+import com.photonne.app.resources.admin_run_tasks_section_repair_subtitle
+import com.photonne.app.resources.admin_maintenance_action_empty_trash
+import com.photonne.app.resources.admin_maintenance_action_missing
+import com.photonne.app.resources.admin_maintenance_action_orphans
+import com.photonne.app.resources.admin_maintenance_action_purge_missing
+import com.photonne.app.resources.admin_maintenance_action_recalculate
+import com.photonne.app.resources.admin_maintenance_desc_empty_trash
+import com.photonne.app.resources.admin_maintenance_desc_missing
+import com.photonne.app.resources.admin_maintenance_desc_orphans
+import com.photonne.app.resources.admin_maintenance_desc_purge_missing
+import com.photonne.app.resources.admin_maintenance_desc_recalculate
 import com.photonne.app.resources.admin_run_tasks_section_memories_subtitle
-import com.photonne.app.resources.admin_run_tasks_section_other
-import com.photonne.app.resources.admin_run_tasks_section_pipeline
 import com.photonne.app.resources.admin_run_tasks_status_in_progress
 import com.photonne.app.resources.admin_run_tasks_time_d_format
 import com.photonne.app.resources.admin_run_tasks_time_h_format
@@ -115,6 +144,8 @@ import com.photonne.app.resources.admin_system_text_subtitle
 import com.photonne.app.resources.admin_system_thumbnails
 import com.photonne.app.resources.admin_system_thumbnails_subtitle
 import com.photonne.app.ui.charts.LiveDot
+import com.photonne.app.ui.library.ConfirmActionDialog
+import com.russhwolf.settings.Settings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -139,18 +170,24 @@ import org.jetbrains.compose.resources.stringResource
  * Logical grouping for the Run Tasks hub. Order also drives the visual
  * order on the screen.
  *
- * - [Pipeline]: foundational asset processing — Index → Metadata →
- *   Thumbnails. ML can only run on assets that have completed this
- *   pipeline, so they belong at the top.
+ * Grouped by WHY you came, not by what the task is made of. Nobody opens
+ * this screen wanting "a pipeline task" — they just copied photos in, or a
+ * date is wrong, or the disk is full. The previous grouping (pipeline / AI /
+ * memories / other) described our architecture, which is of no use to the
+ * person looking for a button.
+ *
+ * - [NewPhotos]: you added files. Index → Metadata → Thumbnails, in the
+ *   order they feed each other; ML can only run on assets that finished it.
  * - [Ai]: the five ML enrichments. Each consumes already-indexed assets.
  * - [Memories]: the nightly Recuerdos chain, on demand. Listed in
  *   dependency order — coordinates → place names → trips → memories —
  *   because running one out of order just means it reads yesterday's
  *   input and lands a night late.
- * - [Other]: occasional maintenance tasks that aren't part of the
- *   forward pipeline (duplicates today, room for more later).
+ * - [Repair]: something is already wrong and you're fixing it.
+ * - [Cleanup]: reclaiming space. The only group that destroys anything, and
+ *   grouped so you can see that at a glance rather than reading each row.
  */
-enum class AdminRunTaskSection { Pipeline, Ai, Memories, Other }
+enum class AdminRunTaskSection { NewPhotos, Ai, Memories, Repair, Cleanup }
 
 /** Identifies one of the five ML backfill endpoints
  *  (`/api/admin/maintenance/{kind}/backfill`). Used as the API path
@@ -162,8 +199,8 @@ enum class AdminBackfillKind(val apiPath: String) {
     TextRecognition("text-recognition"),
     ImageEmbedding("image-embedding"),
     // Not an ML model: re-pairs Live Photo stills with their motion clips by
-    // re-running MediaRecognition (filesystem sibling check). Lives in the
-    // Other section as a re-runnable maintenance action, not an IA row.
+    // re-running MediaRecognition (filesystem sibling check). Lives under
+    // Repair as a re-runnable fix, not an IA row.
     MediaRecognition("media-recognition"),
 }
 
@@ -188,13 +225,17 @@ enum class AdminRunTask(
     // same backgroundType ("Maintenance"), so `kind` — not type — is what
     // tells one running maintenance row from another.
     val maintenanceKind: String? = null,
+    // Asks before running. Only for the two tasks that destroy data a user
+    // could still want: every row here is one identical ▶ tap, so the button
+    // that empties everyone's trash must not be as easy to hit as Indexar.
+    val isDestructive: Boolean = false,
 ) {
     IndexAssets(
         titleRes = Res.string.admin_system_index,
         subtitleRes = Res.string.admin_system_index_subtitle,
         icon = Icons.Outlined.Sync,
         backfillKind = null,
-        section = AdminRunTaskSection.Pipeline,
+        section = AdminRunTaskSection.NewPhotos,
         backgroundType = "IndexAssets",
     ),
     ExtractMetadata(
@@ -202,7 +243,7 @@ enum class AdminRunTask(
         subtitleRes = Res.string.admin_system_metadata_subtitle,
         icon = Icons.Outlined.Info,
         backfillKind = null,
-        section = AdminRunTaskSection.Pipeline,
+        section = AdminRunTaskSection.NewPhotos,
         backgroundType = "Metadata",
     ),
     GenerateThumbnails(
@@ -210,7 +251,7 @@ enum class AdminRunTask(
         subtitleRes = Res.string.admin_system_thumbnails_subtitle,
         icon = Icons.Outlined.Image,
         backfillKind = null,
-        section = AdminRunTaskSection.Pipeline,
+        section = AdminRunTaskSection.NewPhotos,
         backgroundType = "Thumbnails",
     ),
     RestoreDates(
@@ -218,7 +259,7 @@ enum class AdminRunTask(
         subtitleRes = Res.string.admin_system_restore_dates_subtitle,
         icon = Icons.Outlined.DateRange,
         backfillKind = null,
-        section = AdminRunTaskSection.Pipeline,
+        section = AdminRunTaskSection.Repair,
         backgroundType = "DateRestore",
     ),
     FaceRecognition(
@@ -297,22 +338,77 @@ enum class AdminRunTask(
         backgroundType = "Maintenance",
         maintenanceKind = "generate-memories",
     ),
-    DetectDuplicates(
-        titleRes = Res.string.admin_system_duplicates,
-        subtitleRes = Res.string.admin_system_duplicates_subtitle,
-        icon = Icons.Outlined.ContentCopy,
-        backfillKind = null,
-        section = AdminRunTaskSection.Other,
-        backgroundType = null,
-    ),
     MediaRecognition(
         titleRes = Res.string.admin_system_media_recognition,
         subtitleRes = Res.string.admin_system_media_recognition_subtitle,
         icon = Icons.Outlined.MotionPhotosOn,
         backfillKind = AdminBackfillKind.MediaRecognition,
-        section = AdminRunTaskSection.Other,
+        section = AdminRunTaskSection.Repair,
         backgroundType = null,
     ),
+    DetectDuplicates(
+        titleRes = Res.string.admin_system_duplicates,
+        subtitleRes = Res.string.admin_system_duplicates_subtitle,
+        icon = Icons.Outlined.ContentCopy,
+        backfillKind = null,
+        section = AdminRunTaskSection.Repair,
+        backgroundType = null,
+    ),
+    MarkMissingFiles(
+        titleRes = Res.string.admin_maintenance_action_missing,
+        subtitleRes = Res.string.admin_maintenance_desc_missing,
+        icon = Icons.Outlined.SearchOff,
+        backfillKind = null,
+        section = AdminRunTaskSection.Repair,
+        backgroundType = MaintenanceTaskType,
+        maintenanceKind = "missing-files",
+    ),
+    RecalculateSizes(
+        titleRes = Res.string.admin_maintenance_action_recalculate,
+        subtitleRes = Res.string.admin_maintenance_desc_recalculate,
+        icon = Icons.Outlined.Straighten,
+        backfillKind = null,
+        section = AdminRunTaskSection.Repair,
+        backgroundType = MaintenanceTaskType,
+        maintenanceKind = "recalculate-sizes",
+    ),
+    OrphanThumbnails(
+        titleRes = Res.string.admin_maintenance_action_orphans,
+        subtitleRes = Res.string.admin_maintenance_desc_orphans,
+        icon = Icons.Outlined.BrokenImage,
+        backfillKind = null,
+        section = AdminRunTaskSection.Cleanup,
+        backgroundType = MaintenanceTaskType,
+        maintenanceKind = "orphan-thumbnails",
+        // Not destructive: a thumbnail with no asset behind it is regenerable
+        // by definition. Only the two below take something you can't get back.
+    ),
+    EmptyTrash(
+        titleRes = Res.string.admin_maintenance_action_empty_trash,
+        subtitleRes = Res.string.admin_maintenance_desc_empty_trash,
+        icon = Icons.Outlined.DeleteForever,
+        backfillKind = null,
+        section = AdminRunTaskSection.Cleanup,
+        backgroundType = MaintenanceTaskType,
+        maintenanceKind = "empty-trash",
+        isDestructive = true,
+    ),
+    PurgeMissing(
+        titleRes = Res.string.admin_maintenance_action_purge_missing,
+        subtitleRes = Res.string.admin_maintenance_desc_purge_missing,
+        icon = Icons.Outlined.DeleteSweep,
+        backfillKind = null,
+        section = AdminRunTaskSection.Cleanup,
+        backgroundType = MaintenanceTaskType,
+        maintenanceKind = "purge-missing",
+        isDestructive = true,
+    ),
+    ;
+
+    /** What keys this task's live progress and its running row. Every
+     *  maintenance kind registers under the type "Maintenance", so keying on
+     *  type alone would make one task paint another's progress bar. */
+    val progressKey: String? get() = maintenanceKind ?: backgroundType
 }
 
 private const val PollIntervalMs = 10_000L
@@ -333,6 +429,14 @@ data class AdminRunTasksUiState(
      *  Used to derive both "running now" rows and "Última ejecución hace X"
      *  subtitles. */
     val backgroundTasks: List<BackgroundTaskDto> = emptyList(),
+    /** Task groups currently unfolded. Persisted across visits — see
+     *  [readExpandedSections]. */
+    val expandedSections: Set<AdminRunTaskSection> = DefaultExpandedSections,
+    /** The destructive task waiting for a yes. Null when no dialog is up. */
+    val confirming: AdminRunTask? = null,
+    /** Count what would be purged instead of purging it. Off by default: the
+     *  toggle exists to make the real run safer, not to make it a surprise. */
+    val purgeDryRun: Boolean = false,
     /** Live progress for running pipeline tasks, keyed by server task-type
      *  ("IndexAssets" / "Metadata" / "Thumbnails"). Fed by a per-task
      *  follower that subscribes to `/api/tasks/{id}/stream`, so the row
@@ -389,9 +493,10 @@ data class EnqueuingProgress(
     val enqueuedSoFar: Int,
 )
 
-/** Normalized progress event used by the live-follow plumbing — the three
- *  pipeline resume streams (index / metadata / thumbnails) all map onto this
- *  shared shape so a single follower can drive any of them. */
+/** Normalized progress event used by the live-follow plumbing — the pipeline
+ *  resume streams (index / metadata / thumbnails / dates) and the maintenance
+ *  one all map onto this shared shape so a single follower can drive any of
+ *  them. */
 private data class LiveProgress(
     val percentage: Double,
     val message: String,
@@ -409,12 +514,58 @@ private data class LiveProgress(
  */
 class AdminRunTasksViewModel(
     private val repository: AdminRepository,
+    private val settings: Settings,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(AdminRunTasksUiState())
+    private val _state = MutableStateFlow(
+        AdminRunTasksUiState(expandedSections = readExpandedSections(settings))
+    )
     val state: StateFlow<AdminRunTasksUiState> = _state.asStateFlow()
 
     private var pollJob: Job? = null
+
+    /** Folds or unfolds a group and remembers the choice for next time. */
+    fun toggleSection(section: AdminRunTaskSection) {
+        _state.update {
+            val next = if (section in it.expandedSections) it.expandedSections - section
+                       else it.expandedSections + section
+            writeExpandedSections(settings, next)
+            it.copy(expandedSections = next)
+        }
+    }
+
+    /** Puts up the "are you sure" for a destructive task. */
+    fun requestConfirm(task: AdminRunTask) {
+        _state.update { it.copy(confirming = task) }
+    }
+
+    fun dismissConfirm() {
+        _state.update { it.copy(confirming = null) }
+    }
+
+    /** Runs the task the dialog was asking about. The only path that starts a
+     *  destructive task — [start] refuses to. */
+    fun confirmAndRun() {
+        val task = _state.value.confirming ?: return
+        _state.update { it.copy(confirming = null) }
+        triggerTask(task)
+    }
+
+    /**
+     * What a row's ▶ does. Destructive tasks divert to a dialog instead of
+     * running; everything else goes straight through. Keeping the fork here
+     * rather than in the row means a new destructive task can't be added
+     * without a confirmation by simply wiring up its button.
+     */
+    fun start(task: AdminRunTask) {
+        if (task.isDestructive) requestConfirm(task)
+        else if (task.backfillKind != null && task.maintenanceKind == null) triggerMlBackfill(task)
+        else triggerTask(task)
+    }
+
+    fun setPurgeDryRun(value: Boolean) {
+        _state.update { it.copy(purgeDryRun = value) }
+    }
 
     // Active enqueuing loops keyed by ML task. The hub-level "Iniciar"
     // mirrors the detail screen's iterative POST behaviour — we keep
@@ -424,18 +575,24 @@ class AdminRunTasksViewModel(
     // otherwise immediately refill the queue we just cleared.
     private val mlBackfillJobs = mutableMapOf<AdminRunTask, Job>()
 
-    // Active live-progress followers keyed by server task-type string. Each
-    // subscribes to `/api/tasks/{id}/stream` for one running pipeline task and
-    // pushes per-asset updates into `liveTasks`. Re-attached automatically by
-    // [refresh] whenever a running pipeline task has no follower yet, so
-    // progress resumes after the user navigates back.
+    // Active live-progress followers keyed by progress key. Each subscribes to
+    // `/api/tasks/{id}/stream` for one running task and pushes per-item updates
+    // into `liveTasks`. Re-attached automatically by [refresh] whenever a
+    // running task has no follower yet, so progress resumes after navigating
+    // back.
     private val liveJobs = mutableMapOf<String, Job>()
 
-    // server task-type → pipeline AdminRunTask, for re-attaching followers.
-    private val pipelineByType: Map<String, AdminRunTask> =
-        AdminRunTask.values()
-            .filter { it.section == AdminRunTaskSection.Pipeline && it.backgroundType != null }
-            .associateBy { it.backgroundType!! }
+    // progress key → AdminRunTask, for re-attaching followers. Keyed by
+    // progressKey rather than by type so the nine maintenance kinds — which all
+    // report as type "Maintenance" — don't collapse onto one entry.
+    //
+    // A non-null progressKey is exactly the set that has a resume stream: the
+    // four pipeline tasks and every maintenance kind. ML rows and Duplicates
+    // have neither, and drop out here.
+    private val followableByKey: Map<String, AdminRunTask> =
+        AdminRunTask.entries
+            .filter { it.progressKey != null }
+            .associateBy { it.progressKey!! }
 
     fun load() {
         if (_state.value.isLoading) return
@@ -508,8 +665,13 @@ class AdminRunTasksViewModel(
                             ).take(1).collect {}
                         AdminRunTask.DetectDuplicates ->
                             repository.duplicatesStream(cleanup = false, physical = false).take(1).collect {}
-                        else -> task.maintenanceKind?.let {
-                            repository.maintenanceStream(it).take(1).collect {}
+                        else -> task.maintenanceKind?.let { kind ->
+                            // dryRun only means anything to purge-missing; the
+                            // other kinds ignore the query param server-side.
+                            repository.maintenanceStream(
+                                kind = kind,
+                                dryRun = task == AdminRunTask.PurgeMissing && snapshot.purgeDryRun,
+                            ).take(1).collect {}
                         }
                     }
                 }
@@ -683,13 +845,13 @@ class AdminRunTasksViewModel(
         }
     }
 
-    /** Subscribes to a running pipeline task's live stream and mirrors it into
-     *  [AdminRunTasksUiState.liveTasks] so the row animates per-asset. Idempotent
-     *  per task-type. The follower lives in [viewModelScope], so it survives
+    /** Subscribes to a running task's live stream and mirrors it into
+     *  [AdminRunTasksUiState.liveTasks] so the row animates per-item. Idempotent
+     *  per progress key. The follower lives in [viewModelScope], so it survives
      *  navigation within the session and is torn down on [onCleared]. */
-    private fun followLiveTask(task: AdminRunTask, type: String, taskId: String, startPct: Double) {
-        if (liveJobs[type]?.isActive == true) return
-        liveJobs[type] = viewModelScope.launch {
+    private fun followLiveTask(task: AdminRunTask, key: String, taskId: String, startPct: Double) {
+        if (liveJobs[key]?.isActive == true) return
+        liveJobs[key] = viewModelScope.launch {
             var completed = false
             // The resume stream replays buffered events from the start, so clamp
             // the bar to where polling already had it — otherwise (re)attaching
@@ -705,9 +867,9 @@ class AdminRunTasksViewModel(
                     maxPct = maxOf(maxPct, p.percentage)
                     _state.update {
                         it.copy(
-                            liveTasks = it.liveTasks + (type to BackgroundTaskDto(
+                            liveTasks = it.liveTasks + (key to BackgroundTaskDto(
                                 id = p.taskId ?: taskId,
-                                type = type,
+                                type = task.backgroundType ?: "",
                                 status = "Running",
                                 percentage = maxPct,
                                 lastMessage = p.message,
@@ -718,8 +880,8 @@ class AdminRunTasksViewModel(
                     }
                 }
             }
-            liveJobs.remove(type)
-            _state.update { it.copy(liveTasks = it.liveTasks - type) }
+            liveJobs.remove(key)
+            _state.update { it.copy(liveTasks = it.liveTasks - key) }
             // Re-poll immediately only on a clean finish; on a dropped stream we
             // let the 10s poll loop re-attach so a broken connection can't
             // hot-loop refresh ↔ re-attach.
@@ -741,18 +903,29 @@ class AdminRunTasksViewModel(
             AdminRunTask.IndexAssets ->
                 repository.resumeIndexTaskStream(id)
                     .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
-            else -> null
+            // Every maintenance kind resumes through the same stream — this is
+            // what the Mantenimiento screen used before it was folded in here,
+            // and it's why these rows show per-item progress instead of jumping
+            // every 10s with the poll.
+            else -> task.maintenanceKind?.let {
+                repository.resumeMaintenanceTaskStream(id)
+                    .map { LiveProgress(it.percentage, it.message, it.isCompleted, it.taskId) }
+            }
         }
 
-    /** Attach a live follower to every running pipeline task that lacks one.
-     *  Called after each poll so freshly-triggered tasks AND tasks already
-     *  running when the screen opens (e.g. started on the PWA, or before
-     *  navigating away) both get smooth progress. */
+    /** Attach a live follower to every running task that lacks one. Called after
+     *  each poll so freshly-triggered tasks AND tasks already running when the
+     *  screen opens (e.g. started on the PWA, or before navigating away) both
+     *  get smooth progress. */
     private fun attachLiveFollowers(tasks: List<BackgroundTaskDto>) {
         for (dto in tasks) {
             if (!dto.isRunning) continue
-            val task = pipelineByType[dto.type] ?: continue
-            followLiveTask(task, dto.type, dto.id, dto.percentage)
+            // A maintenance task is identified by its kind; everything else by
+            // its type. Same rule as the rows, so a follower can't end up
+            // driving a different row than the one that started it.
+            val key = dto.parameters["kind"] ?: dto.type
+            val task = followableByKey[key] ?: continue
+            followLiveTask(task, key, dto.id, dto.percentage)
         }
     }
 
@@ -826,33 +999,29 @@ fun AdminRunTasksScreen(
         Clock.System.now().toEpochMilliseconds()
     }
 
-    val pipelineTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Pipeline } }
-    val aiTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Ai } }
-    val memoriesTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Memories } }
-    val otherTasks = remember { AdminRunTask.values().filter { it.section == AdminRunTaskSection.Other } }
-
-    // Index server-side task DTOs by type for O(1) lookup per row. Live
-    // followers (per-asset stream) override the coarser 10s-poll entry for the
-    // same type while active.
-    val runningByType = state.backgroundTasks.filter { it.isRunning }.associateBy { it.type } +
-        state.liveTasks
-    val lastFinishedByType = state.backgroundTasks
+    // One lookup rule for every row: a maintenance task is identified by its
+    // kind, everything else by its type. Keying maintenance by type would light
+    // up all nine kinds the moment any one of them ran. Live followers
+    // (per-item stream) override the coarser 10s-poll entry while active.
+    val runningByKey = state.backgroundTasks
+        .filter { it.isRunning }
+        .associateBy { it.parameters["kind"] ?: it.type } + state.liveTasks
+    val lastFinishedByKey = state.backgroundTasks
         .filter { !it.isRunning && it.finishedAt != null }
-        .groupBy { it.type }
+        .groupBy { it.parameters["kind"] ?: it.type }
         .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
 
-    // Maintenance rows key off `parameters["kind"]`, not type: every maintenance
-    // task registers as type "Maintenance", so matching by type would light up
-    // all four Recuerdos rows the moment any one of them ran.
-    val runningByKind = state.backgroundTasks
-        .filter { it.isRunning && it.type == MaintenanceTaskType }
-        .mapNotNull { dto -> dto.parameters["kind"]?.let { it to dto } }
-        .toMap()
-    val lastFinishedByKind = state.backgroundTasks
-        .filter { !it.isRunning && it.type == MaintenanceTaskType && it.finishedAt != null }
-        .mapNotNull { dto -> dto.parameters["kind"]?.let { it to dto } }
-        .groupBy({ it.first }, { it.second })
-        .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
+    state.confirming?.let { task ->
+        ConfirmActionDialog(
+            title = stringResource(confirmTitleOf(task)),
+            message = stringResource(confirmMessageOf(task)),
+            confirmLabel = stringResource(Res.string.admin_run_tasks_confirm_run),
+            isDestructive = true,
+            isSubmitting = false,
+            onDismiss = viewModel::dismissConfirm,
+            onConfirm = viewModel::confirmAndRun,
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -869,178 +1038,170 @@ fun AdminRunTasksScreen(
             }
         }
 
-        item { SectionHeader(stringResource(Res.string.admin_run_tasks_section_pipeline)) }
-        items(pipelineTasks) { task ->
-            val running = task.backgroundType?.let { runningByType[it] }
-            val isActive = running != null || task in state.triggering
-            TaskRow(
-                task = task,
-                running = running,
-                aiInProgress = false,
-                lastFinished = task.backgroundType?.let { lastFinishedByType[it] },
-                nowMs = nowMs,
-                pending = null,
-                isTriggering = task in state.triggering,
-                enqueuingProgress = null,
-                sessionBaseline = null,
-                onOpen = null,  // no detail page for pipeline tasks any more
-                onStart = { viewModel.triggerTask(task) },
-                onSecondary = null,
-                onCancelAi = null,
-                onCancel = { dto -> viewModel.cancelTask(dto.id) }
-            )
-            // Inline option toggles — only visible while idle so the row
-            // doesn't grow during a run.
-            if (!isActive) {
-                when (task) {
-                    AdminRunTask.GenerateThumbnails -> InlineToggle(
-                        label = stringResource(Res.string.admin_thumbnails_regenerate),
-                        checked = state.thumbnailsRegenerate,
-                        onCheckedChange = viewModel::setThumbnailsRegenerate
-                    )
-                    AdminRunTask.ExtractMetadata -> InlineToggle(
-                        label = stringResource(Res.string.admin_metadata_overwrite),
-                        checked = state.metadataOverwrite,
-                        onCheckedChange = viewModel::setMetadataOverwrite
-                    )
-                    AdminRunTask.RestoreDates -> Column {
-                        InlineToggle(
-                            label = stringResource(Res.string.admin_restore_dates_from_file),
-                            checked = state.dateRestoreFromFile,
-                            onCheckedChange = viewModel::setDateRestoreFromFile
-                        )
-                        InlineToggle(
-                            label = stringResource(Res.string.admin_restore_dates_infer),
-                            checked = state.dateRestoreInferFromPath,
-                            onCheckedChange = viewModel::setDateRestoreInferFromPath
-                        )
-                        InlineToggle(
-                            label = stringResource(Res.string.admin_restore_dates_use_file_date),
-                            checked = state.dateRestoreUseFileDate,
-                            onCheckedChange = viewModel::setDateRestoreUseFileDate
-                        )
-                        if (state.dateRestoreInferFromPath || state.dateRestoreUseFileDate) {
-                            InlineToggle(
-                                label = stringResource(Res.string.admin_restore_dates_write_file),
-                                checked = state.dateRestoreWriteToFile,
-                                onCheckedChange = viewModel::setDateRestoreWriteToFile
-                            )
-                        }
-                        InlineToggle(
-                            label = stringResource(Res.string.admin_restore_dates_dry_run),
-                            checked = state.dateRestoreDryRun,
-                            onCheckedChange = viewModel::setDateRestoreDryRun
-                        )
-                    }
-                    else -> Unit
+        for (section in AdminRunTaskSection.entries) {
+            val tasks = tasksOf(section)
+            val expanded = section in state.expandedSections
+
+            item(key = "header-${section.name}") {
+                val anyRunning = tasks.any { task ->
+                    task in state.triggering ||
+                        task.progressKey?.let { runningByKey[it] } != null ||
+                        (state.pending[task]?.inQueue ?: 0) > 0 ||
+                        task in state.enqueuing
                 }
+                SectionHeader(
+                    title = stringResource(sectionTitleOf(section)),
+                    subtitle = sectionSubtitleOf(section)?.let { stringResource(it) },
+                    count = tasks.size,
+                    expanded = expanded,
+                    // Work doesn't stop because you folded the group away, so
+                    // the header keeps reporting it. Without this, folding a
+                    // running section looks like cancelling it.
+                    showLiveDot = anyRunning && !expanded,
+                    onToggle = { viewModel.toggleSection(section) },
+                )
             }
-        }
 
-        item { SectionHeader(stringResource(Res.string.admin_run_tasks_section_ai)) }
-        items(aiTasks) { task ->
-            val pending = state.pending[task]
-            TaskRow(
-                task = task,
-                running = null,
-                aiInProgress = (pending?.inQueue ?: 0) > 0,
-                enqueuingProgress = state.enqueuing[task],
-                sessionBaseline = state.aiSessionBaseline[task],
-                lastFinished = null,
-                nowMs = nowMs,
-                pending = pending,
-                isTriggering = task in state.triggering,
-                onOpen = null,  // no detail page for AI tasks any more
-                onStart = { viewModel.triggerMlBackfill(task) },
-                // Face recognition gets a second action: re-cluster the
-                // existing face detections without re-running the model.
-                // The others have no equivalent extra step.
-                onSecondary = if (task == AdminRunTask.FaceRecognition) {
-                    SecondaryAction(
-                        icon = Icons.Outlined.GroupWork,
-                        contentDescription = stringResource(Res.string.admin_backfill_action_clustering),
-                        onClick = viewModel::runFaceClustering
-                    )
-                } else null,
-                onCancelAi = { viewModel.cancelMlQueue(task) },
-                onCancel = null
-            )
-        }
+            // Collapsed sections emit no rows at all — the app's existing
+            // pattern (see RuleConditionsEditor); nothing here uses
+            // AnimatedVisibility.
+            if (!expanded) continue
 
-        item {
-            SectionHeader(
-                stringResource(Res.string.admin_run_tasks_section_memories),
-                stringResource(Res.string.admin_run_tasks_section_memories_subtitle)
-            )
-        }
-        items(memoriesTasks) { task ->
-            val kind = task.maintenanceKind
-            TaskRow(
-                task = task,
-                running = kind?.let { runningByKind[it] },
-                aiInProgress = false,
-                lastFinished = kind?.let { lastFinishedByKind[it] },
-                nowMs = nowMs,
-                pending = null,
-                isTriggering = task in state.triggering,
-                enqueuingProgress = null,
-                sessionBaseline = null,
-                onOpen = null,
-                onStart = { viewModel.triggerTask(task) },
-                onSecondary = null,
-                onCancelAi = null,
-                onCancel = { dto -> viewModel.cancelTask(dto.id) }
-            )
-        }
+            items(tasks, key = { it.name }) { task ->
+                val pending = state.pending[task]
+                val running = task.progressKey?.let { runningByKey[it] }
+                val isMl = task.backfillKind != null && task.maintenanceKind == null
+                val aiInProgress = isMl && (pending?.inQueue ?: 0) > 0
+                val isActive = running != null || aiInProgress || task in state.triggering
 
-        item { SectionHeader(stringResource(Res.string.admin_run_tasks_section_other)) }
-        items(otherTasks) { task ->
-            if (task.backfillKind != null) {
-                // A re-runnable maintenance action backed by the /backfill
-                // enqueue loop (Live Photos re-pairing today). Reuses the AI
-                // machinery for the "Encolando X / Y" feedback + cancel, but
-                // passes pending = null: it has no honest "N pending → 0"
-                // counter (no per-asset completion marker), so it shows as a
-                // fire-and-forget run, not a draining queue with a percentage.
                 TaskRow(
                     task = task,
-                    running = null,
-                    aiInProgress = false,
-                    lastFinished = null,
-                    nowMs = nowMs,
-                    pending = null,
-                    isTriggering = task in state.triggering,
+                    running = running,
+                    aiInProgress = aiInProgress,
+                    // Live Photos re-pairing reuses the /backfill enqueue loop
+                    // but has no honest "N pending → 0" counter (no per-asset
+                    // completion marker), so it shows as a fire-and-forget run
+                    // rather than a draining queue with a percentage.
+                    pending = if (task == AdminRunTask.MediaRecognition) null else pending,
                     enqueuingProgress = state.enqueuing[task],
-                    sessionBaseline = null,
-                    onOpen = null,
-                    onStart = { viewModel.triggerMlBackfill(task) },
-                    onSecondary = null,
-                    onCancelAi = { viewModel.cancelMlQueue(task) },
-                    onCancel = null
-                )
-            } else {
-                TaskRow(
-                    task = task,
-                    running = task.backgroundType?.let { runningByType[it] },
-                    aiInProgress = false,
-                    lastFinished = task.backgroundType?.let { lastFinishedByType[it] },
+                    sessionBaseline = state.aiSessionBaseline[task],
+                    lastFinished = task.progressKey?.let { lastFinishedByKey[it] },
                     nowMs = nowMs,
-                    pending = null,
                     isTriggering = task in state.triggering,
-                    enqueuingProgress = null,
-                    sessionBaseline = null,
-                    // Duplicates keeps its dedicated screen for now — it has
-                    // toggles (cleanup, physical-delete) and per-group review
-                    // UI that don't fit on a single row.
-                    onOpen = { onOpenTask(task) },
-                    onStart = { viewModel.triggerTask(task) },
-                    onSecondary = null,
-                    onCancelAi = null,
-                    onCancel = { dto -> viewModel.cancelTask(dto.id) }
+                    // Duplicates keeps its dedicated screen: it has toggles and
+                    // per-group review UI that don't fit on a single row.
+                    onOpen = if (task == AdminRunTask.DetectDuplicates) {
+                        { onOpenTask(task) }
+                    } else null,
+                    onStart = { viewModel.start(task) },
+                    // Face recognition gets a second action: re-cluster the
+                    // existing detections without re-running the model.
+                    onSecondary = if (task == AdminRunTask.FaceRecognition) {
+                        SecondaryAction(
+                            icon = Icons.Outlined.GroupWork,
+                            contentDescription = stringResource(Res.string.admin_backfill_action_clustering),
+                            onClick = viewModel::runFaceClustering
+                        )
+                    } else null,
+                    onCancelAi = if (isMl || task == AdminRunTask.MediaRecognition) {
+                        { viewModel.cancelMlQueue(task) }
+                    } else null,
+                    onCancel = if (isMl) null else { dto -> viewModel.cancelTask(dto.id) },
                 )
+
+                // Per-task options, only while idle so the row doesn't grow
+                // during a run.
+                if (!isActive) TaskOptions(task, state, viewModel)
             }
         }
     }
+}
+
+/** The switches that belong to one task, rendered under its row. */
+@Composable
+private fun TaskOptions(
+    task: AdminRunTask,
+    state: AdminRunTasksUiState,
+    viewModel: AdminRunTasksViewModel,
+) {
+    when (task) {
+        AdminRunTask.GenerateThumbnails -> InlineToggle(
+            label = stringResource(Res.string.admin_thumbnails_regenerate),
+            checked = state.thumbnailsRegenerate,
+            onCheckedChange = viewModel::setThumbnailsRegenerate
+        )
+        AdminRunTask.ExtractMetadata -> InlineToggle(
+            label = stringResource(Res.string.admin_metadata_overwrite),
+            checked = state.metadataOverwrite,
+            onCheckedChange = viewModel::setMetadataOverwrite
+        )
+        // The server has always accepted ?dryRun=true here; nothing ever asked
+        // for it. It's the cheapest way to find out what a purge would take
+        // before it takes it.
+        AdminRunTask.PurgeMissing -> InlineToggle(
+            label = stringResource(Res.string.admin_run_tasks_purge_dry_run),
+            checked = state.purgeDryRun,
+            onCheckedChange = viewModel::setPurgeDryRun
+        )
+        AdminRunTask.RestoreDates -> Column {
+            InlineToggle(
+                label = stringResource(Res.string.admin_restore_dates_from_file),
+                checked = state.dateRestoreFromFile,
+                onCheckedChange = viewModel::setDateRestoreFromFile
+            )
+            InlineToggle(
+                label = stringResource(Res.string.admin_restore_dates_infer),
+                checked = state.dateRestoreInferFromPath,
+                onCheckedChange = viewModel::setDateRestoreInferFromPath
+            )
+            InlineToggle(
+                label = stringResource(Res.string.admin_restore_dates_use_file_date),
+                checked = state.dateRestoreUseFileDate,
+                onCheckedChange = viewModel::setDateRestoreUseFileDate
+            )
+            // Only meaningful once there's a derived date to write back, which
+            // is why it appears with them rather than sitting there greyed out.
+            if (state.dateRestoreInferFromPath || state.dateRestoreUseFileDate) {
+                InlineToggle(
+                    label = stringResource(Res.string.admin_restore_dates_write_file),
+                    checked = state.dateRestoreWriteToFile,
+                    onCheckedChange = viewModel::setDateRestoreWriteToFile
+                )
+            }
+            InlineToggle(
+                label = stringResource(Res.string.admin_restore_dates_dry_run),
+                checked = state.dateRestoreDryRun,
+                onCheckedChange = viewModel::setDateRestoreDryRun
+            )
+        }
+        else -> Unit
+    }
+}
+
+private fun sectionTitleOf(section: AdminRunTaskSection): StringResource = when (section) {
+    AdminRunTaskSection.NewPhotos -> Res.string.admin_run_tasks_section_new_photos
+    AdminRunTaskSection.Ai -> Res.string.admin_run_tasks_section_ai
+    AdminRunTaskSection.Memories -> Res.string.admin_run_tasks_section_memories
+    AdminRunTaskSection.Repair -> Res.string.admin_run_tasks_section_repair
+    AdminRunTaskSection.Cleanup -> Res.string.admin_run_tasks_section_cleanup
+}
+
+private fun sectionSubtitleOf(section: AdminRunTaskSection): StringResource? = when (section) {
+    AdminRunTaskSection.NewPhotos -> Res.string.admin_run_tasks_section_new_photos_subtitle
+    AdminRunTaskSection.Memories -> Res.string.admin_run_tasks_section_memories_subtitle
+    AdminRunTaskSection.Repair -> Res.string.admin_run_tasks_section_repair_subtitle
+    AdminRunTaskSection.Cleanup -> Res.string.admin_run_tasks_section_cleanup_subtitle
+    AdminRunTaskSection.Ai -> null
+}
+
+private fun confirmTitleOf(task: AdminRunTask): StringResource = when (task) {
+    AdminRunTask.EmptyTrash -> Res.string.admin_run_tasks_confirm_empty_trash_title
+    else -> Res.string.admin_run_tasks_confirm_purge_title
+}
+
+private fun confirmMessageOf(task: AdminRunTask): StringResource = when (task) {
+    AdminRunTask.EmptyTrash -> Res.string.admin_run_tasks_confirm_empty_trash_message
+    else -> Res.string.admin_run_tasks_confirm_purge_message
 }
 
 /** Inline switch rendered below a pipeline task row when there's a
@@ -1081,21 +1242,61 @@ data class SecondaryAction(
     val onClick: () -> Unit,
 )
 
+/**
+ * A task group's header: tap anywhere to fold it away. Carries the task count
+ * so a folded group still says how much is in there, and a live dot when work
+ * is running inside one — folding a group hides its rows, not its work.
+ */
 @Composable
-private fun SectionHeader(title: String, subtitle: String? = null) {
-    Column(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        if (!subtitle.isNullOrBlank()) {
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+private fun SectionHeader(
+    title: String,
+    subtitle: String?,
+    count: Int,
+    expanded: Boolean,
+    showLiveDot: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "$count",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (showLiveDot) LiveDot(active = true)
+            }
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
+        Icon(
+            imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            contentDescription = stringResource(
+                if (expanded) Res.string.admin_run_tasks_section_collapse
+                else Res.string.admin_run_tasks_section_expand
+            ),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -1353,10 +1554,10 @@ private fun TaskRowSubtitle(
                     )
                 } else stringResource(Res.string.admin_run_tasks_last_run_never)
             }
-            task.section == AdminRunTaskSection.Other ||
-                task.section == AdminRunTaskSection.Pipeline ||
-                task.section == AdminRunTaskSection.Memories ->
-                stringResource(Res.string.admin_run_tasks_last_run_never)
+            // Anything that reports a task entry can honestly say it never ran.
+            // ML rows can't: their work is a queue of per-asset jobs with no
+            // single "run", so they show their pending counters instead.
+            task.progressKey != null -> stringResource(Res.string.admin_run_tasks_last_run_never)
             else -> ""
         }
         if (text.isNotEmpty()) {
