@@ -113,7 +113,11 @@ fun AlbumDetailScreen(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    val gridContentPadding = if (immersive) {
+    // Con una selección activa la nav flotante deja su sitio a la cápsula de
+    // acciones, que mide lo mismo: la rejilla sigue a sangre por debajo y sigue
+    // reservando el mismo hueco, aunque `immersive` ya esté apagado (la barra no
+    // se esconde al hacer scroll mientras haya algo seleccionado).
+    val gridContentPadding = if (immersive || state.isSelectionActive) {
         PaddingValues(bottom = floatingNavBarReservedHeight())
     } else PaddingValues(0.dp)
 

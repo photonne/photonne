@@ -254,8 +254,12 @@ private fun AlbumsContent(
         )
     }
     // Reserve the bottom nav's height at the scroll end so the last row clears
-    // it while the grid draws full-bleed behind the (overlaid) bar.
-    val reservedBottom = if (immersive) floatingNavBarReservedHeight() else null
+    // it while the grid draws full-bleed behind the (overlaid) bar. La cápsula
+    // de selección ocupa ese mismo hueco con la misma altura, así que reserva
+    // igual aunque `immersive` esté apagado por haber una tarjeta seleccionada.
+    val reservedBottom = if (immersive || state.isSelectionActive) {
+        floatingNavBarReservedHeight()
+    } else null
     when (state.viewMode) {
         AlbumViewMode.Grid -> LazyVerticalGrid(
             state = gridState,

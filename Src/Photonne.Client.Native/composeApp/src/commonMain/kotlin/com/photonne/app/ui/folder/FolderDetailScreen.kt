@@ -81,7 +81,12 @@ fun FolderDetailScreen(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    val immersiveContentPadding = if (immersive) {
+    // Con una selección activa (de assets o de subcarpetas) la nav flotante deja
+    // su sitio a la cápsula de acciones, que mide lo mismo: se sigue reservando
+    // el mismo hueco aunque `immersive` ya esté apagado.
+    val immersiveContentPadding = if (immersive || state.isSelectionActive ||
+        state.isSubfolderSelectionActive
+    ) {
         PaddingValues(bottom = floatingNavBarReservedHeight())
     } else PaddingValues(0.dp)
 

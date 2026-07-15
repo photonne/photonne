@@ -1733,6 +1733,34 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         !folderDetailState.isSelectionActive &&
         !folderDetailState.isSubfolderSelectionActive
 
+    // Las mismas pantallas, pero con una selección activa. La barra de acciones
+    // es también una cápsula flotante, así que la rejilla sigue dibujando a
+    // sangre por debajo: lo que la selección apaga es el ocultarse al hacer
+    // scroll (una acción no puede escaparse), no el apoyarse sobre las fotos.
+    // Son justo las cinco que reservan el hueco de la cápsula al final de su
+    // scroll; el resto de pantallas con selección (Buscar, persona, favoritos…)
+    // no lo hacen, así que allí el Scaffold sigue apartando el contenido.
+    val timelineSelecting = chromeTab == MainTab.Timeline &&
+        moreSubscreen == null &&
+        timelineState.isSelectionActive
+    val albumsSelecting = chromeTab == MainTab.Albums &&
+        moreSubscreen == null &&
+        selectedAlbum == null &&
+        albumsState.isSelectionActive
+    val foldersSelecting = chromeTab == MainTab.Folders &&
+        moreSubscreen == null &&
+        selectedFolder == null &&
+        foldersState.isSelectionActive
+    val albumDetailSelecting = selectedTab == MainTab.Albums &&
+        moreSubscreen == null &&
+        selectedAlbum != null &&
+        albumDetailState.isSelectionActive
+    val folderDetailSelecting = selectedTab == MainTab.Folders &&
+        moreSubscreen == null &&
+        selectedFolder != null &&
+        (folderDetailState.isSelectionActive ||
+            folderDetailState.isSubfolderSelectionActive)
+
     // Shared tab-switch side effects, run by both a nav tap and a settled swipe:
     // drop any open subscreen / person layer, collapse an open detail when the
     // same tab is re-selected, and clear the other tabs' multi-selection.
@@ -1796,9 +1824,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 else -> true
             },
             // The grid draws behind the bottom nav so content is revealed when
-            // it slides away (always full-screen, the bar just covers it).
+            // it slides away (always full-screen, the bar just covers it). Lo
+            // mismo con la cápsula de selección, que ocupa ese hueco: sin esto
+            // flotaría sobre el fondo del Scaffold en vez de sobre las fotos.
             edgeToEdgeBottom = timelineImmersive || albumsImmersive || foldersImmersive ||
-                albumDetailImmersive || folderDetailImmersive
+                albumDetailImmersive || folderDetailImmersive ||
+                timelineSelecting || albumsSelecting || foldersSelecting ||
+                albumDetailSelecting || folderDetailSelecting
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
             // Base layer: the four primary tabs live in a HorizontalPager so a

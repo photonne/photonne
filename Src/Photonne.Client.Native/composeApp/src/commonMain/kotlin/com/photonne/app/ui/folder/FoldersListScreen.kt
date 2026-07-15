@@ -226,7 +226,12 @@ private fun FolderListContent(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    val reservedBottom = if (immersive) floatingNavBarReservedHeight() else null
+    // La cápsula de selección ocupa el hueco de la nav flotante con la misma
+    // altura, así que se reserva igual aunque `immersive` esté apagado por haber
+    // una tarjeta seleccionada.
+    val reservedBottom = if (immersive || state.isSelectionActive) {
+        floatingNavBarReservedHeight()
+    } else null
     when {
         isLoading && folders.isEmpty() ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

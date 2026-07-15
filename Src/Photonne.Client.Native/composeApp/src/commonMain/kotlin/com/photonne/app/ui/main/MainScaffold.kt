@@ -80,10 +80,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
@@ -290,18 +288,23 @@ fun MainScaffold(
 // Altura del contenido de la barra inferior (sin contar el inset del sistema ni
 // los márgenes de la cápsula). Material3 usa 80.dp por defecto; la compactamos
 // para que se coma menos pantalla.
-private val CompactNavBarContentHeight = 64.dp
+//
+// Esta geometría (alto, márgenes y forma) es `internal` porque la comparte todo
+// lo que flota abajo, incluida la barra de acciones del visor, que vive fuera de
+// este Scaffold. Lo que el visor NO comparte es el color: allí el cromo va sobre
+// la foto a sangre y tiene su propia paleta.
+internal val CompactNavBarContentHeight = 64.dp
 
 // Márgenes que despegan la cápsula de los bordes de la pantalla.
-private val FloatingNavBarHorizontalMargin = 12.dp
-private val FloatingNavBarBottomMargin = 8.dp
+internal val FloatingNavBarHorizontalMargin = 12.dp
+internal val FloatingNavBarBottomMargin = 8.dp
 // Aire entre el final del contenido y el borde de la cápsula. Reservar solo su
 // altura exacta deja el último elemento pegado debajo: como la cápsula es
 // translúcida y su sombra se derrama hacia arriba, eso se lee como "tapado"
 // aunque técnicamente quede libre.
 private val FloatingNavBarContentGap = 12.dp
 // Cápsula completa, a juego con la píldora flotante del timeline.
-private val FloatingNavBarShape = RoundedCornerShape(percent = 50)
+internal val FloatingNavBarShape = RoundedCornerShape(percent = 50)
 // Aire entre el borde de la cápsula y el sombreado del elemento activo. Deja el
 // pill del ítem en 48.dp de alto: el mínimo táctil, que es el que manda aquí.
 private val FloatingNavItemMargin = 8.dp
@@ -493,6 +496,93 @@ private fun FloatingNavBarItem(
 }
 
 /**
+ * La cápsula que envuelve cualquier barra de acciones de selección. Comparte
+ * forma, color, altura y márgenes con [MainNavigationBar] a propósito: la barra
+ * de selección *sustituye* a la nav (ver `resolvedBottomBar`), así que entrar en
+ * selección se lee como que la cápsula cambia de contenido, no como que aparece
+ * otra barra encima.
+ *
+ * Lo único que no hereda es la estrategia de ancho: la nav se ciñe a sus cuatro
+ * ítems y va centrada, pero aquí hay hasta seis y en pantallas estrechas no
+ * caben ceñidos. Esta cápsula ocupa el ancho disponible y reparte sus ítems con
+ * `weight`, igual que hacía el `NavigationBar` que sustituye.
+ */
+@Composable
+private fun FloatingSelectionBar(content: @Composable RowScope.() -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(NavigationBarDefaults.windowInsets)
+            .padding(
+                start = FloatingNavBarHorizontalMargin,
+                end = FloatingNavBarHorizontalMargin,
+                bottom = FloatingNavBarBottomMargin
+            )
+    ) {
+        Surface(
+            shape = FloatingNavBarShape,
+            // Mismos tokens que la nav flotante. Ojo con `tonalElevation`: sería
+            // un no-op porque el color lleva alpha (ver [MainNavigationBar]).
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
+            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
+            shadowElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CompactNavBarContentHeight)
+                    .padding(horizontal = FloatingNavBarItemsPadding),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(FloatingNavItemGap),
+                content = content
+            )
+        }
+    }
+}
+
+/**
+ * Un botón de la cápsula de selección. Hermano de [FloatingNavBarItem], pero sin
+ * estado seleccionado: estos ítems disparan una acción, no marcan dónde estás.
+ *
+ * Se reparte el ancho con `weight` en vez de medirse por su contenido, y el
+ * ripple queda recortado a la misma forma que la cápsula.
+ *
+ * [tint] es para las acciones destructivas; si no se pasa, hereda el color de la
+ * cápsula. Deshabilitado baja el alpha del conjunto (icono + etiqueta) al 0.38
+ * que usa Material para el estado disabled.
+ */
+@Composable
+private fun RowScope.FloatingSelectionBarItem(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    label: String,
+    tint: Color = Color.Unspecified,
+    icon: @Composable () -> Unit
+) {
+    val base = if (tint != Color.Unspecified) tint else LocalContentColor.current
+    val contentColor = if (enabled) base else base.copy(alpha = 0.38f)
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .padding(vertical = FloatingNavItemMargin)
+            .clip(FloatingNavBarShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                icon()
+                SelectionLabel(label)
+            }
+        }
+    }
+}
+
+/**
  * The one and only "add something here" affordance, shared by every top bar that
  * has one (upload on Fotos/Más, new album, new folder/subfolder, new admin user/
  * library). It used to be three patterns — a Scaffold FAB, a plain [IconButton]
@@ -660,68 +750,6 @@ fun HubTopBar() {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SelectionTopBar(
-    selectedCount: Int,
-    isMutating: Boolean,
-    onClose: () -> Unit,
-    onAddToAlbum: () -> Unit,
-    onArchive: () -> Unit,
-    onTrash: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.AddToPhotos,
-                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
-                )
-            }
-            IconButton(onClick = onTrash, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = stringResource(Res.string.selection_action_trash),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-            Box {
-                IconButton(onClick = { menuOpen = true }, enabled = !isMutating) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = stringResource(Res.string.selection_action_more)
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.selection_action_archive)) },
-                        leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onArchive()
-                        }
-                    )
-                }
-            }
-        }
-    )
-}
-
 /** Whether the unified selection top bar shows "Archive" or "Unarchive" on the archive icon. */
 enum class ArchiveMode { Archive, Unarchive }
 
@@ -808,105 +836,98 @@ fun AssetSelectionBottomBar(
     // count + More. The context action takes Download's slot.
     val hasContextAction = onMove != null || onRemoveFromAlbum != null ||
         onSetAsCover != null || onUnlink != null
-    NavigationBar {
-        NavigationBarItem(
-            selected = false,
+    FloatingSelectionBar {
+        FloatingSelectionBarItem(
             onClick = onShare,
             enabled = !isMutating,
+            label = stringResource(Res.string.selection_label_share),
             icon = {
                 Icon(
                     Icons.Outlined.Share,
                     contentDescription = stringResource(Res.string.action_share)
                 )
-            },
-            label = { SelectionLabel(stringResource(Res.string.selection_label_share)) }
+            }
         )
-        NavigationBarItem(
-            selected = false,
+        FloatingSelectionBarItem(
             onClick = onAddToAlbum,
             enabled = !isMutating,
+            label = stringResource(Res.string.selection_label_add_to_album),
             icon = {
                 Icon(
                     Icons.Outlined.AddToPhotos,
                     contentDescription = stringResource(Res.string.selection_action_add_to_album)
                 )
-            },
-            label = { SelectionLabel(stringResource(Res.string.selection_label_add_to_album)) }
+            }
         )
         if (!hasContextAction) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onDownload,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_download),
                 icon = {
                     Icon(
                         Icons.Outlined.Download,
                         contentDescription = stringResource(Res.string.selection_action_download)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_download)) }
+                }
             )
         }
         if (onMove != null) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onMove,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_move),
                 icon = {
                     Icon(
                         Icons.AutoMirrored.Outlined.DriveFileMove,
                         contentDescription = stringResource(Res.string.folder_selection_move)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_move)) }
+                }
             )
         }
         if (onRemoveFromAlbum != null) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onRemoveFromAlbum,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_remove),
                 icon = {
                     Icon(
                         Icons.Outlined.RemoveCircleOutline,
                         contentDescription = stringResource(Res.string.selection_action_remove_from_album)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_remove)) }
+                }
             )
         }
         if (onSetAsCover != null) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onSetAsCover,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_set_cover),
                 icon = {
                     Icon(
                         Icons.Outlined.PhotoAlbum,
                         contentDescription = stringResource(Res.string.asset_action_set_cover)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_set_cover)) }
+                }
             )
         }
         if (onUnlink != null) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onUnlink,
                 enabled = !isMutating,
+                label = stringResource(Res.string.people_action_unlink),
                 icon = {
                     Icon(
                         Icons.Outlined.LinkOff,
                         contentDescription = stringResource(Res.string.people_action_unlink)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.people_action_unlink)) }
+                }
             )
         }
-        NavigationBarItem(
-            selected = false,
+        FloatingSelectionBarItem(
             onClick = { menuOpen = true },
             enabled = !isMutating,
+            label = stringResource(Res.string.selection_label_more),
             icon = {
                 Box {
                     Icon(
@@ -954,8 +975,7 @@ fun AssetSelectionBottomBar(
                         )
                     }
                 }
-            },
-            label = { SelectionLabel(stringResource(Res.string.selection_label_more)) }
+            }
         )
     }
 }
@@ -964,13 +984,16 @@ fun AssetSelectionBottomBar(
  * Label used by every selection bottom-bar item. Uses [MaterialTheme.typography.labelSmall]
  * so longer Spanish labels (e.g. "Deseleccionar") fit on a single line, and clamps to one
  * line with ellipsis as a safety net.
+ *
+ * El color lo pone [FloatingSelectionBarItem] vía `LocalContentColor`, que es lo
+ * que mantiene icono y etiqueta a juego tanto en las acciones destructivas como
+ * en el estado deshabilitado.
  */
 @Composable
-private fun SelectionLabel(text: String, color: Color = Color.Unspecified) {
+private fun SelectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
     )
@@ -1065,65 +1088,56 @@ fun AlbumCardSelectionBottomBar(
     onLeave: () -> Unit,
     onDelete: () -> Unit
 ) {
-    NavigationBar {
+    FloatingSelectionBar {
         if (canManageMembers) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onManageMembers,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_members),
                 icon = {
                     Icon(
                         Icons.Outlined.Group,
                         contentDescription = stringResource(Res.string.action_collaborators)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_members)) }
+                }
             )
         }
         if (canEdit) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onEdit,
                 enabled = !isMutating,
+                label = stringResource(Res.string.action_edit),
                 icon = {
                     Icon(
                         Icons.Outlined.Edit,
                         contentDescription = stringResource(Res.string.action_edit)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.action_edit)) }
+                }
             )
         }
         if (canLeave) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onLeave,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_leave),
                 icon = {
                     Icon(
                         Icons.AutoMirrored.Filled.Logout,
                         contentDescription = stringResource(Res.string.album_card_action_leave)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_leave)) }
+                }
             )
         }
         if (canDelete) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onDelete,
                 enabled = !isMutating,
+                label = stringResource(Res.string.action_delete),
+                tint = MaterialTheme.colorScheme.error,
                 icon = {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = stringResource(Res.string.action_delete),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                },
-                label = {
-                    SelectionLabel(
-                        stringResource(Res.string.action_delete),
-                        color = MaterialTheme.colorScheme.error
+                        contentDescription = stringResource(Res.string.action_delete)
                     )
                 }
             )
@@ -1216,70 +1230,61 @@ fun FolderCardSelectionBottomBar(
     excludedFromTimeline: Boolean = false,
     onToggleTimeline: () -> Unit = {}
 ) {
-    NavigationBar {
+    FloatingSelectionBar {
         if (canToggleTimeline) {
             val label = stringResource(
                 if (excludedFromTimeline) Res.string.folder_timeline_add
                 else Res.string.folder_timeline_remove
             )
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onToggleTimeline,
                 enabled = !isMutating,
+                label = label,
                 icon = {
                     Icon(
                         if (excludedFromTimeline) Icons.Outlined.Visibility
                         else Icons.Outlined.VisibilityOff,
                         contentDescription = label
                     )
-                },
-                label = { SelectionLabel(label) }
+                }
             )
         }
         if (canManageMembers) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onManageMembers,
                 enabled = !isMutating,
+                label = stringResource(Res.string.selection_label_members),
                 icon = {
                     Icon(
                         Icons.Outlined.Group,
                         contentDescription = stringResource(Res.string.action_collaborators)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.selection_label_members)) }
+                }
             )
         }
         if (canRename) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onRename,
                 enabled = !isMutating,
+                label = stringResource(Res.string.action_rename),
                 icon = {
                     Icon(
                         Icons.Outlined.DriveFileRenameOutline,
                         contentDescription = stringResource(Res.string.action_rename)
                     )
-                },
-                label = { SelectionLabel(stringResource(Res.string.action_rename)) }
+                }
             )
         }
         if (canDelete) {
-            NavigationBarItem(
-                selected = false,
+            FloatingSelectionBarItem(
                 onClick = onDelete,
                 enabled = !isMutating,
+                label = stringResource(Res.string.action_delete),
+                tint = MaterialTheme.colorScheme.error,
                 icon = {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = stringResource(Res.string.action_delete),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                },
-                label = {
-                    SelectionLabel(
-                        stringResource(Res.string.action_delete),
-                        color = MaterialTheme.colorScheme.error
+                        contentDescription = stringResource(Res.string.action_delete)
                     )
                 }
             )
