@@ -23,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.Memory
+import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.data.models.MemoryKind
-import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_memories_empty
 import com.photonne.app.resources.memories_section_favorites
@@ -48,7 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 fun MemoriesScreen(
     viewModel: MemoryFeedViewModel,
     baseUrl: String,
-    onOpenMemory: (List<TimelineItem>) -> Unit,
+    onOpenMemory: (MemoryDetail) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) {

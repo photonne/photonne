@@ -55,6 +55,7 @@ import com.photonne.app.resources.memories_strip_title
 import com.photonne.app.resources.timeline_memories_one_year_ago
 import com.photonne.app.resources.timeline_memories_years_ago
 import com.photonne.app.ui.memories.MemoryCardFace
+import com.photonne.app.ui.memories.MemoryDetailContext
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import kotlinx.coroutines.launch
@@ -67,8 +68,9 @@ private const val StoryDurationMs = 5000L
 
 /**
  * Cinematic memories carousel, pinned above the photo grid on the Fotos
- * timeline. Each page is an on-this-day group that opens the asset viewer at its
- * cover when tapped.
+ * timeline. Each page is an on-this-day group that opens as an album when
+ * tapped — same destination the Recuerdos section reaches, so a memory behaves
+ * the same wherever you meet it.
  *
  * Deliberately shows ONLY today's anniversaries, live from /api/assets/memories:
  * it's the teaser, and [onSeeAll] leads to the Recuerdos section, which holds
@@ -80,7 +82,7 @@ private const val StoryDurationMs = 5000L
 fun MemoriesStrip(
     memories: List<TimelineItem>,
     baseUrl: String,
-    onOpenMemory: (List<TimelineItem>, Int) -> Unit,
+    onOpenMemory: (MemoryDetailContext) -> Unit,
     onSeeAll: (() -> Unit)? = null
 ) {
     val zone = TimeZone.currentSystemDefault()
@@ -201,7 +203,19 @@ fun MemoriesStrip(
                     activeIndex = pagerState.currentPage,
                     onTapHold = { hold -> paused = hold },
                     onCoverLoaded = { loadedCovers[group.cover.id] = true },
-                    onClick = { onOpenMemory(group.items, 0) }
+                    // The strip's own label is the memory's title: these groups
+                    // are computed here, not by the server, so there's nothing
+                    // else to name them with.
+                    onClick = {
+                        onOpenMemory(
+                            MemoryDetailContext(
+                                title = label,
+                                subtitle = null,
+                                coverAssetId = group.cover.id,
+                                items = group.items,
+                            )
+                        )
+                    }
                 )
             }
         }

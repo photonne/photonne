@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.Memory
+import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.data.models.MemoryKind
-import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.timeline.MemoriesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,18 +95,21 @@ class MemoryFeedViewModel(
     }
 
     /**
-     * Fetches a memory's assets and hands them to [onLoaded] to open the viewer.
+     * Fetches a memory and hands it to [onLoaded] to open it as an album.
      * The feed only carries a cover, so the photos are a round-trip away — hence
      * the [MemoryFeedUiState.openingId] spinner rather than a silent pause.
+     *
+     * Passes the whole [MemoryDetail], not just its assets: the detail screen's
+     * cover needs the title, subtitle and cover id that came with it.
      */
-    fun open(memoryId: String, onLoaded: (List<TimelineItem>) -> Unit) {
+    fun open(memoryId: String, onLoaded: (MemoryDetail) -> Unit) {
         if (_state.value.openingId != null) return
         _state.update { it.copy(openingId = memoryId, error = null) }
         viewModelScope.launch {
             runCatching { repository.detail(memoryId) }
                 .onSuccess { detail ->
                     _state.update { it.copy(openingId = null) }
-                    if (detail.assets.isNotEmpty()) onLoaded(detail.assets)
+                    if (detail.assets.isNotEmpty()) onLoaded(detail)
                 }
                 .onFailure { error ->
                     _state.update {

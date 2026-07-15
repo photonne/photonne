@@ -285,7 +285,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13300;
+				CURRENT_PROJECT_VERSION = 13400;
 				DEVELOPMENT_TEAM = ZUSGZTSQRK;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -302,7 +302,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.33.0;
+				MARKETING_VERSION = 1.34.0;
 				OTHER_LDFLAGS = (
 					"-framework",
 					ComposeApp,
@@ -327,7 +327,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13300;
+				CURRENT_PROJECT_VERSION = 13400;
 				DEVELOPMENT_TEAM = ZUSGZTSQRK;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -344,7 +344,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.33.0;
+				MARKETING_VERSION = 1.34.0;
 				OTHER_LDFLAGS = (
 					"-framework",
 					ComposeApp,

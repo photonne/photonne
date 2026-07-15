@@ -634,6 +634,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
     }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
+    // An open memory, shown as an album. An overlay rather than a MoreSubscreen:
+    // it's reached from the Fotos strip too, not just from Más → Recuerdos, so it
+    // can't hang off the Más hierarchy.
+    var memoryDetail by remember {
+        mutableStateOf<com.photonne.app.ui.memories.MemoryDetailContext?>(null)
+    }
     // Tracks the asset shown by the viewer's pager — drives the
     // grid → detail shared-element morph. Null when the viewer is closed
     // so all grid thumbnails return to their normal visible state.
@@ -735,6 +741,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     )
     val canHandleBack = (
         assetDetail != null ||
+        memoryDetail != null ||
         isAnySelectionActive ||
         selectedAlbum != null ||
         selectedFolder != null ||
@@ -745,6 +752,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     PlatformBackHandler(enabled = canHandleBack) {
         when {
             assetDetail != null -> { assetDetail = null }
+            // Before every selection case: an open memory covers the screen, so
+            // back closes what you're actually looking at, not what's underneath.
+            memoryDetail != null -> { memoryDetail = null }
             selectedTab == MainTab.Timeline &&
                 timelineState.isSelectionActive -> timelineViewModel.clearSelection()
             selectedTab == MainTab.Albums && selectedAlbum != null &&
@@ -1875,16 +1885,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         pendingJumpDate = pendingJumpDate,
                         onJumpHandled = { pendingJumpDate = null },
                         memories = memoriesState.items,
-                        onOpenMemory = { items, index ->
-                            assetDetail = AssetDetailContext(
-                                items = items,
-                                startIndex = index,
-                                source = AssetDetailContext.Source.Timeline,
-                                hasMore = false,
-                                onLoadMore = {},
-                                onFavoriteChanged = timelineViewModel::setFavorite
-                            )
-                        },
+                        onOpenMemory = { memory -> memoryDetail = memory },
                         onSeeAllMemories = { moreSubscreen = MoreSubscreen.Memories }
                     )
                     MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
@@ -2310,16 +2311,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         com.photonne.app.ui.memories.MemoriesScreen(
                             viewModel = memoryFeedViewModel,
                             baseUrl = apiBaseUrl,
-                            onOpenMemory = { memoryItems ->
-                                assetDetail = AssetDetailContext(
-                                    items = memoryItems,
-                                    startIndex = 0,
-                                    source = AssetDetailContext.Source.Timeline,
-                                    hasMore = false,
-                                    onLoadMore = {},
-                                    onFavoriteChanged = { id, isFav ->
-                                        timelineViewModel.setFavorite(id, isFav)
-                                    }
+                            onOpenMemory = { detail ->
+                                memoryDetail = com.photonne.app.ui.memories.MemoryDetailContext(
+                                    title = detail.title,
+                                    subtitle = detail.subtitle,
+                                    coverAssetId = detail.coverAssetId,
+                                    items = detail.assets
                                 )
                             }
                         )
@@ -2813,6 +2810,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             }
             }
             }
+        }
+
+        // Above the tabs but below the viewer, so tapping a photo covers the
+        // memory rather than replacing it — back then lands on the grid again.
+        memoryDetail?.let { memory ->
+            com.photonne.app.ui.memories.MemoryDetailScreen(
+                memory = memory,
+                baseUrl = apiBaseUrl,
+                onItemClick = { index ->
+                    assetDetail = AssetDetailContext(
+                        items = memory.items,
+                        startIndex = index,
+                        source = AssetDetailContext.Source.Timeline,
+                        hasMore = false,
+                        onLoadMore = {},
+                        onFavoriteChanged = timelineViewModel::setFavorite
+                    )
+                },
+                onBack = { memoryDetail = null }
+            )
         }
 
         val ctx = assetDetail
