@@ -419,12 +419,7 @@ private fun FolderCard(
                     .padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (folder.excludedFromTimeline) {
-                    OverlayIconBadge(
-                        icon = Icons.Outlined.VisibilityOff,
-                        contentDescription = stringResource(Res.string.folder_timeline_excluded_badge)
-                    )
-                }
+                // Same order as FolderRow, so a folder reads the same in both view modes.
                 if (folder.isShared) {
                     OverlayIconBadge(
                         icon = Icons.Filled.Person,
@@ -435,6 +430,12 @@ private fun FolderCard(
                     OverlayIconBadge(
                         icon = Icons.AutoMirrored.Filled.LibraryBooks,
                         contentDescription = stringResource(Res.string.folder_external_badge)
+                    )
+                }
+                if (folder.excludedFromTimeline) {
+                    OverlayIconBadge(
+                        icon = Icons.Outlined.VisibilityOff,
+                        contentDescription = stringResource(Res.string.folder_timeline_excluded_badge)
                     )
                 }
             }

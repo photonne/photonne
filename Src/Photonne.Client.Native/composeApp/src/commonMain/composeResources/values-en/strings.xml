@@ -349,7 +349,7 @@
     <string name="selection_label_leave">Leave</string>
     <string name="folder_timeline_remove">Remove from timeline</string>
     <string name="folder_timeline_add">Add to timeline</string>
-    <string name="folder_timeline_excluded_badge">You only manage it</string>
+    <string name="folder_timeline_excluded_badge">Not in the timeline</string>
     <string name="share_choice_direct">Share directly</string>
     <string name="share_choice_direct_subtitle">Open the device share sheet (other apps, messaging, …).</string>
     <string name="share_choice_link">Create a Photonne link</string>

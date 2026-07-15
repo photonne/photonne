@@ -349,7 +349,7 @@
     <string name="selection_label_leave">Salir</string>
     <string name="folder_timeline_remove">Quitar del timeline</string>
     <string name="folder_timeline_add">Añadir al timeline</string>
-    <string name="folder_timeline_excluded_badge">Solo la administras</string>
+    <string name="folder_timeline_excluded_badge">Fuera del timeline</string>
     <string name="share_choice_direct">Compartir directamente</string>
     <string name="share_choice_direct_subtitle">Abre el panel de compartir del dispositivo (otras apps, mensajería, etc.).</string>
     <string name="share_choice_link">Crear enlace de Photonne</string>

@@ -623,7 +623,7 @@ private fun AlbumRow(
             }
         }
         Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = album.name,
                 style = MaterialTheme.typography.titleSmall,
