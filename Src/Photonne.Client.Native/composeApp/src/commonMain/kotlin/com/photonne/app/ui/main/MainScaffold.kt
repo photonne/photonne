@@ -628,7 +628,6 @@ fun TimelineTopBar(
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
-    onOpenUpload: (() -> Unit)? = null,
     deviceLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -673,15 +672,6 @@ fun TimelineTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 2.dp)
             ) {
-                // First of the actions, ahead of the scan spinner: anchored here it
-                // keeps its place when the spinner comes and goes.
-                if (onOpenUpload != null) {
-                    CreateAction(
-                        icon = Icons.Outlined.AddPhotoAlternate,
-                        contentDescription = stringResource(Res.string.upload_title),
-                        onClick = onOpenUpload
-                    )
-                }
                 // Discreet spinner while the first device-gallery scan runs. Sits
                 // among the actions so it never overlaps the wordmark, and reads
                 // the same whether or not the Recuerdos strip is present.

@@ -133,6 +133,7 @@ fun TimelineScreen(
     onEnsureYearSummaries: (sample: Int) -> Unit = {},
     onRefresh: () -> Unit = {},
     onToggleSelection: ((assetId: String) -> Unit)? = null,
+    /** Only the empty state offers this — uploading otherwise lives in Más. */
     onOpenUpload: (() -> Unit)? = null,
     /** Opens the "jump to date" picker from the floating top bar. */
     onJumpToDate: () -> Unit = {},
@@ -980,7 +981,6 @@ fun TimelineScreen(
                         currentZoom = zoomLevel,
                         onZoomSelected = zoomStore::update,
                         onOpenSearch = onOpenSearch,
-                        onOpenUpload = onOpenUpload,
                         deviceLoading = deviceBackupState.isBackupEnabled &&
                             deviceBackupState.isLoading,
                         modifier = Modifier
