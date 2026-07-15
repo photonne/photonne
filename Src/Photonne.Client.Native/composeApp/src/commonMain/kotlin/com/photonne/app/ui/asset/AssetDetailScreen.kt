@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -358,6 +360,31 @@ fun AssetDetailScreen(
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val progress = infoProgress.value
             val infoOpen = progress > 0f
+
+            // La píldora de foto en movimiento vive DENTRO de la página del pager
+            // y la cápsula superior fuera, así que nadie coordina sus alturas: se
+            // ancla al alto medido del cromo en vez de a un número afinado a ojo.
+            // OJO: topChromeHeight es SÓLO la cápsula. onSizeChanged va detrás de
+            // los paddings en su cadena, así que mide el contenido de dentro, no
+            // el inset ni el margen; hay que sumarlos aquí para saber por dónde
+            // acaba. Con el cromo oculto la píldora se recoge bajo la status bar,
+            // que es donde deja de haber nada que esquivar.
+            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val chromeCapsuleTop = statusBarTop + FloatingNavBarBottomMargin
+            val badgeTopTarget = if (chromeVisible && !infoOpen) {
+                chromeCapsuleTop + topChromeHeight + FloatingNavBarBottomMargin
+            } else {
+                chromeCapsuleTop
+            }
+            // Animar sólo una vez medido el cromo: si entrase en composición antes,
+            // arrancaría en el valor sin medir y la píldora bajaría deslizándose
+            // en cada apertura del visor. Al aparecer ya con la medida buena, su
+            // valor inicial es el definitivo y sólo animan los cambios reales.
+            val badgeTopInset = if (topChromeHeightPx == 0) {
+                badgeTopTarget
+            } else {
+                animateDpAsState(targetValue = badgeTopTarget, label = "badgeTopInset").value
+            }
             // Info open shrinks the asset to a 1:1 SQUARE. Portrait: a top header
             // (side = screen width) that shares ONE vertical scroll with the
             // metadata below it — so once 1:1 is reached, continuing to scroll
@@ -517,6 +544,7 @@ fun AssetDetailScreen(
                         videoBottomInset = if (
                             videoSurfaceRendersOnTop && chromeVisible && !infoOpen
                         ) bottomChromeHeight else 0.dp,
+                        badgeTopInset = badgeTopInset,
                         animatedVisibilityScope = animatedVisibilityScope
                     )
                 }
@@ -602,8 +630,9 @@ fun AssetDetailScreen(
             // TopAppBar de dentro renuncia a los suyos con WindowInsets(0) o los
             // aplicaría por segunda vez.
             //
-            // La medida incluye inset + margen + cápsula: es el hueco que el asset
-            // se aparta por arriba.
+            // La medida es sólo el alto de la cápsula: onSizeChanged va detrás de
+            // los paddings, así que no ve ni el inset ni el margen. Quien necesite
+            // el borde inferior del cromo tiene que sumarlos.
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -930,6 +959,7 @@ private fun AssetPage(
     videoPlayback: VideoPlayback? = null,
     videoTopInset: androidx.compose.ui.unit.Dp = 0.dp,
     videoBottomInset: androidx.compose.ui.unit.Dp = 0.dp,
+    badgeTopInset: androidx.compose.ui.unit.Dp = 0.dp,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val sharedScope = LocalSharedTransitionScope.current
@@ -1044,7 +1074,8 @@ private fun AssetPage(
                     onScaleChange = onScaleChange,
                     zoomEnabled = zoomEnabled,
                     contentScale = contentScale,
-                    onTap = onToggleChrome
+                    onTap = onToggleChrome,
+                    badgeTopInset = badgeTopInset
                 )
             }
             else -> {
@@ -1208,7 +1239,8 @@ private fun LivePhotoPage(
     onScaleChange: (Float) -> Unit,
     zoomEnabled: Boolean = true,
     contentScale: ContentScale = ContentScale.Fit,
-    onTap: (() -> Unit)? = null
+    onTap: (() -> Unit)? = null,
+    badgeTopInset: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     var motionPlay by remember(item.id) { mutableStateOf(MotionPlay.None) }
     val playing = motionPlay != MotionPlay.None
@@ -1266,10 +1298,11 @@ private fun LivePhotoPage(
             onClick = if (enabled && !playing) {
                 { motionPlay = MotionPlay.TapOnce }
             } else null,
+            // El inset ya trae dentro el hueco del sistema: aplicar aquí el de la
+            // status bar lo contaría dos veces.
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(start = 12.dp, top = 56.dp)
+                .padding(start = 12.dp, top = badgeTopInset)
         )
     }
 }
