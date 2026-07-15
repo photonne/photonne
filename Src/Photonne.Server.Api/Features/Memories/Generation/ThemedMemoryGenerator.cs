@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Models;
@@ -5,11 +6,13 @@ using Photonne.Server.Api.Shared.Models;
 namespace Photonne.Server.Api.Features.Memories.Generation;
 
 /// <summary>
-/// A recurring subject worth a card of its own. <see cref="TitleFor"/> takes the
-/// year because themes are scoped per year — see <see cref="ThemedMemoryGenerator"/>.
+/// A recurring subject worth a row of its own. <see cref="GroupTitle"/> heads the
+/// row and carries no year; <see cref="TitleFor"/> titles one card inside it,
+/// because themes are scoped per year — see <see cref="ThemedMemoryGenerator"/>.
 /// </summary>
 internal sealed record MemoryTheme(
     string Key,
+    string GroupTitle,
     Func<int, string> TitleFor,
     Expression<Func<Asset, bool>> Match);
 
@@ -72,11 +75,22 @@ internal abstract class ThemedMemoryGenerator : IMemoryGenerator
 
                 if (candidates.Count < MinAssets) continue;
 
+                // The dedupe key is the row's key plus the year, derived rather
+                // than spelled out again: the card's row and the card's identity
+                // cannot drift apart. A key that shifts by one character deletes
+                // every themed memory and resurrects every dismissed one.
+                var themeKey = $"{DedupePrefix}:{theme.Key}";
+
                 drafts.Add(candidates.ToDraft(
                     Kind,
-                    dedupeKey: $"{DedupePrefix}:{theme.Key}:{year:D4}",
+                    dedupeKey: $"{themeKey}:{year:D4}",
+                    themeKey: themeKey,
+                    groupTitle: theme.GroupTitle,
                     title: theme.TitleFor(year),
-                    subtitle: MemoryTitles.PhotoCount(candidates.Count)));
+                    subtitle: MemoryTitles.PhotoCount(candidates.Count),
+                    // The row already says "Días de playa"; the card only has to
+                    // say which year it is.
+                    cardLabel: year.ToString(CultureInfo.InvariantCulture)));
             }
         }
 

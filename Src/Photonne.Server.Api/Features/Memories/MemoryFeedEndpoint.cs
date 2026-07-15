@@ -21,7 +21,17 @@ namespace Photonne.Server.Api.Features.Memories;
 public class MemoryFeedEndpoint : IEndpoint
 {
     private const int DefaultLimit = 50;
-    private const int MaxLimit = 200;
+
+    /// <summary>
+    /// High because the native client groups the feed into rows by theme and
+    /// needs the whole set to do it. Truncating by Score cuts across those rows
+    /// rather than along them: at 200, a heavy library silently loses 2019 from
+    /// the middle of "Días de playa" with nothing to show it happened. A memory
+    /// is ~10 scalars off an index-covered query, so 500 rows is around 100 KB
+    /// and no joins. If this ever stops being enough the answer is a grouped
+    /// endpoint that truncates per row, not a bigger number.
+    /// </summary>
+    private const int MaxLimit = 500;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -66,6 +76,9 @@ public class MemoryFeedEndpoint : IEndpoint
                 Kind = m.Kind.ToString(),
                 Title = m.Title,
                 Subtitle = m.Subtitle,
+                ThemeKey = m.ThemeKey,
+                GroupTitle = m.GroupTitle,
+                CardLabel = m.CardLabel,
                 CoverAssetId = m.CoverAssetId,
                 AssetCount = m.AssetCount,
                 WindowStart = m.WindowStart,
@@ -108,6 +121,9 @@ public class MemoryDetailEndpoint : IEndpoint
                 Kind = m.Kind.ToString(),
                 Title = m.Title,
                 Subtitle = m.Subtitle,
+                ThemeKey = m.ThemeKey,
+                GroupTitle = m.GroupTitle,
+                CardLabel = m.CardLabel,
                 CoverAssetId = m.CoverAssetId,
                 AssetCount = m.AssetCount,
                 WindowStart = m.WindowStart,

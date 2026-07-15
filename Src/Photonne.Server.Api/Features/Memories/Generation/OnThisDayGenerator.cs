@@ -46,8 +46,12 @@ internal sealed class OnThisDayGenerator : IMemoryGenerator
                 // The date, not the years-ago count: "hace 3 años" becomes "hace
                 // 4 años" next January and would silently orphan the row.
                 dedupeKey: $"onthisday:{year:D4}-{today.Month:D2}-{today.Day:D2}",
+                themeKey: "onthisday",
+                groupTitle: "Hoy",
                 title: yearsAgo == 1 ? "Hace 1 año" : $"Hace {yearsAgo} años",
-                subtitle: MemoryTitles.DayAndYear(new DateTime(year, today.Month, today.Day))));
+                subtitle: MemoryTitles.DayAndYear(new DateTime(year, today.Month, today.Day)),
+                // No card label: "Hace 4 años" is already the short one.
+                cardLabel: null));
         }
 
         return drafts;

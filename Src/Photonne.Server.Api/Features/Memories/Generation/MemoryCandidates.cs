@@ -71,8 +71,11 @@ internal static class MemoryCandidates
         this IReadOnlyList<MemoryCandidate> candidates,
         MemoryKind kind,
         string dedupeKey,
+        string themeKey,
+        string groupTitle,
         string title,
-        string? subtitle = null)
+        string? subtitle = null,
+        string? cardLabel = null)
     {
         var cover = PickCover(candidates);
         // Cover first: the client opens the viewer at index 0 and morphs from the
@@ -86,8 +89,11 @@ internal static class MemoryCandidates
         {
             Kind = kind,
             DedupeKey = dedupeKey,
+            ThemeKey = themeKey,
+            GroupTitle = groupTitle,
             Title = title,
             Subtitle = subtitle,
+            CardLabel = cardLabel,
             AssetIds = ordered,
             CoverAssetId = cover.Id,
             WindowStart = candidates.Min(c => c.CapturedAt),

@@ -47,6 +47,12 @@ internal sealed class MemoryWriter
                 // that reappears every night is the same memory, not a new one.
                 row.Title = draft.Title;
                 row.Subtitle = draft.Subtitle;
+                // Refreshed here, not just on insert: this is what backfills the
+                // grouping onto rows that predate it — one run and every
+                // feed-visible memory has its row, with no migration script.
+                row.ThemeKey = draft.ThemeKey;
+                row.GroupTitle = draft.GroupTitle;
+                row.CardLabel = draft.CardLabel;
                 row.CoverAssetId = draft.CoverAssetId;
                 row.WindowStart = draft.WindowStart;
                 row.WindowEnd = draft.WindowEnd;
@@ -66,6 +72,9 @@ internal sealed class MemoryWriter
                     Kind = draft.Kind,
                     Title = draft.Title,
                     Subtitle = draft.Subtitle,
+                    ThemeKey = draft.ThemeKey,
+                    GroupTitle = draft.GroupTitle,
+                    CardLabel = draft.CardLabel,
                     CoverAssetId = draft.CoverAssetId,
                     WindowStart = draft.WindowStart,
                     WindowEnd = draft.WindowEnd,

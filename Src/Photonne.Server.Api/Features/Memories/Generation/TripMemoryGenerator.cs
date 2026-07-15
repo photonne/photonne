@@ -44,8 +44,12 @@ internal sealed class TripMemoryGenerator : IMemoryGenerator
             drafts.Add(candidates.ToDraft(
                 Kind,
                 dedupeKey: $"trip:{trip.Id}",
+                themeKey: "trips",
+                groupTitle: "Viajes",
                 title: trip.Title,
-                subtitle: MemoryTitles.MonthAndYear(trip.WindowStart.Year, trip.WindowStart.Month)));
+                subtitle: MemoryTitles.MonthAndYear(trip.WindowStart.Year, trip.WindowStart.Month),
+                // The trip's name is the label — "Roma" needs no shortening.
+                cardLabel: null));
         }
 
         return drafts;

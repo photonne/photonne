@@ -789,6 +789,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Subtitle).HasMaxLength(200);
             entity.Property(e => e.DedupeKey).IsRequired().HasMaxLength(200);
+            // Not indexed on purpose: the client groups the feed by this in
+            // memory, so nothing queries it. An index here would only add write
+            // amplification to a table the nightly run rewrites whole.
+            entity.Property(e => e.ThemeKey).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.GroupTitle).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CardLabel).HasMaxLength(100);
 
             entity.HasOne(e => e.Owner)
                 .WithMany()

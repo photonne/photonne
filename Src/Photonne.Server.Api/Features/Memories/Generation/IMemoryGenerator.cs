@@ -44,6 +44,15 @@ public sealed class MemoryDraft
     public required string Title { get; init; }
     public string? Subtitle { get; init; }
 
+    /// <summary>The feed row this card belongs to. See <see cref="Memory.ThemeKey"/>.</summary>
+    public required string ThemeKey { get; init; }
+
+    /// <summary>The row's header, without a year. See <see cref="Memory.GroupTitle"/>.</summary>
+    public required string GroupTitle { get; init; }
+
+    /// <summary>Short label inside the row; null falls back to <see cref="Title"/>.</summary>
+    public string? CardLabel { get; init; }
+
     /// <summary>Ordered; index 0 becomes the cover. Must be non-empty.</summary>
     public required IReadOnlyList<Guid> AssetIds { get; init; }
 

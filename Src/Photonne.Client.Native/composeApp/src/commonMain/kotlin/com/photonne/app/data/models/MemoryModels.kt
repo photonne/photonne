@@ -6,9 +6,9 @@ import kotlinx.serialization.Serializable
 /**
  * A card in the Recuerdos feed, generated nightly by the server.
  *
- * [title] and [subtitle] arrive already rendered: the wording lives on the
- * server so the three clients can't drift from each other. Do NOT rebuild a
- * label from [kind] — it exists to group and to pick an icon, not to write copy.
+ * [title], [subtitle] and [groupTitle] arrive already rendered: the wording lives
+ * on the server so the three clients can't drift from each other. Do NOT rebuild
+ * a label from [kind] — it exists to group and to pick an icon, not to write copy.
  */
 @Serializable
 data class Memory(
@@ -16,6 +16,16 @@ data class Memory(
     val kind: String,
     val title: String,
     val subtitle: String? = null,
+    /**
+     * The feed row this card belongs to ("scene:beach", "people"). Opaque: group
+     * by it, never parse it. Empty from a server older than the grouping, or from
+     * a row the nightly pass hasn't refreshed yet — those land in their own row.
+     */
+    val themeKey: String = "",
+    /** The row's header, with no year in it ("Días de playa"). */
+    val groupTitle: String = "",
+    /** Short label inside the row — a year, a name. Null falls back to [title]. */
+    val cardLabel: String? = null,
     val coverAssetId: String? = null,
     val assetCount: Int = 0,
     // Capture-date span in the photo's own wall-clock, like TimelineItem.fileCreatedAt.

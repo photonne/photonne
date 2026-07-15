@@ -17,6 +17,19 @@ public class MemoryResponse
     public string Title { get; set; } = string.Empty;
     public string? Subtitle { get; set; }
 
+    /// <summary>The feed row this card belongs to ("scene:beach", "people"). The
+    /// client groups the flat feed by this — it is an opaque identity, not a
+    /// string to parse.</summary>
+    public string ThemeKey { get; set; } = string.Empty;
+
+    /// <summary>The row's header, without a year ("Días de playa"). Rendered here
+    /// like Title, for the same reason.</summary>
+    public string GroupTitle { get; set; } = string.Empty;
+
+    /// <summary>Short label for the card inside its row — the year, or a person's
+    /// name. Null means Title is already short enough.</summary>
+    public string? CardLabel { get; set; }
+
     public Guid? CoverAssetId { get; set; }
     public int AssetCount { get; set; }
 

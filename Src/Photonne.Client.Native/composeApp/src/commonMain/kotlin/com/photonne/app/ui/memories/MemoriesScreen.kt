@@ -2,15 +2,18 @@ package com.photonne.app.ui.memories
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,25 +27,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.Memory
 import com.photonne.app.data.models.MemoryDetail
-import com.photonne.app.data.models.MemoryKind
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_memories_empty
-import com.photonne.app.resources.memories_section_favorites
-import com.photonne.app.resources.memories_section_people
-import com.photonne.app.resources.memories_section_places
-import com.photonne.app.resources.memories_section_this_month
-import com.photonne.app.resources.memories_section_today
-import com.photonne.app.resources.memories_section_trips
+import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** Wide enough to read a cover, narrow enough that the next one peeks in and
+ * says "this row keeps going". */
+private val RowCardWidth = 150.dp
+private val RowCardHeight = 190.dp
+
 /**
- * The Recuerdos section: every generated memory, not just today's anniversaries.
+ * The Recuerdos section: every generated memory, as one row per theme.
  *
- * This is what makes the timeline strip's "Ver todo" honest. Before, it opened a
- * vertical list of the exact same groups the strip was already paging through —
- * same ViewModel, same grouping, no extra content.
+ * It used to be fifty full-width cards in a column, ordered by the server's
+ * score. The themes were already there — "Días de playa de 2024" and "Días de
+ * playa de 2021" say so — but they were scattered down the scroll, so getting
+ * back to one you saw yesterday was luck. Now the theme is the row, its years run
+ * across it, and the rows keep their order between runs.
  */
 @Composable
 fun MemoriesScreen(
@@ -52,53 +55,45 @@ fun MemoriesScreen(
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) {
-        if (state.sections.isEmpty() && !state.isLoading && !state.attempted) viewModel.refresh()
+        if (state.rows.isEmpty() && !state.isLoading && !state.attempted) viewModel.refresh()
     }
 
     PhotonneRefreshableScreen(
-        isRefreshing = state.isLoading && state.sections.isNotEmpty(),
+        isRefreshing = state.isLoading && state.rows.isNotEmpty(),
         onRefresh = viewModel::refresh
     ) {
         when {
-            state.isLoading && state.sections.isEmpty() ->
+            state.isLoading && state.rows.isEmpty() ->
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
 
-            state.error?.userMessage != null && state.sections.isEmpty() ->
+            state.error?.userMessage != null && state.rows.isEmpty() ->
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
                 }
 
-            state.sections.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(Res.string.explore_memories_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            state.rows.isEmpty() ->
+                EmptyState(
+                    icon = Icons.Outlined.AutoAwesome,
+                    title = stringResource(Res.string.explore_memories_empty),
+                    modifier = Modifier.fillMaxSize(),
+                )
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 24.dp),
             ) {
-                for (section in state.sections) {
-                    sectionTitleOf(section.id)?.let { header ->
-                        item(key = "header:${section.id.name}") {
-                            SectionHeader(stringResource(header))
-                        }
-                    }
-                    items(
-                        items = section.memories,
-                        key = { memory -> "memory:${memory.id}" }
-                    ) { memory ->
-                        MemoryCard(
-                            memory = memory,
-                            baseUrl = baseUrl,
-                            isOpening = state.openingId == memory.id,
-                            onClick = { viewModel.open(memory.id, onOpenMemory) },
-                        )
-                    }
+                items(
+                    items = state.rows,
+                    key = { row -> "row:${row.themeKey}" },
+                ) { row ->
+                    MemoryThemeRow(
+                        row = row,
+                        baseUrl = baseUrl,
+                        openingId = state.openingId,
+                        onClick = { memory -> viewModel.open(memory.id, onOpenMemory) },
+                    )
                 }
             }
         }
@@ -106,71 +101,68 @@ fun MemoriesScreen(
 }
 
 @Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
-    )
+private fun MemoryThemeRow(
+    row: MemoryRow,
+    baseUrl: String,
+    openingId: String?,
+    onClick: (Memory) -> Unit,
+) {
+    // No header for the catch-all row: those are memories the server hasn't
+    // grouped, and inventing a heading for them would be worse than silence.
+    if (row.title.isNotEmpty()) {
+        Text(
+            text = row.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+        )
+    }
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(items = row.memories, key = { memory -> "memory:${memory.id}" }) { memory ->
+            MemoryRowCard(
+                memory = memory,
+                baseUrl = baseUrl,
+                isOpening = openingId == memory.id,
+                onClick = { onClick(memory) },
+            )
+        }
+    }
 }
 
 @Composable
-private fun MemoryCard(
+private fun MemoryRowCard(
     memory: Memory,
     baseUrl: String,
     isOpening: Boolean,
     onClick: () -> Unit,
 ) {
-    // Same proportions as the strip's story card, so a memory looks like itself
-    // whichever surface you meet it on.
-    BoxWithConstraints(
+    MemoryCardFace(
+        coverUrl = memory.coverAssetId
+            ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Large" },
+        contentDescription = memory.title,
+        // The row already says "Días de playa"; the card says which year. Both
+        // strings come from the server — neither is assembled here.
+        title = memory.cardLabel ?: memory.title,
+        subtitle = null,
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .width(RowCardWidth)
+            .height(RowCardHeight)
+            .clickable(enabled = !isOpening, onClick = onClick),
     ) {
-        val cardHeight = maxWidth * 0.62f
-        MemoryCardFace(
-            coverUrl = memory.coverAssetId
-                ?.let { "$baseUrl/api/assets/$it/thumbnail?size=Large" },
-            contentDescription = memory.title,
-            title = memory.title,
-            subtitle = memory.subtitle,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(cardHeight)
-                .clickable(enabled = !isOpening, onClick = onClick),
-        ) {
-            // The feed carries a cover, not the photos — opening one is a
-            // round-trip, so say so rather than looking dead under the finger.
-            if (isOpening) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.35f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Color.White)
-                }
+        // The feed carries a cover, not the photos — opening one is a
+        // round-trip, so say so rather than looking dead under the finger.
+        if (isOpening) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.35f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Color.White)
             }
         }
     }
-}
-
-/**
- * Header for a section. Returns the resource rather than the resolved string:
- * this is called from LazyListScope, which isn't a composable context.
- *
- * Null for [MemorySectionId.Other] — those are kinds this build has never heard
- * of, and inventing a heading for them would be worse than letting the server's
- * own titles speak.
- */
-private fun sectionTitleOf(id: MemorySectionId): StringResource? = when (id) {
-    MemorySectionId.Today -> Res.string.memories_section_today
-    MemorySectionId.People -> Res.string.memories_section_people
-    MemorySectionId.Trips -> Res.string.memories_section_trips
-    MemorySectionId.ThisMonth -> Res.string.memories_section_this_month
-    MemorySectionId.Favorites -> Res.string.memories_section_favorites
-    MemorySectionId.Things -> Res.string.memories_section_places
-    MemorySectionId.Other -> null
 }

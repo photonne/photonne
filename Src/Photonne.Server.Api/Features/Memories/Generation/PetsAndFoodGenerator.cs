@@ -30,11 +30,18 @@ internal sealed class PetsAndFoodGenerator : ThemedMemoryGenerator
 
     private static readonly IReadOnlyList<MemoryTheme> CuratedThemes = new List<MemoryTheme>
     {
-        Theme("pets", year => $"Tus mascotas en {year}", "cat", "dog"),
-        Theme("celebrations", year => $"Celebraciones de {year}", "cake"),
-        Theme("food", year => $"Comida de {year}", "pizza", "sandwich", "donut"),
+        Theme("pets", "Tus mascotas", year => $"Tus mascotas en {year}", "cat", "dog"),
+        Theme("celebrations", "Celebraciones", year => $"Celebraciones de {year}", "cake"),
+        // "Platos", not "Comida": as rows, "Comida" and the scene generator's
+        // "Comidas fuera" read as the same thing sitting next to each other. This
+        // one is the plate in front of you; that one is the restaurant around it.
+        Theme("food", "Platos", year => $"Platos de {year}", "pizza", "sandwich", "donut"),
     };
 
-    private static MemoryTheme Theme(string key, Func<int, string> titleFor, params string[] labels) =>
-        new(key, titleFor, AssetConditions.HasAnyObjectAbove(labels, MinConfidence));
+    private static MemoryTheme Theme(
+        string key,
+        string groupTitle,
+        Func<int, string> titleFor,
+        params string[] labels) =>
+        new(key, groupTitle, titleFor, AssetConditions.HasAnyObjectAbove(labels, MinConfidence));
 }

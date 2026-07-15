@@ -103,8 +103,13 @@ internal sealed class PeopleTogetherGenerator : IMemoryGenerator
                 // The ids are already ordered, so the key is stable no matter
                 // which way round the pair came out of the fold.
                 dedupeKey: $"together:{a}:{b}",
+                // Same row as PersonThroughYears — see the note there.
+                themeKey: "people",
+                groupTitle: "Personas",
                 title: $"{names[a]} y {names[b]}",
-                subtitle: MemoryTitles.PhotoCount(candidates.Count)));
+                subtitle: MemoryTitles.PhotoCount(candidates.Count),
+                // "Martina y Joan" is already the short label.
+                cardLabel: null));
         }
 
         return drafts;

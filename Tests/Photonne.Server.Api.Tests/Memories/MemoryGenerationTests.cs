@@ -301,7 +301,79 @@ public class MemoryGenerationTests : IntegrationTestBase
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private sealed record FeedItem(Guid Id, string Kind, string Title, Guid? CoverAssetId, int AssetCount);
+    /// <summary>
+    /// Over HTTP, not against the DbContext: the grouping is only useful if it
+    /// survives the projection, and a field forgotten there ships as "" rather
+    /// than failing anything.
+    /// </summary>
+    [Fact]
+    public async Task Feed_ExposesTheRowEachCardBelongsTo()
+    {
+        var (user, client) = await CreateAuthenticatedUserAsync();
+        var folder = await CreateFolderAsync(user);
+        var today = await LocalTodayAsync();
+
+        await CreateAssetsAsync(user, folder, today.AddYears(-1), count: 3);
+        await GenerateAsync(user.Id);
+
+        var feed = await client.GetFromJsonAsync<List<FeedItem>>("/api/memories");
+
+        var card = Assert.Single(feed!);
+        Assert.Equal("onthisday", card.ThemeKey);
+        Assert.Equal("Hoy", card.GroupTitle);
+        // "Hace 1 año" is already short enough to label the card.
+        Assert.Null(card.CardLabel);
+    }
+
+    /// <summary>
+    /// The proof that no backfill script is needed: a row written before the
+    /// grouping existed gets it from the next run, in place, without losing its
+    /// identity. If this fails, deploying needs a migration script after all.
+    /// </summary>
+    [Fact]
+    public async Task Rerunning_FillsTheGroupingOnARowThatPredatesIt()
+    {
+        var user = await CreateUserAsync();
+        var folder = await CreateFolderAsync(user);
+        var today = await LocalTodayAsync();
+
+        await CreateAssetsAsync(user, folder, today.AddYears(-1), count: 3);
+        await GenerateAsync(user.Id);
+
+        // Rewind the row to what a pre-migration one looks like: columns added
+        // with DEFAULT '' onto rows nobody regenerated yet.
+        var before = await WithDbContextAsync(async db =>
+        {
+            var row = await db.Memories.SingleAsync(m => m.OwnerId == user.Id);
+            row.ThemeKey = string.Empty;
+            row.GroupTitle = string.Empty;
+            row.CardLabel = null;
+            await db.SaveChangesAsync();
+            return new { row.Id, row.FirstGeneratedAt };
+        });
+
+        await GenerateAsync(user.Id);
+
+        var after = await WithDbContextAsync(async db => await db.Memories
+            .AsNoTracking()
+            .SingleAsync(m => m.OwnerId == user.Id));
+
+        Assert.Equal("onthisday", after.ThemeKey);
+        Assert.Equal("Hoy", after.GroupTitle);
+        // Same row, refreshed — not a new one that would resurrect a dismissal.
+        Assert.Equal(before.Id, after.Id);
+        Assert.Equal(before.FirstGeneratedAt, after.FirstGeneratedAt);
+    }
+
+    private sealed record FeedItem(
+        Guid Id,
+        string Kind,
+        string Title,
+        string ThemeKey,
+        string GroupTitle,
+        string? CardLabel,
+        Guid? CoverAssetId,
+        int AssetCount);
     private sealed record DetailItem(Guid Id, Guid? CoverAssetId, List<DetailAsset> Assets);
     private sealed record DetailAsset(Guid Id);
 }

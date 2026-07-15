@@ -24,6 +24,8 @@ public class MemoryScoringTests
         {
             Kind = kind,
             DedupeKey = "k",
+            ThemeKey = "k",
+            GroupTitle = "g",
             Title = "t",
             AssetIds = Enumerable.Range(0, assetCount).Select(_ => Guid.NewGuid()).ToList(),
             CoverAssetId = Guid.NewGuid(),

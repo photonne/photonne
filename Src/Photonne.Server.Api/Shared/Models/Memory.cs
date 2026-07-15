@@ -62,6 +62,30 @@ public class Memory
     [MaxLength(200)]
     public string? Subtitle { get; set; }
 
+    /// <summary>
+    /// The feed row this memory belongs to ("scene:beach", "people"). Stable
+    /// across runs and unique across kinds — the themed generators namespace
+    /// theirs with their dedupe prefix, because the theme axis cuts across kinds:
+    /// pets are PetsAndFood, beaches are CuratedScene, and both are just rows.
+    ///
+    /// The client groups the flat feed by this. It never parses it.
+    /// </summary>
+    [Required]
+    [MaxLength(50)]
+    public string ThemeKey { get; set; } = string.Empty;
+
+    /// <summary>The row's header, with no year in it ("Días de playa"). Rendered
+    /// server-side like every other string here.</summary>
+    [Required]
+    [MaxLength(200)]
+    public string GroupTitle { get; set; } = string.Empty;
+
+    /// <summary>Short label for this card inside its row — the year, or a person's
+    /// name. Null when <see cref="Title"/> is already short enough to be the
+    /// label ("Hace 4 años"), and the client falls back to it.</summary>
+    [MaxLength(100)]
+    public string? CardLabel { get; set; }
+
     public Guid? CoverAssetId { get; set; }
     public Asset? CoverAsset { get; set; }
 

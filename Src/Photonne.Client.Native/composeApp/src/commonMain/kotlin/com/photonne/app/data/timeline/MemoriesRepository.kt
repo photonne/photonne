@@ -22,8 +22,15 @@ class MemoriesRepository(
         return api.getMemories()
     }
 
-    /** The Recuerdos section's source: every generated memory, best first. */
-    suspend fun feed(kind: String? = null): List<Memory> = api.getMemoryFeed(kind)
+    /**
+     * The Recuerdos section's source: every generated memory, best first.
+     *
+     * Asks for the server's maximum rather than its default 50: the section folds
+     * these into a row per theme, and a feed truncated by score cuts across those
+     * rows instead of along them — losing 2019 from the middle of "Días de playa"
+     * with nothing on screen to show it happened.
+     */
+    suspend fun feed(kind: String? = null): List<Memory> = api.getMemoryFeed(kind, limit = 500)
 
     suspend fun detail(id: String): MemoryDetail = api.getMemory(id)
 

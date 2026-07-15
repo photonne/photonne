@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Models;
 
@@ -45,8 +46,13 @@ internal sealed class ThisMonthGenerator : IMemoryGenerator
             drafts.Add(candidates.ToDraft(
                 Kind,
                 dedupeKey: $"month:{year:D4}-{today.Month:D2}",
+                themeKey: "month",
+                groupTitle: "Este mes",
                 title: MemoryTitles.MonthAndYear(year, today.Month),
-                subtitle: MemoryTitles.PhotoCount(candidates.Count)));
+                subtitle: MemoryTitles.PhotoCount(candidates.Count),
+                // Every card in this row is the same month, so the month is noise
+                // on the card — the year is the only thing that tells them apart.
+                cardLabel: year.ToString(CultureInfo.InvariantCulture)));
         }
 
         return drafts;

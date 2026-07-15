@@ -15,10 +15,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A block of the Recuerdos section. Coarser than [MemoryKind] on purpose: two
- * kinds can share a heading ("Martina a lo largo de los años" and "Martina y
- * Joan juntos" are both Personas), and grouping by kind would print that heading
- * twice. Declaration order is reading order.
+ * Reading order for the feed's rows. No longer titles anything — the row's header
+ * comes from the server now — but it still answers "which row comes first", which
+ * the server's Score deliberately doesn't: a ranking that reshuffles every night
+ * is exactly what makes a memory impossible to find twice.
+ *
+ * Coarser than [MemoryKind] on purpose: two kinds can share a row ("Martina a lo
+ * largo de los años" and "Martina y Joan" are both Personas).
  */
 enum class MemorySectionId {
     Today,
@@ -28,7 +31,8 @@ enum class MemorySectionId {
     Favorites,
     Things,
 
-    /** Kinds this build doesn't know — a newer server's. Rendered last, headerless. */
+    /** Kinds this build doesn't know, or rows the server hasn't grouped yet.
+     * Rendered last, headerless. */
     Other;
 
     companion object {
@@ -44,13 +48,21 @@ enum class MemorySectionId {
     }
 }
 
-data class MemorySection(
-    val id: MemorySectionId,
+/**
+ * One row of the feed: a theme, and its cards. For a themed row the cards are its
+ * years ("Días de playa" → 2024, 2023, 2021); for "Personas" they're the people.
+ *
+ * [title] is empty for the catch-all row of memories the server hasn't grouped —
+ * it renders without a header rather than inventing one.
+ */
+data class MemoryRow(
+    val themeKey: String,
+    val title: String,
     val memories: List<Memory>,
 )
 
 data class MemoryFeedUiState(
-    val sections: List<MemorySection> = emptyList(),
+    val rows: List<MemoryRow> = emptyList(),
     val isLoading: Boolean = false,
     val error: UiError? = null,
     val attempted: Boolean = false,
@@ -78,7 +90,7 @@ class MemoryFeedViewModel(
             runCatching { repository.feed() }
                 .onSuccess { memories ->
                     _state.value = MemoryFeedUiState(
-                        sections = groupIntoSections(memories),
+                        rows = groupIntoRows(memories),
                         attempted = true,
                     )
                 }
@@ -123,15 +135,34 @@ class MemoryFeedViewModel(
     }
 
     /**
-     * Groups the feed into sections, keeping the server's ranking inside each one.
-     * The server sorts purely by score, which is the right answer to "what's
-     * best" but reads as a jumble down a screen — a person card wedged between
-     * two year cards looks like a bug rather than a ranking.
+     * Folds the flat feed into one row per theme.
+     *
+     * The server sorts purely by score, which answers "what's best" but reads as
+     * a jumble down a screen: fifty full-width cards where "Días de playa" turns
+     * up at positions 3, 17 and 31. The theme was always there — it just lived
+     * inside the title text. Now it's a row.
+     *
+     * Row order is deliberately NOT the score. It's the declared
+     * [MemorySectionId] order, then alphabetical inside it: the whole point is
+     * that "Días de playa" is where you left it yesterday, and a ranking that
+     * re-sorts itself every night can't promise that. Within a row the server's
+     * ranking survives untouched.
      */
-    private fun groupIntoSections(memories: List<Memory>): List<MemorySection> =
+    private fun groupIntoRows(memories: List<Memory>): List<MemoryRow> =
         memories
-            .groupBy { MemorySectionId.of(MemoryKind.from(it.kind)) }
-            .toList()
-            .sortedBy { (id, _) -> id.ordinal }
-            .map { (id, items) -> MemorySection(id, items) }
+            .groupBy { it.themeKey }
+            .map { (themeKey, items) ->
+                // Ungrouped memories (older server, or rows the nightly pass
+                // hasn't refreshed since the grouping shipped) collapse into one
+                // headerless row instead of one row each.
+                val section = if (themeKey.isEmpty()) {
+                    MemorySectionId.Other
+                } else {
+                    MemorySectionId.of(MemoryKind.from(items.first().kind))
+                }
+                val title = if (themeKey.isEmpty()) "" else items.first().groupTitle
+                Triple(section, title, MemoryRow(themeKey, title, items))
+            }
+            .sortedWith(compareBy({ it.first.ordinal }, { it.second }))
+            .map { it.third }
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Pgvector;
@@ -168,6 +169,13 @@ public class MemoryGeneratorKindsTests : IntegrationTestBase
         Assert.Equal($"Días de playa de {lastYear.Year}", memory.Title);
         Assert.Equal(14, memory.AssetCount);
         Assert.Equal($"scene:beach:{lastYear.Year}", memory.DedupeKey);
+
+        // The row it lands in, and the year that tells it apart from its
+        // siblings there. The dedupe key above is derived from this theme key —
+        // if the two ever drift, every themed memory is orphaned.
+        Assert.Equal("scene:beach", memory.ThemeKey);
+        Assert.Equal("Días de playa", memory.GroupTitle);
+        Assert.Equal(lastYear.Year.ToString(CultureInfo.InvariantCulture), memory.CardLabel);
     }
 
     [Fact]
@@ -235,6 +243,41 @@ public class MemoryGeneratorKindsTests : IntegrationTestBase
         Assert.Equal("Martina a lo largo de los años", memory.Title);
         Assert.Equal($"{today.AddYears(-4).Year} – {today.AddYears(-1).Year}", memory.Subtitle);
         Assert.Equal(24, memory.AssetCount);
+    }
+
+    /// <summary>
+    /// The one non-obvious call in the grouping: a person and a pair are two
+    /// kinds but one row. Without this pinned it reads like a bug and gets
+    /// "fixed" into two rows that say the same thing.
+    /// </summary>
+    [Fact]
+    public async Task PersonAndPairMemories_ShareTheSameRow()
+    {
+        var user = await CreateUserAsync();
+        var folder = await CreateFolderAsync(user);
+        var today = await LocalTodayAsync();
+
+        // Both of them in every photo, over enough years to clear
+        // PersonThroughYears' MinDistinctYears and enough shots for both bars.
+        var seen = new List<Guid>();
+        foreach (var yearsAgo in new[] { 1, 2, 3, 4 })
+            seen.AddRange(await CreateAssetsAsync(user, folder, today.AddYears(-yearsAgo), count: 6));
+        await NamePersonAsync(user, user, "Martina", seen);
+        await NamePersonAsync(user, user, "Joan", seen);
+
+        await GenerateAsync(user.Id);
+
+        var people = await WithDbContextAsync(async db => await db.Memories
+            .AsNoTracking()
+            .Where(m => m.OwnerId == user.Id &&
+                (m.Kind == MemoryKind.PersonThroughYears || m.Kind == MemoryKind.PeopleTogether))
+            .ToListAsync());
+
+        // Both kinds must actually be present, or this asserts nothing.
+        Assert.Contains(people, m => m.Kind == MemoryKind.PersonThroughYears);
+        Assert.Contains(people, m => m.Kind == MemoryKind.PeopleTogether);
+        Assert.All(people, m => Assert.Equal("people", m.ThemeKey));
+        Assert.All(people, m => Assert.Equal("Personas", m.GroupTitle));
     }
 
     [Fact]

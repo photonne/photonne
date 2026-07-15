@@ -63,8 +63,14 @@ internal sealed class PersonThroughYearsGenerator : IMemoryGenerator
                 // time they appear again, and a key that moves would orphan the
                 // row and resurrect a dismissed card.
                 dedupeKey: $"person:{person.Id}:years",
+                // One row for everyone, shared with PeopleTogether: "Martina" and
+                // "Martina y Joan" are the same thought, and a row per kind would
+                // split them for a reason only the enum cares about.
+                themeKey: "people",
+                groupTitle: "Personas",
                 title: $"{person.Name} a lo largo de los años",
-                subtitle: $"{years.Min()} – {years.Max()}"));
+                subtitle: $"{years.Min()} – {years.Max()}",
+                cardLabel: person.Name));
         }
 
         return drafts;

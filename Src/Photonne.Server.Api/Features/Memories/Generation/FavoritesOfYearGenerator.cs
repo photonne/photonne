@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.SmartAlbums;
@@ -52,8 +53,11 @@ internal sealed class FavoritesOfYearGenerator : IMemoryGenerator
             drafts.Add(candidates.ToDraft(
                 Kind,
                 dedupeKey: $"favyear:{year:D4}",
+                themeKey: "favorites",
+                groupTitle: "Tus favoritas",
                 title: $"Tus favoritas de {year}",
-                subtitle: MemoryTitles.PhotoCount(candidates.Count)));
+                subtitle: MemoryTitles.PhotoCount(candidates.Count),
+                cardLabel: year.ToString(CultureInfo.InvariantCulture)));
         }
 
         return drafts;
