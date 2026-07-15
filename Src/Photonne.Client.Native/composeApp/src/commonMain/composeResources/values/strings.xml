@@ -351,9 +351,12 @@
     <string name="selection_label_set_cover">Portada</string>
     <string name="selection_label_members">Miembros</string>
     <string name="selection_label_leave">Salir</string>
-    <string name="folder_timeline_remove">Quitar del timeline</string>
-    <string name="folder_timeline_add">Añadir al timeline</string>
-    <string name="folder_timeline_excluded_badge">Fuera del timeline</string>
+    <!-- El ámbito real no es solo el timeline: la carpeta desaparece también de
+         Recuerdos, del buscador y de los álbumes inteligentes, pero se sigue
+         pudiendo abrir y administrar en Carpetas. -->
+    <string name="folder_discovery_remove">Quitar de mis fotos</string>
+    <string name="folder_discovery_add">Añadir a mis fotos</string>
+    <string name="folder_discovery_excluded_badge">Solo administración</string>
     <string name="share_choice_direct">Compartir directamente</string>
     <string name="share_choice_direct_subtitle">Abre el panel de compartir del dispositivo (otras apps, mensajería, etc.).</string>
     <string name="share_choice_link">Crear enlace de Photonne</string>

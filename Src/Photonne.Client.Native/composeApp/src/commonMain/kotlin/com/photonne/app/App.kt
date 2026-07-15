@@ -949,11 +949,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         showFolderMembers = true
                     },
                     canToggleTimeline = folder.isShared && folder.externalLibraryId == null,
-                    excludedFromTimeline = folder.excludedFromTimeline,
+                    excludedFromDiscovery = folder.excludedFromDiscovery,
                     onToggleTimeline = {
-                        val nextIncluded = folder.excludedFromTimeline
+                        val nextIncluded = folder.excludedFromDiscovery
                         foldersViewModel.setTimelineIncluded(folder.id, included = nextIncluded)
-                        selectedFolder = folder.copy(excludedFromTimeline = !nextIncluded)
+                        selectedFolder = folder.copy(excludedFromDiscovery = !nextIncluded)
                     },
                     // Create a subfolder of the current folder — excluded for
                     // external libraries (read-only mirrors), as the FAB was.
@@ -1679,11 +1679,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             showDeleteFolder = true
                         },
                         canToggleTimeline = target.isShared && target.externalLibraryId == null,
-                        excludedFromTimeline = target.excludedFromTimeline,
+                        excludedFromDiscovery = target.excludedFromDiscovery,
                         onToggleTimeline = {
                             foldersViewModel.setTimelineIncluded(
                                 folderId = target.id,
-                                included = target.excludedFromTimeline
+                                included = target.excludedFromDiscovery
                             )
                         }
                     )

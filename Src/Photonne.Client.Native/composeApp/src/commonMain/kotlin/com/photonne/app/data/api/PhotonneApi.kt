@@ -143,7 +143,7 @@ internal data class UpdateFolderBody(
 )
 
 @Serializable
-internal data class TimelineVisibilityBody(
+internal data class DiscoveryVisibilityBody(
     val included: Boolean
 )
 
@@ -466,7 +466,7 @@ interface PhotonneApi {
     suspend fun createFolder(name: String, parentFolderId: String?, isSharedSpace: Boolean): FolderSummary
     suspend fun updateFolder(folderId: String, name: String, parentFolderId: String?): FolderSummary
     suspend fun deleteFolder(folderId: String)
-    suspend fun setFolderTimelineIncluded(folderId: String, included: Boolean)
+    suspend fun setFolderDiscoveryIncluded(folderId: String, included: Boolean)
     suspend fun listFolderPermissions(folderId: String): List<AlbumPermission>
     suspend fun setFolderPermission(
         folderId: String,
@@ -1900,10 +1900,10 @@ class PhotonneApiClient(
         response.ensureSuccess { "Folder delete failed ($it)" }
     }
 
-    override suspend fun setFolderTimelineIncluded(folderId: String, included: Boolean) {
-        val response: HttpResponse = client.put("$baseUrl/api/folders/$folderId/timeline-visibility") {
+    override suspend fun setFolderDiscoveryIncluded(folderId: String, included: Boolean) {
+        val response: HttpResponse = client.put("$baseUrl/api/folders/$folderId/discovery-visibility") {
             contentType(ContentType.Application.Json)
-            setBody(TimelineVisibilityBody(included = included))
+            setBody(DiscoveryVisibilityBody(included = included))
         }
         if (response.status != HttpStatusCode.OK) {
             throw PhotonneApiException(

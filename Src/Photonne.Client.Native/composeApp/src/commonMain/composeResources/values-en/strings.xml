@@ -351,9 +351,11 @@
     <string name="selection_label_set_cover">Cover</string>
     <string name="selection_label_members">Members</string>
     <string name="selection_label_leave">Leave</string>
-    <string name="folder_timeline_remove">Remove from timeline</string>
-    <string name="folder_timeline_add">Add to timeline</string>
-    <string name="folder_timeline_excluded_badge">Not in the timeline</string>
+    <!-- Wider than the timeline: the folder also drops out of Memories, search
+         and smart albums, while staying browsable and administrable in Folders. -->
+    <string name="folder_discovery_remove">Remove from my photos</string>
+    <string name="folder_discovery_add">Add to my photos</string>
+    <string name="folder_discovery_excluded_badge">Admin only</string>
     <string name="share_choice_direct">Share directly</string>
     <string name="share_choice_direct_subtitle">Open the device share sheet (other apps, messaging, …).</string>
     <string name="share_choice_link">Create a Photonne link</string>

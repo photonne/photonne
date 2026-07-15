@@ -66,7 +66,7 @@ import com.photonne.app.resources.organize_inbox_count_format
 import com.photonne.app.resources.organize_inbox_title
 import com.photonne.app.resources.folder_external_badge
 import com.photonne.app.resources.folder_shared_badge
-import com.photonne.app.resources.folder_timeline_excluded_badge
+import com.photonne.app.resources.folder_discovery_excluded_badge
 import com.photonne.app.resources.folders_action_search
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
@@ -362,8 +362,8 @@ private fun FolderRow(
                 if (folder.externalLibraryId != null) {
                     MetaBadge(stringResource(Res.string.folder_external_badge), Icons.AutoMirrored.Filled.LibraryBooks)
                 }
-                if (folder.excludedFromTimeline) {
-                    MetaBadge(stringResource(Res.string.folder_timeline_excluded_badge), Icons.Outlined.VisibilityOff)
+                if (folder.excludedFromDiscovery) {
+                    MetaBadge(stringResource(Res.string.folder_discovery_excluded_badge), Icons.Outlined.VisibilityOff)
                 }
             }
         }
@@ -437,10 +437,10 @@ private fun FolderCard(
                         contentDescription = stringResource(Res.string.folder_external_badge)
                     )
                 }
-                if (folder.excludedFromTimeline) {
+                if (folder.excludedFromDiscovery) {
                     OverlayIconBadge(
                         icon = Icons.Outlined.VisibilityOff,
-                        contentDescription = stringResource(Res.string.folder_timeline_excluded_badge)
+                        contentDescription = stringResource(Res.string.folder_discovery_excluded_badge)
                     )
                 }
             }

@@ -134,8 +134,8 @@ import com.photonne.app.resources.folder_action_actions
 import com.photonne.app.resources.folder_action_move
 import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_selection_move
-import com.photonne.app.resources.folder_timeline_add
-import com.photonne.app.resources.folder_timeline_remove
+import com.photonne.app.resources.folder_discovery_add
+import com.photonne.app.resources.folder_discovery_remove
 import com.photonne.app.resources.people_action_hide
 import com.photonne.app.resources.people_action_hide_hidden
 import com.photonne.app.resources.people_action_merge
@@ -1227,14 +1227,14 @@ fun FolderCardSelectionBottomBar(
     onDelete: () -> Unit,
     // Per-user timeline opt-out. Only meaningful for shared folders.
     canToggleTimeline: Boolean = false,
-    excludedFromTimeline: Boolean = false,
+    excludedFromDiscovery: Boolean = false,
     onToggleTimeline: () -> Unit = {}
 ) {
     FloatingSelectionBar {
         if (canToggleTimeline) {
             val label = stringResource(
-                if (excludedFromTimeline) Res.string.folder_timeline_add
-                else Res.string.folder_timeline_remove
+                if (excludedFromDiscovery) Res.string.folder_discovery_add
+                else Res.string.folder_discovery_remove
             )
             FloatingSelectionBarItem(
                 onClick = onToggleTimeline,
@@ -1242,7 +1242,7 @@ fun FolderCardSelectionBottomBar(
                 label = label,
                 icon = {
                     Icon(
-                        if (excludedFromTimeline) Icons.Outlined.Visibility
+                        if (excludedFromDiscovery) Icons.Outlined.Visibility
                         else Icons.Outlined.VisibilityOff,
                         contentDescription = label
                     )
@@ -1308,7 +1308,7 @@ fun FolderDetailTopBar(
     onManageMembers: () -> Unit,
     // Per-user timeline opt-out. Only meaningful for shared folders.
     canToggleTimeline: Boolean = false,
-    excludedFromTimeline: Boolean = false,
+    excludedFromDiscovery: Boolean = false,
     onToggleTimeline: () -> Unit = {},
     /** Create a subfolder of this folder. Null hides the action. */
     onCreateSubfolder: (() -> Unit)? = null
@@ -1358,14 +1358,14 @@ fun FolderDetailTopBar(
                                 text = {
                                     Text(
                                         stringResource(
-                                            if (excludedFromTimeline) Res.string.folder_timeline_add
-                                            else Res.string.folder_timeline_remove
+                                            if (excludedFromDiscovery) Res.string.folder_discovery_add
+                                            else Res.string.folder_discovery_remove
                                         )
                                     )
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        if (excludedFromTimeline) Icons.Outlined.Visibility
+                                        if (excludedFromDiscovery) Icons.Outlined.Visibility
                                         else Icons.Outlined.VisibilityOff,
                                         contentDescription = null
                                     )

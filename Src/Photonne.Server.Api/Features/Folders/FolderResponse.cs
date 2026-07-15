@@ -21,17 +21,21 @@ public class FolderResponse
     public Guid? ExternalLibraryId { get; set; }
 
     // Per-user opt-out: true when the requesting user has excluded this shared
-    // folder from their own discovery surfaces (timeline, memories, people,
-    // search…) while keeping it browsable/administrable here. See
+    // folder from their own discovery surfaces (timeline, memories, search, smart
+    // albums…) while keeping it browsable/administrable here. See
     // AllowedFolderCache.ExcludedFoldersSettingKey.
-    public bool ExcludedFromTimeline { get; set; }
+    //
+    // Not "ExcludedFromTimeline" any more: it never was only the timeline, and
+    // the name is a large part of why memories and search spent a while ignoring
+    // it.
+    public bool ExcludedFromDiscovery { get; set; }
 
     public List<FolderResponse> SubFolders { get; set; } = new();
 }
 
-public class TimelineVisibilityRequest
+public class DiscoveryVisibilityRequest
 {
-    // true  => include this folder in my timeline/memories/etc. (default)
-    // false => I only administer it; keep it out of my personal surfaces.
+    // true  => include this folder in my timeline/memories/search (default)
+    // false => I only administer it; keep it out of my own surfaces.
     public bool Included { get; set; }
 }

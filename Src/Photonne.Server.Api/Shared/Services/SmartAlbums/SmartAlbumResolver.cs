@@ -34,17 +34,21 @@ public sealed class SmartAlbumResolver
         await ExpandFoldersAsync(root, ct);
         var rule = SmartRuleCompiler.Compile(root, _db, ownerId);
 
+        // Discovery on both legs: a smart album goes and finds photos on someone's
+        // behalf, so a folder they keep out of their surfaces has no business
+        // being pulled into one. The viewer leg stays a security gate either way —
+        // DiscoveryPredicate is AssetPredicate with a subtraction, never wider.
         var ownerScope = await _visibility.GetScopeAsync(ownerId, ct);
         var query = _db.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
-            .Where(ownerScope.AssetPredicate());
+            .Where(ownerScope.DiscoveryPredicate());
 
         if (viewerId != ownerId)
         {
             var viewerScope = await _visibility.GetScopeAsync(viewerId, ct);
-            query = query.Where(viewerScope.AssetPredicate());
+            query = query.Where(viewerScope.DiscoveryPredicate());
         }
 
         return query.Where(rule);

@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Photonne.Server.Api.Features.Memories.Generation;
+using Photonne.Server.Api.Features.Timeline;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services;
@@ -49,6 +51,37 @@ public class MemoryGenerationTests : IntegrationTestBase
             await db.SaveChangesAsync();
             return folder.Id;
         });
+
+    /// <summary>A folder under /assets/shared — the only kind that can be opted
+    /// out of the user's own surfaces.</summary>
+    private async Task<Guid> CreateSharedFolderAsync(string name) =>
+        await WithDbContextAsync(async db =>
+        {
+            var folder = new Folder { Path = $"/assets/shared/{name}", Name = name };
+            db.Folders.Add(folder);
+            await db.SaveChangesAsync();
+            return folder.Id;
+        });
+
+    /// <summary>Marks [folderId] as one the user only administers, the same way
+    /// the folders endpoint does — including dropping the derived cache, which is
+    /// the half that makes the toggle take effect now rather than in 30s.</summary>
+    private async Task ExcludeFromDiscoveryAsync(TestUser user, Guid folderId)
+    {
+        await WithDbContextAsync(async db =>
+        {
+            db.Settings.Add(new Setting
+            {
+                OwnerId = user.Id,
+                Key = AllowedFolderCache.ExcludedFoldersSettingKey,
+                Value = JsonSerializer.Serialize(new[] { folderId }),
+            });
+            await db.SaveChangesAsync();
+        });
+
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<AllowedFolderCache>().Invalidate(user.Id);
+    }
 
     private async Task CreateAssetsAsync(
         TestUser owner,
@@ -302,6 +335,59 @@ public class MemoryGenerationTests : IntegrationTestBase
     }
 
     /// <summary>
+    /// A shared folder the user only administers must not come back as a memory —
+    /// even though the photos in it are theirs.
+    ///
+    /// This is the whole bug: the generator gated on the permission union, whose
+    /// first leg is OwnerId == user. Excluding the folder shrinks the *folder*
+    /// leg, so the timeline (which gates on folders alone) hid it while memories
+    /// went on serving it through the owner leg.
+    /// </summary>
+    [Fact]
+    public async Task AFolderTheUserOnlyAdministers_ProducesNoMemories()
+    {
+        var user = await CreateUserAsync();
+        var adminFolder = await CreateSharedFolderAsync($"admin-{Guid.NewGuid():N}");
+        var today = await LocalTodayAsync();
+
+        // The user's own uploads — OwnerId matches, which is what used to let
+        // these through regardless of the folder.
+        await CreateAssetsAsync(user, adminFolder, today.AddYears(-1), count: 5);
+        await ExcludeFromDiscoveryAsync(user, adminFolder);
+
+        await GenerateAsync(user.Id);
+
+        var memories = await WithDbContextAsync(async db => await db.Memories
+            .AsNoTracking()
+            .Where(m => m.OwnerId == user.Id)
+            .ToListAsync());
+
+        Assert.Empty(memories);
+    }
+
+    /// <summary>The other half of the same rule: without the opt-out, that very
+    /// folder does produce a memory. Otherwise the test above would pass just as
+    /// well on a generator that produced nothing at all.</summary>
+    [Fact]
+    public async Task TheSameFolderProducesAMemoryWhenNotExcluded()
+    {
+        var user = await CreateUserAsync();
+        var sharedFolder = await CreateSharedFolderAsync($"shared-{Guid.NewGuid():N}");
+        var today = await LocalTodayAsync();
+
+        await CreateAssetsAsync(user, sharedFolder, today.AddYears(-1), count: 5);
+
+        await GenerateAsync(user.Id);
+
+        var memories = await WithDbContextAsync(async db => await db.Memories
+            .AsNoTracking()
+            .Where(m => m.OwnerId == user.Id)
+            .ToListAsync());
+
+        Assert.NotEmpty(memories);
+    }
+
+    /// <summary>
     /// Over HTTP, not against the DbContext: the grouping is only useful if it
     /// survives the projection, and a field forgotten there ships as "" rather
     /// than failing anything.
@@ -323,6 +409,33 @@ public class MemoryGenerationTests : IntegrationTestBase
         Assert.Equal("Hoy", card.GroupTitle);
         // "Hace 1 año" is already short enough to label the card.
         Assert.Null(card.CardLabel);
+    }
+
+    /// <summary>
+    /// Excluding a folder takes effect on read, not on the next nightly pass. The
+    /// memory row is last night's snapshot; if the detail route trusted it, the
+    /// user would tick the toggle and still be handed the photos until the pass
+    /// ran — and a revoked permission would keep serving them just as long.
+    /// </summary>
+    [Fact]
+    public async Task ExcludingAFolder_EmptiesAnAlreadyGeneratedMemory()
+    {
+        var (user, client) = await CreateAuthenticatedUserAsync();
+        var adminFolder = await CreateSharedFolderAsync($"admin-{Guid.NewGuid():N}");
+        var today = await LocalTodayAsync();
+
+        await CreateAssetsAsync(user, adminFolder, today.AddYears(-1), count: 5);
+        await GenerateAsync(user.Id);
+
+        var feed = await client.GetFromJsonAsync<List<FeedItem>>("/api/memories");
+        var memoryId = Assert.Single(feed!).Id;
+
+        // The toggle goes on after the memory already exists. No regeneration.
+        await ExcludeFromDiscoveryAsync(user, adminFolder);
+
+        var detail = await client.GetFromJsonAsync<DetailItem>($"/api/memories/{memoryId}");
+
+        Assert.Empty(detail!.Assets);
     }
 
     /// <summary>

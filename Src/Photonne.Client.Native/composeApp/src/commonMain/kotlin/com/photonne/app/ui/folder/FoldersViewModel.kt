@@ -331,7 +331,7 @@ class FoldersViewModel(
             runCatching { repository.setTimelineIncluded(folderId, included) }
                 .onSuccess {
                     allFolders = allFolders.map {
-                        if (it.id == folderId) it.copy(excludedFromTimeline = !included) else it
+                        if (it.id == folderId) it.copy(excludedFromDiscovery = !included) else it
                     }
                     repartition()
                     _state.update { it.copy(isMutating = false, selectedFolderId = null) }

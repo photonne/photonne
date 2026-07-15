@@ -26,7 +26,7 @@ class FoldersRepository(
 
     /** Per-user opt-out: include/exclude a shared folder from my timeline, memories, people and search. */
     suspend fun setTimelineIncluded(folderId: String, included: Boolean) {
-        api.setFolderTimelineIncluded(folderId, included)
+        api.setFolderDiscoveryIncluded(folderId, included)
     }
 
     suspend fun listMembers(folderId: String): List<AlbumPermission> =

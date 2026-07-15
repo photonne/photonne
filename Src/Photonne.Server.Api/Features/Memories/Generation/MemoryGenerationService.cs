@@ -46,14 +46,16 @@ public sealed class MemoryGenerationService
 
         var scope = await _visibility.GetScopeAsync(userId, ct);
 
-        // The timeline's base gate, mirrored from SmartAlbumResolver: a memory is
-        // a timeline item with a story attached, so anything the timeline hides
-        // must stay hidden here too.
+        // The timeline's base gate: a memory is a timeline item with a story
+        // attached, so anything the timeline hides must stay hidden here too.
+        // DiscoveryPredicate, not AssetPredicate — a shared folder the user keeps
+        // for administration is readable, and it used to come back as a memory
+        // through the owner leg of the permission union.
         var visible = _db.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
                      && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart))
-            .Where(scope.AssetPredicate());
+            .Where(scope.DiscoveryPredicate());
 
         var ctx = new MemoryContext
         {

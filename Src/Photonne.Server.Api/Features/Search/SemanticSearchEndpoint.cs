@@ -132,7 +132,9 @@ public class SemanticSearchEndpoint : IEndpoint
             .Include(a => a.UserTags)
                 .ThenInclude(ut => ut.UserTag)
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing && a.Embedding != null)
-            .Where(scope.AssetPredicate());
+            // Discovery, not authorization: a folder the user keeps out of their
+            // surfaces shouldn't answer their searches either.
+            .Where(scope.DiscoveryPredicate());
 
         var modelVersion = options.ModelVersion;
         var capturedVector = queryVector;

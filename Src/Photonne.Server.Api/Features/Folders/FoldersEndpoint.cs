@@ -86,8 +86,8 @@ public class FoldersEndpoint : IEndpoint
             .WithName("DeleteFolder")
             .WithDescription("Deletes a folder and moves its contents to the trash");
 
-        group.MapPut("{folderId}/timeline-visibility", SetFolderTimelineVisibility)
-            .WithName("SetFolderTimelineVisibility")
+        group.MapPut("{folderId}/discovery-visibility", SetFolderDiscoveryVisibility)
+            .WithName("SetFolderDiscoveryVisibility")
             .WithDescription("Per-user opt-out: include/exclude a shared folder from my timeline, memories, people and search (still administrable in Folders)");
 
         group.MapPost("assets/move", MoveFolderAssets)
@@ -307,7 +307,7 @@ public class FoldersEndpoint : IEndpoint
                     IsShared = f.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     SharedWithCount = folderSharedCounts.TryGetValue(f.Id, out var count) ? count : 0,
                     ExternalLibraryId = f.ExternalLibraryId,
-                    ExcludedFromTimeline = excludedFolderIds.Contains(f.Id)
+                    ExcludedFromDiscovery = excludedFolderIds.Contains(f.Id)
                 };
             }).ToList();
 
@@ -430,7 +430,7 @@ public class FoldersEndpoint : IEndpoint
                 IsShared = folder.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                 SharedWithCount = sharedCount,
                 ExternalLibraryId = folder.ExternalLibraryId,
-                ExcludedFromTimeline = excludedFolderIds.Contains(folder.Id),
+                ExcludedFromDiscovery = excludedFolderIds.Contains(folder.Id),
                 SubFolders = folder.SubFolders.Select(sf => new FolderResponse
                 {
                     Id = sf.Id,
@@ -452,7 +452,7 @@ public class FoldersEndpoint : IEndpoint
                         || (subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false),
                     IsShared = sf.Path.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase),
                     ExternalLibraryId = sf.ExternalLibraryId,
-                    ExcludedFromTimeline = excludedFolderIds.Contains(sf.Id)
+                    ExcludedFromDiscovery = excludedFolderIds.Contains(sf.Id)
                 }).ToList()
             };
 
@@ -999,13 +999,13 @@ public class FoldersEndpoint : IEndpoint
         return Results.NoContent();
     }
 
-    private async Task<IResult> SetFolderTimelineVisibility(
+    private async Task<IResult> SetFolderDiscoveryVisibility(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
         [FromServices] AllowedFolderCache allowedFolders,
         [FromServices] IMemoryCache cache,
         [FromRoute] Guid folderId,
-        [FromBody] TimelineVisibilityRequest request,
+        [FromBody] DiscoveryVisibilityRequest request,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -1027,7 +1027,7 @@ public class FoldersEndpoint : IEndpoint
         // user's own content and libraries have their own visibility model.
         if (!IsInSharedSpace(folder.Path))
         {
-            return Results.BadRequest(new { error = "Solo las carpetas compartidas pueden excluirse del timeline." });
+            return Results.BadRequest(new { error = "Solo las carpetas compartidas pueden excluirse de tus fotos." });
         }
 
         var excluded = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
@@ -1045,7 +1045,7 @@ public class FoldersEndpoint : IEndpoint
             cache.Remove($"folders:tree:{userId}");
         }
 
-        return Results.Ok(new { folderId, excludedFromTimeline = !request.Included });
+        return Results.Ok(new { folderId, excludedFromDiscovery = !request.Included });
     }
 
     private async Task<IResult> MoveFolderAssets(

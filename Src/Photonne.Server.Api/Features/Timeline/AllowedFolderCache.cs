@@ -29,11 +29,16 @@ public class AllowedFolderCache
     /// <summary>
     /// Per-user setting key holding a JSON array of folder ids the user has
     /// opted OUT of their discovery surfaces (timeline, memories, people,
-    /// search, map…). Stored under the user's own Setting.OwnerId. The folder
-    /// stays fully browsable/administrable via FoldersEndpoint (which does NOT
-    /// derive from this cache) — only the read-side "my content" set shrinks.
+    /// search, smart albums…). Stored under the user's own Setting.OwnerId. The
+    /// folder stays fully browsable/administrable via FoldersEndpoint (which does
+    /// NOT derive from this cache) — only the read-side "my content" set shrinks.
+    ///
+    /// Named for discovery, not the timeline: it was "TimelinePrefs.ExcludedFolders"
+    /// while the timeline was the only surface that honoured it, which is exactly
+    /// how memories and search ended up ignoring it for a while. Rows carrying the
+    /// old key are rewritten by the AddDiscoveryPrefsKey migration.
     /// </summary>
-    public const string ExcludedFoldersSettingKey = "TimelinePrefs.ExcludedFolders";
+    public const string ExcludedFoldersSettingKey = "DiscoveryPrefs.ExcludedFolders";
 
     private readonly IMemoryCache _cache;
 
@@ -56,7 +61,64 @@ public class AllowedFolderCache
         })!;
     }
 
-    public void Invalidate(Guid userId) => _cache.Remove($"allowed-folders:{userId}");
+    /// <summary>
+    /// The excluded folders with their subtrees — what a discovery surface has to
+    /// subtract. <see cref="GetAllowedFolderIdsAsync"/> already takes these out of
+    /// its own set, but that only helps callers gated on folders alone: the ones
+    /// gated on <see cref="Shared.Authorization.AssetVisibilityScope"/> union in
+    /// owner/library/album, so they need the set itself to subtract with.
+    /// </summary>
+    public Task<HashSet<Guid>> GetExcludedFolderSubtreeAsync(
+        ApplicationDbContext dbContext,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var key = $"excluded-folders:{userId}";
+        return _cache.GetOrCreateAsync(key, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = Ttl;
+
+            var roots = await GetExcludedFolderIdsAsync(dbContext, userId, ct);
+            if (roots.Count == 0) return new HashSet<Guid>();
+
+            var childrenByParent = await ChildrenByParentAsync(dbContext, ct);
+            return ExpandSubtree(roots, childrenByParent);
+        })!;
+    }
+
+    public void Invalidate(Guid userId)
+    {
+        _cache.Remove($"allowed-folders:{userId}");
+        _cache.Remove($"excluded-folders:{userId}");
+    }
+
+    private static async Task<ILookup<Guid, Guid>> ChildrenByParentAsync(
+        ApplicationDbContext dbContext,
+        CancellationToken ct)
+    {
+        var edges = await dbContext.Folders
+            .AsNoTracking()
+            .Where(f => f.ParentFolderId.HasValue)
+            .Select(f => new { f.Id, ParentId = f.ParentFolderId!.Value })
+            .ToListAsync(ct);
+        return edges.ToLookup(e => e.ParentId, e => e.Id);
+    }
+
+    /// <summary>Every id reachable from [roots] downwards, roots included.</summary>
+    private static HashSet<Guid> ExpandSubtree(
+        IEnumerable<Guid> roots,
+        ILookup<Guid, Guid> childrenByParent)
+    {
+        var subtree = new HashSet<Guid>();
+        var pending = new Stack<Guid>(roots);
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            if (!subtree.Add(current)) continue;
+            foreach (var child in childrenByParent[current]) pending.Push(child);
+        }
+        return subtree;
+    }
 
     private static async Task<HashSet<Guid>> ComputeAsync(
         ApplicationDbContext dbContext,
@@ -145,15 +207,10 @@ public class AllowedFolderCache
         var excludedRootIds = await GetExcludedFolderIdsAsync(dbContext, userId, ct);
         if (excludedRootIds.Count > 0)
         {
-            var excludedSubtree = new HashSet<Guid>();
-            var pendingExcluded = new Stack<Guid>(excludedRootIds);
-            while (pendingExcluded.Count > 0)
-            {
-                var current = pendingExcluded.Pop();
-                if (!excludedSubtree.Add(current)) continue;
-                foreach (var child in childrenByParent[current]) pendingExcluded.Push(child.Id);
-            }
-            allowedIds.ExceptWith(excludedSubtree);
+            var childIdsByParent = allFolders
+                .Where(f => f.ParentFolderId.HasValue)
+                .ToLookup(f => f.ParentFolderId!.Value, f => f.Id);
+            allowedIds.ExceptWith(ExpandSubtree(excludedRootIds, childIdsByParent));
         }
 
         return allowedIds;

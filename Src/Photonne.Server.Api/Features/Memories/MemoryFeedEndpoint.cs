@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.Timeline;
+using Photonne.Server.Api.Shared.Authorization;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
@@ -104,6 +105,7 @@ public class MemoryDetailEndpoint : IEndpoint
 
     private static async Task<IResult> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] AssetVisibilityService visibility,
         ClaimsPrincipal user,
         Guid id,
         CancellationToken ct)
@@ -135,15 +137,20 @@ public class MemoryDetailEndpoint : IEndpoint
         // confirm the id exists to someone who shouldn't know that.
         if (memory is null) return Results.NotFound();
 
-        // Ordered by Position, and re-gated through the timeline's own visibility
-        // rules: a memory generated last night may point at an asset since
-        // deleted, archived or unshared, and the feed must never hand it back.
+        // Ordered by Position, and re-gated: a memory generated last night may
+        // point at an asset since deleted, archived, unshared, or sitting in a
+        // folder the user has excluded from their surfaces since. The row is a
+        // nightly snapshot; the gate has to run now, or excluding a folder would
+        // do nothing until the next pass — and a revoked permission would keep
+        // handing photos back until then too.
+        var scope = await visibility.GetScopeAsync(userId, ct);
         memory.Assets = await db.MemoryAssets
             .AsNoTracking()
             .Where(ma => ma.MemoryId == id)
             .OrderBy(ma => ma.Position)
             .Select(ma => ma.Asset)
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing)
+            .Where(scope.DiscoveryPredicate())
             .Select(TimelineProjection.ToResponse)
             .ToListAsync(ct);
 

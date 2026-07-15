@@ -23,6 +23,6 @@ data class FolderSummary(
     val externalLibraryId: String? = null,
     // Per-user opt-out: I only administer this shared folder; keep it out of my
     // timeline, memories, people and search (still browsable here).
-    val excludedFromTimeline: Boolean = false,
+    val excludedFromDiscovery: Boolean = false,
     val subFolders: List<FolderSummary> = emptyList()
 )
