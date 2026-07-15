@@ -1159,15 +1159,16 @@ private fun TaskOptions(
                 checked = state.dateRestoreUseFileDate,
                 onCheckedChange = viewModel::setDateRestoreUseFileDate
             )
-            // Only meaningful once there's a derived date to write back, which
-            // is why it appears with them rather than sitting there greyed out.
-            if (state.dateRestoreInferFromPath || state.dateRestoreUseFileDate) {
-                InlineToggle(
-                    label = stringResource(Res.string.admin_restore_dates_write_file),
-                    checked = state.dateRestoreWriteToFile,
-                    onCheckedChange = viewModel::setDateRestoreWriteToFile
-                )
-            }
+            // Always on screen, greyed until there's a derived date to write
+            // back. It used to appear only once you'd enabled an inference
+            // above, which meant the one switch that touches your actual files
+            // was invisible to anyone who hadn't already decided to use it.
+            InlineToggle(
+                label = stringResource(Res.string.admin_restore_dates_write_file),
+                checked = state.dateRestoreWriteToFile,
+                onCheckedChange = viewModel::setDateRestoreWriteToFile,
+                enabled = state.dateRestoreInferFromPath || state.dateRestoreUseFileDate
+            )
             InlineToggle(
                 label = stringResource(Res.string.admin_restore_dates_dry_run),
                 checked = state.dateRestoreDryRun,
@@ -1204,15 +1205,19 @@ private fun confirmMessageOf(task: AdminRunTask): StringResource = when (task) {
     else -> Res.string.admin_run_tasks_confirm_purge_message
 }
 
-/** Inline switch rendered below a pipeline task row when there's a
- *  per-task option (e.g. Thumbnails.regenerate, Metadata.overwrite).
- *  Shown only while the row is idle so it doesn't compete with the
- *  progress visualisation. */
+/** Inline switch rendered below a task row when there's a per-task option
+ *  (e.g. Thumbnails.regenerate, Metadata.overwrite). Shown only while the row
+ *  is idle so it doesn't compete with the progress visualisation.
+ *
+ *  An option that doesn't apply yet is greyed, never hidden: a switch you can't
+ *  find is worse than one you can't use — you can't learn a task writes to your
+ *  files from a control that only exists once you've already chosen to. */
 @Composable
 private fun InlineToggle(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
@@ -1223,12 +1228,14 @@ private fun InlineToggle(
         Text(
             label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+                .copy(alpha = if (enabled) 1f else 0.38f),
             modifier = Modifier.weight(1f)
         )
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
         )
     }
 }
