@@ -9,16 +9,6 @@ data class PersonRef(val id: String, val name: String, val coverFaceId: String?)
  * name to disambiguate same-named folders in search results. */
 data class FolderRef(val id: String, val name: String, val isShared: Boolean, val path: String)
 
-/** A node of the folder tree shown in the picker's browse mode. Built
- * client-side from the flat folder list via parentFolderId. */
-data class FolderNode(
-    val id: String,
-    val name: String,
-    val path: String,
-    val isShared: Boolean,
-    val children: List<FolderNode>,
-)
-
 /** A scene/object label in the picker; carries a cover for the thumbnail row.
  * The condition itself only keeps the label string (the wire model needs no more). */
 data class LabelRef(val label: String, val coverAssetId: String?)

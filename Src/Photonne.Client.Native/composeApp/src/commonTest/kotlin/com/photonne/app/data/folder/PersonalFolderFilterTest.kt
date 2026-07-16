@@ -96,4 +96,58 @@ class PersonalFolderFilterTest {
         val visible = filterSharedFolders(listOf(folder(mixed)))
         assertEquals(listOf(mixed), visible.map { it.path })
     }
+
+    // --- writableMoveDestinations -------------------------------------------
+
+    @Test
+    fun move_destinations_drop_the_home_and_shared_root_containers() {
+        val input = listOf(
+            folder("/assets/users/$username"),
+            folder("/assets/users/$username/Uploads"),
+            folder("/assets/users/$username/Uploads/2026"),
+            folder("/assets/shared"),
+            folder("/assets/shared/Family")
+        )
+
+        val dest = writableMoveDestinations(input, username).map { it.path }
+
+        // The home and shared roots are containers, not destinations.
+        assertTrue("/assets/users/$username" !in dest)
+        assertTrue("/assets/shared" !in dest)
+        assertEquals(
+            listOf(
+                "/assets/users/$username/Uploads",
+                "/assets/users/$username/Uploads/2026",
+                "/assets/shared/Family"
+            ),
+            dest
+        )
+    }
+
+    @Test
+    fun move_destinations_exclude_readonly_external_and_system() {
+        val input = listOf(
+            folder("/assets/users/$username/Uploads"),
+            folder("/assets/users/$username/_trash/2026"),
+            folder("/assets/users/$username/ReadOnly").copy(canWrite = false),
+            folder("/assets/users/$username/Lib").copy(externalLibraryId = "lib1"),
+            folder("/somewhere/else/Foo")
+        )
+
+        val dest = writableMoveDestinations(input, username).map { it.path }
+
+        assertEquals(listOf("/assets/users/$username/Uploads"), dest)
+    }
+
+    @Test
+    fun move_destinations_without_username_keep_only_shared() {
+        val input = listOf(
+            folder("/assets/users/$username/Uploads"),
+            folder("/assets/shared/Family")
+        )
+
+        val dest = writableMoveDestinations(input, username = null).map { it.path }
+
+        assertEquals(listOf("/assets/shared/Family"), dest)
+    }
 }

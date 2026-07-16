@@ -67,6 +67,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.folder.FolderNode
+import com.photonne.app.ui.folder.collectFolderIds
+import com.photonne.app.ui.folder.filterFolderTree
+import com.photonne.app.ui.folder.folderGroup
+import com.photonne.app.ui.folder.toggleMember
 import coil3.compose.AsyncImage
 import kotlinx.datetime.toLocalDateTime
 
@@ -461,6 +466,12 @@ private fun FolderSelectSheet(
     val sharedNodes = if (searching) filterFolderTree(sharedRoots, q) else sharedRoots
     val effExpanded = if (searching) collectFolderIds(personalNodes) + collectFolderIds(sharedNodes) else expanded
 
+    // Multi-select: a checkbox in the trailing slot. A covered (locked) row still
+    // shows a tick but is disabled.
+    val trailing: @Composable (Boolean, Boolean, () -> Unit) -> Unit = { checked, enabled, onToggle ->
+        Checkbox(checked = checked, onCheckedChange = { onToggle() }, enabled = enabled)
+    }
+
     SearchSelectScaffold(
         title = "Carpetas",
         onDismiss = onDismiss,
@@ -497,6 +508,7 @@ private fun FolderSelectSheet(
                         onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
                         isSelected = { it.id in selected }, isCovered = { covered(it.path) },
                         onToggleSelect = { toggle(it.id, it.path) },
+                        trailing = trailing,
                     )
                     folderGroup(
                         groupId = "grp:shared", label = "Compartidas", nodes = sharedNodes,
@@ -505,144 +517,12 @@ private fun FolderSelectSheet(
                         onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
                         isSelected = { it.id in selected }, isCovered = { covered(it.path) },
                         onToggleSelect = { toggle(it.id, it.path) },
+                        trailing = trailing,
                     )
                 }
             }
         },
     )
-}
-
-/** Renders a collapsible "Personales" / "Compartidas" group header plus, when
- * open, its subtree. During search the group is forced open. */
-private fun LazyListScope.folderGroup(
-    groupId: String,
-    label: String,
-    nodes: List<FolderNode>,
-    searching: Boolean,
-    userExpanded: Set<String>,
-    effExpanded: Set<String>,
-    onToggleGroup: () -> Unit,
-    onToggleExpand: (String) -> Unit,
-    isSelected: (FolderNode) -> Boolean,
-    isCovered: (FolderNode) -> Boolean,
-    onToggleSelect: (FolderNode) -> Unit,
-) {
-    if (nodes.isEmpty()) return
-    val open = if (searching) true else groupId in userExpanded
-    item(key = groupId) {
-        FolderGroupHeaderRow(label = label, expanded = open, enabled = !searching, onToggle = onToggleGroup)
-    }
-    if (open) {
-        renderFolderTree(nodes, 1, effExpanded, onToggleExpand, isSelected, isCovered, onToggleSelect)
-    }
-}
-
-/** Prunes the tree to branches containing a name match; keeps ancestors of
- * matches so the hierarchy/location stays visible. */
-private fun filterFolderTree(nodes: List<FolderNode>, q: String): List<FolderNode> =
-    nodes.mapNotNull { node ->
-        val kids = filterFolderTree(node.children, q)
-        if (node.name.lowercase().contains(q) || kids.isNotEmpty()) node.copy(children = kids) else null
-    }
-
-private fun collectFolderIds(nodes: List<FolderNode>): Set<String> =
-    nodes.flatMapTo(mutableSetOf()) { listOf(it.id) + collectFolderIds(it.children) }
-
-private fun Set<String>.toggleMember(id: String): Set<String> = if (id in this) this - id else this + id
-
-private fun LazyListScope.renderFolderTree(
-    nodes: List<FolderNode>,
-    depth: Int,
-    expanded: Set<String>,
-    onToggleExpand: (String) -> Unit,
-    isSelected: (FolderNode) -> Boolean,
-    isCovered: (FolderNode) -> Boolean,
-    onToggleSelect: (FolderNode) -> Unit,
-) {
-    nodes.forEach { node ->
-        item(key = node.id) {
-            val cov = isCovered(node)
-            FolderTreeRow(
-                node = node,
-                depth = depth,
-                expanded = node.id in expanded,
-                checked = isSelected(node) || cov,
-                enabled = !cov,
-                onToggleExpand = { onToggleExpand(node.id) },
-                onToggleSelect = { onToggleSelect(node) },
-            )
-        }
-        if (node.id in expanded && node.children.isNotEmpty()) {
-            renderFolderTree(node.children, depth + 1, expanded, onToggleExpand, isSelected, isCovered, onToggleSelect)
-        }
-    }
-}
-
-/** Collapsible parent row for the "Personales" / "Compartidas" groups. Disabled
- * (always open) while searching, so the filtered tree stays visible. */
-@Composable
-private fun FolderGroupHeaderRow(label: String, expanded: Boolean, enabled: Boolean, onToggle: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onToggle).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            if (expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = if (expanded) "Colapsar" else "Expandir",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun FolderTreeRow(
-    node: FolderNode,
-    depth: Int,
-    expanded: Boolean,
-    checked: Boolean,
-    enabled: Boolean,
-    onToggleExpand: () -> Unit,
-    onToggleSelect: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onToggleSelect)
-            .padding(start = (depth * 16).dp, top = 2.dp, bottom = 2.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (node.children.isNotEmpty()) {
-            IconButton(onClick = onToggleExpand, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    if (expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = if (expanded) "Colapsar" else "Expandir",
-                )
-            }
-        } else {
-            Spacer(Modifier.width(32.dp))
-        }
-        Icon(Icons.Outlined.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                node.name,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (!enabled) {
-                Text("incluida", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Checkbox(checked = checked, onCheckedChange = { onToggleSelect() }, enabled = enabled)
-    }
 }
 
 // ── Label select (scenes / objects) ──────────────────────────────────────────

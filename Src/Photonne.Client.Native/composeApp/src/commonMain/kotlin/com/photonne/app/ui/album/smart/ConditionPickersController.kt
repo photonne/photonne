@@ -7,6 +7,7 @@ import com.photonne.app.data.folder.filterPersonalFolders
 import com.photonne.app.data.folder.filterSharedFolders
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.search.SearchRepository
+import com.photonne.app.ui.folder.FolderNode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

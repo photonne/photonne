@@ -9,6 +9,7 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.data.search.SearchRepository
+import com.photonne.app.ui.folder.FolderNode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

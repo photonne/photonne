@@ -49,16 +49,26 @@ fun writableSharedFolders(folders: List<FolderSummary>): List<FolderSummary> =
     filterSharedFolders(folders).filter { it.canWrite || it.isOwner }
 
 /**
- * Every folder the user may move assets into, at any depth — personal and
- * shared subtrees alike. Feeds the move picker, which renders the full list as
- * an indented tree. Excludes external libraries (read-only) and the `_trash` /
- * `_archive` system folders. The picker itself drops the source folder and its
- * own descendants via `excludeFolderId`.
+ * Every folder the user may move assets into, at any depth — the interior of the
+ * user's home and of the shared space. Feeds the move picker, which renders it as
+ * a collapsible tree. The home (`/assets/users/{username}`) and shared
+ * (`/assets/shared`) roots are namespace containers, never a destination you file
+ * into, so they are dropped and their children surface as the tree's top level.
+ * Excludes external libraries (read-only) and the `_trash` / `_archive` system
+ * folders. The picker itself drops the source folder and its own descendants via
+ * `excludeFolderId`.
  */
-fun moveDestinationFolders(folders: List<FolderSummary>): List<FolderSummary> =
-    folders.filter { folder ->
+fun writableMoveDestinations(folders: List<FolderSummary>, username: String?): List<FolderSummary> {
+    val homePrefix = if (username.isNullOrBlank()) null else "/assets/users/$username/"
+    val sharedPrefix = "/assets/shared/"
+    return folders.filter { folder ->
         if (!folder.canWrite || folder.externalLibraryId != null) return@filter false
-        folder.path.replace('\\', '/').split('/').none { segment ->
+        val normalized = folder.path.replace('\\', '/').trimEnd('/')
+        val inside = (homePrefix != null && normalized.startsWith(homePrefix, ignoreCase = true)) ||
+            normalized.startsWith(sharedPrefix, ignoreCase = true)
+        if (!inside) return@filter false
+        normalized.split('/').none { segment ->
             segment.equals("_trash", ignoreCase = true) || segment.equals("_archive", ignoreCase = true)
         }
     }
+}

@@ -7,7 +7,7 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
-import com.photonne.app.data.folder.moveDestinationFolders
+import com.photonne.app.data.folder.writableMoveDestinations
 import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.ui.util.SortDirection
@@ -385,7 +385,7 @@ class FoldersViewModel(
                 personalDescendants = partition.personalDescendants,
                 sharedDescendants = partition.sharedDescendants,
                 externalDescendants = partition.externalDescendants,
-                moveDestinations = sorted(moveDestinationFolders(allFolders))
+                moveDestinations = sorted(writableMoveDestinations(allFolders, username))
             )
         }
     }

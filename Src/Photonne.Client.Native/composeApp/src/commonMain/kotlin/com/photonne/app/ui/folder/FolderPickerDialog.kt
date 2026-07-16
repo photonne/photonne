@@ -13,12 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,9 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderSummary
-import com.photonne.app.ui.util.sortedByNatural
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_move
@@ -53,22 +58,41 @@ fun FolderPickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (targetFolderId: String?) -> Unit
 ) {
+    // Prune the moved folder's own subtree so it can't be dropped into a descendant.
     val excluded = remember(folders, excludeFolderId) {
         if (excludeFolderId == null) emptySet()
         else computeExclusionSet(folders, excludeFolderId)
     }
-    val candidates = remember(folders, excluded) {
-        folders.filterNot { it.id in excluded }
-            .sortedByNatural { it.path }
-    }
-    var selectedId by remember(initialSelectionId) {
-        mutableStateOf<String?>(initialSelectionId)
-    }
+    val candidates = remember(folders, excluded) { folders.filterNot { it.id in excluded } }
+    val roots = remember(candidates) { buildFolderForest(candidates) }
+    val (personalRoots, sharedRoots) = remember(roots) { roots.partition { !it.isShared } }
+    val byId = remember(candidates) { candidates.associateBy { it.id } }
+
+    var selectedId by remember(initialSelectionId) { mutableStateOf<String?>(initialSelectionId) }
     var rootSelected by remember(initialSelectionId, includeRoot) {
         mutableStateOf(includeRoot && initialSelectionId == null)
     }
+    var query by remember { mutableStateOf("") }
+    // Groups open by default (this is a quick single-pick, unlike the album
+    // picker) and the ancestors of the preselected destination are pre-expanded
+    // so it's visible on open.
+    var expanded by remember(candidates, initialSelectionId) {
+        mutableStateOf(setOf("grp:personal", "grp:shared") + ancestorIds(byId, initialSelectionId))
+    }
+
+    val q = query.trim().lowercase()
+    val searching = q.isNotEmpty()
+    val personalNodes = if (searching) filterFolderTree(personalRoots, q) else personalRoots
+    val sharedNodes = if (searching) filterFolderTree(sharedRoots, q) else sharedRoots
+    val effExpanded = if (searching) collectFolderIds(personalNodes) + collectFolderIds(sharedNodes) else expanded
+
     val canSubmit = !isSubmitting && (rootSelected || selectedId != null)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Single-select: a radio in the trailing slot, no subtree "covered" locking.
+    val trailing: @Composable (Boolean, Boolean, () -> Unit) -> Unit = { checked, enabled, onToggle ->
+        RadioButton(selected = checked, onClick = onToggle, enabled = enabled)
+    }
 
     ModalBottomSheet(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
@@ -82,19 +106,37 @@ fun FolderPickerDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Buscar carpeta…") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Limpiar")
+                        }
+                    }
+                },
+                singleLine = true,
+            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 200.dp, max = 460.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (candidates.isEmpty() && !includeRoot) {
+                val empty = personalNodes.isEmpty() && sharedNodes.isEmpty()
+                // The root row is hidden while searching, so an empty search must
+                // fall through to the "no results" message even when includeRoot.
+                if (empty && (!includeRoot || searching)) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            stringResource(Res.string.folder_picker_empty),
+                            if (searching) "Sin resultados" else stringResource(Res.string.folder_picker_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -104,33 +146,36 @@ fun FolderPickerDialog(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (includeRoot) {
+                        if (includeRoot && !searching) {
                             item(key = "__root__") {
-                                FolderPickerRow(
+                                RootPickerRow(
                                     label = stringResource(Res.string.folder_picker_root),
-                                    pathHint = null,
-                                    depth = 0,
                                     selected = rootSelected,
-                                    onClick = {
+                                    onSelect = {
                                         rootSelected = true
                                         selectedId = null
                                     }
                                 )
                             }
                         }
-                        items(candidates, key = { it.id }) { folder ->
-                            val display = folder.name.ifBlank { folder.path }
-                            FolderPickerRow(
-                                label = display,
-                                pathHint = folder.path.takeIf { it != display },
-                                depth = folder.path.count { it == '/' }.coerceAtLeast(0),
-                                selected = !rootSelected && selectedId == folder.id,
-                                onClick = {
-                                    rootSelected = false
-                                    selectedId = folder.id
-                                }
-                            )
-                        }
+                        folderGroup(
+                            groupId = "grp:personal", label = "Personales", nodes = personalNodes,
+                            searching = searching, userExpanded = expanded, effExpanded = effExpanded,
+                            onToggleGroup = { expanded = expanded.toggleMember("grp:personal") },
+                            onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
+                            isSelected = { !rootSelected && selectedId == it.id }, isCovered = { false },
+                            onToggleSelect = { rootSelected = false; selectedId = it.id },
+                            trailing = trailing,
+                        )
+                        folderGroup(
+                            groupId = "grp:shared", label = "Compartidas", nodes = sharedNodes,
+                            searching = searching, userExpanded = expanded, effExpanded = effExpanded,
+                            onToggleGroup = { expanded = expanded.toggleMember("grp:shared") },
+                            onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
+                            isSelected = { !rootSelected && selectedId == it.id }, isCovered = { false },
+                            onToggleSelect = { rootSelected = false; selectedId = it.id },
+                            trailing = trailing,
+                        )
                     }
                 }
                 if (errorMessage != null) {
@@ -166,39 +211,34 @@ fun FolderPickerDialog(
 }
 
 @Composable
-private fun FolderPickerRow(
-    label: String,
-    pathHint: String?,
-    depth: Int,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
+private fun RootPickerRow(label: String, selected: Boolean, onSelect: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(
-                start = (8 + (depth.coerceAtMost(4) * 12)).dp,
-                end = 8.dp,
-                top = 6.dp,
-                bottom = 6.dp
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .clickable(onClick = onSelect)
+            .padding(top = 2.dp, bottom = 2.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-            if (pathHint != null) {
-                Text(
-                    pathHint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-        }
+        Spacer(Modifier.width(32.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        RadioButton(selected = selected, onClick = onSelect)
     }
+}
+
+/** Parent chain of [id] (excluding itself), so the tree can be pre-expanded down
+ * to a preselected destination. */
+private fun ancestorIds(byId: Map<String, FolderSummary>, id: String?): Set<String> {
+    if (id == null) return emptySet()
+    val out = mutableSetOf<String>()
+    var cur = byId[id]?.parentFolderId
+    while (cur != null && out.add(cur)) cur = byId[cur]?.parentFolderId
+    return out
 }
 
 private fun computeExclusionSet(
