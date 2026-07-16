@@ -146,12 +146,16 @@ class OrganizeInboxViewModel(
      * [onComplete] receives the moved ids so callers can refresh the entry-point
      * count.
      */
-    fun moveSelectedAssets(targetFolderId: String, onComplete: (List<String>) -> Unit = {}) {
+    fun moveSelectedAssets(
+        targetFolderId: String,
+        organizeByYear: Boolean = false,
+        onComplete: (List<String>) -> Unit = {}
+    ) {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.moveAssets(targetFolderId, ids) }
+            runCatching { repository.moveAssets(targetFolderId, ids, organizeByYear) }
                 .onSuccess {
                     val moved = ids.toHashSet()
                     _state.update {

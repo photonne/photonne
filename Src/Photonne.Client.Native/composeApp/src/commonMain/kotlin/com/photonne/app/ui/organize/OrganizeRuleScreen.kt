@@ -136,7 +136,7 @@ fun OrganizeRuleScreen(
             includeRoot = false,
             initialSelectionId = state.targetFolderId,
             onDismiss = { showFolderPicker = false },
-            onConfirm = { targetFolderId ->
+            onConfirm = { targetFolderId, _ ->
                 showFolderPicker = false
                 targetFolderId?.let { id ->
                     destinations.firstOrNull { it.id == id }?.let { folder ->

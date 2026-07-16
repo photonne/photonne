@@ -22,12 +22,18 @@ class OrganizeRepository(
 
     /** Physical move out of MobileBackup into [targetFolderId]. Source folders
      *  differ per asset (one per device), so we pass a null source and let the
-     *  server authorize per asset. */
-    suspend fun moveAssets(targetFolderId: String, assetIds: List<String>) {
+     *  server authorize per asset. When [organizeByYear] is set the server files
+     *  each asset into a Year subfolder (e.g. 2026) under the destination. */
+    suspend fun moveAssets(
+        targetFolderId: String,
+        assetIds: List<String>,
+        organizeByYear: Boolean = false
+    ) {
         api.moveFolderAssets(
             sourceFolderId = null,
             targetFolderId = targetFolderId,
-            assetIds = assetIds
+            assetIds = assetIds,
+            organizeByCaptureYear = organizeByYear
         )
     }
 

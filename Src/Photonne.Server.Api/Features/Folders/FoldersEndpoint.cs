@@ -787,6 +787,54 @@ public class FoldersEndpoint : IEndpoint
         return Results.Ok(response);
     }
 
+    /// <summary>
+    /// Resolve-or-create a direct child folder of <paramref name="parent"/> named
+    /// <paramref name="childName"/>. Idempotent: an existing child (by parent + name)
+    /// is returned as-is, so repeated moves into the same date bucket reuse the same
+    /// folder instead of duplicating it. Unlike <see cref="CreateFolder"/> this is
+    /// tolerant of a pre-existing physical directory (adopts it rather than failing).
+    /// Reused by <see cref="FolderAssetMover"/> to build the Year buckets.
+    /// </summary>
+    internal static async Task<Folder> EnsureChildFolderAsync(
+        ApplicationDbContext dbContext,
+        SettingsService settingsService,
+        IMemoryCache cache,
+        Guid userId,
+        Folder parent,
+        string childName,
+        CancellationToken cancellationToken)
+    {
+        var name = childName.Trim();
+        var existing = await dbContext.Folders
+            .FirstOrDefaultAsync(f => f.ParentFolderId == parent.Id && f.Name == name, cancellationToken);
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        var normalizedPath = NormalizePath($"{parent.Path.TrimEnd('/')}/{name}");
+        var physicalPath = await settingsService.ResolvePhysicalPathAsync(normalizedPath);
+        Directory.CreateDirectory(physicalPath);
+
+        var folder = new Folder
+        {
+            Name = name,
+            Path = normalizedPath,
+            ParentFolderId = parent.Id
+        };
+        dbContext.Folders.Add(folder);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        cache.Remove($"folders:list:{userId}");
+        cache.Remove($"folders:tree:{userId}");
+
+        if (normalizedPath.StartsWith("/assets/shared", StringComparison.OrdinalIgnoreCase))
+        {
+            await EnsureFolderPermissionAsync(dbContext, userId, folder.Id, cancellationToken);
+        }
+
+        return folder;
+    }
+
     private async Task<IResult> UpdateFolder(
         [FromServices] ApplicationDbContext dbContext,
         [FromServices] SettingsService settingsService,
@@ -1102,7 +1150,7 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta destino no encontrada." });
         }
 
-        await FolderAssetMover.MoveAsync(dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken);
+        await FolderAssetMover.MoveAsync(dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken, request.OrganizeByCaptureYear);
 
         return Results.NoContent();
     }
@@ -1634,7 +1682,7 @@ public class FoldersEndpoint : IEndpoint
         return result;
     }
 
-    private static string NormalizePath(string path)
+    internal static string NormalizePath(string path)
     {
         return path.Replace('\\', '/').TrimEnd('/');
     }
@@ -1778,6 +1826,10 @@ public class MoveFolderAssetsRequest
     public Guid? SourceFolderId { get; set; }
     public Guid TargetFolderId { get; set; }
     public List<Guid> AssetIds { get; set; } = new();
+
+    /// <summary>When true, file each asset into a Year subfolder (e.g. <c>2026</c>)
+    /// under the target folder, derived from its capture date.</summary>
+    public bool OrganizeByCaptureYear { get; set; }
 }
 
 public class RemoveFolderAssetsRequest

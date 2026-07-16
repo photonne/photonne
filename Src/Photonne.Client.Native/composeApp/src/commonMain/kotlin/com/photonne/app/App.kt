@@ -3467,7 +3467,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showMoveFolder = false
                 folderDetailViewModel.clearError()
             },
-            onConfirm = { targetParentId ->
+            onConfirm = { targetParentId, _ ->
                 folderDetailViewModel.move(targetParentId) { updated ->
                     showMoveFolder = false
                     selectedFolder = openedFolder.copy(
@@ -3549,7 +3549,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showMoveSelectedAssets = false
                 folderDetailViewModel.clearError()
             },
-            onConfirm = { targetFolderId ->
+            onConfirm = { targetFolderId, _ ->
                 if (targetFolderId != null) {
                     folderDetailViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
                         showMoveSelectedAssets = false
@@ -3577,7 +3577,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showMoveSelectedAssetsTimeline = false
                 timelineViewModel.clearError()
             },
-            onConfirm = { targetFolderId ->
+            onConfirm = { targetFolderId, _ ->
                 if (targetFolderId != null) {
                     timelineViewModel.moveSelectedAssets(targetFolderId) {
                         showMoveSelectedAssetsTimeline = false
@@ -3595,13 +3595,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             isSubmitting = organizeInboxState.isBulkMutating,
             errorMessage = organizeInboxState.error?.userMessage,
             includeRoot = false,
+            showOrganizeByDate = true,
             onDismiss = {
                 showMoveSelectedAssetsInbox = false
                 organizeInboxViewModel.clearError()
             },
-            onConfirm = { targetFolderId ->
+            onConfirm = { targetFolderId, organizeByYear ->
                 if (targetFolderId != null) {
-                    organizeInboxViewModel.moveSelectedAssets(targetFolderId) {
+                    organizeInboxViewModel.moveSelectedAssets(targetFolderId, organizeByYear) {
                         showMoveSelectedAssetsInbox = false
                         foldersViewModel.refreshOrganizeCount()
                     }

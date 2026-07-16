@@ -160,7 +160,8 @@ internal data class SetFolderPermissionBody(
 internal data class MoveFolderAssetsBody(
     val sourceFolderId: String?,
     val targetFolderId: String,
-    val assetIds: List<String>
+    val assetIds: List<String>,
+    val organizeByCaptureYear: Boolean = false
 )
 
 @Serializable
@@ -480,7 +481,8 @@ interface PhotonneApi {
     suspend fun moveFolderAssets(
         sourceFolderId: String?,
         targetFolderId: String,
-        assetIds: List<String>
+        assetIds: List<String>,
+        organizeByCaptureYear: Boolean = false
     )
     suspend fun searchAssets(
         q: String? = null,
@@ -1966,7 +1968,8 @@ class PhotonneApiClient(
     override suspend fun moveFolderAssets(
         sourceFolderId: String?,
         targetFolderId: String,
-        assetIds: List<String>
+        assetIds: List<String>,
+        organizeByCaptureYear: Boolean
     ) {
         val response: HttpResponse = client.post("$baseUrl/api/folders/assets/move") {
             contentType(ContentType.Application.Json)
@@ -1974,7 +1977,8 @@ class PhotonneApiClient(
                 MoveFolderAssetsBody(
                     sourceFolderId = sourceFolderId,
                     targetFolderId = targetFolderId,
-                    assetIds = assetIds
+                    assetIds = assetIds,
+                    organizeByCaptureYear = organizeByCaptureYear
                 )
             )
         }

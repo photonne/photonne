@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,8 +56,9 @@ fun FolderPickerDialog(
     excludeFolderId: String? = null,
     includeRoot: Boolean = false,
     initialSelectionId: String? = null,
+    showOrganizeByDate: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (targetFolderId: String?) -> Unit
+    onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
     // Prune the moved folder's own subtree so it can't be dropped into a descendant.
     val excluded = remember(folders, excludeFolderId) {
@@ -73,6 +75,7 @@ fun FolderPickerDialog(
         mutableStateOf(includeRoot && initialSelectionId == null)
     }
     var query by remember { mutableStateOf("") }
+    var organizeByYear by remember { mutableStateOf(false) }
     // Groups open by default (this is a quick single-pick, unlike the album
     // picker) and the ancestors of the preselected destination are pre-expanded
     // so it's visible on open.
@@ -183,6 +186,30 @@ fun FolderPickerDialog(
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
+            if (showOrganizeByDate) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isSubmitting) { organizeByYear = !organizeByYear }
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = organizeByYear,
+                        onCheckedChange = { organizeByYear = it },
+                        enabled = !isSubmitting
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Organizar por año", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Se crearán subcarpetas por año (2026, 2025…) dentro del destino.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -193,7 +220,12 @@ fun FolderPickerDialog(
                 Spacer(Modifier.width(8.dp))
                 Button(
                     enabled = canSubmit,
-                    onClick = { onConfirm(if (rootSelected) null else selectedId) }
+                    onClick = {
+                        onConfirm(
+                            if (rootSelected) null else selectedId,
+                            showOrganizeByDate && organizeByYear
+                        )
+                    }
                 ) {
                     if (isSubmitting) {
                         CircularProgressIndicator(
