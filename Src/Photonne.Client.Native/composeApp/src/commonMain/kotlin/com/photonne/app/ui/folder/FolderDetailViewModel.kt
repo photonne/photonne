@@ -29,7 +29,8 @@ data class FolderDetailUiState(
     val error: UiError? = null,
     val selection: Set<String> = emptySet(),
     val isBulkMutating: Boolean = false,
-    val selectedSubfolderId: String? = null
+    val selectedSubfolderId: String? = null,
+    val viewMode: FolderViewMode = FolderViewMode.List
 ) {
     val isSelectionActive: Boolean get() = selection.isNotEmpty()
 
@@ -61,17 +62,24 @@ class FolderDetailViewModel(
     }
 
     fun open(folderId: String, name: String, parentFolderId: String?) {
+        // The list/grid choice is a global folder preference, edited only from the
+        // root screen's Tune sheet — so reading it on open (and refresh) is enough
+        // to keep every drilled-in folder in sync with the root.
+        val viewMode = readFolderViewMode(settings)
         if (_state.value.folderId == folderId &&
             (_state.value.items.isNotEmpty() || _state.value.subFolders.isNotEmpty())
         ) {
-            _state.update { it.copy(folderName = name, parentFolderId = parentFolderId) }
+            _state.update {
+                it.copy(folderName = name, parentFolderId = parentFolderId, viewMode = viewMode)
+            }
             return
         }
         _state.value = FolderDetailUiState(
             folderId = folderId,
             folderName = name,
             parentFolderId = parentFolderId,
-            isLoading = true
+            isLoading = true,
+            viewMode = viewMode
         )
         viewModelScope.launch {
             runCatching {

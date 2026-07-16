@@ -11,6 +11,15 @@ import com.russhwolf.settings.Settings
 internal const val FOLDERS_SORT_KEY = "photonne.folders.sort"
 internal const val FOLDERS_DIRECTION_KEY = "photonne.folders.sortDirection"
 
+/** Persisted key for the list/grid view mode (shared across folder screens). */
+internal const val FOLDERS_VIEW_MODE_KEY = "photonne.folders.viewMode"
+
+/** Read the persisted [FolderViewMode], defaulting to [FolderViewMode.List]. */
+internal fun readFolderViewMode(settings: Settings): FolderViewMode =
+    settings.getStringOrNull(FOLDERS_VIEW_MODE_KEY)
+        ?.let { runCatching { FolderViewMode.valueOf(it) }.getOrNull() }
+        ?: FolderViewMode.List
+
 /** Natural default direction when a criterion is freshly picked. */
 internal fun FolderSort.defaultDirection(): SortDirection = when (this) {
     FolderSort.Name -> SortDirection.Ascending // A→Z

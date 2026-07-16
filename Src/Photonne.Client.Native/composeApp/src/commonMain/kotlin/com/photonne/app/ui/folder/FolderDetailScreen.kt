@@ -10,13 +10,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -35,14 +40,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
 import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
-import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.AssetGridCell
+import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
@@ -117,70 +125,180 @@ fun FolderDetailScreen(
                     title = stringResource(Res.string.folders_empty_title),
                     subtitle = stringResource(Res.string.folders_empty_subtitle)
                 )
-            state.items.isEmpty() && state.subFolders.isNotEmpty() ->
-                // Sin rejilla, esta lista es la que llega al fondo de la
-                // pantalla: reserva ella el hueco de la nav flotante, que aquí
-                // además no se esconde al hacer scroll (ver gridActive).
-                SubfolderList(
-                    subFolders = state.subFolders,
-                    selectedSubfolderId = state.selectedSubfolderId,
-                    onSubfolderClick = onSubfolderClick,
-                    onSubfolderLongPress = onSubfolderLongPress,
-                    contentPadding = immersiveContentPadding
-                )
-            else -> Column(modifier = Modifier.fillMaxSize()) {
-                if (state.subFolders.isNotEmpty()) {
-                    // Esta lista se queda con toda la altura del Column, así que
-                    // en la práctica es ella la que llega al fondo: reserva el
-                    // hueco de la nav flotante o sus últimas filas quedan
-                    // debajo, sin scroll con el que rescatarlas.
-                    SubfolderList(
-                        subFolders = state.subFolders,
-                        selectedSubfolderId = state.selectedSubfolderId,
-                        onSubfolderClick = onSubfolderClick,
-                        onSubfolderLongPress = onSubfolderLongPress,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = immersiveContentPadding
-                    )
-                    HorizontalDivider()
-                }
-                AssetGrid(
-                    items = state.items,
-                    baseUrl = apiBaseUrl,
-                    gridState = gridState,
-                    contentPadding = immersiveContentPadding,
-                    onItemClick = onItemClick,
-                    onItemLongClick = onItemLongClick,
-                    selectedIds = state.selection,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            // Subcarpetas y assets comparten un único LazyVerticalGrid para que
+            // haya un solo scroll: antes eran un LazyColumn sobre un
+            // LazyVerticalGrid dentro de una Column, y la lista se quedaba con
+            // casi todo el alto, aplastando la rejilla de fotos.
+            else -> FolderDetailGrid(
+                subFolders = state.subFolders,
+                items = state.items,
+                baseUrl = apiBaseUrl,
+                isGrid = state.viewMode == FolderViewMode.Grid,
+                selectedSubfolderId = state.selectedSubfolderId,
+                selection = state.selection,
+                gridState = gridState,
+                contentPadding = immersiveContentPadding,
+                onItemClick = onItemClick,
+                onItemLongClick = onItemLongClick,
+                onSubfolderClick = onSubfolderClick,
+                onSubfolderLongPress = onSubfolderLongPress
+            )
         }
     }
 }
 
+/**
+ * One scroll for the whole folder: subfolders (as full-width rows in List mode
+ * or square cards in Grid mode, mirroring the root folder screen) sit above the
+ * asset thumbnails inside a single [LazyVerticalGrid]. The subfolder cards keep
+ * some breathing room via their own padding while the asset cells stay tight.
+ */
 @Composable
-private fun SubfolderList(
+private fun FolderDetailGrid(
     subFolders: List<FolderSummary>,
+    items: List<TimelineItem>,
+    baseUrl: String,
+    isGrid: Boolean,
     selectedSubfolderId: String?,
+    selection: Set<String>,
+    gridState: LazyGridState,
+    contentPadding: PaddingValues,
+    onItemClick: (Int) -> Unit,
+    onItemLongClick: (Int) -> Unit,
     onSubfolderClick: (FolderSummary) -> Unit,
-    onSubfolderLongPress: (FolderSummary) -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
+    onSubfolderLongPress: (FolderSummary) -> Unit
 ) {
-    LazyColumn(
-        modifier = modifier,
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(minSize = 110.dp),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier.fillMaxSize()
     ) {
-        items(subFolders, key = { it.id }) { folder ->
-            SubfolderRow(
-                folder = folder,
-                isSelected = selectedSubfolderId == folder.id,
-                onClick = { onSubfolderClick(folder) },
-                onLongPress = { onSubfolderLongPress(folder) }
+        if (subFolders.isNotEmpty()) {
+            if (isGrid) {
+                items(
+                    subFolders,
+                    key = { "subfolder-${it.id}" },
+                    contentType = { "subfolder-card" }
+                ) { folder ->
+                    SubfolderCard(
+                        folder = folder,
+                        isSelected = selectedSubfolderId == folder.id,
+                        onClick = { onSubfolderClick(folder) },
+                        onLongPress = { onSubfolderLongPress(folder) }
+                    )
+                }
+            } else {
+                items(
+                    subFolders,
+                    key = { "subfolder-${it.id}" },
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = { "subfolder-row" }
+                ) { folder ->
+                    SubfolderRow(
+                        folder = folder,
+                        isSelected = selectedSubfolderId == folder.id,
+                        onClick = { onSubfolderClick(folder) },
+                        onLongPress = { onSubfolderLongPress(folder) }
+                    )
+                }
+            }
+            if (items.isNotEmpty()) {
+                item(
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "section-divider"
+                ) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                }
+            }
+        }
+        itemsIndexed(
+            items,
+            key = { index, item -> assetCellKey(item, index) }
+        ) { index, asset ->
+            AssetGridCell(
+                asset = asset,
+                baseUrl = baseUrl,
+                onClick = { onItemClick(index) },
+                onLongClick = { onItemLongClick(index) },
+                isSelected = asset.id in selection
             )
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SubfolderCard(
+    folder: FolderSummary,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            // The grid arrangement is tight (matching the asset cells); this
+            // per-cell padding gives the folder cards their own breathing room.
+            .padding(4.dp)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (isSelected) Modifier.border(
+                        width = 3.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp)
+                    ) else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(56.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(6.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "${folder.assetCount}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .background(Color.White, shape = RoundedCornerShape(50))
+                        .padding(2.dp)
+                        .size(20.dp)
+                )
+            }
+        }
+        Text(
+            text = folder.name.ifBlank { folder.path },
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 1
+        )
     }
 }
 

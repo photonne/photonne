@@ -141,9 +141,7 @@ class FoldersViewModel(
     private fun loadInitialState(): FoldersUiState {
         val sort = readFolderSort(settings)
         val direction = readFolderDirection(settings, sort)
-        val viewMode = settings.getStringOrNull(KEY_VIEW_MODE)
-            ?.let { runCatching { FolderViewMode.valueOf(it) }.getOrNull() }
-            ?: FolderViewMode.List
+        val viewMode = readFolderViewMode(settings)
         return FoldersUiState(sort = sort, direction = direction, viewMode = viewMode)
     }
 
@@ -185,7 +183,7 @@ class FoldersViewModel(
     }
 
     fun setViewMode(mode: FolderViewMode) {
-        settings.putString(KEY_VIEW_MODE, mode.name)
+        settings.putString(FOLDERS_VIEW_MODE_KEY, mode.name)
         _state.update { it.copy(viewMode = mode) }
     }
 
@@ -388,10 +386,6 @@ class FoldersViewModel(
                 moveDestinations = sorted(writableMoveDestinations(allFolders, username))
             )
         }
-    }
-
-    private companion object {
-        private const val KEY_VIEW_MODE = "photonne.folders.viewMode"
     }
 }
 
