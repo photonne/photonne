@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -33,12 +34,15 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.grid.TimelineRowEntry
+import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import dev.chrisbanes.haze.HazeState
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -91,6 +95,8 @@ internal fun TimelineScrubber(
      * while the finger is down.
      */
     onDraggingChange: (Boolean) -> Unit = {},
+    /** Blur source (the grid); falls back to a solid gray when null. */
+    hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
     if (rows.size < MIN_ROWS_FOR_SCRUBBER) return
@@ -236,32 +242,38 @@ internal fun TimelineScrubber(
         ) {
             Surface(
                 shape = RoundedCornerShape(50),
-                color = if (isDragging) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 3.dp,
+                // Cristal esmerilado como el resto del cromo. El mango pierde el
+                // realce primaryContainer que tenía al arrastrar: ahora va siempre
+                // cristal, a juego con la píldora de fecha y el botón de subir.
+                color = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 shadowElevation = 2.dp,
                 modifier = Modifier
                     .padding(end = 6.dp)
                     .width(HandleWidth)
                     .height(HandleHeight)
             ) {
+              Box {
+                Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowUp,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(18.dp)
                     )
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(18.dp)
                     )
                 }
+              }
             }
         }
 
@@ -285,10 +297,9 @@ internal fun TimelineScrubber(
         if (handleLabel.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(50),
-                // Match the "scroll to top" pill / scrubber handle so the chrome
-                // reads as one system and adapts to light/dark automatically.
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 3.dp,
+                // Cristal esmerilado, a juego con el mango y el botón de subir.
+                color = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 shadowElevation = 2.dp,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -298,12 +309,15 @@ internal fun TimelineScrubber(
                     .offset(y = 18.dp)
                     .padding(end = HandleTouchWidth + 6.dp)
             ) {
+              Box {
+                Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
                 Text(
                     text = handleLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                 )
+              }
             }
         }
     }

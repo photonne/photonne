@@ -80,8 +80,11 @@ import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineRowEntry
+import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.TimelineTopBar
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.grid.bucketKeyOf
 import com.photonne.app.ui.grid.buildBucketEntries
@@ -154,6 +157,12 @@ fun TimelineScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
     val gridState = rememberLazyListState()
+    // Fuente de blur de TODO el cromo del timeline (píldora superior, scrubber,
+    // botón de subir). Su fuente es SOLO la rejilla (ver `hazeSource` más abajo),
+    // así que las cápsulas quedan como HERMANAS de ella y no descendientes — la
+    // regla de Haze. No se reusa el estado global de MainScaffold porque la
+    // píldora vive dentro del contenido y colgaría de su propia fuente.
+    val gridHazeState = remember { HazeState() }
 
     // Immersive chrome (floating top pill + bottom nav). It hides only while
     // the user is actively scrolling DOWN, and comes back the moment they
@@ -871,7 +880,10 @@ fun TimelineScreen(
                             // base keeps showing the chrome above it (Recuerdos /
                             // pinned header) instead of it blinking out.
                             userScrollEnabled = !reflowActive,
-                            modifier = Modifier.fillMaxSize()
+                            // Única fuente de blur del cromo del timeline: SOLO la
+                            // rejilla, no el `when` entero (el scrubber / scroll-to-
+                            // top cuelgan de ahí y no deben ser la fuente).
+                            modifier = Modifier.fillMaxSize().hazeSource(gridHazeState)
                         )
 
                         // Per-cell dissolve layer. Top-left mode (Day/Month) anchors
@@ -929,6 +941,7 @@ fun TimelineScreen(
                         rows = rows,
                         headerItemCount = if (hasMemoriesHeader) 1 else 0,
                         onDraggingChange = { dragging -> isScrubbing = dragging },
+                        hazeState = gridHazeState,
                         // Start the track below the top chrome (status bar +
                         // docked bar / floating action pill), which also hugs the
                         // top-end corner. Otherwise the handle rides up behind the
@@ -943,6 +956,7 @@ fun TimelineScreen(
                     ScrollToTopButton(
                         gridState = gridState,
                         suppressed = isScrubbing || state.isSelectionActive,
+                        hazeState = gridHazeState,
                         // Float above the bottom nav / system buttons rather than
                         // over them (the grid is edge-to-edge at the bottom now).
                         modifier = Modifier
@@ -983,6 +997,7 @@ fun TimelineScreen(
                         onOpenSearch = onOpenSearch,
                         deviceLoading = deviceBackupState.isBackupEnabled &&
                             deviceBackupState.isLoading,
+                        hazeState = gridHazeState,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .graphicsLayer { alpha = chromeAlpha }
@@ -1015,6 +1030,8 @@ private fun ScrollToTopButton(
     gridState: LazyListState,
     /** Hidden while scrubbing or selecting, where it would just be noise. */
     suppressed: Boolean,
+    /** Blur source (the grid); falls back to a solid gray when null. */
+    hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -1051,10 +1068,14 @@ private fun ScrollToTopButton(
                 }
             },
             shape = RoundedCornerShape(50),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 3.dp,
+            // Cristal esmerilado como el resto del cromo: transparente + fondo de
+            // blur, contenido en onSurface (blanco en oscuro).
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 2.dp
         ) {
+          Box {
+            Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1063,15 +1084,16 @@ private fun ScrollToTopButton(
                 Icon(
                     imageVector = Icons.Filled.KeyboardArrowUp,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = stringResource(Res.string.timeline_scroll_to_top),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
+          }
         }
     }
 }

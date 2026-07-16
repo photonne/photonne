@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,6 +77,8 @@ import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -104,6 +107,9 @@ fun AlbumDetailScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
     val gridState = rememberLazyGridState()
+    // Fuente de blur del scrubber del álbum: la rejilla que scrollea por detrás,
+    // de la que el scrubber es hermano.
+    val albumHazeState = remember { HazeState() }
     var showSortSheet by rememberSaveable { mutableStateOf(false) }
     if (immersive) {
         ImmersiveChromeEffect(
@@ -218,13 +224,14 @@ fun AlbumDetailScreen(
                         displayItems.getOrNull(index)?.let { viewModel.toggleSelection(it.id) }
                     },
                     selectedIds = state.selection,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().hazeSource(albumHazeState),
                     header = hero
                 )
                 AlbumGridScrubber(
                     gridState = gridState,
                     cellCount = displayItems.size,
                     headerCount = 1,
+                    hazeState = albumHazeState,
                     // Always surface the capture month of the topmost photo so the
                     // user can see "which date am I in" — the whole point of the
                     // scrubber. In album/custom order it isn't strictly monotonic,

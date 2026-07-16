@@ -105,10 +105,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import com.photonne.app.ui.main.CompactNavBarContentHeight
 import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
 import com.photonne.app.ui.main.FloatingNavBarShape
+import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -200,6 +202,12 @@ fun AssetDetailScreen(
     val tokenStorage: TokenStorage = koinInject()
     val state by viewModel.state.collectAsState()
     val details by viewModel.details.collectAsState()
+
+    // Fuente de blur del cromo del visor. Su fuente es el pager de la foto, así
+    // que las barras (superior + acciones + slideshow) son HERMANAS de la foto y
+    // la difuminan de verdad. Vive fuera de MainScaffold → estado propio, pasado
+    // por parámetro a cada cápsula (no por composition local).
+    val viewerHazeState = remember { HazeState() }
 
     val pagerState = rememberPagerState(initialPage = startIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) {
         items.size
@@ -480,7 +488,10 @@ fun AssetDetailScreen(
                 // only disabled while zoomed.
                 userScrollEnabled = currentScale <= PAGER_DISABLE_THRESHOLD,
                 pageSpacing = PAGER_PAGE_SPACING,
-                modifier = Modifier.fillMaxSize().then(dismissTransform)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(viewerHazeState)
+                    .then(dismissTransform)
             ) { page ->
                 val item = items[page]
                 val isCurrent = page == pagerState.currentPage
@@ -648,10 +659,22 @@ fun AssetDetailScreen(
             ) {
                 Surface(
                     shape = FloatingNavBarShape,
-                    color = ViewerCapsuleColor,
+                    // Cristal esmerilado: transparente + fondo de blur. El gris se
+                    // fija OSCURO en ambos temas (ViewerChromeColor) porque el
+                    // cromo va blanco sobre la foto.
+                    color = Color.Transparent,
                     contentColor = Color.White,
                     shadowElevation = 6.dp
                 ) {
+                  Box {
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .chromeCapsuleBackdrop(
+                                baseColor = ViewerChromeColor,
+                                hazeState = viewerHazeState
+                            )
+                    )
                 TopAppBar(
                     windowInsets = WindowInsets(0),
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -778,6 +801,7 @@ fun AssetDetailScreen(
                         }
                     }
                 )
+                  }
                 }
             }
             }
@@ -821,6 +845,7 @@ fun AssetDetailScreen(
                     if (!landscapeMode) {
                         AssetActionsBottomBar(
                             item = currentItem,
+                            hazeState = viewerHazeState,
                             isFavorite = currentIsFavorite,
                             showOverflow = showOverflow,
                             onShowOverflowChange = { showOverflow = it },
@@ -851,6 +876,7 @@ fun AssetDetailScreen(
             if (slideshowActive) {
                 SlideshowControls(
                     isPaused = slideshowPaused,
+                    hazeState = viewerHazeState,
                     intervalSec = slideshowIntervalSec,
                     onTogglePause = { slideshowPaused = !slideshowPaused },
                     onPrevious = {
@@ -1433,9 +1459,18 @@ private fun LivePhotoBadge(
     Surface(
         modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
         shape = RoundedCornerShape(20.dp),
-        color = Color.Black.copy(alpha = if (active) 0.55f else 0.4f),
+        color = Color.Transparent,
         contentColor = Color.White
     ) {
+      Box {
+        // Vive DENTRO del pager (descendiente de la fuente de blur) → no puede
+        // difuminar de verdad; cae al gris sólido de reserva. Es un badge, no un
+        // menú, así que basta con unificar el color.
+        Box(
+            Modifier
+                .matchParentSize()
+                .chromeCapsuleBackdrop(baseColor = ViewerChromeColor)
+        )
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1453,6 +1488,7 @@ private fun LivePhotoBadge(
                 color = Color.White
             )
         }
+      }
     }
 }
 
@@ -2162,6 +2198,7 @@ private fun authHeadersFor(tokenStorage: TokenStorage): Map<String, String> {
 @Composable
 private fun SlideshowControls(
     isPaused: Boolean,
+    hazeState: HazeState? = null,
     intervalSec: Int,
     onTogglePause: () -> Unit,
     onPrevious: () -> Unit,
@@ -2172,11 +2209,19 @@ private fun SlideshowControls(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(28.dp),
-        color = Color.Black.copy(alpha = 0.7f),
+        shape = FloatingNavBarShape,
+        // Misma cápsula de cristal que el resto del cromo del visor; es hermana
+        // del pager, así que difumina la foto de verdad.
+        color = Color.Transparent,
         contentColor = Color.White,
-        tonalElevation = 0.dp
+        shadowElevation = 6.dp
     ) {
+      Box {
+        Box(
+            Modifier
+                .matchParentSize()
+                .chromeCapsuleBackdrop(baseColor = ViewerChromeColor, hazeState = hazeState)
+        )
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -2220,6 +2265,7 @@ private fun SlideshowControls(
                 )
             }
         }
+      }
     }
 }
 
@@ -2369,9 +2415,6 @@ private fun AssetThumbnailStrip(
  */
 private val ViewerChromeColor = Color(0xFF141416)
 
-/** Cápsulas de acciones: translúcidas, como la nav flotante (que va al 90%). */
-private val ViewerCapsuleColor = ViewerChromeColor.copy(alpha = 0.92f)
-
 /** Aire entre el asset y el cromo flotante, y entre las piezas del cromo. */
 private val ChromeGap = 12.dp
 
@@ -2379,6 +2422,7 @@ private val ChromeGap = 12.dp
 @Composable
 private fun AssetActionsBottomBar(
     item: TimelineItem,
+    hazeState: HazeState? = null,
     isFavorite: Boolean,
     showOverflow: Boolean,
     onShowOverflowChange: (Boolean) -> Unit,
@@ -2410,20 +2454,29 @@ private fun AssetActionsBottomBar(
                 start = FloatingNavBarHorizontalMargin,
                 end = FloatingNavBarHorizontalMargin,
                 bottom = FloatingNavBarBottomMargin
-            )
+            ),
+        // Cápsula compacta y ceñida a sus iconos, centrada, en vez de ocupar todo
+        // el ancho: como el asset ya no lleva nada apoyado encima, no hace falta
+        // que la barra abarque la pantalla.
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             shape = FloatingNavBarShape,
-            color = ViewerCapsuleColor,
+            color = Color.Transparent,
             contentColor = Color.White,
             shadowElevation = 6.dp
         ) {
+          Box {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .chromeCapsuleBackdrop(baseColor = ViewerChromeColor, hazeState = hazeState)
+            )
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(CompactNavBarContentHeight)
+                .height(48.dp)
                 .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (item.isLocalOnly) {
@@ -2509,6 +2562,7 @@ private fun AssetActionsBottomBar(
                 }
             }
         }
+          }
         }
     }
 }

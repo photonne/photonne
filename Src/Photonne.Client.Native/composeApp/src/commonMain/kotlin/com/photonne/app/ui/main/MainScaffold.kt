@@ -82,7 +82,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -105,6 +104,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -189,9 +189,12 @@ import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
 import com.photonne.app.resources.timeline_device_loading
 import com.photonne.app.resources.upload_title
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.theme.photonneLogoPainter
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -237,6 +240,14 @@ fun MainScaffold(
     val resolvedBottomBar = bottomBar ?: {
         MainNavigationBar(selectedTab, onTabSelected, moreTabUnreadCount)
     }
+    // Fuente de blur compartida por el cromo flotante. La publica el composition
+    // local para que la nav (y la barra de selección) difumine el contenido de la
+    // pantalla activa aunque viva en un slot aparte del Scaffold: la nav es
+    // HERMANA del contenido (no descendiente), así que no infringe la regla de
+    // Haze. Las pantallas con scroll propio (timeline, álbum, visor, mapa) vuelven
+    // a publicar su propio estado para sus cápsulas internas.
+    val chromeHazeState = remember { HazeState() }
+    CompositionLocalProvider(LocalChromeHazeState provides chromeHazeState) {
     Scaffold(
         topBar = topBar,
         bottomBar = {
@@ -279,9 +290,15 @@ fun MainScaffold(
         } else {
             padding
         }
-        Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding)
+                .hazeSource(chromeHazeState)
+        ) {
             content()
         }
+    }
     }
 }
 
@@ -293,7 +310,7 @@ fun MainScaffold(
 // lo que flota abajo, incluida la barra de acciones del visor, que vive fuera de
 // este Scaffold. Lo que el visor NO comparte es el color: allí el cromo va sobre
 // la foto a sangre y tiene su propia paleta.
-internal val CompactNavBarContentHeight = 64.dp
+internal val CompactNavBarContentHeight = 56.dp
 
 // Márgenes que despegan la cápsula de los bordes de la pantalla.
 internal val FloatingNavBarHorizontalMargin = 12.dp
@@ -305,19 +322,20 @@ internal val FloatingNavBarBottomMargin = 8.dp
 private val FloatingNavBarContentGap = 12.dp
 // Cápsula completa, a juego con la píldora flotante del timeline.
 internal val FloatingNavBarShape = RoundedCornerShape(percent = 50)
-// Aire entre el borde de la cápsula y el sombreado del elemento activo. Deja el
-// pill del ítem en 48.dp de alto: el mínimo táctil, que es el que manda aquí.
-private val FloatingNavItemMargin = 8.dp
+// Aire entre el borde de la cápsula y el velo del elemento activo. Simétrico con
+// [FloatingNavBarItemsPadding] (el margen horizontal exterior) para que el pill
+// concéntrico deje el mismo hueco por los cuatro lados.
+private val FloatingNavItemMargin = 6.dp
 // Aire entre el pill del primer/último ítem y el borde de la cápsula, a juego
-// con el margen vertical para que el sombreado quede centrado en ella.
-private val FloatingNavBarItemsPadding = 8.dp
+// con el margen vertical para que el velo quede centrado en ella.
+private val FloatingNavBarItemsPadding = 6.dp
 // Hueco entre pills. Como la cápsula ya no reparte el ancho de la pantalla,
 // este gap es lo único que separa un ítem del siguiente.
 private val FloatingNavItemGap = 4.dp
 // El pill se ajusta a su etiqueta, pero no baja de aquí: sin un mínimo, "Más"
 // quedaría bastante más estrecho que "Carpetas" y la fila se leería irregular.
-private val FloatingNavItemMinWidth = 68.dp
-private val FloatingNavItemContentPadding = 16.dp
+private val FloatingNavItemMinWidth = 60.dp
+private val FloatingNavItemContentPadding = 14.dp
 
 /**
  * Hueco que debe reservar al final de su scroll una pantalla que dibuja a
@@ -355,21 +373,21 @@ private fun MainNavigationBar(
     ) {
         Surface(
             shape = FloatingNavBarShape,
-            // Mismo token que la barra acoplada usaba vía NavigationBarDefaults,
-            // solo que translúcido para que las fotos se lean por debajo. Ojo:
-            // `tonalElevation` sería un no-op aquí — Surface solo lo aplica cuando
-            // el color es exactamente `colorScheme.surface`, y este lleva alpha.
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
-            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
+            // Transparente: aporta forma + sombra y RECORTA el cristal a la
+            // cápsula. El esmerilado lo pinta el Box de fondo; el contenido va en
+            // `onSurface` (blanco en oscuro). `tonalElevation` sería un no-op aquí.
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp
         ) {
-            Row(
+          Box {
+            Box(Modifier.matchParentSize().chromeCapsuleBackdrop())
+            EqualWidthRow(
                 modifier = Modifier
                     .height(CompactNavBarContentHeight)
                     .padding(horizontal = FloatingNavBarItemsPadding)
                     .selectableGroup(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(FloatingNavItemGap)
+                horizontalGap = FloatingNavItemGap
             ) {
                 val timelineActive = selectedTab == MainTab.Timeline
                 FloatingNavBarItem(
@@ -435,6 +453,54 @@ private fun MainNavigationBar(
                     }
                 )
             }
+          }
+        }
+    }
+}
+
+/**
+ * Fila que iguala a TODOS sus hijos al ancho del más ancho (mide el
+ * `maxIntrinsicWidth` de cada uno y aplica el mayor a todos), y los ENCOGE en
+ * proporción si no caben en el ancho disponible para no desbordar. Así los ítems
+ * de la nav y de la barra de selección se ven regulares entre sí en vez de cada
+ * uno ceñido a su etiqueta.
+ */
+@Composable
+private fun EqualWidthRow(
+    modifier: Modifier = Modifier,
+    horizontalGap: Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    Layout(modifier = modifier, content = content) { measurables, constraints ->
+        if (measurables.isEmpty()) return@Layout layout(0, 0) {}
+        val gapPx = horizontalGap.roundToPx()
+        val count = measurables.size
+        val totalGap = gapPx * (count - 1)
+        val widest = measurables.maxOf { it.maxIntrinsicWidth(constraints.maxHeight) }
+        val hasBoundedWidth = constraints.maxWidth != Constraints.Infinity
+        val itemWidth = if (hasBoundedWidth) {
+            val available = ((constraints.maxWidth - totalGap) / count).coerceAtLeast(0)
+            minOf(widest, available)
+        } else {
+            widest
+        }
+        val itemConstraints = Constraints(
+            minWidth = itemWidth,
+            maxWidth = itemWidth,
+            minHeight = 0,
+            maxHeight = constraints.maxHeight
+        )
+        val placeables = measurables.map { it.measure(itemConstraints) }
+        val rowWidth = itemWidth * count + totalGap
+        val width = if (hasBoundedWidth) rowWidth.coerceAtMost(constraints.maxWidth) else rowWidth
+        val height = (placeables.maxOfOrNull { it.height } ?: 0)
+            .coerceIn(constraints.minHeight, constraints.maxHeight)
+        layout(width, height) {
+            var x = 0
+            placeables.forEach { placeable ->
+                placeable.placeRelative(x, (height - placeable.height) / 2)
+                x += itemWidth + gapPx
+            }
         }
     }
 }
@@ -458,27 +524,23 @@ private fun FloatingNavBarItem(
     label: String,
     icon: @Composable () -> Unit
 ) {
-    // Sombreado gris neutro que contrasta según el tema (claro/oscuro), en vez
-    // del color primary de la app.
-    val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    // El contenido va SIEMPRE en blanco (onSurface), activo o no. El activo se
+    // marca con dos cosas: el icono relleno (lo pone el llamador) Y un velo
+    // concéntrico recortado con la forma de la cápsula. El ancho lo iguala el
+    // [EqualWidthRow] padre, así que aquí solo se ciñe a su contenido.
     Box(
         modifier = Modifier
             .fillMaxHeight()
             .padding(vertical = FloatingNavItemMargin)
             .clip(FloatingNavBarShape)
-            .background(
-                if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
-            )
+            .background(if (selected) chromeActivePillColor() else Color.Transparent)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .widthIn(min = FloatingNavItemMinWidth)
             .padding(horizontal = FloatingNavItemContentPadding),
         contentAlignment = Alignment.Center
     ) {
-        CompositionLocalProvider(LocalContentColor provides contentColor) {
+        CompositionLocalProvider(
+            LocalContentColor provides MaterialTheme.colorScheme.onSurface
+        ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -486,7 +548,7 @@ private fun FloatingNavBarItem(
                 icon()
                 Text(
                     label,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -502,13 +564,12 @@ private fun FloatingNavBarItem(
  * selección se lee como que la cápsula cambia de contenido, no como que aparece
  * otra barra encima.
  *
- * Lo único que no hereda es la estrategia de ancho: la nav se ciñe a sus cuatro
- * ítems y va centrada, pero aquí hay hasta seis y en pantallas estrechas no
- * caben ceñidos. Esta cápsula ocupa el ancho disponible y reparte sus ítems con
- * `weight`, igual que hacía el `NavigationBar` que sustituye.
+ * Comparte también la estrategia de ancho: se ciñe a sus ítems, va centrada y
+ * los iguala entre sí con el mismo [EqualWidthRow] que la nav. Si en una pantalla
+ * estrecha no caben, el row los encoge en proporción en vez de desbordar.
  */
 @Composable
-private fun FloatingSelectionBar(content: @Composable RowScope.() -> Unit) {
+private fun FloatingSelectionBar(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -517,25 +578,26 @@ private fun FloatingSelectionBar(content: @Composable RowScope.() -> Unit) {
                 start = FloatingNavBarHorizontalMargin,
                 end = FloatingNavBarHorizontalMargin,
                 bottom = FloatingNavBarBottomMargin
-            )
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             shape = FloatingNavBarShape,
-            // Mismos tokens que la nav flotante. Ojo con `tonalElevation`: sería
-            // un no-op porque el color lleva alpha (ver [MainNavigationBar]).
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
-            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
+            // Mismo patrón de cápsula que la nav: transparente + cristal de fondo.
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp
         ) {
-            Row(
+          Box {
+            Box(Modifier.matchParentSize().chromeCapsuleBackdrop())
+            EqualWidthRow(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .height(CompactNavBarContentHeight)
                     .padding(horizontal = FloatingNavBarItemsPadding),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(FloatingNavItemGap),
+                horizontalGap = FloatingNavItemGap,
                 content = content
             )
+          }
         }
     }
 }
@@ -544,15 +606,16 @@ private fun FloatingSelectionBar(content: @Composable RowScope.() -> Unit) {
  * Un botón de la cápsula de selección. Hermano de [FloatingNavBarItem], pero sin
  * estado seleccionado: estos ítems disparan una acción, no marcan dónde estás.
  *
- * Se reparte el ancho con `weight` en vez de medirse por su contenido, y el
- * ripple queda recortado a la misma forma que la cápsula.
+ * Se mide por su contenido (con un mínimo) y lo iguala el [EqualWidthRow] padre,
+ * en vez de repartirse el ancho con `weight`; el ripple queda recortado a la
+ * misma forma que la cápsula.
  *
  * [tint] es para las acciones destructivas; si no se pasa, hereda el color de la
  * cápsula. Deshabilitado baja el alpha del conjunto (icono + etiqueta) al 0.38
  * que usa Material para el estado disabled.
  */
 @Composable
-private fun RowScope.FloatingSelectionBarItem(
+private fun FloatingSelectionBarItem(
     onClick: () -> Unit,
     enabled: Boolean,
     label: String,
@@ -563,11 +626,11 @@ private fun RowScope.FloatingSelectionBarItem(
     val contentColor = if (enabled) base else base.copy(alpha = 0.38f)
     Box(
         modifier = Modifier
-            .weight(1f)
             .fillMaxHeight()
             .padding(vertical = FloatingNavItemMargin)
             .clip(FloatingNavBarShape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick)
+            .widthIn(min = FloatingNavItemMinWidth),
         contentAlignment = Alignment.Center
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
@@ -629,6 +692,13 @@ fun TimelineTopBar(
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
     deviceLoading: Boolean = false,
+    /**
+     * Fuente de blur de la píldora, pasada explícitamente por el timeline (es la
+     * rejilla que scrollea por detrás). Sin ella la píldora cae al gris de
+     * reserva. No se hereda por el composition local porque la píldora es
+     * descendiente del contenido de `MainScaffold`, no de la rejilla.
+     */
+    hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
     val dockedFraction by animateFloatAsState(
@@ -662,12 +732,21 @@ fun TimelineTopBar(
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(top = 8.dp, end = 8.dp),
             shape = RoundedCornerShape(percent = 50),
-            // Fades in as the docked backdrop fades out. No tonalElevation: it's
-            // a no-op under a colour that carries alpha.
-            color = MaterialTheme.colorScheme.surface
-                .copy(alpha = 0.72f * (1f - dockedFraction)),
+            // Transparente: la Surface aporta forma + sombra y recorta el cristal.
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 4.dp * (1f - dockedFraction)
         ) {
+          Box {
+            // El cristal se desvanece a medida que la barra se acopla (arriba del
+            // todo el fondo lo pone el TopAppBar acoplado que hay detrás); los
+            // iconos de la fila comparten posición pero siguen opacos.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 1f - dockedFraction }
+                    .chromeCapsuleBackdrop(hazeState = hazeState)
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 2.dp)
@@ -721,6 +800,7 @@ fun TimelineTopBar(
                     )
                 }
             }
+          }
         }
     }
 }

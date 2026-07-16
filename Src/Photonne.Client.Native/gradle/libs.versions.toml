@@ -16,6 +16,7 @@ koin = "4.0.0"
 multiplatformSettings = "1.2.0"
 sqldelight = "2.1.0"
 coil = "3.0.4"
+haze = "1.5.4"
 uuid = "0.8.4"
 kotlinTest = "2.1.0"
 
@@ -64,6 +65,8 @@ sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", versi
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 coil-video = { module = "io.coil-kt.coil3:coil-video", version.ref = "coil" }
+
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 

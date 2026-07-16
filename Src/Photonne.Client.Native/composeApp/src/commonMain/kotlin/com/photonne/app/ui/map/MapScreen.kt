@@ -19,12 +19,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.map_action_fit_to_data
 import com.photonne.app.resources.map_action_zoom_in
@@ -42,6 +47,9 @@ fun MapScreen(
     val state by viewModel.state.collectAsState()
     val apiBaseUrl = rememberApiBaseUrl()
     val darkTiles = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    // Los tiles de OsmMap se pintan con Coil (AsyncImage) → contenido Compose que
+    // Haze SÍ puede difuminar. Los toasts son hermanos del mapa, así que lo leen.
+    val mapHazeState = remember { HazeState() }
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
@@ -57,7 +65,7 @@ fun MapScreen(
             onZoomChanged = viewModel::onZoomChanged,
             onClusterClick = viewModel::openClusterSheet,
             onPointClick = onPointOpen,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().hazeSource(mapHazeState)
         )
 
         when {
@@ -67,14 +75,17 @@ fun MapScreen(
                         .align(Alignment.TopCenter)
                         .padding(top = 16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    tonalElevation = 4.dp
+                    color = Color.Transparent
                 ) {
+                  Box {
+                    Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = mapHazeState))
                     Box(modifier = Modifier.padding(12.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(
                             strokeWidth = 2.dp,
                             modifier = Modifier.padding(2.dp)
                         )
                     }
+                  }
                 }
             state.firstLoadComplete && state.points.isEmpty() ->
                 Surface(
@@ -82,8 +93,11 @@ fun MapScreen(
                         .align(Alignment.Center)
                         .padding(24.dp),
                     shape = RoundedCornerShape(16.dp),
-                    tonalElevation = 4.dp
+                    color = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
+                  Box {
+                    Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = mapHazeState))
                     Column(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -99,6 +113,7 @@ fun MapScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                  }
                 }
         }
 
