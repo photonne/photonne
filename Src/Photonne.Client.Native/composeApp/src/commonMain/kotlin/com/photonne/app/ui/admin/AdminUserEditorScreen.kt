@@ -50,6 +50,7 @@ import com.photonne.app.resources.admin_user_field_password
 import com.photonne.app.resources.admin_user_field_quota_mb
 import com.photonne.app.resources.admin_user_field_quota_mb_hint
 import com.photonne.app.resources.admin_user_promote_success
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
@@ -118,7 +119,7 @@ fun AdminUserEditorScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(

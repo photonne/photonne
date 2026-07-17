@@ -55,6 +55,7 @@ import com.photonne.app.resources.admin_libraries_no_scan
 import com.photonne.app.resources.admin_libraries_permissions_empty
 import com.photonne.app.resources.admin_libraries_permissions_title
 import com.photonne.app.resources.admin_libraries_scan_progress
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,7 +137,7 @@ fun AdminLibrariesScreen(
             else ->
                 LazyColumn(
                     contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()

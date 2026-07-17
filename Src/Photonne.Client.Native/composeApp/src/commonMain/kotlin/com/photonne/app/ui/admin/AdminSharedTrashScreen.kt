@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -282,7 +283,10 @@ fun AdminSharedTrashScreen(viewModel: AdminSharedTrashViewModel) {
             }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = 8.dp + floatingNavBarReservedHeight()
+                )
             ) {
                 items(state.items, key = { it.id }) { item ->
                     SharedTrashRow(

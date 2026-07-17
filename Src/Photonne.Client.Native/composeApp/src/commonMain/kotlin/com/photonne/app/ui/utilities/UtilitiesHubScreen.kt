@@ -35,6 +35,7 @@ import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_large_files_subtitle
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_section_locations_subtitle
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -74,7 +75,7 @@ fun UtilitiesHubScreen(onOpen: (UtilitiesEntry) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         entries.forEach { entry ->

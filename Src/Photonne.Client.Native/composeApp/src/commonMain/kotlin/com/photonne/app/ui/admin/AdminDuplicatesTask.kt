@@ -44,6 +44,7 @@ import com.photonne.app.resources.admin_duplicates_stats_total
 import com.photonne.app.resources.admin_duplicates_stats_unindexed
 import com.photonne.app.resources.admin_task_chip_completed
 import com.photonne.app.resources.admin_task_chip_running
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,7 +145,7 @@ fun AdminDuplicatesScreen(viewModel: AdminDuplicatesViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }

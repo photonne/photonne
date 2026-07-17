@@ -156,7 +156,12 @@ fun MoreScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
+        // Igual que Fotos/Álbumes/Carpetas: la lista dibuja a sangre y reserva al
+        // final el hueco de la nav flotante para que la última fila la despeje.
+        contentPadding = PaddingValues(
+            top = 24.dp,
+            bottom = 24.dp + floatingNavBarReservedHeight()
+        ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item("header") {

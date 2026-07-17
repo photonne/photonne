@@ -1840,7 +1840,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             edgeToEdgeBottom = timelineImmersive || albumsImmersive || foldersImmersive ||
                 albumDetailImmersive || folderDetailImmersive ||
                 timelineSelecting || albumsSelecting || foldersSelecting ||
-                albumDetailSelecting || folderDetailSelecting
+                albumDetailSelecting || folderDetailSelecting ||
+                // Toda subpantalla de Más (y Buscar), y el propio menú de Más,
+                // dibujan a sangre por debajo de la nav flotante como las pestañas
+                // principales; el hueco de la cápsula lo reserva cada pantalla en su
+                // propio scroll. Excepción: el editor de álbum inteligente monta su
+                // propio Scaffold (con su barra), así que sigue con el hueco que le
+                // reserva este Scaffold para no solaparse con la nav.
+                (moreSubscreen != null &&
+                    moreSubscreen != MoreSubscreen.CreateSmartAlbum) ||
+                selectedTab == MainTab.Search ||
+                (selectedTab == MainTab.More && moreSubscreen == null)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
             // Base layer: the four primary tabs live in a HorizontalPager so a

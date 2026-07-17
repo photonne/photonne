@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_server_checked_at
@@ -57,7 +58,7 @@ fun AdminServerScreen(viewModel: AdminServerViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Card(

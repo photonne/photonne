@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.settings.ThemePreference
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.appearance_dark
 import com.photonne.app.resources.appearance_light
@@ -38,7 +39,7 @@ fun AccountAppearanceScreen(viewModel: AppearanceViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(

@@ -49,6 +49,7 @@ import com.photonne.app.ui.charts.LegendItem
 import com.photonne.app.ui.charts.StackedBar
 import com.photonne.app.ui.charts.StackedSegment
 import com.photonne.app.ui.charts.rememberChartPalette
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -70,7 +71,7 @@ fun AccountStorageScreen(viewModel: AccountStorageViewModel) {
             val percentInt = state.usagePercent?.let { (it * 100f).toInt().coerceIn(0, 100) }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item { SectionHeader(stringResource(Res.string.storage_section_overview)) }

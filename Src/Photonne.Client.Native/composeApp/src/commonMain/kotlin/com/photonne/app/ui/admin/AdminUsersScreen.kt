@@ -39,6 +39,7 @@ import com.photonne.app.resources.admin_user_quota_format
 import com.photonne.app.resources.admin_user_role_admin
 import com.photonne.app.resources.admin_user_role_user
 import com.photonne.app.resources.admin_users_empty
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,7 +98,7 @@ fun AdminUsersScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

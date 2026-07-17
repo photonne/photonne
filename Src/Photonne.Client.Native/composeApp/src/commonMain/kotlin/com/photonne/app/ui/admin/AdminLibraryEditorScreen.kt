@@ -45,6 +45,7 @@ import com.photonne.app.resources.admin_libraries_field_cron
 import com.photonne.app.resources.admin_libraries_field_import_subfolders
 import com.photonne.app.resources.admin_libraries_field_name
 import com.photonne.app.resources.admin_libraries_field_path
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -86,7 +87,7 @@ fun AdminLibraryEditorScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(

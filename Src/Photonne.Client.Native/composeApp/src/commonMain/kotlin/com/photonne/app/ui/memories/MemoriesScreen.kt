@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -92,7 +93,10 @@ fun MemoriesScreen(
             // flush against the title bar.
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = 24.dp + floatingNavBarReservedHeight()
+                ),
             ) {
                 items(
                     items = state.rows,

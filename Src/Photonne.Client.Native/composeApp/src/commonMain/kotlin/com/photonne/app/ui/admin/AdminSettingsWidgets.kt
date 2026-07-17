@@ -48,6 +48,7 @@ import kotlin.math.roundToInt
 import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.resources.admin_settings_device_auto
 import com.photonne.app.resources.admin_settings_device_cpu
 import com.photonne.app.resources.admin_settings_device_gpu
@@ -82,7 +83,16 @@ fun AdminSettingsForm(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            // El padding es el modificador interno del scroll, así que hace de
+            // content-padding: reservar el hueco de la nav flotante en el `bottom`
+            // deja que el formulario pase a sangre por debajo de la cápsula y que
+            // la última fila la despeje (mismo estilo que Timeline/Álbumes).
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 16.dp + floatingNavBarReservedHeight()
+            ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         content()

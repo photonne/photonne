@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.PersonSuggestion
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.people_suggestions_accept
 import com.photonne.app.resources.people_suggestions_dismiss
@@ -100,7 +101,12 @@ fun PersonSuggestionsScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 130.dp),
                     state = gridState,
-                    contentPadding = PaddingValues(12.dp),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        top = 12.dp,
+                        end = 12.dp,
+                        bottom = 12.dp + floatingNavBarReservedHeight()
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()

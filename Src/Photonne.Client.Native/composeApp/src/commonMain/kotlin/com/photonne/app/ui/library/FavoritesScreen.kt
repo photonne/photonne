@@ -18,7 +18,9 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.favorites_empty_subtitle
 import com.photonne.app.resources.favorites_empty_title
+import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -66,6 +68,7 @@ fun FavoritesScreen(
                     isAppending = state.isAppending,
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
+                    contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight()),
                     modifier = Modifier.fillMaxWidth()
                 )
             }

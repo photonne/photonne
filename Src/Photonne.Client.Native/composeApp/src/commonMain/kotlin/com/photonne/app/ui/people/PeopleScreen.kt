@@ -39,6 +39,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.people_empty_subtitle
 import com.photonne.app.resources.people_empty_title
 import com.photonne.app.resources.people_unnamed
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -101,7 +102,12 @@ fun PeopleScreen(
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 88.dp),
                         state = gridState,
-                        contentPadding = PaddingValues(12.dp),
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            top = 12.dp,
+                            end = 12.dp,
+                            bottom = 12.dp + floatingNavBarReservedHeight()
+                        ),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxSize()

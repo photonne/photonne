@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
@@ -137,7 +138,10 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
+                .padding(16.dp)
+                // La rejilla del mapa dibuja a sangre bajo la nav flotante; sube los
+                // controles de zoom por encima de la cápsula.
+                .padding(bottom = floatingNavBarReservedHeight()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End
         ) {

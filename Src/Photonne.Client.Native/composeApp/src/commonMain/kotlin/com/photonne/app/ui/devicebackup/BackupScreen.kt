@@ -100,6 +100,7 @@ import com.photonne.app.resources.device_backup_free_space_dialog_message
 import com.photonne.app.resources.device_backup_free_space_dialog_title
 import com.photonne.app.resources.device_backup_free_space_in_progress
 import com.photonne.app.resources.device_backup_not_supported
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.stringResource
 
@@ -153,7 +154,7 @@ fun BackupScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item("enable") {

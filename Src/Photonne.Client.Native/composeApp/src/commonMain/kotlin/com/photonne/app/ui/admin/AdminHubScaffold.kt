@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 
 /** A single tappable entry in a hub list (Ajustes / Sistema). */
 data class AdminHubEntry(
@@ -46,7 +47,12 @@ fun AdminHubList(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 16.dp + floatingNavBarReservedHeight()
+            ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         entries.forEach { entry ->

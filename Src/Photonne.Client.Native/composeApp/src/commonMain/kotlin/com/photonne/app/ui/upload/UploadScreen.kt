@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +56,7 @@ import com.photonne.app.resources.upload_action_clear_finished
 import com.photonne.app.resources.upload_empty_subtitle
 import com.photonne.app.resources.upload_empty_title
 import com.photonne.app.resources.upload_summary
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import org.jetbrains.compose.resources.stringResource
 
@@ -98,7 +100,7 @@ fun UploadScreen(
         if (state.items.isEmpty()) {
             ClickableEmptyState(onPickFiles = onPickFiles)
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight())) {
                 items(state.items, key = { it.id }) { item ->
                     UploadRow(
                         item = item,

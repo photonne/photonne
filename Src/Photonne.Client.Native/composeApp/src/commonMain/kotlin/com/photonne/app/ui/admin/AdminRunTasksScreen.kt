@@ -148,6 +148,7 @@ import com.photonne.app.resources.admin_system_thumbnails
 import com.photonne.app.resources.admin_system_thumbnails_subtitle
 import com.photonne.app.ui.charts.LiveDot
 import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -1028,7 +1029,7 @@ fun AdminRunTasksScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         state.errorMessage?.let { msg ->

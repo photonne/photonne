@@ -38,6 +38,7 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.ui.album.smart.RuleConditionsEditor
 import com.photonne.app.ui.folder.FolderPickerDialog
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -70,7 +71,7 @@ fun OrganizeRuleScreen(
     // The VM instance is reused across navigations; start blank each time.
     LaunchedEffect(Unit) { viewModel.reset() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(bottom = floatingNavBarReservedHeight())) {
         Column(
             modifier = Modifier
                 .weight(1f)

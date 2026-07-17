@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -119,7 +120,10 @@ fun UtilitiesDuplicatesScreen(
                 else ->
                     LazyColumn(
                         contentPadding = PaddingValues(
-                            start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 96.dp + floatingNavBarReservedHeight()
                         ),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()

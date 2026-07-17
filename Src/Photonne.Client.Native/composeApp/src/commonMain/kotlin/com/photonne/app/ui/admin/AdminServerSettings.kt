@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_settings_device_local_url
@@ -90,7 +91,12 @@ fun AdminServerSettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 16.dp + floatingNavBarReservedHeight()
+            ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SettingTextField(

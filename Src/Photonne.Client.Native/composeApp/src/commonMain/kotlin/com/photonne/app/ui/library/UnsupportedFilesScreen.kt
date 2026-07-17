@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -64,7 +66,10 @@ fun UnsupportedFilesScreen(
                         title = stringResource(Res.string.unsupported_files_empty_title),
                         subtitle = stringResource(Res.string.unsupported_files_empty_subtitle)
                     )
-                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight())
+                ) {
                     itemsIndexed(state.items, key = { _, it -> it.id }) { index, file ->
                         // Page in more rows as the user nears the end of the list.
                         if (index >= state.items.size - LOAD_MORE_THRESHOLD) {

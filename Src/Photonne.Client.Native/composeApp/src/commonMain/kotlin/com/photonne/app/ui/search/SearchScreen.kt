@@ -42,7 +42,9 @@ import com.photonne.app.resources.search_idle_title
 import com.photonne.app.resources.search_input_hint
 import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
+import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -120,6 +122,7 @@ fun SearchScreen(
                         isAppending = state.isAppending,
                         isInitialLoading = state.isLoading,
                         onLoadMore = viewModel::loadMore,
+                        contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight()),
                         modifier = Modifier.fillMaxSize()
                     )
                 }

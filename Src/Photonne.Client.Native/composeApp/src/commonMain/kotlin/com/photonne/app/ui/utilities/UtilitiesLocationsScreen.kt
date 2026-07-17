@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -70,7 +71,10 @@ fun UtilitiesLocationsScreen(viewModel: UtilitiesLocationsViewModel) {
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 24.dp + floatingNavBarReservedHeight()
                 ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {

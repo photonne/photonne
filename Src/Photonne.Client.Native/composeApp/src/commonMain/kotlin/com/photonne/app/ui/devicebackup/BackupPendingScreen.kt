@@ -87,6 +87,7 @@ import com.photonne.app.resources.device_backup_intro
 import com.photonne.app.resources.device_backup_not_supported
 import com.photonne.app.resources.device_backup_progress
 import com.photonne.app.resources.device_backup_total
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -475,7 +476,7 @@ private fun MediaGrid(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 96.dp),
         contentPadding = PaddingValues(
-            start = 8.dp, end = 8.dp, top = 4.dp, bottom = 96.dp
+            start = 8.dp, end = 8.dp, top = 4.dp, bottom = 96.dp + floatingNavBarReservedHeight()
         ),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),

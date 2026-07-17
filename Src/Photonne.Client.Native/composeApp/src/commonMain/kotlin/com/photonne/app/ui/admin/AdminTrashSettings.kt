@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.data.models.TrashUserStat
 import com.photonne.app.ui.theme.actionButtonHeight
 import kotlinx.coroutines.launch
@@ -147,7 +148,12 @@ fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 16.dp + floatingNavBarReservedHeight()
+            ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(

@@ -38,6 +38,7 @@ import com.photonne.app.resources.account_section_security
 import com.photonne.app.resources.account_section_security_subtitle
 import com.photonne.app.resources.account_section_storage
 import com.photonne.app.resources.account_section_storage_subtitle
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -83,7 +84,7 @@ fun AccountSettingsScreen(onOpen: (AccountSettingsSection) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         entries.forEach { entry ->

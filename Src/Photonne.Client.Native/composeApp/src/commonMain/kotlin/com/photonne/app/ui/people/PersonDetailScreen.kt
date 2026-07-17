@@ -1,6 +1,7 @@
 package com.photonne.app.ui.people
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 
 @Composable
 fun PersonDetailScreen(
@@ -42,6 +44,7 @@ fun PersonDetailScreen(
                 isAppending = state.isAppending,
                 isInitialLoading = state.isInitialLoading,
                 onLoadMore = onLoadMore,
+                contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight()),
                 modifier = Modifier.fillMaxWidth()
             )
         }

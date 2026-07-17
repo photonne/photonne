@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -113,7 +114,10 @@ fun MyLinksScreen(modifier: Modifier = Modifier) {
                 )
                 else -> LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp),
+                    contentPadding = PaddingValues(
+                        top = 8.dp,
+                        bottom = 8.dp + floatingNavBarReservedHeight()
+                    ),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(state.links, key = { it.token }) { link ->

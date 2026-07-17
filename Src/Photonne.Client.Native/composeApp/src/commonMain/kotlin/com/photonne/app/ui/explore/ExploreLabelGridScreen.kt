@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_label_count
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -85,7 +86,12 @@ internal fun ExploreLabelGridScreen(
                 }
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp + floatingNavBarReservedHeight()
+                ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()

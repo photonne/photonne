@@ -44,6 +44,7 @@ import com.photonne.app.resources.admin_backup_media_warning
 import com.photonne.app.resources.admin_backup_restore_only_pwa
 import com.photonne.app.resources.admin_backup_section_download
 import com.photonne.app.resources.admin_backup_section_restore
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -115,7 +116,7 @@ fun AdminBackupScreen(viewModel: AdminBackupViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         state.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }

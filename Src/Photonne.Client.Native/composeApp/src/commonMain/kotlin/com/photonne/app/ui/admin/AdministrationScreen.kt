@@ -41,6 +41,7 @@ import com.photonne.app.resources.admin_section_system
 import com.photonne.app.resources.admin_section_system_subtitle
 import com.photonne.app.resources.admin_section_users
 import com.photonne.app.resources.admin_section_users_subtitle
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -98,7 +99,7 @@ fun AdministrationScreen(onOpen: (AdministrationSection) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         entries.forEach { entry ->

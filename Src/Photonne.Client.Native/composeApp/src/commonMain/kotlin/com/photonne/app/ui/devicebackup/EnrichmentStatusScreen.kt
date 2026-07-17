@@ -54,6 +54,7 @@ import com.photonne.app.resources.enrichment_task_object_detection
 import com.photonne.app.resources.enrichment_task_scene_classification
 import com.photonne.app.resources.enrichment_task_text_recognition
 import com.photonne.app.resources.enrichment_task_thumbnails
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -121,7 +122,7 @@ fun EnrichmentStatusScreen(viewModel: EnrichmentStatusViewModel) {
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + floatingNavBarReservedHeight()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items = state.items, key = { it.asset.assetId }) { item ->
