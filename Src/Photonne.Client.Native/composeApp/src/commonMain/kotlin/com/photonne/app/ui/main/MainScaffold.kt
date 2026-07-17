@@ -310,7 +310,7 @@ fun MainScaffold(
 // lo que flota abajo, incluida la barra de acciones del visor, que vive fuera de
 // este Scaffold. Lo que el visor NO comparte es el color: allí el cromo va sobre
 // la foto a sangre y tiene su propia paleta.
-internal val CompactNavBarContentHeight = 56.dp
+internal val CompactNavBarContentHeight = 64.dp
 
 // Márgenes que despegan la cápsula de los bordes de la pantalla.
 internal val FloatingNavBarHorizontalMargin = 12.dp
@@ -332,9 +332,12 @@ private val FloatingNavBarItemsPadding = 6.dp
 // Hueco entre pills. Como la cápsula ya no reparte el ancho de la pantalla,
 // este gap es lo único que separa un ítem del siguiente.
 private val FloatingNavItemGap = 4.dp
-// El pill se ajusta a su etiqueta, pero no baja de aquí: sin un mínimo, "Más"
-// quedaría bastante más estrecho que "Carpetas" y la fila se leería irregular.
-private val FloatingNavItemMinWidth = 60.dp
+// Ancho de cada ítem de las barras flotantes, COMPARTIDO por la nav y por las
+// barras de selección (asset/álbum/carpeta): no baja de este mínimo y lleva este
+// padding horizontal, y luego el EqualWidthRow iguala todos entre sí. Que ambos
+// ítems apliquen la misma pareja es lo que hace que un ítem de selección mida lo
+// mismo que uno de la nav en vez de quedar ceñido y estrecho.
+private val FloatingNavItemMinWidth = 64.dp
 private val FloatingNavItemContentPadding = 14.dp
 
 /**
@@ -535,6 +538,9 @@ private fun FloatingNavBarItem(
             .clip(FloatingNavBarShape)
             .background(if (selected) chromeActivePillColor() else Color.Transparent)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            // Misma pareja min-width + padding que el ítem de selección, así los
+            // dos tipos de barra flotante miden igual (ver constantes).
+            .widthIn(min = FloatingNavItemMinWidth)
             .padding(horizontal = FloatingNavItemContentPadding),
         contentAlignment = Alignment.Center
     ) {
@@ -630,7 +636,10 @@ private fun FloatingSelectionBarItem(
             .padding(vertical = FloatingNavItemMargin)
             .clip(FloatingNavBarShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .widthIn(min = FloatingNavItemMinWidth),
+            // Misma pareja min-width + padding que el ítem de la nav: antes solo
+            // tenía el mínimo y se ceñía al contenido, por eso se veía estrecho.
+            .widthIn(min = FloatingNavItemMinWidth)
+            .padding(horizontal = FloatingNavItemContentPadding),
         contentAlignment = Alignment.Center
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {

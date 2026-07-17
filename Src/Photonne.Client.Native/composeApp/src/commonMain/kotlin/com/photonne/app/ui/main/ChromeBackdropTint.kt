@@ -45,14 +45,27 @@ private const val ChromeTintAlpha = 0.6f
 private const val ChromeFallbackAlpha = 0.92f
 
 /**
- * Gris base del cristal, MÁS OSCURO que el fondo del ítem activo: el blur adopta
- * el color de las fotos de debajo, pero el tinte lo mantiene oscuro y por debajo
- * del velo del pill activo para que este siga contrastando.
+ * Gris base del cristal en tema OSCURO. Es la única fuente de verdad de este
+ * tono: la usa toda cápsula que hereda el gris por tema, y también el cromo del
+ * visor la reusa como su base fija en ambos temas (va blanco sobre foto). Así
+ * todas las cápsulas flotantes comparten la misma base clara y destacan por igual
+ * cuando lo que tienen debajo es oscuro. Es MÁS CLARO que el near-black anterior
+ * del visor (0x141416), que casi no se apreciaba sobre una foto oscura.
+ */
+internal val ChromeBaseGrayDark = Color(0xFF242428)
+
+/** Gris base del cristal en tema CLARO. */
+private val ChromeBaseGrayLight = Color(0xFFE9E9EE)
+
+/**
+ * Gris base del cristal por tema, MÁS OSCURO que el fondo del ítem activo: el
+ * blur adopta el color de las fotos de debajo, pero el tinte lo mantiene oscuro y
+ * por debajo del velo del pill activo para que este siga contrastando.
  */
 @Composable
 fun chromeBaseGray(): Color =
-    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFF242428)
-    else Color(0xFFE9E9EE)
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) ChromeBaseGrayDark
+    else ChromeBaseGrayLight
 
 /** Velo del ítem activo de la nav, concéntrico dentro de la cápsula. */
 @Composable

@@ -105,6 +105,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import com.photonne.app.ui.main.ChromeBaseGrayDark
+import com.photonne.app.ui.main.CompactNavBarContentHeight
 import com.photonne.app.ui.main.FloatingNavBarBottomMargin
 import com.photonne.app.ui.main.FloatingNavBarHorizontalMargin
 import com.photonne.app.ui.main.FloatingNavBarShape
@@ -2223,7 +2225,10 @@ private fun SlideshowControls(
                 .chromeCapsuleBackdrop(baseColor = ViewerChromeColor, hazeState = hazeState)
         )
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            // Misma altura vertical que el resto de cápsulas flotantes.
+            modifier = Modifier
+                .height(CompactNavBarContentHeight)
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -2408,12 +2413,13 @@ private fun AssetThumbnailStrip(
 }
 
 /**
- * Color base del cromo del visor. Es el mismo near-black al que el tema fija
- * `surfaceContainer` en oscuro, pero literal y no vía el tema: en claro ese token
- * se queda en el gris de Material y aquí los iconos son blancos, así que una
- * cápsula clara los borraría.
+ * Color base del cromo del visor: la misma base oscura del cristal que usan las
+ * demás cápsulas ([ChromeBaseGrayDark]), pero fijada en ambos temas y no por
+ * tema. El visor va blanco sobre la foto, así que en claro no puede coger el gris
+ * claro del tema (borraría los iconos); y en oscuro tiene que ser este gris (no
+ * un near-black) para destacar sobre una foto oscura, como la nav principal.
  */
-private val ViewerChromeColor = Color(0xFF141416)
+private val ViewerChromeColor = ChromeBaseGrayDark
 
 /** Aire entre el asset y el cromo flotante, y entre las piezas del cromo. */
 private val ChromeGap = 12.dp
@@ -2473,8 +2479,11 @@ private fun AssetActionsBottomBar(
                     .chromeCapsuleBackdrop(baseColor = ViewerChromeColor, hazeState = hazeState)
             )
         Row(
+            // Misma altura vertical que la nav / barra de selección: todas las
+            // cápsulas flotantes miden igual en vertical y solo cambian de ancho
+            // según sus ítems. Ceñida a los iconos (sin fillMaxWidth).
             modifier = Modifier
-                .height(48.dp)
+                .height(CompactNavBarContentHeight)
                 .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
