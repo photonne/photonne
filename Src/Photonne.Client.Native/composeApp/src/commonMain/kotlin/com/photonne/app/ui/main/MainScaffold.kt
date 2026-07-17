@@ -56,7 +56,6 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PhotoAlbum
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.Group
@@ -137,11 +136,8 @@ import com.photonne.app.resources.folder_selection_move
 import com.photonne.app.resources.folder_discovery_add
 import com.photonne.app.resources.folder_discovery_remove
 import com.photonne.app.resources.people_action_hide
-import com.photonne.app.resources.people_action_hide_hidden
 import com.photonne.app.resources.people_action_merge
-import com.photonne.app.resources.people_action_recluster
 import com.photonne.app.resources.people_action_rename
-import com.photonne.app.resources.people_action_show_hidden
 import com.photonne.app.resources.people_action_suggestions
 import com.photonne.app.resources.people_action_suggestions_accept_all
 import com.photonne.app.resources.people_action_suggestions_dismiss_all
@@ -158,7 +154,6 @@ import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_more
-import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.album_action_members
 import com.photonne.app.resources.album_action_new
 import com.photonne.app.resources.app_name
@@ -1659,34 +1654,6 @@ fun UploadTopBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapTopBar(
-    title: String,
-    onBack: () -> Unit,
-    onRefresh: () -> Unit
-) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
-        actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    contentDescription = stringResource(Res.string.action_refresh)
-                )
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun ArchivedTopBar(
     title: String,
     subtitle: String?,
@@ -1823,54 +1790,6 @@ fun FavoritesTopBar(
                         it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PeopleTopBar(
-    title: String,
-    onBack: () -> Unit,
-    onRecluster: () -> Unit,
-    showHidden: Boolean,
-    onToggleHidden: () -> Unit
-) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(Res.string.action_close)
-                )
-            }
-        },
-        title = { Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
-        actions = {
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = stringResource(Res.string.action_more)
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.people_action_recluster)) },
-                        onClick = { menuOpen = false; onRecluster() }
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (showHidden) stringResource(Res.string.people_action_hide_hidden)
-                                else stringResource(Res.string.people_action_show_hidden)
-                            )
-                        },
-                        onClick = { menuOpen = false; onToggleHidden() }
                     )
                 }
             }

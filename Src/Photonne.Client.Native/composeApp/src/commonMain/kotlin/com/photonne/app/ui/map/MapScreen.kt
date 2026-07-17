@@ -9,9 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,13 +31,17 @@ import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_refresh
 import com.photonne.app.resources.map_action_fit_to_data
 import com.photonne.app.resources.map_action_zoom_in
 import com.photonne.app.resources.map_empty_subtitle
 import com.photonne.app.resources.map_empty_title
+import com.photonne.app.resources.map_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -43,7 +49,8 @@ fun MapScreen(
     viewModel: MapViewModel,
     onPointOpen: (MapPoint) -> Unit,
     onClusterPhotoOpen: (List<MapPoint>, Int) -> Unit,
-    onBulkAddToAlbum: () -> Unit
+    onBulkAddToAlbum: () -> Unit,
+    onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val apiBaseUrl = rememberApiBaseUrl()
@@ -51,6 +58,10 @@ fun MapScreen(
     // Los tiles de OsmMap se pintan con Coil (AsyncImage) → contenido Compose que
     // Haze SÍ puede difuminar. Los toasts son hermanos del mapa, así que lo leen.
     val mapHazeState = remember { HazeState() }
+    // Las cápsulas de arriba flotan permanentemente (aquí no hay scroll que las
+    // acople ni las esconda), así que todo lo que se alinee arriba tiene que
+    // arrancar por debajo de ellas.
+    val reservedTop = subscreenChromeReservedTop()
 
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
@@ -74,7 +85,7 @@ fun MapScreen(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 16.dp),
+                        .padding(top = reservedTop + 8.dp),
                     shape = RoundedCornerShape(16.dp),
                     color = Color.Transparent
                 ) {
@@ -122,7 +133,8 @@ fun MapScreen(
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = reservedTop + 8.dp),
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = RoundedCornerShape(8.dp)
             ) {
@@ -174,6 +186,24 @@ fun MapScreen(
                 )
             }
         }
+
+        // `scroll = null`: el mapa no scrollea, así que el cromo nunca se acopla
+        // ni se esconde, y el título viaja dentro de la cápsula de volver (no hay
+        // estado acoplado donde enseñarlo).
+        SubscreenFloatingChrome(
+            title = stringResource(Res.string.map_title),
+            onBack = onBack,
+            scroll = null,
+            hazeState = mapHazeState,
+            actions = {
+                IconButton(onClick = viewModel::refresh) {
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        contentDescription = stringResource(Res.string.action_refresh)
+                    )
+                }
+            }
+        )
     }
 
     val sheetPoints = state.sheetPoints

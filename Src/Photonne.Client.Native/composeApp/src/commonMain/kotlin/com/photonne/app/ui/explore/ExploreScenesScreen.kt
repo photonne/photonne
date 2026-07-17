@@ -7,12 +7,15 @@ import androidx.compose.runtime.getValue
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_scenes_empty
+import com.photonne.app.resources.explore_section_scenes
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ExploreScenesScreen(
     viewModel: ExploreFacetsViewModel,
-    onSceneClick: (String) -> Unit
+    onSceneClick: (String) -> Unit,
+    onBack: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     val baseUrl = rememberApiBaseUrl()
@@ -27,7 +30,10 @@ fun ExploreScenesScreen(
         errorMessage = state.error?.userMessage,
         emptyText = stringResource(Res.string.explore_scenes_empty),
         baseUrl = baseUrl,
+        title = stringResource(Res.string.explore_section_scenes),
+        onBack = onBack,
         onRefresh = viewModel::refresh,
-        onTileClick = onSceneClick
+        onTileClick = onSceneClick,
+        onChromeVisibleChange = onChromeVisibleChange
     )
 }

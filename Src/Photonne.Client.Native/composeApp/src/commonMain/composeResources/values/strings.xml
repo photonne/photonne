@@ -1086,6 +1086,7 @@
     <string name="more_section_manage">Gestión</string>
     <string name="more_section_actions">Acciones</string>
     <string name="organize_inbox_title">Para organizar</string>
+    <string name="organize_rule_title">Mover por condiciones</string>
     <string name="organize_inbox_card_subtitle">Fotos en MobileBackup sin archivar</string>
     <string name="organize_inbox_count_format">%1$d sin organizar</string>
     <string name="organize_inbox_header">Muévelas a una carpeta para archivarlas.</string>

@@ -1044,6 +1044,7 @@
     <string name="more_section_manage">Manage</string>
     <string name="more_section_actions">Actions</string>
     <string name="organize_inbox_title">To organize</string>
+    <string name="organize_rule_title">Move by conditions</string>
     <string name="organize_inbox_card_subtitle">Photos in MobileBackup not yet filed</string>
     <string name="organize_inbox_count_format">%1$d unorganized</string>
     <string name="organize_inbox_header">Move them into a folder to file them away.</string>

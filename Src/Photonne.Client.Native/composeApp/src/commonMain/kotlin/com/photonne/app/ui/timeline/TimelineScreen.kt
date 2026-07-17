@@ -6,8 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,15 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -72,7 +67,6 @@ import com.photonne.app.data.settings.TimelineGrouping
 import com.photonne.app.data.settings.TimelineZoomLevel
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.timeline_scroll_to_top
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
@@ -82,6 +76,7 @@ import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.ScrollToTopPill
 import com.photonne.app.ui.main.TimelineTopBar
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -953,8 +948,16 @@ fun TimelineScreen(
 
                     // Bottom-center so it never collides with the scrubber
                     // handle riding the right edge.
-                    ScrollToTopButton(
-                        gridState = gridState,
+                    ScrollToTopPill(
+                        firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+                        isScrollInProgress = { gridState.isScrollInProgress },
+                        minIndex = SCROLL_TO_TOP_MIN_INDEX,
+                        onScrollToTop = {
+                            if (gridState.firstVisibleItemIndex > SCROLL_TO_TOP_SNAP_INDEX) {
+                                gridState.scrollToItem(SCROLL_TO_TOP_SNAP_INDEX)
+                            }
+                            gridState.animateScrollToItem(0)
+                        },
                         suppressed = isScrubbing || state.isSelectionActive,
                         hazeState = gridHazeState,
                         // Float above the bottom nav / system buttons rather than
@@ -1014,86 +1017,6 @@ fun TimelineScreen(
                     onRetry = onRefresh,
                 )
             }
-        }
-    }
-}
-
-/**
- * Floating "back to top" pill. Follows the scrubber's rhythm — appears
- * while the list is scrolling (once a few screens deep) and fades out
- * after a pause — so the overlay chrome comes and goes as one. Tapping
- * teleports near the top and animates the last stretch; animating the
- * whole way would compose thousands of rows for nothing.
- */
-@Composable
-private fun ScrollToTopButton(
-    gridState: LazyListState,
-    /** Hidden while scrubbing or selecting, where it would just be noise. */
-    suppressed: Boolean,
-    /** Blur source (the grid); falls back to a solid gray when null. */
-    hazeState: HazeState? = null,
-    modifier: Modifier = Modifier
-) {
-    val scope = rememberCoroutineScope()
-    val pastThreshold by remember {
-        derivedStateOf { gridState.firstVisibleItemIndex > SCROLL_TO_TOP_MIN_INDEX }
-    }
-    val active = pastThreshold && gridState.isScrollInProgress
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(active, pastThreshold) {
-        when {
-            active -> visible = true
-            !pastThreshold -> visible = false
-            else -> {
-                delay(1500)
-                visible = false
-            }
-        }
-    }
-    AnimatedVisibility(
-        visible = visible && !suppressed,
-        enter = fadeIn() + scaleIn(initialScale = 0.8f),
-        exit = fadeOut() + scaleOut(targetScale = 0.8f),
-        modifier = modifier
-    ) {
-        Surface(
-            onClick = {
-                scope.launch {
-                    runCatching {
-                        if (gridState.firstVisibleItemIndex > SCROLL_TO_TOP_SNAP_INDEX) {
-                            gridState.scrollToItem(SCROLL_TO_TOP_SNAP_INDEX)
-                        }
-                        gridState.animateScrollToItem(0)
-                    }
-                }
-            },
-            shape = RoundedCornerShape(50),
-            // Cristal esmerilado como el resto del cromo: transparente + fondo de
-            // blur, contenido en onSurface (blanco en oscuro).
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 2.dp
-        ) {
-          Box {
-            Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = stringResource(Res.string.timeline_scroll_to_top),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-          }
         }
     }
 }

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
@@ -87,7 +86,7 @@ import com.photonne.app.resources.archive_action_unarchive_all
 import com.photonne.app.resources.folder_action_edit
 import com.photonne.app.resources.folder_action_new
 import com.photonne.app.resources.folder_move_assets_title
-import com.photonne.app.resources.organize_inbox_title
+import com.photonne.app.resources.organize_rule_title
 import com.photonne.app.resources.folder_move_title
 import com.photonne.app.resources.trash_action_delete_forever
 import com.photonne.app.resources.trash_action_empty
@@ -96,9 +95,7 @@ import com.photonne.app.resources.trash_dialog_empty_message
 import com.photonne.app.resources.trash_dialog_purge_message
 import com.photonne.app.resources.trash_dialog_restore_all_message
 import com.photonne.app.resources.favorites_title
-import com.photonne.app.resources.people_title
 import com.photonne.app.resources.people_unnamed
-import com.photonne.app.resources.map_title
 import com.photonne.app.resources.notifications_title
 import com.photonne.app.resources.backup_pending_screen_title
 import com.photonne.app.resources.device_backup_action_select_all
@@ -114,10 +111,7 @@ import com.photonne.app.resources.utilities_title
 import com.photonne.app.resources.my_links_title
 import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.explore_title
-import com.photonne.app.resources.explore_section_memories
 import com.photonne.app.resources.explore_section_places
-import com.photonne.app.resources.explore_section_scenes
-import com.photonne.app.resources.explore_section_objects
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -489,6 +483,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var foldersChromeVisible by remember { mutableStateOf(true) }
     // Same, but for the photo grids inside an open album / folder.
     var albumDetailChromeVisible by remember { mutableStateOf(true) }
+    // Compartido por las subpantallas con cromo flotante propio (Personas, Mapa,
+    // Escenas, Objetos, Para organizar, Recuerdos): sólo hay una visible a la vez,
+    // y ImmersiveChromeEffect lo restaura a `true` al salir de composición.
+    var subscreenChromeVisible by remember { mutableStateOf(true) }
     var folderDetailChromeVisible by remember { mutableStateOf(true) }
     val albumsViewModel: AlbumsViewModel = koinViewModel()
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
@@ -856,6 +854,20 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         !(chromeTab == MainTab.Timeline && timelineState.isSelectionActive) &&
         !(chromeTab == MainTab.Albums && albumsState.isSelectionActive) &&
         !(chromeTab == MainTab.Folders && foldersState.isSelectionActive)
+    // Subpantallas que pintan su PROPIO cromo flotante sobre el contenido
+    // (cápsulas de cristal que se acoplan arriba y se esconden al bajar, como
+    // Fotos) en vez de la barra acoplada de este Scaffold. Con una selección
+    // activa vuelven a la barra sólida: una acción no puede escaparse scroll
+    // abajo. Sólo hay una a la vez, así que comparten el estado de visibilidad.
+    val floatingChromeSubscreen = when (moreSubscreen) {
+        MoreSubscreen.People -> selectedPerson == null
+        MoreSubscreen.ExploreScenes,
+        MoreSubscreen.ExploreObjects,
+        MoreSubscreen.Memories,
+        MoreSubscreen.Map -> true
+        MoreSubscreen.OrganizeInbox -> !organizeInboxState.isSelectionActive
+        else -> false
+    }
 
     val topBar: @Composable () -> Unit = {
         when {
@@ -880,8 +892,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onSelectAll = albumDetailViewModel::toggleSelectAll
                 )
             selectedTab == MainTab.Albums && selectedAlbum != null -> {
-                // The hero inside AlbumDetailScreen owns back / share / overflow
-                // controls (PWA-style), so no separate top bar here.
+                // AlbumDetailScreen paints its own floating top chrome over the
+                // grid (docked on the hero's cover, frosted capsules once
+                // scrolled), like Fotos, so no separate top bar here.
             }
             selectedTab == MainTab.Albums && albumsState.isSelectionActive -> {
                 val target = albumsState.albums.firstOrNull {
@@ -1069,25 +1082,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = organizeInboxViewModel::clearSelection,
                     onSelectAll = organizeInboxViewModel::toggleSelectAll
                 )
-            moreSubscreen == MoreSubscreen.OrganizeInbox ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.organize_inbox_title),
-                    onBack = {
-                        moreSubscreen = null
-                        foldersViewModel.refreshOrganizeCount()
-                    },
-                    actions = {
-                        androidx.compose.material3.IconButton(onClick = { moreSubscreen = MoreSubscreen.OrganizeRule }) {
-                            Icon(
-                                Icons.Outlined.AutoAwesome,
-                                contentDescription = "Mover por condiciones"
-                            )
-                        }
-                    }
-                )
+            // Para organizar pinta su propio cromo flotante (con "Mover por
+            // condiciones" en su cápsula de acciones); con una selección activa
+            // manda la rama de arriba.
+            moreSubscreen == MoreSubscreen.OrganizeInbox -> {
+            }
             moreSubscreen == MoreSubscreen.OrganizeRule ->
                 com.photonne.app.ui.main.SettingsTopBar(
-                    title = "Mover por condiciones",
+                    title = stringResource(Res.string.organize_rule_title),
                     onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox }
                 )
             moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
@@ -1105,27 +1107,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.utilities_section_locations),
                     onBack = { moreSubscreen = MoreSubscreen.Utilities }
                 )
-            moreSubscreen == MoreSubscreen.Memories ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.explore_section_memories),
-                    onBack = { moreSubscreen = null }
-                )
-            moreSubscreen == MoreSubscreen.ExploreScenes ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.explore_section_scenes),
-                    onBack = { moreSubscreen = null }
-                )
-            moreSubscreen == MoreSubscreen.ExploreObjects ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.explore_section_objects),
-                    onBack = { moreSubscreen = null }
-                )
-            moreSubscreen == MoreSubscreen.Map ->
-                com.photonne.app.ui.main.MapTopBar(
-                    title = stringResource(Res.string.map_title),
-                    onBack = { moreSubscreen = null },
-                    onRefresh = mapViewModel::refresh
-                )
+            // Recuerdos / Escenas / Objetos / Mapa pintan su propio cromo
+            // flotante dentro de la pantalla (ver floatingChromeSubscreen), así
+            // que aquí no va ninguna barra.
+            moreSubscreen == MoreSubscreen.Memories ||
+                moreSubscreen == MoreSubscreen.ExploreScenes ||
+                moreSubscreen == MoreSubscreen.ExploreObjects ||
+                moreSubscreen == MoreSubscreen.Map -> {
+            }
             moreSubscreen == MoreSubscreen.PeopleSuggestions ->
                 com.photonne.app.ui.main.PersonSuggestionsTopBar(
                     title = (suggestionsState.personName ?: selectedPerson?.name)
@@ -1188,14 +1177,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 )
             }
-            moreSubscreen == MoreSubscreen.People ->
-                com.photonne.app.ui.main.PeopleTopBar(
-                    title = stringResource(Res.string.people_title),
-                    onBack = { moreSubscreen = null },
-                    onRecluster = { peopleViewModel.recluster() },
-                    showHidden = peopleState.showHidden,
-                    onToggleHidden = peopleViewModel::toggleShowHidden
-                )
+            // La lista de Personas pinta su propio cromo flotante (con el menú
+            // de recluster / ocultas en su cápsula de acciones); el detalle de
+            // una persona sigue con la barra acoplada de arriba.
+            moreSubscreen == MoreSubscreen.People -> {
+            }
             moreSubscreen == MoreSubscreen.Favorites &&
                 favoritesState.isSelectionActive ->
                 AssetSelectionTopBar(
@@ -1822,7 +1808,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // own top bar inside its page (Fotos' floating bar; Álbumes/Carpetas/
             // Más a docked bar) so the bar travels with the swipe. The Scaffold
             // only reserves top space again for a selection/overlay bar.
-            edgeToEdgeTop = pagerBareTop,
+            //
+            // Lo mismo para todo lo que pinte su PROPIO cromo flotante: si no,
+            // el inset de la status bar se cuenta DOS veces. Este Scaffold, con
+            // un slot `topBar` que no emite nada (justo lo que hacen esas ramas),
+            // no deja el hueco a cero: lo rellena con el inset del sistema. Y el
+            // cromo de cada pantalla vuelve a aplicárselo por su cuenta.
+            edgeToEdgeTop = pagerBareTop || floatingChromeSubscreen ||
+                albumDetailImmersive,
             // On the immersive tabs the bottom nav hides while scrolling down
             // (driven by each screen's chrome), and always shows elsewhere.
             bottomBarVisible = when {
@@ -1831,6 +1824,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 foldersImmersive -> foldersChromeVisible
                 albumDetailImmersive -> albumDetailChromeVisible
                 folderDetailImmersive -> folderDetailChromeVisible
+                floatingChromeSubscreen -> subscreenChromeVisible
                 else -> true
             },
             // The grid draws behind the bottom nav so content is revealed when
@@ -2255,7 +2249,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 organizeInboxState.items.getOrNull(index)?.let {
                                     organizeInboxViewModel.toggleSelection(it.id)
                                 }
-                            }
+                            },
+                            onBack = {
+                                moreSubscreen = null
+                                foldersViewModel.refreshOrganizeCount()
+                            },
+                            onOpenRules = { moreSubscreen = MoreSubscreen.OrganizeRule },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeRule ->
                         com.photonne.app.ui.organize.OrganizeRuleScreen(
@@ -2328,7 +2328,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     coverAssetId = detail.coverAssetId,
                                     items = detail.assets
                                 )
-                            }
+                            },
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.ExploreScenes ->
                         com.photonne.app.ui.explore.ExploreScenesScreen(
@@ -2340,7 +2342,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 searchViewModel.showResultsForSceneLabel(label)
                                 moreSubscreen = null
                                 selectedTab = MainTab.Search
-                            }
+                            },
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.ExploreObjects ->
                         com.photonne.app.ui.explore.ExploreObjectsScreen(
@@ -2349,7 +2353,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 searchViewModel.showResultsForObjectLabel(label)
                                 moreSubscreen = null
                                 selectedTab = MainTab.Search
-                            }
+                            },
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.Map -> com.photonne.app.ui.map.MapScreen(
                         viewModel = mapViewModel,
@@ -2386,7 +2392,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                             mapViewModel.closeClusterSheet()
                         },
-                        onBulkAddToAlbum = { bulkAddToAlbumFromMap = true }
+                        onBulkAddToAlbum = { bulkAddToAlbumFromMap = true },
+                        onBack = { moreSubscreen = null }
                     )
                     MoreSubscreen.PeopleSuggestions ->
                         com.photonne.app.ui.people.PersonSuggestionsScreen(
@@ -2411,7 +2418,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 },
                                 onLoadMore = peopleViewModel::loadMore,
                                 onLoad = peopleViewModel::ensureLoaded,
-                                onRefresh = peopleViewModel::refresh
+                                onRefresh = peopleViewModel::refresh,
+                                onBack = { moreSubscreen = null },
+                                onRecluster = { peopleViewModel.recluster() },
+                                onToggleHidden = peopleViewModel::toggleShowHidden,
+                                onChromeVisibleChange = { subscreenChromeVisible = it }
                             )
                         } else {
                             com.photonne.app.ui.people.PersonDetailScreen(

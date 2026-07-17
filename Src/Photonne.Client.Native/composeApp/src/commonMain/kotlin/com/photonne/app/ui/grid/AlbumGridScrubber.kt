@@ -86,6 +86,8 @@ internal fun AlbumGridScrubber(
     cellCount: Int,
     headerCount: Int = 1,
     labelForCellIndex: ((Int) -> String?)?,
+    /** Reports the drag so the host can stand other chrome down while scrubbing. */
+    onDraggingChange: (Boolean) -> Unit = {},
     /** Blur source (the album grid); falls back to a solid gray when null. */
     hazeState: HazeState? = null,
     modifier: Modifier = Modifier
@@ -97,6 +99,7 @@ internal fun AlbumGridScrubber(
     val lastCellLatest by rememberUpdatedState(lastCell)
     val headerCountLatest by rememberUpdatedState(headerCount)
     val labelProvider by rememberUpdatedState(labelForCellIndex)
+    val onDraggingChangeLatest by rememberUpdatedState(onDraggingChange)
 
     fun cellIndexForFraction(f: Float): Int =
         (f.coerceIn(0f, 1f) * lastCellLatest).roundToInt()
@@ -175,6 +178,7 @@ internal fun AlbumGridScrubber(
                         Modifier.pointerInput(Unit) {
                             fun endDrag() {
                                 isDragging = false
+                                onDraggingChangeLatest(false)
                                 scope.launch {
                                     val index = headerCountLatest + cellIndexForFraction(dragFraction)
                                     runCatching { gridState.scrollToItem(index) }
@@ -184,6 +188,7 @@ internal fun AlbumGridScrubber(
                                 onDragStart = {
                                     dragFraction = scrollFraction
                                     isDragging = true
+                                    onDraggingChangeLatest(true)
                                 },
                                 onVerticalDrag = { change, dragAmount ->
                                     change.consume()

@@ -27,6 +27,10 @@ import kotlinx.coroutines.flow.collectLatest
  * to visible when it leaves composition (switching sub-tab, opening a detail,
  * leaving the tab) so the nav never stays hidden on a screen that no longer
  * owns the scroll.
+ *
+ * Returns the same visibility it reports, so a screen that also owns *top*
+ * chrome (the album detail's floating bar) can fade it in step with the nav
+ * instead of tracking the scroll a second time.
  */
 @Composable
 internal fun ImmersiveChromeEffect(
@@ -34,7 +38,7 @@ internal fun ImmersiveChromeEffect(
     firstVisibleItemScrollOffset: () -> Int,
     isScrollInProgress: () -> Boolean,
     onChromeVisibleChange: (Boolean) -> Unit
-) {
+): Boolean {
     var chromeVisible by remember { mutableStateOf(true) }
     // Small dead-zone so micro-scrolls and fling jitter don't flip the chrome.
     val thresholdPx = with(LocalDensity.current) { 10.dp.toPx() }
@@ -75,4 +79,5 @@ internal fun ImmersiveChromeEffect(
     LaunchedEffect(atTop) { if (atTop) chromeVisible = true }
     LaunchedEffect(chromeVisible) { onChromeVisibleChange(chromeVisible) }
     DisposableEffect(Unit) { onDispose { onChromeVisibleChange(true) } }
+    return chromeVisible
 }

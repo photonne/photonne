@@ -109,11 +109,31 @@ Para afinar cuánto destaca sobre fondos oscuros hay dos diales: subir
 | Cápsula | Fichero | Fuente de blur |
 |---------|---------|----------------|
 | Nav inferior + barras de selección | `ui/main/MainScaffold.kt` | `content` de `MainScaffold` (via `LocalChromeHazeState`) |
-| Píldora superior + scrubber + botón subir (timeline) | `ui/timeline/TimelineScreen.kt` · `TimelineScrubber.kt` | `GroupedAssetGrid` (`gridHazeState`, por parámetro) |
-| Barra superior + acciones + slideshow (visor) | `ui/asset/AssetDetailScreen.kt` | el `HorizontalPager` de la foto (`viewerHazeState`, por parámetro) |
+| Píldora superior + scrubber + pill de subir (timeline) | `ui/timeline/TimelineScreen.kt` · `TimelineScrubber.kt` · `ui/main/ScrollToTopPill.kt` | `GroupedAssetGrid` (`gridHazeState`, por parámetro) |
+| Barra superior + scrubber + pill de subir (álbum) | `ui/album/AlbumDetailScreen.kt` · `ui/grid/AlbumGridScrubber.kt` · `ui/main/ScrollToTopPill.kt` | el `AssetGrid` del álbum (`albumHazeState`) |
+| Cromo superior + pill de subir (Personas · Escenas · Objetos · Para organizar · Recuerdos) | `ui/main/SubscreenChrome.kt` | la lista/rejilla de cada pantalla (`hazeState`, por parámetro) |
+| Cromo superior (mapa) | `ui/main/SubscreenChrome.kt` · `ui/map/MapScreen.kt` | `OsmMap` (`mapHazeState`) |
+| Cápsulas superiores + acciones + slideshow (visor) | `ui/asset/AssetDetailScreen.kt` | el `HorizontalPager` de la foto (`viewerHazeState`, por parámetro) |
 | Badge de Live Photo (visor) | `ui/asset/AssetDetailScreen.kt` | ninguna (descendiente del pager → gris sólido) |
-| Scrubber del álbum | `ui/grid/AlbumGridScrubber.kt` · `ui/album/AlbumDetailScreen.kt` | el `AssetGrid` del álbum (`albumHazeState`) |
 | Toasts del mapa (loading/empty) | `ui/map/MapScreen.kt` | `OsmMap` (`mapHazeState`) |
+
+Tres piezas del cromo flotante están extraídas a `ui/main/` y las comparten el
+timeline, el detalle de álbum y las subpantallas: el pill de "volver arriba"
+(`ScrollToTopPill`), el driver de ocultar/mostrar el cromo con el scroll
+(`ImmersiveChromeEffect`) y el cromo entero de una subpantalla
+(`SubscreenFloatingChrome`, que junta barra + scrim + pill). Sus accesores al
+estado de scroll son lambdas, para servir igual a un `LazyListState` (timeline,
+Recuerdos) que a un `LazyGridState` (álbum, Personas…), que no comparten supertipo.
+
+El cromo superior se acopla arriba del todo (fondo opaco) y se disuelve en cápsulas
+al scrollear. El fondo acoplado va **detrás** de las mismas cápsulas y no es una
+`TopAppBar`: dos filas de iconos que se relevan se deslizan de lado, porque M3 inseta
+el icono de navegación 4dp y la cápsula 10dp. El mapa nunca se acopla (no scrollea).
+
+Toda pantalla que pinte su propio cromo flotante tiene que ir además en
+`edgeToEdgeTop` (`App.kt`): un `Scaffold` con el slot `topBar` vacío **no** deja el
+hueco a cero, lo rellena con el inset del sistema, y el cromo lo aplicaría por
+segunda vez.
 
 **Fuera de este estilo a propósito**: la `SelectionActionBar` de
 `ui/admin/AdminSharedTrashScreen.kt` (barra acoplada de texto + botones), el toast

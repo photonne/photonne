@@ -87,8 +87,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -637,13 +635,16 @@ fun AssetDetailScreen(
             // Skip the top bar entirely once faded out so it can't intercept
             // taps meant for the asset underneath (immersive mode).
             if (chromeAlpha > 0.01f) {
-            // Cápsula superior, espejo de la de acciones: mismos tokens, mismo
-            // color, márgenes simétricos. El inset del sistema y los márgenes van
-            // fuera de la Surface (patrón de la nav flotante), así que el
-            // TopAppBar de dentro renuncia a los suyos con WindowInsets(0) o los
-            // aplicaría por segunda vez.
+            // Cromo superior partido en dos cápsulas — volver a la izquierda,
+            // acciones a la derecha — como el resto de la app. Cada una se ciñe a
+            // sus iconos, así que la foto se ve por el hueco de en medio en vez de
+            // quedar tapada por una barra de lado a lado.
             //
-            // La medida es sólo el alto de la cápsula: onSizeChanged va detrás de
+            // El inset del sistema y los márgenes van fuera de las Surfaces
+            // (patrón de la nav flotante). Sin título: el nombre del fichero vive
+            // en el panel de info, que es donde se va a buscar.
+            //
+            // La medida es sólo el alto de las cápsulas: onSizeChanged va detrás de
             // los paddings, así que no ve ni el inset ni el margen. Quien necesite
             // el borde inferior del cromo tiene que sumarlos.
             Box(
@@ -659,42 +660,18 @@ fun AssetDetailScreen(
                     )
                     .onSizeChanged { topChromeHeightPx = it.height }
             ) {
-                Surface(
-                    shape = FloatingNavBarShape,
-                    // Cristal esmerilado: transparente + fondo de blur. El gris se
-                    // fija OSCURO en ambos temas (ViewerChromeColor) porque el
-                    // cromo va blanco sobre la foto.
-                    color = Color.Transparent,
-                    contentColor = Color.White,
-                    shadowElevation = 6.dp
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Box {
-                    Box(
-                        Modifier
-                            .matchParentSize()
-                            .chromeCapsuleBackdrop(
-                                baseColor = ViewerChromeColor,
-                                hazeState = viewerHazeState
-                            )
-                    )
-                TopAppBar(
-                    windowInsets = WindowInsets(0),
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        actionIconContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    ),
-                    navigationIcon = {
+                    ViewerChromeCapsule(hazeState = viewerHazeState) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
                         }
-                    },
-                    // Sin título: el nombre del fichero vive en el panel de info,
-                    // que es donde se va a buscar. En la cápsula solo robaba ancho
-                    // a las acciones.
-                    title = {},
-                    actions = {
+                    }
+                    ViewerChromeCapsule(hazeState = viewerHazeState) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
                         val isLocalOnly = currentItem?.isLocalOnly == true
                         // Landscape toggle (photos and videos): the ONLY way in
                         // or out of landscape — turning the phone does nothing.
@@ -801,9 +778,8 @@ fun AssetDetailScreen(
                                 }
                             }
                         }
+                      }
                     }
-                )
-                  }
                 }
             }
             }
@@ -2423,6 +2399,36 @@ private val ViewerChromeColor = ChromeBaseGrayDark
 
 /** Aire entre el asset y el cromo flotante, y entre las piezas del cromo. */
 private val ChromeGap = 12.dp
+
+/**
+ * Una cápsula del cromo superior del visor: cristal esmerilado sobre la foto,
+ * ceñida a sus iconos. Transparente + fondo de blur, con el gris base fijado
+ * OSCURO en ambos temas ([ViewerChromeColor]) porque el contenido va en blanco.
+ */
+@Composable
+private fun ViewerChromeCapsule(
+    hazeState: HazeState?,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        shape = FloatingNavBarShape,
+        color = Color.Transparent,
+        contentColor = Color.White,
+        shadowElevation = 6.dp
+    ) {
+        Box {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .chromeCapsuleBackdrop(
+                        baseColor = ViewerChromeColor,
+                        hazeState = hazeState
+                    )
+            )
+            content()
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

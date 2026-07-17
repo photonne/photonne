@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,6 +35,7 @@ import com.photonne.app.data.models.Memory
 import com.photonne.app.data.models.MemoryDetail
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_memories_empty
+import com.photonne.app.resources.explore_section_memories
 import com.photonne.app.resources.memories_section_favorites
 import com.photonne.app.resources.memories_section_people
 import com.photonne.app.resources.memories_section_places
@@ -38,6 +44,8 @@ import com.photonne.app.resources.memories_section_today
 import com.photonne.app.resources.memories_section_trips
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -60,8 +68,15 @@ fun MemoriesScreen(
     viewModel: MemoryFeedViewModel,
     baseUrl: String,
     onOpenMemory: (MemoryDetail) -> Unit,
+    onBack: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
+    // Fuente de blur del cromo: la lista que scrollea por detrás, de la que las
+    // cápsulas son HERMANAS — la regla de Haze.
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    val reservedTop = subscreenChromeReservedTop()
     LaunchedEffect(Unit) {
         if (state.rows.isEmpty() && !state.isLoading && !state.attempted) viewModel.refresh()
     }
@@ -70,46 +85,69 @@ fun MemoriesScreen(
         isRefreshing = state.isLoading && state.rows.isNotEmpty(),
         onRefresh = viewModel::refresh
     ) {
-        when {
-            state.isLoading && state.rows.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+        // El cromo envuelve todas las ramas: las de carga / error / vacío
+        // también necesitan su barra (y su botón de volver).
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isLoading && state.rows.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
 
-            state.error?.userMessage != null && state.rows.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
-                }
+                state.error?.userMessage != null && state.rows.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
+                    }
 
-            state.rows.isEmpty() ->
-                EmptyState(
-                    icon = Icons.Outlined.AutoAwesome,
-                    title = stringResource(Res.string.explore_memories_empty),
-                    modifier = Modifier.fillMaxSize(),
-                )
-
-            // The top padding is the screen's own: a row's breathing room comes
-            // from its header, so a headerless row would otherwise sit its cards
-            // flush against the title bar.
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = 8.dp,
-                    bottom = 24.dp + floatingNavBarReservedHeight()
-                ),
-            ) {
-                items(
-                    items = state.rows,
-                    key = { row -> "row:${row.key}" },
-                ) { row ->
-                    MemoryThemeRow(
-                        row = row,
-                        baseUrl = baseUrl,
-                        openingId = state.openingId,
-                        onClick = { memory -> viewModel.open(memory.id, onOpenMemory) },
+                state.rows.isEmpty() ->
+                    EmptyState(
+                        icon = Icons.Outlined.AutoAwesome,
+                        title = stringResource(Res.string.explore_memories_empty),
+                        modifier = Modifier.fillMaxSize(),
                     )
+
+                // The top padding is the screen's own: a row's breathing room comes
+                // from its header, so a headerless row would otherwise sit its cards
+                // flush against the title bar.
+                else -> LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+                    contentPadding = PaddingValues(
+                        // Reserva el cromo flotante: las filas pasan por debajo al
+                        // scrollear, pero en reposo la primera no queda escondida.
+                        top = 8.dp + reservedTop,
+                        bottom = 24.dp + floatingNavBarReservedHeight()
+                    ),
+                ) {
+                    items(
+                        items = state.rows,
+                        key = { row -> "row:${row.key}" },
+                    ) { row ->
+                        MemoryThemeRow(
+                            row = row,
+                            baseUrl = baseUrl,
+                            openingId = state.openingId,
+                            onClick = { memory -> viewModel.open(memory.id, onOpenMemory) },
+                        )
+                    }
                 }
             }
+
+            // Sin acciones: una sola cápsula (volver + título).
+            SubscreenFloatingChrome(
+                title = stringResource(Res.string.explore_section_memories),
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                    firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                    isScrollInProgress = { listState.isScrollInProgress },
+                    // Filas de tema, no celdas: cada una ocupa media pantalla.
+                    scrollToTopMinIndex = 2,
+                    onScrollToTop = { listState.animateScrollToItem(0) }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = onChromeVisibleChange
+            )
         }
     }
 }
