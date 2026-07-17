@@ -57,6 +57,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.resources.Res
@@ -515,18 +516,27 @@ private fun OrganizeInboxCard(
             Text(
                 text = stringResource(Res.string.organize_inbox_title),
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = stringResource(Res.string.organize_inbox_card_subtitle),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        // The count sits between a weighted title and the chevron; without a
+        // one-line cap it grabs intrinsic width on narrow screens and starves the
+        // title column, which then wraps character-by-character (vertical text).
         Text(
             text = stringResource(Res.string.organize_inbox_count_format, count),
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
