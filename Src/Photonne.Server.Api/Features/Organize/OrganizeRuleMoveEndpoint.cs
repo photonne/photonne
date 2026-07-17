@@ -79,7 +79,8 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
             .ToListAsync(cancellationToken);
 
         var moved = await FolderAssetMover.MoveAsync(
-            dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken);
+            dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken,
+            request.OrganizeByCaptureYear);
 
         return Results.Ok(new OrganizeRuleMoveResponse { Moved = moved });
     }
@@ -88,6 +89,10 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
     {
         public SmartRuleNode? Rule { get; set; }
         public Guid TargetFolderId { get; set; }
+
+        /// <summary>When true, file each matched asset into a Year subfolder (e.g.
+        /// <c>2026</c>) under the target folder, derived from its capture date.</summary>
+        public bool OrganizeByCaptureYear { get; set; }
     }
 
     public class OrganizeRuleMoveResponse

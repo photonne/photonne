@@ -238,6 +238,31 @@ public sealed class OrganizeRuleTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Move_OrganizeByYear_FilesMatchesIntoYearSubfolder()
+    {
+        var (_, client, pixelFolderId, familiaFolderId, pixNew, pixOld) = await SeedAsync(onDisk: true);
+
+        // Both Pixel photos are from 2026, so they share a single 2026 bucket.
+        var response = await client.PostAsJsonAsync("/api/organize/rule/move",
+            new { rule = FolderRule(pixelFolderId), targetFolderId = familiaFolderId, organizeByCaptureYear = true });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<MoveResponse>();
+        Assert.Equal(2, body!.Moved);
+
+        await WithDbContextAsync(async db =>
+        {
+            var buckets = await db.Folders
+                .Where(f => f.ParentFolderId == familiaFolderId && f.Name == "2026")
+                .ToListAsync();
+            Assert.Single(buckets);
+
+            var moved = await db.Assets.Where(a => a.Id == pixNew || a.Id == pixOld).ToListAsync();
+            Assert.All(moved, a => Assert.Equal(buckets[0].Id, a.FolderId));
+            Assert.All(moved, a => Assert.Contains("/Familia/2026/", a.FullPath));
+        });
+    }
+
+    [Fact]
     public async Task Preview_NullRule_ReturnsBadRequest()
     {
         var (_, client, _, _, _, _) = await SeedAsync();

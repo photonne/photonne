@@ -109,6 +109,7 @@ internal data class OrganizeRulePreviewRequest(
 internal data class OrganizeRuleMoveRequest(
     val rule: SmartRule,
     val targetFolderId: String,
+    val organizeByCaptureYear: Boolean = false,
 )
 
 @Serializable
@@ -300,7 +301,7 @@ interface PhotonneApi {
     /** Dry-run of a condition rule within the MobileBackup inbox: match count + sample. */
     suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
     /** Files every inbox asset matching [rule] into [targetFolderId]; returns the moved count. */
-    suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String): Int
+    suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean = false): Int
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     /** Live "on this day" query — what the timeline strip shows. */
     suspend fun getMemories(): List<TimelineItem>
@@ -859,10 +860,10 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String): Int {
+    override suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean): Int {
         val response: HttpResponse = client.post("$baseUrl/api/organize/rule/move") {
             contentType(ContentType.Application.Json)
-            setBody(OrganizeRuleMoveRequest(rule = rule, targetFolderId = targetFolderId))
+            setBody(OrganizeRuleMoveRequest(rule = rule, targetFolderId = targetFolderId, organizeByCaptureYear = organizeByCaptureYear))
         }
         if (response.status != HttpStatusCode.OK) {
             throw PhotonneApiException(

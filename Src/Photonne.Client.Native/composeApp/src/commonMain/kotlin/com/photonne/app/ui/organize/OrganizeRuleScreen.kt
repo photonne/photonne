@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -109,6 +110,11 @@ fun OrganizeRuleScreen(
                 onClick = { showFolderPicker = true },
             )
 
+            OrganizeByYearRow(
+                checked = state.organizeByYear,
+                onToggle = viewModel::setOrganizeByYear,
+            )
+
             state.error?.let { err ->
                 Text(
                     err.userMessage,
@@ -193,6 +199,27 @@ private fun DestinationRow(path: String?, onClick: () -> Unit) {
                 )
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun OrganizeByYearRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle(!checked) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onToggle)
+        Spacer(Modifier.size(4.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Organizar por año", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Se crearán subcarpetas por año (2026, 2025…) dentro del destino.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

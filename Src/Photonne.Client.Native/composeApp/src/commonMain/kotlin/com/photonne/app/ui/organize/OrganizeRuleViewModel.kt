@@ -30,6 +30,7 @@ data class OrganizeRuleUiState(
     val conditions: List<SmartCondition> = emptyList(),
     val targetFolderId: String? = null,
     val targetFolderPath: String? = null,
+    val organizeByYear: Boolean = false,
     val previewCount: Int? = null,
     val previewSampleIds: List<String> = emptyList(),
     val isPreviewing: Boolean = false,
@@ -94,6 +95,10 @@ class OrganizeRuleViewModel(
         _state.update { it.copy(targetFolderId = folderId, targetFolderPath = path) }
     }
 
+    fun setOrganizeByYear(enabled: Boolean) {
+        _state.update { it.copy(organizeByYear = enabled) }
+    }
+
     /** Debounced dry-run so the "N fotos coinciden" count and thumbnails track
      * edits without a request per keystroke/toggle. */
     private fun schedulePreview() {
@@ -134,7 +139,7 @@ class OrganizeRuleViewModel(
         if (rule == null || target == null || !current.canMove) return
         _state.update { it.copy(isMoving = true, error = null) }
         viewModelScope.launch {
-            runCatching { organize.moveByRule(rule, target) }
+            runCatching { organize.moveByRule(rule, target, current.organizeByYear) }
                 .onSuccess { moved ->
                     _state.update { it.copy(isMoving = false) }
                     onDone(moved)

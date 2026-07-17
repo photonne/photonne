@@ -43,7 +43,8 @@ class OrganizeRepository(
         api.previewOrganizeRule(rule, sampleSize)
 
     /** Files every inbox asset matching [rule] into [targetFolderId] in one shot
-     *  (resolved server-side); returns how many were moved. */
-    suspend fun moveByRule(rule: SmartRule, targetFolderId: String): Int =
-        api.moveOrganizeRule(rule, targetFolderId)
+     *  (resolved server-side); returns how many were moved. When [organizeByYear]
+     *  is set the server files each match into a Year subfolder under the destination. */
+    suspend fun moveByRule(rule: SmartRule, targetFolderId: String, organizeByYear: Boolean = false): Int =
+        api.moveOrganizeRule(rule, targetFolderId, organizeByCaptureYear = organizeByYear)
 }
