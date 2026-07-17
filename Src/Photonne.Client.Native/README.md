@@ -25,6 +25,101 @@ iosApp/                    # Wrapper Xcode para empaquetar el framework iOS
 La decisión arquitectónica está documentada en
 [`docs/ADR-001-kotlin-multiplatform.md`](docs/ADR-001-kotlin-multiplatform.md).
 
+## Cromo flotante (cápsulas de cristal esmerilado)
+
+Todo el cromo que flota sobre el contenido —la navegación inferior, las barras de
+selección, la píldora superior del timeline, los scrubbers, el botón de subir, las
+barras del visor, los controles de slideshow y los toasts del mapa— comparte **un
+único estilo**: una cápsula de **cristal esmerilado** que difumina en tiempo real
+el contenido que tiene debajo (blur real) y lo tiñe de gris, en vez de un color
+plano translúcido.
+
+El blur lo aporta [Haze](https://github.com/chrisbanes/haze)
+(`dev.chrisbanes.haze:haze`). **Está fijado en `1.5.4` a propósito**: es la última
+serie que apunta a Compose Multiplatform 1.7.x (la de este proyecto); la 1.6+ ya
+exige CMP 1.8. No la subas sin migrar CMP.
+
+### Núcleo: `ui/main/ChromeBackdropTint.kt`
+
+Es la fuente de verdad de todo el estilo:
+
+- `LocalChromeHazeState` — publica el `HazeState` compartido (la fuente de blur).
+  Las cápsulas lo consumen aunque vivan en slots distintos del árbol.
+- `Modifier.chromeCapsuleBackdrop(baseColor, hazeState)` — pinta el cristal: si hay
+  fuente, un `hazeEffect` (blur + tinte); si no, cae a un gris sólido de reserva.
+- `chromeBaseGray()` / `ChromeBaseGrayDark` (`0xFF242428`) / `ChromeBaseGrayLight`
+  (`0xFFE9E9EE`) — el gris base del tinte, por tema.
+- `chromeActivePillColor()` — el velo del ítem activo de la nav.
+- Perillas: `ChromeBlurRadius = 30.dp`, `ChromeTintAlpha = 0.6f`,
+  `ChromeFallbackAlpha = 0.92f`.
+
+### Patrón de cápsula (aplícalo a TODA cápsula nueva)
+
+```kotlin
+Surface(shape = <forma>, color = Color.Transparent, shadowElevation = <n>.dp) {
+    Box {
+        Box(Modifier.matchParentSize().chromeCapsuleBackdrop(/* baseColor/hazeState */))
+        // contenido en onSurface (blanco en oscuro)
+    }
+}
+```
+
+La `Surface` transparente aporta **forma + sombra** y **recorta el blur** a la
+cápsula; el `Box` de fondo pinta el cristal; el contenido va encima en `onSurface`.
+
+### Regla crítica de Haze (fuente ≠ descendiente)
+
+Un `hazeEffect` **no puede colgar de su propia fuente `hazeSource`** (leería una
+capa a medio grabar y saldría transparente). Por eso:
+
+- Cada pantalla con scroll propio marca **solo** lo que scrollea/dibuja por detrás
+  con `Modifier.hazeSource(state)` (la rejilla, el pager de la foto, el mapa… no el
+  contenedor entero) y pasa ese `state` a sus cápsulas **por parámetro**, de modo
+  que estas queden **hermanas** de la fuente y no descendientes.
+- `MainScaffold` es la excepción: publica un `HazeState` global vía
+  `LocalChromeHazeState` y marca su `content` como fuente; la nav vive en el slot
+  del `Scaffold` (hermana del contenido), así que lo hereda por el composition
+  local sin romper la regla.
+- Donde una cápsula es descendiente de la fuente (el badge de Live Photo, dentro
+  del pager) o no tiene nada detrás (barras acopladas de admin), el mismo helper
+  cae al gris sólido y solo unifica color.
+
+### Tamaño y color estandarizados
+
+- **Vertical**: todas las cápsulas miden lo mismo, `CompactNavBarContentHeight`
+  (`64.dp`). Lo único que cambia es el **ancho**, según cuántos ítems tengan.
+- **Ítems**: los de la nav y los de las barras de selección (asset, tarjeta de
+  álbum, tarjeta de carpeta) comparten la misma pareja `widthIn(min =
+  FloatingNavItemMinWidth)` + `padding(horizontal = FloatingNavItemContentPadding)`,
+  y un `EqualWidthRow` a medida los **iguala entre sí** dentro de cada barra (mide
+  el `maxIntrinsicWidth` y aplica el mayor a todos, encogiendo en proporción si no
+  caben en vez de desbordar). El ítem activo de la nav se marca con el icono relleno
+  y un velo concéntrico (`chromeActivePillColor()`), no con color de acento.
+- **Color**: el gris base oscuro es único (`ChromeBaseGrayDark`). El cromo del
+  visor lo reusa como su base **fija en ambos temas** (sus iconos son blancos sobre
+  la foto, así que en claro no puede coger el gris claro del tema), de modo que la
+  barra del visor destaca sobre una foto oscura igual que la nav principal.
+- Sin bordes de otro color: la cápsula destaca solo por blur + tinte + los blancos.
+
+Para afinar cuánto destaca sobre fondos oscuros hay dos diales: subir
+`ChromeBaseGrayDark` (más claro) o `ChromeTintAlpha` (más sólido).
+
+### Inventario de cápsulas
+
+| Cápsula | Fichero | Fuente de blur |
+|---------|---------|----------------|
+| Nav inferior + barras de selección | `ui/main/MainScaffold.kt` | `content` de `MainScaffold` (via `LocalChromeHazeState`) |
+| Píldora superior + scrubber + botón subir (timeline) | `ui/timeline/TimelineScreen.kt` · `TimelineScrubber.kt` | `GroupedAssetGrid` (`gridHazeState`, por parámetro) |
+| Barra superior + acciones + slideshow (visor) | `ui/asset/AssetDetailScreen.kt` | el `HorizontalPager` de la foto (`viewerHazeState`, por parámetro) |
+| Badge de Live Photo (visor) | `ui/asset/AssetDetailScreen.kt` | ninguna (descendiente del pager → gris sólido) |
+| Scrubber del álbum | `ui/grid/AlbumGridScrubber.kt` · `ui/album/AlbumDetailScreen.kt` | el `AssetGrid` del álbum (`albumHazeState`) |
+| Toasts del mapa (loading/empty) | `ui/map/MapScreen.kt` | `OsmMap` (`mapHazeState`) |
+
+**Fuera de este estilo a propósito**: la `SelectionActionBar` de
+`ui/admin/AdminSharedTrashScreen.kt` (barra acoplada de texto + botones), el toast
+de error del mapa (`errorContainer`, el rojo pierde legibilidad sobre cristal) y
+los FABs del mapa (son botones de acción, no cromo translúcido).
+
 ## Requisitos
 
 | Target | Toolchain |
