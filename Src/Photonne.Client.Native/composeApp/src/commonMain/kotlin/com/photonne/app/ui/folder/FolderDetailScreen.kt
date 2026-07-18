@@ -51,9 +51,16 @@ import com.photonne.app.resources.folders_empty_subtitle
 import com.photonne.app.resources.folders_empty_title
 import com.photonne.app.ui.grid.AssetGridCell
 import com.photonne.app.ui.grid.assetCellKey
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.runtime.remember
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.EmptyState
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -63,11 +70,14 @@ fun FolderDetailScreen(
     folderId: String,
     folderName: String,
     parentFolderId: String?,
+    title: String,
+    onBack: () -> Unit,
     onItemClick: (Int) -> Unit,
     onItemLongClick: (Int) -> Unit,
     onSubfolderClick: (FolderSummary) -> Unit,
     onSubfolderLongPress: (FolderSummary) -> Unit,
     viewModel: FolderDetailViewModel,
+    actions: @Composable RowScope.() -> Unit = {},
     /**
      * Immersive bottom nav: while true the photo grid drives the hide-on-scroll
      * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
@@ -79,6 +89,11 @@ fun FolderDetailScreen(
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
     val gridState = rememberLazyGridState()
+    val hazeState = remember { HazeState() }
+    // Cromo flotante salvo con una selección (de assets o de subcarpetas) activa,
+    // que muestra su barra acoplada.
+    val floatingChrome = !state.isSelectionActive && !state.isSubfolderSelectionActive
+    val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
     // Only drive the immersive chrome when the photo grid is what's on screen —
     // a subfolders-only view keeps the nav docked.
     val gridActive = immersive && state.items.isNotEmpty()
@@ -90,59 +105,81 @@ fun FolderDetailScreen(
             onChromeVisibleChange = onChromeVisibleChange
         )
     }
-    // Con una selección activa (de assets o de subcarpetas) la nav flotante deja
-    // su sitio a la cápsula de acciones, que mide lo mismo: se sigue reservando
-    // el mismo hueco aunque `immersive` ya esté apagado.
-    val immersiveContentPadding = if (immersive || state.isSelectionActive ||
+    // Con una selección activa la nav flotante deja su sitio a la cápsula de
+    // acciones, que mide lo mismo: se sigue reservando el mismo hueco.
+    val reservedBottom = if (immersive || state.isSelectionActive ||
         state.isSubfolderSelectionActive
     ) {
-        PaddingValues(bottom = floatingNavBarReservedHeight())
-    } else PaddingValues(0.dp)
+        floatingNavBarReservedHeight()
+    } else 0.dp
+    val gridContentPadding = PaddingValues(top = reservedTop, bottom = reservedBottom)
 
     LaunchedEffect(folderId) { viewModel.open(folderId, folderName, parentFolderId) }
 
-    PhotonneRefreshableScreen(
-        isRefreshing = state.isLoading &&
-            (state.items.isNotEmpty() || state.subFolders.isNotEmpty()),
-        onRefresh = viewModel::refresh
-    ) {
-        when {
-            state.isLoading && state.items.isEmpty() && state.subFolders.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            state.error != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                    com.photonne.app.ui.error.ErrorBanner(
-                        error = state.error,
-                        onRetry = { state.folderId?.let { id ->
-                            viewModel.open(id, state.folderName.orEmpty(), state.parentFolderId)
-                        } },
+    Box(modifier = Modifier.fillMaxSize()) {
+        PhotonneRefreshableScreen(
+            isRefreshing = state.isLoading &&
+                (state.items.isNotEmpty() || state.subFolders.isNotEmpty()),
+            onRefresh = viewModel::refresh
+        ) {
+            when {
+                state.isLoading && state.items.isEmpty() && state.subFolders.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                state.error != null && state.items.isEmpty() && state.subFolders.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
+                        com.photonne.app.ui.error.ErrorBanner(
+                            error = state.error,
+                            onRetry = { state.folderId?.let { id ->
+                                viewModel.open(id, state.folderName.orEmpty(), state.parentFolderId)
+                            } },
+                        )
+                    }
+                state.items.isEmpty() && state.subFolders.isEmpty() ->
+                    EmptyState(
+                        icon = Icons.Outlined.Folder,
+                        title = stringResource(Res.string.folders_empty_title),
+                        subtitle = stringResource(Res.string.folders_empty_subtitle)
                     )
-                }
-            state.items.isEmpty() && state.subFolders.isEmpty() ->
-                EmptyState(
-                    icon = Icons.Outlined.Folder,
-                    title = stringResource(Res.string.folders_empty_title),
-                    subtitle = stringResource(Res.string.folders_empty_subtitle)
+                // Subcarpetas y assets comparten un único LazyVerticalGrid para que
+                // haya un solo scroll.
+                else -> FolderDetailGrid(
+                    subFolders = state.subFolders,
+                    items = state.items,
+                    baseUrl = apiBaseUrl,
+                    isGrid = state.viewMode == FolderViewMode.Grid,
+                    selectedSubfolderId = state.selectedSubfolderId,
+                    selection = state.selection,
+                    gridState = gridState,
+                    contentPadding = gridContentPadding,
+                    onItemClick = onItemClick,
+                    onItemLongClick = onItemLongClick,
+                    onSubfolderClick = onSubfolderClick,
+                    onSubfolderLongPress = onSubfolderLongPress,
+                    modifier = Modifier.hazeSource(hazeState)
                 )
-            // Subcarpetas y assets comparten un único LazyVerticalGrid para que
-            // haya un solo scroll: antes eran un LazyColumn sobre un
-            // LazyVerticalGrid dentro de una Column, y la lista se quedaba con
-            // casi todo el alto, aplastando la rejilla de fotos.
-            else -> FolderDetailGrid(
-                subFolders = state.subFolders,
-                items = state.items,
-                baseUrl = apiBaseUrl,
-                isGrid = state.viewMode == FolderViewMode.Grid,
-                selectedSubfolderId = state.selectedSubfolderId,
-                selection = state.selection,
-                gridState = gridState,
-                contentPadding = immersiveContentPadding,
-                onItemClick = onItemClick,
-                onItemLongClick = onItemLongClick,
-                onSubfolderClick = onSubfolderClick,
-                onSubfolderLongPress = onSubfolderLongPress
+            }
+        }
+
+        if (floatingChrome) {
+            SubscreenFloatingChrome(
+                title = title,
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+                    firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+                    isScrollInProgress = { gridState.isScrollInProgress },
+                    scrollToTopMinIndex = 6,
+                    onScrollToTop = {
+                        if (gridState.firstVisibleItemIndex > 24) gridState.scrollToItem(24)
+                        gridState.animateScrollToItem(0)
+                    }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = {},
+                statusBarScrim = true,
+                actions = actions
             )
         }
     }
@@ -167,7 +204,8 @@ private fun FolderDetailGrid(
     onItemClick: (Int) -> Unit,
     onItemLongClick: (Int) -> Unit,
     onSubfolderClick: (FolderSummary) -> Unit,
-    onSubfolderLongPress: (FolderSummary) -> Unit
+    onSubfolderLongPress: (FolderSummary) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
         state = gridState,
@@ -175,7 +213,7 @@ private fun FolderDetailGrid(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
         if (subFolders.isNotEmpty()) {
             if (isGrid) {

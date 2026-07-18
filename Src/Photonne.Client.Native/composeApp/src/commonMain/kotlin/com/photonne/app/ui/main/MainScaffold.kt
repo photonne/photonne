@@ -1532,6 +1532,111 @@ fun FolderDetailTopBar(
     )
 }
 
+/**
+ * Las acciones del detalle de carpeta (crear subcarpeta + menú de
+ * editar/mover/miembros/timeline/borrar) para la cápsula de acciones del cromo
+ * flotante. Mismo contenido que las `actions` de [FolderDetailTopBar], extraído
+ * para poder inyectarlo también en [SubscreenFloatingChrome].
+ */
+@Composable
+fun RowScope.FolderDetailChromeActions(
+    canEdit: Boolean,
+    canDelete: Boolean,
+    canManageMembers: Boolean,
+    canMove: Boolean,
+    onEdit: () -> Unit,
+    onMove: () -> Unit,
+    onDelete: () -> Unit,
+    onManageMembers: () -> Unit,
+    canToggleTimeline: Boolean = false,
+    excludedFromDiscovery: Boolean = false,
+    onToggleTimeline: () -> Unit = {},
+    onCreateSubfolder: (() -> Unit)? = null
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val hasMenu = canEdit || canDelete || canManageMembers || canMove || canToggleTimeline
+    if (onCreateSubfolder != null) {
+        CreateAction(
+            icon = Icons.Outlined.CreateNewFolder,
+            contentDescription = stringResource(Res.string.folder_action_new),
+            onClick = onCreateSubfolder
+        )
+    }
+    if (hasMenu) {
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(
+                    Icons.Filled.MoreVert,
+                    contentDescription = stringResource(Res.string.folder_action_actions)
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                if (canToggleTimeline) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (excludedFromDiscovery) Res.string.folder_discovery_add
+                                    else Res.string.folder_discovery_remove
+                                )
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (excludedFromDiscovery) Icons.Outlined.Visibility
+                                else Icons.Outlined.VisibilityOff,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = { menuOpen = false; onToggleTimeline() }
+                    )
+                }
+                if (canEdit) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.action_edit)) },
+                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                        onClick = { menuOpen = false; onEdit() }
+                    )
+                }
+                if (canMove) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.folder_action_move)) },
+                        leadingIcon = {
+                            Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null)
+                        },
+                        onClick = { menuOpen = false; onMove() }
+                    )
+                }
+                if (canManageMembers) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.album_action_members)) },
+                        leadingIcon = { Icon(Icons.Outlined.People, contentDescription = null) },
+                        onClick = { menuOpen = false; onManageMembers() }
+                    )
+                }
+                if (canDelete) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(Res.string.action_delete),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = { menuOpen = false; onDelete() }
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderSelectionTopBar(

@@ -165,6 +165,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.rememberSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
+import com.photonne.app.ui.main.FolderDetailChromeActions
 import com.photonne.app.ui.main.FolderDetailTopBar
 import com.photonne.app.ui.main.FoldersListTopBar
 import com.photonne.app.ui.main.MainScaffold
@@ -951,43 +952,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = folderDetailViewModel::clearSubfolderSelection
                 )
             }
+            // El detalle de carpeta pinta su propio cromo flotante dentro de la
+            // pantalla (título de la carpeta + acciones en la cápsula); aquí no va
+            // barra acoplada.
             selectedTab == MainTab.Folders && selectedFolder != null -> {
-                val folder = selectedFolder!!
-                FolderDetailTopBar(
-                    title = (folderDetailState.folderName ?: folder.name).ifBlank { folder.path },
-                    subtitle = stringResource(
-                        Res.string.albums_count_format,
-                        folder.assetCount
-                    ),
-                    canEdit = folder.isOwner,
-                    canDelete = folder.isOwner,
-                    canManageMembers = folder.isOwner,
-                    canMove = folder.isOwner,
-                    onBack = {
-                        selectedFolder = if (folderBackStack.isNotEmpty()) {
-                            folderBackStack.removeAt(folderBackStack.lastIndex)
-                        } else null
-                    },
-                    onEdit = { showEditFolder = true },
-                    onMove = { showMoveFolder = true },
-                    onDelete = { showDeleteFolder = true },
-                    onManageMembers = {
-                        folderPermissionsViewModel.open(folder.id)
-                        showFolderMembers = true
-                    },
-                    canToggleTimeline = folder.isShared && folder.externalLibraryId == null,
-                    excludedFromDiscovery = folder.excludedFromDiscovery,
-                    onToggleTimeline = {
-                        val nextIncluded = folder.excludedFromDiscovery
-                        foldersViewModel.setTimelineIncluded(folder.id, included = nextIncluded)
-                        selectedFolder = folder.copy(excludedFromDiscovery = !nextIncluded)
-                    },
-                    // Create a subfolder of the current folder — excluded for
-                    // external libraries (read-only mirrors), as the FAB was.
-                    onCreateSubfolder = if (folder.externalLibraryId == null) {
-                        { showCreateFolder = true }
-                    } else null
-                )
             }
             selectedTab == MainTab.Folders && foldersState.isSelectionActive -> {
                 val target = foldersState.findFolder(foldersState.selectedFolderId)
@@ -1788,7 +1756,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // no deja el hueco a cero: lo rellena con el inset del sistema. Y el
             // cromo de cada pantalla vuelve a aplicárselo por su cuenta.
             edgeToEdgeTop = pagerBareTop || floatingChromeSubscreen ||
-                albumDetailImmersive,
+                albumDetailImmersive || folderDetailImmersive,
             // On the immersive tabs the bottom nav hides while scrolling down
             // (driven by each screen's chrome), and always shows elsewhere.
             bottomBarVisible = when {
@@ -2048,6 +2016,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             folderId = openedFolder.id,
                             folderName = openedFolder.name.ifBlank { openedFolder.path },
                             parentFolderId = openedFolder.parentFolderId,
+                            title = (folderDetailState.folderName ?: openedFolder.name)
+                                .ifBlank { openedFolder.path },
+                            onBack = {
+                                selectedFolder = if (folderBackStack.isNotEmpty()) {
+                                    folderBackStack.removeAt(folderBackStack.lastIndex)
+                                } else null
+                            },
                             onItemClick = { index ->
                                 if (folderDetailState.isSelectionActive) {
                                     folderDetailState.items.getOrNull(index)?.let {
@@ -2085,6 +2060,36 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 folderDetailViewModel.selectSubfolder(subfolder.id)
                             },
                             viewModel = folderDetailViewModel,
+                            actions = {
+                                FolderDetailChromeActions(
+                                    canEdit = openedFolder.isOwner,
+                                    canDelete = openedFolder.isOwner,
+                                    canManageMembers = openedFolder.isOwner,
+                                    canMove = openedFolder.isOwner,
+                                    onEdit = { showEditFolder = true },
+                                    onMove = { showMoveFolder = true },
+                                    onDelete = { showDeleteFolder = true },
+                                    onManageMembers = {
+                                        folderPermissionsViewModel.open(openedFolder.id)
+                                        showFolderMembers = true
+                                    },
+                                    canToggleTimeline = openedFolder.isShared &&
+                                        openedFolder.externalLibraryId == null,
+                                    excludedFromDiscovery = openedFolder.excludedFromDiscovery,
+                                    onToggleTimeline = {
+                                        val nextIncluded = openedFolder.excludedFromDiscovery
+                                        foldersViewModel.setTimelineIncluded(
+                                            openedFolder.id, included = nextIncluded
+                                        )
+                                        selectedFolder = openedFolder.copy(
+                                            excludedFromDiscovery = !nextIncluded
+                                        )
+                                    },
+                                    onCreateSubfolder = if (openedFolder.externalLibraryId == null) {
+                                        { showCreateFolder = true }
+                                    } else null
+                                )
+                            },
                             immersive = folderDetailImmersive,
                             onChromeVisibleChange = { folderDetailChromeVisible = it }
                         )
