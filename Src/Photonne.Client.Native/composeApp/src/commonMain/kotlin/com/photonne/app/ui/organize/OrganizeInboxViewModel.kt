@@ -8,7 +8,7 @@ import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.TimelineItem
-import com.photonne.app.data.models.YearCount
+import com.photonne.app.data.models.YearGroup
 import com.photonne.app.data.organize.OrganizeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,9 +28,9 @@ data class OrganizeInboxUiState(
     val nextCursor: Instant? = null,
     val hasMore: Boolean = true,
     val loaded: Boolean = false,
-    /** Year split of the current selection, for the "se repartirán en…" preview
-     *  under the move picker's "Organizar por año" checkbox. */
-    val moveYearBreakdown: List<YearCount> = emptyList(),
+    /** Current selection grouped by capture year (with ids), for the "se repartirán
+     *  en…" chips under the move picker and the "Revisar" grid. */
+    val moveYearGroups: List<YearGroup> = emptyList(),
     /** Set after a year-organized move so the UI can show a "repartidas en…"
      *  summary; null when the last move was flat (or none yet). */
     val lastMoveSummary: MoveOutcome? = null,
@@ -154,20 +154,20 @@ class OrganizeInboxViewModel(
      * [onComplete] receives the moved ids so callers can refresh the entry-point
      * count.
      */
-    /** Loads the year split of the current selection so the move picker can show
-     *  "se repartirán en…" while "Organizar por año" is checked. Server-computed
-     *  (from CapturedAt) so it matches the real move exactly. */
+    /** Loads the current selection grouped by capture year so the move picker can
+     *  show "se repartirán en…" and the "Revisar" grid while "Organizar por año"
+     *  is checked. Server-computed (from CapturedAt) so it matches the real move. */
     fun loadMoveYearBreakdown() {
         val ids = _state.value.selection.toList()
         if (ids.isEmpty()) {
-            _state.update { it.copy(moveYearBreakdown = emptyList()) }
+            _state.update { it.copy(moveYearGroups = emptyList()) }
             return
         }
         viewModelScope.launch {
             runCatching { repository.yearBreakdown(ids) }
-                .onSuccess { breakdown -> _state.update { it.copy(moveYearBreakdown = breakdown) } }
+                .onSuccess { groups -> _state.update { it.copy(moveYearGroups = groups) } }
                 // A failed preview shouldn't block the move; just show nothing.
-                .onFailure { _state.update { it.copy(moveYearBreakdown = emptyList()) } }
+                .onFailure { _state.update { it.copy(moveYearGroups = emptyList()) } }
         }
     }
 
@@ -192,7 +192,7 @@ class OrganizeInboxViewModel(
                             items = it.items.filterNot { item -> item.id in moved },
                             selection = emptySet(),
                             isBulkMutating = false,
-                            moveYearBreakdown = emptyList(),
+                            moveYearGroups = emptyList(),
                             lastMoveSummary = outcome.takeIf { o -> o.yearBreakdown.isNotEmpty() },
                         )
                     }

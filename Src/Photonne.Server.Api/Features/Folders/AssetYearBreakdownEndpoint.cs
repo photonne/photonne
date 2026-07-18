@@ -7,12 +7,13 @@ using Photonne.Server.Api.Shared.Interfaces;
 namespace Photonne.Server.Api.Features.Folders;
 
 /// <summary>
-/// Given a set of asset ids, returns how they split across capture years
-/// (<c>CapturedAt.Year</c>, newest first). Powers the "se repartirán en…" preview
-/// under the manual multi-select move picker, where the client can't compute it
-/// itself (the timeline item carries file dates, not the EXIF-derived
-/// <c>CapturedAt</c> the move buckets by). Scoped to the caller's own assets so
-/// it can never reveal capture years of photos they don't own.
+/// Given a set of asset ids, returns them grouped by capture year
+/// (<c>CapturedAt.Year</c>, newest first; ids within a year by capture date desc).
+/// Powers the "se repartirán en…" chips and the "Revisar" thumbnail grid under the
+/// manual multi-select move picker, where the client can't compute it itself (the
+/// timeline item carries file dates, not the EXIF-derived <c>CapturedAt</c> the
+/// move buckets by). Scoped to the caller's own assets so it can never reveal
+/// capture years of photos they don't own.
 /// </summary>
 public class AssetYearBreakdownEndpoint : IEndpoint
 {
@@ -38,17 +39,20 @@ public class AssetYearBreakdownEndpoint : IEndpoint
         if (request.AssetIds is null || request.AssetIds.Count == 0)
             return Results.Ok(new AssetYearBreakdownResponse());
 
-        var breakdown = await dbContext.Assets
+        var rows = await dbContext.Assets
             .Where(a => request.AssetIds.Contains(a.Id) && a.OwnerId == userId && a.DeletedAt == null)
-            .GroupBy(a => a.CapturedAt.Year)
-            .Select(g => new { Year = g.Key, Count = g.Count() })
-            .OrderByDescending(g => g.Year)
+            .OrderByDescending(a => a.CapturedAt)
+            .ThenBy(a => a.Id)
+            .Select(a => new { a.Id, Year = a.CapturedAt.Year })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new AssetYearBreakdownResponse
-        {
-            YearBreakdown = breakdown.Select(g => new YearCount(g.Year, g.Count)).ToList()
-        });
+        var groups = rows
+            .GroupBy(r => r.Year)
+            .OrderByDescending(g => g.Key)
+            .Select(g => new YearGroup(g.Key, g.Select(r => r.Id).ToList()))
+            .ToList();
+
+        return Results.Ok(new AssetYearBreakdownResponse { Groups = groups });
     }
 
     public class AssetYearBreakdownRequest
@@ -58,6 +62,6 @@ public class AssetYearBreakdownEndpoint : IEndpoint
 
     public class AssetYearBreakdownResponse
     {
-        public IReadOnlyList<YearCount> YearBreakdown { get; set; } = [];
+        public IReadOnlyList<YearGroup> Groups { get; set; } = [];
     }
 }

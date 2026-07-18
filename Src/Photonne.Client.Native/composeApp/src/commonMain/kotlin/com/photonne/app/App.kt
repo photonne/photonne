@@ -682,6 +682,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveSelectedAssets by remember { mutableStateOf(false) }
     var showMoveSelectedAssetsTimeline by remember { mutableStateOf(false) }
     var showMoveSelectedAssetsInbox by remember { mutableStateOf(false) }
+    // Non-null while the inbox move "Revisar" grid is open: the chosen destination.
+    var inboxReviewTarget by remember { mutableStateOf<String?>(null) }
     var showSearchFilters by remember { mutableStateOf(false) }
     var showAlbumsFilters by remember { mutableStateOf(false) }
     var showFoldersFilters by remember { mutableStateOf(false) }
@@ -3620,17 +3622,42 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = organizeInboxState.error?.userMessage,
             includeRoot = false,
             showOrganizeByDate = true,
-            yearBreakdown = organizeInboxState.moveYearBreakdown,
+            yearBreakdown = organizeInboxState.moveYearGroups.map {
+                com.photonne.app.data.models.YearCount(it.year, it.count)
+            },
             onDismiss = {
                 showMoveSelectedAssetsInbox = false
                 organizeInboxViewModel.clearError()
             },
             onConfirm = { targetFolderId, organizeByYear ->
                 if (targetFolderId != null) {
-                    organizeInboxViewModel.moveSelectedAssets(targetFolderId, organizeByYear) {
-                        showMoveSelectedAssetsInbox = false
-                        foldersViewModel.refreshOrganizeCount()
+                    showMoveSelectedAssetsInbox = false
+                    // With year foldering, review the split before committing;
+                    // otherwise (or if the preview failed to load) move straight away.
+                    if (organizeByYear && organizeInboxState.moveYearGroups.isNotEmpty()) {
+                        inboxReviewTarget = targetFolderId
+                    } else {
+                        organizeInboxViewModel.moveSelectedAssets(targetFolderId, organizeByYear) {
+                            foldersViewModel.refreshOrganizeCount()
+                        }
                     }
+                }
+            }
+        )
+    }
+
+    inboxReviewTarget?.let { target ->
+        com.photonne.app.ui.organize.MoveReviewScreen(
+            movedTotal = organizeInboxState.moveYearGroups.sumOf { it.count },
+            groups = organizeInboxState.moveYearGroups,
+            baseUrl = apiBaseUrl,
+            isMoving = organizeInboxState.isBulkMutating,
+            organizeByYear = true,
+            onBack = { inboxReviewTarget = null },
+            onConfirm = {
+                organizeInboxViewModel.moveSelectedAssets(target, organizeByYear = true) {
+                    inboxReviewTarget = null
+                    foldersViewModel.refreshOrganizeCount()
                 }
             }
         )

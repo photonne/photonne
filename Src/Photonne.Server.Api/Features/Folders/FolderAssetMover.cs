@@ -9,6 +9,11 @@ namespace Photonne.Server.Api.Features.Folders;
 /// post-move summary to describe how assets split across Year subfolders.</summary>
 public sealed record YearCount(int Year, int Count);
 
+/// <summary>A year bucket with the actual asset ids that fall in it (newest year
+/// first; ids within a year ordered by capture date desc). Powers the "Revisar"
+/// grid that shows every thumbnail to be moved, grouped by year.</summary>
+public sealed record YearGroup(int Year, IReadOnlyList<Guid> AssetIds);
+
 /// <summary>Outcome of a move: how many files actually moved, plus the real
 /// distribution of those assets across capture years (newest first). The
 /// year split is what the client shows as the post-move summary.</summary>
@@ -94,8 +99,13 @@ internal static class FolderAssetMover
             asset.FileName = fileName;
             asset.FullPath = await settingsService.VirtualizePathAsync(newPhysicalPath);
             moved++;
-            var year = asset.CapturedAt.Year;
-            perYear[year] = perYear.GetValueOrDefault(year) + 1;
+            // The per-year split only describes a Year-organized move; a flat move
+            // reports no breakdown (so the client shows no "repartidas en años").
+            if (organizeByCaptureYear)
+            {
+                var year = asset.CapturedAt.Year;
+                perYear[year] = perYear.GetValueOrDefault(year) + 1;
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

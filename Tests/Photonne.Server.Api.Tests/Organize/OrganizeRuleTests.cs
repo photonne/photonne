@@ -22,7 +22,9 @@ public sealed class OrganizeRuleTests : IntegrationTestBase
     public OrganizeRuleTests(PhotonneApiFactory factory) : base(factory) { }
 
     private sealed record YearCountDto(int Year, int Count);
+    private sealed record YearGroupDto(int Year, List<Guid> AssetIds);
     private sealed record PreviewResponse(int Count, List<Guid> SampleAssetIds, List<YearCountDto> YearBreakdown);
+    private sealed record ReviewResponse(List<YearGroupDto> Groups);
     private sealed record MoveResponse(int Moved, List<YearCountDto> YearBreakdown);
     private sealed record CountBody(int Count);
 
@@ -295,6 +297,31 @@ public sealed class OrganizeRuleTests : IntegrationTestBase
         Assert.Equal(
             preview.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray(),
             move.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray());
+    }
+
+    [Fact]
+    public async Task Review_GroupsMatchingPendingAssetsByYear()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var root = $"/assets/users/{alice.Username}";
+        var pixel = await CreateFolderAsync($"{root}/MobileBackup/Pixel");
+
+        var new2026 = await CreateAssetAsync(alice, "n.jpg", $"{root}/MobileBackup/Pixel/n.jpg", pixel,
+            new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc));
+        var old2026 = await CreateAssetAsync(alice, "o.jpg", $"{root}/MobileBackup/Pixel/o.jpg", pixel,
+            new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+        var y2025 = await CreateAssetAsync(alice, "p.jpg", $"{root}/MobileBackup/Pixel/p.jpg", pixel,
+            new DateTime(2025, 6, 1, 12, 0, 0, DateTimeKind.Utc));
+
+        var response = await client.PostAsJsonAsync("/api/organize/rule/review",
+            new { rule = FolderRule(pixel) });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<ReviewResponse>();
+
+        // Years newest-first; within 2026 the newer photo comes first.
+        Assert.Equal(new[] { 2026, 2025 }, body!.Groups.Select(g => g.Year).ToArray());
+        Assert.Equal(new[] { new2026, old2026 }, body.Groups[0].AssetIds);
+        Assert.Equal(new[] { y2025 }, body.Groups[1].AssetIds);
     }
 
     [Fact]

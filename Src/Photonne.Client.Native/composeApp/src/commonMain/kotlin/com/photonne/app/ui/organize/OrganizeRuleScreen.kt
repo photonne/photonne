@@ -2,6 +2,7 @@ package com.photonne.app.ui.organize
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,13 +67,13 @@ fun OrganizeRuleScreen(
     val baseUrl = rememberApiBaseUrl()
 
     var showFolderPicker by remember { mutableStateOf(false) }
-    var showConfirm by remember { mutableStateOf(false) }
     var summary by remember { mutableStateOf<MoveOutcome?>(null) }
 
     // The VM instance is reused across navigations; start blank each time.
     LaunchedEffect(Unit) { viewModel.reset() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = floatingNavBarReservedHeight())) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(bottom = floatingNavBarReservedHeight())) {
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -143,9 +142,29 @@ fun OrganizeRuleScreen(
             count = state.previewCount,
             path = state.targetFolderPath,
             enabled = state.canMove,
-            isMoving = state.isMoving,
-            onMove = { showConfirm = true },
+            isMoving = state.isMoving || state.isLoadingReview,
+            onMove = { viewModel.openReview() },
         )
+        }
+
+        state.reviewGroups?.let { groups ->
+            MoveReviewScreen(
+                movedTotal = state.previewCount ?: groups.sumOf { it.count },
+                groups = groups,
+                baseUrl = baseUrl,
+                isMoving = state.isMoving,
+                organizeByYear = state.organizeByYear,
+                onBack = viewModel::closeReview,
+                onConfirm = {
+                    viewModel.move { outcome ->
+                        // With a year split, confirm the distribution first; the
+                        // navigation back happens when the summary is dismissed.
+                        if (outcome.yearBreakdown.isNotEmpty()) summary = outcome
+                        else onMoved(outcome.moved)
+                    }
+                },
+            )
+        }
     }
 
     if (showFolderPicker) {
@@ -163,31 +182,6 @@ fun OrganizeRuleScreen(
                         viewModel.setTarget(folder.id, folder.path)
                     }
                 }
-            },
-        )
-    }
-
-    if (showConfirm) {
-        val count = state.previewCount ?: 0
-        AlertDialog(
-            onDismissRequest = { showConfirm = false },
-            title = { Text("Mover $count fotos") },
-            text = {
-                Text("Se moverán $count fotos a ${prettyPath(state.targetFolderPath)}. Los archivos se mueven de sitio.")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showConfirm = false
-                    viewModel.move { outcome ->
-                        // With a year split, confirm the distribution first; the
-                        // navigation back happens when the summary is dismissed.
-                        if (outcome.yearBreakdown.isNotEmpty()) summary = outcome
-                        else onMoved(outcome.moved)
-                    }
-                }) { Text("Mover") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirm = false }) { Text("Cancelar") }
             },
         )
     }

@@ -39,7 +39,8 @@ import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.AssetYearBreakdownResponse
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.OrganizeCountResponse
-import com.photonne.app.data.models.YearCount
+import com.photonne.app.data.models.OrganizeRuleReviewResponse
+import com.photonne.app.data.models.YearGroup
 import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
@@ -105,6 +106,11 @@ internal data class SmartAlbumPreviewRequest(
 internal data class OrganizeRulePreviewRequest(
     val rule: SmartRule,
     val sampleSize: Int,
+)
+
+@Serializable
+internal data class OrganizeRuleReviewBody(
+    val rule: SmartRule,
 )
 
 @Serializable
@@ -310,8 +316,12 @@ interface PhotonneApi {
     /** Files every inbox asset matching [rule] into [targetFolderId]; returns the
      *  moved count plus the real per-year split. */
     suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean = false): MoveOutcome
-    /** Year split of the given assets, for the manual-move preview. */
-    suspend fun assetYearBreakdown(assetIds: List<String>): List<YearCount>
+    /** Every inbox asset matching [rule], grouped by capture year (with ids), for
+     *  the condition-move "Revisar" grid. */
+    suspend fun reviewOrganizeRule(rule: SmartRule): List<YearGroup>
+    /** The given assets grouped by capture year (with ids), for the manual-move
+     *  chips and "Revisar" grid. */
+    suspend fun assetYearBreakdown(assetIds: List<String>): List<YearGroup>
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     /** Live "on this day" query — what the timeline strip shows. */
     suspend fun getMemories(): List<TimelineItem>
@@ -884,7 +894,21 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun assetYearBreakdown(assetIds: List<String>): List<YearCount> {
+    override suspend fun reviewOrganizeRule(rule: SmartRule): List<YearGroup> {
+        val response: HttpResponse = client.post("$baseUrl/api/organize/rule/review") {
+            contentType(ContentType.Application.Json)
+            setBody(OrganizeRuleReviewBody(rule = rule))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize rule review failed (${response.status.value})"
+            )
+        }
+        return response.body<OrganizeRuleReviewResponse>().groups
+    }
+
+    override suspend fun assetYearBreakdown(assetIds: List<String>): List<YearGroup> {
         val response: HttpResponse = client.post("$baseUrl/api/assets/year-breakdown") {
             contentType(ContentType.Application.Json)
             setBody(AssetYearBreakdownBody(assetIds = assetIds))
@@ -895,7 +919,7 @@ class PhotonneApiClient(
                 message = "Asset year breakdown failed (${response.status.value})"
             )
         }
-        return response.body<AssetYearBreakdownResponse>().yearBreakdown
+        return response.body<AssetYearBreakdownResponse>().groups
     }
 
     override suspend fun getUnsupportedFileContent(id: String): AssetContentBytes {

@@ -8,6 +8,7 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.YearCount
+import com.photonne.app.data.models.YearGroup
 import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.ui.album.smart.ConditionPickersController
@@ -36,6 +37,10 @@ data class OrganizeRuleUiState(
     val previewCount: Int? = null,
     val previewSampleIds: List<String> = emptyList(),
     val yearBreakdown: List<YearCount> = emptyList(),
+    /** Non-null while the "Revisar" grid is open: all matching assets grouped by
+     *  capture year. Loaded on demand when the user taps Mover. */
+    val reviewGroups: List<YearGroup>? = null,
+    val isLoadingReview: Boolean = false,
     val isPreviewing: Boolean = false,
     val isMoving: Boolean = false,
     val error: UiError? = null,
@@ -136,6 +141,26 @@ class OrganizeRuleViewModel(
     /** Files every matching pending asset into the chosen folder. On success
      * [onDone] receives the moved count so the caller can refresh the inbox
      * badge and navigate back. */
+    /** Loads every matching asset grouped by year and opens the "Revisar" grid.
+     *  Server-resolved (same query as the move) so what you review is what moves. */
+    fun openReview() {
+        val current = _state.value
+        val rule = buildSmartRule(current.conditions, current.matchAll)
+        if (rule == null || !current.canMove) return
+        _state.update { it.copy(isLoadingReview = true, error = null) }
+        viewModelScope.launch {
+            runCatching { organize.reviewRule(rule) }
+                .onSuccess { groups -> _state.update { it.copy(isLoadingReview = false, reviewGroups = groups) } }
+                .onFailure { error ->
+                    _state.update { it.copy(isLoadingReview = false, error = errorFactory.from(error, "No se pudo cargar la revisión")) }
+                }
+        }
+    }
+
+    fun closeReview() {
+        _state.update { it.copy(reviewGroups = null) }
+    }
+
     fun move(onDone: (MoveOutcome) -> Unit) {
         val current = _state.value
         val rule = buildSmartRule(current.conditions, current.matchAll)
@@ -145,7 +170,7 @@ class OrganizeRuleViewModel(
         viewModelScope.launch {
             runCatching { organize.moveByRule(rule, target, current.organizeByYear) }
                 .onSuccess { outcome ->
-                    _state.update { it.copy(isMoving = false) }
+                    _state.update { it.copy(isMoving = false, reviewGroups = null) }
                     onDone(outcome)
                 }
                 .onFailure { error ->

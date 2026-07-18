@@ -65,8 +65,8 @@ public sealed class FolderMoveOrganizeByYearTests : IntegrationTestBase
     private sealed record MoveBody(
         Guid? sourceFolderId, Guid targetFolderId, List<Guid> assetIds, bool organizeByCaptureYear);
 
-    private sealed record YearCountDto(int Year, int Count);
-    private sealed record YearBreakdownResponse(List<YearCountDto> YearBreakdown);
+    private sealed record YearGroupDto(int Year, List<Guid> AssetIds);
+    private sealed record YearBreakdownResponse(List<YearGroupDto> Groups);
 
     [Fact]
     public async Task YearBreakdown_ByIds_GroupsOwnAssetsByCaptureYear()
@@ -75,6 +75,7 @@ public sealed class FolderMoveOrganizeByYearTests : IntegrationTestBase
         var root = $"/assets/users/{alice.Username}";
         var backup = await CreateFolderAsync($"{root}/MobileBackup/Pixel");
 
+        // b (Sep 2026) is newer than a (Feb 2026), so within 2026 b comes first.
         var a = await CreateAssetOnDiskAsync(alice, "a.jpg", $"{root}/MobileBackup/Pixel/a.jpg", backup, new DateTime(2026, 2, 1, 12, 0, 0));
         var b = await CreateAssetOnDiskAsync(alice, "b.jpg", $"{root}/MobileBackup/Pixel/b.jpg", backup, new DateTime(2026, 9, 1, 12, 0, 0));
         var c = await CreateAssetOnDiskAsync(alice, "c.jpg", $"{root}/MobileBackup/Pixel/c.jpg", backup, new DateTime(2024, 7, 1, 12, 0, 0));
@@ -84,9 +85,10 @@ public sealed class FolderMoveOrganizeByYearTests : IntegrationTestBase
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<YearBreakdownResponse>();
 
-        // Newest year first, counts per CapturedAt.Year.
-        Assert.Equal(new[] { (2026, 2), (2024, 1) },
-            body!.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray());
+        // Newest year first, ids within a year by capture date desc.
+        Assert.Equal(new[] { 2026, 2024 }, body!.Groups.Select(g => g.Year).ToArray());
+        Assert.Equal(new[] { b, a }, body.Groups[0].AssetIds);
+        Assert.Equal(new[] { c }, body.Groups[1].AssetIds);
     }
 
     [Fact]
