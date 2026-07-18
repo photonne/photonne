@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material3.IconButton
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +63,8 @@ import com.photonne.app.resources.device_backup_title
 import com.photonne.app.resources.more_section_actions
 import com.photonne.app.resources.more_section_manage
 import com.photonne.app.resources.notifications_title
+import com.photonne.app.resources.tab_more
+import com.photonne.app.resources.upload_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.resources.trash_title
 import com.photonne.app.resources.my_links_title
@@ -104,6 +111,8 @@ fun MoreScreen(
     notificationsUnreadCount: Int = 0,
     onOpenAccountSettings: () -> Unit,
     onOpenAdministration: (() -> Unit)? = null,
+    onOpenUpload: () -> Unit = {},
+    onChromeVisibleChange: (Boolean) -> Unit = {},
     /** Third-party data notices from the server, shown under the version. Empty
      *  when the server bundles none — see [com.photonne.app.data.models.Attribution]. */
     attributions: List<Attribution> = emptyList()
@@ -154,12 +163,18 @@ fun MoreScreen(
         )
     }
 
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    val reservedTop = subscreenChromeReservedTop()
+
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        // Igual que Fotos/Álbumes/Carpetas: la lista dibuja a sangre y reserva al
-        // final el hueco de la nav flotante para que la última fila la despeje.
+        state = listState,
+        modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+        // Igual que Fotos/Álbumes/Carpetas: la lista dibuja a sangre y reserva el
+        // cromo flotante arriba y el hueco de la nav flotante abajo.
         contentPadding = PaddingValues(
-            top = 24.dp,
+            top = 24.dp + reservedTop,
             bottom = 24.dp + floatingNavBarReservedHeight()
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -308,6 +323,32 @@ fun MoreScreen(
                 }
             }
         }
+    }
+
+        SubscreenFloatingChrome(
+            title = stringResource(Res.string.tab_more),
+            onBack = null,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = {
+                    if (listState.firstVisibleItemIndex > 8) listState.scrollToItem(8)
+                    listState.animateScrollToItem(0)
+                }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange,
+            actions = {
+                IconButton(onClick = onOpenUpload) {
+                    Icon(
+                        Icons.Outlined.AddPhotoAlternate,
+                        contentDescription = stringResource(Res.string.upload_title)
+                    )
+                }
+            }
+        )
     }
 }
 

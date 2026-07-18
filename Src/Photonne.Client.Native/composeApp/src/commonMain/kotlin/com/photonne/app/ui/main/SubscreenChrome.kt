@@ -95,7 +95,12 @@ internal class SubscreenScroll(
 @Composable
 internal fun BoxScope.SubscreenFloatingChrome(
     title: String,
-    onBack: () -> Unit,
+    /**
+     * Vuelve a la pantalla anterior. Null en un tab de primer nivel
+     * (Álbumes / Carpetas / Más), que no tiene "atrás": la cápsula de cabecera
+     * muestra solo el título.
+     */
+    onBack: (() -> Unit)? = null,
     /**
      * Null on a screen with nothing to scroll (the map): the chrome then never
      * docks and never hides — its capsules just ride over the content.
@@ -203,18 +208,25 @@ internal fun BoxScope.SubscreenFloatingChrome(
                 ) {
                     SubscreenChromeCapsule(dockedFraction, hazeState) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = onBack) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                    contentDescription = stringResource(Res.string.action_close)
-                                )
+                            if (onBack != null) {
+                                IconButton(onClick = onBack) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                        contentDescription = stringResource(Res.string.action_close)
+                                    )
+                                }
                             }
                             Text(
                                 text = title,
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(end = 14.dp)
+                                // Sin botón de atrás el título necesita su propio
+                                // margen izquierdo para no pegarse al borde de la cápsula.
+                                modifier = Modifier.padding(
+                                    start = if (onBack != null) 0.dp else 14.dp,
+                                    end = 14.dp
+                                )
                             )
                         }
                     }

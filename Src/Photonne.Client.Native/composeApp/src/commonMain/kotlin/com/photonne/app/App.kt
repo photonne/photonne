@@ -487,6 +487,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var timelineChromeVisible by remember { mutableStateOf(true) }
     var albumsChromeVisible by remember { mutableStateOf(true) }
     var foldersChromeVisible by remember { mutableStateOf(true) }
+    var moreChromeVisible by remember { mutableStateOf(true) }
     // Same, but for the photo grids inside an open album / folder.
     var albumDetailChromeVisible by remember { mutableStateOf(true) }
     // Compartido por las subpantallas con cromo flotante propio (Personas, Mapa,
@@ -1675,6 +1676,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         moreSubscreen == null &&
         selectedFolder == null &&
         !foldersState.isSelectionActive
+    val moreImmersive = chromeTab == MainTab.More && moreSubscreen == null
     // Inside an open album / folder: the photo grid gets the same immersive
     // treatment (nav hides on scroll, grid bleeds behind it), unless a
     // selection is active (which shows its own bottom action bar). These are
@@ -1793,6 +1795,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 timelineImmersive -> timelineChromeVisible
                 albumsImmersive -> albumsChromeVisible
                 foldersImmersive -> foldersChromeVisible
+                moreImmersive -> moreChromeVisible
                 albumDetailImmersive -> albumDetailChromeVisible
                 folderDetailImmersive -> folderDetailChromeVisible
                 floatingChromeSubscreen -> subscreenChromeVisible
@@ -1952,42 +1955,39 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             )
                         }
                     }
-                    else -> Column(modifier = Modifier.fillMaxSize()) {
-                        MoreTopBar(
-                            onOpenUpload = { moreSubscreen = MoreSubscreen.Upload }
-                        )
-                        Box(modifier = Modifier.weight(1f)) {
-                            MoreScreen(
-                                user = user.user,
-                                onLogout = onLogout,
-                                onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
-                                onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
-                                onOpenTrash = {
-                                    trashTab = com.photonne.app.ui.library.TrashTab.Personal
-                                    moreSubscreen = MoreSubscreen.Trash
-                                },
-                                onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
-                                onOpenMyLinks = { moreSubscreen = MoreSubscreen.MyLinks },
-                                onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
-                                onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
-                                onOpenNotifications = {
-                                    moreSubscreen = MoreSubscreen.Notifications
-                                },
-                                notificationsUnreadCount = notificationsState.unreadCount,
-                                onOpenAccountSettings = {
-                                    moreSubscreen = MoreSubscreen.AccountSettings
-                                },
-                                onOpenAdministration = if (
-                                    user.user.role.equals("Admin", ignoreCase = true)
-                                ) {
-                                    { moreSubscreen = MoreSubscreen.Administration }
-                                } else {
-                                    null
-                                },
-                                attributions = attributions
-                            )
-                        }
-                    }
+                    // Más pinta su propio cromo flotante dentro de la pantalla
+                    // (título + acción Subir), como Fotos: nada de barra acoplada.
+                    else -> MoreScreen(
+                        user = user.user,
+                        onLogout = onLogout,
+                        onOpenFavorites = { moreSubscreen = MoreSubscreen.Favorites },
+                        onOpenArchived = { moreSubscreen = MoreSubscreen.Archived },
+                        onOpenTrash = {
+                            trashTab = com.photonne.app.ui.library.TrashTab.Personal
+                            moreSubscreen = MoreSubscreen.Trash
+                        },
+                        onOpenUtilities = { moreSubscreen = MoreSubscreen.Utilities },
+                        onOpenMyLinks = { moreSubscreen = MoreSubscreen.MyLinks },
+                        onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
+                        onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                        onOpenNotifications = {
+                            moreSubscreen = MoreSubscreen.Notifications
+                        },
+                        notificationsUnreadCount = notificationsState.unreadCount,
+                        onOpenAccountSettings = {
+                            moreSubscreen = MoreSubscreen.AccountSettings
+                        },
+                        onOpenAdministration = if (
+                            user.user.role.equals("Admin", ignoreCase = true)
+                        ) {
+                            { moreSubscreen = MoreSubscreen.Administration }
+                        } else {
+                            null
+                        },
+                        onOpenUpload = { moreSubscreen = MoreSubscreen.Upload },
+                        onChromeVisibleChange = { moreChromeVisible = it },
+                        attributions = attributions
+                    )
                 }
             }
             // Overlay layer, drawn over the pager: drill-downs (album/folder
