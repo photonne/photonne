@@ -56,7 +56,9 @@ import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
 import com.photonne.app.resources.selection_trash_confirm_message
+import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.map_action_select_all
+import com.photonne.app.ui.main.LocalSnackbarController
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -88,6 +90,12 @@ fun MapClusterSheet(
     // El mapa tiene su propio camino de selección (no pasa por AssetSelectionBottomBar),
     // así que la papelera en bloque confirma aquí igual que en el resto de pantallas.
     var showTrashConfirm by remember { mutableStateOf(false) }
+    val snackbar = LocalSnackbarController.current
+    val trashDoneMessage = pluralStringResource(
+        Res.plurals.selection_trash_done,
+        selectedIds.size,
+        selectedIds.size
+    )
     if (showTrashConfirm) {
         ConfirmActionDialog(
             title = stringResource(Res.string.asset_trash_title),
@@ -103,6 +111,7 @@ fun MapClusterSheet(
             onConfirm = {
                 showTrashConfirm = false
                 onTrash()
+                snackbar?.show(trashDoneMessage)
             }
         )
     }

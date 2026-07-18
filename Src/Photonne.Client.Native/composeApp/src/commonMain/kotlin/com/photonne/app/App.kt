@@ -9,12 +9,15 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -157,6 +160,9 @@ import com.photonne.app.ui.actions.ShareAssetsDialog
 import com.photonne.app.ui.actions.ShareLinkResultDialog
 import com.photonne.app.ui.main.AlbumsListTopBar
 import com.photonne.app.ui.main.ArchiveMode
+import com.photonne.app.ui.main.LocalSnackbarController
+import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.rememberSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
 import com.photonne.app.ui.main.FolderDetailTopBar
@@ -1802,10 +1808,21 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         }
     }
 
+    val snackbarController = rememberSnackbarController()
+    // Canal único de feedback: el toast de "descarga guardada" que el VM de acciones
+    // ya componía en statusMessage pero que no se pintaba en ninguna parte.
+    LaunchedEffect(actionsState.statusMessage) {
+        actionsState.statusMessage?.let { message ->
+            snackbarController.show(message)
+            actionsViewModel.dismissMessage()
+        }
+    }
+
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(
         LocalSharedTransitionScope provides this,
-        LocalCurrentDetailAssetId provides currentDetailAssetId
+        LocalCurrentDetailAssetId provides currentDetailAssetId,
+        LocalSnackbarController provides snackbarController
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
         MainScaffold(
@@ -3989,6 +4006,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 }
             },
             onCancelAssign = assetFacesViewModel::cancelAssigning
+        )
+    }
+
+    // Host del snackbar sobre todo lo demás, elevado por encima de la nav flotante
+    // y respetando el inset inferior del sistema.
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        SnackbarHost(
+            hostState = snackbarController.hostState,
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(bottom = floatingNavBarReservedHeight())
         )
     }
 }

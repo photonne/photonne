@@ -153,6 +153,7 @@ import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
 import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.selection_trash_confirm_message
+import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_more
@@ -914,6 +915,12 @@ fun AssetSelectionBottomBar(
     // (timeline, álbum, carpeta, búsqueda, personas, favoritos, archivados,
     // organizar) hereda la confirmación sin repetirla en cada host.
     var showTrashConfirm by rememberSaveable { mutableStateOf(false) }
+    val snackbar = LocalSnackbarController.current
+    val trashDoneMessage = pluralStringResource(
+        Res.plurals.selection_trash_done,
+        selectedCount,
+        selectedCount
+    )
     if (showTrashConfirm) {
         ConfirmActionDialog(
             title = stringResource(Res.string.asset_trash_title),
@@ -929,6 +936,9 @@ fun AssetSelectionBottomBar(
             onConfirm = {
                 showTrashConfirm = false
                 onTrash()
+                // Feedback optimista: los ítems desaparecen al instante; si el
+                // borrado falla, el ErrorBanner de la pantalla lo cuenta aparte.
+                snackbar?.show(trashDoneMessage)
             }
         )
     }

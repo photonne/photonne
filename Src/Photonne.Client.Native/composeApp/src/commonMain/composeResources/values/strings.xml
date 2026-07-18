@@ -192,6 +192,10 @@
         <item quantity="one">%1$d foto se moverá a la papelera. Podrás restaurarla desde la papelera.</item>
         <item quantity="other">%1$d fotos se moverán a la papelera. Podrás restaurarlas desde la papelera.</item>
     </plurals>
+    <plurals name="selection_trash_done">
+        <item quantity="one">%1$d foto movida a la papelera</item>
+        <item quantity="other">%1$d fotos movidas a la papelera</item>
+    </plurals>
     <string name="asset_metadata_location">Ubicación</string>
     <string name="asset_metadata_open_map">Ver en Mapas</string>
 
