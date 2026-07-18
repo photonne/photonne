@@ -1,9 +1,11 @@
 package com.photonne.app.data.organize
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.TimelinePage
+import com.photonne.app.data.models.YearCount
 import kotlinx.datetime.Instant
 
 /**
@@ -28,14 +30,18 @@ class OrganizeRepository(
         targetFolderId: String,
         assetIds: List<String>,
         organizeByYear: Boolean = false
-    ) {
+    ): MoveOutcome =
         api.moveFolderAssets(
             sourceFolderId = null,
             targetFolderId = targetFolderId,
             assetIds = assetIds,
             organizeByCaptureYear = organizeByYear
         )
-    }
+
+    /** Year split of [assetIds] (server-computed from CapturedAt), for the manual
+     *  move preview under the picker. */
+    suspend fun yearBreakdown(assetIds: List<String>): List<YearCount> =
+        api.assetYearBreakdown(assetIds)
 
     /** Dry-run of a condition [rule] within the inbox: match count + a sample of
      *  ids, for the live "N fotos coinciden" preview. */
@@ -43,8 +49,8 @@ class OrganizeRepository(
         api.previewOrganizeRule(rule, sampleSize)
 
     /** Files every inbox asset matching [rule] into [targetFolderId] in one shot
-     *  (resolved server-side); returns how many were moved. When [organizeByYear]
-     *  is set the server files each match into a Year subfolder under the destination. */
-    suspend fun moveByRule(rule: SmartRule, targetFolderId: String, organizeByYear: Boolean = false): Int =
+     *  (resolved server-side); returns the moved count + real per-year split. When
+     *  [organizeByYear] is set the server files each match into a Year subfolder. */
+    suspend fun moveByRule(rule: SmartRule, targetFolderId: String, organizeByYear: Boolean = false): MoveOutcome =
         api.moveOrganizeRule(rule, targetFolderId, organizeByCaptureYear = organizeByYear)
 }

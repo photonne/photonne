@@ -36,4 +36,7 @@ data class SmartRule(
 data class SmartAlbumPreview(
     val count: Int = 0,
     val sampleAssetIds: List<String> = emptyList(),
+    /** Only populated by the Organize rule preview when relevant; empty for the
+     *  smart-album preview, which doesn't return it. */
+    val yearBreakdown: List<YearCount> = emptyList(),
 )

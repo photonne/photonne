@@ -1150,9 +1150,9 @@ public class FoldersEndpoint : IEndpoint
             return Results.NotFound(new { error = "Carpeta destino no encontrada." });
         }
 
-        await FolderAssetMover.MoveAsync(dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken, request.OrganizeByCaptureYear);
+        var result = await FolderAssetMover.MoveAsync(dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken, request.OrganizeByCaptureYear);
 
-        return Results.NoContent();
+        return Results.Ok(new MoveFolderAssetsResponse { Moved = result.Moved, YearBreakdown = result.YearBreakdown });
     }
 
     private async Task<IResult> RemoveFolderAssets(
@@ -1830,6 +1830,15 @@ public class MoveFolderAssetsRequest
     /// <summary>When true, file each asset into a Year subfolder (e.g. <c>2026</c>)
     /// under the target folder, derived from its capture date.</summary>
     public bool OrganizeByCaptureYear { get; set; }
+}
+
+public class MoveFolderAssetsResponse
+{
+    public int Moved { get; set; }
+
+    /// <summary>Real per-year distribution of the moved assets (newest first).
+    /// Only meaningful when the move used <see cref="MoveFolderAssetsRequest.OrganizeByCaptureYear"/>.</summary>
+    public IReadOnlyList<YearCount> YearBreakdown { get; set; } = [];
 }
 
 public class RemoveFolderAssetsRequest

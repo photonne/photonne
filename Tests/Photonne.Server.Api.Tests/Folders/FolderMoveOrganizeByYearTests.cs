@@ -65,6 +65,30 @@ public sealed class FolderMoveOrganizeByYearTests : IntegrationTestBase
     private sealed record MoveBody(
         Guid? sourceFolderId, Guid targetFolderId, List<Guid> assetIds, bool organizeByCaptureYear);
 
+    private sealed record YearCountDto(int Year, int Count);
+    private sealed record YearBreakdownResponse(List<YearCountDto> YearBreakdown);
+
+    [Fact]
+    public async Task YearBreakdown_ByIds_GroupsOwnAssetsByCaptureYear()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var root = $"/assets/users/{alice.Username}";
+        var backup = await CreateFolderAsync($"{root}/MobileBackup/Pixel");
+
+        var a = await CreateAssetOnDiskAsync(alice, "a.jpg", $"{root}/MobileBackup/Pixel/a.jpg", backup, new DateTime(2026, 2, 1, 12, 0, 0));
+        var b = await CreateAssetOnDiskAsync(alice, "b.jpg", $"{root}/MobileBackup/Pixel/b.jpg", backup, new DateTime(2026, 9, 1, 12, 0, 0));
+        var c = await CreateAssetOnDiskAsync(alice, "c.jpg", $"{root}/MobileBackup/Pixel/c.jpg", backup, new DateTime(2024, 7, 1, 12, 0, 0));
+
+        var response = await client.PostAsJsonAsync("/api/assets/year-breakdown",
+            new { assetIds = new[] { a, b, c } });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<YearBreakdownResponse>();
+
+        // Newest year first, counts per CapturedAt.Year.
+        Assert.Equal(new[] { (2026, 2), (2024, 1) },
+            body!.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray());
+    }
+
     [Fact]
     public async Task Move_OrganizeByYear_FilesEachAssetIntoItsYearSubfolder()
     {

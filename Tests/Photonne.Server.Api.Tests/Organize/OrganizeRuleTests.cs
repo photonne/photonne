@@ -21,8 +21,9 @@ public sealed class OrganizeRuleTests : IntegrationTestBase
 {
     public OrganizeRuleTests(PhotonneApiFactory factory) : base(factory) { }
 
-    private sealed record PreviewResponse(int Count, List<Guid> SampleAssetIds);
-    private sealed record MoveResponse(int Moved);
+    private sealed record YearCountDto(int Year, int Count);
+    private sealed record PreviewResponse(int Count, List<Guid> SampleAssetIds, List<YearCountDto> YearBreakdown);
+    private sealed record MoveResponse(int Moved, List<YearCountDto> YearBreakdown);
     private sealed record CountBody(int Count);
 
     private async Task<Guid> CreateFolderAsync(string path)
@@ -260,6 +261,40 @@ public sealed class OrganizeRuleTests : IntegrationTestBase
             Assert.All(moved, a => Assert.Equal(buckets[0].Id, a.FolderId));
             Assert.All(moved, a => Assert.Contains("/Familia/2026/", a.FullPath));
         });
+    }
+
+    [Fact]
+    public async Task Preview_And_Move_YearBreakdown_Match_AcrossYears()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var root = $"/assets/users/{alice.Username}";
+        var pixel = await CreateFolderAsync($"{root}/MobileBackup/Pixel");
+        var familia = await CreateFolderAsync($"{root}/Familia");
+
+        await CreateAssetAsync(alice, "a.jpg", $"{root}/MobileBackup/Pixel/a.jpg", pixel,
+            new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc), writeToDisk: true);
+        await CreateAssetAsync(alice, "b.jpg", $"{root}/MobileBackup/Pixel/b.jpg", pixel,
+            new DateTime(2026, 8, 9, 12, 0, 0, DateTimeKind.Utc), writeToDisk: true);
+        await CreateAssetAsync(alice, "c.jpg", $"{root}/MobileBackup/Pixel/c.jpg", pixel,
+            new DateTime(2025, 5, 4, 12, 0, 0, DateTimeKind.Utc), writeToDisk: true);
+
+        // Preview reports the split (newest year first).
+        var previewResp = await client.PostAsJsonAsync("/api/organize/rule/preview",
+            new { rule = FolderRule(pixel), sampleSize = 60 });
+        previewResp.EnsureSuccessStatusCode();
+        var preview = await previewResp.Content.ReadFromJsonAsync<PreviewResponse>();
+        Assert.Equal(new[] { (2026, 2), (2025, 1) },
+            preview!.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray());
+
+        // The move's real split equals the preview.
+        var moveResp = await client.PostAsJsonAsync("/api/organize/rule/move",
+            new { rule = FolderRule(pixel), targetFolderId = familia, organizeByCaptureYear = true });
+        moveResp.EnsureSuccessStatusCode();
+        var move = await moveResp.Content.ReadFromJsonAsync<MoveResponse>();
+        Assert.Equal(3, move!.Moved);
+        Assert.Equal(
+            preview.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray(),
+            move.YearBreakdown.Select(y => (y.Year, y.Count)).ToArray());
     }
 
     [Fact]

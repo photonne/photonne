@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Photonne.Server.Api.Features.Folders;
 using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Services;
@@ -71,7 +72,19 @@ public class OrganizeRulePreviewEndpoint : IEndpoint
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new OrganizeRulePreviewResponse { Count = count, SampleAssetIds = sample });
+        // Same query the move touches → the breakdown equals the real Year split.
+        var breakdown = await query
+            .GroupBy(a => a.CapturedAt.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Year)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(new OrganizeRulePreviewResponse
+        {
+            Count = count,
+            SampleAssetIds = sample,
+            YearBreakdown = breakdown.Select(g => new YearCount(g.Year, g.Count)).ToList()
+        });
     }
 
     public class OrganizeRulePreviewRequest
@@ -84,5 +97,10 @@ public class OrganizeRulePreviewEndpoint : IEndpoint
     {
         public int Count { get; set; }
         public List<Guid> SampleAssetIds { get; set; } = new();
+
+        /// <summary>How the matched assets split across capture years (newest
+        /// first). Powers the live "se repartirán en…" preview when Year foldering
+        /// is enabled. Equals the real move split (same resolved query).</summary>
+        public IReadOnlyList<YearCount> YearBreakdown { get; set; } = [];
     }
 }

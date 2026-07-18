@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.data.models.YearCount
+import com.photonne.app.ui.organize.YearBreakdownChips
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_move
@@ -57,6 +59,7 @@ fun FolderPickerDialog(
     includeRoot: Boolean = false,
     initialSelectionId: String? = null,
     showOrganizeByDate: Boolean = false,
+    yearBreakdown: List<YearCount> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
@@ -207,6 +210,19 @@ fun FolderPickerDialog(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+                if (organizeByYear && yearBreakdown.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(start = 48.dp, top = 2.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            "Se repartirán en:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        YearBreakdownChips(yearBreakdown)
                     }
                 }
             }

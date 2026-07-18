@@ -78,11 +78,11 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
             .Where(a => ids.Contains(a.Id))
             .ToListAsync(cancellationToken);
 
-        var moved = await FolderAssetMover.MoveAsync(
+        var result = await FolderAssetMover.MoveAsync(
             dbContext, settingsService, cache, userId, assets, targetFolder, cancellationToken,
             request.OrganizeByCaptureYear);
 
-        return Results.Ok(new OrganizeRuleMoveResponse { Moved = moved });
+        return Results.Ok(new OrganizeRuleMoveResponse { Moved = result.Moved, YearBreakdown = result.YearBreakdown });
     }
 
     public class OrganizeRuleMoveRequest
@@ -98,5 +98,9 @@ public class OrganizeRuleMoveEndpoint : IEndpoint
     public class OrganizeRuleMoveResponse
     {
         public int Moved { get; set; }
+
+        /// <summary>Real per-year distribution of the moved assets (newest first).
+        /// Only meaningful when the move used <see cref="OrganizeRuleMoveRequest.OrganizeByCaptureYear"/>.</summary>
+        public IReadOnlyList<YearCount> YearBreakdown { get; set; } = [];
     }
 }

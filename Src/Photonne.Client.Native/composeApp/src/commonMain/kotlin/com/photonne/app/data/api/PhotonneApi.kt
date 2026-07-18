@@ -36,8 +36,10 @@ import com.photonne.app.data.models.TimelineBucket
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.TimelineYearSummary
+import com.photonne.app.data.models.AssetYearBreakdownResponse
+import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.OrganizeCountResponse
-import com.photonne.app.data.models.OrganizeRuleMoveResponse
+import com.photonne.app.data.models.YearCount
 import com.photonne.app.data.models.UnsupportedFilesPage
 import com.photonne.app.data.models.UserDto
 import io.ktor.client.HttpClient
@@ -163,6 +165,11 @@ internal data class MoveFolderAssetsBody(
     val targetFolderId: String,
     val assetIds: List<String>,
     val organizeByCaptureYear: Boolean = false
+)
+
+@Serializable
+internal data class AssetYearBreakdownBody(
+    val assetIds: List<String>
 )
 
 @Serializable
@@ -300,8 +307,11 @@ interface PhotonneApi {
     suspend fun getOrganizeCount(): Int
     /** Dry-run of a condition rule within the MobileBackup inbox: match count + sample. */
     suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
-    /** Files every inbox asset matching [rule] into [targetFolderId]; returns the moved count. */
-    suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean = false): Int
+    /** Files every inbox asset matching [rule] into [targetFolderId]; returns the
+     *  moved count plus the real per-year split. */
+    suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean = false): MoveOutcome
+    /** Year split of the given assets, for the manual-move preview. */
+    suspend fun assetYearBreakdown(assetIds: List<String>): List<YearCount>
     suspend fun getRecentAssets(limit: Int = 10): List<TimelineItem>
     /** Live "on this day" query — what the timeline strip shows. */
     suspend fun getMemories(): List<TimelineItem>
@@ -484,7 +494,7 @@ interface PhotonneApi {
         targetFolderId: String,
         assetIds: List<String>,
         organizeByCaptureYear: Boolean = false
-    )
+    ): MoveOutcome
     suspend fun searchAssets(
         q: String? = null,
         from: String? = null,
@@ -860,7 +870,7 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean): Int {
+    override suspend fun moveOrganizeRule(rule: SmartRule, targetFolderId: String, organizeByCaptureYear: Boolean): MoveOutcome {
         val response: HttpResponse = client.post("$baseUrl/api/organize/rule/move") {
             contentType(ContentType.Application.Json)
             setBody(OrganizeRuleMoveRequest(rule = rule, targetFolderId = targetFolderId, organizeByCaptureYear = organizeByCaptureYear))
@@ -871,7 +881,21 @@ class PhotonneApiClient(
                 message = "Organize rule move failed (${response.status.value})"
             )
         }
-        return response.body<OrganizeRuleMoveResponse>().moved
+        return response.body()
+    }
+
+    override suspend fun assetYearBreakdown(assetIds: List<String>): List<YearCount> {
+        val response: HttpResponse = client.post("$baseUrl/api/assets/year-breakdown") {
+            contentType(ContentType.Application.Json)
+            setBody(AssetYearBreakdownBody(assetIds = assetIds))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Asset year breakdown failed (${response.status.value})"
+            )
+        }
+        return response.body<AssetYearBreakdownResponse>().yearBreakdown
     }
 
     override suspend fun getUnsupportedFileContent(id: String): AssetContentBytes {
@@ -1971,7 +1995,7 @@ class PhotonneApiClient(
         targetFolderId: String,
         assetIds: List<String>,
         organizeByCaptureYear: Boolean
-    ) {
+    ): MoveOutcome {
         val response: HttpResponse = client.post("$baseUrl/api/folders/assets/move") {
             contentType(ContentType.Application.Json)
             setBody(
@@ -1989,6 +2013,8 @@ class PhotonneApiClient(
                 message = "Moving folder assets failed (${response.status.value})"
             )
         }
+        // Older servers replied 204 with no body; treat that as a bare success.
+        return if (response.status == HttpStatusCode.NoContent) MoveOutcome() else response.body()
     }
 
     override suspend fun searchAssets(

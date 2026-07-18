@@ -1563,7 +1563,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onArchive = organizeInboxViewModel::bulkArchive,
                     onTrash = organizeInboxViewModel::bulkTrash,
-                    onMove = { showMoveSelectedAssetsInbox = true }
+                    onMove = {
+                        showMoveSelectedAssetsInbox = true
+                        organizeInboxViewModel.loadMoveYearBreakdown()
+                    }
                 )
             }
         }
@@ -3617,6 +3620,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = organizeInboxState.error?.userMessage,
             includeRoot = false,
             showOrganizeByDate = true,
+            yearBreakdown = organizeInboxState.moveYearBreakdown,
             onDismiss = {
                 showMoveSelectedAssetsInbox = false
                 organizeInboxViewModel.clearError()
@@ -3629,6 +3633,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                 }
             }
+        )
+    }
+
+    organizeInboxState.lastMoveSummary?.let { outcome ->
+        com.photonne.app.ui.organize.MoveSummaryDialog(
+            outcome = outcome,
+            onDismiss = organizeInboxViewModel::clearMoveSummary
         )
     }
 

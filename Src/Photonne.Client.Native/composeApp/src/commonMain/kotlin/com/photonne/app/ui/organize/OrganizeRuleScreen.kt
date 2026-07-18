@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.ui.album.smart.RuleConditionsEditor
 import com.photonne.app.ui.folder.FolderPickerDialog
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -68,6 +69,7 @@ fun OrganizeRuleScreen(
 
     var showFolderPicker by remember { mutableStateOf(false) }
     var showConfirm by remember { mutableStateOf(false) }
+    var summary by remember { mutableStateOf<MoveOutcome?>(null) }
 
     // The VM instance is reused across navigations; start blank each time.
     LaunchedEffect(Unit) { viewModel.reset() }
@@ -114,6 +116,17 @@ fun OrganizeRuleScreen(
                 checked = state.organizeByYear,
                 onToggle = viewModel::setOrganizeByYear,
             )
+
+            if (state.organizeByYear && state.yearBreakdown.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Se repartirán en:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    YearBreakdownChips(state.yearBreakdown)
+                }
+            }
 
             state.error?.let { err ->
                 Text(
@@ -165,13 +178,25 @@ fun OrganizeRuleScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showConfirm = false
-                    viewModel.move(onMoved)
+                    viewModel.move { outcome ->
+                        // With a year split, confirm the distribution first; the
+                        // navigation back happens when the summary is dismissed.
+                        if (outcome.yearBreakdown.isNotEmpty()) summary = outcome
+                        else onMoved(outcome.moved)
+                    }
                 }) { Text("Mover") }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirm = false }) { Text("Cancelar") }
             },
         )
+    }
+
+    summary?.let { s ->
+        MoveSummaryDialog(s) {
+            summary = null
+            onMoved(s.moved)
+        }
     }
 }
 

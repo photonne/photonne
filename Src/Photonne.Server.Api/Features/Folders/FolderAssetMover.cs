@@ -5,6 +5,15 @@ using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Folders;
 
+/// <summary>A single (year, count) bucket, used by both the move preview and the
+/// post-move summary to describe how assets split across Year subfolders.</summary>
+public sealed record YearCount(int Year, int Count);
+
+/// <summary>Outcome of a move: how many files actually moved, plus the real
+/// distribution of those assets across capture years (newest first). The
+/// year split is what the client shows as the post-move summary.</summary>
+public sealed record MoveResult(int Moved, IReadOnlyList<YearCount> YearBreakdown);
+
 /// <summary>
 /// Shared physical move of assets into a target folder: <c>File.Move</c>
 /// (collision → <c>_{Guid:N}</c> suffix), update <c>FolderId</c>/<c>FileName</c>/
@@ -22,9 +31,10 @@ internal static class FolderAssetMover
     /// Year subfolder (e.g. <c>2026</c>) resolved-or-created under
     /// <paramref name="targetFolder"/>, derived from its (naive-local)
     /// <c>CapturedAt</c>. Year buckets are reused across moves (idempotent).</param>
-    /// <returns>Number of assets whose file was actually moved (missing source
-    /// files are skipped).</returns>
-    public static async Task<int> MoveAsync(
+    /// <returns>The moved count plus the real per-year distribution of the assets
+    /// that actually moved (missing source files are skipped and excluded from
+    /// both).</returns>
+    public static async Task<MoveResult> MoveAsync(
         ApplicationDbContext dbContext,
         SettingsService settingsService,
         IMemoryCache cache,
@@ -58,6 +68,7 @@ internal static class FolderAssetMover
         }
 
         var moved = 0;
+        var perYear = new Dictionary<int, int>();
         foreach (var asset in assets)
         {
             var sourcePhysicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
@@ -83,12 +94,18 @@ internal static class FolderAssetMover
             asset.FileName = fileName;
             asset.FullPath = await settingsService.VirtualizePathAsync(newPhysicalPath);
             moved++;
+            var year = asset.CapturedAt.Year;
+            perYear[year] = perYear.GetValueOrDefault(year) + 1;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         cache.Remove($"folders:list:{userId}");
         cache.Remove($"folders:tree:{userId}");
 
-        return moved;
+        var breakdown = perYear
+            .OrderByDescending(kv => kv.Key)
+            .Select(kv => new YearCount(kv.Key, kv.Value))
+            .ToList();
+        return new MoveResult(moved, breakdown);
     }
 }

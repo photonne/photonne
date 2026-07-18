@@ -6,6 +6,8 @@ import com.photonne.app.data.auth.AuthStateHolder
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.folder.FoldersRepository
+import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.data.models.YearCount
 import com.photonne.app.data.organize.OrganizeRepository
 import com.photonne.app.data.search.SearchRepository
 import com.photonne.app.ui.album.smart.ConditionPickersController
@@ -33,6 +35,7 @@ data class OrganizeRuleUiState(
     val organizeByYear: Boolean = false,
     val previewCount: Int? = null,
     val previewSampleIds: List<String> = emptyList(),
+    val yearBreakdown: List<YearCount> = emptyList(),
     val isPreviewing: Boolean = false,
     val isMoving: Boolean = false,
     val error: UiError? = null,
@@ -105,7 +108,7 @@ class OrganizeRuleViewModel(
         previewJob?.cancel()
         val rule = buildSmartRule(_state.value.conditions, _state.value.matchAll)
         if (rule == null) {
-            _state.update { it.copy(previewCount = null, previewSampleIds = emptyList(), isPreviewing = false) }
+            _state.update { it.copy(previewCount = null, previewSampleIds = emptyList(), yearBreakdown = emptyList(), isPreviewing = false) }
             return
         }
         _state.update { it.copy(isPreviewing = true) }
@@ -117,6 +120,7 @@ class OrganizeRuleViewModel(
                         it.copy(
                             previewCount = result.count,
                             previewSampleIds = result.sampleAssetIds,
+                            yearBreakdown = result.yearBreakdown,
                             isPreviewing = false,
                         )
                     }
@@ -132,7 +136,7 @@ class OrganizeRuleViewModel(
     /** Files every matching pending asset into the chosen folder. On success
      * [onDone] receives the moved count so the caller can refresh the inbox
      * badge and navigate back. */
-    fun move(onDone: (Int) -> Unit) {
+    fun move(onDone: (MoveOutcome) -> Unit) {
         val current = _state.value
         val rule = buildSmartRule(current.conditions, current.matchAll)
         val target = current.targetFolderId
@@ -140,9 +144,9 @@ class OrganizeRuleViewModel(
         _state.update { it.copy(isMoving = true, error = null) }
         viewModelScope.launch {
             runCatching { organize.moveByRule(rule, target, current.organizeByYear) }
-                .onSuccess { moved ->
+                .onSuccess { outcome ->
                     _state.update { it.copy(isMoving = false) }
-                    onDone(moved)
+                    onDone(outcome)
                 }
                 .onFailure { error ->
                     _state.update {
