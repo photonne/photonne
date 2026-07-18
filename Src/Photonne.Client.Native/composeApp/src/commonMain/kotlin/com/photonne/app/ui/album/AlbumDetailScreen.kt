@@ -84,6 +84,7 @@ import com.photonne.app.ui.grid.formatLocalizedMonth
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ScrollToTopPill
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
@@ -152,8 +153,9 @@ fun AlbumDetailScreen(
     // Lo que ocupa la barra arriba: status bar + un alto de app-bar estándar. La
     // rejilla NO lo reserva (la portada del hero sube a sangre por debajo, y la
     // barra se apoya encima), pero el scrubber sí arranca por debajo para no
-    // montarse sobre la cápsula de acciones.
-    val reservedTop = statusBarTop + 64.dp
+    // montarse sobre la cápsula de acciones. Misma medida que las subpantallas
+    // flotantes, así que sale del helper compartido en vez de re-derivar el +64.
+    val reservedTop = subscreenChromeReservedTop()
     // Con una selección activa la nav flotante deja su sitio a la cápsula de
     // acciones, que mide lo mismo: la rejilla sigue a sangre por debajo y sigue
     // reservando el mismo hueco, aunque `immersive` ya esté apagado (la barra no
