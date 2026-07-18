@@ -38,6 +38,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.YearGroup
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_close
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Full-screen "Revisar antes de mover": every asset about to move, grouped by
@@ -69,7 +72,7 @@ fun MoveReviewScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack, enabled = !isMoving) {
-                    Icon(Icons.Filled.Close, contentDescription = "Cerrar")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_close))
                 }
                 Spacer(Modifier.width(4.dp))
                 Column(Modifier.weight(1f)) {

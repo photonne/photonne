@@ -88,6 +88,7 @@ import com.photonne.app.resources.device_backup_not_supported
 import com.photonne.app.resources.device_backup_progress
 import com.photonne.app.resources.device_backup_total
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import org.jetbrains.compose.resources.stringResource
 
@@ -115,7 +116,8 @@ fun BackupPendingScreen(
     val folder = state.folder
     if (folder == null) {
         EmptyState(
-            intro = stringResource(Res.string.device_backup_intro),
+            icon = Icons.Filled.Folder,
+            title = stringResource(Res.string.device_backup_intro),
             actionLabel = stringResource(Res.string.device_backup_action_pick_folder),
             onAction = pickFolder
         )
@@ -864,33 +866,6 @@ private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier
     }
 }
 
-@Composable
-private fun EmptyState(
-    intro: String,
-    actionLabel: String,
-    onAction: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Folder,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(Modifier.size(16.dp))
-        Text(
-            intro,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.size(24.dp))
-        Button(onClick = onAction) { Text(actionLabel) }
-    }
-}
 
 @Composable
 private fun EmptyMessage(message: String) {

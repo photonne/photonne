@@ -141,6 +141,7 @@ import com.photonne.app.data.models.toTimelineItem
 import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.platform.OrientationController
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_close
 import com.photonne.app.resources.add_to_album_title
 import com.photonne.app.resources.asset_action_archive
 import com.photonne.app.resources.asset_action_edit_date
@@ -668,7 +669,10 @@ fun AssetDetailScreen(
                 ) {
                     ViewerChromeCapsule(hazeState = viewerHazeState) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver")
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(Res.string.action_close)
+                            )
                         }
                     }
                     ViewerChromeCapsule(hazeState = viewerHazeState) {
