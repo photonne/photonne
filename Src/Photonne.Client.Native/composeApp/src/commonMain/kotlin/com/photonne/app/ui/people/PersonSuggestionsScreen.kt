@@ -19,7 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,11 +45,21 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.PersonSuggestion
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_more
+import com.photonne.app.resources.people_action_suggestions_accept_all
+import com.photonne.app.resources.people_action_suggestions_dismiss_all
 import com.photonne.app.resources.people_suggestions_accept
 import com.photonne.app.resources.people_suggestions_dismiss
 import com.photonne.app.resources.people_suggestions_empty
+import com.photonne.app.resources.people_suggestions_title
+import com.photonne.app.resources.people_unnamed
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.stringResource
@@ -51,12 +67,21 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun PersonSuggestionsScreen(
     state: PersonSuggestionsUiState,
+    title: String,
+    isBulkMutating: Boolean,
     onAccept: (faceId: String) -> Unit,
     onDismissFace: (faceId: String) -> Unit,
     onLoadMore: () -> Unit,
-    onOpen: () -> Unit
+    onOpen: () -> Unit,
+    onBack: () -> Unit,
+    onAcceptAll: () -> Unit,
+    onDismissAll: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
+    val hazeState = remember { HazeState() }
+    val gridState = rememberLazyGridState()
+    val reservedTop = subscreenChromeReservedTop()
 
     LaunchedEffect(Unit) { onOpen() }
 
@@ -67,7 +92,7 @@ fun PersonSuggestionsScreen(
                     CircularProgressIndicator()
                 }
             state.error != null && state.items.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
                     com.photonne.app.ui.error.ErrorBanner(error = state.error)
                 }
             state.isEmpty ->
@@ -82,7 +107,6 @@ fun PersonSuggestionsScreen(
                     )
                 }
             else -> {
-                val gridState = rememberLazyGridState()
                 val shouldLoadMore by remember(state.hasMore, state.isAppending) {
                     derivedStateOf {
                         val total = gridState.layoutInfo.totalItemsCount
@@ -103,13 +127,13 @@ fun PersonSuggestionsScreen(
                     state = gridState,
                     contentPadding = PaddingValues(
                         start = 12.dp,
-                        top = 12.dp,
+                        top = 12.dp + reservedTop,
                         end = 12.dp,
                         bottom = 12.dp + floatingNavBarReservedHeight()
                     ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                 ) {
                     items(state.items, key = { it.id }) { suggestion ->
                         SuggestionCard(
@@ -122,6 +146,57 @@ fun PersonSuggestionsScreen(
                     }
                 }
             }
+        }
+
+        SubscreenFloatingChrome(
+            title = stringResource(
+                Res.string.people_suggestions_title,
+                title.takeIf { it.isNotBlank() } ?: stringResource(Res.string.people_unnamed)
+            ),
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { gridState.isScrollInProgress },
+                scrollToTopMinIndex = 6,
+                onScrollToTop = {
+                    if (gridState.firstVisibleItemIndex > 24) gridState.scrollToItem(24)
+                    gridState.animateScrollToItem(0)
+                }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange,
+            actions = {
+                SuggestionsOverflowMenu(
+                    enabled = !isBulkMutating,
+                    onAcceptAll = onAcceptAll,
+                    onDismissAll = onDismissAll
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun SuggestionsOverflowMenu(
+    enabled: Boolean,
+    onAcceptAll: () -> Unit,
+    onDismissAll: () -> Unit
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { menuOpen = true }, enabled = enabled) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_more))
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.people_action_suggestions_accept_all)) },
+                onClick = { menuOpen = false; onAcceptAll() }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.people_action_suggestions_dismiss_all)) },
+                onClick = { menuOpen = false; onDismissAll() }
+            )
         }
     }
 }

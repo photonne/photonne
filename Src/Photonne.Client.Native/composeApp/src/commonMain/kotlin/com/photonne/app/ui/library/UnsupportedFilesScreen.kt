@@ -7,8 +7,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.runtime.remember
+import com.photonne.app.resources.unsupported_files_title
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOff
@@ -42,8 +50,14 @@ fun UnsupportedFilesScreen(
     onLoad: () -> Unit,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
-    onDownload: (UnsupportedFileItem) -> Unit
+    onDownload: (UnsupportedFileItem) -> Unit,
+    onBack: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    val reservedTop = subscreenChromeReservedTop()
+
     LaunchedEffect(Unit) { onLoad() }
 
     PhotonneRefreshableScreen(
@@ -57,7 +71,7 @@ fun UnsupportedFilesScreen(
                         CircularProgressIndicator()
                     }
                 state.error != null && state.items.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
                         com.photonne.app.ui.error.ErrorBanner(error = state.error)
                     }
                 state.isEmpty ->
@@ -67,8 +81,12 @@ fun UnsupportedFilesScreen(
                         subtitle = stringResource(Res.string.unsupported_files_empty_subtitle)
                     )
                 else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight())
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+                    contentPadding = PaddingValues(
+                        top = reservedTop,
+                        bottom = floatingNavBarReservedHeight()
+                    )
                 ) {
                     itemsIndexed(state.items, key = { _, it -> it.id }) { index, file ->
                         // Page in more rows as the user nears the end of the list.
@@ -94,6 +112,25 @@ fun UnsupportedFilesScreen(
                     }
                 }
             }
+
+            SubscreenFloatingChrome(
+                title = stringResource(Res.string.unsupported_files_title),
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                    firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                    isScrollInProgress = { listState.isScrollInProgress },
+                    scrollToTopMinIndex = 4,
+                    onScrollToTop = {
+                        if (listState.firstVisibleItemIndex > 10) {
+                            listState.scrollToItem(10)
+                        }
+                        listState.animateScrollToItem(0)
+                    }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = onChromeVisibleChange
+            )
         }
     }
 }

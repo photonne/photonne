@@ -868,12 +868,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // activa vuelven a la barra sólida: una acción no puede escaparse scroll
     // abajo. Sólo hay una a la vez, así que comparten el estado de visibilidad.
     val floatingChromeSubscreen = when (moreSubscreen) {
-        MoreSubscreen.People -> selectedPerson == null
+        MoreSubscreen.People ->
+            selectedPerson == null || !personDetailState.isSelectionActive
         MoreSubscreen.ExploreScenes,
         MoreSubscreen.ExploreObjects,
         MoreSubscreen.Memories,
         MoreSubscreen.Map -> true
         MoreSubscreen.OrganizeInbox -> !organizeInboxState.isSelectionActive
+        MoreSubscreen.Favorites -> !favoritesState.isSelectionActive
+        MoreSubscreen.Archived -> !archivedState.isSelectionActive
+        MoreSubscreen.UnsupportedFiles -> true
+        MoreSubscreen.PeopleSuggestions -> true
         else -> false
     }
 
@@ -1076,11 +1081,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     title = stringResource(Res.string.my_links_title),
                     onBack = { moreSubscreen = null }
                 )
-            moreSubscreen == MoreSubscreen.UnsupportedFiles ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.unsupported_files_title),
-                    onBack = { moreSubscreen = null }
-                )
+            // "Otros archivos" pinta su propio cromo flotante dentro de la pantalla.
+            moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
+            }
             moreSubscreen == MoreSubscreen.OrganizeInbox &&
                 organizeInboxState.isSelectionActive ->
                 AssetSelectionTopBar(
@@ -1123,27 +1126,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 moreSubscreen == MoreSubscreen.ExploreObjects ||
                 moreSubscreen == MoreSubscreen.Map -> {
             }
-            moreSubscreen == MoreSubscreen.PeopleSuggestions ->
-                com.photonne.app.ui.main.PersonSuggestionsTopBar(
-                    title = (suggestionsState.personName ?: selectedPerson?.name)
-                        ?.takeIf { it.isNotBlank() }
-                        ?: stringResource(Res.string.people_unnamed),
-                    subtitle = if (suggestionsState.total > 0)
-                        stringResource(Res.string.albums_count_format, suggestionsState.total)
-                    else null,
-                    isBulkMutating = suggestionsState.isBulkMutating,
-                    onBack = { moreSubscreen = MoreSubscreen.People },
-                    onAcceptAll = {
-                        personSuggestionsViewModel.acceptAll {
-                            personDetailViewModel.open(
-                                selectedPerson?.id ?: return@acceptAll,
-                                selectedPerson?.name
-                            )
-                            peopleViewModel.refresh()
-                        }
-                    },
-                    onDismissAll = { personSuggestionsViewModel.dismissAll() }
-                )
+            // Sugerencias de una persona pinta su propio cromo flotante.
+            moreSubscreen == MoreSubscreen.PeopleSuggestions -> {
+            }
             moreSubscreen == MoreSubscreen.People &&
                 selectedPerson != null && personDetailState.isSelectionActive ->
                 AssetSelectionTopBar(
@@ -1154,40 +1139,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = personDetailViewModel::clearSelection,
                     onSelectAll = personDetailViewModel::toggleSelectAll
                 )
-            moreSubscreen == MoreSubscreen.People &&
-                selectedPerson != null -> {
-                val person = selectedPerson!!
-                val resolvedName = personDetailState.personName ?: person.name
-                com.photonne.app.ui.main.PersonDetailTopBar(
-                    title = resolvedName?.takeIf { it.isNotBlank() }
-                        ?: stringResource(Res.string.people_unnamed),
-                    subtitle = if (personDetailState.total > 0)
-                        stringResource(Res.string.albums_count_format, personDetailState.total)
-                    else null,
-                    isHidden = person.isHidden,
-                    onBack = { selectedPerson = null },
-                    onRename = { showRenamePerson = true },
-                    onSuggestions = {
-                        personSuggestionsViewModel.open(person.id, person.name)
-                        moreSubscreen = MoreSubscreen.PeopleSuggestions
-                    },
-                    onMerge = { showMergePicker = true },
-                    onToggleHidden = {
-                        if (person.isHidden) {
-                            peopleViewModel.unhide(person.id) {
-                                selectedPerson = person.copy(isHidden = false)
-                            }
-                        } else {
-                            peopleViewModel.hide(person.id) {
-                                selectedPerson = null
-                            }
-                        }
-                    }
-                )
-            }
-            // La lista de Personas pinta su propio cromo flotante (con el menú
-            // de recluster / ocultas en su cápsula de acciones); el detalle de
-            // una persona sigue con la barra acoplada de arriba.
+            // La lista de Personas Y el detalle pintan su propio cromo flotante
+            // (menú de recluster / ocultas o de renombrar / fusionar en su cápsula
+            // de acciones); aquí no va barra acoplada.
             moreSubscreen == MoreSubscreen.People -> {
             }
             moreSubscreen == MoreSubscreen.Favorites &&
@@ -1200,14 +1154,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = favoritesViewModel::clearSelection,
                     onSelectAll = favoritesViewModel::toggleSelectAll
                 )
+            // Favoritos pinta su propio cromo flotante dentro de la pantalla
+            // (ver floatingChromeSubscreen); aquí no va barra acoplada.
             moreSubscreen == MoreSubscreen.Favorites -> {
-                val count = favoritesState.items.size
-                com.photonne.app.ui.main.FavoritesTopBar(
-                    title = stringResource(Res.string.favorites_title),
-                    subtitle = if (count > 0)
-                        stringResource(Res.string.albums_count_format, count) else null,
-                    onBack = { moreSubscreen = null }
-                )
             }
             moreSubscreen == MoreSubscreen.Archived &&
                 archivedState.isSelectionActive ->
@@ -1219,16 +1168,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = archivedViewModel::clearSelection,
                     onSelectAll = archivedViewModel::toggleSelectAll
                 )
+            // Archivados pinta su propio cromo flotante dentro de la pantalla.
             moreSubscreen == MoreSubscreen.Archived -> {
-                val count = archivedState.items.size
-                com.photonne.app.ui.main.ArchivedTopBar(
-                    title = stringResource(Res.string.archive_title),
-                    subtitle = if (count > 0)
-                        stringResource(Res.string.albums_count_format, count) else null,
-                    canUnarchiveAll = count > 0,
-                    onBack = { moreSubscreen = null },
-                    onUnarchiveAll = { showUnarchiveAll = true }
-                )
             }
             // Personal tab in selection mode: restore/purge selected.
             moreSubscreen == MoreSubscreen.Trash &&
@@ -2249,7 +2190,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onLoad = unsupportedFilesViewModel::ensureLoaded,
                             onRefresh = unsupportedFilesViewModel::refresh,
                             onLoadMore = unsupportedFilesViewModel::loadMore,
-                            onDownload = unsupportedFilesViewModel::download
+                            onDownload = unsupportedFilesViewModel::download,
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeInbox ->
                         com.photonne.app.ui.organize.OrganizeInboxScreen(
@@ -2428,6 +2371,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     MoreSubscreen.PeopleSuggestions ->
                         com.photonne.app.ui.people.PersonSuggestionsScreen(
                             state = suggestionsState,
+                            title = (suggestionsState.personName ?: selectedPerson?.name).orEmpty(),
+                            isBulkMutating = suggestionsState.isBulkMutating,
                             onAccept = personSuggestionsViewModel::acceptFace,
                             onDismissFace = personSuggestionsViewModel::dismissFace,
                             onLoadMore = personSuggestionsViewModel::loadMore,
@@ -2435,7 +2380,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 selectedPerson?.let {
                                     personSuggestionsViewModel.open(it.id, it.name)
                                 }
-                            }
+                            },
+                            onBack = { moreSubscreen = MoreSubscreen.People },
+                            onAcceptAll = {
+                                personSuggestionsViewModel.acceptAll {
+                                    personDetailViewModel.open(
+                                        selectedPerson?.id ?: return@acceptAll,
+                                        selectedPerson?.name
+                                    )
+                                    peopleViewModel.refresh()
+                                }
+                            },
+                            onDismissAll = { personSuggestionsViewModel.dismissAll() },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.People -> {
                         val person = selectedPerson
@@ -2457,6 +2414,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         } else {
                             com.photonne.app.ui.people.PersonDetailScreen(
                                 state = personDetailState,
+                                title = personDetailState.personName ?: person.name.orEmpty(),
+                                isHidden = person.isHidden,
                                 onItemClick = { index ->
                                     if (personDetailState.isSelectionActive) {
                                         personDetailState.items.getOrNull(index)?.let {
@@ -2481,7 +2440,26 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         personDetailViewModel.toggleSelection(it.id)
                                     }
                                 },
-                                onLoadMore = personDetailViewModel::loadMore
+                                onLoadMore = personDetailViewModel::loadMore,
+                                onBack = { selectedPerson = null },
+                                onRename = { showRenamePerson = true },
+                                onSuggestions = {
+                                    personSuggestionsViewModel.open(person.id, person.name)
+                                    moreSubscreen = MoreSubscreen.PeopleSuggestions
+                                },
+                                onMerge = { showMergePicker = true },
+                                onToggleHidden = {
+                                    if (person.isHidden) {
+                                        peopleViewModel.unhide(person.id) {
+                                            selectedPerson = person.copy(isHidden = false)
+                                        }
+                                    } else {
+                                        peopleViewModel.hide(person.id) {
+                                            selectedPerson = null
+                                        }
+                                    }
+                                },
+                                onChromeVisibleChange = { subscreenChromeVisible = it }
                             )
                         }
                     }
@@ -2513,7 +2491,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onLoadMore = favoritesViewModel::loadMore,
                         onLoad = favoritesViewModel::ensureLoaded,
-                        onRefresh = favoritesViewModel::refresh
+                        onRefresh = favoritesViewModel::refresh,
+                        onBack = { moreSubscreen = null },
+                        onChromeVisibleChange = { subscreenChromeVisible = it }
                     )
                     MoreSubscreen.Archived -> com.photonne.app.ui.library.ArchivedScreen(
                         state = archivedState,
@@ -2543,7 +2523,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onLoadMore = archivedViewModel::loadMore,
                         onLoad = archivedViewModel::ensureLoaded,
-                        onRefresh = archivedViewModel::refresh
+                        onRefresh = archivedViewModel::refresh,
+                        onBack = { moreSubscreen = null },
+                        onUnarchiveAll = { showUnarchiveAll = true },
+                        onChromeVisibleChange = { subscreenChromeVisible = it }
                     )
                     MoreSubscreen.Trash -> Column(modifier = Modifier.fillMaxSize()) {
                         com.photonne.app.ui.library.TrashTabBar(
