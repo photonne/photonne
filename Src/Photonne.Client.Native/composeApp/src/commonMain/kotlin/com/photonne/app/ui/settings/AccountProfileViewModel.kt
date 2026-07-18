@@ -66,7 +66,7 @@ class AccountProfileViewModel(
                         it.copy(
                             isLoading = false,
                             error = if (cached == null) {
-                                errorFactory.from(error, "Failed to load profile")
+                                errorFactory.from(error, "No se pudo cargar el perfil")
                             } else null
                         )
                     }
@@ -110,14 +110,14 @@ class AccountProfileViewModel(
                 .onSuccess { user ->
                     seed(user)
                     _state.update {
-                        it.copy(isSubmitting = false, successMessage = "Profile updated")
+                        it.copy(isSubmitting = false, successMessage = "Perfil actualizado")
                     }
                 }
                 .onFailure { error ->
                     _state.update {
                         it.copy(
                             isSubmitting = false,
-                            error = errorFactory.from(error, "Could not update profile")
+                            error = errorFactory.from(error, "No se pudo actualizar el perfil")
                         )
                     }
                 }

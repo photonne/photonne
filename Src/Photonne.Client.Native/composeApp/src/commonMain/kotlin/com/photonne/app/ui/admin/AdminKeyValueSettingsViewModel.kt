@@ -77,7 +77,7 @@ abstract class AdminKeyValueSettingsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Could not load settings"
+                            errorMessage = error.message ?: "No se pudieron cargar los ajustes"
                         )
                     }
                 }
@@ -107,7 +107,7 @@ abstract class AdminKeyValueSettingsViewModel(
                         it.copy(
                             original = it.current,
                             isSubmitting = false,
-                            successMessage = "Saved"
+                            successMessage = "Guardado"
                         )
                     }
                 }
@@ -115,7 +115,7 @@ abstract class AdminKeyValueSettingsViewModel(
                     _state.update {
                         it.copy(
                             isSubmitting = false,
-                            errorMessage = error.message ?: "Could not save settings"
+                            errorMessage = error.message ?: "No se pudieron guardar los ajustes"
                         )
                     }
                 }

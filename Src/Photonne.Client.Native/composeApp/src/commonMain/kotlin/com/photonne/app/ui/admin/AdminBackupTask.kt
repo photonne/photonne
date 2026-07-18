@@ -100,7 +100,7 @@ class AdminBackupViewModel(
                     _state.update {
                         it.copy(
                             isDownloading = false,
-                            errorMessage = error.message ?: "Backup download failed"
+                            errorMessage = error.message ?: "No se pudo descargar la copia de seguridad"
                         )
                     }
                 }

@@ -91,7 +91,7 @@ class NotificationsViewModel(
             runCatching { repository.markRead(id) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Failed to mark as read"))
+                        it.copy(error = errorFactory.from(error, "No se pudo marcar como leída"))
                     }
                 }
         }
@@ -119,7 +119,7 @@ class NotificationsViewModel(
                     _state.update {
                         it.copy(
                             isMarkingAllRead = false,
-                            error = errorFactory.from(error, "Failed to mark all as read")
+                            error = errorFactory.from(error, "No se pudieron marcar todas como leídas")
                         )
                     }
                 }
@@ -158,7 +158,7 @@ class NotificationsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load notifications")
+                            error = errorFactory.from(error, "No se pudieron cargar las notificaciones")
                         )
                     }
                 }

@@ -76,7 +76,7 @@ class AdminUsersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not load users")
+                            error = errorFactory.from(error, "No se pudieron cargar los usuarios")
                         )
                     }
                 }
@@ -123,7 +123,7 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Could not create user") }
+                .onFailure { error -> failMutation(error, "No se pudo crear el usuario") }
         }
     }
 
@@ -166,7 +166,7 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Could not update user") }
+                .onFailure { error -> failMutation(error, "No se pudo actualizar el usuario") }
         }
     }
 
@@ -185,7 +185,7 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Could not delete user") }
+                .onFailure { error -> failMutation(error, "No se pudo eliminar el usuario") }
         }
     }
 
@@ -203,7 +203,7 @@ class AdminUsersViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Could not reset password") }
+                .onFailure { error -> failMutation(error, "No se pudo restablecer la contraseña") }
         }
     }
 
@@ -245,7 +245,7 @@ class AdminUsersViewModel(
                     onDone()
                 }
                 .onFailure { error ->
-                    failMutation(error, "Could not transfer primary admin")
+                    failMutation(error, "No se pudo transferir el administrador principal")
                 }
         }
     }

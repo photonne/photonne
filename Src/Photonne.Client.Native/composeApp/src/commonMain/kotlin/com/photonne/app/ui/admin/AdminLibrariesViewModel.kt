@@ -58,7 +58,7 @@ class AdminLibrariesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not load libraries")
+                            error = errorFactory.from(error, "No se pudieron cargar las bibliotecas")
                         )
                     }
                 }
@@ -92,7 +92,7 @@ class AdminLibrariesViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Create failed") }
+                .onFailure { error -> failMutation(error, "No se pudo crear") }
         }
     }
 
@@ -122,7 +122,7 @@ class AdminLibrariesViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Update failed") }
+                .onFailure { error -> failMutation(error, "No se pudo actualizar") }
         }
     }
 
@@ -141,7 +141,7 @@ class AdminLibrariesViewModel(
                     }
                     onDone()
                 }
-                .onFailure { error -> failMutation(error, "Delete failed") }
+                .onFailure { error -> failMutation(error, "No se pudo eliminar") }
         }
     }
 
@@ -199,7 +199,7 @@ class AdminLibrariesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Could not load permissions"))
+                        it.copy(error = errorFactory.from(error, "No se pudieron cargar los permisos"))
                     }
                 }
         }
@@ -229,7 +229,7 @@ class AdminLibrariesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Could not grant access"))
+                        it.copy(error = errorFactory.from(error, "No se pudo conceder el acceso"))
                     }
                 }
         }
@@ -248,7 +248,7 @@ class AdminLibrariesViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Could not revoke access"))
+                        it.copy(error = errorFactory.from(error, "No se pudo revocar el acceso"))
                     }
                 }
         }

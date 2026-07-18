@@ -91,7 +91,7 @@ class AdminTrashSettingsViewModel(
                 .onFailure { error ->
                     _trashStats.value = _trashStats.value.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Could not load trash stats"
+                        errorMessage = error.message ?: "No se pudieron cargar las estadísticas de la papelera"
                     )
                 }
         }
@@ -113,7 +113,7 @@ class AdminTrashSettingsViewModel(
                 .onFailure { error ->
                     _trashStats.value = _trashStats.value.copy(
                         isCleaning = false,
-                        errorMessage = error.message ?: "Cleanup failed"
+                        errorMessage = error.message ?: "No se pudo completar la limpieza"
                     )
                 }
         }

@@ -59,7 +59,7 @@ class SentSharesViewModel(
                         it.copy(
                             isLoading = false,
                             hasLoaded = true,
-                            error = errorFactory.from(error, "Failed to load share links")
+                            error = errorFactory.from(error, "No se pudieron cargar los enlaces")
                         )
                     }
                 }
@@ -104,7 +104,7 @@ class SentSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to update share link")
+                            error = errorFactory.from(error, "No se pudo actualizar el enlace")
                         )
                     }
                 }
@@ -128,7 +128,7 @@ class SentSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to revoke share link")
+                            error = errorFactory.from(error, "No se pudo revocar el enlace")
                         )
                     }
                 }

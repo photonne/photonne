@@ -41,7 +41,7 @@ class MemoriesViewModel(
                         it.copy(
                             isLoading = false,
                             attempted = true,
-                            error = errorFactory.from(error, "Failed to load memories")
+                            error = errorFactory.from(error, "No se pudieron cargar los recuerdos")
                         )
                     }
                 }

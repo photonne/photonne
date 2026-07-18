@@ -71,7 +71,7 @@ class UnsupportedFilesViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            error = errorFactory.from(error, "Failed to load unsupported files")
+                            error = errorFactory.from(error, "No se pudieron cargar los archivos no compatibles")
                         )
                     }
                 }
@@ -101,7 +101,7 @@ class UnsupportedFilesViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Failed to load more")
+                            error = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }
@@ -132,7 +132,7 @@ class UnsupportedFilesViewModel(
                     _state.update {
                         it.copy(
                             isDownloading = false,
-                            error = errorFactory.from(error, "Download failed")
+                            error = errorFactory.from(error, "No se pudo descargar")
                         )
                     }
                 }

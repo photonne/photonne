@@ -109,7 +109,7 @@ class AdminDuplicatesViewModel(
                 _state.update {
                     it.copy(
                         isRunning = false,
-                        errorMessage = e.message ?: "Duplicate scan failed",
+                        errorMessage = e.message ?: "No se pudo completar el escaneo de duplicados",
                         finishedAtMs = Clock.System.now().toEpochMilliseconds()
                     )
                 }

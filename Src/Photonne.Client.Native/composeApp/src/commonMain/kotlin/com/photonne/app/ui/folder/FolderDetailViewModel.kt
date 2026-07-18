@@ -104,7 +104,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load folder")
+                            error = errorFactory.from(error, "No se pudo cargar la carpeta")
                         )
                     }
                 }
@@ -142,7 +142,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load folder")
+                            error = errorFactory.from(error, "No se pudo cargar la carpeta")
                         )
                     }
                 }
@@ -229,7 +229,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to rename folder")
+                            error = errorFactory.from(error, "No se pudo renombrar la carpeta")
                         )
                     }
                 }
@@ -257,7 +257,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to move folder")
+                            error = errorFactory.from(error, "No se pudo mover la carpeta")
                         )
                     }
                 }
@@ -299,7 +299,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to rename folder")
+                            error = errorFactory.from(error, "No se pudo renombrar la carpeta")
                         )
                     }
                 }
@@ -329,7 +329,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to delete folder")
+                            error = errorFactory.from(error, "No se pudo eliminar la carpeta")
                         )
                     }
                 }
@@ -363,7 +363,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to move assets")
+                            error = errorFactory.from(error, "No se pudieron mover los archivos")
                         )
                     }
                 }
@@ -372,12 +372,12 @@ class FolderDetailViewModel(
 
     fun bulkArchive() = runAssetBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "Failed to archive"
+        errorFallback = "No se pudo archivar"
     )
 
     fun bulkTrash() = runAssetBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "Failed to delete"
+        errorFallback = "No se pudo mover a la papelera"
     )
 
     fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
@@ -395,7 +395,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }
@@ -446,7 +446,7 @@ class FolderDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to delete folder")
+                            error = errorFactory.from(error, "No se pudo eliminar la carpeta")
                         )
                     }
                 }

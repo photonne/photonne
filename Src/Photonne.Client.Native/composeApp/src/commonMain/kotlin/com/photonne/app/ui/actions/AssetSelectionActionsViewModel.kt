@@ -103,7 +103,7 @@ class AssetSelectionActionsViewModel(
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
-                            error = errorFactory.from(error, "Download failed")
+                            error = errorFactory.from(error, "No se pudo descargar")
                         )
                     }
                 }
@@ -150,8 +150,8 @@ class AssetSelectionActionsViewModel(
                 .onFailure { error ->
                     val uiError = when (error) {
                         is AssetSharingUnavailable ->
-                            UiError(userMessage = error.message ?: "Share not supported")
-                        else -> errorFactory.from(error, "Share failed")
+                            UiError(userMessage = error.message ?: "Compartir no es compatible")
+                        else -> errorFactory.from(error, "No se pudo compartir")
                     }
                     _state.update {
                         it.copy(
@@ -196,7 +196,7 @@ class AssetSelectionActionsViewModel(
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
-                            error = errorFactory.from(error, "Could not create link")
+                            error = errorFactory.from(error, "No se pudo crear el enlace")
                         )
                     }
                 }

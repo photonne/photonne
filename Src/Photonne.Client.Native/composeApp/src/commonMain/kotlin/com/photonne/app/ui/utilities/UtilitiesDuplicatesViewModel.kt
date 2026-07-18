@@ -81,7 +81,7 @@ class UtilitiesDuplicatesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not load duplicates")
+                            error = errorFactory.from(error, "No se pudieron cargar los duplicados")
                         )
                     }
                 }
@@ -150,7 +150,7 @@ class UtilitiesDuplicatesViewModel(
                     _state.update {
                         it.copy(
                             isDeleting = false,
-                            error = errorFactory.from(error, "Could not delete")
+                            error = errorFactory.from(error, "No se pudo eliminar")
                         )
                     }
                 }

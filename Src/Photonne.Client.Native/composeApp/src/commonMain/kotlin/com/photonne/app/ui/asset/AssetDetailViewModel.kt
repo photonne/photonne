@@ -270,7 +270,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Failed to archive"))
+                        it.copy(error = errorFactory.from(error, "No se pudo archivar"))
                     }
                 }
         }
@@ -286,7 +286,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Failed to delete"))
+                        it.copy(error = errorFactory.from(error, "No se pudo mover a la papelera"))
                     }
                 }
         }
@@ -306,7 +306,7 @@ class AssetDetailViewModel(
             runCatching { repository.updateDescription(assetId, cleaned) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Failed to update description"))
+                        it.copy(error = errorFactory.from(error, "No se pudo actualizar la descripción"))
                     }
                 }
         }
@@ -350,7 +350,7 @@ class AssetDetailViewModel(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Failed to update capture date"))
+                        it.copy(error = errorFactory.from(error, "No se pudo actualizar la fecha de captura"))
                     }
                 }
         }

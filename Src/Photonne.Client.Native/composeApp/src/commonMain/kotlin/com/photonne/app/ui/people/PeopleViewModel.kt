@@ -69,7 +69,7 @@ class PeopleViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            error = errorFactory.from(error, "Failed to load people")
+                            error = errorFactory.from(error, "No se pudieron cargar las personas")
                         )
                     }
                 }
@@ -105,7 +105,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Failed to load more")
+                            error = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }
@@ -140,7 +140,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to rename")
+                            error = errorFactory.from(error, "No se pudo renombrar")
                         )
                     }
                 }
@@ -173,7 +173,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to hide")
+                            error = errorFactory.from(error, "No se pudo ocultar")
                         )
                     }
                 }
@@ -200,7 +200,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to unhide")
+                            error = errorFactory.from(error, "No se pudo mostrar")
                         )
                     }
                 }
@@ -230,7 +230,7 @@ class PeopleViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to recluster")
+                            error = errorFactory.from(error, "No se pudo reagrupar")
                         )
                     }
                 }

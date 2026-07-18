@@ -71,7 +71,7 @@ class TrashViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            error = errorFactory.from(error, "Failed to load trash")
+                            error = errorFactory.from(error, "No se pudo cargar la papelera")
                         )
                     }
                 }
@@ -101,7 +101,7 @@ class TrashViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Failed to load more")
+                            error = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }
@@ -150,7 +150,7 @@ class TrashViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to restore")
+                            error = errorFactory.from(error, "No se pudo restaurar")
                         )
                     }
                 }
@@ -180,7 +180,7 @@ class TrashViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to delete forever")
+                            error = errorFactory.from(error, "No se pudieron eliminar definitivamente")
                         )
                     }
                 }
@@ -200,7 +200,7 @@ class TrashViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to restore all")
+                            error = errorFactory.from(error, "No se pudieron restaurar todos")
                         )
                     }
                 }
@@ -220,7 +220,7 @@ class TrashViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to empty trash")
+                            error = errorFactory.from(error, "No se pudo vaciar la papelera")
                         )
                     }
                 }

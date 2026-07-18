@@ -105,7 +105,7 @@ class MemoryFeedViewModel(
                         it.copy(
                             isLoading = false,
                             attempted = true,
-                            error = errorFactory.from(error, "Failed to load memories"),
+                            error = errorFactory.from(error, "No se pudieron cargar los recuerdos"),
                         )
                     }
                 }
@@ -133,7 +133,7 @@ class MemoryFeedViewModel(
                     _state.update {
                         it.copy(
                             openingId = null,
-                            error = errorFactory.from(error, "Failed to open memory"),
+                            error = errorFactory.from(error, "No se pudo abrir el recuerdo"),
                         )
                     }
                 }

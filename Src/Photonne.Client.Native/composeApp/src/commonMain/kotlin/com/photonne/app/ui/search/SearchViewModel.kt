@@ -222,7 +222,7 @@ class SearchViewModel(
         viewModelScope.launch {
             runCatching { assetRepository.archive(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error, "Failed to archive") }
+                .onFailure { error -> revertBulk(previous, error, "No se pudo archivar") }
         }
     }
 
@@ -241,7 +241,7 @@ class SearchViewModel(
         viewModelScope.launch {
             runCatching { assetRepository.trash(ids) }
                 .onSuccess { _state.update { it.copy(isBulkMutating = false) } }
-                .onFailure { error -> revertBulk(previous, error, "Failed to delete") }
+                .onFailure { error -> revertBulk(previous, error, "No se pudo mover a la papelera") }
         }
     }
 
@@ -261,7 +261,7 @@ class SearchViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }
@@ -330,7 +330,7 @@ class SearchViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Search failed")
+                            error = errorFactory.from(error, "No se pudo buscar")
                         )
                     }
                 }
@@ -364,7 +364,7 @@ class SearchViewModel(
                     _state.update {
                         it.copy(
                             facetsLoading = false,
-                            error = errorFactory.from(error, "Failed to load filters")
+                            error = errorFactory.from(error, "No se pudieron cargar los filtros")
                         )
                     }
                 }
@@ -434,7 +434,7 @@ class SearchViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error = errorFactory.from(error, "Search failed")
+                        error = errorFactory.from(error, "No se pudo buscar")
                     )
                 }
             }

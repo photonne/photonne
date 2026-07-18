@@ -76,7 +76,7 @@ class AlbumSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to create share link")
+                            error = errorFactory.from(error, "No se pudo crear el enlace")
                         )
                     }
                 }
@@ -121,7 +121,7 @@ class AlbumSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to update share link")
+                            error = errorFactory.from(error, "No se pudo actualizar el enlace")
                         )
                     }
                 }
@@ -145,7 +145,7 @@ class AlbumSharesViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to revoke share link")
+                            error = errorFactory.from(error, "No se pudo revocar el enlace")
                         )
                     }
                 }
@@ -179,7 +179,7 @@ class AlbumSharesViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error = errorFactory.from(error, "Failed to load share links")
+                        error = errorFactory.from(error, "No se pudieron cargar los enlaces")
                     )
                 }
             }

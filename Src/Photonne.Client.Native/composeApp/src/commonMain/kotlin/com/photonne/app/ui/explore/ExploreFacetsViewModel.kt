@@ -56,7 +56,7 @@ class ExploreFacetsViewModel(
                         it.copy(
                             isLoading = false,
                             attempted = true,
-                            error = errorFactory.from(error, "Failed to load labels")
+                            error = errorFactory.from(error, "No se pudieron cargar las etiquetas")
                         )
                     }
                 }

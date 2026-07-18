@@ -77,8 +77,8 @@ fun UploadScreen(
         runCatching { pickMedia() }.onFailure { error ->
             onPickerError(
                 when (error) {
-                    is MediaPickerUnavailable -> error.message ?: "Picker not available"
-                    else -> error.message ?: "Could not open the picker"
+                    is MediaPickerUnavailable -> error.message ?: "El selector no está disponible"
+                    else -> error.message ?: "No se pudo abrir el selector"
                 }
             )
         }

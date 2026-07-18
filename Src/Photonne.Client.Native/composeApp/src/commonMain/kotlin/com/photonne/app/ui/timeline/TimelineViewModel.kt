@@ -177,11 +177,11 @@ class TimelineViewModel(
     private fun selectedIds(): List<String> = _state.value.selection.toList()
 
     fun bulkArchive() {
-        bulkRemove(fallbackMessage = "Failed to archive") { assetRepository.archive(it) }
+        bulkRemove(fallbackMessage = "No se pudo archivar") { assetRepository.archive(it) }
     }
 
     fun bulkTrash() {
-        bulkRemove(fallbackMessage = "Failed to delete") { assetRepository.trash(it) }
+        bulkRemove(fallbackMessage = "No se pudo mover a la papelera") { assetRepository.trash(it) }
     }
 
     /**
@@ -225,7 +225,7 @@ class TimelineViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }
@@ -263,7 +263,7 @@ class TimelineViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to move")
+                            error = errorFactory.from(error, "No se pudo mover")
                         )
                     }
                 }

@@ -166,7 +166,7 @@ class UploadViewModel(
                 it.copy(
                     items = it.items.map { item ->
                         if (item.id == itemId)
-                            item.copy(status = UploadStatus.Failed, errorMessage = "Missing bytes")
+                            item.copy(status = UploadStatus.Failed, errorMessage = "Faltan los datos del archivo")
                         else item
                     }
                 )
@@ -208,7 +208,7 @@ class UploadViewModel(
                     items = it.items.map { item ->
                         if (item.id == itemId) item.copy(
                             status = UploadStatus.Failed,
-                            errorMessage = error.message ?: "Upload failed"
+                            errorMessage = error.message ?: "No se pudo subir"
                         ) else item
                     }
                 )

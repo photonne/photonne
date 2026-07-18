@@ -68,7 +68,7 @@ class AssetFacesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load faces")
+                            error = errorFactory.from(error, "No se pudieron cargar las caras")
                         )
                     }
                 }
@@ -114,7 +114,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to assign") }
+                .onFailure { error -> setError(faceId, error, "No se pudo asignar") }
         }
     }
 
@@ -142,7 +142,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to create person") }
+                .onFailure { error -> setError(faceId, error, "No se pudo crear la persona") }
         }
     }
 
@@ -167,7 +167,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to accept") }
+                .onFailure { error -> setError(faceId, error, "No se pudo aceptar") }
         }
     }
 
@@ -188,7 +188,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to dismiss") }
+                .onFailure { error -> setError(faceId, error, "No se pudo descartar") }
         }
     }
 
@@ -209,7 +209,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to unassign") }
+                .onFailure { error -> setError(faceId, error, "No se pudo quitar la asignación") }
         }
     }
 
@@ -225,7 +225,7 @@ class AssetFacesViewModel(
                         )
                     }
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to reject") }
+                .onFailure { error -> setError(faceId, error, "No se pudo rechazar") }
         }
     }
 
@@ -237,7 +237,7 @@ class AssetFacesViewModel(
                     _state.update { it.copy(pendingFaceIds = it.pendingFaceIds - faceId) }
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to set cover") }
+                .onFailure { error -> setError(faceId, error, "No se pudo establecer la portada") }
         }
     }
 

@@ -57,7 +57,7 @@ class EnrichmentStatusViewModel(
                 }
                 .onFailure { ex ->
                     _state.update {
-                        it.copy(isLoading = false, loadError = ex.message ?: "Failed to load")
+                        it.copy(isLoading = false, loadError = ex.message ?: "No se pudo cargar")
                     }
                 }
         }
@@ -76,7 +76,7 @@ class EnrichmentStatusViewModel(
                     _state.update { cur ->
                         cur.copy(items = cur.items.map { item ->
                             if (item.asset.assetId == assetId)
-                                item.copy(retryError = ex.message ?: "Retry failed")
+                                item.copy(retryError = ex.message ?: "No se pudo reintentar")
                             else item
                         })
                     }
@@ -97,7 +97,7 @@ class EnrichmentStatusViewModel(
                     _state.update { cur ->
                         cur.copy(items = cur.items.map { item ->
                             if (item.asset.assetId == assetId)
-                                item.copy(retryError = ex.message ?: "Retry failed")
+                                item.copy(retryError = ex.message ?: "No se pudo reintentar")
                             else item
                         })
                     }

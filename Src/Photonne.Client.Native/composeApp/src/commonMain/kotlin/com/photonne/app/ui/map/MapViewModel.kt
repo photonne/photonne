@@ -71,7 +71,7 @@ class MapViewModel(
                         it.copy(
                             isLoading = false,
                             firstLoadComplete = true,
-                            error = errorFactory.from(error, "Failed to load map")
+                            error = errorFactory.from(error, "No se pudo cargar el mapa")
                         )
                     }
                 }
@@ -135,12 +135,12 @@ class MapViewModel(
 
     fun bulkArchive() = runBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "Failed to archive"
+        errorFallback = "No se pudo archivar"
     )
 
     fun bulkTrash() = runBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "Failed to delete"
+        errorFallback = "No se pudo mover a la papelera"
     )
 
     /**
@@ -167,7 +167,7 @@ class MapViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }

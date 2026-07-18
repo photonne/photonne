@@ -94,7 +94,7 @@ class PersonSuggestionsViewModel(
                     it.copy(
                         isInitialLoading = false,
                         isAppending = false,
-                        error = errorFactory.from(error, "Failed to load suggestions")
+                        error = errorFactory.from(error, "No se pudieron cargar las sugerencias")
                     )
                 }
             }
@@ -108,7 +108,7 @@ class PersonSuggestionsViewModel(
                     dropItem(faceId)
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to accept") }
+                .onFailure { error -> setError(faceId, error, "No se pudo aceptar") }
         }
     }
 
@@ -120,7 +120,7 @@ class PersonSuggestionsViewModel(
                     dropItem(faceId)
                     onSuccess()
                 }
-                .onFailure { error -> setError(faceId, error, "Failed to dismiss") }
+                .onFailure { error -> setError(faceId, error, "No se pudo descartar") }
         }
     }
 
@@ -145,7 +145,7 @@ class PersonSuggestionsViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to accept all")
+                            error = errorFactory.from(error, "No se pudieron aceptar todas")
                         )
                     }
                 }
@@ -173,7 +173,7 @@ class PersonSuggestionsViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to dismiss all")
+                            error = errorFactory.from(error, "No se pudieron descartar todas")
                         )
                     }
                 }

@@ -70,13 +70,13 @@ class AccountSecurityViewModel(
                 repository.changePassword(current.currentPassword, current.newPassword)
             }
                 .onSuccess {
-                    _state.value = AccountSecurityUiState(successMessage = "Password changed")
+                    _state.value = AccountSecurityUiState(successMessage = "Contraseña actualizada")
                 }
                 .onFailure { error ->
                     _state.update {
                         it.copy(
                             isSubmitting = false,
-                            error = errorFactory.from(error, "Could not change password")
+                            error = errorFactory.from(error, "No se pudo cambiar la contraseña")
                         )
                     }
                 }

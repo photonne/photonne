@@ -73,7 +73,7 @@ class ArchivedViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            error = errorFactory.from(error, "Failed to load archive")
+                            error = errorFactory.from(error, "No se pudo cargar el archivo")
                         )
                     }
                 }
@@ -103,7 +103,7 @@ class ArchivedViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Failed to load more")
+                            error = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }
@@ -162,7 +162,7 @@ class ArchivedViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to unarchive")
+                            error = errorFactory.from(error, "No se pudo desarchivar")
                         )
                     }
                 }
@@ -184,7 +184,7 @@ class ArchivedViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to unarchive all")
+                            error = errorFactory.from(error, "No se pudieron desarchivar todos")
                         )
                     }
                 }
@@ -211,7 +211,7 @@ class ArchivedViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to delete")
+                            error = errorFactory.from(error, "No se pudo mover a la papelera")
                         )
                     }
                 }
@@ -233,7 +233,7 @@ class ArchivedViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }

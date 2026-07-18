@@ -45,7 +45,7 @@ class AccountStorageViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load storage info")
+                            error = errorFactory.from(error, "No se pudo cargar la información de almacenamiento")
                         )
                     }
                 }

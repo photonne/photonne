@@ -38,7 +38,7 @@ class AdminStatsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not load stats")
+                            error = errorFactory.from(error, "No se pudieron cargar las estadísticas")
                         )
                     }
                 }

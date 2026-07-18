@@ -38,7 +38,7 @@ class AdminServerViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not load version info")
+                            error = errorFactory.from(error, "No se pudo cargar la información de versión")
                         )
                     }
                 }

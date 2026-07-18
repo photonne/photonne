@@ -54,7 +54,7 @@ class UtilitiesLocationsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not load folder tree")
+                            error = errorFactory.from(error, "No se pudo cargar el árbol de carpetas")
                         )
                     }
                 }

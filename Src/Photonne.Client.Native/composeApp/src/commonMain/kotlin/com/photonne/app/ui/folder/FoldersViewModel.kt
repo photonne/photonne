@@ -222,7 +222,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load folders")
+                            error = errorFactory.from(error, "No se pudieron cargar las carpetas")
                         )
                     }
                 }
@@ -255,7 +255,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to create folder")
+                            error = errorFactory.from(error, "No se pudo crear la carpeta")
                         )
                     }
                 }
@@ -288,7 +288,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to rename folder")
+                            error = errorFactory.from(error, "No se pudo renombrar la carpeta")
                         )
                     }
                 }
@@ -310,7 +310,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to delete folder")
+                            error = errorFactory.from(error, "No se pudo eliminar la carpeta")
                         )
                     }
                 }
@@ -339,7 +339,7 @@ class FoldersViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to update timeline visibility")
+                            error = errorFactory.from(error, "No se pudo actualizar la visibilidad en la línea de tiempo")
                         )
                     }
                 }

@@ -194,7 +194,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load albums")
+                            error = errorFactory.from(error, "No se pudieron cargar los álbumes")
                         )
                     }
                 }
@@ -216,7 +216,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to create album")
+                            error = errorFactory.from(error, "No se pudo crear el álbum")
                         )
                     }
                 }
@@ -253,7 +253,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to rename album")
+                            error = errorFactory.from(error, "No se pudo renombrar el álbum")
                         )
                     }
                 }
@@ -279,7 +279,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to delete album")
+                            error = errorFactory.from(error, "No se pudo eliminar el álbum")
                         )
                     }
                 }
@@ -305,7 +305,7 @@ class AlbumsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to leave album")
+                            error = errorFactory.from(error, "No se pudo salir del álbum")
                         )
                     }
                 }

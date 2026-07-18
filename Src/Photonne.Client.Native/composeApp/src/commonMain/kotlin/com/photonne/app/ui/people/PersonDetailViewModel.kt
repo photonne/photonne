@@ -67,7 +67,7 @@ class PersonDetailViewModel(
                     _state.update {
                         it.copy(
                             isInitialLoading = false,
-                            error = errorFactory.from(error, "Failed to load photos")
+                            error = errorFactory.from(error, "No se pudieron cargar las fotos")
                         )
                     }
                 }
@@ -106,7 +106,7 @@ class PersonDetailViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Failed to load more")
+                            error = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }
@@ -153,12 +153,12 @@ class PersonDetailViewModel(
 
     fun bulkArchive() = runBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "Failed to archive"
+        errorFallback = "No se pudo archivar"
     )
 
     fun bulkTrash() = runBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "Failed to delete"
+        errorFallback = "No se pudo mover a la papelera"
     )
 
     fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
@@ -176,7 +176,7 @@ class PersonDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }
@@ -233,7 +233,7 @@ class PersonDetailViewModel(
                         it.copy(
                             items = previous,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to unlink")
+                            error = errorFactory.from(error, "No se pudo desvincular")
                         )
                     }
                 }

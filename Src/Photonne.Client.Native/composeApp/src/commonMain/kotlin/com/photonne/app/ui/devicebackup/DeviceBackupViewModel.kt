@@ -298,7 +298,7 @@ class DeviceBackupViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not refresh folder")
+                            error = errorFactory.from(error, "No se pudo actualizar la carpeta")
                         )
                     }
                 }
@@ -373,7 +373,7 @@ class DeviceBackupViewModel(
                 .onSuccess { states -> applySyncStates(states) }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(error = errorFactory.from(error, "Could not verify pending files"))
+                        it.copy(error = errorFactory.from(error, "No se pudieron verificar los archivos pendientes"))
                     }
                 }
             _state.update { it.copy(isCheckingHashes = false, hashProgress = null) }
@@ -788,7 +788,7 @@ class DeviceBackupViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Could not list folder")
+                            error = errorFactory.from(error, "No se pudo listar la carpeta")
                         )
                     }
                 }

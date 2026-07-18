@@ -73,7 +73,7 @@ class FavoritesViewModel(
                         it.copy(
                             isInitialLoading = false,
                             isRefreshing = false,
-                            error = errorFactory.from(error, "Failed to load favorites")
+                            error = errorFactory.from(error, "No se pudieron cargar los favoritos")
                         )
                     }
                 }
@@ -103,7 +103,7 @@ class FavoritesViewModel(
                     _state.update {
                         it.copy(
                             isAppending = false,
-                            error = errorFactory.from(error, "Failed to load more")
+                            error = errorFactory.from(error, "No se pudo cargar más")
                         )
                     }
                 }
@@ -148,12 +148,12 @@ class FavoritesViewModel(
 
     fun bulkArchive() = runBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "Failed to archive"
+        errorFallback = "No se pudo archivar"
     )
 
     fun bulkTrash() = runBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "Failed to delete"
+        errorFallback = "No se pudo mover a la papelera"
     )
 
     fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
@@ -171,7 +171,7 @@ class FavoritesViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }

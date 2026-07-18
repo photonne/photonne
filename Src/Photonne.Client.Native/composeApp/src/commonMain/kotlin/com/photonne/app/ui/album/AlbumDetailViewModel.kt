@@ -118,7 +118,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load album")
+                            error = errorFactory.from(error, "No se pudo cargar el álbum")
                         )
                     }
                 }
@@ -158,7 +158,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = errorFactory.from(error, "Failed to load album")
+                            error = errorFactory.from(error, "No se pudo cargar el álbum")
                         )
                     }
                 }
@@ -196,7 +196,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to rename album")
+                            error = errorFactory.from(error, "No se pudo renombrar el álbum")
                         )
                     }
                 }
@@ -217,7 +217,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to delete album")
+                            error = errorFactory.from(error, "No se pudo eliminar el álbum")
                         )
                     }
                 }
@@ -271,7 +271,7 @@ class AlbumDetailViewModel(
                         it.copy(
                             isMutating = false,
                             items = previous,
-                            error = errorFactory.from(error, "Failed to remove asset")
+                            error = errorFactory.from(error, "No se pudo quitar del álbum")
                         )
                     }
                 }
@@ -292,7 +292,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to set album cover")
+                            error = errorFactory.from(error, "No se pudo establecer la portada")
                         )
                     }
                 }
@@ -313,7 +313,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to leave album")
+                            error = errorFactory.from(error, "No se pudo salir del álbum")
                         )
                     }
                 }
@@ -341,12 +341,12 @@ class AlbumDetailViewModel(
 
     fun bulkArchive() = runAssetBulk(
         action = { assetRepository.archive(it) },
-        errorFallback = "Failed to archive"
+        errorFallback = "No se pudo archivar"
     )
 
     fun bulkTrash() = runAssetBulk(
         action = { assetRepository.trash(it) },
-        errorFallback = "Failed to delete"
+        errorFallback = "No se pudo mover a la papelera"
     )
 
     fun bulkAddToAlbum(albumId: String, onSuccess: (List<TimelineItem>) -> Unit = {}) {
@@ -364,7 +364,7 @@ class AlbumDetailViewModel(
                     _state.update {
                         it.copy(
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to add to album")
+                            error = errorFactory.from(error, "No se pudo añadir al álbum")
                         )
                     }
                 }
@@ -402,7 +402,7 @@ class AlbumDetailViewModel(
                         it.copy(
                             items = previousItems,
                             isBulkMutating = false,
-                            error = errorFactory.from(error, "Failed to remove from album")
+                            error = errorFactory.from(error, "No se pudo quitar del álbum")
                         )
                     }
                 }

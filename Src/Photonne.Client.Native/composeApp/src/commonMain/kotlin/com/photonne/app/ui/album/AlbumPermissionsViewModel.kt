@@ -77,7 +77,7 @@ class AlbumPermissionsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to invite member")
+                            error = errorFactory.from(error, "No se pudo invitar al miembro")
                         )
                     }
                 }
@@ -114,7 +114,7 @@ class AlbumPermissionsViewModel(
                     _state.update {
                         it.copy(
                             isMutating = false,
-                            error = errorFactory.from(error, "Failed to remove member")
+                            error = errorFactory.from(error, "No se pudo quitar al miembro")
                         )
                     }
                 }
@@ -149,7 +149,7 @@ class AlbumPermissionsViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error = errorFactory.from(error, "Failed to load members")
+                        error = errorFactory.from(error, "No se pudieron cargar los miembros")
                     )
                 }
             }
