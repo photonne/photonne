@@ -83,6 +83,20 @@ import com.photonne.app.resources.map_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.unit.Dp
+import com.photonne.app.resources.albums_title
+import com.photonne.app.resources.folders_action_filters
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.MetaBadge
@@ -102,6 +116,7 @@ fun AlbumsListScreen(
     onOpenMap: () -> Unit = {},
     onOpenScenes: () -> Unit = {},
     onOpenObjects: () -> Unit = {},
+    onOpenFilters: () -> Unit = {},
     /**
      * Immersive bottom nav: while true the albums list drives the hide-on-scroll
      * chrome (reported via [onChromeVisibleChange]) and reserves the nav's height
@@ -115,56 +130,136 @@ fun AlbumsListScreen(
     val state by viewModel.state.collectAsState()
     val visible = state.visibleAlbums
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Automatic asset groupings (People / Map / Scenes / Objects) sit
-        // above the album list: both are "collections of assets", so the
-        // Albums tab is the single home for browsing by grouping. Tapping a
-        // card opens its full screen as a modal layer over this tab.
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val hazeState = remember { HazeState() }
+    val isGrid = state.viewMode == AlbumViewMode.Grid
+    val floatingChrome = !state.isSearchActive && !state.isSelectionActive
+    val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
+
+    // Automatic asset groupings (People / Map / Scenes / Objects) that sit atop
+    // the album list — a scroll header so they pass under the floating chrome.
+    val exploreRow: @Composable () -> Unit = {
         ExploreRow(
             onOpenPeople = onOpenPeople,
             onOpenMap = onOpenMap,
             onOpenScenes = onOpenScenes,
             onOpenObjects = onOpenObjects
         )
-        if (state.isSearchActive) {
-            AlbumsSearchField(
-                query = state.searchQuery,
-                onQueryChange = viewModel::setSearchQuery,
-                onClose = viewModel::toggleSearch
-            )
-        }
-        PhotonneRefreshableScreen(
-            isRefreshing = state.isLoading && state.albums.isNotEmpty(),
-            onRefresh = viewModel::refresh,
-            modifier = Modifier.fillMaxWidth().weight(1f)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.isLoading && state.albums.isEmpty() ->
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    state.error != null && state.albums.isEmpty() ->
-                        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                            com.photonne.app.ui.error.ErrorBanner(error = state.error)
-                        }
-                    visible.isEmpty() && state.hasActiveQuery ->
-                        EmptySearchState(query = state.searchQuery.trim())
-                    visible.isEmpty() -> EmptyAlbumsState(
-                        scope = state.scope,
-                        onCreateAlbum = onCreateAlbum
-                    )
-                    else -> AlbumsContent(
-                        albums = visible,
-                        state = state,
-                        apiBaseUrl = apiBaseUrl,
-                        onClick = onAlbumClick,
-                        onLongPress = onAlbumLongPress,
-                        immersive = immersive,
-                        onChromeVisibleChange = onChromeVisibleChange
-                    )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (state.isSearchActive) {
+                AlbumsSearchField(
+                    query = state.searchQuery,
+                    onQueryChange = viewModel::setSearchQuery,
+                    onClose = viewModel::toggleSearch
+                )
+            }
+            PhotonneRefreshableScreen(
+                isRefreshing = state.isLoading && state.albums.isNotEmpty(),
+                onRefresh = viewModel::refresh,
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        state.isLoading && state.albums.isEmpty() ->
+                            Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+                                exploreRow()
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        state.error != null && state.albums.isEmpty() ->
+                            Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+                                exploreRow()
+                                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                                    com.photonne.app.ui.error.ErrorBanner(error = state.error)
+                                }
+                            }
+                        visible.isEmpty() && state.hasActiveQuery ->
+                            Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+                                exploreRow()
+                                EmptySearchState(query = state.searchQuery.trim())
+                            }
+                        visible.isEmpty() ->
+                            Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+                                exploreRow()
+                                EmptyAlbumsState(scope = state.scope, onCreateAlbum = onCreateAlbum)
+                            }
+                        else -> AlbumsContent(
+                            albums = visible,
+                            state = state,
+                            apiBaseUrl = apiBaseUrl,
+                            onClick = onAlbumClick,
+                            onLongPress = onAlbumLongPress,
+                            gridState = gridState,
+                            listState = listState,
+                            hazeState = hazeState,
+                            chromeTopReserve = reservedTop,
+                            exploreHeader = exploreRow,
+                            immersive = immersive,
+                            onChromeVisibleChange = onChromeVisibleChange
+                        )
+                    }
                 }
             }
+        }
+
+        if (floatingChrome) {
+            SubscreenFloatingChrome(
+                title = stringResource(Res.string.albums_title),
+                onBack = null,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = {
+                        if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
+                    },
+                    firstVisibleItemScrollOffset = {
+                        if (isGrid) gridState.firstVisibleItemScrollOffset
+                        else listState.firstVisibleItemScrollOffset
+                    },
+                    isScrollInProgress = {
+                        if (isGrid) gridState.isScrollInProgress else listState.isScrollInProgress
+                    },
+                    scrollToTopMinIndex = 6,
+                    onScrollToTop = {
+                        if (isGrid) {
+                            if (gridState.firstVisibleItemIndex > 24) gridState.scrollToItem(24)
+                            gridState.animateScrollToItem(0)
+                        } else {
+                            if (listState.firstVisibleItemIndex > 24) listState.scrollToItem(24)
+                            listState.animateScrollToItem(0)
+                        }
+                    }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = {},
+                actions = {
+                    if (onCreateAlbum != null) {
+                        IconButton(onClick = onCreateAlbum) {
+                            Icon(
+                                Icons.Outlined.Add,
+                                contentDescription = stringResource(Res.string.albums_empty_action_create)
+                            )
+                        }
+                    }
+                    IconButton(onClick = viewModel::toggleSearch) {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = stringResource(Res.string.albums_action_search)
+                        )
+                    }
+                    IconButton(onClick = onOpenFilters) {
+                        Icon(
+                            Icons.Outlined.Tune,
+                            contentDescription = stringResource(Res.string.folders_action_filters),
+                            tint = if (state.isFilterActive) MaterialTheme.colorScheme.primary
+                            else LocalContentColor.current
+                        )
+                    }
+                }
+            )
         }
     }
 }
@@ -217,12 +312,16 @@ private fun AlbumsContent(
     apiBaseUrl: String,
     onClick: (AlbumSummary) -> Unit,
     onLongPress: (AlbumSummary) -> Unit,
+    gridState: LazyGridState,
+    listState: LazyListState,
+    hazeState: HazeState,
+    chromeTopReserve: Dp = 0.dp,
+    /** ExploreRow como cabecera del scroll, para que pase bajo el cromo flotante. */
+    exploreHeader: (@Composable () -> Unit)? = null,
     immersive: Boolean = false,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val groups = if (state.groupByYear) groupByYear(albums) else emptyList()
-    val gridState = rememberLazyGridState()
-    val listState = rememberLazyListState()
     val isGrid = state.viewMode == AlbumViewMode.Grid
     // One list now serves every scope, so the scroll position survives a filter
     // change and would otherwise land on an index the shorter list doesn't have
@@ -262,12 +361,15 @@ private fun AlbumsContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(
                 start = 16.dp,
-                top = 16.dp,
+                top = 16.dp + chromeTopReserve,
                 end = 16.dp,
                 bottom = reservedBottom ?: 16.dp
             ),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState)
         ) {
+            if (exploreHeader != null) {
+                item(key = "explore-row", span = { GridItemSpan(maxLineSpan) }) { exploreHeader() }
+            }
             if (state.groupByYear) {
                 groups.forEach { (year, items) ->
                     item(
@@ -302,11 +404,14 @@ private fun AlbumsContent(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(2.dp),
             contentPadding = PaddingValues(
-                top = 8.dp,
+                top = 8.dp + chromeTopReserve,
                 bottom = reservedBottom ?: 8.dp
             ),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState)
         ) {
+            if (exploreHeader != null) {
+                item(key = "explore-row") { exploreHeader() }
+            }
             if (state.groupByYear) {
                 groups.forEach { (year, items) ->
                     item(key = "year-$year") { YearHeader(year, modifier = Modifier.padding(horizontal = 16.dp)) }

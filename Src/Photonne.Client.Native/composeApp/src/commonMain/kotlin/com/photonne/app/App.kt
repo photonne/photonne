@@ -1867,12 +1867,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onSeeAllMemories = { moreSubscreen = MoreSubscreen.Memories }
                     )
                     MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
-                        // Docked top bar lives *inside* the page so it slides with
-                        // the content during a swipe, instead of a shared Scaffold
-                        // bar that pops in a frame late and shoves the grid down.
-                        // Hidden while a card is selected — the Scaffold shows the
-                        // selection bar then (and the page is padded to clear it).
-                        if (!albumsState.isSelectionActive) {
+                        // Al buscar, vuelve la barra acoplada (con su campo debajo);
+                        // el resto del tiempo Álbumes pinta su cromo flotante.
+                        if (albumsState.isSearchActive && !albumsState.isSelectionActive) {
                             AlbumsListTopBar(
                                 onOpenFilters = { showAlbumsFilters = true },
                                 isFilterActive = albumsState.isFilterActive,
@@ -1897,7 +1894,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onAlbumLongPress = { album ->
                                     albumsViewModel.selectAlbum(album.id)
                                 },
-                                onCreateAlbum = { showCreateAlbum = true },
+                                onCreateAlbum = { showAlbumTypeChooser = true },
                                 // Explorar cards open their screen as a modal layer
                                 // over the Albums tab (no tab switch) so back
                                 // returns here and the bottom nav stays on Álbumes.
@@ -1908,29 +1905,28 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onOpenMap = { moreSubscreen = MoreSubscreen.Map },
                                 onOpenScenes = { moreSubscreen = MoreSubscreen.ExploreScenes },
                                 onOpenObjects = { moreSubscreen = MoreSubscreen.ExploreObjects },
+                                onOpenFilters = { showAlbumsFilters = true },
                                 immersive = albumsImmersive,
                                 onChromeVisibleChange = { albumsChromeVisible = it }
                             )
                         }
                     }
                     MainTab.Folders -> Column(modifier = Modifier.fillMaxSize()) {
-                        if (!foldersState.isSelectionActive) {
+                        // Al buscar, vuelve la barra acoplada (con su campo debajo);
+                        // el resto del tiempo Carpetas pinta su cromo flotante.
+                        val foldersCreate = if (
+                            foldersState.scope !=
+                                com.photonne.app.ui.folder.FoldersScope.External
+                        ) {
+                            { showCreateFolder = true }
+                        } else null
+                        if (foldersState.isSearchActive && !foldersState.isSelectionActive) {
                             FoldersListTopBar(
                                 onOpenFilters = { showFoldersFilters = true },
                                 isFilterActive = foldersState.isFilterActive,
                                 isSearchActive = foldersState.isSearchActive,
                                 onToggleSearch = foldersViewModel::toggleSearch,
-                                // Create a root folder — hidden only while
-                                // showing Externas (no writing into an
-                                // external-library mirror). A blacklist, not a
-                                // whitelist: "Todas" is the default, and the
-                                // action has to survive it.
-                                onCreateFolder = if (
-                                    foldersState.scope !=
-                                        com.photonne.app.ui.folder.FoldersScope.External
-                                ) {
-                                    { showCreateFolder = true }
-                                } else null
+                                onCreateFolder = foldersCreate
                             )
                         }
                         Box(modifier = Modifier.weight(1f)) {
@@ -1950,6 +1946,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     foldersViewModel.selectFolder(folder.id)
                                 },
                                 onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                                onOpenFilters = { showFoldersFilters = true },
+                                onCreateFolder = foldersCreate,
                                 immersive = foldersImmersive,
                                 onChromeVisibleChange = { foldersChromeVisible = it }
                             )

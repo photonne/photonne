@@ -81,8 +81,24 @@ import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.MetaBadge
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.OverlayIconBadge
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.unit.Dp
+import com.photonne.app.resources.folder_action_new
+import com.photonne.app.resources.folders_action_filters
+import com.photonne.app.resources.folders_title
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -91,6 +107,8 @@ fun FoldersListScreen(
     onFolderClick: (FolderSummary) -> Unit,
     onFolderLongPress: (FolderSummary) -> Unit,
     onOpenOrganize: () -> Unit,
+    onOpenFilters: () -> Unit = {},
+    onCreateFolder: (() -> Unit)? = null,
     /**
      * Immersive bottom nav: while true the active folder list drives the
      * hide-on-scroll chrome (reported via [onChromeVisibleChange]) and reserves
@@ -104,54 +122,118 @@ fun FoldersListScreen(
     val state by viewModel.state.collectAsState()
 
     val folders = state.visibleFolders
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (state.isSearchActive) {
-            FoldersSearchField(
-                query = state.searchQuery,
-                onQueryChange = viewModel::setSearchQuery,
-                onClose = viewModel::toggleSearch
-            )
-        }
-        PhotonneRefreshableScreen(
-            isRefreshing = state.isLoading && folders.isNotEmpty(),
-            onRefresh = viewModel::refresh,
-            modifier = Modifier.fillMaxWidth().weight(1f)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // The inbox holds personal assets, so it makes no sense framed
-                // by Compartidas/Externas — but it has to survive "Todas",
-                // which is the default the user lands on.
-                val showInbox = state.organizePendingCount > 0 &&
-                    !state.hasActiveQuery &&
-                    (state.scope == FoldersScope.All || state.scope == FoldersScope.Personal)
-                if (showInbox) {
-                    OrganizeInboxCard(
-                        count = state.organizePendingCount,
-                        onClick = onOpenOrganize
-                    )
-                }
-                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    FolderListContent(
-                        folders = folders,
-                        state = state,
-                        isLoading = state.isLoading,
-                        errorMessage = state.error?.userMessage,
-                        emptyTitle = stringResource(Res.string.folders_empty_title),
-                        emptySubtitle = when (state.scope) {
-                            FoldersScope.All, FoldersScope.Personal ->
-                                stringResource(Res.string.folders_empty_subtitle)
-                            FoldersScope.Shared ->
-                                stringResource(Res.string.folders_shared_empty)
-                            FoldersScope.External ->
-                                stringResource(Res.string.folders_external_empty)
-                        },
-                        onFolderClick = onFolderClick,
-                        onFolderLongPress = onFolderLongPress,
-                        immersive = immersive,
-                        onChromeVisibleChange = onChromeVisibleChange
-                    )
-                }
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val hazeState = remember { HazeState() }
+    val isGrid = state.viewMode == FolderViewMode.Grid
+    // Cromo flotante salvo al buscar o seleccionar: entonces vuelve la barra
+    // acoplada (con su campo de búsqueda / cápsula de selección), igual que Fotos.
+    val floatingChrome = !state.isSearchActive && !state.isSelectionActive
+    val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
+    // The inbox holds personal assets, so it makes no sense framed by
+    // Compartidas/Externas — but it has to survive "Todas", the default.
+    val showInbox = state.organizePendingCount > 0 &&
+        !state.hasActiveQuery &&
+        (state.scope == FoldersScope.All || state.scope == FoldersScope.Personal)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (state.isSearchActive) {
+                FoldersSearchField(
+                    query = state.searchQuery,
+                    onQueryChange = viewModel::setSearchQuery,
+                    onClose = viewModel::toggleSearch
+                )
             }
+            PhotonneRefreshableScreen(
+                isRefreshing = state.isLoading && folders.isNotEmpty(),
+                onRefresh = viewModel::refresh,
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            ) {
+                FolderListContent(
+                    folders = folders,
+                    state = state,
+                    isLoading = state.isLoading,
+                    errorMessage = state.error?.userMessage,
+                    emptyTitle = stringResource(Res.string.folders_empty_title),
+                    emptySubtitle = when (state.scope) {
+                        FoldersScope.All, FoldersScope.Personal ->
+                            stringResource(Res.string.folders_empty_subtitle)
+                        FoldersScope.Shared ->
+                            stringResource(Res.string.folders_shared_empty)
+                        FoldersScope.External ->
+                            stringResource(Res.string.folders_external_empty)
+                    },
+                    onFolderClick = onFolderClick,
+                    onFolderLongPress = onFolderLongPress,
+                    gridState = gridState,
+                    listState = listState,
+                    hazeState = hazeState,
+                    chromeTopReserve = reservedTop,
+                    inboxHeader = if (showInbox) {
+                        { OrganizeInboxCard(count = state.organizePendingCount, onClick = onOpenOrganize) }
+                    } else null,
+                    immersive = immersive,
+                    onChromeVisibleChange = onChromeVisibleChange
+                )
+            }
+        }
+
+        if (floatingChrome) {
+            SubscreenFloatingChrome(
+                title = stringResource(Res.string.folders_title),
+                onBack = null,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = {
+                        if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
+                    },
+                    firstVisibleItemScrollOffset = {
+                        if (isGrid) gridState.firstVisibleItemScrollOffset
+                        else listState.firstVisibleItemScrollOffset
+                    },
+                    isScrollInProgress = {
+                        if (isGrid) gridState.isScrollInProgress else listState.isScrollInProgress
+                    },
+                    scrollToTopMinIndex = 6,
+                    onScrollToTop = {
+                        if (isGrid) {
+                            if (gridState.firstVisibleItemIndex > 24) gridState.scrollToItem(24)
+                            gridState.animateScrollToItem(0)
+                        } else {
+                            if (listState.firstVisibleItemIndex > 24) listState.scrollToItem(24)
+                            listState.animateScrollToItem(0)
+                        }
+                    }
+                ),
+                hazeState = hazeState,
+                // La nav la mueve el ImmersiveChromeEffect de FolderListContent
+                // (mismo scroll → en sync); el cromo solo se oculta a sí mismo.
+                onChromeVisibleChange = {},
+                actions = {
+                    if (onCreateFolder != null) {
+                        IconButton(onClick = onCreateFolder) {
+                            Icon(
+                                Icons.Outlined.CreateNewFolder,
+                                contentDescription = stringResource(Res.string.folder_action_new)
+                            )
+                        }
+                    }
+                    IconButton(onClick = viewModel::toggleSearch) {
+                        Icon(
+                            Icons.Outlined.Search,
+                            contentDescription = stringResource(Res.string.folders_action_search)
+                        )
+                    }
+                    IconButton(onClick = onOpenFilters) {
+                        Icon(
+                            Icons.Outlined.Tune,
+                            contentDescription = stringResource(Res.string.folders_action_filters),
+                            tint = if (state.isFilterActive) MaterialTheme.colorScheme.primary
+                            else LocalContentColor.current
+                        )
+                    }
+                }
+            )
         }
     }
 }
@@ -198,11 +280,16 @@ private fun FolderListContent(
     emptySubtitle: String,
     onFolderClick: (FolderSummary) -> Unit,
     onFolderLongPress: (FolderSummary) -> Unit,
+    gridState: LazyGridState,
+    listState: LazyListState,
+    hazeState: HazeState,
+    /** Reserva del cromo flotante arriba (0 cuando el cromo va acoplado). */
+    chromeTopReserve: Dp = 0.dp,
+    /** Tarjeta "Para organizar" como cabecera del scroll (o null si no toca). */
+    inboxHeader: (@Composable () -> Unit)? = null,
     immersive: Boolean = false,
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    val gridState = rememberLazyGridState()
-    val listState = rememberLazyListState()
     val isGrid = state.viewMode == FolderViewMode.Grid
     val hasList = folders.isNotEmpty()
     // One list now serves every scope, so the scroll position survives a filter
@@ -259,11 +346,14 @@ private fun FolderListContent(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(
-                    top = 8.dp,
+                    top = 8.dp + chromeTopReserve,
                     bottom = reservedBottom ?: 8.dp
                 ),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().hazeSource(hazeState)
             ) {
+                if (inboxHeader != null) {
+                    item(key = "organize-inbox") { inboxHeader() }
+                }
                 items(folders, key = { it.id }) { folder ->
                     FolderRow(
                         folder = folder,
@@ -280,12 +370,17 @@ private fun FolderListContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(
                     start = 16.dp,
-                    top = 16.dp,
+                    top = 16.dp + chromeTopReserve,
                     end = 16.dp,
                     bottom = reservedBottom ?: 16.dp
                 ),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().hazeSource(hazeState)
             ) {
+                if (inboxHeader != null) {
+                    item(key = "organize-inbox", span = { GridItemSpan(maxLineSpan) }) {
+                        inboxHeader()
+                    }
+                }
                 items(folders, key = { it.id }) { folder ->
                     FolderCard(
                         folder = folder,
