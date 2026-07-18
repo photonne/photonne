@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -207,7 +208,14 @@ internal fun BoxScope.SubscreenFloatingChrome(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SubscreenChromeCapsule(dockedFraction, hazeState) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Altura mínima = la del IconButton (48dp) para que la
+                        // cápsula del título mida lo mismo con o sin botón de atrás
+                        // (los tabs de primer nivel no lo tienen) y case con la
+                        // cápsula de acciones y con el resto de cromos flotantes.
+                        Row(
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             if (onBack != null) {
                                 IconButton(onClick = onBack) {
                                     Icon(
