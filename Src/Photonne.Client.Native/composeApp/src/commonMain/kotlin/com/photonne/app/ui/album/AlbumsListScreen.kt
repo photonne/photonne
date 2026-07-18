@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Landscape
@@ -542,7 +542,7 @@ private fun AlbumCard(
                 }
                 if (album.hasActiveShareLink) {
                     OverlayIconBadge(
-                        icon = Icons.Filled.Share,
+                        icon = Icons.Outlined.Share,
                         contentDescription = stringResource(Res.string.album_share_link_badge)
                     )
                 }
@@ -658,7 +658,7 @@ private fun AlbumRow(
                     MetaBadge(stringResource(Res.string.albums_badge_shared), Icons.Filled.Person)
                 }
                 if (album.hasActiveShareLink) {
-                    MetaBadge(stringResource(Res.string.album_share_link_badge), Icons.Filled.Share)
+                    MetaBadge(stringResource(Res.string.album_share_link_badge), Icons.Outlined.Share)
                 }
             }
         }

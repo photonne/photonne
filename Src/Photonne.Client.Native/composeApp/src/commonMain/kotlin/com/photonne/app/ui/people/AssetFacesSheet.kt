@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.AlertDialog
@@ -282,7 +282,7 @@ private fun FaceActions(
         }
         IconButton(onClick = onReject, enabled = !isPending) {
             Icon(
-                Icons.Filled.Delete,
+                Icons.Outlined.Delete,
                 contentDescription = stringResource(Res.string.people_face_reject),
                 tint = MaterialTheme.colorScheme.error
             )

@@ -16,9 +16,9 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -108,7 +108,7 @@ fun MyLinksScreen(modifier: Modifier = Modifier) {
                         )
                     }
                 state.links.isEmpty() -> SharedEmptyState(
-                    icon = Icons.Filled.Share,
+                    icon = Icons.Outlined.Share,
                     title = stringResource(Res.string.my_links_empty_title),
                     subtitle = stringResource(Res.string.my_links_empty_subtitle)
                 )
@@ -218,7 +218,7 @@ private fun MyLinkRow(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Filled.Share,
+                    imageVector = Icons.Outlined.Share,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -254,14 +254,14 @@ private fun MyLinkRow(
             )
         }
         IconButton(onClick = onCopy) {
-            Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.share_action_copy))
+            Icon(Icons.Outlined.Share, contentDescription = stringResource(Res.string.share_action_copy))
         }
         IconButton(onClick = onEdit) {
             Icon(Icons.Filled.Edit, contentDescription = stringResource(Res.string.share_action_edit))
         }
         IconButton(onClick = onRevoke) {
             Icon(
-                Icons.Filled.Delete,
+                Icons.Outlined.Delete,
                 contentDescription = stringResource(Res.string.share_action_revoke),
                 tint = MaterialTheme.colorScheme.error
             )

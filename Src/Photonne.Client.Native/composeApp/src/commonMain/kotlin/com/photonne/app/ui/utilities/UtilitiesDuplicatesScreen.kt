@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.AlertDialog
@@ -189,7 +189,7 @@ fun UtilitiesDuplicatesScreen(
         if (state.totalSelectedCount > 0) {
             ExtendedFloatingActionButton(
                 onClick = { confirmOpen = true },
-                icon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                 text = {
                     Text(
                         stringResource(
