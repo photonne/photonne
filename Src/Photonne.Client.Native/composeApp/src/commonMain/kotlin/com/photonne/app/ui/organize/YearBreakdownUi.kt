@@ -16,6 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.YearCount
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_understood
+import com.photonne.app.resources.organize_move_summary_body
+import com.photonne.app.resources.organize_year_chip_format
+import com.photonne.app.resources.organize_move_summary_title
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Compact "2026 · 34   2025 · 12" chips describing how assets split across capture
@@ -37,7 +43,7 @@ fun YearBreakdownChips(items: List<YearCount>, modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
                 Text(
-                    text = "${yc.year} · ${yc.count}",
+                    text = stringResource(Res.string.organize_year_chip_format, yc.year, yc.count),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -56,18 +62,18 @@ fun YearBreakdownChips(items: List<YearCount>, modifier: Modifier = Modifier) {
 fun MoveSummaryDialog(outcome: MoveOutcome, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Movidas ${outcome.moved} fotos") },
+        title = { Text(stringResource(Res.string.organize_move_summary_title, outcome.moved)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Repartidas en estas carpetas de año:",
+                    stringResource(Res.string.organize_move_summary_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 YearBreakdownChips(outcome.yearBreakdown)
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Entendido") }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_understood)) }
         },
     )
 }

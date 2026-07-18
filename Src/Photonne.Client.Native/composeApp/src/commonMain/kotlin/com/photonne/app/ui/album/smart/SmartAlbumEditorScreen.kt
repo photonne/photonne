@@ -30,6 +30,9 @@ import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.AlbumSummary
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
+import com.photonne.app.resources.action_create
+import com.photonne.app.resources.smart_album_editor_title
+import com.photonne.app.resources.smart_album_name_label
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -58,7 +61,7 @@ fun SmartAlbumEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nuevo álbum inteligente") },
+                title = { Text(stringResource(Res.string.smart_album_editor_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -71,7 +74,7 @@ fun SmartAlbumEditorScreen(
                     TextButton(
                         onClick = { viewModel.create(onCreated) },
                         enabled = state.canSave,
-                    ) { Text("Crear") }
+                    ) { Text(stringResource(Res.string.action_create)) }
                 },
             )
         },
@@ -89,7 +92,7 @@ fun SmartAlbumEditorScreen(
             OutlinedTextField(
                 value = state.name,
                 onValueChange = viewModel::setName,
-                label = { Text("Nombre del álbum") },
+                label = { Text(stringResource(Res.string.smart_album_name_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -40,6 +40,11 @@ import coil3.compose.AsyncImage
 import com.photonne.app.data.models.YearGroup
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
+import com.photonne.app.resources.organize_move_action_count
+import com.photonne.app.resources.organize_move_review_subtitle_by_year
+import com.photonne.app.resources.organize_move_review_subtitle_default
+import com.photonne.app.resources.organize_move_review_title
+import com.photonne.app.resources.organize_year_photo_count
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -77,13 +82,14 @@ fun MoveReviewScreen(
                 Spacer(Modifier.width(4.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "Se moverán $movedTotal fotos",
+                        stringResource(Res.string.organize_move_review_title, movedTotal),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        if (organizeByYear) "Se archivarán en carpetas por año" else "Revisa qué se va a mover",
+                        if (organizeByYear) stringResource(Res.string.organize_move_review_subtitle_by_year)
+                        else stringResource(Res.string.organize_move_review_subtitle_default),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -138,7 +144,7 @@ fun MoveReviewScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                         }
-                        Text("Mover $movedTotal fotos")
+                        Text(stringResource(Res.string.organize_move_action_count, movedTotal))
                     }
                 }
             }
@@ -159,7 +165,7 @@ private fun YearHeader(year: Int, count: Int) {
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            "$count fotos",
+            stringResource(Res.string.organize_year_photo_count, count),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

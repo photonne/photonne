@@ -67,6 +67,45 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_accept
+import com.photonne.app.resources.action_apply
+import com.photonne.app.resources.action_cancel
+import com.photonne.app.resources.action_clear
+import com.photonne.app.resources.action_remove
+import com.photonne.app.resources.folders_scope_personal
+import com.photonne.app.resources.folders_scope_shared
+import com.photonne.app.resources.search_no_results
+import com.photonne.app.resources.smart_album_add_condition
+import com.photonne.app.resources.smart_album_cond_dates
+import com.photonne.app.resources.smart_album_cond_folders
+import com.photonne.app.resources.smart_album_cond_objects
+import com.photonne.app.resources.smart_album_cond_people
+import com.photonne.app.resources.smart_album_cond_scenes
+import com.photonne.app.resources.smart_album_conditions_empty
+import com.photonne.app.resources.smart_album_conditions_section
+import com.photonne.app.resources.smart_album_date_from
+import com.photonne.app.resources.smart_album_date_to
+import com.photonne.app.resources.smart_album_folders_empty
+import com.photonne.app.resources.smart_album_folders_include_sub
+import com.photonne.app.resources.smart_album_match_all
+import com.photonne.app.resources.smart_album_match_all_together
+import com.photonne.app.resources.smart_album_match_any
+import com.photonne.app.resources.smart_album_match_section
+import com.photonne.app.resources.smart_album_no_selection
+import com.photonne.app.resources.smart_album_preview_calculating
+import com.photonne.app.resources.smart_album_preview_count
+import com.photonne.app.resources.smart_album_search_folder
+import com.photonne.app.resources.smart_album_search_object
+import com.photonne.app.resources.smart_album_search_person
+import com.photonne.app.resources.smart_album_search_scene
+import com.photonne.app.resources.smart_album_summary_date_from
+import com.photonne.app.resources.smart_album_summary_date_none
+import com.photonne.app.resources.smart_album_summary_date_range
+import com.photonne.app.resources.smart_album_summary_date_to
+import com.photonne.app.resources.smart_album_summary_folders
+import com.photonne.app.resources.smart_album_summary_people_all
+import com.photonne.app.resources.smart_album_summary_people_any
 import com.photonne.app.ui.folder.FolderNode
 import com.photonne.app.ui.folder.collectFolderIds
 import com.photonne.app.ui.folder.filterFolderTree
@@ -74,6 +113,7 @@ import com.photonne.app.ui.folder.folderGroup
 import com.photonne.app.ui.folder.toggleMember
 import coil3.compose.AsyncImage
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.stringResource
 
 internal enum class EditorSheet { Menu, People, Folders, Scenes, Objects, Dates }
 
@@ -110,27 +150,27 @@ fun RuleConditionsEditor(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Coincidir con: Todas (AND) / Cualquiera (OR)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionLabel("Coincidir con")
+            SectionLabel(stringResource(Res.string.smart_album_match_section))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = matchAll,
                     onClick = { onSetMatchAll(true) },
-                    label = { Text("Todas") },
+                    label = { Text(stringResource(Res.string.smart_album_match_all)) },
                 )
                 FilterChip(
                     selected = !matchAll,
                     onClick = { onSetMatchAll(false) },
-                    label = { Text("Cualquiera") },
+                    label = { Text(stringResource(Res.string.smart_album_match_any)) },
                 )
             }
         }
 
         // Condiciones
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionLabel("Condiciones")
+            SectionLabel(stringResource(Res.string.smart_album_conditions_section))
             if (conditions.isEmpty()) {
                 Text(
-                    "Añade al menos una condición.",
+                    stringResource(Res.string.smart_album_conditions_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -154,7 +194,7 @@ fun RuleConditionsEditor(
             TextButton(onClick = { sheet = EditorSheet.Menu }) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Añadir condición")
+                Text(stringResource(Res.string.smart_album_add_condition))
             }
         }
 
@@ -203,8 +243,8 @@ fun RuleConditionsEditor(
             onConfirm = { onUpsertCondition(it); sheet = null },
         )
         EditorSheet.Scenes -> LabelSelectSheet(
-            title = "Escenas",
-            placeholder = "Buscar escena…",
+            title = stringResource(Res.string.smart_album_cond_scenes),
+            placeholder = stringResource(Res.string.smart_album_search_scene),
             results = pickers.scenes,
             baseUrl = baseUrl,
             existingLabels = conditions.filterIsInstance<SmartCondition.Scenes>().firstOrNull()?.labels ?: emptyList(),
@@ -213,8 +253,8 @@ fun RuleConditionsEditor(
             onConfirm = { onUpsertCondition(SmartCondition.Scenes(it)); sheet = null },
         )
         EditorSheet.Objects -> LabelSelectSheet(
-            title = "Objetos",
-            placeholder = "Buscar objeto…",
+            title = stringResource(Res.string.smart_album_cond_objects),
+            placeholder = stringResource(Res.string.smart_album_search_object),
             results = pickers.objects,
             baseUrl = baseUrl,
             existingLabels = conditions.filterIsInstance<SmartCondition.Objects>().firstOrNull()?.labels ?: emptyList(),
@@ -266,7 +306,7 @@ private fun ConditionRow(
                 )
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = "Quitar")
+                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove))
             }
         }
     }
@@ -280,30 +320,36 @@ private fun SmartCondition.icon(): ImageVector = when (this) {
     is SmartCondition.Objects -> Icons.Outlined.Category
 }
 
+@Composable
 private fun SmartCondition.title(): String = when (this) {
-    is SmartCondition.People -> "Personas"
-    is SmartCondition.Folders -> "Carpetas"
-    is SmartCondition.DateRange -> "Fechas"
-    is SmartCondition.Scenes -> "Escenas"
-    is SmartCondition.Objects -> "Objetos"
+    is SmartCondition.People -> stringResource(Res.string.smart_album_cond_people)
+    is SmartCondition.Folders -> stringResource(Res.string.smart_album_cond_folders)
+    is SmartCondition.DateRange -> stringResource(Res.string.smart_album_cond_dates)
+    is SmartCondition.Scenes -> stringResource(Res.string.smart_album_cond_scenes)
+    is SmartCondition.Objects -> stringResource(Res.string.smart_album_cond_objects)
 }
 
+@Composable
 private fun SmartCondition.summary(): String = when (this) {
     is SmartCondition.People -> {
         val names = people.joinToString(", ") { it.name }
-        val mode = if (matchAll) " (todas juntas)" else " (cualquiera)"
-        if (people.isEmpty()) "Sin selección" else names + mode
+        if (people.isEmpty()) stringResource(Res.string.smart_album_no_selection)
+        else stringResource(
+            if (matchAll) Res.string.smart_album_summary_people_all else Res.string.smart_album_summary_people_any,
+            names,
+        )
     }
     is SmartCondition.Folders ->
-        if (folders.isEmpty()) "Sin selección" else folders.joinToString(", ") { it.name } + " (+ subcarpetas)"
+        if (folders.isEmpty()) stringResource(Res.string.smart_album_no_selection)
+        else stringResource(Res.string.smart_album_summary_folders, folders.joinToString(", ") { it.name })
     is SmartCondition.DateRange -> when {
-        from != null && to != null -> "$from → $to"
-        from != null -> "Desde $from"
-        to != null -> "Hasta $to"
-        else -> "Sin rango"
+        from != null && to != null -> stringResource(Res.string.smart_album_summary_date_range, from!!, to!!)
+        from != null -> stringResource(Res.string.smart_album_summary_date_from, from!!)
+        to != null -> stringResource(Res.string.smart_album_summary_date_to, to!!)
+        else -> stringResource(Res.string.smart_album_summary_date_none)
     }
-    is SmartCondition.Scenes -> if (labels.isEmpty()) "Sin selección" else labels.joinToString(", ")
-    is SmartCondition.Objects -> if (labels.isEmpty()) "Sin selección" else labels.joinToString(", ")
+    is SmartCondition.Scenes -> if (labels.isEmpty()) stringResource(Res.string.smart_album_no_selection) else labels.joinToString(", ")
+    is SmartCondition.Objects -> if (labels.isEmpty()) stringResource(Res.string.smart_album_no_selection) else labels.joinToString(", ")
 }
 
 @Composable
@@ -319,8 +365,8 @@ private fun SmartPreviewSection(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = when {
-                    count != null -> "$count fotos coinciden"
-                    else -> "Calculando…"
+                    count != null -> stringResource(Res.string.smart_album_preview_count, count)
+                    else -> stringResource(Res.string.smart_album_preview_calculating)
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -356,15 +402,15 @@ private fun AddConditionMenuSheet(onDismiss: () -> Unit, onPick: (EditorSheet) -
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
-                "Añadir condición",
+                stringResource(Res.string.smart_album_add_condition),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(16.dp),
             )
-            MenuRow(Icons.Outlined.Person, "Personas") { onPick(EditorSheet.People) }
-            MenuRow(Icons.Outlined.Folder, "Carpetas") { onPick(EditorSheet.Folders) }
-            MenuRow(Icons.Outlined.DateRange, "Fechas") { onPick(EditorSheet.Dates) }
-            MenuRow(Icons.Outlined.Image, "Escenas") { onPick(EditorSheet.Scenes) }
-            MenuRow(Icons.Outlined.Category, "Objetos") { onPick(EditorSheet.Objects) }
+            MenuRow(Icons.Outlined.Person, stringResource(Res.string.smart_album_cond_people)) { onPick(EditorSheet.People) }
+            MenuRow(Icons.Outlined.Folder, stringResource(Res.string.smart_album_cond_folders)) { onPick(EditorSheet.Folders) }
+            MenuRow(Icons.Outlined.DateRange, stringResource(Res.string.smart_album_cond_dates)) { onPick(EditorSheet.Dates) }
+            MenuRow(Icons.Outlined.Image, stringResource(Res.string.smart_album_cond_scenes)) { onPick(EditorSheet.Scenes) }
+            MenuRow(Icons.Outlined.Category, stringResource(Res.string.smart_album_cond_objects)) { onPick(EditorSheet.Objects) }
         }
     }
 }
@@ -400,16 +446,16 @@ private fun PeopleSelectSheet(
     val refs = remember { mutableStateMapOf<String, PersonRef>().apply { existing?.people?.forEach { put(it.id, it) } } }
 
     SearchSelectScaffold(
-        title = "Personas",
+        title = stringResource(Res.string.smart_album_cond_people),
         onDismiss = onDismiss,
         onConfirm = { onConfirm(SmartCondition.People(people = selected.mapNotNull { refs[it] }, matchAll = matchAll)) },
         confirmEnabled = selected.isNotEmpty(),
         header = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !matchAll, onClick = { matchAll = false }, label = { Text("Cualquiera") })
-                FilterChip(selected = matchAll, onClick = { matchAll = true }, label = { Text("Todas juntas") })
+                FilterChip(selected = !matchAll, onClick = { matchAll = false }, label = { Text(stringResource(Res.string.smart_album_match_any)) })
+                FilterChip(selected = matchAll, onClick = { matchAll = true }, label = { Text(stringResource(Res.string.smart_album_match_all_together)) })
             }
-            PickerSearchField(results.query, onQueryChange, "Buscar persona…")
+            PickerSearchField(results.query, onQueryChange, stringResource(Res.string.smart_album_search_person))
             SelectedChipsHeader(
                 items = selected.mapNotNull { id -> refs[id]?.let { id to it.name } },
                 onRemove = { selected = selected - it },
@@ -472,15 +518,18 @@ private fun FolderSelectSheet(
         Checkbox(checked = checked, onCheckedChange = { onToggle() }, enabled = enabled)
     }
 
+    val personalLabel = stringResource(Res.string.folders_scope_personal)
+    val sharedLabel = stringResource(Res.string.folders_scope_shared)
+
     SearchSelectScaffold(
-        title = "Carpetas",
+        title = stringResource(Res.string.smart_album_cond_folders),
         onDismiss = onDismiss,
         onConfirm = { onConfirm(SmartCondition.Folders(selected.mapNotNull { refById[it] })) },
         confirmEnabled = selected.isNotEmpty(),
         header = {
-            PickerSearchField(query, { query = it }, "Buscar carpeta…")
+            PickerSearchField(query, { query = it }, stringResource(Res.string.smart_album_search_folder))
             Text(
-                "Se incluyen también las subcarpetas.",
+                stringResource(Res.string.smart_album_folders_include_sub),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -496,13 +545,13 @@ private fun FolderSelectSheet(
                 personalNodes.isEmpty() && sharedNodes.isEmpty() ->
                     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                         Text(
-                            if (searching) "Sin resultados" else "No hay carpetas.",
+                            if (searching) stringResource(Res.string.search_no_results) else stringResource(Res.string.smart_album_folders_empty),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 else -> LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
                     folderGroup(
-                        groupId = "grp:personal", label = "Personales", nodes = personalNodes,
+                        groupId = "grp:personal", label = personalLabel, nodes = personalNodes,
                         searching = searching, userExpanded = expanded, effExpanded = effExpanded,
                         onToggleGroup = { expanded = expanded.toggleMember("grp:personal") },
                         onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
@@ -511,7 +560,7 @@ private fun FolderSelectSheet(
                         trailing = trailing,
                     )
                     folderGroup(
-                        groupId = "grp:shared", label = "Compartidas", nodes = sharedNodes,
+                        groupId = "grp:shared", label = sharedLabel, nodes = sharedNodes,
                         searching = searching, userExpanded = expanded, effExpanded = effExpanded,
                         onToggleGroup = { expanded = expanded.toggleMember("grp:shared") },
                         onToggleExpand = { id -> expanded = expanded.toggleMember(id) },
@@ -589,9 +638,9 @@ private fun SearchSelectScaffold(
             header()
             body()
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onConfirm, enabled = confirmEnabled) { Text("Aplicar") }
+                Button(onClick = onConfirm, enabled = confirmEnabled) { Text(stringResource(Res.string.action_apply)) }
             }
         }
     }
@@ -610,7 +659,7 @@ private fun ColumnScope.PickerListBody(
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         loadedOnce && isEmpty ->
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(Res.string.search_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         else -> LazyColumn(Modifier.fillMaxWidth().weight(1f)) { content() }
     }
@@ -628,7 +677,7 @@ private fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, pl
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Filled.Close, contentDescription = "Limpiar") }
+                IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_clear)) }
             }
         },
         singleLine = true,
@@ -645,7 +694,7 @@ private fun SelectedChipsHeader(items: List<Pair<String, String>>, onRemove: (St
                 selected = true,
                 onClick = { onRemove(id) },
                 label = { Text(text) },
-                trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Quitar", modifier = Modifier.size(16.dp)) },
+                trailingIcon = { Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.action_remove), modifier = Modifier.size(16.dp)) },
             )
         }
     }
@@ -709,7 +758,7 @@ private fun DateRangeSheet(
     var picking by remember { mutableStateOf<Boolean?>(null) } // true = from, false = to
 
     SelectSheetScaffold(
-        title = "Fechas",
+        title = stringResource(Res.string.smart_album_cond_dates),
         isLoading = false,
         isEmpty = false,
         emptyText = "",
@@ -719,10 +768,10 @@ private fun DateRangeSheet(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             androidx.compose.material3.OutlinedButton(onClick = { picking = true }, modifier = Modifier.weight(1f)) {
-                Text(from ?: "Desde")
+                Text(from ?: stringResource(Res.string.smart_album_date_from))
             }
             androidx.compose.material3.OutlinedButton(onClick = { picking = false }, modifier = Modifier.weight(1f)) {
-                Text(to ?: "Hasta")
+                Text(to ?: stringResource(Res.string.smart_album_date_to))
             }
         }
     }
@@ -758,10 +807,10 @@ private fun DatePickerSheet(initialIso: String?, onPick: (String?) -> Unit) {
                         .toLocalDateTime(kotlinx.datetime.TimeZone.UTC).date.toString()
                 }
                 onPick(iso)
-            }) { Text("Aceptar") }
+            }) { Text(stringResource(Res.string.action_accept)) }
         },
         dismissButton = {
-            TextButton(onClick = { onPick(initialIso) }) { Text("Cancelar") }
+            TextButton(onClick = { onPick(initialIso) }) { Text(stringResource(Res.string.action_cancel)) }
         },
     ) {
         androidx.compose.material3.DatePicker(state = pickerState)
@@ -803,10 +852,10 @@ private fun SelectSheetScaffold(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = onConfirm, enabled = confirmEnabled) {
-                    Text("Aplicar")
+                    Text(stringResource(Res.string.action_apply))
                 }
             }
         }

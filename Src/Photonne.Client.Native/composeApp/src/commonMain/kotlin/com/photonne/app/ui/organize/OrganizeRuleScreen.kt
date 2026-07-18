@@ -37,9 +37,20 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.organize_move_action_count
+import com.photonne.app.resources.organize_move_by_year_desc
+import com.photonne.app.resources.organize_move_by_year_label
+import com.photonne.app.resources.organize_move_destination_label
+import com.photonne.app.resources.organize_move_destination_placeholder
+import com.photonne.app.resources.organize_move_no_matches
+import com.photonne.app.resources.organize_move_pick_destination
+import com.photonne.app.resources.organize_rule_intro
+import com.photonne.app.resources.organize_rule_year_split_label
 import com.photonne.app.ui.album.smart.RuleConditionsEditor
 import com.photonne.app.ui.folder.FolderPickerDialog
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -84,7 +95,7 @@ fun OrganizeRuleScreen(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                "Mueve de golpe todo lo que sigue en \"Para organizar\" y cumpla estas condiciones.",
+                stringResource(Res.string.organize_rule_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -119,7 +130,7 @@ fun OrganizeRuleScreen(
             if (state.organizeByYear && state.yearBreakdown.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Se repartirán en:",
+                        stringResource(Res.string.organize_rule_year_split_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -169,7 +180,7 @@ fun OrganizeRuleScreen(
 
     if (showFolderPicker) {
         FolderPickerDialog(
-            title = "Mover a",
+            title = stringResource(Res.string.organize_move_destination_label),
             folders = destinations,
             isSubmitting = false,
             includeRoot = false,
@@ -208,9 +219,9 @@ private fun DestinationRow(path: String?, onClick: () -> Unit) {
             Icon(Icons.AutoMirrored.Outlined.DriveFileMove, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Mover a", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(Res.string.organize_move_destination_label), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    path?.let { prettyPath(it) } ?: "Elige una carpeta destino",
+                    path?.let { prettyPath(it) } ?: stringResource(Res.string.organize_move_destination_placeholder),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -233,9 +244,9 @@ private fun OrganizeByYearRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         Checkbox(checked = checked, onCheckedChange = onToggle)
         Spacer(Modifier.size(4.dp))
         Column(Modifier.weight(1f)) {
-            Text("Organizar por año", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(Res.string.organize_move_by_year_label), style = MaterialTheme.typography.bodyLarge)
             Text(
-                "Se crearán subcarpetas por año (2026, 2025…) dentro del destino.",
+                stringResource(Res.string.organize_move_by_year_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -267,9 +278,9 @@ private fun MoveBar(
                     val n = count ?: 0
                     Text(
                         when {
-                            path == null -> "Elige un destino"
-                            n == 0 -> "Sin coincidencias"
-                            else -> "Mover $n fotos"
+                            path == null -> stringResource(Res.string.organize_move_pick_destination)
+                            n == 0 -> stringResource(Res.string.organize_move_no_matches)
+                            else -> stringResource(Res.string.organize_move_action_count, n)
                         }
                     )
                 }
