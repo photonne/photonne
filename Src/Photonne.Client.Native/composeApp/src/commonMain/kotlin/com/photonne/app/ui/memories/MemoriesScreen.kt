@@ -94,9 +94,9 @@ fun MemoriesScreen(
                         CircularProgressIndicator()
                     }
 
-                state.error?.userMessage != null && state.rows.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
+                state.error != null && state.rows.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
+                        com.photonne.app.ui.error.ErrorBanner(error = state.error)
                     }
 
                 state.rows.isEmpty() ->

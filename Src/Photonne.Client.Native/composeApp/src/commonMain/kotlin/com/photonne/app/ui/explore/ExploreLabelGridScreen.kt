@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.photonne.app.data.error.UiError
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.explore_label_count
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -62,7 +63,7 @@ internal data class ExploreLabelTile(
 internal fun ExploreLabelGridScreen(
     tiles: List<ExploreLabelTile>,
     isLoading: Boolean,
-    errorMessage: String?,
+    error: UiError?,
     emptyText: String,
     baseUrl: String,
     /** Título del cromo flotante ("Escenas" / "Objetos"). */
@@ -89,9 +90,9 @@ internal fun ExploreLabelGridScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                errorMessage != null && tiles.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                error != null && tiles.isEmpty() ->
+                    Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
+                        com.photonne.app.ui.error.ErrorBanner(error = error)
                     }
                 tiles.isEmpty() ->
                     EmptyState(

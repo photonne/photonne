@@ -144,16 +144,9 @@ fun AlbumsListScreen(
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
-                    state.error?.userMessage != null && state.albums.isEmpty() ->
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                state.error?.userMessage!!,
-                                color = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center
-                            )
+                    state.error != null && state.albums.isEmpty() ->
+                        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                            com.photonne.app.ui.error.ErrorBanner(error = state.error)
                         }
                     visible.isEmpty() && state.hasActiveQuery ->
                         EmptySearchState(query = state.searchQuery.trim())
