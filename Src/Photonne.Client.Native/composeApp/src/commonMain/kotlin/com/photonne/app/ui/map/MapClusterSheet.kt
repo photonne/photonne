@@ -33,6 +33,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,14 +44,18 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.asset_trash_title
 import com.photonne.app.resources.map_cluster_sheet_title
 import com.photonne.app.resources.selection_action_add_to_album
 import com.photonne.app.resources.selection_action_archive
 import com.photonne.app.resources.selection_action_close
 import com.photonne.app.resources.selection_action_trash
 import com.photonne.app.resources.selection_count
+import com.photonne.app.resources.selection_trash_confirm_message
 import com.photonne.app.resources.map_action_select_all
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -77,6 +85,28 @@ fun MapClusterSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isSelectionActive = selectedIds.isNotEmpty()
 
+    // El mapa tiene su propio camino de selección (no pasa por AssetSelectionBottomBar),
+    // así que la papelera en bloque confirma aquí igual que en el resto de pantallas.
+    var showTrashConfirm by remember { mutableStateOf(false) }
+    if (showTrashConfirm) {
+        ConfirmActionDialog(
+            title = stringResource(Res.string.asset_trash_title),
+            message = pluralStringResource(
+                Res.plurals.selection_trash_confirm_message,
+                selectedIds.size,
+                selectedIds.size
+            ),
+            confirmLabel = stringResource(Res.string.action_delete),
+            isDestructive = true,
+            isSubmitting = isMutating,
+            onDismiss = { showTrashConfirm = false },
+            onConfirm = {
+                showTrashConfirm = false
+                onTrash()
+            }
+        )
+    }
+
     ModalBottomSheet(
         onDismissRequest = { if (!isMutating) onDismiss() },
         sheetState = sheetState
@@ -90,7 +120,7 @@ fun MapClusterSheet(
                     onSelectAll = onSelectAll,
                     onAddToAlbum = onAddToAlbum,
                     onArchive = onArchive,
-                    onTrash = onTrash
+                    onTrash = { showTrashConfirm = true }
                 )
             } else {
                 Text(

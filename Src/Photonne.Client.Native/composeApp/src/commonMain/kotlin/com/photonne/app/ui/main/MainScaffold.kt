@@ -151,6 +151,8 @@ import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
+import com.photonne.app.resources.asset_trash_title
+import com.photonne.app.resources.selection_trash_confirm_message
 import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
 import com.photonne.app.resources.action_more
@@ -187,6 +189,7 @@ import com.photonne.app.resources.upload_title
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.ui.theme.photonneLogoPainter
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -892,6 +895,7 @@ fun AssetSelectionTopBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssetSelectionBottomBar(
+    selectedCount: Int,
     isMutating: Boolean,
     archiveMode: ArchiveMode = ArchiveMode.Archive,
     onShare: () -> Unit,
@@ -905,6 +909,29 @@ fun AssetSelectionBottomBar(
     onSetAsCover: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
+    // Papelera en bloque = acción destructiva → SIEMPRE confirma, igual que el
+    // borrado de un solo asset. Al vivir aquí, toda pantalla que usa esta barra
+    // (timeline, álbum, carpeta, búsqueda, personas, favoritos, archivados,
+    // organizar) hereda la confirmación sin repetirla en cada host.
+    var showTrashConfirm by rememberSaveable { mutableStateOf(false) }
+    if (showTrashConfirm) {
+        ConfirmActionDialog(
+            title = stringResource(Res.string.asset_trash_title),
+            message = pluralStringResource(
+                Res.plurals.selection_trash_confirm_message,
+                selectedCount,
+                selectedCount
+            ),
+            confirmLabel = stringResource(Res.string.action_delete),
+            isDestructive = true,
+            isSubmitting = isMutating,
+            onDismiss = { showTrashConfirm = false },
+            onConfirm = {
+                showTrashConfirm = false
+                onTrash()
+            }
+        )
+    }
     // When any context-specific action is wired (Move/Remove/SetCover/Unlink),
     // Download moves to the overflow so the bar keeps a stable 4-item primary
     // count + More. The context action takes Download's slot.
@@ -1045,7 +1072,7 @@ fun AssetSelectionBottomBar(
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             },
-                            onClick = { menuOpen = false; onTrash() }
+                            onClick = { menuOpen = false; showTrashConfirm = true }
                         )
                     }
                 }

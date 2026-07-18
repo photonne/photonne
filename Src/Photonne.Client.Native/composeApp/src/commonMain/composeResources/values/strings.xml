@@ -188,6 +188,10 @@
     <string name="asset_date_readonly_note">Biblioteca externa de solo lectura: no se puede escribir en el archivo.</string>
     <string name="asset_trash_title">Mover a la papelera</string>
     <string name="asset_trash_message">"%1$s" se moverá a la papelera. Podrás restaurarlo desde la app web.</string>
+    <plurals name="selection_trash_confirm_message">
+        <item quantity="one">%1$d foto se moverá a la papelera. Podrás restaurarla desde la papelera.</item>
+        <item quantity="other">%1$d fotos se moverán a la papelera. Podrás restaurarlas desde la papelera.</item>
+    </plurals>
     <string name="asset_metadata_location">Ubicación</string>
     <string name="asset_metadata_open_map">Ver en Mapas</string>
 

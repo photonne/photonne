@@ -1406,6 +1406,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             timelineState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = timelineState.selection.size,
                     isMutating = timelineState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1425,6 +1426,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             albumDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = albumDetailState.selection.size,
                     isMutating = albumDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1488,6 +1490,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             folderDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = folderDetailState.selection.size,
                     isMutating = folderDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1508,6 +1511,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedTab == MainTab.Search && searchState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = searchState.selection.size,
                     isMutating = searchState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1526,6 +1530,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             selectedPerson != null && personDetailState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = personDetailState.selection.size,
                     isMutating = personDetailState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1554,6 +1559,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             organizeInboxState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = organizeInboxState.selection.size,
                     isMutating = organizeInboxState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1576,6 +1582,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             favoritesState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = favoritesState.selection.size,
                     isMutating = favoritesState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     onShare = {
@@ -1594,6 +1601,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             archivedState.isSelectionActive -> {
             {
                 AssetSelectionBottomBar(
+                    selectedCount = archivedState.selection.size,
                     isMutating = archivedState.isBulkMutating ||
                         actionsState.working != AssetActionWorking.Idle,
                     archiveMode = ArchiveMode.Unarchive,
