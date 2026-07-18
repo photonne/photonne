@@ -88,6 +88,7 @@ import com.photonne.app.resources.device_backup_not_supported
 import com.photonne.app.resources.device_backup_progress
 import com.photonne.app.resources.device_backup_total
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.theme.PhotonneColors
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -839,7 +840,7 @@ private fun IgnoredCell(
 private fun SyncBadge(state: DeviceMediaSyncState, modifier: Modifier = Modifier) {
     val (bg, tint, icon) = when (state) {
         is DeviceMediaSyncState.Synced ->
-            Triple(Color(0xFF1B5E20), Color.White, Icons.Filled.Check)
+            Triple(PhotonneColors.success, PhotonneColors.onSuccess, Icons.Filled.Check)
         is DeviceMediaSyncState.NotSynced -> return
         is DeviceMediaSyncState.Failed ->
             Triple(MaterialTheme.colorScheme.error, Color.White, Icons.Filled.Refresh)

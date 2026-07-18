@@ -54,6 +54,7 @@ import com.photonne.app.ui.grid.assetCellKey
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -271,7 +272,7 @@ private fun SubfolderCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(6.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(6.dp))
+                    .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(

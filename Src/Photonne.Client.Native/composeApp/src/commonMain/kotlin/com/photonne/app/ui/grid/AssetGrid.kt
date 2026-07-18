@@ -42,7 +42,10 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.ui.image.AssetThumbnailImage
+import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
+import com.photonne.app.ui.theme.PhotonneColors
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -230,11 +233,11 @@ fun AssetGridCell(
             Icon(
                 imageVector = Icons.Filled.Favorite,
                 contentDescription = "Favorito",
-                tint = Color(0xFFFF5252),
+                tint = PhotonneColors.favorite,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .size(16.dp)
+                    .padding(Spacing.xs)
+                    .size(IconSize.sm)
             )
         }
         if (isSelected) {

@@ -158,6 +158,7 @@ import com.photonne.app.resources.slideshow_play
 import com.photonne.app.resources.slideshow_previous
 import com.photonne.app.resources.slideshow_start
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
+import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.util.openExternalUrl
 import kotlin.math.PI
 import kotlin.math.abs
@@ -726,7 +727,7 @@ fun AssetDetailScreen(
                                     imageVector = if (currentIsFavorite) Icons.Filled.Favorite
                                     else Icons.Outlined.FavoriteBorder,
                                     contentDescription = if (currentIsFavorite) "Quitar favorito" else "Marcar favorito",
-                                    tint = if (currentIsFavorite) Color(0xFFFF5252) else Color.White
+                                    tint = if (currentIsFavorite) PhotonneColors.favorite else Color.White
                                 )
                             }
                             IconButton(onClick = { onShare(currentItem) }) {
@@ -1634,7 +1635,7 @@ private fun ExifGrid(cells: List<StatCell>) {
 private fun ExifStatCard(cell: StatCell, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
@@ -1680,7 +1681,7 @@ private fun FacesSection(
     Surface(
         onClick = onOpenFaces,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1895,7 +1896,7 @@ private fun MetadataEditableRow(
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
@@ -1934,7 +1935,7 @@ private fun MetadataEditableRow(
 private fun MetadataInfoRow(leadingIcon: ImageVector, label: String, value: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
@@ -1962,7 +1963,7 @@ private fun MetadataActionRow(leadingIcon: ImageVector, label: String, onClick: 
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
@@ -2085,7 +2086,7 @@ private fun LocationMap(latitude: Double, longitude: Double) {
             ) {
                 Box(
                     modifier = Modifier
-                        .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(6.dp))
+                        .background(PhotonneColors.scrimMedium, shape = RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -2097,7 +2098,7 @@ private fun LocationMap(latitude: Double, longitude: Double) {
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color.Black.copy(alpha = 0.6f))
+                        .background(PhotonneColors.scrimMedium)
                         .clickable { openExternalUrl(mapsUrl) }
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -2504,7 +2505,7 @@ private fun AssetActionsBottomBar(
                         imageVector = if (isFavorite) Icons.Filled.Favorite
                         else Icons.Outlined.FavoriteBorder,
                         contentDescription = if (isFavorite) "Quitar favorito" else "Marcar favorito",
-                        tint = if (isFavorite) Color(0xFFFF5252) else Color.White
+                        tint = if (isFavorite) PhotonneColors.favorite else Color.White
                     )
                 }
                 IconButton(onClick = onShare) {

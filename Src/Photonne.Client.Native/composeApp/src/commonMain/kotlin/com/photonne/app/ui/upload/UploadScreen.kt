@@ -58,6 +58,7 @@ import com.photonne.app.resources.upload_empty_title
 import com.photonne.app.resources.upload_summary
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
+import com.photonne.app.ui.theme.PhotonneColors
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -290,7 +291,7 @@ private fun Thumbnail(item: UploadItem) {
         when (item.status) {
             UploadStatus.Done -> ThumbStatusOverlay(
                 Icons.Filled.CheckCircle,
-                Color(0xFF66BB6A)
+                PhotonneColors.success
             )
             UploadStatus.Skipped -> ThumbStatusOverlay(
                 Icons.Filled.CheckCircle,

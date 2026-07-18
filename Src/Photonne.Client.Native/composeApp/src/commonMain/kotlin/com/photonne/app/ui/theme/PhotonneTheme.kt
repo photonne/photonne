@@ -132,7 +132,10 @@ fun PhotonneTheme(
         ThemePreference.Light -> false
         ThemePreference.Dark -> true
     }
-    CompositionLocalProvider(LocalIsDarkTheme provides useDarkTheme) {
+    CompositionLocalProvider(
+        LocalIsDarkTheme provides useDarkTheme,
+        LocalPhotonneColors provides semanticColorsFor(useDarkTheme)
+    ) {
         MaterialTheme(
             colorScheme = if (useDarkTheme) DarkColors else LightColors,
             shapes = PhotonneShapes,
