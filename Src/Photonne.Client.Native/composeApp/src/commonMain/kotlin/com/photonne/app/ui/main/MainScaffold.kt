@@ -1979,46 +1979,30 @@ fun PersonDetailSelectionTopBar(
     onTrash: () -> Unit,
     onUnlink: () -> Unit
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            TextButton(onClick = onUnlink, enabled = !isMutating) {
-                Text(stringResource(Res.string.people_action_unlink))
-            }
-            IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.AddToPhotos,
-                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
-                )
-            }
-            IconButton(onClick = onArchive, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.Archive,
-                    contentDescription = stringResource(Res.string.selection_action_archive)
-                )
-            }
-            IconButton(onClick = onTrash, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = stringResource(Res.string.selection_action_trash),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
+    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
+        TextButton(onClick = onUnlink, enabled = !isMutating) {
+            Text(stringResource(Res.string.people_action_unlink))
         }
-    )
+        IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.AddToPhotos,
+                contentDescription = stringResource(Res.string.selection_action_add_to_album)
+            )
+        }
+        IconButton(onClick = onArchive, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.Archive,
+                contentDescription = stringResource(Res.string.selection_action_archive)
+            )
+        }
+        IconButton(onClick = onTrash, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(Res.string.selection_action_trash),
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
+    }
 }
 
 /**
@@ -2036,43 +2020,29 @@ fun FavoritesSelectionTopBar(
     onArchive: () -> Unit,
     onTrash: () -> Unit
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
-                style = MaterialTheme.typography.titleMedium
+    // Comparte el andamiaje (Close + contador) de [AssetSelectionTopBar]; solo
+    // cambian las acciones de la derecha.
+    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
+        IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.AddToPhotos,
+                contentDescription = stringResource(Res.string.selection_action_add_to_album)
             )
-        },
-        actions = {
-            IconButton(onClick = onAddToAlbum, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.AddToPhotos,
-                    contentDescription = stringResource(Res.string.selection_action_add_to_album)
-                )
-            }
-            IconButton(onClick = onArchive, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.Archive,
-                    contentDescription = stringResource(Res.string.selection_action_archive)
-                )
-            }
-            IconButton(onClick = onTrash, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = stringResource(Res.string.selection_action_trash),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
         }
-    )
+        IconButton(onClick = onArchive, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.Archive,
+                contentDescription = stringResource(Res.string.selection_action_archive)
+            )
+        }
+        IconButton(onClick = onTrash, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(Res.string.selection_action_trash),
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
+    }
 }
 
 /** Selection top bar tailored to the Archived screen — only exposes Unarchive. */
@@ -2084,27 +2054,11 @@ fun ArchivedSelectionTopBar(
     onClose: () -> Unit,
     onUnarchive: () -> Unit
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            TextButton(onClick = onUnarchive, enabled = !isMutating) {
-                Text(stringResource(Res.string.archive_action_unarchive))
-            }
+    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
+        TextButton(onClick = onUnarchive, enabled = !isMutating) {
+            Text(stringResource(Res.string.archive_action_unarchive))
         }
-    )
+    }
 }
 
 /** Selection top bar tailored to the Trash screen — Restore + Delete forever. */
@@ -2117,32 +2071,16 @@ fun TrashSelectionTopBar(
     onRestore: () -> Unit,
     onPurge: () -> Unit
 ) {
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose, enabled = !isMutating) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.selection_action_close)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = pluralStringResource(Res.plurals.selection_count, selectedCount, selectedCount),
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        actions = {
-            TextButton(onClick = onRestore, enabled = !isMutating) {
-                Text(stringResource(Res.string.trash_action_restore))
-            }
-            IconButton(onClick = onPurge, enabled = !isMutating) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = stringResource(Res.string.trash_action_delete_forever),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
+    AssetSelectionTopBar(selectedCount = selectedCount, isMutating = isMutating, onClose = onClose) {
+        TextButton(onClick = onRestore, enabled = !isMutating) {
+            Text(stringResource(Res.string.trash_action_restore))
         }
-    )
+        IconButton(onClick = onPurge, enabled = !isMutating) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(Res.string.trash_action_delete_forever),
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
+    }
 }
