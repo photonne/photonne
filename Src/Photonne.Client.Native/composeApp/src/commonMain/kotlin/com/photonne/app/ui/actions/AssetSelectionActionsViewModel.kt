@@ -95,7 +95,7 @@ class AssetSelectionActionsViewModel(
                     _state.update {
                         it.copy(
                             working = AssetActionWorking.Idle,
-                            statusMessage = saved.displayName
+                            statusMessage = "Descargado: ${saved.displayName}"
                         )
                     }
                 }
