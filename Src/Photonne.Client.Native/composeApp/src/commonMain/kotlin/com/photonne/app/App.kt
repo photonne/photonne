@@ -496,6 +496,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var albumsChromeVisible by remember { mutableStateOf(true) }
     var foldersChromeVisible by remember { mutableStateOf(true) }
     var moreChromeVisible by remember { mutableStateOf(true) }
+    var searchChromeVisible by remember { mutableStateOf(true) }
     // Same, but for the photo grids inside an open album / folder.
     var albumDetailChromeVisible by remember { mutableStateOf(true) }
     // Compartido por las subpantallas con cromo flotante propio (Personas, Mapa,
@@ -1044,8 +1045,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onClose = searchViewModel::clearSelection,
                     onSelectAll = searchViewModel::toggleSelectAll
                 )
-            selectedTab == MainTab.Search ->
-                com.photonne.app.ui.main.SearchTopBar()
+            // Buscar pinta su propio cromo flotante (campo + modo + filtros); aquí
+            // no va barra acoplada salvo la de selección (rama de arriba).
+            selectedTab == MainTab.Search -> {
+            }
             moreSubscreen == MoreSubscreen.Upload ->
                 com.photonne.app.ui.main.UploadTopBar(
                     title = stringResource(Res.string.upload_title),
@@ -1535,6 +1538,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         selectedFolder == null &&
         !foldersState.isSelectionActive
     val moreImmersive = chromeTab == MainTab.More && moreSubscreen == null
+    // Buscar dibuja su propio cromo flotante (campo + modo + filtros) que se acopla
+    // y se oculta al scroll; con una selección activa vuelve la barra acoplada.
+    val searchImmersive = selectedTab == MainTab.Search &&
+        moreSubscreen == null &&
+        !searchState.isSelectionActive
     // Inside an open album / folder: the photo grid gets the same immersive
     // treatment (nav hides on scroll, grid bleeds behind it), unless a
     // selection is active (which shows its own bottom action bar). These are
@@ -1646,7 +1654,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // no deja el hueco a cero: lo rellena con el inset del sistema. Y el
             // cromo de cada pantalla vuelve a aplicárselo por su cuenta.
             edgeToEdgeTop = pagerBareTop || floatingChromeSubscreen ||
-                albumDetailImmersive || folderDetailImmersive,
+                albumDetailImmersive || folderDetailImmersive || searchImmersive,
             // On the immersive tabs the bottom nav hides while scrolling down
             // (driven by each screen's chrome), and always shows elsewhere.
             bottomBarVisible = when {
@@ -1654,6 +1662,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 albumsImmersive -> albumsChromeVisible
                 foldersImmersive -> foldersChromeVisible
                 moreImmersive -> moreChromeVisible
+                searchImmersive -> searchChromeVisible
                 albumDetailImmersive -> albumDetailChromeVisible
                 folderDetailImmersive -> folderDetailChromeVisible
                 floatingChromeSubscreen -> subscreenChromeVisible
@@ -1989,6 +1998,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     com.photonne.app.ui.search.SearchScreen(
                     viewModel = searchViewModel,
                     onOpenFilters = { showSearchFilters = true },
+                    onBack = { selectedTab = MainTab.Timeline },
+                    onChromeVisibleChange = { searchChromeVisible = it },
                     onItemClick = { index ->
                         if (searchState.isSelectionActive) {
                             searchState.results.getOrNull(index)?.let {

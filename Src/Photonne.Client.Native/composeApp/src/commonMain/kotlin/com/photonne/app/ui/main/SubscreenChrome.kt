@@ -103,6 +103,12 @@ internal fun BoxScope.SubscreenFloatingChrome(
      */
     onBack: (() -> Unit)? = null,
     /**
+     * Contenido a medida DENTRO de la cápsula de cabecera, en lugar del [title]
+     * (p.ej. el campo de búsqueda). Cuando no es null, la cápsula se expande a lo
+     * ancho para alojarlo; el contenido puede usar `Modifier.weight(1f)`.
+     */
+    titleContent: (@Composable RowScope.() -> Unit)? = null,
+    /**
      * Null on a screen with nothing to scroll (the map): the chrome then never
      * docks and never hides — its capsules just ride over the content.
      */
@@ -204,7 +210,10 @@ internal fun BoxScope.SubscreenFloatingChrome(
                 // weight para que un título largo se trunque en vez de empujar
                 // la cápsula de acciones fuera de la pantalla.
                 Row(
-                    modifier = Modifier.weight(1f, fill = false),
+                    // Con contenido a medida (buscador) la cápsula se expande a lo
+                    // ancho; con un título de texto se ciñe al texto y trunca.
+                    modifier = if (titleContent != null) Modifier.weight(1f)
+                    else Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SubscreenChromeCapsule(dockedFraction, hazeState) {
@@ -213,7 +222,9 @@ internal fun BoxScope.SubscreenFloatingChrome(
                         // (los tabs de primer nivel no lo tienen) y case con la
                         // cápsula de acciones y con el resto de cromos flotantes.
                         Row(
-                            modifier = Modifier.heightIn(min = 48.dp),
+                            modifier = if (titleContent != null)
+                                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            else Modifier.heightIn(min = 48.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (onBack != null) {
@@ -224,18 +235,22 @@ internal fun BoxScope.SubscreenFloatingChrome(
                                     )
                                 }
                             }
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                // Sin botón de atrás el título necesita su propio
-                                // margen izquierdo para no pegarse al borde de la cápsula.
-                                modifier = Modifier.padding(
-                                    start = if (onBack != null) 0.dp else 14.dp,
-                                    end = 14.dp
+                            if (titleContent != null) {
+                                titleContent()
+                            } else {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    // Sin botón de atrás el título necesita su propio
+                                    // margen izquierdo para no pegarse al borde de la cápsula.
+                                    modifier = Modifier.padding(
+                                        start = if (onBack != null) 0.dp else 14.dp,
+                                        end = 14.dp
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }
