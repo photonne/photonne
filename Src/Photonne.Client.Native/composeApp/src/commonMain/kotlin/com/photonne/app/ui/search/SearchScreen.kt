@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.SolidColor
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.action_close
+import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
@@ -176,6 +177,7 @@ fun SearchScreen(
                         value = state.query,
                         onValueChange = viewModel::setQuery,
                         onClear = { viewModel.setQuery("") },
+                        placeholder = stringResource(Res.string.search_input_hint),
                         modifier = Modifier.weight(1f)
                     )
                 },
@@ -209,58 +211,6 @@ fun SearchScreen(
                     )
                 }
             )
-        }
-    }
-}
-
-// Campo de búsqueda sin borde, pensado para vivir dentro de la cápsula flotante
-// estándar (icono + texto + limpiar), no un OutlinedTextField con su propia caja.
-@Composable
-private fun SearchFieldPill(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onClear: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Icon(
-            Icons.Filled.Search,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            modifier = Modifier.weight(1f),
-            decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(
-                        stringResource(Res.string.search_input_hint),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                inner()
-            }
-        )
-        if (value.isNotEmpty()) {
-            IconButton(onClick = onClear, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.search_clear_all),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
     }
 }

@@ -83,6 +83,7 @@ import com.photonne.app.resources.map_title
 import com.photonne.app.resources.people_title
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
+import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
@@ -134,7 +135,9 @@ fun AlbumsListScreen(
     val listState = rememberLazyListState()
     val hazeState = remember { HazeState() }
     val isGrid = state.viewMode == AlbumViewMode.Grid
-    val floatingChrome = !state.isSearchActive && !state.isSelectionActive
+    // La búsqueda también va en la cápsula flotante (campo dentro), como el
+    // buscador global: solo una selección activa la sustituye por la barra sólida.
+    val floatingChrome = !state.isSelectionActive
     val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
 
     // Automatic asset groupings (People / Map / Scenes / Objects) that sit atop
@@ -150,13 +153,6 @@ fun AlbumsListScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            if (state.isSearchActive) {
-                AlbumsSearchField(
-                    query = state.searchQuery,
-                    onQueryChange = viewModel::setSearchQuery,
-                    onClose = viewModel::toggleSearch
-                )
-            }
             PhotonneRefreshableScreen(
                 isRefreshing = state.isLoading && state.albums.isNotEmpty(),
                 onRefresh = viewModel::refresh,
@@ -208,9 +204,23 @@ fun AlbumsListScreen(
         }
 
         if (floatingChrome) {
+            val searching = state.isSearchActive
             SubscreenFloatingChrome(
-                title = stringResource(Res.string.albums_title),
-                onBack = null,
+                title = if (searching) "" else stringResource(Res.string.albums_title),
+                // Al buscar, el botón de atrás cierra la búsqueda (como el buscador).
+                onBack = if (searching) viewModel::toggleSearch else null,
+                titleContent = if (searching) {
+                    {
+                        SearchFieldPill(
+                            value = state.searchQuery,
+                            onValueChange = viewModel::setSearchQuery,
+                            onClear = { viewModel.setSearchQuery("") },
+                            placeholder = stringResource(Res.string.albums_search_placeholder),
+                            autofocus = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else null,
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = {
                         if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
@@ -244,11 +254,13 @@ fun AlbumsListScreen(
                             )
                         }
                     }
-                    IconButton(onClick = viewModel::toggleSearch) {
-                        Icon(
-                            Icons.Outlined.Search,
-                            contentDescription = stringResource(Res.string.albums_action_search)
-                        )
+                    if (!searching) {
+                        IconButton(onClick = viewModel::toggleSearch) {
+                            Icon(
+                                Icons.Outlined.Search,
+                                contentDescription = stringResource(Res.string.albums_action_search)
+                            )
+                        }
                     }
                     IconButton(onClick = onOpenFilters) {
                         Icon(
@@ -262,38 +274,6 @@ fun AlbumsListScreen(
             )
         }
     }
-}
-
-@Composable
-private fun AlbumsSearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClose: () -> Unit
-) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(Res.string.albums_search_placeholder)) },
-        singleLine = true,
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        trailingIcon = {
-            IconButton(onClick = {
-                if (query.isEmpty()) onClose() else onQueryChange("")
-            }) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.albums_action_search)
-                )
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .focusRequester(focusRequester)
-    )
 }
 
 @Composable

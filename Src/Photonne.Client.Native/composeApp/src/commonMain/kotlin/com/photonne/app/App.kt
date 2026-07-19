@@ -1734,17 +1734,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onSeeAllMemories = { moreSubscreen = MoreSubscreen.Memories }
                     )
                     MainTab.Albums -> Column(modifier = Modifier.fillMaxSize()) {
-                        // Al buscar, vuelve la barra acoplada (con su campo debajo);
-                        // el resto del tiempo Álbumes pinta su cromo flotante.
-                        if (albumsState.isSearchActive && !albumsState.isSelectionActive) {
-                            AlbumsListTopBar(
-                                onOpenFilters = { showAlbumsFilters = true },
-                                isFilterActive = albumsState.isFilterActive,
-                                isSearchActive = albumsState.isSearchActive,
-                                onToggleSearch = albumsViewModel::toggleSearch,
-                                onCreateAlbum = { showAlbumTypeChooser = true }
-                            )
-                        }
+                        // La búsqueda va DENTRO de la cápsula flotante que dibuja
+                        // AlbumsListScreen (campo en titleContent), como el buscador;
+                        // ya no hay barra acoplada aquí.
                         Box(modifier = Modifier.weight(1f)) {
                             AlbumsListScreen(
                                 onAlbumClick = { album ->
@@ -1779,23 +1771,15 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     }
                     MainTab.Folders -> Column(modifier = Modifier.fillMaxSize()) {
-                        // Al buscar, vuelve la barra acoplada (con su campo debajo);
-                        // el resto del tiempo Carpetas pinta su cromo flotante.
+                        // La búsqueda va DENTRO de la cápsula flotante que dibuja
+                        // FoldersListScreen (campo en titleContent), como el buscador;
+                        // ya no hay barra acoplada aquí.
                         val foldersCreate = if (
                             foldersState.scope !=
                                 com.photonne.app.ui.folder.FoldersScope.External
                         ) {
                             { showCreateFolder = true }
                         } else null
-                        if (foldersState.isSearchActive && !foldersState.isSelectionActive) {
-                            FoldersListTopBar(
-                                onOpenFilters = { showFoldersFilters = true },
-                                isFilterActive = foldersState.isFilterActive,
-                                isSearchActive = foldersState.isSearchActive,
-                                onToggleSearch = foldersViewModel::toggleSearch,
-                                onCreateFolder = foldersCreate
-                            )
-                        }
                         Box(modifier = Modifier.weight(1f)) {
                             com.photonne.app.ui.folder.FoldersListScreen(
                                 onFolderClick = { folder ->

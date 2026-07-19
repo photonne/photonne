@@ -81,6 +81,7 @@ import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.MetaBadge
+import com.photonne.app.ui.main.SearchFieldPill
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
@@ -126,9 +127,9 @@ fun FoldersListScreen(
     val listState = rememberLazyListState()
     val hazeState = remember { HazeState() }
     val isGrid = state.viewMode == FolderViewMode.Grid
-    // Cromo flotante salvo al buscar o seleccionar: entonces vuelve la barra
-    // acoplada (con su campo de búsqueda / cápsula de selección), igual que Fotos.
-    val floatingChrome = !state.isSearchActive && !state.isSelectionActive
+    // La búsqueda también va en la cápsula flotante (campo dentro), como el
+    // buscador global: solo una selección activa la sustituye por la barra sólida.
+    val floatingChrome = !state.isSelectionActive
     val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
     // The inbox holds personal assets, so it makes no sense framed by
     // Compartidas/Externas — but it has to survive "Todas", the default.
@@ -138,13 +139,6 @@ fun FoldersListScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            if (state.isSearchActive) {
-                FoldersSearchField(
-                    query = state.searchQuery,
-                    onQueryChange = viewModel::setSearchQuery,
-                    onClose = viewModel::toggleSearch
-                )
-            }
             PhotonneRefreshableScreen(
                 isRefreshing = state.isLoading && folders.isNotEmpty(),
                 onRefresh = viewModel::refresh,
@@ -180,9 +174,22 @@ fun FoldersListScreen(
         }
 
         if (floatingChrome) {
+            val searching = state.isSearchActive
             SubscreenFloatingChrome(
-                title = stringResource(Res.string.folders_title),
-                onBack = null,
+                title = if (searching) "" else stringResource(Res.string.folders_title),
+                onBack = if (searching) viewModel::toggleSearch else null,
+                titleContent = if (searching) {
+                    {
+                        SearchFieldPill(
+                            value = state.searchQuery,
+                            onValueChange = viewModel::setSearchQuery,
+                            onClear = { viewModel.setSearchQuery("") },
+                            placeholder = stringResource(Res.string.folders_search_placeholder),
+                            autofocus = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else null,
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = {
                         if (isGrid) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
@@ -218,11 +225,13 @@ fun FoldersListScreen(
                             )
                         }
                     }
-                    IconButton(onClick = viewModel::toggleSearch) {
-                        Icon(
-                            Icons.Outlined.Search,
-                            contentDescription = stringResource(Res.string.folders_action_search)
-                        )
+                    if (!searching) {
+                        IconButton(onClick = viewModel::toggleSearch) {
+                            Icon(
+                                Icons.Outlined.Search,
+                                contentDescription = stringResource(Res.string.folders_action_search)
+                            )
+                        }
                     }
                     IconButton(onClick = onOpenFilters) {
                         Icon(
@@ -236,38 +245,6 @@ fun FoldersListScreen(
             )
         }
     }
-}
-
-@Composable
-private fun FoldersSearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClose: () -> Unit
-) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(Res.string.folders_search_placeholder)) },
-        singleLine = true,
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        trailingIcon = {
-            IconButton(onClick = {
-                if (query.isEmpty()) onClose() else onQueryChange("")
-            }) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = stringResource(Res.string.folders_action_search)
-                )
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .focusRequester(focusRequester)
-    )
 }
 
 @Composable
