@@ -21,6 +21,7 @@ import com.photonne.app.resources.favorites_empty_subtitle
 import com.photonne.app.resources.favorites_empty_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -94,6 +95,15 @@ fun FavoritesScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
+
+            PhotoGridScrubberOverlay(
+                gridState = gridState,
+                items = state.items,
+                reservedTop = reservedTop,
+                reservedBottom = floatingNavBarReservedHeight(),
+                selectionActive = state.isSelectionActive,
+                hazeState = hazeState,
+            )
 
             if (chromeFloating) {
                 SubscreenFloatingChrome(

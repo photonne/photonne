@@ -75,6 +75,7 @@ import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import com.photonne.app.ui.main.FloatingDatePill
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ScrollToTopPill
 import com.photonne.app.ui.main.TimelineTopBar
@@ -943,6 +944,28 @@ fun TimelineScreen(
                         // pill and the two overlap; now the handle lands just under it.
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
+                            .padding(top = reservedTop + 8.dp)
+                    )
+
+                    // Mes de lo que hay arriba, flotando centrado en la parte
+                    // superior (como "Volver arriba" pero arriba). Solo en scroll
+                    // normal: al arrastrar el scrubber la fecha vuelve al mango.
+                    val rowLabels = remember(rows) { scrubberRowLabels(rows) }
+                    val hc = if (hasMemoriesHeader) 1 else 0
+                    val topDateLabel by remember(rowLabels, hc) {
+                        derivedStateOf {
+                            rowLabels.getOrNull(
+                                (gridState.firstVisibleItemIndex - hc).coerceAtLeast(0)
+                            ).orEmpty()
+                        }
+                    }
+                    FloatingDatePill(
+                        label = topDateLabel,
+                        isScrollInProgress = { gridState.isScrollInProgress },
+                        suppressed = isScrubbing || state.isSelectionActive,
+                        hazeState = gridHazeState,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
                             .padding(top = reservedTop + 8.dp)
                     )
 

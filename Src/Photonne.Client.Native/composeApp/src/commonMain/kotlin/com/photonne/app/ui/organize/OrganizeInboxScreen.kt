@@ -29,6 +29,7 @@ import com.photonne.app.resources.organize_inbox_title
 import com.photonne.app.resources.organize_rule_title
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -115,6 +116,16 @@ fun OrganizeInboxScreen(
                         }
                     )
             }
+
+            PhotoGridScrubberOverlay(
+                gridState = gridState,
+                items = state.items,
+                headerCount = 1,
+                reservedTop = reservedTop,
+                reservedBottom = floatingNavBarReservedHeight(),
+                selectionActive = state.isSelectionActive,
+                hazeState = hazeState,
+            )
 
             if (chromeFloating) {
                 SubscreenFloatingChrome(

@@ -25,6 +25,7 @@ import com.photonne.app.resources.archive_title
 import com.photonne.app.resources.archived_empty_subtitle
 import com.photonne.app.resources.archived_empty_title
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -93,6 +94,15 @@ fun ArchivedScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
+
+            PhotoGridScrubberOverlay(
+                gridState = gridState,
+                items = state.items,
+                reservedTop = reservedTop,
+                reservedBottom = floatingNavBarReservedHeight(),
+                selectionActive = state.isSelectionActive,
+                hazeState = hazeState,
+            )
 
             if (chromeFloating) {
                 SubscreenFloatingChrome(

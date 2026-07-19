@@ -34,6 +34,7 @@ import com.photonne.app.resources.people_action_suggestions
 import com.photonne.app.resources.people_action_unhide
 import com.photonne.app.resources.people_unnamed
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -91,6 +92,15 @@ fun PersonDetailScreen(
                 modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
             )
         }
+
+        PhotoGridScrubberOverlay(
+            gridState = gridState,
+            items = state.items,
+            reservedTop = reservedTop,
+            reservedBottom = floatingNavBarReservedHeight(),
+            selectionActive = state.isSelectionActive,
+            hazeState = hazeState,
+        )
 
         if (chromeFloating) {
             SubscreenFloatingChrome(

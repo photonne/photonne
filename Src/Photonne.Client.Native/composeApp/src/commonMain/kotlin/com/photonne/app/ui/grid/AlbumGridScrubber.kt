@@ -40,6 +40,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.main.ScrubberYearMarker
+import com.photonne.app.ui.main.ScrubberYearMarkers
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
@@ -86,6 +88,11 @@ internal fun AlbumGridScrubber(
     cellCount: Int,
     headerCount: Int = 1,
     labelForCellIndex: ((Int) -> String?)?,
+    /**
+     * Años a lo largo del carril (solo con orden por fecha y varios años); el
+     * host los calcula desde las fechas de las celdas. Vacío = sin marcas.
+     */
+    yearMarkers: List<ScrubberYearMarker> = emptyList(),
     /** Reports the drag so the host can stand other chrome down while scrubbing. */
     onDraggingChange: (Boolean) -> Unit = {},
     /** Blur source (the album grid); falls back to a solid gray when null. */
@@ -242,22 +249,29 @@ internal fun AlbumGridScrubber(
             }
         }
 
-        // Date bubble next to the handle — only when the album is date-sorted.
-        // While dragging it follows the finger's target cell; while scrolling it
-        // tracks the topmost cell. derivedStateOf so it only recomposes when the
-        // month label changes, not every scroll frame.
+        // Date bubble next to the handle — ONLY while dragging (it follows the
+        // finger's target cell). During ordinary scrolling the month rides the
+        // centred [FloatingDatePill] the host draws at the top instead.
+        // derivedStateOf so it only recomposes when the month label changes.
         val handleLabel by remember {
             derivedStateOf {
+                if (!isDragging) return@derivedStateOf ""
                 val provider = labelProvider ?: return@derivedStateOf ""
-                val idx = if (isDragging) {
-                    cellIndexForFraction(dragFraction)
-                } else {
-                    (gridState.firstVisibleItemIndex - headerCountLatest).coerceAtLeast(0)
-                }
-                provider(idx).orEmpty()
+                provider(cellIndexForFraction(dragFraction)).orEmpty()
             }
         }
-        if (handleLabel.isNotEmpty()) {
+        // Años a lo largo del carril (solo mientras se arrastra). ANTES que la
+        // píldora de fecha para que la fecha dorada quede por delante.
+        ScrubberYearMarkers(
+            markers = yearMarkers,
+            usableTrackPx = usableTrackPx,
+            minGapPx = with(LocalDensity.current) { 22.dp.toPx() },
+            handleEndPadding = HandleWidth + 10.dp,
+            visible = isDragging,
+            hazeState = hazeState,
+        )
+
+        if (isDragging && handleLabel.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(50),
                 // Cristal esmerilado, a juego con el mango.
@@ -276,9 +290,9 @@ internal fun AlbumGridScrubber(
                 Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
                 Text(
                     text = handleLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                 )
               }
             }

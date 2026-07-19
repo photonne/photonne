@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.remember
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -110,6 +111,17 @@ fun TrashScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
+
+            // El host ya reserva el top (barra de pestañas + cromo), así que aquí
+            // el overlay arranca en 0.
+            PhotoGridScrubberOverlay(
+                gridState = gridState,
+                items = state.items,
+                reservedTop = 0.dp,
+                reservedBottom = floatingNavBarReservedHeight(),
+                selectionActive = state.isSelectionActive,
+                hazeState = hazeState,
+            )
         }
     }
 }

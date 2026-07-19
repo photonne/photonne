@@ -82,7 +82,9 @@ import com.photonne.app.ui.grid.AlbumGridScrubber
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
+import com.photonne.app.ui.main.FloatingDatePill
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.grid.buildAssetYearMarkers
 import com.photonne.app.ui.main.ScrollToTopPill
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.timeline.captureLocalDate
@@ -256,10 +258,17 @@ fun AlbumDetailScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(albumHazeState),
                     header = hero
                 )
+                // Carril de años cuando el orden ACTUAL del álbum resulta ser
+                // cronológico (lo detecta buildAssetYearMarkers por monotonía),
+                // sea "orden de álbum" o "por fecha"; barajado → sin carril.
+                val albumYearMarkers = remember(displayItems) {
+                    buildAssetYearMarkers(displayItems)
+                }
                 AlbumGridScrubber(
                     gridState = gridState,
                     cellCount = displayItems.size,
                     headerCount = 1,
+                    yearMarkers = albumYearMarkers,
                     hazeState = albumHazeState,
                     // Always surface the capture month of the topmost photo so the
                     // user can see "which date am I in" — the whole point of the
@@ -298,6 +307,25 @@ fun AlbumDetailScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = gridContentPadding.calculateBottomPadding() + 8.dp)
+                )
+
+                // Mes de la foto de arriba, flotando centrado arriba en scroll
+                // normal; al arrastrar el scrubber la fecha vuelve al mango.
+                val topDateLabel by remember(displayItems) {
+                    derivedStateOf {
+                        displayItems.getOrNull(
+                            (gridState.firstVisibleItemIndex - 1).coerceAtLeast(0)
+                        )?.fileCreatedAt?.captureLocalDate()?.let(::formatLocalizedMonth).orEmpty()
+                    }
+                }
+                FloatingDatePill(
+                    label = topDateLabel,
+                    isScrollInProgress = { gridState.isScrollInProgress },
+                    suppressed = isScrubbing || state.isSelectionActive,
+                    hazeState = albumHazeState,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = reservedTop + 8.dp)
                 )
             }
         }

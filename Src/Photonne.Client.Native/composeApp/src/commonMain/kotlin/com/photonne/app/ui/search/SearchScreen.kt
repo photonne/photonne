@@ -72,6 +72,7 @@ import com.photonne.app.resources.search_mode_semantic
 import com.photonne.app.resources.search_mode_text
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -151,6 +152,20 @@ fun SearchScreen(
                 }
             }
         }
+
+        // La fecha central + mango salen siempre (el mes de cada foto es un dato
+        // real aunque el orden sea por relevancia); el carril de años solo si el
+        // resultado resulta ir en orden de fecha (lo decide buildAssetYearMarkers).
+        // El filtro activo es la cabecera de la rejilla → headerCount=1.
+        PhotoGridScrubberOverlay(
+            gridState = gridState,
+            items = state.results,
+            headerCount = 1,
+            reservedTop = reservedTop,
+            reservedBottom = floatingNavBarReservedHeight(),
+            selectionActive = selecting,
+            hazeState = hazeState,
+        )
 
         if (!selecting) {
             SubscreenFloatingChrome(

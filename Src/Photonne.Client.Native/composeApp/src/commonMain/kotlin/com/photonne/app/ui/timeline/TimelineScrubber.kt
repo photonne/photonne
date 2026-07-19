@@ -41,6 +41,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.grid.TimelineRowEntry
+import com.photonne.app.ui.main.ScrubberYearMarker
+import com.photonne.app.ui.main.ScrubberYearMarkers
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import dev.chrisbanes.haze.HazeState
 import com.photonne.app.ui.grid.formatLocalizedMonth
@@ -277,24 +279,32 @@ internal fun TimelineScrubber(
             }
         }
 
-        // Date pill next to the handle. Shown while scrubbing AND while
-        // scrolling (there's no inline header band anymore) so the current
-        // month is always legible; it rides the same fade as the whole
-        // scrubber via the parent's alpha. While dragging it follows the
-        // finger's target row; while scrolling it tracks the topmost row.
+        // Date pill next to the handle — ONLY while dragging. During ordinary
+        // scrolling the month rides the centred [FloatingDatePill] the host
+        // draws at the top instead; here it follows the finger's target row.
         // derivedStateOf so it only recomposes when the month label changes,
         // not every scroll frame.
         val handleLabel by remember(prefix, labels) {
             derivedStateOf {
-                val idx = if (isDragging) {
-                    rowIndexForFraction(prefix, dragFraction)
-                } else {
-                    (gridState.firstVisibleItemIndex - headerCount).coerceAtLeast(0)
-                }
-                labels.getOrNull(idx).orEmpty()
+                if (!isDragging) return@derivedStateOf ""
+                labels.getOrNull(rowIndexForFraction(prefix, dragFraction)).orEmpty()
             }
         }
-        if (handleLabel.isNotEmpty()) {
+        // Años a lo largo del carril, en su posición real: solo mientras se
+        // arrastra, como referencia de a qué altura cae cada año. Se dibuja
+        // ANTES que la píldora de fecha para que la fecha dorada quede por
+        // delante cuando el mango pasa junto a un año.
+        val yearMarkers = remember(rows) { scrubberYearMarkers(rows) }
+        ScrubberYearMarkers(
+            markers = yearMarkers,
+            usableTrackPx = usableTrackPx,
+            minGapPx = with(density) { 22.dp.toPx() },
+            handleEndPadding = HandleWidth + 10.dp,
+            visible = isDragging,
+            hazeState = hazeState,
+        )
+
+        if (isDragging && handleLabel.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(50),
                 // Cristal esmerilado, a juego con el mango y el botón de subir.
@@ -313,9 +323,9 @@ internal fun TimelineScrubber(
                 Box(Modifier.matchParentSize().chromeCapsuleBackdrop(hazeState = hazeState))
                 Text(
                     text = handleLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                 )
               }
             }
@@ -369,6 +379,30 @@ internal fun scrubberRowLabels(rows: List<TimelineRowEntry>): List<String> {
         if (entry is TimelineRowEntry.Header) current = labelForHeaderKey(entry.key)
         current
     }
+}
+
+/**
+ * Un marcador por AÑO distinto, en la fracción (0..1) donde empieza su primera
+ * fila. Usa las mismas sumas de altura exactas que el mango, así que el año cae
+ * justo donde el mango pararía en esa fracción.
+ */
+internal fun scrubberYearMarkers(rows: List<TimelineRowEntry>): List<ScrubberYearMarker> {
+    val prefix = rowHeightPrefixSums(rows)
+    val total = prefix.last()
+    if (total <= 0f) return emptyList()
+    val out = mutableListOf<ScrubberYearMarker>()
+    var lastYear = ""
+    rows.forEachIndexed { i, entry ->
+        if (entry is TimelineRowEntry.Header) {
+            val year = entry.key.split('-').firstOrNull()?.toIntOrNull()?.toString()
+                ?: return@forEachIndexed
+            if (year != lastYear) {
+                lastYear = year
+                out.add(ScrubberYearMarker(year, (prefix[i] / total).coerceIn(0f, 1f)))
+            }
+        }
+    }
+    return out
 }
 
 private fun labelForHeaderKey(key: String): String {

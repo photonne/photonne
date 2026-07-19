@@ -29,7 +29,9 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.album_hero_photos
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -68,6 +70,7 @@ fun MemoryDetailScreen(
     onItemClick: (Int) -> Unit,
     onBack: () -> Unit,
 ) {
+    val gridState = rememberLazyGridState()
     // Opaque: this draws over the tab that opened it, and a transparent
     // background would let the timeline show through the grid's gaps.
     Box(
@@ -80,6 +83,7 @@ fun MemoryDetailScreen(
             // shows it as-is — grouping by date would throw that away.
             items = memory.items,
             baseUrl = baseUrl,
+            gridState = gridState,
             onItemClick = onItemClick,
             contentPadding = PaddingValues(bottom = 24.dp),
             header = {
@@ -89,6 +93,19 @@ fun MemoryDetailScreen(
                     onBack = onBack,
                 )
             },
+        )
+
+        // Solo el mango de scroll rápido: el orden es CURADO (no por fecha), así
+        // que sin fechas ni años (showDates=false). headerCount=1 por la portada.
+        PhotoGridScrubberOverlay(
+            gridState = gridState,
+            items = memory.items,
+            headerCount = 1,
+            showDates = false,
+            reservedTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+            reservedBottom = 24.dp,
+            selectionActive = false,
+            hazeState = null,
         )
     }
 }
