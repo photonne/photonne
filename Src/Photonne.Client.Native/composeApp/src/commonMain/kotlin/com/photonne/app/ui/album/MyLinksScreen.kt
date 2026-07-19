@@ -12,8 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -75,7 +81,15 @@ import org.koin.compose.viewmodel.koinViewModel
  * shape, its own actions, and it isn't always about an album at all.
  */
 @Composable
-fun MyLinksScreen(modifier: Modifier = Modifier) {
+fun MyLinksScreen(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
     val viewModel: SentSharesViewModel = koinViewModel()
     val apiBaseUrl = rememberApiBaseUrl()
     val state by viewModel.state.collectAsState()
@@ -86,6 +100,7 @@ fun MyLinksScreen(modifier: Modifier = Modifier) {
 
     LaunchedEffect(Unit) { viewModel.load() }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     PhotonneRefreshableScreen(
         isRefreshing = state.isLoading && state.links.isNotEmpty(),
         onRefresh = viewModel::refresh,
@@ -113,12 +128,13 @@ fun MyLinksScreen(modifier: Modifier = Modifier) {
                     subtitle = stringResource(Res.string.my_links_empty_subtitle)
                 )
                 else -> LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     contentPadding = PaddingValues(
-                        top = 8.dp,
+                        top = 8.dp + reservedTop,
                         bottom = 8.dp + floatingNavBarReservedHeight()
                     ),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                 ) {
                     items(state.links, key = { it.token }) { link ->
                         MyLinkRow(
@@ -185,6 +201,21 @@ fun MyLinksScreen(modifier: Modifier = Modifier) {
                     Text(stringResource(Res.string.action_cancel))
                 }
             }
+        )
+    }
+
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
         )
     }
 }

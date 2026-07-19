@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -148,8 +149,13 @@ import com.photonne.app.resources.admin_system_thumbnails
 import com.photonne.app.resources.admin_system_thumbnails_subtitle
 import com.photonne.app.ui.charts.LiveDot
 import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.russhwolf.settings.Settings
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -985,9 +991,15 @@ class AdminRunTasksViewModel(
 
 @Composable
 fun AdminRunTasksScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: AdminRunTasksViewModel,
     onOpenTask: (AdminRunTask) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
     DisposableEffect(viewModel) {
         viewModel.startPolling()
@@ -1015,6 +1027,7 @@ fun AdminRunTasksScreen(
         .groupBy { it.parameters["kind"] ?: it.type }
         .mapValues { (_, list) -> list.maxByOrNull { it.finishedAt!! } }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     state.confirming?.let { task ->
         ConfirmActionDialog(
             title = stringResource(confirmTitleOf(task)),
@@ -1028,8 +1041,9 @@ fun AdminRunTasksScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
+        state = listState,
+        modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         state.errorMessage?.let { msg ->
@@ -1118,6 +1132,20 @@ fun AdminRunTasksScreen(
                 if (!isActive) TaskOptions(task, state, viewModel)
             }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

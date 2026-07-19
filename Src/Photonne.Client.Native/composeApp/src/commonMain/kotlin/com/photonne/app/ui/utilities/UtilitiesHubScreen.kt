@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,7 +36,12 @@ import com.photonne.app.resources.utilities_section_large_files
 import com.photonne.app.resources.utilities_section_large_files_subtitle
 import com.photonne.app.resources.utilities_section_locations
 import com.photonne.app.resources.utilities_section_locations_subtitle
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -49,7 +55,15 @@ private data class UtilitiesEntryDef(
 )
 
 @Composable
-fun UtilitiesHubScreen(onOpen: (UtilitiesEntry) -> Unit) {
+fun UtilitiesHubScreen(
+    title: String,
+    onBack: () -> Unit,
+    onOpen: (UtilitiesEntry) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
     val entries = listOf(
         UtilitiesEntryDef(
             UtilitiesEntry.Duplicates,
@@ -71,17 +85,33 @@ fun UtilitiesHubScreen(onOpen: (UtilitiesEntry) -> Unit) {
         )
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        entries.forEach { entry ->
-            UtilitiesEntryRow(entry = entry, onClick = { onOpen(entry.entry) })
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .hazeSource(hazeState)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            entries.forEach { entry ->
+                UtilitiesEntryRow(entry = entry, onClick = { onOpen(entry.entry) })
+            }
+            Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.height(8.dp))
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

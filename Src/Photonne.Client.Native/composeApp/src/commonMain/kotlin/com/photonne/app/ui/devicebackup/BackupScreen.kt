@@ -100,7 +100,13 @@ import com.photonne.app.resources.device_backup_free_space_dialog_message
 import com.photonne.app.resources.device_backup_free_space_dialog_title
 import com.photonne.app.resources.device_backup_free_space_in_progress
 import com.photonne.app.resources.device_backup_not_supported
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.stringResource
 
@@ -112,11 +118,14 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun BackupScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: DeviceBackupViewModel,
     enrichmentViewModel: EnrichmentStatusViewModel,
     gallery: DeviceGallery,
     onOpenPending: () -> Unit,
-    onOpenEnrichment: () -> Unit
+    onOpenEnrichment: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     val enrichmentState by enrichmentViewModel.state.collectAsState()
@@ -132,6 +141,10 @@ fun BackupScreen(
     )
     var showFreeSpaceConfirm by remember { mutableStateOf(false) }
 
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
     if (!state.isSupported) {
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -143,8 +156,7 @@ fun BackupScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        return
-    }
+    } else {
 
     val syncedCount = state.syncedCount
     val pendingCount = state.pendingEntries.size
@@ -153,8 +165,9 @@ fun BackupScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
+        state = listState,
+        modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+        contentPadding = PaddingValues(top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item("enable") {
@@ -323,6 +336,21 @@ fun BackupScreen(
                     Text(stringResource(Res.string.device_backup_free_space_cancel))
                 }
             }
+        )
+    }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
         )
     }
 }

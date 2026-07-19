@@ -35,7 +35,12 @@ class AdminUserDefaultsViewModel(
 }
 
 @Composable
-fun AdminUserDefaultsScreen(viewModel: AdminUserDefaultsViewModel) {
+fun AdminUserDefaultsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminUserDefaultsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -45,6 +50,9 @@ fun AdminUserDefaultsScreen(viewModel: AdminUserDefaultsViewModel) {
     )
 
     AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         isLoading = state.isLoading,
         isSubmitting = state.isSubmitting,
         errorMessage = state.errorMessage,

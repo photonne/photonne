@@ -1,6 +1,7 @@
 package com.photonne.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,13 +21,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.actionButtonHeight
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_security_changed
 import com.photonne.app.resources.account_security_confirm
@@ -38,14 +45,24 @@ import com.photonne.app.resources.account_security_submit
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AccountSecurityScreen(viewModel: AccountSecurityViewModel) {
+fun AccountSecurityScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AccountSecurityViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
+            .verticalScroll(scrollState)
+            .hazeSource(hazeState)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
@@ -122,5 +139,19 @@ fun AccountSecurityScreen(viewModel: AccountSecurityViewModel) {
                 Text(stringResource(Res.string.account_security_submit))
             }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }

@@ -26,7 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.admin.AdminRepository
+import androidx.compose.runtime.remember
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import com.photonne.app.resources.admin_settings_device_local_url
@@ -73,28 +79,34 @@ class AdminServerSettingsViewModel(
 
 @Composable
 fun AdminServerSettingsScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: AdminServerSettingsViewModel,
-    deviceConnectionViewModel: DeviceConnectionViewModel
+    deviceConnectionViewModel: DeviceConnectionViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val serverState by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
     LaunchedEffect(Unit) { deviceConnectionViewModel.reload() }
 
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
     if (serverState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        return
-    }
-
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
+            .hazeSource(hazeState)
             .padding(
                 start = 16.dp,
                 end = 16.dp,
-                top = 16.dp,
+                top = 16.dp + reservedTop,
                 bottom = 16.dp + floatingNavBarReservedHeight()
             ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -140,6 +152,21 @@ fun AdminServerSettingsScreen(
         Spacer(Modifier.height(8.dp))
 
         DeviceConnectionSection(deviceConnectionViewModel)
+    }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

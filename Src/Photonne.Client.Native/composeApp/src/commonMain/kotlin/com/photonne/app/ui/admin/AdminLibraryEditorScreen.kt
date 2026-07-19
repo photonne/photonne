@@ -46,6 +46,11 @@ import com.photonne.app.resources.admin_libraries_field_import_subfolders
 import com.photonne.app.resources.admin_libraries_field_name
 import com.photonne.app.resources.admin_libraries_field_path
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -55,22 +60,18 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 fun AdminLibraryEditorScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: AdminLibrariesViewModel,
     libraryId: String?,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
     val existing = libraryId?.let { id -> state.libraries.firstOrNull { it.id == id } }
     val isEdit = libraryId != null
-
-    if (isEdit && existing == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
 
     var name by remember(existing?.id) { mutableStateOf(existing?.name.orEmpty()) }
     var path by remember(existing?.id) { mutableStateOf(existing?.path.orEmpty()) }
@@ -83,11 +84,21 @@ fun AdminLibraryEditorScreen(
     val isSubmitting = state.isMutating
     val canSubmit = !isSubmitting && name.isNotBlank() && path.isNotBlank()
 
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
+    if (isEdit && existing == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + floatingNavBarReservedHeight()),
+            .verticalScroll(scrollState)
+            .hazeSource(hazeState)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp + reservedTop, bottom = 12.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
@@ -230,6 +241,21 @@ fun AdminLibraryEditorScreen(
                     Text(stringResource(Res.string.action_cancel))
                 }
             }
+        )
+    }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
         )
     }
 }

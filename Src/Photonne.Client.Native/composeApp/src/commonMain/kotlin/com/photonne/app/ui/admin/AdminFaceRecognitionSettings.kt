@@ -107,13 +107,19 @@ class AdminFaceRecognitionSettingsViewModel(
 
 @Composable
 fun AdminFaceRecognitionSettingsScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: AdminFaceRecognitionSettingsViewModel,
     onOpenNightly: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
     AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         isLoading = state.isLoading,
         isSubmitting = state.isSubmitting,
         errorMessage = state.errorMessage,

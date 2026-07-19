@@ -49,7 +49,12 @@ class AdminImageSettingsViewModel(
 }
 
 @Composable
-fun AdminImageSettingsScreen(viewModel: AdminImageSettingsViewModel) {
+fun AdminImageSettingsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminImageSettingsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -59,6 +64,9 @@ fun AdminImageSettingsScreen(viewModel: AdminImageSettingsViewModel) {
     )
 
     AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         isLoading = state.isLoading,
         isSubmitting = state.isSubmitting,
         errorMessage = state.errorMessage,

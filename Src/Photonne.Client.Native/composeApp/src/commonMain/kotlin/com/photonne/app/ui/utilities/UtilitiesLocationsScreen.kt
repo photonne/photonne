@@ -11,8 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -29,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,10 +51,19 @@ import com.photonne.app.ui.util.sortedByNatural
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun UtilitiesLocationsScreen(viewModel: UtilitiesLocationsViewModel) {
+fun UtilitiesLocationsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: UtilitiesLocationsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     PhotonneRefreshableScreen(
         isRefreshing = state.isLoading && state.roots.isNotEmpty(),
         onRefresh = viewModel::refresh
@@ -69,11 +85,12 @@ fun UtilitiesLocationsScreen(viewModel: UtilitiesLocationsViewModel) {
                     )
                 }
             else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = 16.dp,
+                    top = 16.dp + reservedTop,
                     bottom = 24.dp + floatingNavBarReservedHeight()
                 ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -88,6 +105,20 @@ fun UtilitiesLocationsScreen(viewModel: UtilitiesLocationsViewModel) {
                 }
             }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

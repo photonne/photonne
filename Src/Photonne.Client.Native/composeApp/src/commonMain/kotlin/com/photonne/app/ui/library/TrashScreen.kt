@@ -24,10 +24,15 @@ import com.photonne.app.resources.trash_empty_title
 import com.photonne.app.resources.trash_tab_personal
 import com.photonne.app.resources.trash_tab_shared
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.remember
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 /** Tabs of the unified Trash screen: the user's own trash and the shared-folder trash. */
@@ -62,7 +67,9 @@ fun TrashScreen(
     onItemLongClick: (Int) -> Unit,
     onLoadMore: () -> Unit,
     onLoad: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    gridState: LazyGridState = rememberLazyGridState(),
+    hazeState: HazeState = remember { HazeState() }
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
 
@@ -91,6 +98,7 @@ fun TrashScreen(
                 else -> AssetGrid(
                     items = state.items,
                     baseUrl = apiBaseUrl,
+                    gridState = gridState,
                     onItemClick = onItemClick,
                     onItemLongClick = onItemLongClick,
                     selectedIds = state.selection,
@@ -99,7 +107,7 @@ fun TrashScreen(
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
                     contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight()),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
         }

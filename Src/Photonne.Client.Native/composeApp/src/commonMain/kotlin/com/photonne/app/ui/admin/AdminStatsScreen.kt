@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,14 +44,28 @@ import com.photonne.app.ui.charts.StackedSegment
 import com.photonne.app.ui.charts.TopNBars
 import com.photonne.app.ui.charts.TopNEntry
 import com.photonne.app.ui.charts.rememberChartPalette
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AdminStatsScreen(viewModel: AdminStatsViewModel) {
+fun AdminStatsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminStatsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     when {
         state.isLoading && state.data == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -73,8 +88,9 @@ fun AdminStatsScreen(viewModel: AdminStatsViewModel) {
                 data.users.sumOf { it.videoBytes }
             }
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
+                state = listState,
+                modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
@@ -112,6 +128,20 @@ fun AdminStatsScreen(viewModel: AdminStatsViewModel) {
                 }
             }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

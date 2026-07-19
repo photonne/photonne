@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,7 +42,12 @@ import com.photonne.app.resources.admin_section_system
 import com.photonne.app.resources.admin_section_system_subtitle
 import com.photonne.app.resources.admin_section_users
 import com.photonne.app.resources.admin_section_users_subtitle
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -61,7 +67,15 @@ private data class AdminEntry(
 )
 
 @Composable
-fun AdministrationScreen(onOpen: (AdministrationSection) -> Unit) {
+fun AdministrationScreen(
+    title: String,
+    onBack: () -> Unit,
+    onOpen: (AdministrationSection) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
     val entries = listOf(
         AdminEntry(
             AdministrationSection.Users,
@@ -95,17 +109,33 @@ fun AdministrationScreen(onOpen: (AdministrationSection) -> Unit) {
         )
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        entries.forEach { entry ->
-            AdminEntryRow(entry = entry, onClick = { onOpen(entry.section) })
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .hazeSource(hazeState)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            entries.forEach { entry ->
+                AdminEntryRow(entry = entry, onClick = { onOpen(entry.section) })
+            }
+            Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.height(8.dp))
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

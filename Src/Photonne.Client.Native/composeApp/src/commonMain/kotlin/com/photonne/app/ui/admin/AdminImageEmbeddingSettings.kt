@@ -95,8 +95,11 @@ class AdminImageEmbeddingSettingsViewModel(
 
 @Composable
 fun AdminImageEmbeddingSettingsScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: AdminImageEmbeddingSettingsViewModel,
     onOpenNightly: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
@@ -107,6 +110,9 @@ fun AdminImageEmbeddingSettingsScreen(
     val modelChanged = originalModel.isNotEmpty() && currentModel != originalModel
 
     AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         isLoading = state.isLoading,
         isSubmitting = state.isSubmitting,
         errorMessage = state.errorMessage,

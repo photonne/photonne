@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -34,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -54,7 +56,12 @@ import com.photonne.app.resources.enrichment_task_object_detection
 import com.photonne.app.resources.enrichment_task_scene_classification
 import com.photonne.app.resources.enrichment_task_text_recognition
 import com.photonne.app.resources.enrichment_task_thumbnails
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -65,11 +72,20 @@ import org.jetbrains.compose.resources.stringResource
  * to retry just that one), and a "Retry failed" button per asset.
  */
 @Composable
-fun EnrichmentStatusScreen(viewModel: EnrichmentStatusViewModel) {
+fun EnrichmentStatusScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: EnrichmentStatusViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
         if (state.items.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -121,7 +137,8 @@ fun EnrichmentStatusScreen(viewModel: EnrichmentStatusViewModel) {
             }
             else -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + floatingNavBarReservedHeight()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -137,6 +154,20 @@ fun EnrichmentStatusScreen(viewModel: EnrichmentStatusViewModel) {
                 }
             }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

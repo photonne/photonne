@@ -87,7 +87,14 @@ import com.photonne.app.resources.device_backup_intro
 import com.photonne.app.resources.device_backup_not_supported
 import com.photonne.app.resources.device_backup_progress
 import com.photonne.app.resources.device_backup_total
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import org.jetbrains.compose.resources.stringResource
@@ -95,9 +102,12 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupPendingScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: DeviceBackupViewModel,
     gallery: DeviceGallery,
-    onOpenAsset: (TimelineItem) -> Unit = {}
+    onOpenAsset: (TimelineItem) -> Unit = {},
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
@@ -108,24 +118,31 @@ fun BackupPendingScreen(
     var previewStartUri by remember { mutableStateOf<String?>(null) }
     var failedDialogUri by remember { mutableStateOf<String?>(null) }
 
-    if (!state.isSupported) {
-        EmptyMessage(stringResource(Res.string.device_backup_not_supported))
-        return
-    }
-
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val gridState = rememberLazyGridState()
+    // During multi-select the docked selection bar owns the top, so the screen
+    // neither reserves top space nor draws its own chrome (mirrors Trash).
+    val selecting = state.selectedCount > 0
     val folder = state.folder
-    if (folder == null) {
-        EmptyState(
-            icon = Icons.Filled.Folder,
-            title = stringResource(Res.string.device_backup_intro),
-            actionLabel = stringResource(Res.string.device_backup_action_pick_folder),
-            onAction = pickFolder
-        )
-        return
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    when {
+        !state.isSupported ->
+            EmptyMessage(stringResource(Res.string.device_backup_not_supported))
+        folder == null ->
+            EmptyState(
+                icon = Icons.Filled.Folder,
+                title = stringResource(Res.string.device_backup_intro),
+                actionLabel = stringResource(Res.string.device_backup_action_pick_folder),
+                onAction = pickFolder
+            )
+        else -> {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = if (selecting) 0.dp else reservedTop)
+        ) {
             FolderHeader(
                 folder = folder,
                 totalCount = state.entries.size
@@ -169,6 +186,8 @@ fun BackupPendingScreen(
                     EmptyMessage(stringResource(Res.string.device_backup_empty_folder))
                 else -> MediaGrid(
                     state = state,
+                    gridState = gridState,
+                    hazeState = hazeState,
                     thumbnailModel = viewModel::thumbnailModel,
                     onClick = { entry ->
                         if (state.selectedCount > 0) {
@@ -254,6 +273,26 @@ fun BackupPendingScreen(
                         onOpenAsset(item)
                     }
                 }
+            )
+        }
+    }
+        }
+    }
+        // Suppressed during selection (docked bar) and while the full-screen
+        // device preview is open (it carries its own back).
+        if (!selecting && previewStartUri == null) {
+            SubscreenFloatingChrome(
+                title = title,
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
+                    firstVisibleItemScrollOffset = { gridState.firstVisibleItemScrollOffset },
+                    isScrollInProgress = { gridState.isScrollInProgress },
+                    scrollToTopMinIndex = 4,
+                    onScrollToTop = { gridState.animateScrollToItem(0) }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = onChromeVisibleChange
             )
         }
     }
@@ -448,6 +487,8 @@ private fun SyncProgressCard(progress: SyncProgress, isSyncing: Boolean) {
 @Composable
 private fun MediaGrid(
     state: DeviceBackupUiState,
+    gridState: LazyGridState,
+    hazeState: HazeState,
     thumbnailModel: (com.photonne.app.data.devicebackup.DeviceMedia) -> String,
     onClick: (DeviceBackupEntry) -> Unit,
     onLongClick: (DeviceBackupEntry) -> Unit,
@@ -477,13 +518,14 @@ private fun MediaGrid(
     var ignoredExpanded by remember { mutableStateOf(false) }
 
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Adaptive(minSize = 96.dp),
         contentPadding = PaddingValues(
             start = 8.dp, end = 8.dp, top = 4.dp, bottom = 96.dp + floatingNavBarReservedHeight()
         ),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().hazeSource(hazeState)
     ) {
         if (pending.isNotEmpty()) {
             item(key = "hdr-pending", span = { GridItemSpan(maxLineSpan) }) {

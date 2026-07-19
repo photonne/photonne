@@ -81,7 +81,12 @@ class AdminNightlySettingsViewModel(
 }
 
 @Composable
-fun AdminNightlySettingsScreen(viewModel: AdminNightlySettingsViewModel) {
+fun AdminNightlySettingsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminNightlySettingsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -91,6 +96,9 @@ fun AdminNightlySettingsScreen(viewModel: AdminNightlySettingsViewModel) {
     )
 
     AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         isLoading = state.isLoading,
         isSubmitting = state.isSubmitting,
         errorMessage = state.errorMessage,

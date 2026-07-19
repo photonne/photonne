@@ -162,6 +162,13 @@ import com.photonne.app.ui.main.AlbumsListTopBar
 import com.photonne.app.ui.main.ArchiveMode
 import com.photonne.app.ui.main.LocalSnackbarController
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
 import com.photonne.app.ui.main.rememberSnackbarController
 import com.photonne.app.ui.main.AssetSelectionBottomBar
 import com.photonne.app.ui.main.AssetSelectionTopBar
@@ -881,8 +888,55 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.Archived -> !archivedState.isSelectionActive
         MoreSubscreen.UnsupportedFiles -> true
         MoreSubscreen.PeopleSuggestions -> true
+        // Formularios: cromo flotante estático dibujado dentro de cada pantalla.
+        // Los que tienen selección (DeviceBackupPending / Trash) vuelven a la
+        // barra acoplada de selección mientras haya algo seleccionado.
+        MoreSubscreen.DeviceBackupPending -> deviceBackupState.selectedCount == 0
+        MoreSubscreen.Trash -> !trashState.isSelectionActive
+        MoreSubscreen.DeviceBackup,
+        MoreSubscreen.EnrichmentStatus,
+        MoreSubscreen.Utilities,
+        MoreSubscreen.UtilitiesDuplicates,
+        MoreSubscreen.UtilitiesLargeFiles,
+        MoreSubscreen.UtilitiesLocations,
+        MoreSubscreen.MyLinks,
+        MoreSubscreen.OrganizeRule,
+        MoreSubscreen.Notifications,
+        MoreSubscreen.AccountSettings,
+        MoreSubscreen.AccountProfile,
+        MoreSubscreen.AccountSecurity,
+        MoreSubscreen.AccountAppearance,
+        MoreSubscreen.AccountStorage,
+        MoreSubscreen.Administration,
+        MoreSubscreen.AdminUsers,
+        MoreSubscreen.AdminUserEditor,
+        MoreSubscreen.AdminLibraries,
+        MoreSubscreen.AdminLibraryEditor,
+        MoreSubscreen.AdminStats,
+        MoreSubscreen.AdminSettingsHub,
+        MoreSubscreen.AdminSystemHub,
+        MoreSubscreen.AdminSettingsFaceRecognition,
+        MoreSubscreen.AdminSettingsObjectDetection,
+        MoreSubscreen.AdminSettingsSceneClassification,
+        MoreSubscreen.AdminSettingsTextRecognition,
+        MoreSubscreen.AdminSettingsImageEmbedding,
+        MoreSubscreen.AdminSettingsImage,
+        MoreSubscreen.AdminSettingsMetadata,
+        MoreSubscreen.AdminSettingsNightly,
+        MoreSubscreen.AdminSettingsNotifications,
+        MoreSubscreen.AdminSettingsServer,
+        MoreSubscreen.AdminSettingsTrash,
+        MoreSubscreen.AdminSettingsUserDefaults,
+        MoreSubscreen.AdminSettingsVersion,
+        MoreSubscreen.AdminSystemRunTasks,
+        MoreSubscreen.AdminSystemDuplicates,
+        MoreSubscreen.AdminSystemBackup -> true
         else -> false
     }
+    // La cápsula estática de los formularios nunca reporta visibilidad, así que
+    // al entrar a cualquier subpantalla se reinicia la nav a visible; las que sí
+    // scrollean la vuelven a reportar en cuanto se mueven.
+    LaunchedEffect(moreSubscreen) { subscreenChromeVisible = true }
 
     val topBar: @Composable () -> Unit = {
         when {
@@ -1003,11 +1057,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     else null,
                     onBack = { moreSubscreen = null }
                 )
-            moreSubscreen == MoreSubscreen.DeviceBackup ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.device_backup_title),
-                    onBack = { moreSubscreen = null }
-                )
+            // Cromo flotante dibujado dentro de la pantalla.
+            moreSubscreen == MoreSubscreen.DeviceBackup -> { }
             moreSubscreen == MoreSubscreen.DeviceBackupPending &&
                 deviceBackupState.selectedCount > 0 ->
                 // Same contextual selection bar as Timeline/Albums, with a
@@ -1030,26 +1081,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         }
                     }
                 )
-            moreSubscreen == MoreSubscreen.DeviceBackupPending ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.backup_pending_screen_title),
-                    onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
-                )
-            moreSubscreen == MoreSubscreen.EnrichmentStatus ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.enrichment_screen_title),
-                    onBack = { moreSubscreen = MoreSubscreen.DeviceBackup }
-                )
-            moreSubscreen == MoreSubscreen.Utilities ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.utilities_title),
-                    onBack = { moreSubscreen = null }
-                )
-            moreSubscreen == MoreSubscreen.MyLinks ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.my_links_title),
-                    onBack = { moreSubscreen = null }
-                )
+            // Cromo flotante dibujado dentro de la pantalla (con selección vuelve
+            // a la barra acoplada, rama de arriba).
+            moreSubscreen == MoreSubscreen.DeviceBackupPending -> { }
+            moreSubscreen == MoreSubscreen.EnrichmentStatus -> { }
+            moreSubscreen == MoreSubscreen.Utilities -> { }
+            moreSubscreen == MoreSubscreen.MyLinks -> { }
             // "Otros archivos" pinta su propio cromo flotante dentro de la pantalla.
             moreSubscreen == MoreSubscreen.UnsupportedFiles -> {
             }
@@ -1067,26 +1104,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // manda la rama de arriba.
             moreSubscreen == MoreSubscreen.OrganizeInbox -> {
             }
-            moreSubscreen == MoreSubscreen.OrganizeRule ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.organize_rule_title),
-                    onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox }
-                )
-            moreSubscreen == MoreSubscreen.UtilitiesDuplicates ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.utilities_section_duplicates),
-                    onBack = { moreSubscreen = MoreSubscreen.Utilities }
-                )
-            moreSubscreen == MoreSubscreen.UtilitiesLargeFiles ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.utilities_section_large_files),
-                    onBack = { moreSubscreen = MoreSubscreen.Utilities }
-                )
-            moreSubscreen == MoreSubscreen.UtilitiesLocations ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.utilities_section_locations),
-                    onBack = { moreSubscreen = MoreSubscreen.Utilities }
-                )
+            moreSubscreen == MoreSubscreen.OrganizeRule -> { }
+            moreSubscreen == MoreSubscreen.UtilitiesDuplicates -> { }
+            moreSubscreen == MoreSubscreen.UtilitiesLargeFiles -> { }
+            moreSubscreen == MoreSubscreen.UtilitiesLocations -> { }
             // Recuerdos / Escenas / Objetos / Mapa pintan su propio cromo
             // flotante dentro de la pantalla (ver floatingChromeSubscreen), así
             // que aquí no va ninguna barra.
@@ -1151,160 +1172,29 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onRestore = { trashViewModel.bulkRestore() },
                     onPurge = { showPurgeSelected = true }
                 )
-            // Personal tab, normal: restore-all / empty.
-            moreSubscreen == MoreSubscreen.Trash &&
-                trashTab == com.photonne.app.ui.library.TrashTab.Personal -> {
-                val count = trashState.items.size
-                com.photonne.app.ui.main.TrashTopBar(
-                    title = stringResource(Res.string.trash_title),
-                    subtitle = if (count > 0)
-                        stringResource(Res.string.albums_count_format, count) else null,
-                    canActOnAll = count > 0,
-                    onBack = { moreSubscreen = null },
-                    onRestoreAll = { showRestoreAllTrash = true },
-                    onEmptyTrash = { showEmptyTrash = true }
-                )
-            }
-            // Shared tab: the screen renders its own selection/action bar, so the
-            // top bar is just title + back.
-            moreSubscreen == MoreSubscreen.Trash ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.trash_title),
-                    onBack = { moreSubscreen = null },
-                )
-            moreSubscreen == MoreSubscreen.Notifications ->
-                com.photonne.app.ui.main.NotificationsTopBar(
-                    title = stringResource(Res.string.notifications_title),
-                    canMarkAllRead = notificationsState.unreadCount > 0 &&
-                        !notificationsState.isMarkingAllRead,
-                    onBack = { moreSubscreen = null },
-                    onMarkAllRead = notificationsViewModel::markAllRead
-                )
-            moreSubscreen == MoreSubscreen.AccountSettings ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.account_settings_title),
-                    onBack = { moreSubscreen = null },
-                )
-            moreSubscreen == MoreSubscreen.AccountProfile ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.account_section_profile),
-                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                )
-            moreSubscreen == MoreSubscreen.AccountSecurity ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.account_section_security),
-                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                )
-            moreSubscreen == MoreSubscreen.AccountAppearance ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.account_section_appearance),
-                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                )
-            moreSubscreen == MoreSubscreen.AccountStorage ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.account_section_storage),
-                    onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
-                )
-            moreSubscreen == MoreSubscreen.Administration ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.administration_title),
-                    onBack = { moreSubscreen = null },
-                )
-            moreSubscreen == MoreSubscreen.AdminUsers ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.admin_section_users),
-                    onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    actions = {
-                        com.photonne.app.ui.main.CreateAction(
-                            icon = Icons.Outlined.PersonAdd,
-                            contentDescription = stringResource(Res.string.admin_user_action_new),
-                            onClick = {
-                                adminUserEditorId = null
-                                adminUsersViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminUserEditor
-                            }
-                        )
-                    }
-                )
-            moreSubscreen == MoreSubscreen.AdminUserEditor ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(
-                        if (adminUserEditorId == null) Res.string.admin_user_action_new
-                        else Res.string.admin_user_edit_title
-                    ),
-                    onBack = {
-                        adminUserEditorId = null
-                        adminUsersViewModel.clearMessages()
-                        moreSubscreen = MoreSubscreen.AdminUsers
-                    },
-                )
-            moreSubscreen == MoreSubscreen.AdminLibraries ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.admin_section_libraries),
-                    onBack = { moreSubscreen = MoreSubscreen.Administration },
-                    actions = {
-                        com.photonne.app.ui.main.CreateAction(
-                            icon = Icons.Outlined.CreateNewFolder,
-                            contentDescription = stringResource(
-                                Res.string.admin_libraries_action_new
-                            ),
-                            onClick = {
-                                adminLibraryEditorId = null
-                                adminLibrariesViewModel.clearMessages()
-                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
-                            }
-                        )
-                    }
-                )
-            moreSubscreen == MoreSubscreen.AdminLibraryEditor ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(
-                        if (adminLibraryEditorId == null) Res.string.admin_libraries_action_new
-                        else Res.string.admin_libraries_edit_title
-                    ),
-                    onBack = {
-                        adminLibraryEditorId = null
-                        adminLibrariesViewModel.clearMessages()
-                        moreSubscreen = MoreSubscreen.AdminLibraries
-                    },
-                )
-            moreSubscreen == MoreSubscreen.AdminStats ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.admin_section_stats),
-                    onBack = { moreSubscreen = MoreSubscreen.Administration },
-                )
-            moreSubscreen == MoreSubscreen.AdminSettingsHub ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.admin_section_settings),
-                    onBack = { moreSubscreen = MoreSubscreen.Administration },
-                )
-            moreSubscreen == MoreSubscreen.AdminSystemHub ->
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(Res.string.admin_section_system),
-                    onBack = { moreSubscreen = MoreSubscreen.Administration },
-                )
-            isAdminSettingsSubpage(moreSubscreen) -> {
-                val (titleRes, _) = adminSettingsSubpageMeta(moreSubscreen!!)
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(titleRes),
-                    onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
-                )
-            }
-            isAdminSystemSubpage(moreSubscreen) -> {
-                val (titleRes, _) = adminSystemSubpageMeta(moreSubscreen!!)
-                // The 9 task detail screens are reached via "Ejecutar tareas",
-                // so back from there should land back on the consolidated list
-                // rather than skipping a level to the system hub.
-                val parent = if (isAdminRunTasksDetail(moreSubscreen)) {
-                    MoreSubscreen.AdminSystemRunTasks
-                } else {
-                    MoreSubscreen.AdminSystemHub
-                }
-                com.photonne.app.ui.main.SettingsTopBar(
-                    title = stringResource(titleRes),
-                    onBack = { moreSubscreen = parent },
-                )
-            }
+            // Papelera (sin selección): cromo flotante dibujado en el contenido,
+            // con las acciones restaurar-todo / vaciar en su cápsula (solo en la
+            // pestaña Personal).
+            moreSubscreen == MoreSubscreen.Trash -> { }
+            // Todas estas subpantallas pintan su propio cromo flotante estático
+            // dentro de la pantalla (título + atrás, y acciones en su cápsula
+            // cuando las tienen); aquí no va barra acoplada.
+            moreSubscreen == MoreSubscreen.Notifications -> { }
+            moreSubscreen == MoreSubscreen.AccountSettings -> { }
+            moreSubscreen == MoreSubscreen.AccountProfile -> { }
+            moreSubscreen == MoreSubscreen.AccountSecurity -> { }
+            moreSubscreen == MoreSubscreen.AccountAppearance -> { }
+            moreSubscreen == MoreSubscreen.AccountStorage -> { }
+            moreSubscreen == MoreSubscreen.Administration -> { }
+            moreSubscreen == MoreSubscreen.AdminUsers -> { }
+            moreSubscreen == MoreSubscreen.AdminUserEditor -> { }
+            moreSubscreen == MoreSubscreen.AdminLibraries -> { }
+            moreSubscreen == MoreSubscreen.AdminLibraryEditor -> { }
+            moreSubscreen == MoreSubscreen.AdminStats -> { }
+            moreSubscreen == MoreSubscreen.AdminSettingsHub -> { }
+            moreSubscreen == MoreSubscreen.AdminSystemHub -> { }
+            isAdminSettingsSubpage(moreSubscreen) -> { }
+            isAdminSystemSubpage(moreSubscreen) -> { }
             else -> {
                 // Every bare top-level tab now renders its own top bar *inside*
                 // its pager page (Fotos its floating bar; Álbumes/Carpetas/Más a
@@ -2154,6 +2044,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     )
                     MoreSubscreen.DeviceBackup ->
                         com.photonne.app.ui.devicebackup.BackupScreen(
+                            title = stringResource(Res.string.device_backup_title),
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = deviceBackupViewModel,
                             enrichmentViewModel = enrichmentStatusViewModel,
                             gallery = deviceGallery,
@@ -2166,6 +2059,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.DeviceBackupPending ->
                         com.photonne.app.ui.devicebackup.BackupPendingScreen(
+                            title = stringResource(Res.string.backup_pending_screen_title),
+                            onBack = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = deviceBackupViewModel,
                             gallery = deviceGallery,
                             onOpenAsset = { item ->
@@ -2183,10 +2079,17 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.EnrichmentStatus ->
                         com.photonne.app.ui.devicebackup.EnrichmentStatusScreen(
+                            title = stringResource(Res.string.enrichment_screen_title),
+                            onBack = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = enrichmentStatusViewModel
                         )
                     MoreSubscreen.MyLinks ->
-                        com.photonne.app.ui.album.MyLinksScreen()
+                        com.photonne.app.ui.album.MyLinksScreen(
+                            title = stringResource(Res.string.my_links_title),
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                        )
                     MoreSubscreen.UnsupportedFiles ->
                         com.photonne.app.ui.library.UnsupportedFilesScreen(
                             state = unsupportedFilesState,
@@ -2235,6 +2138,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.OrganizeRule ->
                         com.photonne.app.ui.organize.OrganizeRuleScreen(
+                            title = stringResource(Res.string.organize_rule_title),
+                            onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             destinations = foldersState.moveDestinations,
                             onMoved = {
                                 moreSubscreen = MoreSubscreen.OrganizeInbox
@@ -2244,6 +2150,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.Utilities ->
                         com.photonne.app.ui.utilities.UtilitiesHubScreen(
+                            title = stringResource(Res.string.utilities_title),
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             onOpen = { entry ->
                                 moreSubscreen = when (entry) {
                                     com.photonne.app.ui.utilities.UtilitiesEntry.Duplicates ->
@@ -2257,6 +2166,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.UtilitiesDuplicates ->
                         com.photonne.app.ui.utilities.UtilitiesDuplicatesScreen(
+                            title = stringResource(Res.string.utilities_section_duplicates),
+                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = utilitiesDuplicatesViewModel,
                             baseUrl = apiBaseUrl,
                             onOpenAsset = { index, items ->
@@ -2274,6 +2186,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.UtilitiesLargeFiles ->
                         com.photonne.app.ui.utilities.UtilitiesLargeFilesScreen(
+                            title = stringResource(Res.string.utilities_section_large_files),
+                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = utilitiesLargeFilesViewModel,
                             baseUrl = apiBaseUrl,
                             onAssetClick = { index, items ->
@@ -2291,6 +2206,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.UtilitiesLocations ->
                         com.photonne.app.ui.utilities.UtilitiesLocationsScreen(
+                            title = stringResource(Res.string.utilities_section_locations),
+                            onBack = { moreSubscreen = MoreSubscreen.Utilities },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = utilitiesLocationsViewModel
                         )
                     MoreSubscreen.Memories ->
@@ -2531,7 +2449,23 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onUnarchiveAll = { showUnarchiveAll = true },
                         onChromeVisibleChange = { subscreenChromeVisible = it }
                     )
-                    MoreSubscreen.Trash -> Column(modifier = Modifier.fillMaxSize()) {
+                    MoreSubscreen.Trash -> Box(modifier = Modifier.fillMaxSize()) {
+                        // Con una selección activa manda la barra acoplada de
+                        // selección (rama del topBar); si no, la pantalla reserva
+                        // el hueco del cromo flotante y lo dibuja ella misma.
+                        val trashSelecting = trashState.isSelectionActive
+                        // La rejilla de la papelera personal (hermana Haze +
+                        // fuente de scroll) para que el cromo se acople en reposo.
+                        val trashHazeState = remember { HazeState() }
+                        val trashGridState = rememberLazyGridState()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    top = if (trashSelecting) 0.dp
+                                    else subscreenChromeReservedTop()
+                                )
+                        ) {
                         com.photonne.app.ui.library.TrashTabBar(
                             selected = trashTab,
                             onSelect = { tab ->
@@ -2575,16 +2509,91 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     },
                                     onLoadMore = trashViewModel::loadMore,
                                     onLoad = trashViewModel::ensureLoaded,
-                                    onRefresh = trashViewModel::refresh
+                                    onRefresh = trashViewModel::refresh,
+                                    gridState = trashGridState,
+                                    hazeState = trashHazeState
                                 )
                             com.photonne.app.ui.library.TrashTab.Shared ->
                                 com.photonne.app.ui.admin.AdminSharedTrashScreen(
                                     viewModel = adminSharedTrashViewModel
                                 )
                         }
+                        }
+                        if (!trashSelecting) {
+                            val count = trashState.items.size
+                            SubscreenFloatingChrome(
+                                title = stringResource(Res.string.trash_title),
+                                onBack = { moreSubscreen = null },
+                                // La rejilla personal manda el acople/ocultar; en
+                                // Compartida no está compuesta, así que queda en
+                                // reposo (acoplada), que es lo correcto.
+                                scroll = SubscreenScroll(
+                                    firstVisibleItemIndex = { trashGridState.firstVisibleItemIndex },
+                                    firstVisibleItemScrollOffset = { trashGridState.firstVisibleItemScrollOffset },
+                                    isScrollInProgress = { trashGridState.isScrollInProgress },
+                                    scrollToTopMinIndex = 4,
+                                    onScrollToTop = { trashGridState.animateScrollToItem(0) }
+                                ),
+                                hazeState = trashHazeState,
+                                onChromeVisibleChange = { subscreenChromeVisible = it },
+                                // Restaurar todo / vaciar solo aplican a la papelera
+                                // personal; en la compartida la propia pantalla pinta
+                                // sus acciones, así que la cápsula va sin ellas.
+                                actions = if (
+                                    trashTab == com.photonne.app.ui.library.TrashTab.Personal &&
+                                    count > 0
+                                ) {
+                                    {
+                                        var trashMenuOpen by remember { mutableStateOf(false) }
+                                        androidx.compose.material3.IconButton(
+                                            onClick = { trashMenuOpen = true }
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.MoreVert,
+                                                contentDescription = null
+                                            )
+                                        }
+                                        androidx.compose.material3.DropdownMenu(
+                                            expanded = trashMenuOpen,
+                                            onDismissRequest = { trashMenuOpen = false }
+                                        ) {
+                                            androidx.compose.material3.DropdownMenuItem(
+                                                text = {
+                                                    androidx.compose.material3.Text(
+                                                        stringResource(Res.string.trash_action_restore_all)
+                                                    )
+                                                },
+                                                onClick = {
+                                                    trashMenuOpen = false
+                                                    showRestoreAllTrash = true
+                                                }
+                                            )
+                                            androidx.compose.material3.DropdownMenuItem(
+                                                text = {
+                                                    androidx.compose.material3.Text(
+                                                        stringResource(Res.string.trash_action_empty),
+                                                        color = MaterialTheme.colorScheme.error
+                                                    )
+                                                },
+                                                onClick = {
+                                                    trashMenuOpen = false
+                                                    showEmptyTrash = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                } else null
+                            )
+                        }
                     }
                     MoreSubscreen.Notifications ->
                         com.photonne.app.ui.notifications.NotificationsScreen(
+                            title = stringResource(Res.string.notifications_title),
+                            onBack = { moreSubscreen = null },
+                            canMarkAllRead = notificationsState.unreadCount > 0 &&
+                                !notificationsState.isMarkingAllRead,
+                            onMarkAllRead = notificationsViewModel::markAllRead,
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = notificationsViewModel,
                             onNavigate = { url ->
                                 // Map known server actionUrls to in-app
@@ -2601,6 +2610,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.AccountSettings ->
                         com.photonne.app.ui.settings.AccountSettingsScreen(
+                            title = stringResource(Res.string.account_settings_title),
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             onOpen = { section ->
                                 moreSubscreen = when (section) {
                                     com.photonne.app.ui.settings.AccountSettingsSection.Profile ->
@@ -2616,22 +2628,37 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.AccountProfile ->
                         com.photonne.app.ui.settings.AccountProfileScreen(
+                            title = stringResource(Res.string.account_section_profile),
+                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = accountProfileViewModel
                         )
                     MoreSubscreen.AccountSecurity ->
                         com.photonne.app.ui.settings.AccountSecurityScreen(
+                            title = stringResource(Res.string.account_section_security),
+                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = accountSecurityViewModel
                         )
                     MoreSubscreen.AccountAppearance ->
                         com.photonne.app.ui.settings.AccountAppearanceScreen(
+                            title = stringResource(Res.string.account_section_appearance),
+                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = appearanceViewModel
                         )
                     MoreSubscreen.AccountStorage ->
                         com.photonne.app.ui.settings.AccountStorageScreen(
+                            title = stringResource(Res.string.account_section_storage),
+                            onBack = { moreSubscreen = MoreSubscreen.AccountSettings },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = accountStorageViewModel
                         )
                     MoreSubscreen.Administration ->
                         com.photonne.app.ui.admin.AdministrationScreen(
+                            title = stringResource(Res.string.administration_title),
+                            onBack = { moreSubscreen = null },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             onOpen = { section ->
                                 moreSubscreen = when (section) {
                                     com.photonne.app.ui.admin.AdministrationSection.Users ->
@@ -2649,50 +2676,92 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                     MoreSubscreen.AdminUsers ->
                         com.photonne.app.ui.admin.AdminUsersScreen(
+                            title = stringResource(Res.string.admin_section_users),
+                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onCreateNew = {
+                                adminUserEditorId = null
+                                adminUsersViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminUserEditor
+                            },
                             viewModel = adminUsersViewModel,
                             onEdit = { user ->
                                 adminUserEditorId = user.id
                                 adminUsersViewModel.clearMessages()
                                 moreSubscreen = MoreSubscreen.AdminUserEditor
-                            }
+                            },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminUserEditor ->
                         com.photonne.app.ui.admin.AdminUserEditorScreen(
+                            title = stringResource(
+                                if (adminUserEditorId == null) Res.string.admin_user_action_new
+                                else Res.string.admin_user_edit_title
+                            ),
+                            onBack = {
+                                adminUserEditorId = null
+                                adminUsersViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminUsers
+                            },
                             viewModel = adminUsersViewModel,
                             userId = adminUserEditorId,
                             onDone = {
                                 adminUserEditorId = null
                                 moreSubscreen = MoreSubscreen.AdminUsers
-                            }
+                            },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminLibraries -> {
                         val usersState by adminUsersViewModel.state.collectAsState()
                         LaunchedEffect(Unit) { adminUsersViewModel.ensureLoaded() }
                         com.photonne.app.ui.admin.AdminLibrariesScreen(
+                            title = stringResource(Res.string.admin_section_libraries),
+                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onCreateNew = {
+                                adminLibraryEditorId = null
+                                adminLibrariesViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminLibraryEditor
+                            },
                             viewModel = adminLibrariesViewModel,
                             knownUsers = usersState.users,
                             onEdit = { library ->
                                 adminLibraryEditorId = library.id
                                 adminLibrariesViewModel.clearMessages()
                                 moreSubscreen = MoreSubscreen.AdminLibraryEditor
-                            }
+                            },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     }
                     MoreSubscreen.AdminLibraryEditor ->
                         com.photonne.app.ui.admin.AdminLibraryEditorScreen(
+                            title = stringResource(
+                                if (adminLibraryEditorId == null) Res.string.admin_libraries_action_new
+                                else Res.string.admin_libraries_edit_title
+                            ),
+                            onBack = {
+                                adminLibraryEditorId = null
+                                adminLibrariesViewModel.clearMessages()
+                                moreSubscreen = MoreSubscreen.AdminLibraries
+                            },
                             viewModel = adminLibrariesViewModel,
                             libraryId = adminLibraryEditorId,
                             onDone = {
                                 adminLibraryEditorId = null
                                 moreSubscreen = MoreSubscreen.AdminLibraries
-                            }
+                            },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.AdminStats ->
                         com.photonne.app.ui.admin.AdminStatsScreen(
+                            title = stringResource(Res.string.admin_section_stats),
+                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminStatsViewModel
                         )
                     MoreSubscreen.AdminSettingsHub ->
                         com.photonne.app.ui.admin.AdminSettingsHubScreen(
+                            title = stringResource(Res.string.admin_section_settings),
+                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             onOpen = { entry ->
                                 moreSubscreen = when (entry) {
                                     com.photonne.app.ui.admin.AdminSettingsEntry.FaceRecognition ->
@@ -2728,6 +2797,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val vm: com.photonne.app.ui.admin.AdminFaceRecognitionSettingsViewModel =
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminFaceRecognitionSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_face_recognition),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
                                 moreSubscreen = MoreSubscreen.AdminSettingsNightly
@@ -2738,6 +2810,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val vm: com.photonne.app.ui.admin.AdminObjectDetectionSettingsViewModel =
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminObjectDetectionSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_object_detection),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
                                 moreSubscreen = MoreSubscreen.AdminSettingsNightly
@@ -2748,6 +2823,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val vm: com.photonne.app.ui.admin.AdminSceneClassificationSettingsViewModel =
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminSceneClassificationSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_scene_classification),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
                                 moreSubscreen = MoreSubscreen.AdminSettingsNightly
@@ -2758,6 +2836,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val vm: com.photonne.app.ui.admin.AdminTextRecognitionSettingsViewModel =
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminTextRecognitionSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_text_recognition),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
                                 moreSubscreen = MoreSubscreen.AdminSettingsNightly
@@ -2768,6 +2849,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val vm: com.photonne.app.ui.admin.AdminImageEmbeddingSettingsViewModel =
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminImageEmbeddingSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_image_embedding),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             onOpenNightly = {
                                 moreSubscreen = MoreSubscreen.AdminSettingsNightly
@@ -2776,39 +2860,66 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     MoreSubscreen.AdminSettingsImage ->
                         com.photonne.app.ui.admin.AdminImageSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_image),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminImageSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsMetadata ->
                         com.photonne.app.ui.admin.AdminMetadataSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_metadata),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminMetadataSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsNightly ->
                         com.photonne.app.ui.admin.AdminNightlySettingsScreen(
+                            title = stringResource(Res.string.admin_settings_nightly),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminNightlySettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsNotifications ->
                         com.photonne.app.ui.admin.AdminNotificationSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_notifications),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminNotificationSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsServer ->
                         com.photonne.app.ui.admin.AdminServerSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_server),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminServerSettingsViewModel,
                             deviceConnectionViewModel = deviceConnectionViewModel
                         )
                     MoreSubscreen.AdminSettingsTrash ->
                         com.photonne.app.ui.admin.AdminTrashSettingsScreen(
+                            title = stringResource(Res.string.admin_settings_trash),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminTrashSettingsViewModel
                         )
                     MoreSubscreen.AdminSettingsUserDefaults ->
                         com.photonne.app.ui.admin.AdminUserDefaultsScreen(
+                            title = stringResource(Res.string.admin_settings_user_defaults),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminUserDefaultsViewModel
                         )
                     MoreSubscreen.AdminSettingsVersion ->
                         com.photonne.app.ui.admin.AdminServerScreen(
+                            title = stringResource(Res.string.admin_settings_version),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSettingsHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminVersionViewModel
                         )
                     MoreSubscreen.AdminSystemHub ->
                         com.photonne.app.ui.admin.AdminSystemHubScreen(
+                            title = stringResource(Res.string.admin_section_system),
+                            onBack = { moreSubscreen = MoreSubscreen.Administration },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             onOpen = { entry ->
                                 moreSubscreen = when (entry) {
                                     com.photonne.app.ui.admin.AdminSystemEntry.RunTasks ->
@@ -2822,6 +2933,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         val vm: com.photonne.app.ui.admin.AdminRunTasksViewModel =
                             koinViewModel()
                         com.photonne.app.ui.admin.AdminRunTasksScreen(
+                            title = stringResource(Res.string.admin_system_run_tasks),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = vm,
                             // Only Duplicates still drills into its own
                             // screen; pipeline + AI rows handle their
@@ -2837,10 +2951,16 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     }
                     MoreSubscreen.AdminSystemDuplicates ->
                         com.photonne.app.ui.admin.AdminDuplicatesScreen(
+                            title = stringResource(Res.string.admin_system_duplicates),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemRunTasks },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminDuplicatesViewModel
                         )
                     MoreSubscreen.AdminSystemBackup ->
                         com.photonne.app.ui.admin.AdminBackupScreen(
+                            title = stringResource(Res.string.admin_system_backup),
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminBackupViewModel
                         )
                 }

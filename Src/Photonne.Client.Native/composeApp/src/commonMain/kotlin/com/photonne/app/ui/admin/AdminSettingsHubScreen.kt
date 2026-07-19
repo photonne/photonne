@@ -63,7 +63,12 @@ enum class AdminSettingsEntry {
 }
 
 @Composable
-fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
+fun AdminSettingsHubScreen(
+    title: String,
+    onBack: () -> Unit,
+    onOpen: (AdminSettingsEntry) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val entries = listOf(
         AdminHubEntry(
             AdminSettingsEntry.FaceRecognition.name,
@@ -146,6 +151,9 @@ fun AdminSettingsHubScreen(onOpen: (AdminSettingsEntry) -> Unit) {
     )
 
     AdminHubList(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         entries = entries,
         onClick = { key -> onOpen(AdminSettingsEntry.valueOf(key)) }
     )

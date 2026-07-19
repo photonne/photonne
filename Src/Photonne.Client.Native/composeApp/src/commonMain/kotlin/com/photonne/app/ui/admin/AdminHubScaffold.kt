@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.remember
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
@@ -26,6 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 /** A single tappable entry in a hub list (Ajustes / Sistema). */
 data class AdminHubEntry(
@@ -36,29 +42,51 @@ data class AdminHubEntry(
 )
 
 /** Shared scaffold used by the Ajustes and Sistema hub screens to render
- *  a vertically scrolling list of large entry rows. Kept generic so any
- *  hub can grow without adding more layout boilerplate. */
+ *  a vertically scrolling list of large entry rows. Draws its own floating
+ *  subscreen chrome so both hubs match the rest of the app. Kept generic so
+ *  any hub can grow without adding more layout boilerplate. */
 @Composable
 fun AdminHubList(
+    title: String,
+    onBack: () -> Unit,
     entries: List<AdminHubEntry>,
-    onClick: (String) -> Unit
+    onClick: (String) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = 16.dp,
-                bottom = 16.dp + floatingNavBarReservedHeight()
-            ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        entries.forEach { entry ->
-            HubEntryRow(entry = entry, onClick = { onClick(entry.key) })
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .hazeSource(hazeState)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp + subscreenChromeReservedTop(),
+                    bottom = 16.dp + floatingNavBarReservedHeight()
+                ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            entries.forEach { entry ->
+                HubEntryRow(entry = entry, onClick = { onClick(entry.key) })
+            }
+            Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.height(8.dp))
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

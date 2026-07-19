@@ -48,11 +48,19 @@ class AdminNotificationSettingsViewModel(
 }
 
 @Composable
-fun AdminNotificationSettingsScreen(viewModel: AdminNotificationSettingsViewModel) {
+fun AdminNotificationSettingsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminNotificationSettingsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
     AdminSettingsForm(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         isLoading = state.isLoading,
         isSubmitting = state.isSubmitting,
         errorMessage = state.errorMessage,

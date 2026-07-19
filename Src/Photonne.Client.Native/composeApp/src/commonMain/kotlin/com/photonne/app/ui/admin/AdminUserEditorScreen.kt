@@ -51,6 +51,11 @@ import com.photonne.app.resources.admin_user_field_quota_mb
 import com.photonne.app.resources.admin_user_field_quota_mb_hint
 import com.photonne.app.resources.admin_user_promote_success
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
@@ -62,22 +67,18 @@ internal const val ADMIN_USER_MIN_PASSWORD_LENGTH = 8
  */
 @Composable
 fun AdminUserEditorScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: AdminUsersViewModel,
     userId: String?,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
     val existing = userId?.let { id -> state.users.firstOrNull { it.id == id } }
     val isEdit = userId != null
-
-    if (isEdit && existing == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
 
     var username by remember(existing?.id) { mutableStateOf(existing?.username.orEmpty()) }
     var email by remember(existing?.id) { mutableStateOf(existing?.email.orEmpty()) }
@@ -115,11 +116,21 @@ fun AdminUserEditorScreen(
         email.isNotBlank() &&
         (isEdit || password.length >= ADMIN_USER_MIN_PASSWORD_LENGTH)
 
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
+    if (isEdit && existing == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + floatingNavBarReservedHeight()),
+            .verticalScroll(scrollState)
+            .hazeSource(hazeState)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp + reservedTop, bottom = 12.dp + floatingNavBarReservedHeight()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
@@ -333,6 +344,21 @@ fun AdminUserEditorScreen(
                     showPromoteToPrimary = false
                 }
             }
+        )
+    }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
         )
     }
 }

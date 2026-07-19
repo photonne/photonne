@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -46,6 +47,7 @@ import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.admin_libraries_action_delete
+import com.photonne.app.resources.admin_libraries_action_new
 import com.photonne.app.resources.admin_libraries_action_permissions
 import com.photonne.app.resources.admin_libraries_action_scan
 import com.photonne.app.resources.admin_libraries_asset_count
@@ -55,20 +57,36 @@ import com.photonne.app.resources.admin_libraries_no_scan
 import com.photonne.app.resources.admin_libraries_permissions_empty
 import com.photonne.app.resources.admin_libraries_permissions_title
 import com.photonne.app.resources.admin_libraries_scan_progress
+import com.photonne.app.ui.main.CreateAction
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.remember
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminLibrariesScreen(
+    title: String,
+    onBack: () -> Unit,
+    onCreateNew: () -> Unit,
     viewModel: AdminLibrariesViewModel,
     knownUsers: List<UserDto>,
-    onEdit: (ExternalLibraryDto) -> Unit
+    onEdit: (ExternalLibraryDto) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
         state.statusMessage?.let { msg ->
             Text(
                 msg,
@@ -136,11 +154,12 @@ fun AdminLibrariesScreen(
                 }
             else ->
                 LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(
                         start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                 ) {
                     items(state.libraries, key = { it.id }) { lib ->
                         LibraryCard(
@@ -163,6 +182,27 @@ fun AdminLibrariesScreen(
             onGrant = viewModel::grantPermission,
             onRevoke = viewModel::revokePermission,
             onDismiss = viewModel::closePermissions
+        )
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange,
+            actions = {
+                CreateAction(
+                    icon = Icons.Outlined.CreateNewFolder,
+                    contentDescription = stringResource(Res.string.admin_libraries_action_new),
+                    onClick = onCreateNew
+                )
+            }
         )
     }
 }

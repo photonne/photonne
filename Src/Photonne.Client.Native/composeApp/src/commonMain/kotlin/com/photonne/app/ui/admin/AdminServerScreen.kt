@@ -21,11 +21,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.theme.actionButtonHeight
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_server_checked_at
 import com.photonne.app.resources.admin_server_check_error
@@ -39,10 +45,19 @@ import com.photonne.app.resources.admin_server_update_available
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AdminServerScreen(viewModel: AdminServerViewModel) {
+fun AdminServerScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminServerViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
+) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     when {
         state.isLoading && state.info == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -57,8 +72,9 @@ fun AdminServerScreen(viewModel: AdminServerViewModel) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + floatingNavBarReservedHeight()),
+                    .verticalScroll(scrollState)
+                    .hazeSource(hazeState)
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Card(
@@ -161,6 +177,20 @@ fun AdminServerScreen(viewModel: AdminServerViewModel) {
                 }
             }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

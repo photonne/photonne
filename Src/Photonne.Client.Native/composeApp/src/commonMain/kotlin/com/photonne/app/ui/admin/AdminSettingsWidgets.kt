@@ -49,6 +49,11 @@ import com.photonne.app.ui.theme.actionButtonHeight
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_save
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.resources.admin_settings_device_auto
 import com.photonne.app.resources.admin_settings_device_cpu
 import com.photonne.app.resources.admin_settings_device_gpu
@@ -62,9 +67,15 @@ import com.photonne.app.resources.admin_face_settings_nightly_state_disabled
 import com.photonne.app.resources.admin_face_settings_nightly_state_enabled
 import org.jetbrains.compose.resources.stringResource
 
-/** Vertically scrolling form shell shared by every Ajustes subpage. */
+/** Vertically scrolling form shell shared by every Ajustes subpage. Draws its
+ *  own floating subscreen chrome (static capsule over the solid form
+ *  background) so every settings leaf is visually consistent with the rest of
+ *  the app. */
 @Composable
 fun AdminSettingsForm(
+    title: String,
+    onBack: () -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {},
     isLoading: Boolean,
     isSubmitting: Boolean,
     errorMessage: String?,
@@ -73,55 +84,73 @@ fun AdminSettingsForm(
     onSave: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    if (isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            // El padding es el modificador interno del scroll, así que hace de
-            // content-padding: reservar el hueco de la nav flotante en el `bottom`
-            // deja que el formulario pase a sangre por debajo de la cápsula y que
-            // la última fila la despeje (mismo estilo que Timeline/Álbumes).
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = 16.dp,
-                bottom = 16.dp + floatingNavBarReservedHeight()
-            ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        content()
-
-        errorMessage?.let { msg ->
-            Text(msg, color = MaterialTheme.colorScheme.error)
-        }
-        successMessage?.let { msg ->
-            Text(msg, color = MaterialTheme.colorScheme.primary)
-        }
-
-        Spacer(Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(12.dp))
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-            Button(
-                onClick = onSave,
-                enabled = canSave,
-                modifier = Modifier.actionButtonHeight()
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .hazeSource(hazeState)
+                    // El padding es el modificador interno del scroll, así que hace de
+                    // content-padding: reservar el hueco del cromo flotante arriba y de
+                    // la nav flotante abajo deja que el formulario pase a sangre por
+                    // debajo de las cápsulas (mismo estilo que Timeline/Álbumes).
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp + subscreenChromeReservedTop(),
+                        bottom = 16.dp + floatingNavBarReservedHeight()
+                    ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(stringResource(Res.string.action_save))
+                content()
+
+                errorMessage?.let { msg ->
+                    Text(msg, color = MaterialTheme.colorScheme.error)
+                }
+                successMessage?.let { msg ->
+                    Text(msg, color = MaterialTheme.colorScheme.primary)
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.size(12.dp))
+                    }
+                    Button(
+                        onClick = onSave,
+                        enabled = canSave,
+                        modifier = Modifier.actionButtonHeight()
+                    ) {
+                        Text(stringResource(Res.string.action_save))
+                    }
+                }
             }
         }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

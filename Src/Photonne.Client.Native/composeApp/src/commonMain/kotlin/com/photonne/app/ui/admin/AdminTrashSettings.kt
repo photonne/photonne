@@ -29,7 +29,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.admin.AdminRepository
+import androidx.compose.runtime.remember
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.data.models.TrashUserStat
 import com.photonne.app.ui.theme.actionButtonHeight
 import kotlinx.coroutines.launch
@@ -129,7 +135,12 @@ data class AdminTrashSideState(
 )
 
 @Composable
-fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
+fun AdminTrashSettingsScreen(
+    title: String,
+    onBack: () -> Unit,
+    viewModel: AdminTrashSettingsViewModel,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val settings by viewModel.state.collectAsState()
     val stats by viewModel.trashStats.collectAsState()
     LaunchedEffect(Unit) {
@@ -137,21 +148,24 @@ fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
         viewModel.loadStats()
     }
 
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
     if (settings.isLoading && settings.original.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        return
-    }
-
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
+            .hazeSource(hazeState)
             .padding(
                 start = 16.dp,
                 end = 16.dp,
-                top = 16.dp,
+                top = 16.dp + reservedTop,
                 bottom = 16.dp + floatingNavBarReservedHeight()
             ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -267,6 +281,21 @@ fun AdminTrashSettingsScreen(viewModel: AdminTrashSettingsViewModel) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
             }
         }
+    }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                firstVisibleItemScrollOffset = { scrollState.value },
+                isScrollInProgress = { scrollState.isScrollInProgress },
+                scrollToTopMinIndex = 1,
+                onScrollToTop = { scrollState.animateScrollTo(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 }
 

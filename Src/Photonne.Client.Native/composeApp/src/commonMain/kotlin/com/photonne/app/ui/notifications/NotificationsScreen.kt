@@ -13,8 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.remember
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -22,11 +29,17 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -34,6 +47,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.NotificationDto
 import com.photonne.app.data.models.NotificationKind
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.notifications_action_mark_all_read
 import com.photonne.app.resources.notifications_empty_subtitle
 import com.photonne.app.resources.notifications_empty_title
 import com.photonne.app.resources.notifications_empty_unread_title
@@ -66,19 +83,22 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun NotificationsScreen(
+    title: String,
+    onBack: () -> Unit,
+    canMarkAllRead: Boolean,
+    onMarkAllRead: () -> Unit,
     viewModel: NotificationsViewModel,
-    onNavigate: (String) -> Unit = {}
+    onNavigate: (String) -> Unit = {},
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        FilterRow(
-            unreadOnly = state.unreadOnly,
-            unreadCount = state.unreadCount,
-            onSelect = viewModel::setUnreadOnly
-        )
-
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
         state.error?.userMessage?.let { msg ->
             Text(
                 msg,
@@ -111,7 +131,8 @@ fun NotificationsScreen(
                     )
                 }
                 else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
@@ -161,38 +182,80 @@ fun NotificationsScreen(
             }
         }
     }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange,
+            actions = {
+                NotificationsFilterMenu(
+                    unreadOnly = state.unreadOnly,
+                    unreadCount = state.unreadCount,
+                    onSelect = viewModel::setUnreadOnly
+                )
+                IconButton(onClick = onMarkAllRead, enabled = canMarkAllRead) {
+                    Icon(
+                        Icons.Outlined.DoneAll,
+                        contentDescription = stringResource(
+                            Res.string.notifications_action_mark_all_read
+                        )
+                    )
+                }
+            }
+        )
+    }
 }
 
+/**
+ * Filtro Todas / No leídas movido a la cápsula de acciones del cromo flotante:
+ * un icono de filtro que despliega las dos opciones (marca la activa), en vez de
+ * una fila fija de chips debajo de la barra.
+ */
 @Composable
-private fun FilterRow(
+private fun NotificationsFilterMenu(
     unreadOnly: Boolean,
     unreadCount: Int,
     onSelect: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        FilterChip(
-            selected = !unreadOnly,
-            onClick = { onSelect(false) },
-            label = { Text(stringResource(Res.string.notifications_filter_all)) }
-        )
-        FilterChip(
-            selected = unreadOnly,
-            onClick = { onSelect(true) },
-            label = {
-                if (unreadCount > 0) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(
+                Icons.Outlined.FilterList,
+                contentDescription = stringResource(Res.string.notifications_filter_all),
+                tint = if (unreadOnly) MaterialTheme.colorScheme.primary
+                else LocalContentColor.current
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.notifications_filter_all)) },
+                leadingIcon = {
+                    if (!unreadOnly) Icon(Icons.Outlined.Check, contentDescription = null)
+                },
+                onClick = { open = false; onSelect(false) }
+            )
+            DropdownMenuItem(
+                text = {
                     Text(
-                        "${stringResource(Res.string.notifications_filter_unread)} ($unreadCount)"
+                        if (unreadCount > 0)
+                            "${stringResource(Res.string.notifications_filter_unread)} ($unreadCount)"
+                        else stringResource(Res.string.notifications_filter_unread)
                     )
-                } else {
-                    Text(stringResource(Res.string.notifications_filter_unread))
-                }
-            }
-        )
+                },
+                leadingIcon = {
+                    if (unreadOnly) Icon(Icons.Outlined.Check, contentDescription = null)
+                },
+                onClick = { open = false; onSelect(true) }
+            )
+        }
     }
 }
 

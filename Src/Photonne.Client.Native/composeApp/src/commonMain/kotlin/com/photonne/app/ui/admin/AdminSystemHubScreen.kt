@@ -17,7 +17,12 @@ enum class AdminSystemEntry {
 }
 
 @Composable
-fun AdminSystemHubScreen(onOpen: (AdminSystemEntry) -> Unit) {
+fun AdminSystemHubScreen(
+    title: String,
+    onBack: () -> Unit,
+    onOpen: (AdminSystemEntry) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
+) {
     val entries = listOf(
         AdminHubEntry(
             AdminSystemEntry.RunTasks.name,
@@ -34,6 +39,9 @@ fun AdminSystemHubScreen(onOpen: (AdminSystemEntry) -> Unit) {
     )
 
     AdminHubList(
+        title = title,
+        onBack = onBack,
+        onChromeVisibleChange = onChromeVisibleChange,
         entries = entries,
         onClick = { key -> onOpen(AdminSystemEntry.valueOf(key)) }
     )

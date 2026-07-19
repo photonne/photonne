@@ -15,8 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -70,10 +76,16 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun UtilitiesDuplicatesScreen(
+    title: String,
+    onBack: () -> Unit,
     viewModel: UtilitiesDuplicatesViewModel,
     baseUrl: String,
-    onOpenAsset: (index: Int, items: List<TimelineItem>) -> Unit
+    onOpenAsset: (index: Int, items: List<TimelineItem>) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
     var confirmOpen by remember { mutableStateOf(false) }
@@ -119,14 +131,15 @@ fun UtilitiesDuplicatesScreen(
                     }
                 else ->
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            top = 8.dp,
+                            top = 8.dp + reservedTop,
                             bottom = 96.dp + floatingNavBarReservedHeight()
                         ),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize().hazeSource(hazeState)
                     ) {
                         item("summary") {
                             Card(
@@ -204,6 +217,20 @@ fun UtilitiesDuplicatesScreen(
                     .padding(16.dp)
             )
         }
+
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange
+        )
     }
 
     if (confirmOpen) {

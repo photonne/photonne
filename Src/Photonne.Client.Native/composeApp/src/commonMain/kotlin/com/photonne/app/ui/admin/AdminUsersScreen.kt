@@ -19,6 +19,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.UserDto
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_refresh
+import com.photonne.app.resources.admin_user_action_new
 import com.photonne.app.resources.admin_user_inactive_badge
 import com.photonne.app.resources.admin_user_last_login
 import com.photonne.app.resources.admin_user_never_logged_in
@@ -39,19 +42,35 @@ import com.photonne.app.resources.admin_user_quota_format
 import com.photonne.app.resources.admin_user_role_admin
 import com.photonne.app.resources.admin_user_role_user
 import com.photonne.app.resources.admin_users_empty
+import com.photonne.app.ui.main.CreateAction
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.remember
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminUsersScreen(
+    title: String,
+    onBack: () -> Unit,
+    onCreateNew: () -> Unit,
     viewModel: AdminUsersViewModel,
-    onEdit: (UserDto) -> Unit
+    onEdit: (UserDto) -> Unit,
+    onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
         state.statusMessage?.let { msg ->
             Text(
                 msg,
@@ -96,7 +115,8 @@ fun AdminUsersScreen(
                 }
             else ->
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
@@ -107,6 +127,27 @@ fun AdminUsersScreen(
                     }
                 }
         }
+    }
+        SubscreenFloatingChrome(
+            title = title,
+            onBack = onBack,
+            scroll = SubscreenScroll(
+                firstVisibleItemIndex = { listState.firstVisibleItemIndex },
+                firstVisibleItemScrollOffset = { listState.firstVisibleItemScrollOffset },
+                isScrollInProgress = { listState.isScrollInProgress },
+                scrollToTopMinIndex = 4,
+                onScrollToTop = { listState.animateScrollToItem(0) }
+            ),
+            hazeState = hazeState,
+            onChromeVisibleChange = onChromeVisibleChange,
+            actions = {
+                CreateAction(
+                    icon = Icons.Outlined.PersonAdd,
+                    contentDescription = stringResource(Res.string.admin_user_action_new),
+                    onClick = onCreateNew
+                )
+            }
+        )
     }
 }
 

@@ -49,7 +49,12 @@ import com.photonne.app.resources.organize_rule_intro
 import com.photonne.app.resources.organize_rule_year_split_label
 import com.photonne.app.ui.album.smart.RuleConditionsEditor
 import com.photonne.app.ui.folder.FolderPickerDialog
+import com.photonne.app.ui.main.SubscreenFloatingChrome
+import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.main.subscreenChromeReservedTop
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -69,10 +74,16 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @Composable
 fun OrganizeRuleScreen(
+    title: String,
+    onBack: () -> Unit,
     destinations: List<FolderSummary>,
     onMoved: (Int) -> Unit,
     viewModel: OrganizeRuleViewModel = koinViewModel(),
+    onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
+    val reservedTop = subscreenChromeReservedTop()
+    val hazeState = remember { HazeState() }
+    val scrollState = rememberScrollState()
     val state by viewModel.state.collectAsState()
     val pickers by viewModel.pickers.collectAsState()
     val baseUrl = rememberApiBaseUrl()
@@ -88,8 +99,9 @@ fun OrganizeRuleScreen(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+                .verticalScroll(scrollState)
+                .hazeSource(hazeState)
+                .padding(start = 16.dp, end = 16.dp, top = reservedTop),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Spacer(Modifier.height(4.dp))
@@ -174,6 +186,24 @@ fun OrganizeRuleScreen(
                         else onMoved(outcome.moved)
                     }
                 },
+            )
+        }
+
+        // The review overlay is a full-screen opaque Surface with its own top
+        // bar, so the floating chrome only rides over the rule-builder body.
+        if (state.reviewGroups == null) {
+            SubscreenFloatingChrome(
+                title = title,
+                onBack = onBack,
+                scroll = SubscreenScroll(
+                    firstVisibleItemIndex = { if (scrollState.value > 0) 1 else 0 },
+                    firstVisibleItemScrollOffset = { scrollState.value },
+                    isScrollInProgress = { scrollState.isScrollInProgress },
+                    scrollToTopMinIndex = 1,
+                    onScrollToTop = { scrollState.animateScrollTo(0) }
+                ),
+                hazeState = hazeState,
+                onChromeVisibleChange = onChromeVisibleChange
             )
         }
     }
