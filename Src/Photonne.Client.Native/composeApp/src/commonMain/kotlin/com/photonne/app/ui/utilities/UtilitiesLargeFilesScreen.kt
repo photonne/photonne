@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +18,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.EmptyState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -23,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,11 +38,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -66,27 +74,15 @@ fun UtilitiesLargeFilesScreen(
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
+    val density = LocalDensity.current
+    var headerHeightPx by remember { mutableStateOf(0) }
+    val headerReserve = with(density) { headerHeightPx.toDp() }
+
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-        CountFilterRow(
-            current = state.count,
-            options = UtilitiesLargeFilesUiState.CountOptions,
-            onSelect = viewModel::setCount
-        )
-
-        state.error?.userMessage?.let { msg ->
-            Text(
-                msg,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-        }
-
         PhotonneRefreshableScreen(
             isRefreshing = state.isLoading && state.items.isNotEmpty(),
             onRefresh = viewModel::refresh,
-            modifier = Modifier.fillMaxWidth().weight(1f)
+            modifier = Modifier.fillMaxSize()
         ) {
             when {
                 state.isLoading && state.items.isEmpty() ->
@@ -95,18 +91,16 @@ fun UtilitiesLargeFilesScreen(
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                 state.items.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            stringResource(Res.string.utilities_large_files_empty),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    EmptyState(
+                        icon = Icons.Outlined.Storage,
+                        title = stringResource(Res.string.utilities_large_files_empty)
+                    )
                 else -> LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 4.dp,
+                        top = 4.dp + headerReserve,
                         bottom = 24.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -137,7 +131,29 @@ fun UtilitiesLargeFilesScreen(
                 }
             }
         }
-    }
+        // Cabecera fija por debajo del cromo: su alto se reserva en el
+        // contentPadding de la lista (headerReserve) para que el contenido pase
+        // por debajo del cromo y esmerile, con el filtro siempre visible.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { headerHeightPx = it.height }
+        ) {
+            Spacer(Modifier.height(reservedTop))
+            CountFilterRow(
+                current = state.count,
+                options = UtilitiesLargeFilesUiState.CountOptions,
+                onSelect = viewModel::setCount
+            )
+            state.error?.userMessage?.let { msg ->
+                Text(
+                    msg,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+        }
         SubscreenFloatingChrome(
             title = title,
             onBack = onBack,

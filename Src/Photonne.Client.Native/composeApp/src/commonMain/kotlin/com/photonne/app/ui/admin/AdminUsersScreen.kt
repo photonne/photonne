@@ -20,6 +20,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,6 +48,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.EmptyState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.remember
 import dev.chrisbanes.haze.HazeState
@@ -70,7 +72,7 @@ fun AdminUsersScreen(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+    Column(modifier = Modifier.fillMaxSize()) {
         state.statusMessage?.let { msg ->
             Text(
                 msg,
@@ -98,27 +100,19 @@ fun AdminUsersScreen(
                     CircularProgressIndicator()
                 }
             state.users.isEmpty() && state.error?.userMessage == null ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            stringResource(Res.string.admin_users_empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Button(onClick = viewModel::refresh) {
-                            Text(stringResource(Res.string.action_refresh))
-                        }
-                    }
-                }
+                EmptyState(
+                    icon = Icons.Outlined.Group,
+                    title = stringResource(Res.string.admin_users_empty),
+                    actionLabel = stringResource(Res.string.action_refresh),
+                    onAction = viewModel::refresh
+                )
             else ->
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + floatingNavBarReservedHeight()
+                        start = 16.dp, end = 16.dp, top = 8.dp + reservedTop,
+                        bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.FolderShared
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +47,7 @@ import com.photonne.app.resources.utilities_locations_empty
 import com.photonne.app.resources.utilities_locations_external_badge
 import com.photonne.app.resources.utilities_locations_item_count
 import com.photonne.app.resources.utilities_locations_shared_badge
+import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import com.photonne.app.ui.util.sortedByNatural
 import org.jetbrains.compose.resources.stringResource
@@ -78,12 +80,10 @@ fun UtilitiesLocationsScreen(
                     Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
                 }
             state.roots.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(Res.string.utilities_locations_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Outlined.LocationOn,
+                    title = stringResource(Res.string.utilities_locations_empty)
+                )
             else -> LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().hazeSource(hazeState),

@@ -98,7 +98,7 @@ fun NotificationsScreen(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+    Column(modifier = Modifier.fillMaxSize()) {
         state.error?.userMessage?.let { msg ->
             Text(
                 msg,
@@ -136,7 +136,7 @@ fun NotificationsScreen(
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 4.dp,
+                        top = 4.dp + reservedTop,
                         bottom = 24.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(0.dp)

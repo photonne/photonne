@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.HourglassEmpty
@@ -60,6 +61,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.EmptyState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.StringResource
@@ -85,26 +87,7 @@ fun EnrichmentStatusScreen(
     LaunchedEffect(Unit) { viewModel.refresh() }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
-        if (state.items.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(
-                        Res.string.enrichment_summary,
-                        state.totalInFlight,
-                        state.totalFailed
-                    ),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-
+    Column(modifier = Modifier.fillMaxSize()) {
         when {
             state.isLoading && state.items.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -123,25 +106,35 @@ fun EnrichmentStatusScreen(
                     )
                 }
             }
-            state.items.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        stringResource(Res.string.enrichment_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            state.items.isEmpty() -> EmptyState(
+                icon = Icons.Outlined.AutoAwesome,
+                title = stringResource(Res.string.enrichment_empty)
+            )
             else -> {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + floatingNavBarReservedHeight()),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp + reservedTop, bottom = 8.dp + floatingNavBarReservedHeight()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    item("summary") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    Res.string.enrichment_summary,
+                                    state.totalInFlight,
+                                    state.totalFailed
+                                ),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                     items(items = state.items, key = { it.asset.assetId }) { item ->
                         EnrichmentAssetCard(
                             item = item,

@@ -62,6 +62,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.EmptyState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.remember
 import dev.chrisbanes.haze.HazeState
@@ -86,7 +87,7 @@ fun AdminLibrariesScreen(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(top = reservedTop)) {
+    Column(modifier = Modifier.fillMaxSize()) {
         state.statusMessage?.let { msg ->
             Text(
                 msg,
@@ -146,17 +147,15 @@ fun AdminLibrariesScreen(
                     CircularProgressIndicator()
                 }
             state.libraries.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(Res.string.admin_libraries_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Outlined.CreateNewFolder,
+                    title = stringResource(Res.string.admin_libraries_empty)
+                )
             else ->
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + floatingNavBarReservedHeight()
+                        start = 16.dp, end = 16.dp, top = 8.dp + reservedTop, bottom = 16.dp + floatingNavBarReservedHeight()
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState)
