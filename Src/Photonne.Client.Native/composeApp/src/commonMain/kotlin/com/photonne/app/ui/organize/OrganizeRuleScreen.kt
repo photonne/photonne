@@ -36,7 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
-import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.organize_move_action_count
 import com.photonne.app.resources.organize_move_by_year_desc
@@ -65,21 +64,27 @@ import org.koin.compose.viewmodel.koinViewModel
  * move is server-resolved and irreversible (physical file move), so it's gated
  * behind a confirmation.
  *
- * The screen has no top bar of its own — the host (App.kt) provides it, matching
- * the inbox — so it lays out as a scrollable body plus a pinned "Mover" bar.
+ * Formulario estándar de la app: cromo flotante arriba, cuerpo que scrollea a
+ * sangre POR DEBAJO de la nav flotante (reservando su hueco al final del scroll)
+ * y el botón de acción al final del propio scroll, como los editores de admin —
+ * no una barra acoplada más, apilada sobre la cápsula de la nav.
+ *
+ * La rejilla de revisión ("Se moverán N fotos") NO se pinta aquí: es un overlay
+ * modal que hospeda `App.kt` fuera del `MainScaffold`, o quedaría por debajo de
+ * la nav flotante con su botón de confirmar inalcanzable.
  *
  * @param destinations writable move-destination folders (from the folders VM).
- * @param onMoved receives the moved count; the caller refreshes the inbox badge
- *   and navigates back.
+ * @param reviewOpen true mientras la revisión tapa la pantalla: el cromo se
+ *   retira para no flotar sobre el overlay.
  */
 @Composable
 fun OrganizeRuleScreen(
     title: String,
     onBack: () -> Unit,
     destinations: List<FolderSummary>,
-    onMoved: (Int) -> Unit,
     viewModel: OrganizeRuleViewModel = koinViewModel(),
     onChromeVisibleChange: (Boolean) -> Unit = {},
+    reviewOpen: Boolean = false,
 ) {
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
@@ -89,19 +94,22 @@ fun OrganizeRuleScreen(
     val baseUrl = rememberApiBaseUrl()
 
     var showFolderPicker by remember { mutableStateOf(false) }
-    var summary by remember { mutableStateOf<MoveOutcome?>(null) }
 
     // The VM instance is reused across navigations; start blank each time.
     LaunchedEffect(Unit) { viewModel.reset() }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = floatingNavBarReservedHeight())) {
         Column(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxSize()
                 .verticalScroll(scrollState)
                 .hazeSource(hazeState)
-                .padding(start = 16.dp, end = 16.dp, top = reservedTop),
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = reservedTop,
+                    bottom = floatingNavBarReservedHeight(),
+                ),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Spacer(Modifier.height(4.dp))
@@ -158,40 +166,20 @@ fun OrganizeRuleScreen(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
-        }
-
-        MoveBar(
-            count = state.previewCount,
-            path = state.targetFolderPath,
-            enabled = state.canMove,
-            isMoving = state.isMoving || state.isLoadingReview,
-            onMove = { viewModel.openReview() },
-        )
-        }
-
-        state.reviewGroups?.let { groups ->
-            MoveReviewScreen(
-                movedTotal = state.previewCount ?: groups.sumOf { it.count },
-                groups = groups,
-                baseUrl = baseUrl,
-                isMoving = state.isMoving,
-                organizeByYear = state.organizeByYear,
-                onBack = viewModel::closeReview,
-                onConfirm = {
-                    viewModel.move { outcome ->
-                        // With a year split, confirm the distribution first; the
-                        // navigation back happens when the summary is dismissed.
-                        if (outcome.yearBreakdown.isNotEmpty()) summary = outcome
-                        else onMoved(outcome.moved)
-                    }
-                },
+            MoveButton(
+                count = state.previewCount,
+                path = state.targetFolderPath,
+                enabled = state.canMove,
+                isMoving = state.isMoving || state.isLoadingReview,
+                onMove = { viewModel.openReview() },
             )
+
+            Spacer(Modifier.height(8.dp))
         }
 
-        // The review overlay is a full-screen opaque Surface with its own top
-        // bar, so the floating chrome only rides over the rule-builder body.
-        if (state.reviewGroups == null) {
+        // The review overlay is a full-screen opaque Surface hosted by App.kt, so
+        // the floating chrome only rides over the rule-builder body.
+        if (!reviewOpen) {
             SubscreenFloatingChrome(
                 title = title,
                 onBack = onBack,
@@ -225,13 +213,6 @@ fun OrganizeRuleScreen(
                 }
             },
         )
-    }
-
-    summary?.let { s ->
-        MoveSummaryDialog(s) {
-            summary = null
-            onMoved(s.moved)
-        }
     }
 }
 
@@ -284,37 +265,39 @@ private fun OrganizeByYearRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
     }
 }
 
+/**
+ * La acción de la pantalla, al final del propio scroll (igual que los editores de
+ * admin) en vez de en una barra acoplada: con la nav flotante abajo, una segunda
+ * barra a lo ancho se leía como dos barras apiladas.
+ */
 @Composable
-private fun MoveBar(
+private fun MoveButton(
     count: Int?,
     path: String?,
     enabled: Boolean,
     isMoving: Boolean,
     onMove: () -> Unit,
 ) {
-    Surface(tonalElevation = 3.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Button(
-                onClick = onMove,
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (isMoving) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    val n = count ?: 0
-                    Text(
-                        when {
-                            path == null -> stringResource(Res.string.organize_move_pick_destination)
-                            n == 0 -> stringResource(Res.string.organize_move_no_matches)
-                            else -> stringResource(Res.string.organize_move_action_count, n)
-                        }
-                    )
+    Button(
+        onClick = onMove,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (isMoving) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        } else {
+            val n = count ?: 0
+            Text(
+                when {
+                    path == null -> stringResource(Res.string.organize_move_pick_destination)
+                    n == 0 -> stringResource(Res.string.organize_move_no_matches)
+                    else -> stringResource(Res.string.organize_move_action_count, n)
                 }
-            }
+            )
         }
     }
 }

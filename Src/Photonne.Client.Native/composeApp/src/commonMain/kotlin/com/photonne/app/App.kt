@@ -557,6 +557,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesViewModel: com.photonne.app.ui.library.FavoritesViewModel = koinViewModel()
     val unsupportedFilesViewModel: com.photonne.app.ui.library.UnsupportedFilesViewModel = koinViewModel()
     val organizeInboxViewModel: com.photonne.app.ui.organize.OrganizeInboxViewModel = koinViewModel()
+    // Lo resuelve aquí (y no dentro de la pantalla) porque la rejilla de revisión
+    // se hospeda FUERA del MainScaffold y necesita el mismo estado.
+    val organizeRuleViewModel: com.photonne.app.ui.organize.OrganizeRuleViewModel = koinViewModel()
     val uploadViewModel: com.photonne.app.ui.upload.UploadViewModel = koinViewModel()
     val deviceBackupViewModel: com.photonne.app.ui.devicebackup.DeviceBackupViewModel = koinViewModel()
     val deviceBackupState by deviceBackupViewModel.state.collectAsState()
@@ -631,6 +634,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val favoritesState by favoritesViewModel.state.collectAsState()
     val unsupportedFilesState by unsupportedFilesViewModel.state.collectAsState()
     val organizeInboxState by organizeInboxViewModel.state.collectAsState()
+    val organizeRuleState by organizeRuleViewModel.state.collectAsState()
     val peopleState by peopleViewModel.state.collectAsState()
     val personDetailState by personDetailViewModel.state.collectAsState()
     val suggestionsState by personSuggestionsViewModel.state.collectAsState()
@@ -700,6 +704,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     var showMoveSelectedAssetsInbox by remember { mutableStateOf(false) }
     // Non-null while the inbox move "Revisar" grid is open: the chosen destination.
     var inboxReviewTarget by remember { mutableStateOf<String?>(null) }
+    // Resumen del reparto por año tras mover por condiciones: se confirma antes
+    // de volver a la bandeja.
+    var organizeRuleSummary by remember {
+        mutableStateOf<com.photonne.app.data.models.MoveOutcome?>(null)
+    }
     var showSearchFilters by remember { mutableStateOf(false) }
     var showAlbumsFilters by remember { mutableStateOf(false) }
     var showFoldersFilters by remember { mutableStateOf(false) }
@@ -708,6 +717,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateOf<com.photonne.app.data.models.FolderSummary?>(null)
     }
     var moreSubscreen by remember { mutableStateOf<MoreSubscreen?>(null) }
+    // Vuelta a la bandeja tras un movimiento por condiciones, con el contador y
+    // la rejilla al día.
+    val organizeRuleMoved = {
+        moreSubscreen = MoreSubscreen.OrganizeInbox
+        organizeInboxViewModel.refresh()
+        foldersViewModel.refreshOrganizeCount()
+    }
     var adminUserEditorId by remember { mutableStateOf<String?>(null) }
     var adminLibraryEditorId by remember { mutableStateOf<String?>(null) }
     var showUnarchiveAll by remember { mutableStateOf(false) }
@@ -771,6 +787,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             // Before every selection case: an open memory covers the screen, so
             // back closes what you're actually looking at, not what's underneath.
             memoryDetail != null -> { memoryDetail = null }
+            // Igual con la revisión previa a mover: tapa la pantalla entera (y no
+            // se cierra a media confirmación, que el movimiento es irreversible).
+            inboxReviewTarget != null ->
+                if (!organizeInboxState.isBulkMutating) inboxReviewTarget = null
+            organizeRuleState.reviewGroups != null ->
+                if (!organizeRuleState.isMoving) organizeRuleViewModel.closeReview()
             selectedTab == MainTab.Timeline &&
                 timelineState.isSelectionActive -> timelineViewModel.clearSelection()
             selectedTab == MainTab.Albums && selectedAlbum != null &&
@@ -2137,11 +2159,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onBack = { moreSubscreen = MoreSubscreen.OrganizeInbox },
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             destinations = foldersState.moveDestinations,
-                            onMoved = {
-                                moreSubscreen = MoreSubscreen.OrganizeInbox
-                                organizeInboxViewModel.refresh()
-                                foldersViewModel.refreshOrganizeCount()
-                            }
+                            viewModel = organizeRuleViewModel,
+                            reviewOpen = organizeRuleState.reviewGroups != null
                         )
                     MoreSubscreen.Utilities ->
                         com.photonne.app.ui.utilities.UtilitiesHubScreen(
@@ -3785,6 +3804,40 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     inboxReviewTarget = null
                     foldersViewModel.refreshOrganizeCount()
                 }
+            }
+        )
+    }
+
+    // Misma rejilla de revisión para el flujo por condiciones, hospedada también
+    // aquí FUERA del MainScaffold: dentro del contenido quedaba por debajo de la
+    // nav flotante y su botón de confirmar era inalcanzable.
+    if (moreSubscreen == MoreSubscreen.OrganizeRule) {
+        organizeRuleState.reviewGroups?.let { groups ->
+            com.photonne.app.ui.organize.MoveReviewScreen(
+                movedTotal = organizeRuleState.previewCount ?: groups.sumOf { it.count },
+                groups = groups,
+                baseUrl = apiBaseUrl,
+                isMoving = organizeRuleState.isMoving,
+                organizeByYear = organizeRuleState.organizeByYear,
+                onBack = organizeRuleViewModel::closeReview,
+                onConfirm = {
+                    organizeRuleViewModel.move { outcome ->
+                        // With a year split, confirm the distribution first; the
+                        // navigation back happens when the summary is dismissed.
+                        if (outcome.yearBreakdown.isNotEmpty()) organizeRuleSummary = outcome
+                        else organizeRuleMoved()
+                    }
+                }
+            )
+        }
+    }
+
+    organizeRuleSummary?.let { outcome ->
+        com.photonne.app.ui.organize.MoveSummaryDialog(
+            outcome = outcome,
+            onDismiss = {
+                organizeRuleSummary = null
+                organizeRuleMoved()
             }
         )
     }
