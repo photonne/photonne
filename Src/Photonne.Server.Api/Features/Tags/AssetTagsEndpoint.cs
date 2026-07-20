@@ -190,7 +190,13 @@ public class AssetTagsEndpoint : IEndpoint
 
         if (!string.IsNullOrWhiteSpace(normalizedQuery))
         {
-            tagsQuery = tagsQuery.Where(t => t.NormalizedName.Contains(normalizedQuery));
+            // NormalizedName ya viene en minúsculas, pero CON acentos: es la clave
+            // de identidad de la etiqueta (índice único) y no se toca. Los acentos
+            // se pliegan solo aquí, al buscar, para que "jose" saque "José" sin que
+            // las dos pasen a ser la misma etiqueta.
+            var pattern = SearchText.ContainsPattern(normalizedQuery);
+            tagsQuery = tagsQuery.Where(t =>
+                EF.Functions.ILike(SearchText.Unaccent(t.NormalizedName), pattern));
         }
 
         var tags = await tagsQuery

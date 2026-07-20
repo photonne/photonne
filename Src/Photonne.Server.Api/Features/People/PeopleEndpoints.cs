@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.FaceRecognition;
@@ -66,9 +67,10 @@ public class ListPeopleEndpoint : IEndpoint
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.Trim();
-            // EF.Functions.ILike is the case-insensitive Contains in Npgsql.
-            q = q.Where(p => p.Name != null && EF.Functions.ILike(p.Name, $"%{s}%"));
+            // Ignora mayúsculas Y acentos: "jose" tiene que encontrar a "José".
+            var pattern = SearchText.ContainsPattern(search);
+            q = q.Where(p => p.Name != null
+                && EF.Functions.ILike(SearchText.Unaccent(p.Name), pattern));
         }
 
         var total = await q.CountAsync(ct);

@@ -17,19 +17,26 @@ public static class AssetConditions
 {
     /// <summary>Free text over filename, path, caption, user-tag names, OCR
     /// text, and — when the term names an <see cref="AssetTagType"/> — that
-    /// structural tag. Mirrors /api/assets/search's <c>q</c>.</summary>
+    /// structural tag. Mirrors /api/assets/search's <c>q</c>.
+    ///
+    /// Ignora mayúsculas Y acentos: los dos lados de cada comparación pasan por el
+    /// mismo plegado (<see cref="SearchText"/>), así que "playa" encuentra
+    /// "PLAYA.jpg" y "jose" encuentra "José". Antes esto eran cuatro
+    /// <c>Contains</c> pelados, o sea un LIKE que SÍ distinguía mayúsculas,
+    /// mientras el OCR de la línea de al lado ya usaba ILIKE.</summary>
     public static Expression<Func<Asset, bool>> Text(string q)
     {
         var tagTypeFilter = Enum.TryParse<AssetTagType>(q, ignoreCase: true, out var matched)
             ? (AssetTagType?)matched
             : null;
+        var pattern = SearchText.ContainsPattern(q);
 
         return a =>
-            a.FileName.Contains(q) ||
-            a.FullPath.Contains(q) ||
-            (a.Caption != null && a.Caption.Contains(q)) ||
-            a.UserTags.Any(ut => ut.UserTag.Name.Contains(q)) ||
-            a.RecognizedTextLines.Any(t => EF.Functions.ILike(t.Text, "%" + q + "%")) ||
+            EF.Functions.ILike(SearchText.Unaccent(a.FileName), pattern) ||
+            EF.Functions.ILike(SearchText.Unaccent(a.FullPath), pattern) ||
+            (a.Caption != null && EF.Functions.ILike(SearchText.Unaccent(a.Caption), pattern)) ||
+            a.UserTags.Any(ut => EF.Functions.ILike(SearchText.Unaccent(ut.UserTag.Name), pattern)) ||
+            a.RecognizedTextLines.Any(t => EF.Functions.ILike(SearchText.Unaccent(t.Text), pattern)) ||
             (tagTypeFilter.HasValue && a.Tags.Any(t => t.TagType == tagTypeFilter.Value));
     }
 
@@ -89,27 +96,35 @@ public static class AssetConditions
         return predicate;
     }
 
-    /// <summary>Substring match on <see cref="Asset.FullPath"/> (search's <c>folder</c>).</summary>
-    public static Expression<Func<Asset, bool>> FullPathContains(string folder) =>
-        a => a.FullPath.Contains(folder);
+    /// <summary>Substring match on <see cref="Asset.FullPath"/> (search's <c>folder</c>),
+    /// ignorando mayúsculas y acentos como el resto del buscador.</summary>
+    public static Expression<Func<Asset, bool>> FullPathContains(string folder)
+    {
+        var pattern = SearchText.ContainsPattern(folder);
+        return a => EF.Functions.ILike(SearchText.Unaccent(a.FullPath), pattern);
+    }
 
     /// <summary>Asset lives directly in one of the given folders (already
     /// subtree-expanded by the caller for smart albums).</summary>
     public static Expression<Func<Asset, bool>> FolderIn(IReadOnlySet<Guid> folderIds) =>
         a => a.FolderId.HasValue && folderIds.Contains(a.FolderId.Value);
 
-    /// <summary>Has at least one detected object with the (case-insensitive) label.</summary>
+    /// <summary>Has at least one detected object with the label, ignorando
+    /// mayúsculas y acentos.</summary>
     public static Expression<Func<Asset, bool>> HasObject(string label)
     {
-        var normalized = label.Trim().ToLowerInvariant();
-        return a => a.DetectedObjects.Any(o => o.Label.ToLower() == normalized);
+        var normalized = SearchText.Fold(label);
+        return a => a.DetectedObjects.Any(o =>
+            SearchText.Unaccent(o.Label.ToLower()) == normalized);
     }
 
-    /// <summary>Has at least one scene classification with the (case-insensitive) label.</summary>
+    /// <summary>Has at least one scene classification with the label, ignorando
+    /// mayúsculas y acentos.</summary>
     public static Expression<Func<Asset, bool>> HasScene(string label)
     {
-        var normalized = label.Trim().ToLowerInvariant();
-        return a => a.ClassifiedScenes.Any(s => s.Label.ToLower() == normalized);
+        var normalized = SearchText.Fold(label);
+        return a => a.ClassifiedScenes.Any(s =>
+            SearchText.Unaccent(s.Label.ToLower()) == normalized);
     }
 
     /// <summary>
@@ -119,9 +134,10 @@ public static class AssetConditions
     public static Expression<Func<Asset, bool>> HasAnyObjectAbove(
         IReadOnlyList<string> labels, float minConfidence)
     {
-        var normalized = labels.Select(l => l.Trim().ToLowerInvariant()).ToList();
+        var normalized = labels.Select(SearchText.Fold).ToList();
         return a => a.DetectedObjects.Any(o =>
-            normalized.Contains(o.Label.ToLower()) && o.Confidence >= minConfidence);
+            normalized.Contains(SearchText.Unaccent(o.Label.ToLower()))
+            && o.Confidence >= minConfidence);
     }
 
     /// <summary>
@@ -138,9 +154,10 @@ public static class AssetConditions
     public static Expression<Func<Asset, bool>> HasAnySceneAbove(
         IReadOnlyList<string> labels, float minConfidence)
     {
-        var normalized = labels.Select(l => l.Trim().ToLowerInvariant()).ToList();
+        var normalized = labels.Select(SearchText.Fold).ToList();
         return a => a.ClassifiedScenes.Any(s =>
-            normalized.Contains(s.Label.ToLower()) && s.Confidence >= minConfidence);
+            normalized.Contains(SearchText.Unaccent(s.Label.ToLower()))
+            && s.Confidence >= minConfidence);
     }
 
     /// <summary>Has a manual user tag with the given id.</summary>
@@ -157,14 +174,24 @@ public static class AssetConditions
     public static Expression<Func<Asset, bool>> OfType(AssetType type) =>
         a => a.Type == type;
 
-    /// <summary>OCR full-text match (websearch tsquery, 'simple' config).</summary>
+    /// <summary>
+    /// OCR full-text match (websearch tsquery). Usa la configuración
+    /// <c>photonne_unaccent</c> — 'simple' con el diccionario unaccent delante —
+    /// para que el texto de dentro de la foto se busque sin acentos igual que todo
+    /// lo demás. La misma configuración a los dos lados o el término plegado no
+    /// casaría con un tsvector sin plegar.
+    /// </summary>
     public static Expression<Func<Asset, bool>> Ocr(string raw)
     {
         var query = raw.Trim();
         return a => a.RecognizedTextLines.Any(t =>
-            EF.Functions.ToTsVector("simple", t.Text)
-                .Matches(EF.Functions.WebSearchToTsQuery("simple", query)));
+            EF.Functions.ToTsVector(OcrTextSearchConfig, t.Text)
+                .Matches(EF.Functions.WebSearchToTsQuery(OcrTextSearchConfig, query)));
     }
+
+    /// <summary>Configuración de búsqueda de texto del OCR, creada por la
+    /// migración AddUnaccentSearch.</summary>
+    private const string OcrTextSearchConfig = "photonne_unaccent";
 
     /// <summary>
     /// Asset has a non-rejected face that <paramref name="identityUserId"/> has
