@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Interfaces;
 
 namespace Photonne.Server.Api.Features.Objects;
@@ -36,7 +37,9 @@ public class ObjectLabelsEndpoint : IEndpoint
         // ILIKE '%' matches every label, so we can pass a plain non-null
         // pattern even when the caller didn't supply q — keeps the SQL
         // shape uniform and the parameter list null-free.
-        var likePattern = string.IsNullOrWhiteSpace(q) ? "%" : "%" + q.Trim() + "%";
+        // El patrón va plegado (minúsculas + sin acentos) y la columna se pliega en
+        // el propio SQL, para que "cafe" saque "café".
+        var likePattern = string.IsNullOrWhiteSpace(q) ? "%" : SearchText.ContainsPattern(q);
 
         // EF Core 9 + Npgsql refuses to translate a GroupBy that follows
         // .Select(...).Distinct(), so we drop down to SqlQueryRaw to keep the
@@ -60,7 +63,7 @@ public class ObjectLabelsEndpoint : IEndpoint
                       AND a."DeletedAt" IS NULL
                       AND a."IsFileMissing" = FALSE
                       AND a."IsArchived" = FALSE
-                      AND o."Label" ILIKE {1}
+                      AND photonne_unaccent(o."Label") ILIKE {1}
                     GROUP BY o."Label", o."AssetId", a."CapturedAt"
                 ),
                 recent AS (

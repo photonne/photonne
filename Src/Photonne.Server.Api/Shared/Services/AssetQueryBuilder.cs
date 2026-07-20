@@ -104,10 +104,12 @@ public static class AssetQueryBuilder
         return query;
     }
 
+    /// <summary>Pliega las etiquetas pedidas igual que se pliegan las guardadas al
+    /// compararlas (minúsculas y sin acentos), ver <see cref="SearchText"/>.</summary>
     private static IEnumerable<string> Normalize(IReadOnlyList<string>? labels) =>
         labels is null
             ? Enumerable.Empty<string>()
             : labels.Where(l => !string.IsNullOrWhiteSpace(l))
-                    .Select(l => l.Trim().ToLowerInvariant())
+                    .Select(SearchText.Fold)
                     .Distinct();
 }

@@ -77,6 +77,17 @@ public class ApplicationDbContext : DbContext
     {
         modelBuilder.HasPostgresExtension("vector");
 
+        // Búsquedas que ignoran los acentos: toda comparación de texto escrito
+        // contra texto guardado pasa la columna por photonne_unaccent(), la
+        // función que crea la migración AddUnaccentSearch envolviendo la extensión
+        // unaccent de Postgres (y que se degrada a "devuelve el texto tal cual" si
+        // la instalación no puede crear extensiones). El equivalente en memoria,
+        // para el término escrito, es SearchText.Fold().
+        modelBuilder
+            .HasDbFunction(typeof(Services.SearchText)
+                .GetMethod(nameof(Services.SearchText.Unaccent), new[] { typeof(string) })!)
+            .HasName("photonne_unaccent");
+
         // Configure User entity
         modelBuilder.Entity<User>(entity =>
         {
