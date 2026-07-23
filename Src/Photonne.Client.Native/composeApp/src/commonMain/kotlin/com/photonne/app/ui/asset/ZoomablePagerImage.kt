@@ -44,13 +44,17 @@ fun ZoomablePagerImage(
     modifier: Modifier = Modifier,
     zoomEnabled: Boolean = true,
     contentScale: ContentScale = ContentScale.Fit,
-    onTap: (() -> Unit)? = null
+    onTap: (() -> Unit)? = null,
+    // Reports the live scale + pan so an overlay (e.g. a Live Photo clip drawn
+    // on top of the still) can mirror the exact same transform.
+    onTransformChange: ((scale: Float, offset: Offset) -> Unit)? = null
 ) {
     var scale by remember { mutableStateOf(MIN_SCALE) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var size by remember { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(scale) { onScaleChange(scale) }
+    LaunchedEffect(scale, offset) { onTransformChange?.invoke(scale, offset) }
 
     fun clampOffset(target: Offset, currentScale: Float): Offset {
         if (currentScale <= 1f || size == IntSize.Zero) return Offset.Zero
