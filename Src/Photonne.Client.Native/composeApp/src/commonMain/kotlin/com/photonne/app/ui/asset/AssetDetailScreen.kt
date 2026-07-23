@@ -1254,6 +1254,11 @@ private fun LivePhotoPage(
     var motionPlay by remember(item.id) { mutableStateOf(MotionPlay.None) }
     val playing = motionPlay != MotionPlay.None
 
+    // The zoom/pan the user applied to the still, mirrored onto the clip so
+    // playing a zoomed-in Live Photo doesn't snap back to 1x.
+    var motionScale by remember(item.id) { mutableStateOf(1f) }
+    var motionOffset by remember(item.id) { mutableStateOf(Offset.Zero) }
+
     // Stop playing the moment the page stops being the active/stable one.
     LaunchedEffect(enabled) {
         if (!enabled) motionPlay = MotionPlay.None
@@ -1265,35 +1270,46 @@ private fun LivePhotoPage(
         } else {
             "$baseUrl/api/assets/${item.id}/thumbnail?size=Large"
         }
+        // The press-and-hold detector lives in the SAME modifier chain as the
+        // zoom/pan/tap detectors (not a Box layered on top): overlapping a
+        // separate pointerInput Box was shadowing the still's zoom gestures, so
+        // pinch and double-tap did nothing on a Live Photo. Same node → all the
+        // detectors cooperate and the still zooms like any other photo.
+        val holdModifier = if (enabled) {
+            Modifier.pointerInput(item.id) {
+                detectLivePhotoHold(
+                    onHoldStart = { motionPlay = MotionPlay.Hold },
+                    // Only the hold clears itself on release; a tap-once
+                    // clip keeps playing until it reaches its end.
+                    onHoldEnd = { if (motionPlay == MotionPlay.Hold) motionPlay = MotionPlay.None }
+                )
+            }
+        } else {
+            Modifier
+        }
         ZoomablePagerImage(
             model = imageUrl,
             contentDescription = item.fileName,
             onScaleChange = onScaleChange,
             zoomEnabled = zoomEnabled,
             contentScale = contentScale,
-            onTap = onTap
+            onTap = onTap,
+            onTransformChange = { s, o -> motionScale = s; motionOffset = o },
+            modifier = holdModifier
         )
-
-        if (enabled) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .pointerInput(item.id) {
-                        detectLivePhotoHold(
-                            onHoldStart = { motionPlay = MotionPlay.Hold },
-                            // Only the hold clears itself on release; a tap-once
-                            // clip keeps playing until it reaches its end.
-                            onHoldEnd = { if (motionPlay == MotionPlay.Hold) motionPlay = MotionPlay.None }
-                        )
-                    }
-            )
-        }
 
         if (playing && enabled) {
             MotionPhotoPlayer(
                 url = "$baseUrl/api/assets/${item.id}/motion",
                 headers = authHeaders,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = motionScale
+                        scaleY = motionScale
+                        translationX = motionOffset.x
+                        translationY = motionOffset.y
+                    },
                 loop = motionPlay == MotionPlay.Hold,
                 onPlaybackEnded = { if (motionPlay == MotionPlay.TapOnce) motionPlay = MotionPlay.None }
             )
@@ -1387,6 +1403,10 @@ private const val LIVE_HOLD_THRESHOLD_MS = 180L
  * [LIVE_HOLD_THRESHOLD_MS], fires [onHoldStart], then [onHoldEnd] once the
  * finger lifts or the gesture cancels. Never consumes the pointer, so the
  * underlying zoom/pan/tap detectors keep working.
+ *
+ * A second finger means the user is pinching, not holding: the gesture is
+ * abandoned before it starts (and an already-running hold ends), otherwise
+ * settling two fingers on the photo would play the clip instead of zooming.
  */
 private suspend fun PointerInputScope.detectLivePhotoHold(
     onHoldStart: () -> Unit,
@@ -1406,6 +1426,7 @@ private suspend fun PointerInputScope.detectLivePhotoHold(
                 while (true) {
                     val event = awaitPointerEvent()
                     if (event.changes.any { !it.pressed }) return@withTimeoutOrNull false
+                    if (event.changes.count { it.pressed } > 1) return@withTimeoutOrNull false
                     totalPan += event.changes.sumOf { it.positionChange().getDistance().toDouble() }.toFloat()
                     if (totalPan > slop) return@withTimeoutOrNull false
                 }
@@ -1421,10 +1442,12 @@ private suspend fun PointerInputScope.detectLivePhotoHold(
                 return@awaitEachGesture
             }
 
-            // Hold active: wait for release/cancel.
+            // Hold active: wait for release/cancel, or bail if a second finger
+            // lands (the user switched to a pinch mid-hold).
             while (true) {
                 val event = awaitPointerEvent()
                 if (event.changes.all { !it.pressed }) break
+                if (event.changes.count { it.pressed } > 1) break
             }
         } finally {
             if (started) onHoldEnd()
