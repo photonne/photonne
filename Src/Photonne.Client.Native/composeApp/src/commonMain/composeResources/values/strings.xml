@@ -164,6 +164,7 @@
 
     <string name="more_settings_hint">Próximamente: ajustes, gestión de almacenamiento, atajos de carpetas y más.</string>
 
+    <string name="asset_action_download">Descargar</string>
     <string name="asset_action_archive">Archivar</string>
     <string name="asset_action_trash">Mover a la papelera</string>
     <string name="asset_action_edit_description">Editar descripción</string>
