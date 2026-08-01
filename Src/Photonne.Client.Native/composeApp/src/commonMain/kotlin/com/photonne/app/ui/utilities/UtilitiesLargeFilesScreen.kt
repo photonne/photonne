@@ -55,9 +55,9 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.utilities_large_files_count_label
 import com.photonne.app.resources.utilities_large_files_empty
 import com.photonne.app.resources.utilities_large_files_total
-import com.photonne.app.ui.admin.humanBytes
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.format.humanBytes
 
 @Composable
 fun UtilitiesLargeFilesScreen(

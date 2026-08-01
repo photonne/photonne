@@ -1,19 +1,7 @@
 package com.photonne.app.ui.admin
 
-/** 1024-based human-readable bytes; mirrors `humanReadableBytes` in the
- *  account-storage screen so totals format the same way across the app. */
-internal fun humanBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = arrayOf("KB", "MB", "GB", "TB")
-    var value = bytes.toDouble() / 1024.0
-    var unitIndex = 0
-    while (value >= 1024.0 && unitIndex < units.lastIndex) {
-        value /= 1024.0
-        unitIndex++
-    }
-    val formatted = ((value * 100).toLong()).toDouble() / 100.0
-    return "$formatted ${units[unitIndex]}"
-}
+// Byte formatting lives in ui/format/ByteFormat.kt — admin, utilities and
+// backup all report sizes and should format them identically.
 
 /** Strip the time portion from an ISO-8601 timestamp so dates render
  *  consistently regardless of whether the server includes fractional
