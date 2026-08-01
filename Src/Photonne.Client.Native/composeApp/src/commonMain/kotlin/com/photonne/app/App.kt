@@ -1754,6 +1754,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             selectedTab = MainTab.More
                             moreSubscreen = MoreSubscreen.Upload
                         },
+                        backupPendingCount = if (deviceBackupState.isBackupEnabled) {
+                            deviceBackupState.pendingEntries.size
+                        } else 0,
+                        onOpenBackup = {
+                            selectedTab = MainTab.More
+                            moreSubscreen = MoreSubscreen.DeviceBackup
+                        },
                         onJumpToDate = { showJumpToDate = true },
                         onOpenSearch = { selectedTab = MainTab.Search },
                         onChromeVisibleChange = { timelineChromeVisible = it },
@@ -1849,6 +1856,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onOpenMyLinks = { moreSubscreen = MoreSubscreen.MyLinks },
                         onOpenUnsupportedFiles = { moreSubscreen = MoreSubscreen.UnsupportedFiles },
                         onOpenDeviceBackup = { moreSubscreen = MoreSubscreen.DeviceBackup },
+                        backupPendingCount = if (deviceBackupState.isBackupEnabled) {
+                            deviceBackupState.pendingEntries.size
+                        } else 0,
                         onOpenNotifications = {
                             moreSubscreen = MoreSubscreen.Notifications
                         },

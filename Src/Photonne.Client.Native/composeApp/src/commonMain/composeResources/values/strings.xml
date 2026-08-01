@@ -896,6 +896,7 @@
     <string name="device_backup_action_sync">Sincronizar (%1$d)</string>
     <string name="device_backup_progress">%1$d / %2$d</string>
     <string name="device_backup_action_free_space">Liberar espacio (%1$d)</string>
+    <string name="device_backup_action_free_space_sized">Liberar %2$s (%1$d archivos)</string>
     <string name="device_backup_free_space_dialog_title">Liberar espacio</string>
     <string name="device_backup_free_space_dialog_message">Se borrarán del dispositivo %1$d archivos que ya están sincronizados en la app. Esta acción no se puede deshacer.</string>
     <string name="device_backup_free_space_confirm">Borrar del dispositivo</string>
@@ -931,6 +932,7 @@
     <string name="backup_status_verifying_progress">Verificando %1$d/%2$d nuevos…</string>
     <string name="backup_status_all_synced">Todo respaldado</string>
     <string name="backup_status_pending">%1$d pendientes de subir</string>
+    <string name="backup_status_pending_sized">%1$d pendientes · %2$s</string>
     <string name="backup_status_failures">%1$d con errores de subida</string>
     <string name="backup_status_syncing">Subiendo %1$d de %2$d…</string>
     <string name="backup_uploading_count">Subiendo %1$d archivos…</string>
@@ -963,6 +965,22 @@
     <string name="backup_notification_channel_progress">Copia en curso</string>
     <string name="backup_notification_progress_title">Subiendo copia de seguridad</string>
     <string name="backup_notification_progress_text">%1$d / %2$d archivos</string>
+    <string name="backup_notification_verifying_title">Comprobando qué falta por subir</string>
+    <string name="backup_status_ignored_row">%1$d omitidos</string>
+    <string name="backup_status_waiting_wifi_charging">Se subirá cuando haya Wi-Fi y el dispositivo esté cargando</string>
+    <string name="backup_status_waiting_wifi">Se subirá cuando haya Wi-Fi</string>
+    <string name="backup_status_waiting_charging">Se subirá cuando el dispositivo esté cargando</string>
+    <string name="backup_section_settings">Ajustes de la copia</string>
+    <string name="device_backup_free_space_done">Liberados %1$s (%2$d archivos)</string>
+    <string name="device_backup_free_space_partial">Liberados %1$s · No se pudieron borrar %2$d</string>
+    <string name="backup_error_refresh_folder">No se pudo actualizar la carpeta</string>
+    <string name="backup_error_verify">No se pudieron verificar los archivos pendientes</string>
+    <string name="backup_error_list_folder">No se pudo listar la carpeta</string>
+    <string name="backup_source_add">Añadir otra carpeta</string>
+    <string name="backup_source_remove">Quitar carpeta</string>
+    <string name="backup_timeline_pending_row">%1$d fotos por respaldar</string>
+    <string name="backup_status_stop">Detener</string>
+    <string name="backup_notifications_denied_hint">Sin permiso de notificaciones no verás el progreso ni el aviso si falla una copia en segundo plano. Puedes concederlo en los ajustes del sistema.</string>
 
     <!-- Background sync preferences -->
     <string name="background_sync_section">Sincronización en segundo plano</string>

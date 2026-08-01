@@ -57,15 +57,15 @@ object IosBackupBridge : KoinComponent {
             NSLog("[IosBackup] auto-backup disabled — skipping run")
             return true
         }
-        val folder = store.savedFolder()
-        if (folder == null) {
-            NSLog("[IosBackup] no saved folder — skipping run")
+        val folders = store.savedFolders()
+        if (folders.isEmpty()) {
+            NSLog("[IosBackup] no saved folders — skipping run")
             return true
         }
 
         val runner: BackupRunner = get()
         return try {
-            val outcome = runner.runBackup(folder)
+            val outcome = runner.runBackup(folders)
             NSLog(
                 "[IosBackup] done — total=${outcome.total} uploaded=${outcome.uploaded} " +
                     "skipped=${outcome.skipped} failed=${outcome.failed}"

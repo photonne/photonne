@@ -868,6 +868,7 @@
     <string name="device_backup_action_sync">Sync (%1$d)</string>
     <string name="device_backup_progress">%1$d / %2$d</string>
     <string name="device_backup_action_free_space">Free up space (%1$d)</string>
+    <string name="device_backup_action_free_space_sized">Free up %2$s (%1$d files)</string>
     <string name="device_backup_free_space_dialog_title">Free up space</string>
     <string name="device_backup_free_space_dialog_message">%1$d already-synced files will be removed from the device. This cannot be undone.</string>
     <string name="device_backup_free_space_confirm">Delete from device</string>
@@ -903,6 +904,7 @@
     <string name="backup_status_verifying_progress">Verifying %1$d/%2$d new…</string>
     <string name="backup_status_all_synced">Everything backed up</string>
     <string name="backup_status_pending">%1$d pending upload</string>
+    <string name="backup_status_pending_sized">%1$d pending · %2$s</string>
     <string name="backup_status_failures">%1$d with upload errors</string>
     <string name="backup_status_syncing">Uploading %1$d of %2$d…</string>
     <string name="backup_uploading_count">Uploading %1$d files…</string>
@@ -935,6 +937,22 @@
     <string name="backup_notification_channel_progress">Backup in progress</string>
     <string name="backup_notification_progress_title">Backing up</string>
     <string name="backup_notification_progress_text">%1$d / %2$d files</string>
+    <string name="backup_notification_verifying_title">Checking what still needs uploading</string>
+    <string name="backup_status_ignored_row">%1$d skipped</string>
+    <string name="backup_status_waiting_wifi_charging">Will upload once on Wi-Fi and charging</string>
+    <string name="backup_status_waiting_wifi">Will upload once on Wi-Fi</string>
+    <string name="backup_status_waiting_charging">Will upload once charging</string>
+    <string name="backup_section_settings">Backup settings</string>
+    <string name="device_backup_free_space_done">Freed %1$s (%2$d files)</string>
+    <string name="device_backup_free_space_partial">Freed %1$s · %2$d could not be deleted</string>
+    <string name="backup_error_refresh_folder">Could not refresh the folder</string>
+    <string name="backup_error_verify">Could not verify the pending files</string>
+    <string name="backup_error_list_folder">Could not list the folder</string>
+    <string name="backup_source_add">Add another folder</string>
+    <string name="backup_source_remove">Remove folder</string>
+    <string name="backup_timeline_pending_row">%1$d photos still to back up</string>
+    <string name="backup_status_stop">Stop</string>
+    <string name="backup_notifications_denied_hint">Without notification permission you won\'t see progress or a warning when a background backup fails. You can grant it in the system settings.</string>
 
     <!-- Background sync preferences -->
     <string name="background_sync_section">Background sync</string>

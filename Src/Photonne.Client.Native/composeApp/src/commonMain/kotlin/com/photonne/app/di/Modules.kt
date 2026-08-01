@@ -148,7 +148,14 @@ fun commonModule(config: PhotonneAppConfig) = module {
         )
     }
     single { com.photonne.app.data.devicebackup.EnrichmentRepository(get()) }
-    single { com.photonne.app.data.devicebackup.BackupRunner(repository = get(), gallery = get()) }
+    single { com.photonne.app.data.devicebackup.BackupProgressBus() }
+    single {
+        com.photonne.app.data.devicebackup.BackupRunner(
+            repository = get(),
+            gallery = get(),
+            progress = get()
+        )
+    }
     single { com.photonne.app.data.devicebackup.createBackgroundSyncScheduler() }
     single { ThemePreferenceStore(get()) }
     single { TimelineZoomStore(get()) }

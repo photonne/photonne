@@ -93,6 +93,32 @@ class BackupLedger(private val database: PhotonneDatabase) {
         }
     }
 
+    /** Forgets everything known about one folder (it stopped being backed up). */
+    fun clearFolder(folderUri: String) {
+        queries.clearFolder(folderUri)
+    }
+
+    // ─── Side-channel storage ────────────────────────────────────────────────
+    // Small key/value payloads that need to survive a process hop but are too
+    // big for WorkManager's ~10 KB input Data — chiefly the list of URIs a
+    // "sync these" request hands to the foreground worker.
+
+    fun putMeta(key: String, value: String) {
+        queries.upsertMeta(key, value)
+    }
+
+    fun meta(key: String): String? = queries.selectMeta(key).executeAsOneOrNull()
+
+    /** Reads and removes in one go, so a payload is consumed exactly once. */
+    fun takeMeta(key: String): String? {
+        var value: String? = null
+        queries.transaction {
+            value = queries.selectMeta(key).executeAsOneOrNull()
+            queries.deleteMeta(key)
+        }
+        return value
+    }
+
     // ─── Reads ───────────────────────────────────────────────────────────────
 
     fun entries(folderUri: String): Map<String, LedgerEntry> =

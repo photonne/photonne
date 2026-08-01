@@ -98,5 +98,8 @@ SELECT value FROM ledgerMeta WHERE key = ?;
 upsertMeta:
 INSERT OR REPLACE INTO ledgerMeta(key, value) VALUES (?, ?);
 
+deleteMeta:
+DELETE FROM ledgerMeta WHERE key = ?;
+
 clearMeta:
 DELETE FROM ledgerMeta;

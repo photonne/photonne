@@ -39,17 +39,36 @@ interface BackgroundSyncScheduler {
     fun requestImmediateSync(prefs: BackgroundSyncPreferences) {}
 
     /**
-     * Runs a full backup pass NOW as a prioritized, OS-foreground task that
-     * survives the app going to the background or the screen turning off, with
-     * a persistent progress notification. This is what the "Subir ahora" /
-     * "Subir todo" action triggers for big backlogs.
+     * Runs a backup pass NOW as a prioritized, OS-foreground task that survives
+     * the app going to the background or the screen turning off, with a
+     * persistent progress notification. This is what every explicit upload
+     * action triggers — "upload now" as well as "sync the selected files".
+     *
+     * [selectionKey] names a payload previously stashed in the ledger holding
+     * the URIs to upload; null means "the whole folder". It travels by key
+     * because WorkManager's input `Data` caps out around 10 KB, which a few
+     * hundred content URIs blow through.
      *
      * Returns `true` when the platform took ownership (Android, via a
      * foreground WorkManager worker). The default returns `false` so callers
      * on iOS/Desktop — which have no equivalent foreground primitive — fall
      * back to running the pass in-process.
      */
-    fun requestForegroundBackup(): Boolean = false
+    /**
+     * True when [requestForegroundBackup] is real on this platform. Callers
+     * check it BEFORE preparing a payload, so iOS/desktop don't leave an
+     * orphan selection row behind for a worker that will never read it.
+     */
+    val supportsForegroundBackup: Boolean get() = false
+
+    fun requestForegroundBackup(selectionKey: String? = null): Boolean = false
+
+    /**
+     * Stops the pass started by [requestForegroundBackup]. Cooperative: files
+     * already in flight finish, nothing new starts. No-op where the pass runs
+     * in-process (the caller cancels it directly instead).
+     */
+    fun cancelForegroundBackup() {}
 }
 
 /** Returns the platform's [BackgroundSyncScheduler]. Set up via DI. */

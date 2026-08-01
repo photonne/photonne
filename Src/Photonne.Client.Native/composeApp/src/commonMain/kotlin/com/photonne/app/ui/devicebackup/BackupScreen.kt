@@ -51,9 +51,9 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
 import com.photonne.app.data.devicebackup.rememberDeviceFolderPicker
+import com.photonne.app.data.devicebackup.rememberNotificationPermission
+import com.photonne.app.resources.backup_notifications_denied_hint
 import com.photonne.app.resources.Res
-import com.photonne.app.resources.backup_destination_default
-import com.photonne.app.resources.backup_destination_label
 import com.photonne.app.resources.background_sync_auto_hint
 import com.photonne.app.resources.background_sync_auto_label
 import com.photonne.app.resources.background_sync_charging_hint
@@ -70,8 +70,9 @@ import com.photonne.app.resources.backup_last_run_manual
 import com.photonne.app.resources.backup_status_all_synced
 import com.photonne.app.resources.backup_status_enrichment_row
 import com.photonne.app.resources.backup_status_failures
-import com.photonne.app.resources.backup_status_pending
+import com.photonne.app.resources.backup_status_pending_sized
 import com.photonne.app.resources.backup_status_recheck
+import com.photonne.app.resources.backup_status_stop
 import com.photonne.app.resources.backup_status_syncing
 import com.photonne.app.resources.backup_status_upload_now
 import com.photonne.app.resources.backup_status_verifying
@@ -83,38 +84,48 @@ import com.photonne.app.resources.backup_time_minutes
 import com.photonne.app.resources.backup_enabled_label
 import com.photonne.app.resources.backup_enabled_off
 import com.photonne.app.resources.backup_enabled_on
-import com.photonne.app.resources.backup_pending_count
-import com.photonne.app.resources.backup_pending_none
-import com.photonne.app.resources.backup_pending_title
 import com.photonne.app.resources.backup_pending_unknown
 import com.photonne.app.resources.backup_pending_view
-import com.photonne.app.resources.backup_section_destination
 import com.photonne.app.resources.backup_section_origin
 import com.photonne.app.resources.backup_source_label
 import com.photonne.app.resources.backup_source_none
 import com.photonne.app.resources.backup_source_pick
-import com.photonne.app.resources.device_backup_action_free_space
+import com.photonne.app.resources.device_backup_action_free_space_sized
 import com.photonne.app.resources.device_backup_free_space_cancel
 import com.photonne.app.resources.device_backup_free_space_confirm
 import com.photonne.app.resources.device_backup_free_space_dialog_message
 import com.photonne.app.resources.device_backup_free_space_dialog_title
-import com.photonne.app.resources.device_backup_free_space_in_progress
 import com.photonne.app.resources.device_backup_not_supported
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
+import com.photonne.app.ui.format.humanBytes
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.photonne.app.ui.main.LocalSnackbarController
+import com.photonne.app.resources.backup_section_settings
+import com.photonne.app.resources.backup_status_ignored_row
+import com.photonne.app.resources.backup_status_waiting_charging
+import com.photonne.app.resources.backup_status_waiting_wifi
+import com.photonne.app.resources.backup_status_waiting_wifi_charging
+import androidx.compose.foundation.lazy.items
+import com.photonne.app.resources.backup_source_add
+import com.photonne.app.resources.backup_source_remove
 
 /**
- * The Backup tab's landing screen: a single column of cards covering
- * the toggle, origin folder, destination, pending status and the
- * "free up space" action. The actual file gallery (the grid view) is
- * a sub-route invoked from the pending panel.
+ * The Backup tab's landing screen. Order matters here: the master switch, then
+ * the status card that answers "am I backed up?", then the source folder, and
+ * only then the collapsed tuning settings. It used to be the other way round,
+ * with the status buried under every toggle.
+ *
+ * The actual file gallery (the grid view) is a sub-route reached from the card.
  */
 @Composable
 fun BackupScreen(
@@ -139,7 +150,22 @@ fun BackupScreen(
         gallery = gallery,
         onPicked = viewModel::onFolderPicked
     )
+    // Android 13+ suppresses the worker's progress/failure notifications without
+    // this grant, so ask exactly when the user opts into backups.
+    val notifications = rememberNotificationPermission()
     var showFreeSpaceConfirm by remember { mutableStateOf(false) }
+    var settingsExpanded by rememberSaveable { mutableStateOf(false) }
+
+    // Feedback goes through the app-wide snackbar like everywhere else, instead
+    // of the loose lines of text this screen used to append to the list.
+    val snackbar = LocalSnackbarController.current
+    LaunchedEffect(state.statusMessage, state.error) {
+        val message = state.statusMessage ?: state.error?.userMessage
+        if (message != null) {
+            snackbar?.show(message)
+            viewModel.clearMessages()
+        }
+    }
 
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
@@ -173,7 +199,10 @@ fun BackupScreen(
         item("enable") {
             BackupToggleCard(
                 enabled = state.isBackupEnabled,
-                onChange = viewModel::setBackupEnabled
+                onChange = { enabled ->
+                    viewModel.setBackupEnabled(enabled)
+                    if (enabled) notifications.request()
+                }
             )
         }
 
@@ -188,122 +217,125 @@ fun BackupScreen(
             }
         }
 
+        // The answer to "am I backed up?" comes first. It used to sit at the
+        // bottom, below every setting — the one thing people open this screen
+        // for was the last thing they saw.
+        if (state.isBackupEnabled) {
+            item("status") {
+                BackupStatusCard(
+                    state = state,
+                    hasChecked = hasChecked,
+                    pendingCount = pendingCount,
+                    enrichmentCount = enrichmentState.totalAssets,
+                    onUploadNow = viewModel::syncAllPending,
+                    onOpenPending = onOpenPending,
+                    onOpenEnrichment = onOpenEnrichment,
+                    onRecheck = viewModel::refreshSyncStates,
+                    onStop = viewModel::stopCurrentPass,
+                    onFreeSpace = { showFreeSpaceConfirm = true }
+                )
+            }
+        }
+
         item("origin-header") { SectionHeader(stringResource(Res.string.backup_section_origin)) }
-        item("origin") {
+        // One row per folder: a phone's photos live in Camera, WhatsApp,
+        // Screenshots and Downloads at once, and picking a new one used to
+        // replace the previous.
+        items(state.folders, key = { "folder-${it.uri}" }) { folder ->
             SettingsRow(
                 icon = Icons.Filled.Folder,
                 label = stringResource(Res.string.backup_source_label),
-                value = state.folder?.displayName
-                    ?: stringResource(Res.string.backup_source_none),
-                actionLabel = if (state.folder == null)
+                value = folder.displayName,
+                actionLabel = null,
+                onClick = null,
+                trailing = {
+                    IconButton(onClick = { viewModel.removeFolder(folder.uri) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = stringResource(Res.string.backup_source_remove),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            )
+        }
+        item("origin-add") {
+            SettingsRow(
+                icon = Icons.Filled.Folder,
+                label = stringResource(Res.string.backup_section_origin),
+                value = stringResource(
+                    if (state.folders.isEmpty()) Res.string.backup_source_none
+                    else Res.string.backup_source_add
+                ),
+                actionLabel = if (state.folders.isEmpty())
                     stringResource(Res.string.backup_source_pick) else null,
                 onClick = pickFolder
             )
         }
 
-        item("destination-header") {
-            SectionHeader(stringResource(Res.string.backup_section_destination))
-        }
-        item("destination") {
-            SettingsRow(
-                icon = Icons.Outlined.CloudUpload,
-                label = stringResource(Res.string.backup_destination_label),
-                value = stringResource(Res.string.backup_destination_default),
-                actionLabel = null,
-                onClick = null
-            )
-        }
-
         if (state.isBackupEnabled) {
-            item("bg-header") {
-                SectionHeader(stringResource(Res.string.background_sync_section))
-            }
-            // Turbo lives above the auto-sync constraints because it tunes BOTH
-            // manual and background passes (it widens the upload fan-out), not
-            // just the scheduled ones.
-            item("turbo") {
-                ToggleRow(
-                    label = stringResource(Res.string.backup_turbo_label),
-                    hint = stringResource(Res.string.backup_turbo_hint),
-                    checked = state.backgroundSync.turbo,
-                    onChange = viewModel::setTurbo
+            // Collapsed by default: these are tuning knobs, not the daily
+            // question. The destination row that used to live here is gone —
+            // it was never tappable and always read "Photonne".
+            item("settings-header") {
+                CollapsibleHeader(
+                    title = stringResource(Res.string.backup_section_settings),
+                    expanded = settingsExpanded,
+                    onToggle = { settingsExpanded = !settingsExpanded }
                 )
             }
-            item("bg-auto") {
-                ToggleRow(
-                    label = stringResource(Res.string.background_sync_auto_label),
-                    hint = stringResource(Res.string.background_sync_auto_hint),
-                    checked = state.backgroundSync.enabled,
-                    onChange = viewModel::setAutoBackupEnabled
-                )
-            }
-            // Constraints only matter when auto-sync is on — hide them to
-            // avoid implying they affect manual syncs.
-            if (state.backgroundSync.enabled) {
-                item("bg-wifi") {
+            if (settingsExpanded) {
+                // Turbo comes first because it tunes BOTH manual and background
+                // passes (it widens the upload fan-out), not just scheduled ones.
+                item("turbo") {
                     ToggleRow(
-                        label = stringResource(Res.string.background_sync_wifi_label),
-                        hint = stringResource(Res.string.background_sync_wifi_hint),
-                        checked = state.backgroundSync.requireWifi,
-                        onChange = viewModel::setRequireWifi
+                        label = stringResource(Res.string.backup_turbo_label),
+                        hint = stringResource(Res.string.backup_turbo_hint),
+                        checked = state.backgroundSync.turbo,
+                        onChange = viewModel::setTurbo
                     )
                 }
-                item("bg-charging") {
+                item("bg-auto") {
                     ToggleRow(
-                        label = stringResource(Res.string.background_sync_charging_label),
-                        hint = stringResource(Res.string.background_sync_charging_hint),
-                        checked = state.backgroundSync.requireCharging,
-                        onChange = viewModel::setRequireCharging
+                        label = stringResource(Res.string.background_sync_auto_label),
+                        hint = stringResource(Res.string.background_sync_auto_hint),
+                        checked = state.backgroundSync.enabled,
+                        onChange = viewModel::setAutoBackupEnabled
                     )
+                }
+                if (state.backgroundSync.enabled && !notifications.isGranted) {
+                    item("bg-notifications") {
+                        Text(
+                            text = stringResource(Res.string.backup_notifications_denied_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                    }
+                }
+                // Constraints only matter when auto-sync is on — hide them to
+                // avoid implying they affect manual syncs.
+                if (state.backgroundSync.enabled) {
+                    item("bg-wifi") {
+                        ToggleRow(
+                            label = stringResource(Res.string.background_sync_wifi_label),
+                            hint = stringResource(Res.string.background_sync_wifi_hint),
+                            checked = state.backgroundSync.requireWifi,
+                            onChange = viewModel::setRequireWifi
+                        )
+                    }
+                    item("bg-charging") {
+                        ToggleRow(
+                            label = stringResource(Res.string.background_sync_charging_label),
+                            hint = stringResource(Res.string.background_sync_charging_hint),
+                            checked = state.backgroundSync.requireCharging,
+                            onChange = viewModel::setRequireCharging
+                        )
+                    }
                 }
             }
         }
 
-        item("pending-header") { SectionHeader(stringResource(Res.string.backup_pending_title)) }
-        item("pending") {
-            BackupStatusCard(
-                state = state,
-                hasChecked = hasChecked,
-                pendingCount = pendingCount,
-                enrichmentCount = enrichmentState.totalAssets,
-                onUploadNow = viewModel::syncAllPending,
-                onOpenPending = onOpenPending,
-                onOpenEnrichment = onOpenEnrichment,
-                onRecheck = viewModel::refreshSyncStates
-            )
-        }
-
-        if (syncedCount > 0) {
-            item("free-space") {
-                FreeSpaceRow(
-                    count = syncedCount,
-                    isFreeing = state.isFreeingSpace,
-                    enabled = !state.isSyncing && !state.isFreeingSpace,
-                    onClick = { showFreeSpaceConfirm = true }
-                )
-            }
-        }
-
-        state.statusMessage?.let { msg ->
-            item("status") {
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-        }
-        state.error?.userMessage?.let { msg ->
-            item("error") {
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-        }
     }
 
     if (showFreeSpaceConfirm) {
@@ -371,9 +403,11 @@ private fun BackupStatusCard(
     onUploadNow: () -> Unit,
     onOpenPending: () -> Unit,
     onOpenEnrichment: () -> Unit,
-    onRecheck: () -> Unit
+    onRecheck: () -> Unit,
+    onStop: () -> Unit,
+    onFreeSpace: () -> Unit
 ) {
-    val hasFolder = state.folder != null
+    val hasFolder = state.folders.isNotEmpty()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -399,8 +433,10 @@ private fun BackupStatusCard(
                         MaterialTheme.colorScheme.error
                     pendingCount > 0 -> Icons.Filled.CloudUpload to
                         MaterialTheme.colorScheme.tertiary
-                    hasChecked -> Icons.Filled.CheckCircle to
+                    hasChecked && state.ignoredCount == 0 -> Icons.Filled.CheckCircle to
                         MaterialTheme.colorScheme.primary
+                    hasChecked -> Icons.Filled.CloudUpload to
+                        MaterialTheme.colorScheme.tertiary
                     else -> Icons.Outlined.CloudUpload to
                         MaterialTheme.colorScheme.onSurfaceVariant
                 }
@@ -432,9 +468,18 @@ private fun BackupStatusCard(
                                 Res.string.backup_status_failures, state.failedCount
                             )
                             pendingCount > 0 -> stringResource(
-                                Res.string.backup_status_pending, pendingCount
+                                Res.string.backup_status_pending_sized,
+                                pendingCount,
+                                humanBytes(state.pendingBytes)
                             )
-                            hasChecked -> stringResource(Res.string.backup_status_all_synced)
+                            // "All backed up" is only true if nothing was
+                            // skipped: saying it with 300 skipped files sitting
+                            // there is the one lie this screen must never tell.
+                            hasChecked && state.ignoredCount == 0 ->
+                                stringResource(Res.string.backup_status_all_synced)
+                            hasChecked -> stringResource(
+                                Res.string.backup_status_ignored_row, state.ignoredCount
+                            )
                             else -> stringResource(Res.string.backup_pending_unknown)
                         },
                         style = MaterialTheme.typography.titleMedium,
@@ -476,10 +521,10 @@ private fun BackupStatusCard(
             if (state.isCheckingHashes || state.isSyncing) {
                 Spacer(Modifier.size(12.dp))
                 val progress = when {
-                    state.isSyncing && (state.syncProgress?.total ?: 0) > 0 -> {
-                        val p = state.syncProgress!!
-                        (p.completed + p.skipped + p.failed).toFloat() / p.total
-                    }
+                    // Byte-weighted while uploading, so the bar doesn't stall on
+                    // a single big video and then leap through 300 photos.
+                    state.isSyncing && state.syncProgress != null ->
+                        state.syncProgress.fraction
                     state.isCheckingHashes && (state.hashProgress?.hashTotal ?: 0) > 0 ->
                         state.hashProgress!!.hashedCount.toFloat() / state.hashProgress!!.hashTotal
                     else -> null
@@ -492,6 +537,45 @@ private fun BackupStatusCard(
                 } else {
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().height(4.dp)
+                    )
+                }
+            }
+
+            // ── Why nothing is happening right now ──────────────────────
+            // Auto-sync defaults to Wi-Fi AND charging, so an unplugged phone
+            // simply never syncs. The screen used to say nothing about it.
+            val waitingReason = waitingReasonLabel(state, pendingCount)
+            if (waitingReason != null) {
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    text = waitingReason,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // ── Skipped files (secondary) ───────────────────────────────
+            // Only when something else already owns the headline; otherwise
+            // the headline itself reports them.
+            if (state.ignoredCount > 0 && (pendingCount > 0 || state.failedCount > 0)) {
+                Spacer(Modifier.size(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenPending),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(
+                            Res.string.backup_status_ignored_row, state.ignoredCount
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -535,7 +619,17 @@ private fun BackupStatusCard(
             if (hasFolder) {
                 Spacer(Modifier.size(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (pendingCount > 0 && !state.isSyncing) {
+                    // A running pass can always be stopped — verification of a
+                    // huge folder and a multi-gigabyte batch alike used to be
+                    // unstoppable short of killing the app.
+                    if (state.canStopCurrentPass) {
+                        OutlinedButton(
+                            onClick = onStop,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.backup_status_stop))
+                        }
+                    } else if (pendingCount > 0 && !state.isSyncing && !state.isCheckingHashes) {
                         Button(
                             onClick = onUploadNow,
                             modifier = Modifier.fillMaxWidth()
@@ -549,9 +643,86 @@ private fun BackupStatusCard(
                     ) {
                         Text(stringResource(Res.string.backup_pending_view))
                     }
+                    // Reclaiming space belongs with the backup verdict that
+                    // makes it safe, not as a loose destructive row at the very
+                    // bottom of the screen.
+                    if (state.syncedCount > 0) {
+                        TextButton(
+                            onClick = onFreeSpace,
+                            enabled = !state.isSyncing && !state.isFreeingSpace,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text(
+                                text = stringResource(
+                                    Res.string.device_backup_action_free_space_sized,
+                                    state.syncedCount,
+                                    humanBytes(state.syncedBytes)
+                                ),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    if (state.isFreeingSpace) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(2.dp)
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * Explains why a pending backlog isn't moving: auto-sync is on but its
+ * constraints (Wi-Fi, charging) aren't met yet. Null when there's nothing
+ * pending, a pass is already running, or auto-sync is off — in that last case
+ * nothing is waiting, the user just has to press the button.
+ */
+@Composable
+private fun waitingReasonLabel(state: DeviceBackupUiState, pendingCount: Int): String? {
+    if (pendingCount == 0) return null
+    if (state.isSyncing || state.isCheckingHashes) return null
+    val prefs = state.backgroundSync
+    if (!prefs.enabled) return null
+    return when {
+        prefs.requireWifi && prefs.requireCharging ->
+            stringResource(Res.string.backup_status_waiting_wifi_charging)
+        prefs.requireWifi -> stringResource(Res.string.backup_status_waiting_wifi)
+        prefs.requireCharging -> stringResource(Res.string.backup_status_waiting_charging)
+        else -> null
+    }
+}
+
+/** Section header that folds its block away. Backup settings start collapsed. */
+@Composable
+private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -654,7 +825,8 @@ private fun SettingsRow(
     label: String,
     value: String,
     actionLabel: String?,
-    onClick: (() -> Unit)?
+    onClick: (() -> Unit)?,
+    trailing: @Composable (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -688,63 +860,12 @@ private fun SettingsRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            if (onClick != null) {
-                Icon(
+            when {
+                trailing != null -> trailing()
+                onClick != null -> Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FreeSpaceRow(
-    count: Int,
-    isFreeing: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onClick,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = enabled
-            ) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    text = stringResource(Res.string.device_backup_action_free_space, count),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            if (isFreeing) {
-                Spacer(Modifier.size(8.dp))
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(2.dp)
-                )
-                Text(
-                    text = stringResource(Res.string.device_backup_free_space_in_progress),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

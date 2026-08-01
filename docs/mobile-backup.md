@@ -40,6 +40,41 @@ raro no deben tirar abajo la copia de seguridad de tu boda.
 | iOS | `BGTaskScheduler` (`BGProcessingTaskRequest`), identificador `com.photonne.app.backup` | Charging (`requiresExternalPower`), red disponible. Wi-Fi-only se aplica client-side en el handler via `NWPathMonitor` |
 | Desktop | No-op | — |
 
+Además del despertar programado, cualquier subida explícita ("Subir ahora",
+"Sincronizar N seleccionadas", reintentar un fallo) se ejecuta en Android como
+**foreground worker** (`photonne.backup.foreground`), de modo que sobrevive a
+que el usuario cierre la app. La selección concreta no viaja en el `Data` de
+WorkManager (tope ~10 KB) sino en una fila de `ledgerMeta`, y el worker la
+consume una sola vez. En iOS/desktop la pasada sigue en proceso, envuelta en
+`beginBackgroundTask` para ganar margen al pasar a segundo plano.
+
+### Progreso y cancelación
+
+Toda pasada — en proceso, foreground worker o despertar programado — publica su
+estado en `BackupProgressBus`, un `StateFlow` singleton del proceso. La UI lo
+funde en su estado, así que el progreso se ve en pantalla aunque mande el
+worker, y la notificación de Android se alimenta del mismo sitio. "Detener" es
+cooperativo: cancela el one-shot de WorkManager (nunca el periódico, que
+perdería el horario) y los archivos ya en vuelo terminan.
+
+`POST_NOTIFICATIONS` se pide en runtime al activar la copia. Sin ese permiso
+Android 13+ suprime la notificación del foreground service; la pasada sigue
+corriendo y el progreso se ve igualmente en la app.
+
+### Coste de las pasadas
+
+La verificación es incremental (ledger SQLDelight: sólo se hashea lo nuevo o
+modificado). El barrido completo contra el servidor —que es lo que detecta
+borrados remotos y subidas desde otros clientes— cuesta una petición por cada
+500 checksums, así que en las pasadas programadas se hace **una vez al día**
+(marca `lastFullReconcileMillis` en `ledgerMeta`); el resto de despertares sólo
+preguntan por los archivos aún sin veredicto. Cualquier pasada lanzada por el
+usuario hace siempre el barrido completo.
+
+Los fallos permanentes (cuota, tamaño, 403) se excluyen de las pasadas
+automáticas: seguían reencolándose cada 15 minutos para fallar igual. Siguen
+visibles y reintentables a mano.
+
 El handler iOS está registrado en `iosApp/iosApp/AppDelegate.swift` y vive sólo mientras el `BGTask` está activo (deadline de ~30s para `BGAppRefresh`, varios minutos para `BGProcessing`). Si la app es matada por el OS mid-backup, el siguiente despertar retoma desde donde quedó gracias a la dedup del servidor por checksum.
 
 ### Cómo identificarse el dispositivo
@@ -66,7 +101,10 @@ tests unitarios en `Tests/.../Services/DeviceFolderSanitizerTests.cs`.
 
 ### Cliente nativo (Android/iOS)
 
-1. El usuario abre "Backup" en la app, selecciona la carpeta del dispositivo.
+1. El usuario abre "Backup" en la app y añade **una o varias** carpetas del
+   dispositivo (Cámara, WhatsApp, Screenshots…). Se guardan en
+   `device_backup.folders`; los instaladores anteriores a multi-carpeta migran
+   su carpeta única automáticamente la primera vez que se lee la preferencia.
 2. Para cada media seleccionada, `DeviceBackupRepository.upload()`:
    - Lee los bytes locales.
    - Llama a `uploads.upload(..., destination = "mobile-backup", deviceName = currentDeviceName())`.

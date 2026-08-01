@@ -39,23 +39,25 @@ class DeviceBackupRepository(
 
     val isSupported: Boolean get() = gallery.isSupported
 
-    fun savedFolder(): DeviceFolderRef? = stateStore.savedFolder()
+    fun savedFolders(): List<DeviceFolderRef> = stateStore.savedFolders()
 
     fun rememberFolder(folder: DeviceFolderRef) {
-        stateStore.saveFolder(folder)
+        stateStore.addFolder(folder)
     }
 
-    fun forgetFolder() {
-        stateStore.clearFolder()
+    /** Stops backing up one folder. Its ledger rows go too — otherwise a later
+     *  re-add would trust verdicts computed while it wasn't being watched. */
+    fun forgetFolder(folderUri: String) {
+        stateStore.removeFolder(folderUri)
+        ledger.clearFolder(folderUri)
     }
 
-    /** Last scanned media for the saved folder, persisted so the timeline can
-     *  show device-only photos instantly on launch before the fresh re-scan
-     *  completes. Empty if nothing cached or the saved folder changed. */
-    fun cachedMedia(): List<DeviceMedia> {
-        val folder = savedFolder() ?: return emptyList()
-        return stateStore.cachedMedia(folder.uri)
-    }
+    /** Last scanned media per saved folder, persisted so the timeline can show
+     *  device-only photos instantly on launch before the fresh re-scan
+     *  completes. Empty for folders never scanned. */
+    fun cachedMedia(): Map<DeviceFolderRef, List<DeviceMedia>> =
+        savedFolders().associateWith { stateStore.cachedMedia(it.uri) }
+            .filterValues { it.isNotEmpty() }
 
     fun saveCachedMedia(folderUri: String, media: List<DeviceMedia>) {
         stateStore.saveCachedMedia(folderUri, media)
@@ -119,8 +121,13 @@ class DeviceBackupRepository(
 
     /** Last persisted verdict per uri — instant, no hashing, no network.
      *  Lets the UI seed sync badges the moment a folder scan completes. */
-    fun syncStatesFor(folder: DeviceFolderRef): Map<String, DeviceMediaSyncState> =
-        ledger.entries(folder.uri).mapValues { (_, entry) -> entry.toSyncState() }
+    fun syncStatesFor(folderUri: String): Map<String, DeviceMediaSyncState> =
+        ledger.entries(folderUri).mapValues { (_, entry) -> entry.toSyncState() }
+
+    /** Same, merged across every backed-up folder — URIs are unique per file,
+     *  so the union needs no disambiguation. */
+    fun syncStatesFor(folders: List<DeviceFolderRef>): Map<String, DeviceMediaSyncState> =
+        folders.fold(emptyMap()) { acc, folder -> acc + syncStatesFor(folder.uri) }
 
     /**
      * Brings the ledger up to date against a fresh [scanned] folder listing:
@@ -141,7 +148,8 @@ class DeviceBackupRepository(
         folder: DeviceFolderRef,
         scanned: List<DeviceMedia>,
         onProgress: ((VerificationProgress) -> Unit)? = null,
-        shouldContinue: () -> Boolean = { true }
+        shouldContinue: () -> Boolean = { true },
+        fullReconcile: Boolean = true
     ): Map<String, DeviceMediaSyncState> {
         val entries = ledger.reconcile(folder.uri, scanned).toMutableMap()
         val mediaByUri = scanned.associateBy { it.uri }
@@ -209,6 +217,13 @@ class DeviceBackupRepository(
             var bulkSupported = true
             val hashedEntries = entries.values.filter {
                 it.sha256 != null && it.state != LedgerState.Ignored
+            }.filter {
+                // A full reconcile re-asks about every file, which is how we
+                // notice server-side deletions and uploads from other clients.
+                // It's also 40 round-trips for a 20k library, so a scheduled
+                // wake only re-asks about files without a verdict yet and
+                // leaves the sweep to the once-a-day full pass.
+                fullReconcile || it.state == LedgerState.Unknown
             }
             val byChecksum = hashedEntries.groupBy { it.sha256!! }
             byChecksum.keys.chunked(CHECKSUM_BATCH).forEach { batch ->
@@ -284,36 +299,60 @@ class DeviceBackupRepository(
         return results
     }
 
+    /**
+     * Parks [uris] where the foreground worker can pick them up, returning the
+     * key to hand it. Goes through the ledger rather than WorkManager's input
+     * `Data` because that caps out around 10 KB — a few hundred content URIs
+     * already exceed it.
+     */
+    /**
+     * True when the next pass should re-ask the server about every known
+     * checksum rather than only the unverified ones. Consuming it stamps
+     * "now", so the expensive sweep happens about once a day instead of on
+     * every 15-minute wake.
+     */
+    fun consumeFullReconcileDue(nowMillis: Long): Boolean {
+        val last = ledger.meta(RECONCILE_META_KEY)?.toLongOrNull() ?: 0L
+        if (nowMillis - last < FULL_RECONCILE_INTERVAL_MILLIS) return false
+        ledger.putMeta(RECONCILE_META_KEY, nowMillis.toString())
+        return true
+    }
+
+    fun stashSelection(uris: Collection<String>): String {
+        ledger.putMeta(SELECTION_META_KEY, uris.joinToString("\n"))
+        return SELECTION_META_KEY
+    }
+
     /** Records a finished upload so the verdict survives restarts. */
-    fun markUploaded(folder: DeviceFolderRef, uri: String, assetId: String) {
-        ledger.markUploaded(folder.uri, uri, assetId)
+    fun markUploaded(folderUri: String, uri: String, assetId: String) {
+        ledger.markUploaded(folderUri, uri, assetId)
     }
 
     /** Records a failed upload so the failure is visible after restart too. */
     fun markUploadFailed(
-        folder: DeviceFolderRef,
+        folderUri: String,
         uri: String,
         reason: UploadFailureReason,
         detail: String?
     ) {
-        ledger.markUploadFailed(folder.uri, uri, reason, detail)
+        ledger.markUploadFailed(folderUri, uri, reason, detail)
     }
 
     /** User chose to skip this file — it stops counting as pending and is never
      *  re-queued or re-verified until [unignore] puts it back in the pipeline. */
-    fun markIgnored(folder: DeviceFolderRef, uri: String) {
-        ledger.markIgnored(folder.uri, uri)
+    fun markIgnored(folderUri: String, uri: String) {
+        ledger.markIgnored(folderUri, uri)
     }
 
     /** Bulk skip: every currently-failed file in [folder] becomes ignored. */
-    fun ignoreFailed(folder: DeviceFolderRef) {
-        ledger.ignoreFailed(folder.uri)
+    fun ignoreFailed(folderUri: String) {
+        ledger.ignoreFailed(folderUri)
     }
 
     /** Reverses [markIgnored]: the file returns to UNKNOWN so the next
      *  verification re-hashes and re-checks it from scratch. */
-    fun unignore(folder: DeviceFolderRef, uri: String) {
-        ledger.unignore(folder.uri, uri)
+    fun unignore(folderUri: String, uri: String) {
+        ledger.unignore(folderUri, uri)
     }
 
     // ─── Last completed pass ─────────────────────────────────────────────────
@@ -377,6 +416,14 @@ class DeviceBackupRepository(
 
     companion object {
         const val MOBILE_BACKUP_DESTINATION = "mobile-backup"
+
+        // Single slot: only one foreground pass runs at a time (the worker is
+        // enqueued as unique work), and the worker consumes the row on read.
+        const val SELECTION_META_KEY = "foregroundSelection"
+
+        // When the last full server-wide reconcile ran, and how often it should.
+        const val RECONCILE_META_KEY = "lastFullReconcileMillis"
+        const val FULL_RECONCILE_INTERVAL_MILLIS = 24L * 60 * 60 * 1000
         const val DEFAULT_MAX_ATTEMPTS = 3
 
         // Server caps /check-checksums at 1000 hashes per request; stay under.

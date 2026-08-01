@@ -18,18 +18,42 @@ class DeviceBackupStateStore(private val settings: Settings) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun savedFolder(): DeviceFolderRef? {
-        if (!settings.hasKey(KEY_FOLDER)) return null
-        val raw = settings.getString(KEY_FOLDER, "")
-        if (raw.isEmpty()) return null
-        return runCatching { json.decodeFromString<DeviceFolderRef>(raw) }.getOrNull()
+    /**
+     * Every folder being backed up. Reading migrates the pre-multi-folder
+     * single-folder key on first access, so an existing install keeps backing
+     * up exactly what it was backing up before.
+     */
+    fun savedFolders(): List<DeviceFolderRef> {
+        settings.getStringOrNull(KEY_FOLDERS)?.let { raw ->
+            return runCatching { json.decodeFromString<List<DeviceFolderRef>>(raw) }
+                .getOrDefault(emptyList())
+        }
+        val legacy = settings.getStringOrNull(KEY_FOLDER)
+            ?.let { runCatching { json.decodeFromString<DeviceFolderRef>(it) }.getOrNull() }
+            ?: return emptyList()
+        saveFolders(listOf(legacy))
+        settings.remove(KEY_FOLDER)
+        return listOf(legacy)
     }
 
-    fun saveFolder(folder: DeviceFolderRef) {
-        settings.putString(KEY_FOLDER, json.encodeToString(folder))
+    fun saveFolders(folders: List<DeviceFolderRef>) {
+        settings.putString(KEY_FOLDERS, json.encodeToString(folders))
     }
 
-    fun clearFolder() {
+    /** Adds a folder, ignoring a re-pick of one already in the list. */
+    fun addFolder(folder: DeviceFolderRef) {
+        val current = savedFolders()
+        if (current.any { it.uri == folder.uri }) return
+        saveFolders(current + folder)
+    }
+
+    fun removeFolder(folderUri: String) {
+        saveFolders(savedFolders().filterNot { it.uri == folderUri })
+        clearCachedMedia(folderUri)
+    }
+
+    fun clearFolders() {
+        settings.remove(KEY_FOLDERS)
         settings.remove(KEY_FOLDER)
         clearCachedMedia()
     }
@@ -42,19 +66,29 @@ class DeviceBackupStateStore(private val settings: Settings) {
     // tagged with the folder URI so a stale scan from a different folder is
     // never served.
 
-    fun cachedMedia(folderUri: String): List<DeviceMedia> {
-        val raw = settings.getStringOrNull(KEY_MEDIA_CACHE) ?: return emptyList()
-        val cached = runCatching { json.decodeFromString<CachedMedia>(raw) }.getOrNull()
-            ?: return emptyList()
-        return if (cached.folderUri == folderUri) cached.media else emptyList()
-    }
+    fun cachedMedia(folderUri: String): List<DeviceMedia> = readCache()[folderUri].orEmpty()
 
     fun saveCachedMedia(folderUri: String, media: List<DeviceMedia>) {
-        settings.putString(KEY_MEDIA_CACHE, json.encodeToString(CachedMedia(folderUri, media)))
+        writeCache(readCache() + (folderUri to media))
     }
 
     fun clearCachedMedia() {
         settings.remove(KEY_MEDIA_CACHE)
+    }
+
+    /** Drops one folder's cached scan, leaving the others alone. */
+    fun clearCachedMedia(folderUri: String) {
+        writeCache(readCache() - folderUri)
+    }
+
+    private fun readCache(): Map<String, List<DeviceMedia>> {
+        val raw = settings.getStringOrNull(KEY_MEDIA_CACHE) ?: return emptyMap()
+        return runCatching { json.decodeFromString<CachedMedia>(raw).folders }
+            .getOrDefault(emptyMap())
+    }
+
+    private fun writeCache(folders: Map<String, List<DeviceMedia>>) {
+        settings.putString(KEY_MEDIA_CACHE, json.encodeToString(CachedMedia(folders)))
     }
 
     fun isBackupEnabled(): Boolean = settings.getBoolean(KEY_BACKUP_ENABLED, false)
@@ -111,7 +145,9 @@ class DeviceBackupStateStore(private val settings: Settings) {
     }
 
     private companion object {
+        /** Pre-multi-folder single folder; read once, then migrated away. */
         const val KEY_FOLDER = "device_backup.folder"
+        const val KEY_FOLDERS = "device_backup.folders"
         const val KEY_MEDIA_CACHE = "device_backup.media_cache"
         const val KEY_BACKUP_ENABLED = "device_backup.backup_enabled"
         const val KEY_AUTO_BACKUP = "device_backup.auto_enabled"
@@ -133,12 +169,11 @@ data class LastBackupRun(
     val background: Boolean
 )
 
-/** Persisted device-scan cache: the media list tagged with the folder it
- *  came from, so a scan from a different folder is never served stale. */
+/** Persisted device-scan cache, one media list per folder URI, so a scan from
+ *  a folder that's no longer backed up is never served stale. */
 @Serializable
 private data class CachedMedia(
-    val folderUri: String,
-    val media: List<DeviceMedia>
+    val folders: Map<String, List<DeviceMedia>> = emptyMap()
 )
 
 /** Immutable snapshot of the user's background-sync configuration. */
