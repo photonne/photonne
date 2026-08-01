@@ -66,6 +66,7 @@ import androidx.compose.material.icons.outlined.Iso
 import androidx.compose.material.icons.outlined.ShutterSpeed
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -144,6 +145,7 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.add_to_album_title
 import com.photonne.app.resources.asset_action_archive
+import com.photonne.app.resources.asset_action_download
 import com.photonne.app.resources.asset_action_edit_date
 import com.photonne.app.resources.asset_action_edit_description
 import com.photonne.app.resources.asset_action_faces
@@ -197,6 +199,7 @@ fun AssetDetailScreen(
     onPageChanged: (assetId: String) -> Unit = {},
     onOpenAsset: (TimelineItem) -> Unit = {},
     onShare: (TimelineItem) -> Unit = {},
+    onDownload: (TimelineItem) -> Unit = {},
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
@@ -758,6 +761,11 @@ fun AssetDetailScreen(
                                     onDismissRequest = { showOverflow = false }
                                 ) {
                                     DropdownMenuItem(
+                                        text = { Text(stringResource(Res.string.asset_action_download)) },
+                                        leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
+                                        onClick = { showOverflow = false; onDownload(currentItem) }
+                                    )
+                                    DropdownMenuItem(
                                         text = { Text(stringResource(Res.string.asset_action_edit_description)) },
                                         leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                                         onClick = { showOverflow = false; showEditDescription = true }
@@ -839,6 +847,7 @@ fun AssetDetailScreen(
                             },
                             onAddToAlbum = { onAddToAlbum(currentItem) },
                             onShare = { onShare(currentItem) },
+                            onDownload = { onDownload(currentItem) },
                             onShowInfo = {
                                 coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
                             },
@@ -2469,6 +2478,7 @@ private fun AssetActionsBottomBar(
     onToggleFavorite: () -> Unit,
     onAddToAlbum: () -> Unit,
     onShare: () -> Unit,
+    onDownload: () -> Unit,
     onShowInfo: () -> Unit,
     onTrashRequest: () -> Unit,
     onEditDescription: () -> Unit,
@@ -2567,6 +2577,14 @@ private fun AssetActionsBottomBar(
                             onClick = {
                                 onShowOverflowChange(false)
                                 onAddToAlbum()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.asset_action_download)) },
+                            leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
+                            onClick = {
+                                onShowOverflowChange(false)
+                                onDownload()
                             }
                         )
                         DropdownMenuItem(

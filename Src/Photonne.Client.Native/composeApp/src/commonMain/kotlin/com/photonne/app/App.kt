@@ -1648,6 +1648,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             actionsViewModel.dismissMessage()
         }
     }
+    // El fallo iba por el mismo canal: sin esto una descarga o un compartir que
+    // revientan no dicen nada (el visor no pinta el estado del VM de acciones).
+    LaunchedEffect(actionsState.error) {
+        actionsState.error?.let { error ->
+            snackbarController.show(error.userMessage)
+            actionsViewModel.dismissMessage()
+        }
+    }
 
     SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(
@@ -3068,6 +3076,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             showAssetFacesSheet = true
                         },
                         onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
+                        onDownload = { item -> actionsViewModel.download(listOf(item.id)) },
                         onOpenAsset = { item ->
                             // Open a related asset as its own single-item viewer;
                             // key(displayCtx) forces a fresh screen + detail load.
