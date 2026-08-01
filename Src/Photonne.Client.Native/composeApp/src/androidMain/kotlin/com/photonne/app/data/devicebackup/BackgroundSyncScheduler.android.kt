@@ -94,13 +94,23 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
         Log.i(TAG, "Enqueued immediate one-time backup — requireWifi=${prefs.requireWifi}")
     }
 
-    override fun requestForegroundBackup(): Boolean {
-        // Explicit user action ("Subir ahora"): no network/charging constraints,
-        // and KEY_FOREGROUND tells the worker to promote itself to a foreground
-        // service with a progress notification so the OS keeps it at high
-        // priority and it survives the app being backgrounded.
+    override val supportsForegroundBackup: Boolean get() = true
+
+    override fun requestForegroundBackup(selectionKey: String?): Boolean {
+        // Explicit user action ("Subir ahora" / "Sincronizar N"): no network or
+        // charging constraints, and KEY_FOREGROUND tells the worker to promote
+        // itself to a foreground service with a progress notification so the OS
+        // keeps it at high priority and it survives the app being backgrounded.
+        val input = if (selectionKey == null) {
+            workDataOf(BackupWorker.KEY_FOREGROUND to true)
+        } else {
+            workDataOf(
+                BackupWorker.KEY_FOREGROUND to true,
+                BackupWorker.KEY_SELECTION to selectionKey
+            )
+        }
         val request = OneTimeWorkRequestBuilder<BackupWorker>()
-            .setInputData(workDataOf(BackupWorker.KEY_FOREGROUND to true))
+            .setInputData(input)
             .build()
 
         workManager.enqueueUniqueWork(
@@ -108,8 +118,17 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
             ExistingWorkPolicy.KEEP,
             request
         )
-        Log.i(TAG, "Enqueued foreground (prioritized) backup")
+        Log.i(TAG, "Enqueued foreground (prioritized) backup — selection=$selectionKey")
         return true
+    }
+
+    override fun cancelForegroundBackup() {
+        // Flips the worker's isStopped, which the runner polls between files.
+        // Only the one-shots: cancelling the periodic unique work would also
+        // unschedule every future run, which "stop this pass" must not do.
+        workManager.cancelUniqueWork(BackupWorker.FOREGROUND_WORK_NAME)
+        workManager.cancelUniqueWork(BackupWorker.ONE_TIME_WORK_NAME)
+        Log.i(TAG, "Cancelled the running one-shot backup")
     }
 
     private companion object {

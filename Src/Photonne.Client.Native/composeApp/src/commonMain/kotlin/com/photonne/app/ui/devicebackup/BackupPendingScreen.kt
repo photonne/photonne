@@ -57,7 +57,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.photonne.app.data.devicebackup.DeviceFolderRef
 import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMediaSyncState
 import com.photonne.app.data.devicebackup.DeviceMediaType
@@ -76,17 +75,16 @@ import com.photonne.app.resources.backup_failure_reason_label
 import com.photonne.app.resources.backup_section_pending
 import com.photonne.app.resources.backup_section_uploaded
 import com.photonne.app.resources.backup_status_queued
+import com.photonne.app.resources.backup_status_stop
 import com.photonne.app.resources.backup_summary_counts
 import com.photonne.app.resources.backup_summary_title
 import com.photonne.app.resources.backup_uploading_count
 import com.photonne.app.resources.device_backup_action_pick_folder
 import com.photonne.app.resources.device_backup_action_sync
 import com.photonne.app.resources.device_backup_empty_folder
-import com.photonne.app.resources.device_backup_folder_label
 import com.photonne.app.resources.device_backup_intro
 import com.photonne.app.resources.device_backup_not_supported
 import com.photonne.app.resources.device_backup_progress
-import com.photonne.app.resources.device_backup_total
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -98,6 +96,9 @@ import dev.chrisbanes.haze.hazeSource
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.main.LocalSnackbarController
+import com.photonne.app.resources.backup_status_verifying
+import com.photonne.app.resources.backup_status_verifying_progress
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,18 +119,27 @@ fun BackupPendingScreen(
     var previewStartUri by remember { mutableStateOf<String?>(null) }
     var failedDialogUri by remember { mutableStateOf<String?>(null) }
 
+    val snackbar = LocalSnackbarController.current
+    LaunchedEffect(state.statusMessage, state.error) {
+        val message = state.statusMessage ?: state.error?.userMessage
+        if (message != null) {
+            snackbar?.show(message)
+            viewModel.clearMessages()
+        }
+    }
+
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
     // During multi-select the docked selection bar owns the top, so the screen
     // neither reserves top space nor draws its own chrome (mirrors Trash).
     val selecting = state.selectedCount > 0
-    val folder = state.folder
+    val hasFolders = state.folders.isNotEmpty()
     Box(modifier = Modifier.fillMaxSize()) {
     when {
         !state.isSupported ->
             EmptyMessage(stringResource(Res.string.device_backup_not_supported))
-        folder == null ->
+        !hasFolders ->
             EmptyState(
                 icon = Icons.Filled.Folder,
                 title = stringResource(Res.string.device_backup_intro),
@@ -143,39 +153,10 @@ fun BackupPendingScreen(
                 .fillMaxSize()
                 .padding(top = if (selecting) 0.dp else reservedTop)
         ) {
-            FolderHeader(
-                folder = folder,
-                totalCount = state.entries.size
-            )
-
-            state.error?.userMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-            }
-            state.statusMessage?.let { msg ->
-                Text(
-                    msg,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-            }
-
-            state.lastSyncSummary?.takeIf { !state.isSyncing }?.let { summary ->
-                SyncSummaryCard(summary = summary)
-            }
-
-            state.syncProgress?.let { progress ->
-                SyncProgressCard(progress = progress, isSyncing = state.isSyncing)
-            }
-
-            if (state.isCheckingHashes) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
-            }
+            // One block instead of the four that used to stack here (folder
+            // header, status line, summary card, progress card): whatever is
+            // true right now, and nothing else, before the grid.
+            PendingActivityCard(state = state, onStop = viewModel::stopCurrentPass)
 
             when {
                 state.isLoading ->
@@ -360,126 +341,116 @@ private fun FailedItemDialog(
     )
 }
 
+/**
+ * The single "what's going on" block above the grid: verifying, uploading, or
+ * the outcome of the last batch. Renders nothing when idle with no history —
+ * this screen is about the files, and it used to spend most of its top half on
+ * chrome that repeated the previous screen.
+ */
 @Composable
-private fun FolderHeader(
-    folder: DeviceFolderRef,
-    totalCount: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Folder,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    stringResource(Res.string.device_backup_folder_label),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    folder.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    stringResource(Res.string.device_backup_total, totalCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
+private fun PendingActivityCard(state: DeviceBackupUiState, onStop: () -> Unit) {
+    val progress = state.syncProgress
+    val summary = state.lastSyncSummary
+    val verifying = state.isCheckingHashes
+    if (!verifying && progress == null && summary == null) return
 
-@Composable
-private fun SyncSummaryCard(summary: SyncSummary) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (verifying || state.isSyncing) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
         )
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                stringResource(Res.string.backup_summary_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.size(4.dp))
-            Text(
-                stringResource(
-                    Res.string.backup_summary_counts,
-                    summary.completed,
-                    summary.skipped,
-                    summary.failed
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            // Per-reason breakdown so the user sees WHY assets failed instead of a bare count.
-            if (summary.failuresByReason.isNotEmpty()) {
-                Spacer(Modifier.size(8.dp))
-                summary.failuresByReason.entries
-                    .sortedByDescending { it.value }
-                    .forEach { (reason, count) ->
-                        Text(
-                            text = stringResource(
-                                Res.string.backup_failure_reason_label,
-                                uploadErrorLabel(reason),
-                                count
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+            when {
+                verifying -> {
+                    val hash = state.hashProgress
+                    Text(
+                        text = if (hash != null && hash.hashTotal > 0) {
+                            stringResource(
+                                Res.string.backup_status_verifying_progress,
+                                hash.hashedCount,
+                                hash.hashTotal
+                            )
+                        } else {
+                            stringResource(Res.string.backup_status_verifying)
+                        },
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Spacer(Modifier.size(4.dp))
+                    if (hash != null && hash.hashTotal > 0) {
+                        LinearProgressIndicator(
+                            progress = { hash.hashedCount.toFloat() / hash.hashTotal },
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
                         )
                     }
+                }
+                progress != null -> {
+                    val done = progress.completed + progress.skipped + progress.failed
+                    Text(
+                        stringResource(Res.string.device_backup_progress, done, progress.total),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    if (state.isSyncing && progress.inFlight > 0) {
+                        Text(
+                            stringResource(Res.string.backup_uploading_count, progress.inFlight),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(Modifier.size(4.dp))
+                    LinearProgressIndicator(
+                        // Byte-weighted, so one big video doesn't freeze the bar.
+                        progress = { progress.fraction },
+                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                    )
+                }
+                summary != null -> {
+                    Text(
+                        stringResource(Res.string.backup_summary_title),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Spacer(Modifier.size(4.dp))
+                    Text(
+                        stringResource(
+                            Res.string.backup_summary_counts,
+                            summary.completed,
+                            summary.skipped,
+                            summary.failed
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    // Per-reason breakdown, so a bare failure count becomes an
+                    // actual diagnosis.
+                    summary.failuresByReason.entries
+                        .sortedByDescending { it.value }
+                        .forEach { (reason, count) ->
+                            Text(
+                                text = stringResource(
+                                    Res.string.backup_failure_reason_label,
+                                    uploadErrorLabel(reason),
+                                    count
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                }
             }
-        }
-    }
-}
 
-@Composable
-private fun SyncProgressCard(progress: SyncProgress, isSyncing: Boolean) {
-    val done = progress.completed + progress.skipped + progress.failed
-    val pct = if (progress.total == 0) 0f else done.toFloat() / progress.total.toFloat()
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                stringResource(
-                    Res.string.device_backup_progress,
-                    done,
-                    progress.total
-                ),
-                style = MaterialTheme.typography.titleSmall
-            )
-            if (isSyncing && progress.inFlight > 0) {
-                Text(
-                    stringResource(Res.string.backup_uploading_count, progress.inFlight),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            if (state.canStopCurrentPass) {
+                TextButton(onClick = onStop, modifier = Modifier.align(Alignment.End)) {
+                    Text(stringResource(Res.string.backup_status_stop))
+                }
             }
-            Spacer(Modifier.size(4.dp))
-            LinearProgressIndicator(
-                progress = { pct.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(4.dp)
-            )
         }
     }
 }
@@ -558,6 +529,9 @@ private fun MediaGrid(
             ) { entry ->
                 PendingRow(
                     entry = entry,
+                    // A worker-driven pass reports progress through the bus, not
+                    // through the entry, so the row reads both sources.
+                    liveProgress = state.externalItemProgress[entry.media.uri],
                     thumbnailModel = thumbnailModel(entry.media),
                     onClick = { onClick(entry) },
                     onLongClick = { onLongClick(entry) }
@@ -657,11 +631,19 @@ private fun CollapsibleSectionLabel(
 @Composable
 private fun PendingRow(
     entry: DeviceBackupEntry,
+    liveProgress: Float?,
     thumbnailModel: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val state = entry.syncState
+    // An in-process pass marks the entry Uploading; a worker pass only reports
+    // the fraction, so either signal means "this one is going up right now".
+    val state = if (liveProgress != null && entry.syncState !is DeviceMediaSyncState.Failed) {
+        DeviceMediaSyncState.Uploading
+    } else {
+        entry.syncState
+    }
+    val uploadFraction = entry.uploadProgress ?: liveProgress
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -721,7 +703,7 @@ private fun PendingRow(
             Spacer(Modifier.size(4.dp))
             when (state) {
                 DeviceMediaSyncState.Uploading -> {
-                    val p = entry.uploadProgress
+                    val p = uploadFraction
                     if (p != null) {
                         LinearProgressIndicator(
                             progress = { p },
@@ -752,7 +734,7 @@ private fun PendingRow(
             }
         }
         when (state) {
-            DeviceMediaSyncState.Uploading -> entry.uploadProgress?.let { p ->
+            DeviceMediaSyncState.Uploading -> uploadFraction?.let { p ->
                 Text(
                     text = "${(p * 100).toInt()}%",
                     style = MaterialTheme.typography.labelMedium,

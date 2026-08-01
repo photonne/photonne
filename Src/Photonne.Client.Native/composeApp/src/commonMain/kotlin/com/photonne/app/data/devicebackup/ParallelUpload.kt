@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * How many uploads may run in flight at once, split by media kind so large
@@ -98,23 +99,27 @@ suspend fun uploadInParallel(
                     // permit — re-check so we don't start a new upload.
                     if (!shouldContinue()) return@withPermit
                     writes.withLock { onItemStart(media) }
-                    val outcome = runCatching {
-                        upload(media) { fraction -> onItemProgress(media, fraction) }
-                    }.fold(
-                        onSuccess = { response ->
-                            val isDup = response.message
-                                .contains("already exists", ignoreCase = true)
-                            if (isDup) UploadOutcome.Skipped(response.assetId.orEmpty())
-                            else UploadOutcome.Uploaded(response.assetId.orEmpty())
-                        },
-                        onFailure = { error ->
-                            UploadOutcome.Failed(
-                                reason = error.toUploadFailureReason(),
-                                detail = error.toUploadFailureDetail(),
-                                error = error
-                            )
+                    val outcome = try {
+                        val response = upload(media) { fraction ->
+                            onItemProgress(media, fraction)
                         }
-                    )
+                        val isDup = response.message
+                            .contains("already exists", ignoreCase = true)
+                        if (isDup) UploadOutcome.Skipped(response.assetId.orEmpty())
+                        else UploadOutcome.Uploaded(response.assetId.orEmpty())
+                    } catch (cancelled: CancellationException) {
+                        // Cancelling the pass (BGTask expiry, worker stopped) is
+                        // not an upload failure: swallowing it here would both
+                        // break structured concurrency and brand perfectly good
+                        // files as Failed in the ledger.
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        UploadOutcome.Failed(
+                            reason = error.toUploadFailureReason(),
+                            detail = error.toUploadFailureDetail(),
+                            error = error
+                        )
+                    }
                     writes.withLock {
                         completed++
                         onItemDone(media, outcome, completed)

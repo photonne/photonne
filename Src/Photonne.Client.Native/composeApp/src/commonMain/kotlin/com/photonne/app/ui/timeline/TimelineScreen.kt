@@ -106,6 +106,11 @@ import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import com.photonne.app.resources.backup_timeline_pending_row
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,7 +153,12 @@ fun TimelineScreen(
     /** On-this-day memories shown as a carousel pinned above the grid. */
     memories: List<com.photonne.app.data.models.TimelineItem> = emptyList(),
     onOpenMemory: ((memory: com.photonne.app.ui.memories.MemoryDetailContext) -> Unit)? = null,
-    onSeeAllMemories: (() -> Unit)? = null
+    onSeeAllMemories: (() -> Unit)? = null,
+    /** Files still waiting to be backed up from this device, and where to go to
+     *  deal with them. Surfaces the backup state in the tab people actually
+     *  live in instead of only inside the More menu. */
+    backupPendingCount: Int = 0,
+    onOpenBackup: (() -> Unit)? = null
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val pullState = rememberPullToRefreshState()
@@ -239,6 +249,11 @@ fun TimelineScreen(
     // AnimatedVisibility below) so entering selection no longer makes the
     // whole grid jump up by the strip's height.
     val hasMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null
+    val showBackupRow = backupPendingCount > 0 && onOpenBackup != null
+    // ONE header item, whatever it holds. The scrubber and the zoom transition
+    // index off `headerItemCount`, so a second item here would shift every row
+    // they compute — the backup row rides inside the same slot instead.
+    val hasHeader = hasMemoriesHeader || showBackupRow
     // Year view renders the compressed per-year summaries (a few sampled
     // rows per year, count in the header); every other zoom level renders
     // the full bucket timeline. Both flatten into the same entries shape.
@@ -401,7 +416,7 @@ fun TimelineScreen(
                     val rowsLatest = rememberUpdatedState(rows)
                     val widthLatest = rememberUpdatedState(containerWidthDp.value)
                     val zoomLatest = rememberUpdatedState(zoomLevel)
-                    val headerCount = if (hasMemoriesHeader) 1 else 0
+                    val headerCount = if (hasHeader) 1 else 0
                     val headerCountLatest = rememberUpdatedState(headerCount)
 
                     var reflowActive by remember { mutableStateOf(false) }
@@ -851,9 +866,9 @@ fun TimelineScreen(
                             } else {
                                 PaddingValues(top = reservedTop, bottom = reservedBottom)
                             },
-                            header = if (hasMemoriesHeader) {
+                            header = if (hasHeader) {
                                 {
-                                    item(key = "memories-strip") {
+                                    item(key = "timeline-header") {
                                         // Collapse (not unmount) during selection so
                                         // the grid eases up instead of snapping.
                                         AnimatedVisibility(
@@ -861,12 +876,22 @@ fun TimelineScreen(
                                             enter = expandVertically() + fadeIn(),
                                             exit = shrinkVertically() + fadeOut()
                                         ) {
-                                            MemoriesStrip(
-                                                memories = memories,
-                                                baseUrl = apiBaseUrl,
-                                                onOpenMemory = onOpenMemory!!,
-                                                onSeeAll = onSeeAllMemories
-                                            )
+                                            Column {
+                                                if (showBackupRow) {
+                                                    BackupPendingRow(
+                                                        count = backupPendingCount,
+                                                        onClick = onOpenBackup!!
+                                                    )
+                                                }
+                                                if (hasMemoriesHeader) {
+                                                    MemoriesStrip(
+                                                        memories = memories,
+                                                        baseUrl = apiBaseUrl,
+                                                        onOpenMemory = onOpenMemory!!,
+                                                        onSeeAll = onSeeAllMemories
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -935,7 +960,7 @@ fun TimelineScreen(
                     TimelineScrubber(
                         gridState = gridState,
                         rows = rows,
-                        headerItemCount = if (hasMemoriesHeader) 1 else 0,
+                        headerItemCount = if (hasHeader) 1 else 0,
                         onDraggingChange = { dragging -> isScrubbing = dragging },
                         hazeState = gridHazeState,
                         // Start the track below the top chrome (status bar +
@@ -951,7 +976,7 @@ fun TimelineScreen(
                     // superior (como "Volver arriba" pero arriba). Solo en scroll
                     // normal: al arrastrar el scrubber la fecha vuelve al mango.
                     val rowLabels = remember(rows) { scrubberRowLabels(rows) }
-                    val hc = if (hasMemoriesHeader) 1 else 0
+                    val hc = if (hasHeader) 1 else 0
                     val topDateLabel by remember(rowLabels, hc) {
                         derivedStateOf {
                             rowLabels.getOrNull(
@@ -1273,3 +1298,41 @@ private fun TimelineEmptyState(onOpenUpload: (() -> Unit)?) {
     )
 }
 
+/**
+ * Compact "you still have photos to back up" row above the timeline. Deliberately
+ * quiet — a tinted strip, not a dialog — because it can be true for weeks on a
+ * phone with a big library, and it must never compete with the photos.
+ */
+@Composable
+private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.CloudUpload,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.size(12.dp))
+        Text(
+            text = stringResource(Res.string.backup_timeline_pending_row, count),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}

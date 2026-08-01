@@ -11,6 +11,7 @@ import android.os.Build
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_notification_channel
@@ -19,6 +20,10 @@ import com.photonne.app.resources.backup_notification_failures_text
 import com.photonne.app.resources.backup_notification_failures_title
 import com.photonne.app.resources.backup_notification_progress_text
 import com.photonne.app.resources.backup_notification_progress_title
+import com.photonne.app.resources.backup_notification_verifying_title
+import com.photonne.app.resources.backup_status_stop
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.koin.core.context.GlobalContext
 
@@ -42,6 +47,11 @@ class BackupWorker(
     private val isForeground: Boolean
         get() = inputData.getBoolean(KEY_FOREGROUND, false)
 
+    /** Ledger key holding the URIs this run should upload, when the request came
+     *  from an explicit selection rather than "back up everything". */
+    private val selectionKey: String?
+        get() = inputData.getString(KEY_SELECTION)
+
     override suspend fun doWork(): Result {
         val koin = runCatching { GlobalContext.get() }.getOrNull()
         if (koin == null) {
@@ -63,37 +73,51 @@ class BackupWorker(
             return Result.success()
         }
 
-        val folder = stateStore.savedFolder()
-        if (folder == null) {
-            Log.i(TAG, "No saved folder; skipping run")
+        val folders = stateStore.savedFolders()
+        if (folders.isEmpty()) {
+            Log.i(TAG, "No saved folders; skipping run")
             return Result.success()
         }
 
         // Promote to a foreground service before the (potentially long) pass so
         // the OS keeps us alive and prioritized while the app is backgrounded.
         if (isForeground) {
-            runCatching { setForeground(progressForegroundInfo(0, 0)) }
+            runCatching { setForeground(progressForegroundInfo(BackupPhase.Verifying, 0, 0)) }
                 .onFailure { Log.w(TAG, "Could not enter foreground; running normally", it) }
         }
 
         val runner: BackupRunner = koin.get()
+        val progress: BackupProgressBus = koin.get()
+        // Consumed exactly once: a re-run must not resurrect an old selection.
+        val selection = selectionKey?.let { key ->
+            val ledger: BackupLedger = koin.get()
+            ledger.takeMeta(key)?.lineSequence()?.filter { it.isNotBlank() }?.toSet()
+        }
+        if (selectionKey != null && selection.isNullOrEmpty()) {
+            Log.i(TAG, "Selection payload missing or empty; skipping run")
+            return Result.success()
+        }
         return try {
-            var lastPct = -1
-            val outcome = runner.runBackup(
-                folder = folder,
-                onProgress = if (isForeground) { current, total, _ ->
-                    // Throttle to whole-percent steps so a fast batch doesn't
-                    // spam the notification manager.
-                    val pct = if (total > 0) current * 100 / total else 0
-                    if (pct != lastPct) {
-                        lastPct = pct
-                        runCatching { updateProgressNotification(current, total) }
-                    }
-                } else null,
-                // A foreground pass is the user tapping "Subir ahora", so record
-                // it as a manual run, not a scheduled background one.
-                background = !isForeground
-            )
+            val outcome = coroutineScope {
+                // Mirror the shared progress bus into the ongoing notification.
+                // Cancelled as soon as the pass returns.
+                val mirror = if (isForeground) launch { mirrorProgress(progress) } else null
+                try {
+                    runner.runBackup(
+                        folders = folders,
+                        // WorkManager flips isStopped on cancellation (the user
+                        // tapping "Detener") and when the OS reclaims the worker.
+                        shouldContinue = { !isStopped },
+                        // A foreground pass is the user tapping "Subir ahora", so
+                        // record it as a manual run, not a scheduled background one.
+                        origin = if (isForeground) BackupOrigin.Foreground
+                        else BackupOrigin.Background,
+                        only = selection
+                    )
+                } finally {
+                    mirror?.cancel()
+                }
+            }
             Log.i(
                 TAG,
                 "Backup done (foreground=$isForeground) — total=${outcome.total} " +
@@ -124,12 +148,42 @@ class BackupWorker(
      * re-running expedited work). The real promotion happens via the explicit
      * [setForeground] call in [doWork] once we know it's a foreground request.
      */
-    override suspend fun getForegroundInfo(): ForegroundInfo = progressForegroundInfo(0, 0)
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        progressForegroundInfo(BackupPhase.Verifying, 0, 0)
+
+    /**
+     * Follows the shared progress bus and re-posts the ongoing notification,
+     * throttled to whole-percent steps so a fast batch doesn't spam the
+     * notification manager. Runs until cancelled by [doWork].
+     */
+    private suspend fun mirrorProgress(bus: BackupProgressBus) {
+        var lastPct = -1
+        bus.activity.collect { activity ->
+            if (activity == null) return@collect
+            val done: Int
+            val total: Int
+            if (activity.phase == BackupPhase.Verifying) {
+                done = activity.hashedCount
+                total = activity.hashTotal
+            } else {
+                done = activity.done
+                total = activity.total
+            }
+            val pct = if (total > 0) done * 100 / total else 0
+            if (pct == lastPct) return@collect
+            lastPct = pct
+            runCatching { updateProgressNotification(activity.phase, done, total) }
+        }
+    }
 
     /** Bundles the progress notification into a [ForegroundInfo], tagging it as
      *  a DATA_SYNC foreground service on the API levels that require a type. */
-    private suspend fun progressForegroundInfo(done: Int, total: Int): ForegroundInfo {
-        val notification = buildProgressNotification(done, total)
+    private suspend fun progressForegroundInfo(
+        phase: BackupPhase,
+        done: Int,
+        total: Int
+    ): ForegroundInfo {
+        val notification = buildProgressNotification(phase, done, total)
         return if (Build.VERSION.SDK_INT >= 29) {
             ForegroundInfo(
                 PROGRESS_NOTIFICATION_ID,
@@ -142,13 +196,17 @@ class BackupWorker(
     }
 
     /** Re-posts the ongoing progress notification as files complete. */
-    private suspend fun updateProgressNotification(done: Int, total: Int) {
+    private suspend fun updateProgressNotification(phase: BackupPhase, done: Int, total: Int) {
         val manager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(PROGRESS_NOTIFICATION_ID, buildProgressNotification(done, total))
+        manager.notify(PROGRESS_NOTIFICATION_ID, buildProgressNotification(phase, done, total))
     }
 
-    private suspend fun buildProgressNotification(done: Int, total: Int): Notification {
+    private suspend fun buildProgressNotification(
+        phase: BackupPhase,
+        done: Int,
+        total: Int
+    ): Notification {
         val context = applicationContext
         val manager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -160,13 +218,25 @@ class BackupWorker(
                 NotificationManager.IMPORTANCE_LOW
             )
         )
+        val title = getString(
+            if (phase == BackupPhase.Verifying) Res.string.backup_notification_verifying_title
+            else Res.string.backup_notification_progress_title
+        )
         val text = getString(Res.string.backup_notification_progress_text, done, total)
+        // Stopping from the notification matters most exactly when the app
+        // isn't on screen — which is the whole point of the foreground worker.
+        val cancelAction = Notification.Action.Builder(
+            null,
+            getString(Res.string.backup_status_stop),
+            WorkManager.getInstance(context).createCancelPendingIntent(id)
+        ).build()
         return Notification.Builder(context, PROGRESS_CHANNEL_ID)
             .setSmallIcon(context.applicationInfo.icon)
-            .setContentTitle(getString(Res.string.backup_notification_progress_title))
+            .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .addAction(cancelAction)
             .apply { if (total > 0) setProgress(total, done, false) }
             .build()
     }
@@ -219,6 +289,10 @@ class BackupWorker(
         /** Input-data flag: run as a prioritized foreground service with a
          *  progress notification (set by an explicit "Subir ahora"). */
         const val KEY_FOREGROUND = "foreground"
+
+        /** Input-data key naming the ledger row that holds the URIs to upload.
+         *  Absent means "the whole folder". */
+        const val KEY_SELECTION = "selectionKey"
 
         private const val CHANNEL_ID = "photonne.backup"
         private const val FAILURE_NOTIFICATION_ID = 4001

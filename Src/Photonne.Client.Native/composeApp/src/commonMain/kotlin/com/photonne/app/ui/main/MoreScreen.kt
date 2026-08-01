@@ -107,6 +107,9 @@ fun MoreScreen(
     onOpenMyLinks: () -> Unit,
     onOpenUnsupportedFiles: () -> Unit,
     onOpenDeviceBackup: () -> Unit,
+    /** Files still to back up, badged on the shortcut so a stalled backup is
+     *  visible without opening the screen. */
+    backupPendingCount: Int = 0,
     onOpenNotifications: () -> Unit,
     notificationsUnreadCount: Int = 0,
     onOpenAccountSettings: () -> Unit,
@@ -127,6 +130,7 @@ fun MoreScreen(
         onOpenTrash,
         onOpenUtilities,
         onOpenDeviceBackup,
+        backupPendingCount,
         onOpenNotifications,
         notificationsUnreadCount
     ) {
@@ -149,7 +153,13 @@ fun MoreScreen(
                 titleRes = Res.string.more_section_actions,
                 columns = 3,
                 shortcuts = listOf(
-                    MoreShortcut("device-backup", Res.string.device_backup_title, Icons.Outlined.CloudUpload, onOpenDeviceBackup),
+                    MoreShortcut(
+                        "device-backup",
+                        Res.string.device_backup_title,
+                        Icons.Outlined.CloudUpload,
+                        onOpenDeviceBackup,
+                        badgeCount = backupPendingCount
+                    ),
                     MoreShortcut(
                         "notifications",
                         Res.string.notifications_title,
