@@ -71,10 +71,10 @@ import com.photonne.app.resources.utilities_duplicates_empty
 import com.photonne.app.resources.utilities_duplicates_group_assets
 import com.photonne.app.resources.utilities_duplicates_open_detail
 import com.photonne.app.resources.utilities_duplicates_summary
-import com.photonne.app.ui.admin.humanBytes
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.format.humanBytes
 
 @Composable
 fun UtilitiesDuplicatesScreen(

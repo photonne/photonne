@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.format.humanBytes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -51,6 +51,7 @@ import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.format.humanBytes
 
 @Composable
 fun AdminStatsScreen(

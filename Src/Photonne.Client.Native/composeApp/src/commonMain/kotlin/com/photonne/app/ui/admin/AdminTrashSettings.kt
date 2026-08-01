@@ -56,6 +56,7 @@ import com.photonne.app.resources.admin_trash_over_quota_users
 import com.photonne.app.resources.admin_trash_total_bytes
 import com.photonne.app.resources.admin_trash_total_items
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.format.humanBytes
 
 class AdminTrashSettingsViewModel(
     private val repository: AdminRepository
