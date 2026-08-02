@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.FolderTreeNode
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.utilities_locations_empty
 import com.photonne.app.resources.utilities_locations_external_badge
@@ -76,8 +77,8 @@ fun UtilitiesLocationsScreen(
                     CircularProgressIndicator()
                 }
             state.error?.userMessage != null && state.roots.isEmpty() ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
+                Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    ErrorBanner(error = state.error, onRetry = viewModel::refresh)
                 }
             state.roots.isEmpty() ->
                 EmptyState(

@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AdminUserUsage
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_stats_per_user
 import com.photonne.app.resources.admin_stats_per_user_breakdown
@@ -74,7 +75,7 @@ fun AdminStatsScreen(
             }
         state.error?.userMessage != null && state.data == null ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(state.error?.userMessage!!, color = MaterialTheme.colorScheme.error)
+                ErrorBanner(error = state.error, onRetry = viewModel::load)
             }
         state.data != null -> {
             val data = state.data!!

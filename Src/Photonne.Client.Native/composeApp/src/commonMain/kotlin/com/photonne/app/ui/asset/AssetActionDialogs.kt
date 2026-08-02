@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.CaptureDateSuggestion
+import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
@@ -380,25 +381,13 @@ fun TrashAssetDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.asset_trash_title)) },
-        text = {
-            Column {
-                Text(stringResource(Res.string.asset_trash_message, fileName))
-                Spacer(Modifier.height(4.dp))
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    stringResource(Res.string.action_delete),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
-        }
+    ConfirmActionDialog(
+        title = stringResource(Res.string.asset_trash_title),
+        message = stringResource(Res.string.asset_trash_message, fileName),
+        confirmLabel = stringResource(Res.string.action_delete),
+        isDestructive = true,
+        isSubmitting = false,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
     )
 }

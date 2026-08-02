@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.utilities_large_files_count_label
 import com.photonne.app.resources.utilities_large_files_empty
@@ -145,14 +146,10 @@ fun UtilitiesLargeFilesScreen(
                 options = UtilitiesLargeFilesUiState.CountOptions,
                 onSelect = viewModel::setCount
             )
-            state.error?.userMessage?.let { msg ->
-                Text(
-                    msg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+            ErrorBanner(
+                    error = state.error,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                 )
-            }
         }
         SubscreenFloatingChrome(
             title = title,

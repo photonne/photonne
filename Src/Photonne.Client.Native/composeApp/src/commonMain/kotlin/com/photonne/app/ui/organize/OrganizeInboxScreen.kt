@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
+import com.photonne.app.ui.error.ErrorBanner
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.organize_inbox_empty_subtitle
 import com.photonne.app.resources.organize_inbox_empty_title
@@ -92,6 +94,14 @@ fun OrganizeInboxScreen(
                             bottom = floatingNavBarReservedHeight()
                         )
                     )
+                state.error != null && state.items.isEmpty() ->
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                            .padding(top = reservedTop)
+                            .padding(Spacing.lg)
+                    ) {
+                        ErrorBanner(error = state.error, onRetry = onRefresh)
+                    }
                 state.isEmpty ->
                     EmptyState(
                         icon = Icons.Outlined.Inbox,

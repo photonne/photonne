@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.library.ConfirmActionDialog
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_cancel
 import com.photonne.app.resources.action_delete
@@ -133,35 +134,20 @@ fun DeleteFolderDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(stringResource(Res.string.folder_delete_title)) },
-        text = {
-            Column {
-                val message = if (itemCount > 0) {
-                    pluralStringResource(Res.plurals.folder_delete_message_items, itemCount, folderName, itemCount)
-                } else {
-                    stringResource(Res.string.folder_delete_message, folderName)
-                }
-                Text(message)
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
-            }
+    ConfirmActionDialog(
+        title = stringResource(Res.string.folder_delete_title),
+        message = if (itemCount > 0) {
+            pluralStringResource(
+                Res.plurals.folder_delete_message_items, itemCount, folderName, itemCount
+            )
+        } else {
+            stringResource(Res.string.folder_delete_message, folderName)
         },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isSubmitting) {
-                Text(
-                    stringResource(Res.string.action_delete),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                Text(stringResource(Res.string.action_cancel))
-            }
-        }
+        confirmLabel = stringResource(Res.string.action_delete),
+        isDestructive = true,
+        isSubmitting = isSubmitting,
+        errorMessage = errorMessage,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
     )
 }
