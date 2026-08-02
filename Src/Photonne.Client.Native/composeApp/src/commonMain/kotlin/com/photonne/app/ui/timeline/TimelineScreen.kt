@@ -73,7 +73,11 @@ import com.photonne.app.resources.timeline_empty_title
 import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
+import com.photonne.app.ui.grid.GroupedGridDragSelect
 import com.photonne.app.ui.grid.TimelineRowEntry
+import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
+import com.photonne.app.ui.grid.dragselect.rememberLatchedDuringDrag
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.FloatingDatePill
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -142,6 +146,8 @@ fun TimelineScreen(
      * checkbox de la banda de mes.
      */
     onSetSelected: ((ids: Collection<String>, selected: Boolean) -> Unit)? = null,
+    /** Aplica un frame del arrastre en banda de una sola vez. */
+    onApplySelection: ((SelectionPatch) -> Unit)? = null,
     /** Only the empty state offers this — uploading otherwise lives in Más. */
     onOpenUpload: (() -> Unit)? = null,
     /** Opens the "jump to date" picker from the floating top bar. */
@@ -237,6 +243,13 @@ fun TimelineScreen(
     // The grid draws full-bleed behind the floating bottom nav; reserve the bar's
     // full height at the scroll end so the last row still clears it.
     val reservedBottom = floatingNavBarReservedHeight()
+
+    val dragSelectState = rememberDragSelectState()
+    // Entrar en selección cambia el cromo flotante por barras sólidas y mueve
+    // el contentPadding de la rejilla ~100 px, además de colapsar la tira de
+    // Recuerdos con una animación de 300 ms. A mitad de arrastre eso desliza
+    // el contenido bajo el dedo, así que se congela hasta soltar.
+    val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
 
     val zoomStore: TimelineZoomStore = koinInject()
     val zoomLevel by zoomStore.value.collectAsState()
@@ -596,6 +609,14 @@ fun TimelineScreen(
                             .pointerInput(Unit) {
                                 detectTimelinePinch(
                                     onZoomStart = { centroid ->
+                                        // El pinch escucha en Initial desde un
+                                        // Box ANCESTRO, así que ve el segundo
+                                        // dedo pase lo que pase. Si hay una
+                                        // banda en curso, el arrastre manda y
+                                        // el zoom se queda fuera.
+                                        if (dragSelectState.isDragging) {
+                                            return@detectTimelinePinch
+                                        }
                                         // Capture a forward window of real items.
                                         // The dissolve spans every level in one
                                         // gesture (Year ↔ Month ↔ Day S/M/L), using
@@ -701,6 +722,9 @@ fun TimelineScreen(
                                         }
                                     },
                                     onZoom = { zoom, _ ->
+                                        if (dragSelectState.isDragging) {
+                                            return@detectTimelinePinch
+                                        }
                                         if (!reflowActive) return@detectTimelinePinch
                                         val l = ladder
                                         if (l.isEmpty()) return@detectTimelinePinch
@@ -713,6 +737,9 @@ fun TimelineScreen(
                                         if (hi != bracketHi) bracketHi = hi
                                     },
                                     onZoomEnd = { finalZoom ->
+                                        if (dragSelectState.isDragging) {
+                                            return@detectTimelinePinch
+                                        }
                                         val zl = zoomLatest.value
                                         if (!reflowActive) {
                                             // No dissolve was shown (cross-grouping
@@ -866,6 +893,20 @@ fun TimelineScreen(
                                     }
                                 }
                             },
+                            dragSelect = onApplySelection?.takeIf { !isYearView }?.let { patch ->
+                                GroupedGridDragSelect(
+                                    state = dragSelectState,
+                                    onPatch = patch,
+                                    headerCount = headerCount,
+                                    // Los ítems solo-locales no entran en las
+                                    // operaciones en bloque del timeline, así
+                                    // que la banda los atraviesa sin marcarlos.
+                                    idAt = { ordinal ->
+                                        mergedItems.getOrNull(ordinal)
+                                            ?.takeIf { !it.isLocalOnly }?.id
+                                    }
+                                )
+                            },
                             suppressThumbnails = isScrubbing,
                             // Reserve the docked bar's height at rest so the
                             // memories strip clears it; the padding scrolls away
@@ -873,7 +914,7 @@ fun TimelineScreen(
                             // the bottom nav's height at the scroll end (the grid
                             // bleeds behind it otherwise). Selection mode uses the
                             // solid Scaffold bars, so no reserve.
-                            contentPadding = if (state.isSelectionActive) {
+                            contentPadding = if (selectionChrome) {
                                 PaddingValues(0.dp)
                             } else {
                                 PaddingValues(top = reservedTop, bottom = reservedBottom)
@@ -884,7 +925,7 @@ fun TimelineScreen(
                                         // Collapse (not unmount) during selection so
                                         // the grid eases up instead of snapping.
                                         AnimatedVisibility(
-                                            visible = !state.isSelectionActive,
+                                            visible = !selectionChrome,
                                             enter = expandVertically() + fadeIn(),
                                             exit = shrinkVertically() + fadeOut()
                                         ) {

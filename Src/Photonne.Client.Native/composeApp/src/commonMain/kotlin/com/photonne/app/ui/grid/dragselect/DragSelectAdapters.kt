@@ -1,5 +1,6 @@
 package com.photonne.app.ui.grid.dragselect
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
@@ -7,6 +8,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import com.photonne.app.ui.grid.TimelineRowEntry
 
 /**
  * `contentType` con el que `AssetGrid` marca sus celdas.
@@ -118,6 +122,87 @@ internal fun rememberLazyGridDragSelectAdapter(
         LazyGridDragSelectAdapter(
             gridState = gridState,
             headerCount = { currentHeaderCount() },
+            idAt = { currentIdAt(it) }
+        )
+    }
+}
+
+/**
+ * Adaptador del timeline, donde cada ítem del `LazyColumn` es una FILA entera.
+ * El Lazy solo resuelve el eje Y; la X se reconstruye contra las filas
+ * empaquetadas, y sale exacta porque el packer trabaja con el mismo tamaño de
+ * celda que se guarda en cada fila.
+ *
+ * Aquí "fila" es el índice de entrada en [rows], que incluye bandas de mes y
+ * filas de esqueleto. Son inertes, así que la banda las atraviesa sin marcar
+ * nada, y eso es justo lo que se quiere: pasar por encima de una cabecera no
+ * debe cortar la selección.
+ */
+private class TimelineDragSelectAdapter(
+    private val listState: LazyListState,
+    private val rows: () -> List<TimelineRowEntry>,
+    private val headerCount: () -> Int,
+    private val spacingPx: Float,
+    private val dpToPx: Float,
+    private val idAt: (Int) -> String?
+) : DragSelectAdapter {
+
+    private fun entryIndexAt(y: Float): Int? {
+        val info = listState.layoutInfo
+        val itemY = toItemSpaceY(y, info.viewportStartOffset)
+        val hit = info.visibleItemsInfo.firstOrNull {
+            itemY >= it.offset && itemY < it.offset + it.size
+        } ?: return null
+        val index = hit.index - headerCount()
+        return if (index >= 0) index else null
+    }
+
+    override fun cellAt(position: Offset): DragSelectCell? {
+        val entryIndex = entryIndexAt(position.y) ?: return null
+        val cell = hitTestRowEntry(
+            rows = rows(),
+            entryIndex = entryIndex,
+            x = position.x,
+            spacingPx = spacingPx,
+            dpToPx = dpToPx
+        ) ?: return null
+        // idAt filtra además los ítems solo-locales, que no entran en las
+        // operaciones en bloque del timeline.
+        return if (idAt(cell.ordinal) == null) null else cell
+    }
+
+    override fun rowAt(position: Offset): DragSelectRow? {
+        val entryIndex = entryIndexAt(position.y) ?: return null
+        val ordinals = rowOrdinalsOf(rows(), entryIndex) ?: return null
+        return DragSelectRow(rowKey = entryIndex, ordinals = ordinals)
+    }
+
+    override fun idsAtOrdinal(ordinal: Int): List<String> = listOfNotNull(idAt(ordinal))
+
+    override fun idsInRow(rowKey: Int): List<String> =
+        rowOrdinalsOf(rows(), rowKey)?.mapNotNull(idAt).orEmpty()
+}
+
+/** [DragSelectAdapter] para el `LazyColumn` de filas del timeline. */
+@Composable
+internal fun rememberTimelineDragSelectAdapter(
+    listState: LazyListState,
+    rows: List<TimelineRowEntry>,
+    headerCount: () -> Int,
+    cellSpacing: Dp,
+    idAt: (ordinal: Int) -> String?
+): DragSelectAdapter {
+    val density = LocalDensity.current
+    val currentRows by rememberUpdatedState(rows)
+    val currentHeaderCount by rememberUpdatedState(headerCount)
+    val currentIdAt by rememberUpdatedState(idAt)
+    return remember(listState, cellSpacing, density) {
+        TimelineDragSelectAdapter(
+            listState = listState,
+            rows = { currentRows },
+            headerCount = { currentHeaderCount() },
+            spacingPx = with(density) { cellSpacing.toPx() },
+            dpToPx = density.density,
             idAt = { currentIdAt(it) }
         )
     }

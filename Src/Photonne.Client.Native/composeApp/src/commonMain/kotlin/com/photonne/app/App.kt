@@ -1751,6 +1751,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onRefresh = timelineViewModel::refresh,
                         onToggleSelection = timelineViewModel::toggleSelection,
                         onSetSelected = timelineViewModel::setSelected,
+                        onApplySelection = timelineViewModel::applySelection,
                         onOpenUpload = {
                             selectedTab = MainTab.More
                             moreSubscreen = MoreSubscreen.Upload

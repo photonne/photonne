@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +42,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
+import com.photonne.app.ui.grid.dragselect.DragSelectConfig
+import com.photonne.app.ui.grid.dragselect.DragSelectState
+import com.photonne.app.ui.grid.dragselect.dragSelectable
+import com.photonne.app.ui.grid.dragselect.rememberTimelineDragSelectAdapter
+import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.selection.GroupSelectionState
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.selection.selectionStateOf
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.Spacing
@@ -285,6 +292,11 @@ internal fun GroupedAssetGrid(
      * navegar y el grupo es una muestra truncada, no el mes entero).
      */
     onSetGroupSelected: ((ids: List<String>, selected: Boolean) -> Unit)? = null,
+    /**
+     * Arrastre en banda. Igual que en [AssetGrid], cuando llega el long-press
+     * deja de ser de la celda y pasa a ser de la rejilla.
+     */
+    dragSelect: GroupedGridDragSelect? = null,
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
     // No load-more plumbing here anymore: with the bucket model every month
@@ -301,12 +313,41 @@ internal fun GroupedAssetGrid(
     // segmentos: recorrer el grupo dentro de la cabecera lo repetiría en cada
     // recomposición, y durante un arrastre eso es una vez por frame.
     val groupIds = remember(segments) { segments.map { selectableIdsOf(it) } }
+
+    val haptics = rememberPhotonneHaptics()
+    val dragSelectAdapter = rememberTimelineDragSelectAdapter(
+        listState = state,
+        rows = rows,
+        headerCount = { dragSelect?.headerCount ?: 0 },
+        cellSpacing = cellSpacing,
+        idAt = { ordinal -> dragSelect?.idAt?.invoke(ordinal) }
+    )
+    val gridModifier = if (dragSelect != null) {
+        modifier.fillMaxSize().dragSelectable(
+            state = dragSelect.state,
+            adapter = dragSelectAdapter,
+            scrollableState = state,
+            enabled = dragSelect.enabled,
+            selectionActive = selectedIds.isNotEmpty(),
+            isSelected = { it in selectedIds },
+            onPatch = dragSelect.onPatch,
+            haptics = haptics,
+            railStartPx = dragSelect.railStartPx,
+            config = dragSelect.config.copy(
+                autoScrollTopInset = contentPadding.calculateTopPadding(),
+                autoScrollBottomInset = contentPadding.calculateBottomPadding()
+            )
+        )
+    } else {
+        modifier.fillMaxSize()
+    }
+
     LazyColumn(
         state = state,
         userScrollEnabled = userScrollEnabled,
         verticalArrangement = Arrangement.spacedBy(cellSpacing),
         contentPadding = contentPadding,
-        modifier = modifier.fillMaxSize()
+        modifier = gridModifier
     ) {
         header?.invoke(this)
         segments.forEachIndexed { segmentIndex, segment ->
@@ -354,7 +395,10 @@ internal fun GroupedAssetGrid(
                         baseUrl = baseUrl,
                         spacing = cellSpacing,
                         onItemClick = onItemClick,
+                        // Con arrastre en banda el long-press lo posee la
+                        // rejilla; si ambos lo escuchan se cancelan.
                         onItemLongClick = onItemLongClick,
+                        cellLongClickEnabled = dragSelect == null,
                         selectedIds = selectedIds,
                         loadThumbnails = !suppressThumbnails,
                         // Device-only rows are merged in after the gallery
@@ -369,6 +413,24 @@ internal fun GroupedAssetGrid(
         }
     }
 }
+
+/**
+ * Configuración del arrastre en banda para [GroupedAssetGrid].
+ *
+ * [headerCount] son los ítems que emite el `header` antes de las filas, y
+ * [idAt] traduce ordinal global a id devolviendo null en lo que no se puede
+ * seleccionar (ítems solo-locales, ordinales aún no cargados).
+ */
+@Immutable
+internal data class GroupedGridDragSelect(
+    val state: DragSelectState,
+    val onPatch: (SelectionPatch) -> Unit,
+    val headerCount: Int,
+    val idAt: (ordinal: Int) -> String?,
+    val enabled: Boolean = true,
+    val railStartPx: Float = 0f,
+    val config: DragSelectConfig = DragSelectConfig.Default
+)
 
 /** One sticky header plus its run of row entries. */
 internal data class RowSegment(
@@ -601,7 +663,8 @@ private fun UniformCellsRow(
     onItemLongClick: ((Int) -> Unit)?,
     selectedIds: Set<String>,
     modifier: Modifier = Modifier,
-    loadThumbnails: Boolean = true
+    loadThumbnails: Boolean = true,
+    cellLongClickEnabled: Boolean = true
 ) {
     Row(
         modifier = modifier
@@ -614,7 +677,11 @@ private fun UniformCellsRow(
                 asset = cell.item,
                 baseUrl = baseUrl,
                 onClick = { onItemClick(cell.index) },
-                onLongClick = onItemLongClick?.let { { it(cell.index) } },
+                onLongClick = onItemLongClick?.takeIf { cellLongClickEnabled }
+                    ?.let { { it(cell.index) } },
+                // El clic derecho se queda en la celda: en escritorio es la
+                // única entrada a la selección.
+                onSecondaryClick = onItemLongClick?.let { { it(cell.index) } },
                 isSelected = cell.item.id in selectedIds,
                 // Uniform grid: every cell carries equal weight and the row's
                 // height equals the cell width, so the tile is square without
