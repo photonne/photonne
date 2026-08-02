@@ -7,6 +7,7 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.YearGroup
 import com.photonne.app.data.organize.OrganizeRepository
@@ -39,6 +40,12 @@ data class OrganizeInboxUiState(
     /** Set after a year-organized move so the UI can show a "repartidas en…"
      *  summary; null when the last move was flat (or none yet). */
     val lastMoveSummary: MoveOutcome? = null,
+    /**
+     * Total real de la bandeja y tramo de fechas que cubre. El total NO es
+     * `items.size`: la rejilla solo tiene lo paginado hasta ahora, y una
+     * cabecera que contara eso subiría sola al hacer scroll.
+     */
+    val summary: OrganizeSummary? = null,
 ) {
     /** Pending count = the loaded items; the whole inbox is materialized here as
      *  the user pages, and the header reflects what's visible. The authoritative
@@ -77,6 +84,12 @@ class OrganizeInboxViewModel(
             )
         }
         viewModelScope.launch {
+            // El resumen va aparte y no bloquea: si falla, la bandeja se
+            // muestra igual, solo sin la cabecera.
+            launch {
+                runCatching { repository.summary() }
+                    .onSuccess { summary -> _state.update { it.copy(summary = summary) } }
+            }
             runCatching { repository.inbox(cursor = null) }
                 .onSuccess { page ->
                     _state.update {

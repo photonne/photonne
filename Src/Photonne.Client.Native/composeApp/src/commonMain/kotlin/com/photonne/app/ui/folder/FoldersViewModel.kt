@@ -133,8 +133,10 @@ class FoldersViewModel(
      */
     fun refreshOrganizeCount() {
         viewModelScope.launch {
-            runCatching { organizeRepository.count() }
-                .onSuccess { count -> _state.update { it.copy(organizePendingCount = count) } }
+            runCatching { organizeRepository.summary() }
+                .onSuccess { summary ->
+                    _state.update { it.copy(organizePendingCount = summary.count) }
+                }
         }
     }
 
