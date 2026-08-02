@@ -338,6 +338,10 @@
 
     <string name="selection_action_select_all">Select all</string>
     <string name="selection_action_deselect_all">Deselect all</string>
+    <string name="asset_action_details">Details</string>
+    <string name="asset_a11y_video">Video</string>
+    <string name="asset_a11y_live_photo">Motion photo</string>
+    <string name="asset_a11y_favorite">Favourite</string>
     <string name="action_undo">Undo</string>
     <plurals name="selection_archive_done">
         <item quantity="one">1 photo archived</item>

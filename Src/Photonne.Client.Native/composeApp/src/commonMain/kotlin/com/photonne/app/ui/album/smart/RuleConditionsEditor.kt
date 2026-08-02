@@ -57,6 +57,8 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -703,7 +705,10 @@ private fun SelectedChipsHeader(items: List<Pair<String, String>>, onRemove: (St
 @Composable
 private fun PersonSelectRow(person: PersonRef, baseUrl: String, checked: Boolean, onToggle: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 6.dp),
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, onValueChange = { onToggle() }, role = Role.Checkbox)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
@@ -718,14 +723,17 @@ private fun PersonSelectRow(person: PersonRef, baseUrl: String, checked: Boolean
         }
         Spacer(Modifier.width(12.dp))
         Text(person.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        Checkbox(checked = checked, onCheckedChange = { onToggle() })
+        Checkbox(checked = checked, onCheckedChange = null)
     }
 }
 
 @Composable
 private fun LabelRow(label: LabelRef, baseUrl: String, checked: Boolean, onToggle: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 6.dp),
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, onValueChange = { onToggle() }, role = Role.Checkbox)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
@@ -740,7 +748,7 @@ private fun LabelRow(label: LabelRef, baseUrl: String, checked: Boolean, onToggl
         }
         Spacer(Modifier.width(12.dp))
         Text(label.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        Checkbox(checked = checked, onCheckedChange = { onToggle() })
+        Checkbox(checked = checked, onCheckedChange = null)
     }
 }
 

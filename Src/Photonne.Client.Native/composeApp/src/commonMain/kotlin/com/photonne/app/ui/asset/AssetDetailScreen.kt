@@ -141,6 +141,11 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.toTimelineItem
 import com.photonne.app.ui.image.AssetThumbnailImage
 import com.photonne.app.ui.platform.OrientationController
+import com.photonne.app.resources.asset_action_details
+import com.photonne.app.resources.selection_label_share
+import com.photonne.app.resources.selection_action_add_to_album
+import com.photonne.app.resources.action_remove
+import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.add_to_album_title
@@ -738,15 +743,21 @@ fun AssetDetailScreen(
                                 )
                             }
                             IconButton(onClick = { onShare(currentItem) }) {
-                                Icon(Icons.Outlined.Share, contentDescription = "Compartir", tint = Color.White)
+                                Icon(Icons.Outlined.Share, contentDescription = stringResource(Res.string.selection_label_share),
+                                    tint = Color.White)
                             }
                             IconButton(onClick = { onAddToAlbum(currentItem) }) {
-                                Icon(Icons.Outlined.AddToPhotos, contentDescription = "Añadir a álbum", tint = Color.White)
+                                Icon(Icons.Outlined.AddToPhotos, contentDescription = stringResource(Res.string.selection_action_add_to_album),
+                                    tint = Color.White)
                             }
                             IconButton(onClick = {
                                 coroutineScope.launch { infoProgress.animateTo(1f, infoSpring) }
                             }) {
-                                Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
+                                Icon(
+                                    Icons.Outlined.Info,
+                                    contentDescription = stringResource(Res.string.asset_action_details),
+                                    tint = Color.White
+                                )
                             }
                             Box {
                                 IconButton(onClick = { showOverflow = true }) {
@@ -1819,7 +1830,7 @@ private fun TagChip(label: String, onRemove: (() -> Unit)?) {
             if (onRemove != null) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = "Quitar $label",
+                    contentDescription = "${stringResource(Res.string.action_remove)} $label",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .size(16.dp)
@@ -1958,7 +1969,7 @@ private fun MetadataEditableRow(
             }
             Icon(
                 imageVector = Icons.Outlined.Edit,
-                contentDescription = "Editar",
+                contentDescription = stringResource(Res.string.action_edit),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
@@ -2534,7 +2545,11 @@ private fun AssetActionsBottomBar(
         ) {
             if (item.isLocalOnly) {
                 IconButton(onClick = onShowInfo) {
-                    Icon(Icons.Outlined.Info, contentDescription = "Detalles", tint = Color.White)
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = stringResource(Res.string.asset_action_details),
+                        tint = Color.White
+                    )
                 }
             } else {
                 IconButton(onClick = onToggleFavorite) {
@@ -2548,7 +2563,7 @@ private fun AssetActionsBottomBar(
                 IconButton(onClick = onShare) {
                     Icon(
                         Icons.Outlined.Share,
-                        contentDescription = "Compartir",
+                        contentDescription = stringResource(Res.string.selection_label_share),
                         tint = Color.White
                     )
                 }
