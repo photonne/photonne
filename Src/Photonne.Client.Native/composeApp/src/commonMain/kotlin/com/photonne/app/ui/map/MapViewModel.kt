@@ -9,6 +9,11 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.map.MapRepository
 import com.photonne.app.data.models.MapPoint
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.selection.SelectionPatch
+import com.photonne.app.ui.selection.applying
+import com.photonne.app.ui.selection.toggled
+import com.photonne.app.ui.selection.toggledAll
+import com.photonne.app.ui.selection.withSelection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -110,18 +115,24 @@ class MapViewModel(
     }
 
     fun toggleSelection(assetId: String) {
-        _state.update {
-            val next = it.selection.toMutableSet()
-            if (!next.add(assetId)) next.remove(assetId)
-            it.copy(selection = next)
-        }
+        _state.update { it.copy(selection = it.selection.toggled(assetId)) }
+    }
+
+    /** Un frame de arrastre en banda, en una sola mutación — ver [SelectionPatch]. */
+    fun applySelection(patch: SelectionPatch) {
+        if (patch.isEmpty) return
+        _state.update { it.copy(selection = it.selection.applying(patch)) }
+    }
+
+    /** Marca o desmarca [ids] en bloque, sin alternar (carril de filas). */
+    fun setSelected(ids: Collection<String>, selected: Boolean) {
+        _state.update { it.copy(selection = it.selection.withSelection(ids, selected)) }
     }
 
     fun selectAllInSheet() {
         _state.update {
-            val ids = it.sheetPoints?.map { p -> p.id }?.toSet() ?: return@update it
-            if (it.selection == ids) it.copy(selection = emptySet())
-            else it.copy(selection = ids)
+            val ids = it.sheetPoints?.map { p -> p.id } ?: return@update it
+            it.copy(selection = it.selection.toggledAll(ids))
         }
     }
 

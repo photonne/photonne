@@ -11,6 +11,11 @@ import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.timeline.TimelineBucketState
 import com.photonne.app.data.timeline.TimelineBucketStore
+import com.photonne.app.ui.selection.SelectionPatch
+import com.photonne.app.ui.selection.applying
+import com.photonne.app.ui.selection.toggled
+import com.photonne.app.ui.selection.toggledAll
+import com.photonne.app.ui.selection.withSelection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,11 +151,22 @@ class TimelineViewModel(
     // ---------- Selection ----------
 
     fun toggleSelection(assetId: String) {
-        _state.update { previous ->
-            val next = previous.selection.toMutableSet()
-            if (!next.add(assetId)) next.remove(assetId)
-            previous.copy(selection = next)
-        }
+        _state.update { it.copy(selection = it.selection.toggled(assetId)) }
+    }
+
+    /** Un frame de arrastre en banda, en una sola mutación — ver [SelectionPatch]. */
+    fun applySelection(patch: SelectionPatch) {
+        if (patch.isEmpty) return
+        _state.update { it.copy(selection = it.selection.applying(patch)) }
+    }
+
+    /**
+     * Marca o desmarca [ids] en bloque, sin alternar: lo que necesitan el
+     * carril de filas y el checkbox de la cabecera de mes, donde el modo lo
+     * decide el ancla y no cada celda por separado.
+     */
+    fun setSelected(ids: Collection<String>, selected: Boolean) {
+        _state.update { it.copy(selection = it.selection.withSelection(ids, selected)) }
     }
 
     fun clearSelection() {
@@ -164,8 +180,9 @@ class TimelineViewModel(
      */
     fun toggleSelectAll() {
         _state.update { previous ->
-            val all = previous.loadedItems.mapTo(HashSet()) { it.id }
-            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+            previous.copy(
+                selection = previous.selection.toggledAll(previous.loadedItems.map { it.id })
+            )
         }
     }
 
