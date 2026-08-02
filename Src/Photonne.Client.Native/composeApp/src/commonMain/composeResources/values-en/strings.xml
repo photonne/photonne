@@ -343,6 +343,11 @@
     <string name="asset_a11y_video">Video</string>
     <string name="asset_a11y_live_photo">Motion photo</string>
     <string name="asset_a11y_favorite">Favourite</string>
+    <string name="selection_action_skip_organize">No need to organize these</string>
+    <plurals name="organize_skipped_done">
+        <item quantity="one">1 photo set aside</item>
+        <item quantity="other">%1$d photos set aside</item>
+    </plurals>
     <string name="action_undo">Undo</string>
     <plurals name="selection_archive_done">
         <item quantity="one">1 photo archived</item>

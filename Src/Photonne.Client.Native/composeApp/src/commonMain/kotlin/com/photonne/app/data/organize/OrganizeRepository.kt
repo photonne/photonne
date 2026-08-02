@@ -23,6 +23,17 @@ class OrganizeRepository(
     suspend fun summary(): OrganizeSummary =
         api.getOrganizeSummary()
 
+    /**
+     * Aparta (o devuelve) assets de la bandeja. No los mueve ni los archiva:
+     * solo dejan de contar como pendientes de organizar.
+     */
+    suspend fun setExcluded(assetIds: List<String>, excluded: Boolean) =
+        api.setOrganizeExcluded(assetIds, excluded)
+
+    /** Lo apartado, para poder revisarlo y devolverlo a la bandeja. */
+    suspend fun excluded(cursor: Instant? = null): TimelinePage =
+        api.getOrganizeExcluded(cursor)
+
     /** Physical move out of MobileBackup into [targetFolderId]. Source folders
      *  differ per asset (one per device), so we pass a null source and let the
      *  server authorize per asset. When [organizeByYear] is set the server files

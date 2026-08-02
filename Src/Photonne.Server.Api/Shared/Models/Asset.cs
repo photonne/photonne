@@ -125,6 +125,16 @@ public class Asset
 
     public bool IsArchived { get; set; }
 
+    // Deliberately left in MobileBackup: the user said "this never needs
+    // filing" (screenshots, memes, receipts). Hides it from the "Para
+    // organizar" inbox WITHOUT moving or archiving it, which is what lets that
+    // inbox actually reach zero — otherwise the badge keeps a permanent floor
+    // and stops meaning anything.
+    //
+    // Not IsArchived: archiving pulls the asset out of the timeline too, and
+    // these are ordinary photos the user still wants to see.
+    public bool ExcludedFromOrganize { get; set; }
+
     public DateTime? DeletedAt { get; set; }
     [MaxLength(1000)]
     public string? DeletedFromPath { get; set; }

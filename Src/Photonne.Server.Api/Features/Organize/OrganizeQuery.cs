@@ -30,6 +30,11 @@ internal static class OrganizeQuery
     /// Non-deleted, non-archived, present-on-disk assets under the user's
     /// MobileBackup subtree, excluding the motion (.mov) half of a Live Photo
     /// (mirrors <c>TimelineQuery.VisibleAssets</c>).
+    ///
+    /// Also excludes what the user marked as "never needs filing"
+    /// (<see cref="Asset.ExcludedFromOrganize"/>). Without it the inbox has a
+    /// permanent floor of screenshots and memes, never reaches zero, and the
+    /// badge stops carrying information.
     /// </summary>
     public static IQueryable<Asset> Pending(
         ApplicationDbContext dbContext,
@@ -39,6 +44,24 @@ internal static class OrganizeQuery
         return dbContext.Assets
             .AsNoTracking()
             .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
+                     && !a.ExcludedFromOrganize
+                     && a.FullPath.StartsWith(prefix)
+                     && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart));
+    }
+
+    /// <summary>
+    /// The mirror of <see cref="Pending"/>: what the user has set aside. Backs
+    /// the "excluidas" list, so the decision is never a one-way door.
+    /// </summary>
+    public static IQueryable<Asset> Excluded(
+        ApplicationDbContext dbContext,
+        string username)
+    {
+        var prefix = MobileBackupPrefix(username);
+        return dbContext.Assets
+            .AsNoTracking()
+            .Where(a => a.DeletedAt == null && !a.IsArchived && !a.IsFileMissing
+                     && a.ExcludedFromOrganize
                      && a.FullPath.StartsWith(prefix)
                      && !a.Tags.Any(t => t.TagType == AssetTagType.MotionPhotoPart));
     }
