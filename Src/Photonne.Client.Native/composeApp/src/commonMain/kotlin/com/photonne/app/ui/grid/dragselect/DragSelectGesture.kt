@@ -303,7 +303,11 @@ private suspend fun PointerInputScope.detectDragSelectGesture(
         else DragSelectKind.Cells
     }
     val committed = kind ?: return@awaitEachGesture
-    if (!onBegin(position, committed, lastMillis)) return@awaitEachGesture
+    // El ancla es donde se POSÓ el dedo, no donde el gesto acabó de decidirse.
+    // Con el arrastre horizontal, para cuando se confirma el dedo ya ha pasado
+    // de celda, y anclar ahí dejaría la primera sin marcar.
+    if (!onBegin(down.position, committed, lastMillis)) return@awaitEachGesture
+    if (position != down.position) onMove(position, lastMillis)
 
     // ---- Fase 2: el gesto es nuestro. ----
     try {
