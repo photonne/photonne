@@ -195,6 +195,63 @@ class OrganizeInboxViewModel(
         }
     }
 
+    /**
+     * Aparta lo seleccionado: deja de contar como pendiente sin moverlo ni
+     * archivarlo. Es la única forma de que la bandeja llegue a cero cuando hay
+     * capturas y memes que nunca se van a guardar en ninguna carpeta.
+     *
+     * [onDone] recibe los ids para poder ofrecer deshacerlo.
+     */
+    fun excludeSelected(onDone: (List<String>) -> Unit = {}) {
+        val ids = _state.value.selection.toList()
+        if (ids.isEmpty() || _state.value.isBulkMutating) return
+        setExcluded(ids, excluded = true) { onDone(ids) }
+    }
+
+    /** Devuelve [ids] a la bandeja. Es el deshacer de [excludeSelected]. */
+    fun includeAgain(ids: List<String>, onDone: () -> Unit = {}) {
+        if (ids.isEmpty()) return
+        setExcluded(ids, excluded = false) { onDone() }
+    }
+
+    private fun setExcluded(ids: List<String>, excluded: Boolean, onDone: () -> Unit) {
+        _state.update { it.copy(isBulkMutating = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.setExcluded(ids, excluded) }
+                .onSuccess {
+                    val touched = ids.toHashSet()
+                    _state.update {
+                        it.copy(
+                            // Al apartar salen de la bandeja; al devolverlos, el
+                            // refresco de abajo los trae de vuelta en su sitio.
+                            items = if (excluded) {
+                                it.items.filterNot { item -> item.id in touched }
+                            } else it.items,
+                            selection = it.selection - touched,
+                            isBulkMutating = false,
+                        )
+                    }
+                    if (!excluded) refresh() else refreshSummary()
+                    onDone()
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            isBulkMutating = false,
+                            error = errorFactory.from(error, "No se pudo apartar")
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun refreshSummary() {
+        viewModelScope.launch {
+            runCatching { repository.summary() }
+                .onSuccess { summary -> _state.update { it.copy(summary = summary) } }
+        }
+    }
+
     fun clearMoveSummary() {
         _state.update { it.copy(lastMoveSummary = null) }
     }

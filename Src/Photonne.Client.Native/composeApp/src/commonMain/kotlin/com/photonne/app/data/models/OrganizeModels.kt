@@ -48,3 +48,14 @@ data class AssetYearBreakdownResponse(val groups: List<YearGroup> = emptyList())
  *  capture year (with ids), for the condition-move "Revisar" grid. */
 @Serializable
 data class OrganizeRuleReviewResponse(val groups: List<YearGroup> = emptyList())
+
+/**
+ * Aparta assets de la bandeja sin moverlos ni archivarlos: cosas que nunca hay
+ * que guardar en ninguna carpeta (capturas, memes, recibos). Es lo que permite
+ * que la bandeja llegue de verdad a cero.
+ */
+@Serializable
+data class OrganizeExcludeRequest(
+    val assetIds: List<String> = emptyList(),
+    val excluded: Boolean = true,
+)

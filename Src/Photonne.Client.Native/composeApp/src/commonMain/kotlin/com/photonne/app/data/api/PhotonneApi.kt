@@ -38,6 +38,7 @@ import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.AssetYearBreakdownResponse
 import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.data.models.OrganizeExcludeRequest
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.OrganizeRuleReviewResponse
 import com.photonne.app.data.models.YearGroup
@@ -312,6 +313,10 @@ interface PhotonneApi {
     /** Count of unorganized (MobileBackup) assets, for the entry-point badge. */
     /** Contador de la bandeja + el tramo de fechas que cubre. */
     suspend fun getOrganizeSummary(): OrganizeSummary
+    /** Aparta (o devuelve) assets de la bandeja sin moverlos ni archivarlos. */
+    suspend fun setOrganizeExcluded(assetIds: List<String>, excluded: Boolean)
+    /** Lo que se ha apartado de la bandeja, para poder revisarlo y devolverlo. */
+    suspend fun getOrganizeExcluded(cursor: Instant? = null, pageSize: Int = 150): TimelinePage
     /** Dry-run of a condition rule within the MobileBackup inbox: match count + sample. */
     suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
     /** Files every inbox asset matching [rule] into [targetFolderId]; returns the
@@ -851,6 +856,33 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Organize inbox fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun setOrganizeExcluded(assetIds: List<String>, excluded: Boolean) {
+        val response: HttpResponse = client.post("$baseUrl/api/organize/exclude") {
+            contentType(ContentType.Application.Json)
+            setBody(OrganizeExcludeRequest(assetIds = assetIds, excluded = excluded))
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize exclude failed (${response.status.value})"
+            )
+        }
+    }
+
+    override suspend fun getOrganizeExcluded(cursor: Instant?, pageSize: Int): TimelinePage {
+        val response: HttpResponse = client.get("$baseUrl/api/organize/excluded") {
+            parameter("pageSize", pageSize)
+            if (cursor != null) parameter("cursor", cursor.toString())
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize excluded fetch failed (${response.status.value})"
             )
         }
         return response.body()

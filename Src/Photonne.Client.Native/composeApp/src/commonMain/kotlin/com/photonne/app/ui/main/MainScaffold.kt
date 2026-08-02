@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.NotInterested
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
@@ -113,6 +114,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.photonne.app.resources.Res
 import androidx.compose.material3.TextButton
+import com.photonne.app.resources.selection_action_skip_organize
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.selection_archive_done
 import com.photonne.app.resources.selection_unarchive_done
@@ -912,6 +914,11 @@ fun AssetSelectionBottomBar(
     selectedIds: () -> List<String> = { emptyList() },
     /** Revierte la acción. Null → sin deshacer, solo mensaje. */
     onUndo: ((BulkUndoKind, List<String>) -> Unit)? = null,
+    /**
+     * Aparta lo seleccionado de "Para organizar" sin moverlo ni archivarlo.
+     * Solo lo pasa esa bandeja; en el resto de pantallas no significa nada.
+     */
+    onExcludeFromOrganize: (() -> Unit)? = null,
     onMove: (() -> Unit)? = null,
     onUnlink: (() -> Unit)? = null,
     onRemoveFromAlbum: (() -> Unit)? = null,
@@ -1090,6 +1097,23 @@ fun AssetSelectionBottomBar(
                                 )
                             }
                         )
+                        onExcludeFromOrganize?.let { exclude ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(stringResource(Res.string.selection_action_skip_organize))
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Outlined.NotInterested,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    exclude()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = {
                                 Text(

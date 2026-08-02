@@ -36,6 +36,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.setSingletonImageLoaderFactory
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.auth.AuthRepository
+import com.photonne.app.resources.organize_skipped_done
+import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.account_section_appearance
 import com.photonne.app.resources.account_section_profile
@@ -115,6 +117,7 @@ import com.photonne.app.resources.my_links_title
 import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.explore_title
 import com.photonne.app.resources.explore_section_places
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.data.auth.AuthState
 import com.photonne.app.data.auth.AuthStateHolder
@@ -1439,6 +1442,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         moreSubscreen == MoreSubscreen.OrganizeInbox &&
             organizeInboxState.isSelectionActive -> {
             {
+                // Los textos se resuelven aquí, en composición: la acción de
+                // apartar corre en un callback y allí ya no hay recursos.
+                val skippedCount = organizeInboxState.selection.size
+                val skippedMessage = pluralStringResource(
+                    Res.plurals.organize_skipped_done, skippedCount, skippedCount
+                )
+                val undoLabel = stringResource(Res.string.action_undo)
+                val snackbar = LocalSnackbarController.current
                 AssetSelectionBottomBar(
                     selectedCount = organizeInboxState.selection.size,
                     isMutating = organizeInboxState.isBulkMutating ||
@@ -1459,6 +1470,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     onMove = {
                         showMoveSelectedAssetsInbox = true
                         organizeInboxViewModel.loadMoveYearBreakdown()
+                    },
+                    onExcludeFromOrganize = {
+                        organizeInboxViewModel.excludeSelected { ids ->
+                            foldersViewModel.refreshOrganizeCount()
+                            snackbar?.show(
+                                message = skippedMessage,
+                                actionLabel = undoLabel
+                            ) {
+                                organizeInboxViewModel.includeAgain(ids) {
+                                    foldersViewModel.refreshOrganizeCount()
+                                }
+                            }
+                        }
                     }
                 )
             }
