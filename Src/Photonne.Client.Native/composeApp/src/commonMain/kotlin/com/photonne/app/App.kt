@@ -138,12 +138,16 @@ import com.photonne.app.ui.album.LeaveAlbumDialog
 import com.photonne.app.ui.album.ManagePermissionsDialog
 import com.photonne.app.ui.album.ManageSharesDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import com.photonne.app.ui.asset.AssetDetailScreen
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
@@ -771,6 +775,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             personDetailState.isSelectionActive) ||
         (moreSubscreen == MoreSubscreen.OrganizeInbox && organizeInboxState.isSelectionActive)
     )
+    var overlayForward by remember { mutableStateOf(true) }
     val canHandleBack = (
         assetDetail != null ||
         memoryDetail != null ||
@@ -781,7 +786,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         moreSubscreen != null ||
         selectedTab != MainTab.Timeline
     )
+    // Dirección de la última navegación del overlay. Se marca aquí y la consume
+    // el bloque de transición al montar el destino nuevo: "atrás" entra desde el
+    // lado contrario, como en cualquier pila de navegación.
     PlatformBackHandler(enabled = canHandleBack) {
+        overlayForward = false
         when {
             assetDetail != null -> { assetDetail = null }
             // Before every selection case: an open memory covers the screen, so
@@ -885,6 +894,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         (selectedTab == MainTab.Albums && selectedAlbum != null) ||
         (selectedTab == MainTab.Folders && selectedFolder != null) ||
         selectedTab == MainTab.Search
+    // Identidad del destino que ocupa el overlay. Cambiarla es lo que dispara la
+    // transición de entrada; navegar dentro del MISMO destino (abrir el visor,
+    // seleccionar fotos) la deja quieta.
+    val overlayKey: Any = when {
+        moreSubscreen != null ->
+            "more:${moreSubscreen!!.name}:${selectedPerson?.id ?: ""}"
+        selectedTab == MainTab.Albums && selectedAlbum != null ->
+            "album:${selectedAlbum!!.id}"
+        selectedTab == MainTab.Folders && selectedFolder != null ->
+            "folder:${selectedFolder!!.id}"
+        selectedTab == MainTab.Search -> "search"
+        else -> "none"
+    }
     // The pager runs edge-to-edge at the top whenever a bare top-level tab is
     // showing: each page then paints its own top bar inside itself (so it slides
     // with the content, no shared Scaffold bar snapping the grid down). It drops
@@ -1891,6 +1913,38 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
             ) {
+            // Las subpantallas se conmutaban en seco. Ahora el destino nuevo
+            // entra deslizando y fundiéndose (eje compartido de Material): un
+            // desplazamiento corto, lo justo para que se lea de dónde viene.
+            //
+            // No se anima la SALIDA: el `when` de abajo se resuelve contra el
+            // estado actual, así que el contenido saliente ya se habría
+            // convertido en el entrante y el gesto contaría una mentira. Con
+            // `key` el subárbol se remonta y la entrada arranca sola.
+            key(overlayKey) {
+                val enteringForward = remember { overlayForward }
+                var entered by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    entered = true
+                    // Consumida: la siguiente navegación vuelve a ser hacia
+                    // dentro salvo que el back handler diga lo contrario.
+                    overlayForward = true
+                }
+                val enterProgress by animateFloatAsState(
+                    targetValue = if (entered) 1f else 0f,
+                    animationSpec = tween(durationMillis = 220),
+                    label = "overlayEnter"
+                )
+                val slidePx = with(LocalDensity.current) { 24.dp.toPx() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationX = (1f - enterProgress) *
+                                if (enteringForward) slidePx else -slidePx
+                            alpha = enterProgress
+                        }
+                ) {
             when {
                 selectedTab == MainTab.Timeline && moreSubscreen == null -> {
                     // shown by the pager base layer
@@ -3004,6 +3058,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         )
                 }
             }
+            }
+                }
             }
             }
         }
