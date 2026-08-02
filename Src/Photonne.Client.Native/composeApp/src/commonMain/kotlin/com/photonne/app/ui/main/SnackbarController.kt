@@ -2,6 +2,7 @@ package com.photonne.app.ui.main
 
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -24,11 +25,33 @@ class SnackbarController(
     val hostState: SnackbarHostState,
     private val scope: CoroutineScope,
 ) {
-    fun show(message: String) {
+    /**
+     * Mensaje breve, opcionalmente con una acción.
+     *
+     * [actionLabel] + [onAction] son lo que permite ofrecer "Deshacer" en las
+     * acciones reversibles. Sin ellos, la única forma de proteger un borrado
+     * era un diálogo de confirmación PREVIO, que cobra fricción en cada acción
+     * para cubrir el error ocasional; con deshacer, el reparto se invierte.
+     *
+     * Se usa [SnackbarDuration.Long] cuando hay acción: cuatro segundos es
+     * poco para leer el mensaje y decidir.
+     */
+    fun show(
+        message: String,
+        actionLabel: String? = null,
+        onAction: (() -> Unit)? = null
+    ) {
         if (message.isBlank()) return
         scope.launch {
             hostState.currentSnackbarData?.dismiss()
-            hostState.showSnackbar(message = message, duration = SnackbarDuration.Short)
+            val result = hostState.showSnackbar(
+                message = message,
+                actionLabel = actionLabel.takeIf { onAction != null },
+                withDismissAction = false,
+                duration = if (onAction != null) SnackbarDuration.Long
+                else SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) onAction?.invoke()
         }
     }
 }
