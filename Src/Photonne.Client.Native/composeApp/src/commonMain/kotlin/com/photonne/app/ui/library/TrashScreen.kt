@@ -29,6 +29,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.remember
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.grid.RowSelectRail
+import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -69,10 +72,12 @@ fun TrashScreen(
     onLoadMore: () -> Unit,
     onLoad: () -> Unit,
     onRefresh: () -> Unit,
+    onApplySelection: (SelectionPatch) -> Unit = {},
     gridState: LazyGridState = rememberLazyGridState(),
     hazeState: HazeState = remember { HazeState() }
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
+    val gestures = rememberAssetGridSelectionGestures(onApplySelection)
 
     LaunchedEffect(Unit) { onLoad() }
 
@@ -107,10 +112,17 @@ fun TrashScreen(
                     isAppending = state.isAppending,
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
+                    dragSelect = gestures.dragSelect,
                     contentPadding = PaddingValues(bottom = floatingNavBarReservedHeight()),
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
+
+            RowSelectRail(
+                gestures = gestures,
+                visible = state.isSelectionActive,
+                reservedBottom = floatingNavBarReservedHeight()
+            )
 
             // El host ya reserva el top (barra de pestañas + cromo), así que aquí
             // el overlay arranca en 0.

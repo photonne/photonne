@@ -75,11 +75,17 @@ private class LazyGridDragSelectAdapter(
         // un barrido rápido por el carril, o el auto-scroll, cruzan filas que
         // ya han salido de pantalla, y resolverlas como vacías las dejaría
         // sin marcar sin que se note.
-        val columns = columnCount() ?: return emptyList()
-        // La cabecera de ancho completo ocupa ella sola la fila 0.
-        val cellRow = rowKey - if (headerCount() > 0) 1 else 0
-        if (cellRow < 0) return emptyList()
-        val first = cellRow * columns
+        val cells = visibleCells()
+        if (cells.isEmpty()) return emptyList()
+        val columns = columnCount(cells) ?: return emptyList()
+        // Se ancla en una celda visible cualquiera en vez de suponer cuántas
+        // filas ocupa lo que va antes de los assets. En Carpetas ese preludio
+        // son las subcarpetas más un separador — de altura variable — y darlo
+        // por hecho desplazaría todas las filas.
+        val reference = cells.first()
+        val referenceRowStart = (reference.index - headerCount()) - reference.column
+        val first = referenceRowStart + (rowKey - reference.row) * columns
+        if (first < 0) return emptyList()
         return (first until first + columns).mapNotNull(idAt)
     }
 
@@ -90,8 +96,7 @@ private class LazyGridDragSelectAdapter(
      * máximo de columnas visibles solo sirve de respaldo, porque si lo único
      * en pantalla es una fila parcial se queda corto.
      */
-    private fun columnCount(): Int? {
-        val cells = visibleCells()
+    private fun columnCount(cells: List<LazyGridItemInfo>): Int? {
         if (cells.isEmpty()) return null
         val rowStarts = cells.filter { it.column == 0 }.sortedBy { it.row }
         for (i in 0 until rowStarts.size - 1) {

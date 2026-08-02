@@ -74,6 +74,9 @@ import com.photonne.app.resources.search_mode_text
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.grid.RowSelectRail
+import com.photonne.app.ui.grid.chromeSelectionActive
+import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
@@ -97,7 +100,8 @@ fun SearchScreen(
     val hazeState = remember { HazeState() }
     // Con una selección activa manda la cápsula de selección acoplada del Scaffold:
     // el buscador no dibuja su cromo flotante ni reserva su hueco (como el resto).
-    val selecting = state.isSelectionActive
+    val gestures = rememberAssetGridSelectionGestures(viewModel::applySelection)
+    val selecting = gestures.chromeSelectionActive(state.isSelectionActive)
     val reservedTop = if (selecting) 0.dp else subscreenChromeReservedTop()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -141,6 +145,7 @@ fun SearchScreen(
                         isAppending = state.isAppending,
                         isInitialLoading = state.isLoading,
                         onLoadMore = viewModel::loadMore,
+                        dragSelect = gestures.dragSelect,
                         contentPadding = PaddingValues(
                             top = reservedTop,
                             bottom = floatingNavBarReservedHeight()
@@ -153,6 +158,13 @@ fun SearchScreen(
                 }
             }
         }
+
+        RowSelectRail(
+            gestures = gestures,
+            visible = state.isSelectionActive,
+            reservedTop = reservedTop,
+            reservedBottom = floatingNavBarReservedHeight()
+        )
 
         // La fecha central + mango salen siempre (el mes de cada foto es un dato
         // real aunque el orden sea por relevancia); el carril de años solo si el
