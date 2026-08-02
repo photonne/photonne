@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
@@ -23,8 +24,11 @@ import com.photonne.app.resources.favorites_title
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.AssetGridDragSelect
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.grid.dragselect.DragSelectConfig
+import com.photonne.app.ui.grid.dragselect.RowSelectRail
 import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
 import com.photonne.app.ui.grid.dragselect.rememberLatchedDuringDrag
+import com.photonne.app.ui.platform.backGestureEdgeInset
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -62,6 +66,10 @@ fun FavoritesScreen(
     val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
     val chromeFloating = !selectionChrome
     val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
+    // El carril de filas se aparta del gesto de "atrás" del sistema en vez de
+    // pelearse con él: ese borde no se puede reclamar.
+    val railInset = backGestureEdgeInset()
+    val railStartPx = with(LocalDensity.current) { railInset.toPx() }
 
     LaunchedEffect(Unit) { onLoad() }
 
@@ -100,7 +108,9 @@ fun FavoritesScreen(
                     onLoadMore = onLoadMore,
                     dragSelect = AssetGridDragSelect(
                         state = dragSelectState,
-                        onPatch = onApplySelection
+                        onPatch = onApplySelection,
+                        railStartPx = railStartPx,
+                        config = DragSelectConfig.Default.copy(railEnabled = true)
                     ),
                     contentPadding = PaddingValues(
                         top = reservedTop,
@@ -109,6 +119,14 @@ fun FavoritesScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
+
+            RowSelectRail(
+                visible = state.isSelectionActive,
+                state = dragSelectState,
+                startInset = railInset,
+                reservedTop = reservedTop,
+                reservedBottom = floatingNavBarReservedHeight()
+            )
 
             PhotoGridScrubberOverlay(
                 gridState = gridState,
