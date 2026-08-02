@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.data.models.FolderSummary
+import com.photonne.app.data.settings.RecentDestinationsStore
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.organize_move_action_count
 import com.photonne.app.resources.organize_move_by_year_desc
@@ -55,6 +56,7 @@ import com.photonne.app.ui.main.subscreenChromeReservedTop
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -86,6 +88,8 @@ fun OrganizeRuleScreen(
     onChromeVisibleChange: (Boolean) -> Unit = {},
     reviewOpen: Boolean = false,
 ) {
+    val recentDestinationsStore: RecentDestinationsStore = koinInject()
+    val recentDestinations by recentDestinationsStore.value.collectAsState()
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val scrollState = rememberScrollState()
@@ -203,11 +207,15 @@ fun OrganizeRuleScreen(
             isSubmitting = false,
             includeRoot = false,
             initialSelectionId = state.targetFolderId,
+            recentDestinationIds = recentDestinations,
             onDismiss = { showFolderPicker = false },
             onConfirm = { targetFolderId, _ ->
                 showFolderPicker = false
                 targetFolderId?.let { id ->
                     destinations.firstOrNull { it.id == id }?.let { folder ->
+                        // Se anota al ELEGIR, no al mover: aquí el destino se fija
+                        // antes de confirmar y el movimiento puede quedarse a medias.
+                        recentDestinationsStore.record(folder.id)
                         viewModel.setTarget(folder.id, folder.path)
                     }
                 }

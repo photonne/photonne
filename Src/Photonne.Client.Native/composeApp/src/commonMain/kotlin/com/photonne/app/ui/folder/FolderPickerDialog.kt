@@ -38,6 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
+import com.photonne.app.resources.folder_picker_recent
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.data.models.YearCount
 import com.photonne.app.ui.organize.YearBreakdownChips
@@ -60,6 +64,12 @@ fun FolderPickerDialog(
     initialSelectionId: String? = null,
     showOrganizeByDate: Boolean = false,
     yearBreakdown: List<YearCount> = emptyList(),
+    /**
+     * Últimos destinos usados, la más reciente primero. Se pintan como atajos
+     * sobre el árbol: organizar es repetitivo y sin memoria cada movimiento
+     * obliga a recorrerlo entero otra vez.
+     */
+    recentDestinationIds: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (targetFolderId: String?, organizeByYear: Boolean) -> Unit
 ) {
@@ -112,6 +122,35 @@ fun FolderPickerDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
+
+            // Solo fuera de búsqueda: buscando, los atajos compiten con lo que
+            // se está buscando en vez de ahorrar trabajo.
+            val recents = remember(recentDestinationIds, byId) {
+                recentDestinationIds.mapNotNull { byId[it] }
+            }
+            if (recents.isNotEmpty() && !searching) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(Res.string.folder_picker_recent),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        recents.forEach { folder ->
+                            FilterChip(
+                                selected = !rootSelected && selectedId == folder.id,
+                                onClick = { rootSelected = false; selectedId = folder.id },
+                                enabled = !isSubmitting,
+                                label = { Text(folder.name, maxLines = 1) },
+                            )
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
