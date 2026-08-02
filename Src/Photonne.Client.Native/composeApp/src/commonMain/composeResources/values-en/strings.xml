@@ -1082,6 +1082,9 @@
     <string name="more_section_discover">Discover</string>
     <string name="more_section_manage">Manage</string>
     <string name="more_section_actions">Actions</string>
+    <string name="organize_suggestions_title">Suggested batches</string>
+    <string name="organize_suggestions_see_all">See all photos</string>
+    <string name="organize_suggestions_back">Back to batches</string>
     <string name="organize_inbox_title">To organize</string>
     <string name="organize_rule_title">Move by conditions</string>
     <string name="organize_inbox_card_subtitle">Photos in MobileBackup not yet filed</string>

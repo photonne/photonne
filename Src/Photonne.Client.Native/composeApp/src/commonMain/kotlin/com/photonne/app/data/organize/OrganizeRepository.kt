@@ -2,6 +2,7 @@ package com.photonne.app.data.organize
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartRule
@@ -29,6 +30,14 @@ class OrganizeRepository(
      */
     suspend fun setExcluded(assetIds: List<String>, excluded: Boolean) =
         api.setOrganizeExcluded(assetIds, excluded)
+
+    /**
+     * Lotes propuestos: viajes, personas, escenas y meses, ya agrupados por el
+     * servidor. Cada uno trae sus ids, así que revisarlo y moverlo usa los
+     * mismos endpoints que el movimiento manual.
+     */
+    suspend fun suggestions(): List<OrganizeSuggestion> =
+        api.getOrganizeSuggestions()
 
     /** Lo apartado, para poder revisarlo y devolverlo a la bandeja. */
     suspend fun excluded(cursor: Instant? = null): TimelinePage =

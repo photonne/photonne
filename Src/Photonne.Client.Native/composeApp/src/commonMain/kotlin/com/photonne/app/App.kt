@@ -2289,6 +2289,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 foldersViewModel.refreshOrganizeCount()
                             },
                             onOpenRules = { moreSubscreen = MoreSubscreen.OrganizeRule },
+                            onPickSuggestion = organizeInboxViewModel::selectSuggestion,
+                            onSeeAllItems = organizeInboxViewModel::showAllItems,
+                            onBackToSuggestions = organizeInboxViewModel::showSuggestions,
                             onApplySelection = organizeInboxViewModel::applySelection,
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )

@@ -7,6 +7,7 @@ import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.YearGroup
@@ -46,6 +47,11 @@ data class OrganizeInboxUiState(
      * cabecera que contara eso subiría sola al hacer scroll.
      */
     val summary: OrganizeSummary? = null,
+    /** Lotes propuestos por el servidor; vacío mientras cargan o si no hay. */
+    val suggestions: List<OrganizeSuggestion> = emptyList(),
+    val isLoadingSuggestions: Boolean = false,
+    /** true cuando el usuario ha pedido ver la rejilla plana completa. */
+    val showAllItems: Boolean = false,
 ) {
     /** Pending count = the loaded items; the whole inbox is materialized here as
      *  the user pages, and the header reflects what's visible. The authoritative
@@ -90,6 +96,7 @@ class OrganizeInboxViewModel(
                 runCatching { repository.summary() }
                     .onSuccess { summary -> _state.update { it.copy(summary = summary) } }
             }
+            launch { loadSuggestions() }
             runCatching { repository.inbox(cursor = null) }
                 .onSuccess { page ->
                     _state.update {
@@ -243,6 +250,36 @@ class OrganizeInboxViewModel(
                     }
                 }
         }
+    }
+
+    /**
+     * Carga los lotes propuestos. Va aparte de la rejilla y no la bloquea: si
+     * el agrupado falla, la bandeja se sigue pudiendo usar a mano, que es
+     * exactamente lo que había antes.
+     */
+    private suspend fun loadSuggestions() {
+        _state.update { it.copy(isLoadingSuggestions = true) }
+        runCatching { repository.suggestions() }
+            .onSuccess { list ->
+                _state.update { it.copy(suggestions = list, isLoadingSuggestions = false) }
+            }
+            .onFailure {
+                _state.update { it.copy(suggestions = emptyList(), isLoadingSuggestions = false) }
+            }
+    }
+
+    /** Selecciona el lote entero para que las barras de siempre actúen sobre él. */
+    fun selectSuggestion(suggestion: OrganizeSuggestion) {
+        _state.update { it.copy(selection = suggestion.assetIds.toSet(), showAllItems = true) }
+        loadMoveYearBreakdown()
+    }
+
+    fun showAllItems() {
+        _state.update { it.copy(showAllItems = true) }
+    }
+
+    fun showSuggestions() {
+        _state.update { it.copy(showAllItems = false, selection = emptySet()) }
     }
 
     private fun refreshSummary() {

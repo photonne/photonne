@@ -25,6 +25,8 @@ import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.resources.organize_inbox_count_format
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import kotlinx.datetime.LocalDate
+import androidx.compose.material.icons.outlined.AutoAwesomeMosaic
+import com.photonne.app.resources.organize_suggestions_back
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.theme.Spacing
@@ -67,6 +69,9 @@ fun OrganizeInboxScreen(
     onItemLongClick: (Int) -> Unit,
     onBack: () -> Unit,
     onOpenRules: () -> Unit,
+    onPickSuggestion: (com.photonne.app.data.models.OrganizeSuggestion) -> Unit = {},
+    onSeeAllItems: () -> Unit = {},
+    onBackToSuggestions: () -> Unit = {},
     onApplySelection: (SelectionPatch) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {},
 ) {
@@ -107,6 +112,20 @@ fun OrganizeInboxScreen(
                     ) {
                         ErrorBanner(error = state.error, onRetry = onRefresh)
                     }
+                // Los lotes son la puerta de entrada; la rejilla plana queda
+                // como salida para lo que no cubran.
+                !state.showAllItems && state.suggestions.isNotEmpty() ->
+                    SuggestedBatchesList(
+                        suggestions = state.suggestions,
+                        baseUrl = apiBaseUrl,
+                        contentPadding = PaddingValues(
+                            top = reservedTop,
+                            bottom = floatingNavBarReservedHeight()
+                        ),
+                        onPick = onPickSuggestion,
+                        onSeeAll = onSeeAllItems,
+                        header = { InboxHeader(summary = state.summary) },
+                    )
                 state.isEmpty ->
                     EmptyState(
                         icon = Icons.Outlined.Inbox,
@@ -135,7 +154,7 @@ fun OrganizeInboxScreen(
                     )
             }
 
-            PhotoGridScrubberOverlay(
+            if (state.showAllItems || state.suggestions.isEmpty()) PhotoGridScrubberOverlay(
                 gridState = gridState,
                 items = state.items,
                 headerCount = 1,
@@ -167,6 +186,16 @@ fun OrganizeInboxScreen(
                     // pierde sobre según qué miniatura.
                     statusBarScrim = true,
                     actions = {
+                        if (state.showAllItems && state.suggestions.isNotEmpty()) {
+                            IconButton(onClick = onBackToSuggestions) {
+                                Icon(
+                                    Icons.Outlined.AutoAwesomeMosaic,
+                                    contentDescription = stringResource(
+                                        Res.string.organize_suggestions_back
+                                    )
+                                )
+                            }
+                        }
                         IconButton(onClick = onOpenRules) {
                             Icon(
                                 Icons.Outlined.AutoAwesome,

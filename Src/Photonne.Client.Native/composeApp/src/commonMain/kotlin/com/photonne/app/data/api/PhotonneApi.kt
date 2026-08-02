@@ -39,6 +39,7 @@ import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.AssetYearBreakdownResponse
 import com.photonne.app.data.models.MoveOutcome
 import com.photonne.app.data.models.OrganizeExcludeRequest
+import com.photonne.app.data.models.OrganizeSuggestion
 import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.OrganizeRuleReviewResponse
 import com.photonne.app.data.models.YearGroup
@@ -313,6 +314,8 @@ interface PhotonneApi {
     /** Count of unorganized (MobileBackup) assets, for the entry-point badge. */
     /** Contador de la bandeja + el tramo de fechas que cubre. */
     suspend fun getOrganizeSummary(): OrganizeSummary
+    /** Lotes propuestos a partir de lo que sigue sin organizar. */
+    suspend fun getOrganizeSuggestions(): List<OrganizeSuggestion>
     /** Aparta (o devuelve) assets de la bandeja sin moverlos ni archivarlos. */
     suspend fun setOrganizeExcluded(assetIds: List<String>, excluded: Boolean)
     /** Lo que se ha apartado de la bandeja, para poder revisarlo y devolverlo. */
@@ -856,6 +859,17 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Organize inbox fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun getOrganizeSuggestions(): List<OrganizeSuggestion> {
+        val response: HttpResponse = client.get("$baseUrl/api/organize/suggestions")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Organize suggestions fetch failed (${response.status.value})"
             )
         }
         return response.body()

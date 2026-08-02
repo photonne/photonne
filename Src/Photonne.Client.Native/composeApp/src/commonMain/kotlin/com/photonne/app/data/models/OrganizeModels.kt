@@ -59,3 +59,25 @@ data class OrganizeExcludeRequest(
     val assetIds: List<String> = emptyList(),
     val excluded: Boolean = true,
 )
+
+/**
+ * Un lote propuesto por el servidor a partir de lo que sigue sin organizar.
+ *
+ * La bandeja dejaba al usuario inventar los grupos a mano sobre un muro
+ * cronológico, teniendo la app las señales para agruparlos. Cada lote es una
+ * decisión ya formada — un viaje, una persona, una escena, un mes — con sus
+ * ids dentro, así que se revisa y se mueve con lo que ya existía.
+ */
+@Serializable
+data class OrganizeSuggestion(
+    /** trip | person | scene | month. Elige el icono, no el comportamiento. */
+    val kind: String = "",
+    val key: String = "",
+    val title: String = "",
+    /** Extremos del tramo, ya como "yyyy-MM". */
+    val from: String? = null,
+    val to: String? = null,
+    val count: Int = 0,
+    val coverAssetId: String? = null,
+    val assetIds: List<String> = emptyList(),
+)
