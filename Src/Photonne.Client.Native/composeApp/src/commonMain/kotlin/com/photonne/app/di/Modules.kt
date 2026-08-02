@@ -5,6 +5,7 @@ import com.photonne.app.data.actions.AssetActionsRepository
 import com.photonne.app.data.admin.AdminRepository
 import com.photonne.app.data.album.AlbumsRepository
 import com.photonne.app.data.settings.ThemePreferenceStore
+import com.photonne.app.data.settings.RecentDestinationsStore
 import com.photonne.app.data.settings.TimelineZoomStore
 import com.photonne.app.data.folder.FoldersRepository
 import com.photonne.app.ui.folder.FolderDetailViewModel
@@ -159,6 +160,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     single { com.photonne.app.data.devicebackup.createBackgroundSyncScheduler() }
     single { ThemePreferenceStore(get()) }
     single { TimelineZoomStore(get()) }
+    single { RecentDestinationsStore(get()) }
     single { TimelineRepository(api = get()) }
     single { com.photonne.app.data.timeline.TimelineBucketStore(api = get()) }
     singleOf(::MemoriesRepository)

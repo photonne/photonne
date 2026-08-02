@@ -512,6 +512,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     val albumDetailViewModel: AlbumDetailViewModel = koinViewModel()
     val searchViewModel: com.photonne.app.ui.search.SearchViewModel = koinViewModel()
     val foldersViewModel: FoldersViewModel = koinViewModel()
+    // Últimos destinos de un movimiento, para ofrecerlos como atajo en el
+    // picker: organizar es repetitivo y el árbol es largo.
+    val recentDestinationsStore: com.photonne.app.data.settings.RecentDestinationsStore =
+        koinInject()
+    val recentDestinations by recentDestinationsStore.value.collectAsState()
     val memoriesViewModel:
         com.photonne.app.ui.timeline.MemoriesViewModel = koinViewModel()
     // The timeline strip's live "on this day" list (above) and the Recuerdos
@@ -3833,12 +3838,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             errorMessage = folderDetailState.error?.userMessage,
             excludeFolderId = openedFolder.id,
             includeRoot = false,
+            recentDestinationIds = recentDestinations,
             onDismiss = {
                 showMoveSelectedAssets = false
                 folderDetailViewModel.clearError()
             },
             onConfirm = { targetFolderId, _ ->
                 if (targetFolderId != null) {
+                    recentDestinationsStore.record(targetFolderId)
                     folderDetailViewModel.moveSelectedAssets(targetFolderId) { movedIds ->
                         showMoveSelectedAssets = false
                         val moved = movedIds.size
@@ -3861,12 +3868,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             isSubmitting = timelineState.isBulkMutating,
             errorMessage = timelineState.error?.userMessage,
             includeRoot = false,
+            recentDestinationIds = recentDestinations,
             onDismiss = {
                 showMoveSelectedAssetsTimeline = false
                 timelineViewModel.clearError()
             },
             onConfirm = { targetFolderId, _ ->
                 if (targetFolderId != null) {
+                    recentDestinationsStore.record(targetFolderId)
                     timelineViewModel.moveSelectedAssets(targetFolderId) {
                         showMoveSelectedAssetsTimeline = false
                         foldersViewModel.refreshOrganizeCount()
@@ -3883,6 +3892,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             isSubmitting = organizeInboxState.isBulkMutating,
             errorMessage = organizeInboxState.error?.userMessage,
             includeRoot = false,
+            recentDestinationIds = recentDestinations,
             showOrganizeByDate = true,
             yearBreakdown = organizeInboxState.moveYearGroups.map {
                 com.photonne.app.data.models.YearCount(it.year, it.count)
@@ -3893,6 +3903,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             },
             onConfirm = { targetFolderId, organizeByYear ->
                 if (targetFolderId != null) {
+                    recentDestinationsStore.record(targetFolderId)
                     showMoveSelectedAssetsInbox = false
                     // With year foldering, review the split before committing;
                     // otherwise (or if the preview failed to load) move straight away.
