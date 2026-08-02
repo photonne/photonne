@@ -31,12 +31,6 @@ private class AndroidHaptics(private val view: View) : PhotonneHaptics {
             } else {
                 HapticFeedbackConstants.CLOCK_TICK
             }
-        HapticEvent.RowCrossed ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                HapticFeedbackConstants.SEGMENT_FREQUENT_TICK
-            } else {
-                HapticFeedbackConstants.CLOCK_TICK
-            }
         HapticEvent.SelectionEnd -> HapticFeedbackConstants.CONTEXT_CLICK
     }
 }

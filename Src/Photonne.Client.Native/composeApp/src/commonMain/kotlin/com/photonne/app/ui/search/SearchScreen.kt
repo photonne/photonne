@@ -74,7 +74,6 @@ import com.photonne.app.resources.search_mode_text
 import androidx.compose.foundation.layout.PaddingValues
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.RowSelectRail
 import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -158,13 +157,6 @@ fun SearchScreen(
                 }
             }
         }
-
-        RowSelectRail(
-            gestures = gestures,
-            visible = state.isSelectionActive,
-            reservedTop = reservedTop,
-            reservedBottom = floatingNavBarReservedHeight()
-        )
 
         // La fecha central + mango salen siempre (el mes de cada foto es un dato
         // real aunque el orden sea por relevancia); el carril de años solo si el

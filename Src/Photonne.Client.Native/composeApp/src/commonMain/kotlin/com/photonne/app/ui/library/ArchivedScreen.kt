@@ -26,7 +26,6 @@ import com.photonne.app.resources.archived_empty_subtitle
 import com.photonne.app.resources.archived_empty_title
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.RowSelectRail
 import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
@@ -101,13 +100,6 @@ fun ArchivedScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
-
-            RowSelectRail(
-                gestures = gestures,
-                visible = state.isSelectionActive,
-                reservedTop = reservedTop,
-                reservedBottom = floatingNavBarReservedHeight()
-            )
 
             PhotoGridScrubberOverlay(
                 gridState = gridState,

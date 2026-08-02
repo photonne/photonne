@@ -354,7 +354,6 @@
     <string name="selection_action_deselect_all">Deseleccionar todo</string>
     <string name="selection_group_select">Seleccionar el grupo</string>
     <string name="selection_group_clear">Deseleccionar el grupo</string>
-    <string name="selection_rail_hint">Desliza por aquí para seleccionar filas enteras</string>
     <string name="selection_action_download">Descargar</string>
     <string name="selection_label_select_all">Seleccionar</string>
     <string name="selection_label_deselect_all">Deseleccionar</string>

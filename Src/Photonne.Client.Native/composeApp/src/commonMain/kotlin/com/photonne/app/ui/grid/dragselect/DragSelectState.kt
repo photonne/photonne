@@ -12,25 +12,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** Por dónde se está arrastrando: sobre las celdas o por el carril lateral. */
-internal enum class DragSelectKind { Cells, Rail }
-
 /**
  * Estado observable del arrastre. Lo lee la pantalla para congelar su cromo
- * mientras dura el gesto y para resaltar el carril.
+ * mientras dura el gesto.
  */
 @Stable
 class DragSelectState {
     var isDragging: Boolean by mutableStateOf(false)
         internal set
 
-    internal var kind: DragSelectKind? by mutableStateOf(null)
-
     /** Última posición del dedo, en coordenadas locales de la rejilla. */
     internal var pointer: Offset by mutableStateOf(Offset.Zero)
-
-    /** true mientras el barrido va por el carril, para pintarlo activo. */
-    val isRailActive: Boolean get() = isDragging && kind == DragSelectKind.Rail
 }
 
 @Composable
@@ -48,9 +40,6 @@ data class DragSelectConfig(
     val plainDragWhenActive: Boolean = true,
     /** Cuánto debe dominar la horizontal para no confundirse con un scroll. */
     val horizontalBias: Float = 1.5f,
-    /** Barrido por el margen izquierdo para marcar filas enteras. */
-    val railEnabled: Boolean = false,
-    val railWidth: Dp = 32.dp,
     /** Franja de cada borde en la que el arrastre empieza a auto-scrollar. */
     val autoScrollEdge: Dp = 96.dp,
     val autoScrollMaxDpPerSecond: Float = 1800f,
@@ -78,17 +67,9 @@ data class DragSelectConfig(
 @Stable
 internal interface DragSelectAdapter {
     fun cellAt(position: Offset): DragSelectCell?
-    fun rowAt(position: Offset): DragSelectRow?
 
     /** Id del asset en [ordinal]; vacío si esa posición no es seleccionable. */
     fun idsAtOrdinal(ordinal: Int): List<String>
-
-    /**
-     * Ids de la fila [rowKey] entera. Ojo, el carril indexa por FILA y el
-     * arrastre normal por ordinal de asset: son numeraciones distintas y
-     * confundirlas selecciona cualquier cosa.
-     */
-    fun idsInRow(rowKey: Int): List<String>
 }
 
 /**

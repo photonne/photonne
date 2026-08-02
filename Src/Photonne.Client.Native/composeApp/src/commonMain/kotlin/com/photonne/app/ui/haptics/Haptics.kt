@@ -20,9 +20,6 @@ enum class HapticEvent {
     /** La banda cubre una celda más. Tic corto y seco. */
     CellCrossed,
 
-    /** El carril lateral cubre una fila más. Algo más marcado que una celda. */
-    RowCrossed,
-
     /** Se levanta el dedo con la selección hecha. */
     SelectionEnd
 }

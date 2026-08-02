@@ -59,7 +59,6 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
 import com.photonne.app.ui.grid.AssetGridDragSelect
-import com.photonne.app.ui.grid.RowSelectRail
 import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.grid.dragselect.AssetCellContentType
@@ -173,13 +172,6 @@ fun FolderDetailScreen(
             }
         }
 
-        RowSelectRail(
-            gestures = gestures,
-            visible = state.isSelectionActive,
-            reservedTop = reservedTop,
-            reservedBottom = floatingNavBarReservedHeight()
-        )
-
         if (floatingChrome) {
             SubscreenFloatingChrome(
                 title = title,
@@ -247,7 +239,6 @@ private fun FolderDetailGrid(
             isSelected = { it in selection },
             onPatch = dragSelect.onPatch,
             haptics = haptics,
-            railStartPx = dragSelect.railStartPx,
             config = dragSelect.config.copy(
                 autoScrollTopInset = contentPadding.calculateTopPadding(),
                 autoScrollBottomInset = contentPadding.calculateBottomPadding()

@@ -51,7 +51,6 @@ internal fun Modifier.dragSelectable(
     isSelected: (String) -> Boolean,
     onPatch: (SelectionPatch) -> Unit,
     haptics: PhotonneHaptics,
-    railStartPx: Float = 0f,
     config: DragSelectConfig = DragSelectConfig.Default
 ): Modifier {
     // Todo lo mutable entra por un holder: el pointerInput vive en una
@@ -62,7 +61,6 @@ internal fun Modifier.dragSelectable(
     val currentSelected by rememberUpdatedState(isSelected)
     val currentPatch by rememberUpdatedState(onPatch)
     val currentHaptics by rememberUpdatedState(haptics)
-    val currentRailStart by rememberUpdatedState(railStartPx)
     val currentConfig by rememberUpdatedState(config)
 
     return this.pointerInput(state, enabled) {
@@ -77,38 +75,21 @@ internal fun Modifier.dragSelectable(
         fun moveTo(position: Offset, atMillis: Long) {
             val active = session ?: return
             state.pointer = position
-            val kind = state.kind ?: return
-            val ordinal = when (kind) {
-                DragSelectKind.Cells -> currentAdapter.cellAt(position)?.ordinal
-                DragSelectKind.Rail -> currentAdapter.rowAt(position)?.rowKey
-                // Un frame en el que el dedo cae en la separación de 2 dp no
-                // mueve la banda; el siguiente la corrige y no queda hueco,
-                // porque se recalcula entera desde el ancla.
-            } ?: return
+            // Un frame en el que el dedo cae en la separación de 2 dp no mueve
+            // la banda; el siguiente la corrige y no queda hueco, porque se
+            // recalcula entera desde el ancla.
+            val ordinal = currentAdapter.cellAt(position)?.ordinal ?: return
             val patch = active.moveTo(ordinal)
             if (patch.isEmpty) return
             currentPatch(patch)
-            if (currentConfig.haptics) throttle?.tick(kind.hapticEvent(), atMillis)
+            if (currentConfig.haptics) throttle?.tick(HapticEvent.CellCrossed, atMillis)
         }
 
-        fun begin(position: Offset, kind: DragSelectKind, atMillis: Long): Boolean {
+        fun begin(position: Offset, atMillis: Long): Boolean {
             val cfg = currentConfig
-            val adapterNow = currentAdapter
-            val anchorOrdinal: Int
-            val anchorIds: List<String>
-            when (kind) {
-                DragSelectKind.Cells -> {
-                    val cell = adapterNow.cellAt(position) ?: return false
-                    anchorOrdinal = cell.ordinal
-                    anchorIds = listOf(cell.id)
-                }
-                DragSelectKind.Rail -> {
-                    val row = adapterNow.rowAt(position) ?: return false
-                    anchorOrdinal = row.rowKey
-                    anchorIds = adapterNow.idsInRow(row.rowKey)
-                    if (anchorIds.isEmpty()) return false
-                }
-            }
+            val cell = currentAdapter.cellAt(position) ?: return false
+            val anchorOrdinal = cell.ordinal
+            val anchorIds = listOf(cell.id)
             val selectedNow = currentSelected
             // La foto de la selección al arrancar es lo que permite que
             // retroceder devuelva las celdas a como estaban, en vez de
@@ -120,15 +101,9 @@ internal fun Modifier.dragSelectable(
                     selectedNow(id).also { if (it) base += id }
                 },
                 baseSelected = { id -> id in base || selectedNow(id) },
-                idsAt = { ordinal ->
-                    when (kind) {
-                        DragSelectKind.Cells -> currentAdapter.idsAtOrdinal(ordinal)
-                        DragSelectKind.Rail -> currentAdapter.idsInRow(ordinal)
-                    }
-                }
+                idsAt = { ordinal -> currentAdapter.idsAtOrdinal(ordinal) }
             )
             session = newSession
-            state.kind = kind
             state.pointer = position
             // Antes del primer parche: así el latch del cromo ve la selección
             // estrenarse con el gesto ya en marcha y no reflowea bajo el dedo.
@@ -136,7 +111,8 @@ internal fun Modifier.dragSelectable(
             if (cfg.haptics) {
                 currentHaptics.prepare()
                 currentHaptics.perform(HapticEvent.SelectionStart)
-                throttle = HapticThrottle(currentHaptics).also { it.tick(kind.hapticEvent(), atMillis) }
+                throttle = HapticThrottle(currentHaptics)
+                    .also { it.tick(HapticEvent.CellCrossed, atMillis) }
             }
             currentPatch(newSession.start())
             autoScrollJob = gestureScope.launch {
@@ -157,7 +133,6 @@ internal fun Modifier.dragSelectable(
             autoScrollJob?.cancel()
             autoScrollJob = null
             state.isDragging = false
-            state.kind = null
             if (hadSession && currentConfig.haptics) {
                 currentHaptics.perform(HapticEvent.SelectionEnd)
             }
@@ -166,7 +141,6 @@ internal fun Modifier.dragSelectable(
         detectDragSelectGesture(
             config = { currentConfig },
             selectionActive = { currentActive },
-            railStartPx = { currentRailStart },
             onBegin = ::begin,
             onMove = ::moveTo,
             onEnd = ::end
@@ -219,11 +193,6 @@ private suspend fun PointerInputScope.runAutoScroll(
     }
 }
 
-private fun DragSelectKind.hapticEvent(): HapticEvent = when (this) {
-    DragSelectKind.Cells -> HapticEvent.CellCrossed
-    DragSelectKind.Rail -> HapticEvent.RowCrossed
-}
-
 /**
  * Detector propio en vez de `detectDragGesturesAfterLongPress`, por dos
  * motivos que no son de estilo:
@@ -243,27 +212,23 @@ private fun DragSelectKind.hapticEvent(): HapticEvent = when (this) {
 private suspend fun PointerInputScope.detectDragSelectGesture(
     config: () -> DragSelectConfig,
     selectionActive: () -> Boolean,
-    railStartPx: () -> Float,
-    onBegin: (Offset, DragSelectKind, Long) -> Boolean,
+    onBegin: (Offset, Long) -> Boolean,
     onMove: (Offset, Long) -> Unit,
     onEnd: () -> Unit
 ) = awaitEachGesture {
     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
     val cfg = config()
     val slop = viewConfiguration.touchSlop
-    val railWidthPx = cfg.railWidth.toPx()
-    val startedInRail = cfg.railEnabled &&
-        railContains(down.position.x, railStartPx(), railWidthPx)
 
     var travelled = Offset.Zero
     var position = down.position
     var lastMillis = down.uptimeMillis
-    var kind: DragSelectKind? = null
+    var committed = false
     var abandoned = false
 
     // ---- Fase 1: arbitraje. Ni un solo consume aquí. ----
     val settled = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-        while (kind == null && !abandoned) {
+        while (!committed && !abandoned) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
             // Un segundo dedo es un pinch de zoom del timeline: fuera.
             if (event.changes.count { it.pressed } > 1) {
@@ -281,13 +246,9 @@ private suspend fun PointerInputScope.detectDragSelectGesture(
             position = change.position
             lastMillis = change.uptimeMillis
             when {
-                startedInRail && selectionActive() &&
-                    isVerticalCommit(travelled.x, travelled.y, slop) ->
-                    kind = DragSelectKind.Rail
-
                 cfg.plainDragWhenActive && selectionActive() &&
                     isHorizontalCommit(travelled.x, travelled.y, slop, cfg.horizontalBias) ->
-                    kind = DragSelectKind.Cells
+                    committed = true
 
                 // Cualquier otro movimiento que pase el slop es del scroll.
                 travelled.getDistance() > slop -> abandoned = true
@@ -299,14 +260,13 @@ private suspend fun PointerInputScope.detectDragSelectGesture(
     if (settled == null) {
         // Se agotó el temporizador con el dedo quieto: long-press.
         if (!cfg.enterOnLongPress || travelled.getDistance() > slop) return@awaitEachGesture
-        kind = if (startedInRail && selectionActive()) DragSelectKind.Rail
-        else DragSelectKind.Cells
+        committed = true
     }
-    val committed = kind ?: return@awaitEachGesture
+    if (!committed) return@awaitEachGesture
     // El ancla es donde se POSÓ el dedo, no donde el gesto acabó de decidirse.
     // Con el arrastre horizontal, para cuando se confirma el dedo ya ha pasado
     // de celda, y anclar ahí dejaría la primera sin marcar.
-    if (!onBegin(down.position, committed, lastMillis)) return@awaitEachGesture
+    if (!onBegin(down.position, lastMillis)) return@awaitEachGesture
     if (position != down.position) onMove(position, lastMillis)
 
     // ---- Fase 2: el gesto es nuestro. ----

@@ -26,7 +26,6 @@ private class IosHaptics(
         when (event) {
             HapticEvent.SelectionStart -> impact.impactOccurred()
             HapticEvent.CellCrossed -> selection.selectionChanged()
-            HapticEvent.RowCrossed -> soft.impactOccurred()
             HapticEvent.SelectionEnd -> soft.impactOccurred()
         }
     }

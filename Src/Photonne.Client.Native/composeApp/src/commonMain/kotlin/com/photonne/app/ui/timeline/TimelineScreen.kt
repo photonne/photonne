@@ -75,11 +75,8 @@ import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.GroupedGridDragSelect
 import com.photonne.app.ui.grid.TimelineRowEntry
-import com.photonne.app.ui.grid.dragselect.DragSelectConfig
-import com.photonne.app.ui.grid.dragselect.RowSelectRail
 import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
 import com.photonne.app.ui.grid.dragselect.rememberLatchedDuringDrag
-import com.photonne.app.ui.platform.backGestureEdgeInset
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
 import com.photonne.app.ui.main.FloatingDatePill
@@ -253,10 +250,6 @@ fun TimelineScreen(
     // Recuerdos con una animación de 300 ms. A mitad de arrastre eso desliza
     // el contenido bajo el dedo, así que se congela hasta soltar.
     val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
-    // El carril de filas se aparta del gesto de "atrás" del sistema en vez de
-    // pelearse con él: ese borde no se puede reclamar.
-    val railInset = backGestureEdgeInset()
-    val railStartPx = with(LocalDensity.current) { railInset.toPx() }
 
     val zoomStore: TimelineZoomStore = koinInject()
     val zoomLevel by zoomStore.value.collectAsState()
@@ -911,9 +904,7 @@ fun TimelineScreen(
                                     idAt = { ordinal ->
                                         mergedItems.getOrNull(ordinal)
                                             ?.takeIf { !it.isLocalOnly }?.id
-                                    },
-                                    railStartPx = railStartPx,
-                                    config = DragSelectConfig.Default.copy(railEnabled = true)
+                                    }
                                 )
                             },
                             suppressThumbnails = isScrubbing,
@@ -1018,16 +1009,6 @@ fun TimelineScreen(
                             }
                         }
                     }
-
-                    // Enfrente del scrubber, que vive en el borde derecho: los
-                    // dos barridos verticales no se pisan.
-                    RowSelectRail(
-                        visible = state.isSelectionActive && !isYearView,
-                        state = dragSelectState,
-                        startInset = railInset,
-                        reservedTop = 8.dp,
-                        reservedBottom = reservedBottom
-                    )
 
                     TimelineScrubber(
                         gridState = gridState,

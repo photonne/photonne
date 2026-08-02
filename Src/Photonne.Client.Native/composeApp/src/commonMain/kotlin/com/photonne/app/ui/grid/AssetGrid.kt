@@ -123,7 +123,6 @@ fun AssetGrid(
             isSelected = { it in selectedIds },
             onPatch = dragSelect.onPatch,
             haptics = haptics,
-            railStartPx = dragSelect.railStartPx,
             // La franja de auto-scroll arranca donde acaba el cromo que se
             // superpone al contenido, que es exactamente el contentPadding.
             config = dragSelect.config.copy(
@@ -183,7 +182,6 @@ data class AssetGridDragSelect(
     val state: DragSelectState,
     val onPatch: (SelectionPatch) -> Unit,
     val enabled: Boolean = true,
-    val railStartPx: Float = 0f,
     val config: DragSelectConfig = DragSelectConfig.Default
 )
 
