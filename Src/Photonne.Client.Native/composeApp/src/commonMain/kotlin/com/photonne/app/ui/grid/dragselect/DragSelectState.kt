@@ -45,7 +45,7 @@ data class DragSelectConfig(
      * banda sin mantener pulsado. Solo tiene sentido ahí: fuera de selección
      * ese mismo gesto es el paso de pestaña.
      */
-    val plainDragWhenActive: Boolean = false,
+    val plainDragWhenActive: Boolean = true,
     /** Cuánto debe dominar la horizontal para no confundirse con un scroll. */
     val horizontalBias: Float = 1.5f,
     /** Barrido por el margen izquierdo para marcar filas enteras. */
