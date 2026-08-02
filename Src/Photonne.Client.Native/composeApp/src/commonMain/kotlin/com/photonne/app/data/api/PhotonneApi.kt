@@ -38,7 +38,7 @@ import com.photonne.app.data.models.TimelinePage
 import com.photonne.app.data.models.TimelineYearSummary
 import com.photonne.app.data.models.AssetYearBreakdownResponse
 import com.photonne.app.data.models.MoveOutcome
-import com.photonne.app.data.models.OrganizeCountResponse
+import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.OrganizeRuleReviewResponse
 import com.photonne.app.data.models.YearGroup
 import com.photonne.app.data.models.UnsupportedFilesPage
@@ -310,7 +310,8 @@ interface PhotonneApi {
     /** "Para organizar" inbox: assets still under MobileBackup, newest first. */
     suspend fun getOrganizeInbox(cursor: Instant? = null, pageSize: Int = DEFAULT_TIMELINE_PAGE_SIZE): TimelinePage
     /** Count of unorganized (MobileBackup) assets, for the entry-point badge. */
-    suspend fun getOrganizeCount(): Int
+    /** Contador de la bandeja + el tramo de fechas que cubre. */
+    suspend fun getOrganizeSummary(): OrganizeSummary
     /** Dry-run of a condition rule within the MobileBackup inbox: match count + sample. */
     suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int = 24): SmartAlbumPreview
     /** Files every inbox asset matching [rule] into [targetFolderId]; returns the
@@ -855,7 +856,7 @@ class PhotonneApiClient(
         return response.body()
     }
 
-    override suspend fun getOrganizeCount(): Int {
+    override suspend fun getOrganizeSummary(): OrganizeSummary {
         val response: HttpResponse = client.get("$baseUrl/api/organize/inbox/count")
         if (response.status != HttpStatusCode.OK) {
             throw PhotonneApiException(
@@ -863,7 +864,7 @@ class PhotonneApiClient(
                 message = "Organize count fetch failed (${response.status.value})"
             )
         }
-        return response.body<OrganizeCountResponse>().count
+        return response.body()
     }
 
     override suspend fun previewOrganizeRule(rule: SmartRule, sampleSize: Int): SmartAlbumPreview {

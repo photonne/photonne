@@ -20,6 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Arrangement
+import com.photonne.app.data.models.OrganizeSummary
+import com.photonne.app.resources.organize_inbox_count_format
+import com.photonne.app.ui.grid.formatLocalizedMonth
+import kotlinx.datetime.LocalDate
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.ui.theme.Spacing
@@ -126,14 +131,7 @@ fun OrganizeInboxScreen(
                             bottom = floatingNavBarReservedHeight()
                         ),
                         modifier = Modifier.fillMaxWidth().hazeSource(hazeState),
-                        header = {
-                            Text(
-                                text = stringResource(Res.string.organize_inbox_header),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-                            )
-                        }
+                        header = { InboxHeader(summary = state.summary) }
                     )
             }
 
@@ -189,3 +187,55 @@ private const val SCROLL_TO_TOP_MIN_CELL = 12
 
 /** Where the tap teleports to before animating the rest of the way up. */
 private const val SCROLL_TO_TOP_SNAP_CELL = 48
+
+/**
+ * Total real de la bandeja y tramo que cubre.
+ *
+ * El contador NO sale de `items.size`: la rejilla solo tiene lo paginado, así
+ * que ese número subiría solo al hacer scroll. Y el tramo es lo que un contador
+ * a secas no puede decir — 1.240 fotos se leen igual siendo el viaje de la
+ * semana pasada que cuatro años de atraso, y eso cambia por dónde empiezas.
+ */
+@Composable
+private fun InboxHeader(summary: OrganizeSummary?) {
+    val span = remember(summary) { summary?.let { formatCaptureSpan(it.oldest, it.newest) } }
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
+    ) {
+        if (summary != null && summary.count > 0) {
+            Text(
+                text = stringResource(Res.string.organize_inbox_count_format, summary.count),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        Text(
+            text = span ?: stringResource(Res.string.organize_inbox_header),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * "mar 2024 – ago 2026", o un solo mes cuando todo cae dentro de él.
+ *
+ * Solo se leen los primeros 7 caracteres ("YYYY-MM") de la marca naive que
+ * manda el servidor: mostramos mes y año, así que analizar la hora sería
+ * exponerse a un desajuste de formato para tirarla después.
+ */
+private fun formatCaptureSpan(oldest: String?, newest: String?): String? {
+    val from = parseYearMonth(oldest) ?: return null
+    val to = parseYearMonth(newest) ?: return null
+    val fromLabel = formatLocalizedMonth(from)
+    val toLabel = formatLocalizedMonth(to)
+    return if (fromLabel == toLabel) fromLabel else "$fromLabel – $toLabel"
+}
+
+private fun parseYearMonth(raw: String?): LocalDate? {
+    if (raw == null || raw.length < 7) return null
+    val year = raw.substring(0, 4).toIntOrNull() ?: return null
+    val month = raw.substring(5, 7).toIntOrNull() ?: return null
+    if (month !in 1..12) return null
+    return LocalDate(year, month, 1)
+}

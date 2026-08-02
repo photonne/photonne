@@ -2,6 +2,7 @@ package com.photonne.app.data.organize
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.MoveOutcome
+import com.photonne.app.data.models.OrganizeSummary
 import com.photonne.app.data.models.SmartAlbumPreview
 import com.photonne.app.data.models.SmartRule
 import com.photonne.app.data.models.TimelinePage
@@ -19,8 +20,8 @@ class OrganizeRepository(
     suspend fun inbox(cursor: Instant? = null): TimelinePage =
         api.getOrganizeInbox(cursor)
 
-    suspend fun count(): Int =
-        api.getOrganizeCount()
+    suspend fun summary(): OrganizeSummary =
+        api.getOrganizeSummary()
 
     /** Physical move out of MobileBackup into [targetFolderId]. Source folders
      *  differ per asset (one per device), so we pass a null source and let the

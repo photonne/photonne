@@ -2,9 +2,21 @@ package com.photonne.app.data.models
 
 import kotlinx.serialization.Serializable
 
-/** Body of GET /api/organize/inbox/count. */
+/**
+ * Body of GET /api/organize/inbox/count.
+ *
+ * Resumen de la bandeja. Además del contador trae el tramo de fechas que cubre:
+ * "1.240 sin organizar" se lee igual si es el viaje de la semana pasada que si
+ * son cuatro años de atraso, y esas dos cosas piden decisiones distintas.
+ *
+ * Las fechas llegan como hora local de pared (sin zona), igual que CapturedAt.
+ */
 @Serializable
-data class OrganizeCountResponse(val count: Int = 0)
+data class OrganizeSummary(
+    val count: Int = 0,
+    val oldest: String? = null,
+    val newest: String? = null,
+)
 
 /** One capture-year bucket, shared by the move preview ("se repartirán en…") and
  *  the post-move summary ("repartidas en…"). */
