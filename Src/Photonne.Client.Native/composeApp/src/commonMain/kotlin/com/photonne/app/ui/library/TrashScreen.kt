@@ -32,6 +32,7 @@ import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
@@ -87,9 +88,11 @@ fun TrashScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isInitialLoading ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    AssetGridSkeleton(
+                        contentPadding = PaddingValues(
+                            bottom = floatingNavBarReservedHeight()
+                        )
+                    )
                 state.error != null && state.items.isEmpty() ->
                     Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
                         com.photonne.app.ui.error.ErrorBanner(error = state.error)
