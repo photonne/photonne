@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.NotificationDto
 import com.photonne.app.data.models.NotificationKind
+import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.notifications_action_mark_all_read
 import com.photonne.app.resources.notifications_empty_subtitle
@@ -99,14 +100,10 @@ fun NotificationsScreen(
     val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-        state.error?.userMessage?.let { msg ->
-            Text(
-                msg,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
+        ErrorBanner(
+                error = state.error,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
-        }
 
         PhotonneRefreshableScreen(
             isRefreshing = state.isLoading && state.items.isNotEmpty(),
