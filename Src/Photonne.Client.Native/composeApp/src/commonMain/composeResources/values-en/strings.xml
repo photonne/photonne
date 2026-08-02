@@ -1083,6 +1083,22 @@
     <string name="organize_inbox_header">Move them into a folder to file them away.</string>
     <string name="organize_inbox_empty_title">All organized</string>
     <string name="organize_inbox_empty_subtitle">Nothing left in MobileBackup to file.</string>
+    <string name="organize_rule_intro">Move everything still in "To organize" that matches these conditions, all at once.</string>
+    <string name="organize_rule_year_split_label">They will be split into:</string>
+    <string name="organize_move_destination_label">Move to</string>
+    <string name="organize_move_destination_placeholder">Pick a destination folder</string>
+    <string name="organize_move_by_year_label">Organize by year</string>
+    <string name="organize_move_by_year_desc">Year subfolders (2026, 2025…) will be created inside the destination.</string>
+    <string name="organize_move_pick_destination">Pick a destination</string>
+    <string name="organize_move_no_matches">No matches</string>
+    <string name="organize_move_action_count">Move %1$d photos</string>
+    <string name="organize_move_review_title">%1$d photos will be moved</string>
+    <string name="organize_move_review_subtitle_by_year">They will be split into year folders</string>
+    <string name="organize_move_review_subtitle_default">Review what is about to move</string>
+    <string name="organize_year_photo_count">%1$d photos</string>
+    <string name="organize_year_chip_format">%1$d · %2$d</string>
+    <string name="organize_move_summary_title">Moved %1$d photos</string>
+    <string name="organize_move_summary_body">Split into these year folders:</string>
 
     <string name="memories_section_today">On this day…</string>
     <string name="memories_section_people">People</string>
