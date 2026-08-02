@@ -21,7 +21,11 @@ import com.photonne.app.resources.favorites_empty_subtitle
 import com.photonne.app.resources.favorites_empty_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.ui.grid.AssetGrid
+import com.photonne.app.ui.grid.AssetGridDragSelect
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
+import com.photonne.app.ui.grid.dragselect.rememberLatchedDuringDrag
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -41,6 +45,7 @@ fun FavoritesScreen(
     onLoad: () -> Unit,
     onRefresh: () -> Unit,
     onBack: () -> Unit,
+    onApplySelection: (SelectionPatch) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
@@ -48,9 +53,14 @@ fun FavoritesScreen(
     // cápsulas son HERMANAS (regla de Haze).
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
+    val dragSelectState = rememberDragSelectState()
     // Con selección activa manda la barra sólida del Scaffold, que ya empuja la
     // rejilla: reservar además el cromo flotante dejaría una banda muerta doble.
-    val chromeFloating = !state.isSelectionActive
+    // Durante un arrastre el valor se congela: si no, entrar en selección con el
+    // dedo puesto movería la rejilla ~100 px bajo él y la banda seguiría desde
+    // una celda que ya no está donde estaba.
+    val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
+    val chromeFloating = !selectionChrome
     val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
 
     LaunchedEffect(Unit) { onLoad() }
@@ -88,6 +98,10 @@ fun FavoritesScreen(
                     isAppending = state.isAppending,
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
+                    dragSelect = AssetGridDragSelect(
+                        state = dragSelectState,
+                        onPatch = onApplySelection
+                    ),
                     contentPadding = PaddingValues(
                         top = reservedTop,
                         bottom = floatingNavBarReservedHeight()

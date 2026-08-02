@@ -2446,6 +2446,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onLoadMore = favoritesViewModel::loadMore,
                         onLoad = favoritesViewModel::ensureLoaded,
                         onRefresh = favoritesViewModel::refresh,
+                        onApplySelection = favoritesViewModel::applySelection,
                         onBack = { moreSubscreen = null },
                         onChromeVisibleChange = { subscreenChromeVisible = it }
                     )

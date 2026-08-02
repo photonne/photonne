@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.MotionPhotosOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -41,7 +42,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.ui.grid.dragselect.AssetCellContentType
+import com.photonne.app.ui.grid.dragselect.DragSelectConfig
+import com.photonne.app.ui.grid.dragselect.DragSelectState
+import com.photonne.app.ui.grid.dragselect.dragSelectable
+import com.photonne.app.ui.grid.dragselect.rememberLazyGridDragSelectAdapter
+import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.image.AssetThumbnailImage
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.theme.IconSize
 import com.photonne.app.ui.theme.LocalCurrentDetailAssetId
 import com.photonne.app.ui.theme.PhotonneColors
@@ -74,6 +82,12 @@ fun AssetGrid(
     onLoadMore: () -> Unit = {},
     onItemLongClick: ((Int) -> Unit)? = null,
     selectedIds: Set<String> = emptySet(),
+    /**
+     * Arrastre en banda. Cuando llega, el long-press deja de gestionarlo la
+     * celda y pasa a gestionarlo la rejilla: si ambos lo escuchan se cancelan
+     * mutuamente y no entra ninguno.
+     */
+    dragSelect: AssetGridDragSelect? = null,
     header: (@Composable () -> Unit)? = null
 ) {
     val shouldLoadMore by remember(hasMore, isAppending, isInitialLoading) {
@@ -92,13 +106,36 @@ fun AssetGrid(
             .collect { onLoadMore() }
     }
 
+    val headerCount = if (header != null) 1 else 0
+    val haptics = rememberPhotonneHaptics()
+    val dragSelectAdapter = rememberLazyGridDragSelectAdapter(
+        gridState = gridState,
+        headerCount = { headerCount },
+        idAt = { ordinal -> items.getOrNull(ordinal)?.id }
+    )
+    val gridModifier = if (dragSelect != null) {
+        modifier.fillMaxSize().dragSelectable(
+            state = dragSelect.state,
+            adapter = dragSelectAdapter,
+            enabled = dragSelect.enabled,
+            selectionActive = selectedIds.isNotEmpty(),
+            isSelected = { it in selectedIds },
+            onPatch = dragSelect.onPatch,
+            haptics = haptics,
+            railStartPx = dragSelect.railStartPx,
+            config = dragSelect.config
+        )
+    } else {
+        modifier.fillMaxSize()
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 110.dp),
         state = gridState,
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = modifier.fillMaxSize()
+        modifier = gridModifier
     ) {
         if (header != null) {
             item(
@@ -109,17 +146,40 @@ fun AssetGrid(
                 header()
             }
         }
-        itemsIndexed(items, key = { index, item -> assetCellKey(item, index) }) { index, asset ->
+        itemsIndexed(
+            items,
+            key = { index, item -> assetCellKey(item, index) },
+            contentType = { _, _ -> AssetCellContentType }
+        ) { index, asset ->
             AssetGridCell(
                 asset = asset,
                 baseUrl = baseUrl,
                 onClick = { onItemClick(index) },
-                onLongClick = onItemLongClick?.let { { it(index) } },
+                // Con arrastre en banda el long-press lo posee la rejilla.
+                onLongClick = if (dragSelect != null) null
+                else onItemLongClick?.let { { it(index) } },
+                // El clic derecho sigue viniendo de la celda: escritorio no
+                // tiene long-press y es su única entrada a la selección.
+                onSecondaryClick = onItemLongClick?.let { { it(index) } },
                 isSelected = asset.id in selectedIds
             )
         }
     }
 }
+
+/**
+ * Configuración del arrastre en banda para [AssetGrid]. Se agrupa en un objeto
+ * en vez de en seis parámetros sueltos porque o vienen todos o no viene
+ * ninguno.
+ */
+@Immutable
+data class AssetGridDragSelect(
+    val state: DragSelectState,
+    val onPatch: (SelectionPatch) -> Unit,
+    val enabled: Boolean = true,
+    val railStartPx: Float = 0f,
+    val config: DragSelectConfig = DragSelectConfig.Default
+)
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -128,6 +188,12 @@ fun AssetGridCell(
     baseUrl: String,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    /**
+     * Clic derecho. Sigue a [onLongClick] salvo que se indique otra cosa: la
+     * rejilla con arrastre en banda le quita el long-press a la celda pero le
+     * deja el secundario, que en escritorio es la única entrada a selección.
+     */
+    onSecondaryClick: (() -> Unit)? = onLongClick,
     isSelected: Boolean = false,
     modifier: Modifier = Modifier,
     /**
@@ -170,14 +236,20 @@ fun AssetGridCell(
         targetValue = if (isSelected) 8.dp else 0.dp,
         label = "selectionPadding"
     )
+    val secondaryClick = onSecondaryClick
     Box(
+        // OJO con el orden: el padding animado va DESPUÉS de fijar el tamaño,
+        // así que encoge el contenido pero no el nodo. El hit-test del
+        // arrastre en banda usa la caja del LazyGrid, y si alguien mueve ese
+        // padding delante del aspectRatio, seleccionar una celda la encogería
+        // bajo el dedo y la banda empezaría a fallar.
         modifier = modifier
             .let { base -> if (forceSquare) base.fillMaxWidth().aspectRatio(1f) else base }
             .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isSelected) 0.18f else 0f))
             .padding(selectionPadding)
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .let { base -> if (onLongClick != null) base.onSecondaryClick(onLongClick) else base }
+            .let { base -> if (secondaryClick != null) base.onSecondaryClick(secondaryClick) else base }
     ) {
         AssetThumbnailImage(
             item = asset,
