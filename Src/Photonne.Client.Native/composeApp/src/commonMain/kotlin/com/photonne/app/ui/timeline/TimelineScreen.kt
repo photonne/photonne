@@ -137,6 +137,11 @@ fun TimelineScreen(
     onEnsureYearSummaries: (sample: Int) -> Unit = {},
     onRefresh: () -> Unit = {},
     onToggleSelection: ((assetId: String) -> Unit)? = null,
+    /**
+     * Marca o desmarca varios assets a la vez, sin alternar uno a uno: el
+     * checkbox de la banda de mes.
+     */
+    onSetSelected: ((ids: Collection<String>, selected: Boolean) -> Unit)? = null,
     /** Only the empty state offers this — uploading otherwise lives in Más. */
     onOpenUpload: (() -> Unit)? = null,
     /** Opens the "jump to date" picker from the floating top bar. */
@@ -844,6 +849,13 @@ fun TimelineScreen(
                                             toggler(item.id)
                                         }
                                     }
+                                },
+                            // Mismo criterio que el long-press: en Año clicar
+                            // es navegar, y el grupo es una muestra truncada
+                            // del año, no su contenido completo.
+                            onSetGroupSelected = onSetSelected?.takeIf { !isYearView }
+                                ?.let { setSelected ->
+                                    { ids, selected -> setSelected(ids, selected) }
                                 },
                             onSkeletonClick = { bucketKey ->
                                 if (isYearView) {

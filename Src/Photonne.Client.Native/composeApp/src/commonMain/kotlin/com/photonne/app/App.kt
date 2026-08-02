@@ -1750,6 +1750,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         onEnsureYearSummaries = timelineViewModel::ensureYearSummaries,
                         onRefresh = timelineViewModel::refresh,
                         onToggleSelection = timelineViewModel::toggleSelection,
+                        onSetSelected = timelineViewModel::setSelected,
                         onOpenUpload = {
                             selectedTab = MainTab.More
                             moreSubscreen = MoreSubscreen.Upload

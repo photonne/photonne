@@ -338,6 +338,8 @@
 
     <string name="selection_action_select_all">Select all</string>
     <string name="selection_action_deselect_all">Deselect all</string>
+    <string name="selection_group_select">Select group</string>
+    <string name="selection_group_clear">Deselect group</string>
     <string name="selection_action_download">Download</string>
     <string name="selection_label_select_all">Select</string>
     <string name="selection_label_deselect_all">Deselect</string>

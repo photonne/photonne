@@ -2,6 +2,7 @@ package com.photonne.app.ui.grid
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,22 +14,41 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.settings.TimelineGrouping
+import com.photonne.app.ui.selection.GroupSelectionState
+import com.photonne.app.ui.selection.selectionStateOf
+import com.photonne.app.ui.theme.IconSize
+import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.timeline.captureLocalDate
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.selection_group_clear
+import com.photonne.app.resources.selection_group_select
 import com.photonne.app.resources.timeline_year_count
 import com.photonne.app.ui.theme.SkeletonBlock
 import org.jetbrains.compose.resources.stringResource
@@ -259,6 +279,12 @@ internal fun GroupedAssetGrid(
      * strip clears the top bar while at rest, yet scrolls fully under it.
      */
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    /**
+     * Marca o desmarca de golpe todos los assets de un grupo — el checkbox de
+     * la banda de mes. `null` la deja sin checkbox (vista Año, donde clicar es
+     * navegar y el grupo es una muestra truncada, no el mes entero).
+     */
+    onSetGroupSelected: ((ids: List<String>, selected: Boolean) -> Unit)? = null,
     header: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null
 ) {
     // No load-more plumbing here anymore: with the bucket model every month
@@ -271,6 +297,10 @@ internal fun GroupedAssetGrid(
     // per-row registration made every rows swap re-register thousands of
     // intervals on the main thread.
     val segments = remember(rows) { segmentRows(rows) }
+    // Ids que el checkbox de cada cabecera abarca, precalculados junto a los
+    // segmentos: recorrer el grupo dentro de la cabecera lo repetiría en cada
+    // recomposición, y durante un arrastre eso es una vez por frame.
+    val groupIds = remember(segments) { segments.map { selectableIdsOf(it) } }
     LazyColumn(
         state = state,
         userScrollEnabled = userScrollEnabled,
@@ -279,14 +309,32 @@ internal fun GroupedAssetGrid(
         modifier = modifier.fillMaxSize()
     ) {
         header?.invoke(this)
-        segments.forEach { segment ->
+        segments.forEachIndexed { segmentIndex, segment ->
             segment.header?.let { groupHeader ->
+                val ids = groupIds[segmentIndex]
                 // Inline month/date band — NOT sticky: it scrolls away with the
                 // content instead of pinning at the top (so it never overlaps
                 // the status-bar icons or permanently eats the top). The
                 // scrubber still surfaces the current date while scrolling.
                 item(key = "h:${groupHeader.key}", contentType = "date-header") {
-                    MonthHeader(title = groupHeader.title, count = groupHeader.count)
+                    MonthHeader(
+                        title = groupHeader.title,
+                        count = groupHeader.count,
+                        // Un grupo entero de esqueletos no tiene nada que
+                        // seleccionar todavía.
+                        groupState = if (ids.isEmpty()) null
+                        else selectedIds.selectionStateOf(ids),
+                        onToggleGroup = onSetGroupSelected?.takeIf { ids.isNotEmpty() }
+                            ?.let { setSelected ->
+                                {
+                                    setSelected(
+                                        ids,
+                                        selectedIds.selectionStateOf(ids) !=
+                                            GroupSelectionState.All
+                                    )
+                                }
+                            }
+                    )
                 }
             }
             items(
@@ -349,6 +397,21 @@ internal fun segmentRows(rows: List<TimelineRowEntry>): List<RowSegment> {
     return out
 }
 
+/**
+ * Ids de un segmento que el checkbox de su cabecera puede marcar: los assets
+ * ya cargados y de servidor. Se dejan fuera los ítems solo-locales (aún sin
+ * subir, no participan en las operaciones en bloque del timeline) y las filas
+ * de esqueleto, que todavía no tienen contenido.
+ */
+internal fun selectableIdsOf(segment: RowSegment): List<String> =
+    segment.body.asSequence()
+        .filterIsInstance<TimelineRowEntry.Row>()
+        .flatMap { it.row.cells.asSequence() }
+        .map { it.item }
+        .filterNot { it.isLocalOnly }
+        .map { it.id }
+        .toList()
+
 /** Stable LazyColumn key — must stay identical to the keyToBucket scheme. */
 internal fun rowLazyKey(entry: TimelineRowEntry): Any = when (entry) {
     is TimelineRowEntry.Row -> {
@@ -399,7 +462,12 @@ private fun SkeletonCellsRow(
  * cleanly while scrolling; scrolls away with the content like any other row.
  */
 @Composable
-private fun MonthHeader(title: String, count: Int? = null) {
+private fun MonthHeader(
+    title: String,
+    count: Int? = null,
+    groupState: GroupSelectionState? = null,
+    onToggleGroup: (() -> Unit)? = null
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -425,6 +493,85 @@ private fun MonthHeader(title: String, count: Int? = null) {
                     .align(Alignment.CenterEnd)
                     .padding(horizontal = 16.dp)
             )
+        } else if (groupState != null && onToggleGroup != null) {
+            GroupSelectionCheck(
+                state = groupState,
+                onClick = onToggleGroup,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = Spacing.sm)
+            )
+        }
+    }
+}
+
+/**
+ * Círculo tri-estado al final de la banda de mes: vacío, medio (algunas del
+ * grupo seleccionadas) o lleno. Va siempre visible, no solo en modo selección,
+ * porque es la única forma de descubrir que un mes entero se puede marcar de
+ * una vez — y es también la manera de ENTRAR en selección sin long-press.
+ */
+@Composable
+private fun GroupSelectionCheck(
+    state: GroupSelectionState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selected = state != GroupSelectionState.None
+    val description = stringResource(
+        if (state == GroupSelectionState.All) Res.string.selection_group_clear
+        else Res.string.selection_group_select
+    )
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Checkbox
+                contentDescription = description
+                toggleableState = when (state) {
+                    GroupSelectionState.None -> ToggleableState.Off
+                    GroupSelectionState.Partial -> ToggleableState.Indeterminate
+                    GroupSelectionState.All -> ToggleableState.On
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(IconSize.lg)
+                .border(
+                    width = 2.dp,
+                    color = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = CircleShape
+                )
+                .background(
+                    color = if (state == GroupSelectionState.All) {
+                        MaterialTheme.colorScheme.primary
+                    } else Color.Transparent,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            when (state) {
+                GroupSelectionState.All -> Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(IconSize.sm)
+                )
+                // Barra central: el "algunas sí" de un checkbox indeterminado,
+                // sin recurrir a un TriStateCheckbox cuadrado que rompería la
+                // forma circular del check de las celdas.
+                GroupSelectionState.Partial -> Box(
+                    modifier = Modifier
+                        .size(width = 10.dp, height = 2.dp)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+                GroupSelectionState.None -> Unit
+            }
         }
     }
 }
