@@ -26,6 +26,10 @@ import com.photonne.app.resources.archived_empty_subtitle
 import com.photonne.app.resources.archived_empty_title
 import com.photonne.app.ui.grid.AssetGrid
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
+import com.photonne.app.ui.grid.RowSelectRail
+import com.photonne.app.ui.grid.chromeSelectionActive
+import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
+import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
@@ -46,12 +50,14 @@ fun ArchivedScreen(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
     onUnarchiveAll: () -> Unit,
+    onApplySelection: (SelectionPatch) -> Unit = {},
     onChromeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val apiBaseUrl = rememberApiBaseUrl()
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
-    val chromeFloating = !state.isSelectionActive
+    val gestures = rememberAssetGridSelectionGestures(onApplySelection)
+    val chromeFloating = !gestures.chromeSelectionActive(state.isSelectionActive)
     val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
 
     LaunchedEffect(Unit) { onLoad() }
@@ -87,6 +93,7 @@ fun ArchivedScreen(
                     isAppending = state.isAppending,
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
+                    dragSelect = gestures.dragSelect,
                     contentPadding = PaddingValues(
                         top = reservedTop,
                         bottom = floatingNavBarReservedHeight()
@@ -94,6 +101,13 @@ fun ArchivedScreen(
                     modifier = Modifier.fillMaxWidth().hazeSource(hazeState)
                 )
             }
+
+            RowSelectRail(
+                gestures = gestures,
+                visible = state.isSelectionActive,
+                reservedTop = reservedTop,
+                reservedBottom = floatingNavBarReservedHeight()
+            )
 
             PhotoGridScrubberOverlay(
                 gridState = gridState,

@@ -14,7 +14,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.api.rememberApiBaseUrl
 import com.photonne.app.resources.Res
@@ -22,13 +21,10 @@ import com.photonne.app.resources.favorites_empty_subtitle
 import com.photonne.app.resources.favorites_empty_title
 import com.photonne.app.resources.favorites_title
 import com.photonne.app.ui.grid.AssetGrid
-import com.photonne.app.ui.grid.AssetGridDragSelect
 import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
-import com.photonne.app.ui.grid.dragselect.DragSelectConfig
-import com.photonne.app.ui.grid.dragselect.RowSelectRail
-import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
-import com.photonne.app.ui.grid.dragselect.rememberLatchedDuringDrag
-import com.photonne.app.ui.platform.backGestureEdgeInset
+import com.photonne.app.ui.grid.RowSelectRail
+import com.photonne.app.ui.grid.chromeSelectionActive
+import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.selection.SelectionPatch
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
@@ -57,19 +53,11 @@ fun FavoritesScreen(
     // cápsulas son HERMANAS (regla de Haze).
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
-    val dragSelectState = rememberDragSelectState()
+    val gestures = rememberAssetGridSelectionGestures(onApplySelection)
     // Con selección activa manda la barra sólida del Scaffold, que ya empuja la
     // rejilla: reservar además el cromo flotante dejaría una banda muerta doble.
-    // Durante un arrastre el valor se congela: si no, entrar en selección con el
-    // dedo puesto movería la rejilla ~100 px bajo él y la banda seguiría desde
-    // una celda que ya no está donde estaba.
-    val selectionChrome = rememberLatchedDuringDrag(dragSelectState, state.isSelectionActive)
-    val chromeFloating = !selectionChrome
+    val chromeFloating = !gestures.chromeSelectionActive(state.isSelectionActive)
     val reservedTop = if (chromeFloating) subscreenChromeReservedTop() else 0.dp
-    // El carril de filas se aparta del gesto de "atrás" del sistema en vez de
-    // pelearse con él: ese borde no se puede reclamar.
-    val railInset = backGestureEdgeInset()
-    val railStartPx = with(LocalDensity.current) { railInset.toPx() }
 
     LaunchedEffect(Unit) { onLoad() }
 
@@ -106,12 +94,7 @@ fun FavoritesScreen(
                     isAppending = state.isAppending,
                     isInitialLoading = state.isInitialLoading,
                     onLoadMore = onLoadMore,
-                    dragSelect = AssetGridDragSelect(
-                        state = dragSelectState,
-                        onPatch = onApplySelection,
-                        railStartPx = railStartPx,
-                        config = DragSelectConfig.Default.copy(railEnabled = true)
-                    ),
+                    dragSelect = gestures.dragSelect,
                     contentPadding = PaddingValues(
                         top = reservedTop,
                         bottom = floatingNavBarReservedHeight()
@@ -121,9 +104,8 @@ fun FavoritesScreen(
             }
 
             RowSelectRail(
+                gestures = gestures,
                 visible = state.isSelectionActive,
-                state = dragSelectState,
-                startInset = railInset,
                 reservedTop = reservedTop,
                 reservedBottom = floatingNavBarReservedHeight()
             )

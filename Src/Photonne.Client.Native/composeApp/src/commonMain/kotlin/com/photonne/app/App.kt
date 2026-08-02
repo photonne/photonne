@@ -2171,6 +2171,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 foldersViewModel.refreshOrganizeCount()
                             },
                             onOpenRules = { moreSubscreen = MoreSubscreen.OrganizeRule },
+                            onApplySelection = organizeInboxViewModel::applySelection,
                             onChromeVisibleChange = { subscreenChromeVisible = it }
                         )
                     MoreSubscreen.OrganizeRule ->
@@ -2396,6 +2397,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     }
                                 },
                                 onLoadMore = personDetailViewModel::loadMore,
+                                onApplySelection = personDetailViewModel::applySelection,
                                 onBack = { selectedPerson = null },
                                 onRename = { showRenamePerson = true },
                                 onSuggestions = {
@@ -2478,6 +2480,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             }
                         },
                         onLoadMore = archivedViewModel::loadMore,
+                        onApplySelection = archivedViewModel::applySelection,
                         onLoad = archivedViewModel::ensureLoaded,
                         onRefresh = archivedViewModel::refresh,
                         onBack = { moreSubscreen = null },
@@ -2545,6 +2548,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     onLoadMore = trashViewModel::loadMore,
                                     onLoad = trashViewModel::ensureLoaded,
                                     onRefresh = trashViewModel::refresh,
+                                    onApplySelection = trashViewModel::applySelection,
                                     gridState = trashGridState,
                                     hazeState = trashHazeState
                                 )

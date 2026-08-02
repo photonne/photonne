@@ -58,6 +58,14 @@ import com.photonne.app.ui.main.ImmersiveChromeEffect
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.grid.AssetGridDragSelect
+import com.photonne.app.ui.grid.RowSelectRail
+import com.photonne.app.ui.grid.chromeSelectionActive
+import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
+import com.photonne.app.ui.grid.dragselect.AssetCellContentType
+import com.photonne.app.ui.grid.dragselect.dragSelectable
+import com.photonne.app.ui.grid.dragselect.rememberLazyGridDragSelectAdapter
+import com.photonne.app.ui.haptics.rememberPhotonneHaptics
 import com.photonne.app.ui.theme.EmptyState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -90,9 +98,11 @@ fun FolderDetailScreen(
     val state by viewModel.state.collectAsState()
     val gridState = rememberLazyGridState()
     val hazeState = remember { HazeState() }
+    val gestures = rememberAssetGridSelectionGestures(viewModel::applySelection)
     // Cromo flotante salvo con una selección (de assets o de subcarpetas) activa,
     // que muestra su barra acoplada.
-    val floatingChrome = !state.isSelectionActive && !state.isSubfolderSelectionActive
+    val floatingChrome = !gestures.chromeSelectionActive(state.isSelectionActive) &&
+        !state.isSubfolderSelectionActive
     val reservedTop = if (floatingChrome) subscreenChromeReservedTop() else 0.dp
     // Only drive the immersive chrome when the photo grid is what's on screen —
     // a subfolders-only view keeps the nav docked.
@@ -157,10 +167,18 @@ fun FolderDetailScreen(
                     onItemLongClick = onItemLongClick,
                     onSubfolderClick = onSubfolderClick,
                     onSubfolderLongPress = onSubfolderLongPress,
+                    dragSelect = gestures.dragSelect,
                     modifier = Modifier.hazeSource(hazeState)
                 )
             }
         }
+
+        RowSelectRail(
+            gestures = gestures,
+            visible = state.isSelectionActive,
+            reservedTop = reservedTop,
+            reservedBottom = floatingNavBarReservedHeight()
+        )
 
         if (floatingChrome) {
             SubscreenFloatingChrome(
@@ -205,15 +223,46 @@ private fun FolderDetailGrid(
     onItemLongClick: (Int) -> Unit,
     onSubfolderClick: (FolderSummary) -> Unit,
     onSubfolderLongPress: (FolderSummary) -> Unit,
+    dragSelect: AssetGridDragSelect? = null,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberPhotonneHaptics()
+    // Las subcarpetas y el separador que las cierra van ANTES de los assets y
+    // son de longitud variable, así que el desfase índice→ordinal se calcula
+    // en vez de darse por hecho.
+    val preludeCount = if (subFolders.isEmpty()) 0
+    else subFolders.size + if (items.isNotEmpty()) 1 else 0
+    val dragSelectAdapter = rememberLazyGridDragSelectAdapter(
+        gridState = gridState,
+        headerCount = { preludeCount },
+        idAt = { ordinal -> items.getOrNull(ordinal)?.id }
+    )
+    val gridModifier = if (dragSelect != null) {
+        modifier.fillMaxSize().dragSelectable(
+            state = dragSelect.state,
+            adapter = dragSelectAdapter,
+            scrollableState = gridState,
+            enabled = dragSelect.enabled,
+            selectionActive = selection.isNotEmpty(),
+            isSelected = { it in selection },
+            onPatch = dragSelect.onPatch,
+            haptics = haptics,
+            railStartPx = dragSelect.railStartPx,
+            config = dragSelect.config.copy(
+                autoScrollTopInset = contentPadding.calculateTopPadding(),
+                autoScrollBottomInset = contentPadding.calculateBottomPadding()
+            )
+        )
+    } else {
+        modifier.fillMaxSize()
+    }
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Adaptive(minSize = 110.dp),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = modifier.fillMaxSize()
+        modifier = gridModifier
     ) {
         if (subFolders.isNotEmpty()) {
             if (isGrid) {
@@ -255,13 +304,16 @@ private fun FolderDetailGrid(
         }
         itemsIndexed(
             items,
-            key = { index, item -> assetCellKey(item, index) }
+            key = { index, item -> assetCellKey(item, index) },
+            contentType = { _, _ -> AssetCellContentType }
         ) { index, asset ->
             AssetGridCell(
                 asset = asset,
                 baseUrl = baseUrl,
                 onClick = { onItemClick(index) },
-                onLongClick = { onItemLongClick(index) },
+                // Con arrastre en banda el long-press lo posee la rejilla.
+                onLongClick = if (dragSelect != null) null else ({ onItemLongClick(index) }),
+                onSecondaryClick = { onItemLongClick(index) },
                 isSelected = asset.id in selection
             )
         }
