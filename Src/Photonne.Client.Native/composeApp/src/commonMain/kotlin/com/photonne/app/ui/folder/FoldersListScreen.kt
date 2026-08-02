@@ -78,6 +78,7 @@ import com.photonne.app.resources.folders_search_placeholder
 import com.photonne.app.resources.folders_shared_empty
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.ImmersiveChromeEffect
+import com.photonne.app.ui.theme.ListRowsSkeleton
 import com.photonne.app.ui.theme.EmptyState as SharedEmptyState
 import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.MetaBadge
@@ -300,9 +301,7 @@ private fun FolderListContent(
     } else null
     when {
         isLoading && folders.isEmpty() ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            ListRowsSkeleton()
         folders.isEmpty() && state.hasActiveQuery ->
             EmptySearchState(query = state.searchQuery.trim())
         folders.isEmpty() && errorMessage == null ->

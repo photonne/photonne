@@ -29,6 +29,7 @@ import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
@@ -69,9 +70,12 @@ fun FavoritesScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isInitialLoading ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    AssetGridSkeleton(
+                        contentPadding = PaddingValues(
+                            top = reservedTop,
+                            bottom = floatingNavBarReservedHeight()
+                        )
+                    )
                 state.error != null && state.items.isEmpty() ->
                     Box(modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)) {
                         com.photonne.app.ui.error.ErrorBanner(error = state.error)

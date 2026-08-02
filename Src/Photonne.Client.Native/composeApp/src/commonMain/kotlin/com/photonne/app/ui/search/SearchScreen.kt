@@ -77,6 +77,7 @@ import com.photonne.app.ui.grid.PhotoGridScrubberOverlay
 import com.photonne.app.ui.grid.chromeSelectionActive
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.main.floatingNavBarReservedHeight
+import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import org.jetbrains.compose.resources.stringResource
@@ -112,10 +113,12 @@ fun SearchScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     state.isLoading && state.results.isEmpty() ->
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) { CircularProgressIndicator() }
+                        AssetGridSkeleton(
+                            contentPadding = PaddingValues(
+                                top = reservedTop,
+                                bottom = floatingNavBarReservedHeight()
+                            )
+                        )
                     state.error?.userMessage != null && state.results.isEmpty() ->
                         Box(
                             modifier = Modifier.fillMaxSize().padding(top = reservedTop).padding(24.dp)

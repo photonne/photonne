@@ -37,6 +37,7 @@ import com.photonne.app.ui.main.floatingNavBarReservedHeight
 import com.photonne.app.ui.main.SubscreenFloatingChrome
 import com.photonne.app.ui.main.SubscreenScroll
 import com.photonne.app.ui.main.subscreenChromeReservedTop
+import com.photonne.app.ui.theme.AssetGridSkeleton
 import com.photonne.app.ui.theme.EmptyState
 import com.photonne.app.ui.theme.PhotonneRefreshableScreen
 import dev.chrisbanes.haze.HazeState
@@ -85,9 +86,12 @@ fun OrganizeInboxScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isInitialLoading && state.items.isEmpty() ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    AssetGridSkeleton(
+                        contentPadding = PaddingValues(
+                            top = reservedTop,
+                            bottom = floatingNavBarReservedHeight()
+                        )
+                    )
                 state.isEmpty ->
                     EmptyState(
                         icon = Icons.Outlined.Inbox,
