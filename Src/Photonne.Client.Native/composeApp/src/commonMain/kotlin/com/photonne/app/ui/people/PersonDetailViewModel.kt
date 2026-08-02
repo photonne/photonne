@@ -9,6 +9,11 @@ import com.photonne.app.data.error.UiErrorFactory
 import com.photonne.app.data.models.TimelineItem
 import com.photonne.app.data.models.toTimelineItem
 import com.photonne.app.data.people.PeopleRepository
+import com.photonne.app.ui.selection.SelectionPatch
+import com.photonne.app.ui.selection.applying
+import com.photonne.app.ui.selection.toggled
+import com.photonne.app.ui.selection.toggledAll
+import com.photonne.app.ui.selection.withSelection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -114,11 +119,18 @@ class PersonDetailViewModel(
     }
 
     fun toggleSelection(assetId: String) {
-        _state.update {
-            val next = it.selection.toMutableSet()
-            if (!next.add(assetId)) next.remove(assetId)
-            it.copy(selection = next)
-        }
+        _state.update { it.copy(selection = it.selection.toggled(assetId)) }
+    }
+
+    /** Un frame de arrastre en banda, en una sola mutación — ver [SelectionPatch]. */
+    fun applySelection(patch: SelectionPatch) {
+        if (patch.isEmpty) return
+        _state.update { it.copy(selection = it.selection.applying(patch)) }
+    }
+
+    /** Marca o desmarca [ids] en bloque, sin alternar (carril de filas). */
+    fun setSelected(ids: Collection<String>, selected: Boolean) {
+        _state.update { it.copy(selection = it.selection.withSelection(ids, selected)) }
     }
 
     fun clearSelection() {
@@ -127,8 +139,7 @@ class PersonDetailViewModel(
 
     fun toggleSelectAll() {
         _state.update { previous ->
-            val all = previous.items.mapTo(HashSet()) { it.id }
-            previous.copy(selection = if (previous.selection == all) emptySet() else all)
+            previous.copy(selection = previous.selection.toggledAll(previous.items.map { it.id }))
         }
     }
 
