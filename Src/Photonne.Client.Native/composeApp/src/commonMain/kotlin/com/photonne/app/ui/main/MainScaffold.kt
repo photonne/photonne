@@ -113,6 +113,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.photonne.app.resources.Res
 import androidx.compose.material3.TextButton
+import com.photonne.app.resources.action_undo
+import com.photonne.app.resources.selection_archive_done
+import com.photonne.app.resources.selection_unarchive_done
 import com.photonne.app.resources.action_collaborators
 import com.photonne.app.resources.action_rename
 import com.photonne.app.resources.action_share
@@ -151,8 +154,6 @@ import com.photonne.app.resources.trash_action_restore_all
 import com.photonne.app.resources.folders_title
 import com.photonne.app.resources.action_close
 import com.photonne.app.resources.action_delete
-import com.photonne.app.resources.asset_trash_title
-import com.photonne.app.resources.selection_trash_confirm_message
 import com.photonne.app.resources.selection_trash_done
 import com.photonne.app.resources.action_edit
 import com.photonne.app.resources.action_jump_to_date
@@ -190,7 +191,7 @@ import com.photonne.app.resources.upload_title
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.photonne.app.ui.library.ConfirmActionDialog
+import com.photonne.app.ui.actions.BulkUndoKind
 import com.photonne.app.ui.theme.photonneLogoPainter
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -904,43 +905,55 @@ fun AssetSelectionBottomBar(
     onDownload: () -> Unit,
     onArchive: () -> Unit,
     onTrash: () -> Unit,
+    /**
+     * Ids sobre los que van a actuar archivar y papelera, leídos justo antes
+     * de lanzarlas: la acción vacía la selección, así que después ya no están.
+     */
+    selectedIds: () -> List<String> = { emptyList() },
+    /** Revierte la acción. Null → sin deshacer, solo mensaje. */
+    onUndo: ((BulkUndoKind, List<String>) -> Unit)? = null,
     onMove: (() -> Unit)? = null,
     onUnlink: (() -> Unit)? = null,
     onRemoveFromAlbum: (() -> Unit)? = null,
     onSetAsCover: (() -> Unit)? = null
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    // Papelera en bloque = acción destructiva → SIEMPRE confirma, igual que el
-    // borrado de un solo asset. Al vivir aquí, toda pantalla que usa esta barra
-    // (timeline, álbum, carpeta, búsqueda, personas, favoritos, archivados,
-    // organizar) hereda la confirmación sin repetirla en cada host.
-    var showTrashConfirm by rememberSaveable { mutableStateOf(false) }
+    // Papelera y archivar en bloque son REVERSIBLES, así que no preguntan: se
+    // ejecutan al instante y el snackbar ofrece deshacer. Un diálogo previo
+    // cobra fricción en cada acción para cubrir el error ocasional; deshacer
+    // invierte ese reparto. Lo irreversible (vaciar la papelera, borrar para
+    // siempre) conserva su diálogo, y vive en otro sitio.
+    //
+    // Al vivir aquí, toda pantalla que usa esta barra (timeline, álbum,
+    // carpeta, búsqueda, personas, favoritos, archivados, organizar) hereda el
+    // deshacer sin repetirlo en cada host.
     val snackbar = LocalSnackbarController.current
+    val undoLabel = stringResource(Res.string.action_undo)
     val trashDoneMessage = pluralStringResource(
         Res.plurals.selection_trash_done,
         selectedCount,
         selectedCount
     )
-    if (showTrashConfirm) {
-        ConfirmActionDialog(
-            title = stringResource(Res.string.asset_trash_title),
-            message = pluralStringResource(
-                Res.plurals.selection_trash_confirm_message,
-                selectedCount,
-                selectedCount
-            ),
-            confirmLabel = stringResource(Res.string.action_delete),
-            isDestructive = true,
-            isSubmitting = isMutating,
-            onDismiss = { showTrashConfirm = false },
-            onConfirm = {
-                showTrashConfirm = false
-                onTrash()
-                // Feedback optimista: los ítems desaparecen al instante; si el
-                // borrado falla, el ErrorBanner de la pantalla lo cuenta aparte.
-                snackbar?.show(trashDoneMessage)
-            }
-        )
+    val archiveDoneMessage = pluralStringResource(
+        if (archiveMode == ArchiveMode.Archive) Res.plurals.selection_archive_done
+        else Res.plurals.selection_unarchive_done,
+        selectedCount,
+        selectedCount
+    )
+
+    /**
+     * Lanza una acción reversible y ofrece deshacerla. Los ids se leen ANTES,
+     * porque la acción vacía la selección de inmediato.
+     */
+    fun runUndoable(kind: BulkUndoKind, message: String, action: () -> Unit) {
+        val ids = selectedIds()
+        action()
+        val undo = onUndo
+        if (undo == null || ids.isEmpty()) {
+            snackbar?.show(message)
+        } else {
+            snackbar?.show(message, undoLabel) { undo(kind, ids) }
+        }
     }
     // When any context-specific action is wired (Move/Remove/SetCover/Unlink),
     // Download moves to the overflow so the bar keeps a stable 4-item primary
@@ -1066,7 +1079,16 @@ fun AssetSelectionBottomBar(
                                 )
                             },
                             leadingIcon = { Icon(Icons.Outlined.Archive, contentDescription = null) },
-                            onClick = { menuOpen = false; onArchive() }
+                            onClick = {
+                                menuOpen = false
+                                runUndoable(
+                                    kind = if (archiveMode == ArchiveMode.Archive) {
+                                        BulkUndoKind.Archive
+                                    } else BulkUndoKind.Unarchive,
+                                    message = archiveDoneMessage,
+                                    action = onArchive
+                                )
+                            }
                         )
                         DropdownMenuItem(
                             text = {
@@ -1082,7 +1104,10 @@ fun AssetSelectionBottomBar(
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             },
-                            onClick = { menuOpen = false; showTrashConfirm = true }
+                            onClick = {
+                                menuOpen = false
+                                runUndoable(BulkUndoKind.Trash, trashDoneMessage, onTrash)
+                            }
                         )
                     }
                 }

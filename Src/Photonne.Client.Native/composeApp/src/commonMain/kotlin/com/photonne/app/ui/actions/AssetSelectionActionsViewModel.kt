@@ -3,6 +3,7 @@ package com.photonne.app.ui.actions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.photonne.app.data.actions.AssetActionsRepository
+import com.photonne.app.data.asset.AssetDetailRepository
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,9 +40,38 @@ data class AssetActionsUiState(
  */
 class AssetSelectionActionsViewModel(
     private val repository: AssetActionsRepository,
+    private val assets: AssetDetailRepository,
     private val sharing: AssetSharing,
     private val errorFactory: UiErrorFactory,
 ) : ViewModel() {
+
+    /**
+     * Deshace la última acción en bloque REVERSIBLE.
+     *
+     * Papelera y archivar dejaron de pedir confirmación previa: se ejecutan al
+     * instante y el snackbar ofrece deshacer. Eso quita fricción de cada
+     * acción a cambio de un botón durante unos segundos, que es el reparto
+     * correcto cuando el error se puede revertir entero. Lo irreversible
+     * (vaciar la papelera, borrar para siempre) conserva su diálogo.
+     */
+    fun undoBulk(kind: BulkUndoKind, assetIds: List<String>, onDone: () -> Unit = {}) {
+        if (assetIds.isEmpty()) return
+        viewModelScope.launch {
+            runCatching {
+                when (kind) {
+                    BulkUndoKind.Trash -> assets.restore(assetIds)
+                    BulkUndoKind.Archive -> assets.unarchive(assetIds)
+                    BulkUndoKind.Unarchive -> assets.archive(assetIds)
+                }
+            }
+                .onSuccess { onDone() }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(error = errorFactory.from(error, "No se pudo deshacer"))
+                    }
+                }
+        }
+    }
 
     private val _state = MutableStateFlow(AssetActionsUiState())
     val state: StateFlow<AssetActionsUiState> = _state.asStateFlow()

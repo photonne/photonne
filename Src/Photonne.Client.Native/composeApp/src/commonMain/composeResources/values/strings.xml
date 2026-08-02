@@ -352,6 +352,15 @@
 
     <string name="selection_action_select_all">Seleccionar todo</string>
     <string name="selection_action_deselect_all">Deseleccionar todo</string>
+    <string name="action_undo">Deshacer</string>
+    <plurals name="selection_archive_done">
+        <item quantity="one">1 foto archivada</item>
+        <item quantity="other">%1$d fotos archivadas</item>
+    </plurals>
+    <plurals name="selection_unarchive_done">
+        <item quantity="one">1 foto desarchivada</item>
+        <item quantity="other">%1$d fotos desarchivadas</item>
+    </plurals>
     <string name="selection_group_select">Seleccionar el grupo</string>
     <string name="selection_group_clear">Deseleccionar el grupo</string>
     <string name="selection_action_download">Descargar</string>

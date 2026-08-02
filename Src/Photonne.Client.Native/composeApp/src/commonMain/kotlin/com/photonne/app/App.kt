@@ -1271,7 +1271,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsViewModel.download(timelineState.selection.toList())
                     },
                     onArchive = timelineViewModel::bulkArchive,
-                    onTrash = timelineViewModel::bulkTrash
+                    onTrash = timelineViewModel::bulkTrash,
+                    selectedIds = { timelineState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { timelineViewModel.refresh() }
+                    },
                 )
             }
         }
@@ -1291,6 +1295,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onArchive = albumDetailViewModel::bulkArchive,
                     onTrash = albumDetailViewModel::bulkTrash,
+                    selectedIds = { albumDetailState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { albumDetailViewModel.refresh(); timelineViewModel.refresh() }
+                    },
                     onRemoveFromAlbum = if (selectedAlbum?.canWrite == true ||
                         selectedAlbum?.isOwner == true
                     ) {
@@ -1355,6 +1363,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onArchive = folderDetailViewModel::bulkArchive,
                     onTrash = folderDetailViewModel::bulkTrash,
+                    selectedIds = { folderDetailState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { folderDetailViewModel.refresh(); timelineViewModel.refresh() }
+                    },
                     onMove = if (selectedFolder?.isOwner == true) {
                         { showMoveSelectedAssets = true }
                     } else null
@@ -1375,7 +1387,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsViewModel.download(searchState.selection.toList())
                     },
                     onArchive = searchViewModel::bulkArchive,
-                    onTrash = searchViewModel::bulkTrash
+                    onTrash = searchViewModel::bulkTrash,
+                    selectedIds = { searchState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { searchViewModel.refresh(); timelineViewModel.refresh() }
+                    },
                 )
             }
         }
@@ -1395,6 +1411,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onArchive = personDetailViewModel::bulkArchive,
                     onTrash = personDetailViewModel::bulkTrash,
+                    selectedIds = { personDetailState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { personDetailState.personId?.let {
+                                personDetailViewModel.open(it, personDetailState.personName)
+                            }
+                            timelineViewModel.refresh() }
+                    },
                     onUnlink = {
                         personDetailViewModel.bulkUnlinkFromPerson { detached ->
                             // Local fan-out: faces removed from a person also
@@ -1424,6 +1447,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                     },
                     onArchive = organizeInboxViewModel::bulkArchive,
                     onTrash = organizeInboxViewModel::bulkTrash,
+                    selectedIds = { organizeInboxState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { organizeInboxViewModel.refresh(); timelineViewModel.refresh() }
+                    },
                     onMove = {
                         showMoveSelectedAssetsInbox = true
                         organizeInboxViewModel.loadMoveYearBreakdown()
@@ -1446,7 +1473,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsViewModel.download(favoritesState.selection.toList())
                     },
                     onArchive = favoritesViewModel::bulkArchive,
-                    onTrash = favoritesViewModel::bulkTrash
+                    onTrash = favoritesViewModel::bulkTrash,
+                    selectedIds = { favoritesState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { favoritesViewModel.refresh(); timelineViewModel.refresh() }
+                    },
                 )
             }
         }
@@ -1466,7 +1497,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         actionsViewModel.download(archivedState.selection.toList())
                     },
                     onArchive = { archivedViewModel.bulkUnarchive() },
-                    onTrash = archivedViewModel::bulkTrash
+                    onTrash = archivedViewModel::bulkTrash,
+                    selectedIds = { archivedState.selection.toList() },
+                    onUndo = { kind, ids ->
+                        actionsViewModel.undoBulk(kind, ids) { archivedViewModel.refresh(); timelineViewModel.refresh() }
+                    },
                 )
             }
         }

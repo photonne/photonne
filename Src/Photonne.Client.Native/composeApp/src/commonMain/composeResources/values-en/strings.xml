@@ -338,6 +338,15 @@
 
     <string name="selection_action_select_all">Select all</string>
     <string name="selection_action_deselect_all">Deselect all</string>
+    <string name="action_undo">Undo</string>
+    <plurals name="selection_archive_done">
+        <item quantity="one">1 photo archived</item>
+        <item quantity="other">%1$d photos archived</item>
+    </plurals>
+    <plurals name="selection_unarchive_done">
+        <item quantity="one">1 photo unarchived</item>
+        <item quantity="other">%1$d photos unarchived</item>
+    </plurals>
     <string name="selection_group_select">Select group</string>
     <string name="selection_group_clear">Deselect group</string>
     <string name="selection_action_download">Download</string>
