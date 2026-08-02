@@ -39,9 +39,16 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.LocalSyncBadge
 import com.photonne.app.data.models.TimelineItem
+import com.photonne.app.resources.Res
+import com.photonne.app.resources.asset_a11y_favorite
+import com.photonne.app.resources.asset_a11y_live_photo
+import com.photonne.app.resources.asset_a11y_video
 import com.photonne.app.ui.grid.dragselect.AssetCellContentType
 import com.photonne.app.ui.grid.dragselect.DragSelectConfig
 import com.photonne.app.ui.grid.dragselect.DragSelectState
@@ -56,6 +63,7 @@ import com.photonne.app.ui.theme.PhotonneColors
 import com.photonne.app.ui.theme.Spacing
 import com.photonne.app.ui.theme.LocalSharedTransitionScope
 import com.photonne.app.ui.util.onSecondaryClick
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -241,6 +249,23 @@ fun AssetGridCell(
         label = "selectionPadding"
     )
     val secondaryClick = onSecondaryClick
+    // Una miniatura sin describir es, para un lector de pantalla, una rejilla
+    // de nada. Y con selección activa lo que importa es el ESTADO: se anuncia
+    // como seleccionable para que diga "seleccionado" al recorrerla.
+    val videoLabel = stringResource(Res.string.asset_a11y_video)
+    val livePhotoLabel = stringResource(Res.string.asset_a11y_live_photo)
+    val favoriteLabel = stringResource(Res.string.asset_a11y_favorite)
+    val cellDescription = remember(
+        asset.fileName, asset.isVideo, asset.isLivePhoto, asset.isFavorite,
+        videoLabel, livePhotoLabel, favoriteLabel
+    ) {
+        buildList {
+            add(asset.fileName)
+            if (asset.isVideo) add(videoLabel)
+            if (asset.isLivePhoto) add(livePhotoLabel)
+            if (asset.isFavorite) add(favoriteLabel)
+        }.joinToString(", ")
+    }
     Box(
         // OJO con el orden: el padding animado va DESPUÉS de fijar el tamaño,
         // así que encoge el contenido pero no el nodo. El hit-test del
@@ -254,6 +279,10 @@ fun AssetGridCell(
             .background(placeholder ?: MaterialTheme.colorScheme.surfaceVariant)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .let { base -> if (secondaryClick != null) base.onSecondaryClick(secondaryClick) else base }
+            .semantics {
+                contentDescription = cellDescription
+                selected = isSelected
+            }
     ) {
         AssetThumbnailImage(
             item = asset,
@@ -299,7 +328,7 @@ fun AssetGridCell(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.MotionPhotosOn,
-                    contentDescription = "Live Photo",
+                    contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(14.dp)
                 )
@@ -308,7 +337,7 @@ fun AssetGridCell(
         if (asset.isFavorite) {
             Icon(
                 imageVector = Icons.Filled.Favorite,
-                contentDescription = "Favorito",
+                contentDescription = null,
                 tint = PhotonneColors.favorite,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -327,7 +356,7 @@ fun AssetGridCell(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Check,
-                    contentDescription = "Selected",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(14.dp)
                 )
