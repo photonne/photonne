@@ -1092,6 +1092,8 @@
     <string name="organize_move_pick_destination">Pick a destination</string>
     <string name="organize_move_no_matches">No matches</string>
     <string name="organize_move_action_count">Move %1$d photos</string>
+    <string name="organize_review_exclude">Remove from the move</string>
+    <string name="organize_review_include">Include again</string>
     <string name="organize_move_review_title">%1$d photos will be moved</string>
     <string name="organize_move_review_subtitle_by_year">They will be split into year folders</string>
     <string name="organize_move_review_subtitle_default">Review what is about to move</string>

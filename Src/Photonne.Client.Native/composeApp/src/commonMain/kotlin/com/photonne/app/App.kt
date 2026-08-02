@@ -3916,8 +3916,12 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             isMoving = organizeInboxState.isBulkMutating,
             organizeByYear = true,
             onBack = { inboxReviewTarget = null },
-            onConfirm = {
-                organizeInboxViewModel.moveSelectedAssets(target, organizeByYear = true) {
+            onConfirm = { keptIds ->
+                organizeInboxViewModel.moveSelectedAssets(
+                    targetFolderId = target,
+                    organizeByYear = true,
+                    onlyIds = keptIds
+                ) {
                     inboxReviewTarget = null
                     foldersViewModel.refreshOrganizeCount()
                 }
@@ -3937,8 +3941,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 isMoving = organizeRuleState.isMoving,
                 organizeByYear = organizeRuleState.organizeByYear,
                 onBack = organizeRuleViewModel::closeReview,
-                onConfirm = {
-                    organizeRuleViewModel.move { outcome ->
+                onConfirm = { keptIds ->
+                    organizeRuleViewModel.move(onlyIds = keptIds) { outcome ->
                         // With a year split, confirm the distribution first; the
                         // navigation back happens when the summary is dismissed.
                         if (outcome.yearBreakdown.isNotEmpty()) organizeRuleSummary = outcome

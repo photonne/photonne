@@ -186,12 +186,19 @@ class OrganizeInboxViewModel(
         _state.update { it.copy(lastMoveSummary = null) }
     }
 
+    /**
+     * Mueve lo seleccionado, o solo [onlyIds] cuando la revisión ha quitado
+     * fotos del lote. Solo se descuenta de la bandeja lo que se mueve: quitar
+     * algo en la revisión debe dejarlo AQUÍ, no moverlo igualmente.
+     */
     fun moveSelectedAssets(
         targetFolderId: String,
         organizeByYear: Boolean = false,
+        onlyIds: List<String>? = null,
         onComplete: (List<String>) -> Unit = {}
     ) {
-        val ids = _state.value.selection.toList()
+        val selected = _state.value.selection
+        val ids = onlyIds?.filter { it in selected } ?: selected.toList()
         if (ids.isEmpty() || _state.value.isBulkMutating) return
         _state.update { it.copy(isBulkMutating = true, error = null) }
         viewModelScope.launch {
@@ -201,7 +208,9 @@ class OrganizeInboxViewModel(
                     _state.update {
                         it.copy(
                             items = it.items.filterNot { item -> item.id in moved },
-                            selection = emptySet(),
+                            // Lo apartado en la revisión sigue seleccionado,
+                            // listo para mandarlo a otro sitio sin re-marcarlo.
+                            selection = it.selection - moved,
                             isBulkMutating = false,
                             moveYearGroups = emptyList(),
                             lastMoveSummary = outcome.takeIf { o -> o.yearBreakdown.isNotEmpty() },
