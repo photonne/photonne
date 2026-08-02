@@ -54,6 +54,14 @@ data class DragSelectConfig(
     /** Franja de cada borde en la que el arrastre empieza a auto-scrollar. */
     val autoScrollEdge: Dp = 96.dp,
     val autoScrollMaxDpPerSecond: Float = 1800f,
+    /**
+     * Altura del cromo que se superpone al contenido. La franja de auto-scroll
+     * arranca por debajo: si empezara en el borde del viewport se dispararía
+     * con el dedo todavía sobre la barra de selección, es decir con contenido
+     * visible de sobra por delante.
+     */
+    val autoScrollTopInset: Dp = 0.dp,
+    val autoScrollBottomInset: Dp = 0.dp,
     val haptics: Boolean = true
 ) {
     companion object {

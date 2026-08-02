@@ -117,13 +117,19 @@ fun AssetGrid(
         modifier.fillMaxSize().dragSelectable(
             state = dragSelect.state,
             adapter = dragSelectAdapter,
+            scrollableState = gridState,
             enabled = dragSelect.enabled,
             selectionActive = selectedIds.isNotEmpty(),
             isSelected = { it in selectedIds },
             onPatch = dragSelect.onPatch,
             haptics = haptics,
             railStartPx = dragSelect.railStartPx,
-            config = dragSelect.config
+            // La franja de auto-scroll arranca donde acaba el cromo que se
+            // superpone al contenido, que es exactamente el contentPadding.
+            config = dragSelect.config.copy(
+                autoScrollTopInset = contentPadding.calculateTopPadding(),
+                autoScrollBottomInset = contentPadding.calculateBottomPadding()
+            )
         )
     } else {
         modifier.fillMaxSize()

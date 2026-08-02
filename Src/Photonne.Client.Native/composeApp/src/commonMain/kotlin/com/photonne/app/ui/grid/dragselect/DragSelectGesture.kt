@@ -1,10 +1,13 @@
 package com.photonne.app.ui.grid.dragselect
 
+import androidx.compose.foundation.MutatePriority
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
@@ -18,6 +21,9 @@ import com.photonne.app.ui.haptics.HapticEvent
 import com.photonne.app.ui.haptics.HapticThrottle
 import com.photonne.app.ui.haptics.PhotonneHaptics
 import com.photonne.app.ui.selection.SelectionPatch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Arrastre en banda sobre una rejilla de assets.
@@ -33,6 +39,13 @@ import com.photonne.app.ui.selection.SelectionPatch
 internal fun Modifier.dragSelectable(
     state: DragSelectState,
     adapter: DragSelectAdapter,
+    /**
+     * La rejilla que se auto-desplaza al llegar el dedo a un borde. Se toma su
+     * mutex con [MutatePriority.PreventUserInput] durante todo el gesto, así
+     * que además es lo que garantiza que nada mueva la lista por debajo
+     * aunque algún evento se nos escape.
+     */
+    scrollableState: ScrollableState,
     enabled: Boolean,
     selectionActive: Boolean,
     isSelected: (String) -> Boolean,
@@ -54,9 +67,29 @@ internal fun Modifier.dragSelectable(
 
     return this.pointerInput(state, enabled) {
         if (!enabled) return@pointerInput
+        coroutineScope {
+        val gestureScope = this
 
         var session: DragSelectSession? = null
         var throttle: HapticThrottle? = null
+        var autoScrollJob: Job? = null
+
+        fun moveTo(position: Offset, atMillis: Long) {
+            val active = session ?: return
+            state.pointer = position
+            val kind = state.kind ?: return
+            val ordinal = when (kind) {
+                DragSelectKind.Cells -> currentAdapter.cellAt(position)?.ordinal
+                DragSelectKind.Rail -> currentAdapter.rowAt(position)?.rowKey
+                // Un frame en el que el dedo cae en la separación de 2 dp no
+                // mueve la banda; el siguiente la corrige y no queda hueco,
+                // porque se recalcula entera desde el ancla.
+            } ?: return
+            val patch = active.moveTo(ordinal)
+            if (patch.isEmpty) return
+            currentPatch(patch)
+            if (currentConfig.haptics) throttle?.tick(kind.hapticEvent(), atMillis)
+        }
 
         fun begin(position: Offset, kind: DragSelectKind, atMillis: Long): Boolean {
             val cfg = currentConfig
@@ -106,30 +139,23 @@ internal fun Modifier.dragSelectable(
                 throttle = HapticThrottle(currentHaptics).also { it.tick(kind.hapticEvent(), atMillis) }
             }
             currentPatch(newSession.start())
+            autoScrollJob = gestureScope.launch {
+                runAutoScroll(
+                    state = state,
+                    scrollableState = scrollableState,
+                    config = { currentConfig },
+                    onFrame = { nowMillis -> moveTo(state.pointer, nowMillis) }
+                )
+            }
             return true
-        }
-
-        fun moveTo(position: Offset, atMillis: Long) {
-            val active = session ?: return
-            state.pointer = position
-            val kind = state.kind ?: return
-            val ordinal = when (kind) {
-                DragSelectKind.Cells -> currentAdapter.cellAt(position)?.ordinal
-                DragSelectKind.Rail -> currentAdapter.rowAt(position)?.rowKey
-                // Un frame en el que el dedo cae en la separación de 2 dp no
-                // mueve la banda; el siguiente la corrige y no queda hueco,
-                // porque se recalcula entera desde el ancla.
-            } ?: return
-            val patch = active.moveTo(ordinal)
-            if (patch.isEmpty) return
-            currentPatch(patch)
-            if (currentConfig.haptics) throttle?.tick(kind.hapticEvent(), atMillis)
         }
 
         fun end() {
             val hadSession = session != null
             session = null
             throttle = null
+            autoScrollJob?.cancel()
+            autoScrollJob = null
             state.isDragging = false
             state.kind = null
             if (hadSession && currentConfig.haptics) {
@@ -145,6 +171,51 @@ internal fun Modifier.dragSelectable(
             onMove = ::moveTo,
             onEnd = ::end
         )
+        }
+    }
+}
+
+/**
+ * Desplaza la rejilla mientras el dedo aguanta en una franja de borde, para
+ * poder seleccionar más allá de lo que cabe en pantalla.
+ *
+ * Se toma el mutex de scroll con [MutatePriority.PreventUserInput] durante
+ * todo el gesto: no lo puede interrumpir un scroll de usuario, así que sirve
+ * a la vez de motor del auto-scroll y de cerrojo contra que la lista se mueva
+ * por debajo si algún evento se nos escapara sin consumir.
+ */
+private suspend fun PointerInputScope.runAutoScroll(
+    state: DragSelectState,
+    scrollableState: ScrollableState,
+    config: () -> DragSelectConfig,
+    onFrame: (nowMillis: Long) -> Unit
+) {
+    val cfg = config()
+    val zonePx = cfg.autoScrollEdge.toPx()
+    val topEdge = cfg.autoScrollTopInset.toPx()
+    val bottomEdge = size.height - cfg.autoScrollBottomInset.toPx()
+    val maxPxPerSecond = cfg.autoScrollMaxDpPerSecond * density
+
+    scrollableState.scroll(MutatePriority.PreventUserInput) {
+        var lastNanos = 0L
+        while (state.isDragging) {
+            val nowNanos = withFrameNanos { it }
+            val seconds = if (lastNanos == 0L) 0f else (nowNanos - lastNanos) / 1_000_000_000f
+            lastNanos = nowNanos
+            val velocity = autoScrollVelocity(
+                y = state.pointer.y,
+                topEdge = topEdge,
+                bottomEdge = bottomEdge,
+                zonePx = zonePx,
+                maxPxPerSecond = maxPxPerSecond
+            )
+            if (velocity == 0f || seconds <= 0f) continue
+            scrollBy(velocity * seconds)
+            // Con el dedo quieto y el contenido moviéndose, la celda que hay
+            // debajo cambia sola: sin reevaluar aquí, la banda se congelaría
+            // en cuanto dejaran de llegar eventos de puntero.
+            onFrame(nowNanos / 1_000_000L)
+        }
     }
 }
 
