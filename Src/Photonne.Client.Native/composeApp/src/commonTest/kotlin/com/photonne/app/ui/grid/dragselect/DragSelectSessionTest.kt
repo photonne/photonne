@@ -172,39 +172,10 @@ class DragSelectSessionTest {
     }
 
     @Test
-    fun a_row_anchor_deselects_only_when_the_whole_row_was_selected() {
-        // The rail's mode rule: a half-marked row reads as "finish marking it".
-        assertEquals(
-            DragSelectMode.Deselect,
-            modeForAnchor(listOf("a", "b")) { it in setOf("a", "b") }
-        )
-        assertEquals(
-            DragSelectMode.Select,
-            modeForAnchor(listOf("a", "b")) { it in setOf("a") }
-        )
-        // An inert anchor (skeleton row) must not read as "all selected".
+    fun an_anchor_already_selected_flips_the_mode() {
+        assertEquals(DragSelectMode.Deselect, modeForAnchor(listOf("a")) { it == "a" })
+        assertEquals(DragSelectMode.Select, modeForAnchor(listOf("a")) { false })
+        // An inert anchor must not read as "already selected".
         assertEquals(DragSelectMode.Select, modeForAnchor(emptyList()) { true })
-    }
-
-    @Test
-    fun a_rail_session_selects_whole_rows() {
-        val rows = listOf(
-            listOf("a0", "a1", "a2"),
-            listOf("a3", "a4", "a5"),
-            listOf("a6", "a7", "a8")
-        )
-        var selection = emptySet<String>()
-        val session = DragSelectSession(
-            anchorOrdinal = 0,
-            mode = DragSelectMode.Select,
-            baseSelected = { false },
-            idsAt = { rows.getOrNull(it).orEmpty() }
-        )
-        selection = selection.applying(session.start())
-        assertEquals(setOf("a0", "a1", "a2"), selection)
-
-        // A fast sweep from row 0 to row 2 must not skip row 1.
-        selection = selection.applying(session.moveTo(2))
-        assertEquals((0..8).map { "a$it" }.toSet(), selection)
     }
 }

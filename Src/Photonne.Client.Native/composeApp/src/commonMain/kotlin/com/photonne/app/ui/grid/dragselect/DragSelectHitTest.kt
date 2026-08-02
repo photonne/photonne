@@ -19,9 +19,6 @@ import com.photonne.app.ui.grid.TimelineRowEntry
 /** Celda alcanzada por el puntero. */
 internal data class DragSelectCell(val ordinal: Int, val id: String)
 
-/** Fila alcanzada por el puntero, y los ordinales que abarca. */
-internal data class DragSelectRow(val rowKey: Int, val ordinals: IntRange)
-
 // ---------- Motor A: LazyVerticalGrid ----------
 
 /**
@@ -35,7 +32,6 @@ internal data class GridItemBounds(
     val top: Int,
     val width: Int,
     val height: Int,
-    /** Fila del grid a la que pertenece; el carril lateral marca por fila. */
     val row: Int
 )
 
@@ -48,32 +44,6 @@ internal fun hitTestGridItems(
         y >= it.top && y < it.top + it.height
 }
 
-/**
- * Fila bajo [y] y el rango de ordinales que ocupa. En un grid vertical las
- * celdas de una fila están todas presentes a la vez, así que el rango sale de
- * los propios ítems visibles sin tener que consultar la lista de datos.
- *
- * [headerCount] descuenta los ítems que el Lazy emite antes de las celdas (la
- * cabecera de ancho completo), para pasar de índice del Lazy a ordinal.
- */
-internal fun rowAtY(
-    items: List<GridItemBounds>,
-    y: Float,
-    headerCount: Int
-): DragSelectRow? {
-    val hit = items.firstOrNull { y >= it.top && y < it.top + it.height } ?: return null
-    var min = Int.MAX_VALUE
-    var max = Int.MIN_VALUE
-    for (item in items) {
-        if (item.row != hit.row) continue
-        val ordinal = item.index - headerCount
-        if (ordinal < 0) continue
-        if (ordinal < min) min = ordinal
-        if (ordinal > max) max = ordinal
-    }
-    if (min > max) return null
-    return DragSelectRow(rowKey = hit.row, ordinals = min..max)
-}
 
 // ---------- Motor B: LazyColumn de filas (timeline) ----------
 
@@ -100,16 +70,4 @@ internal fun hitTestRowEntry(
     if (column < 0 || column >= row.cells.size) return null
     val cell = row.cells[column]
     return DragSelectCell(ordinal = cell.index, id = cell.item.id)
-}
-
-/**
- * Ordinales que abarca la fila [entryIndex], o null si esa entrada no es una
- * fila de celdas. `packUniformRows` reparte los ítems en orden, así que los
- * índices de una fila son contiguos y basta con sus extremos.
- */
-internal fun rowOrdinalsOf(rows: List<TimelineRowEntry>, entryIndex: Int): IntRange? {
-    val entry = rows.getOrNull(entryIndex) as? TimelineRowEntry.Row ?: return null
-    val cells = entry.row.cells
-    if (cells.isEmpty()) return null
-    return cells.first().index..cells.last().index
 }

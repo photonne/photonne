@@ -152,7 +152,6 @@ class DragSelectMathTest {
     @Test
     fun a_drag_under_the_slop_commits_to_nothing() {
         assertFalse(isHorizontalCommit(dx = 5f, dy = 0f, slopPx = 12f))
-        assertFalse(isVerticalCommit(dx = 0f, dy = 5f, slopPx = 12f))
     }
 
     @Test
@@ -163,26 +162,6 @@ class DragSelectMathTest {
         assertTrue(isHorizontalCommit(dx = 40f, dy = 10f, slopPx = 12f))
         // Direction is irrelevant — dragging left selects too.
         assertTrue(isHorizontalCommit(dx = -40f, dy = 10f, slopPx = 12f))
-    }
-
-    @Test
-    fun the_rail_only_answers_to_a_vertical_sweep() {
-        // The system back gesture is horizontal, so it can never arm the rail.
-        assertFalse(isVerticalCommit(dx = 60f, dy = 10f, slopPx = 12f))
-        assertTrue(isVerticalCommit(dx = 10f, dy = 60f, slopPx = 12f))
-        assertTrue(isVerticalCommit(dx = 10f, dy = -60f, slopPx = 12f))
-    }
-
-    // ---------- rail geometry ----------
-
-    @Test
-    fun the_rail_starts_after_the_system_gesture_inset() {
-        // 24px inset, 32px rail → live between 24 and 55.
-        assertFalse(railContains(x = 23f, railStartPx = 24f, railWidthPx = 32f))
-        assertTrue(railContains(x = 24f, railStartPx = 24f, railWidthPx = 32f))
-        assertTrue(railContains(x = 55f, railStartPx = 24f, railWidthPx = 32f))
-        assertFalse(railContains(x = 56f, railStartPx = 24f, railWidthPx = 32f))
-        assertFalse(railContains(x = 30f, railStartPx = 24f, railWidthPx = 0f))
     }
 
     // ---------- coordinate space ----------

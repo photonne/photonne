@@ -76,34 +76,6 @@ class DragSelectHitTestTest {
         assertEquals(15, hitTestGridItems(items, x = 10f, y = 70f)?.index)
     }
 
-    @Test
-    fun the_row_under_the_pointer_reports_its_whole_ordinal_range() {
-        // One full-span header at index 0 → headerCount 1, so the first cell
-        // row (indices 1..3) is ordinals 0..2.
-        val items = gridRow(row = 1, firstIndex = 1, top = 0) +
-            gridRow(row = 2, firstIndex = 4, top = 102)
-
-        assertEquals(DragSelectRow(1, 0..2), rowAtY(items, y = 50f, headerCount = 1))
-        assertEquals(DragSelectRow(2, 3..5), rowAtY(items, y = 150f, headerCount = 1))
-        assertNull(rowAtY(items, y = 5000f, headerCount = 1))
-    }
-
-    @Test
-    fun a_partial_trailing_row_reports_only_the_cells_it_has() {
-        val items = listOf(
-            GridItemBounds(index = 6, left = 0, top = 204, width = 100, height = 100, row = 2),
-            GridItemBounds(index = 7, left = 102, top = 204, width = 100, height = 100, row = 2)
-        )
-        assertEquals(DragSelectRow(2, 6..7), rowAtY(items, y = 250f, headerCount = 0))
-    }
-
-    @Test
-    fun the_full_span_header_is_never_reported_as_a_row_of_cells() {
-        // The adapter filters the header out by contentType before we get
-        // here, so a header-only visible list must resolve to nothing.
-        assertNull(rowAtY(emptyList(), y = 10f, headerCount = 1))
-    }
-
     // ---------- Motor B: LazyColumn de filas (timeline) ----------
 
     /** Filas reales del packer: 4 assets de mayo + 2 de abril, 3 columnas. */
@@ -152,7 +124,6 @@ class DragSelectHitTestTest {
             )
         )
         assertNull(hitTestRowEntry(skeleton, entryIndex = 0, x = 10f, spacingPx = 2f, dpToPx = 1f))
-        assertNull(rowOrdinalsOf(skeleton, entryIndex = 0))
     }
 
     @Test
@@ -173,7 +144,6 @@ class DragSelectHitTestTest {
         val rows = timelineRows()
         assertNull(hitTestRowEntry(rows, entryIndex = 99, x = 10f, spacingPx = 2f, dpToPx = 1f))
         assertNull(hitTestRowEntry(rows, entryIndex = -1, x = 10f, spacingPx = 2f, dpToPx = 1f))
-        assertNull(rowOrdinalsOf(rows, entryIndex = 99))
     }
 
     @Test
@@ -187,12 +157,4 @@ class DragSelectHitTestTest {
         )
     }
 
-    @Test
-    fun a_timeline_row_reports_its_contiguous_ordinals() {
-        val rows = timelineRows()
-        assertEquals(0..2, rowOrdinalsOf(rows, entryIndex = 1))
-        assertEquals(3..3, rowOrdinalsOf(rows, entryIndex = 2))
-        assertEquals(4..5, rowOrdinalsOf(rows, entryIndex = 4))
-        assertNull(rowOrdinalsOf(rows, entryIndex = 0))
-    }
 }

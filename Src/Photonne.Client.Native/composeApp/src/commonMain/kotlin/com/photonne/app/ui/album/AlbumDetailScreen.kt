@@ -80,7 +80,6 @@ import com.photonne.app.resources.album_hero_photos
 import com.photonne.app.resources.album_hero_shared
 import com.photonne.app.ui.grid.AlbumGridScrubber
 import com.photonne.app.ui.grid.AssetGrid
-import com.photonne.app.ui.grid.RowSelectRail
 import com.photonne.app.ui.grid.rememberAssetGridSelectionGestures
 import com.photonne.app.ui.grid.formatLocalizedMonth
 import com.photonne.app.ui.main.chromeCapsuleBackdrop
@@ -261,12 +260,6 @@ fun AlbumDetailScreen(
                     dragSelect = gestures.dragSelect,
                     modifier = Modifier.fillMaxWidth().hazeSource(albumHazeState),
                     header = hero
-                )
-                RowSelectRail(
-                    gestures = gestures,
-                    visible = state.isSelectionActive,
-                    reservedTop = reservedTop,
-                    reservedBottom = floatingNavBarReservedHeight()
                 )
                 // Carril de años cuando el orden ACTUAL del álbum resulta ser
                 // cronológico (lo detecta buildAssetYearMarkers por monotonía),

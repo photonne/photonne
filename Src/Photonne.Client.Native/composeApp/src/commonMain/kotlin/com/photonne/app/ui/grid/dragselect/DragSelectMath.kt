@@ -112,18 +112,6 @@ internal fun isHorizontalCommit(
     bias: Float = 1.5f
 ): Boolean = abs(dx) > slopPx && abs(dx) > abs(dy) * bias
 
-/** Lo simétrico para el carril lateral, que solo responde a barridos verticales. */
-internal fun isVerticalCommit(
-    dx: Float,
-    dy: Float,
-    slopPx: Float,
-    bias: Float = 1f
-): Boolean = abs(dy) > slopPx && abs(dy) > abs(dx) * bias
-
-/** ¿[x] cae en el carril de selección de filas? */
-internal fun railContains(x: Float, railStartPx: Float, railWidthPx: Float): Boolean =
-    railWidthPx > 0f && x >= railStartPx && x < railStartPx + railWidthPx
-
 /**
  * Y del puntero llevada al espacio en el que el Lazy publica los offsets de
  * sus ítems.

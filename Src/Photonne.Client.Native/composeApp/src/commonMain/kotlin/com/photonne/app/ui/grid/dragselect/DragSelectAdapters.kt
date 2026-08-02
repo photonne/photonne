@@ -62,50 +62,7 @@ private class LazyGridDragSelectAdapter(
         return DragSelectCell(ordinal, id)
     }
 
-    override fun rowAt(position: Offset): DragSelectRow? = rowAtY(
-        items = boundsOf(visibleCells()),
-        y = itemSpaceY(position),
-        headerCount = headerCount()
-    )
-
     override fun idsAtOrdinal(ordinal: Int): List<String> = listOfNotNull(idAt(ordinal))
-
-    override fun idsInRow(rowKey: Int): List<String> {
-        // Las filas se resuelven aritméticamente y no a partir de lo visible:
-        // un barrido rápido por el carril, o el auto-scroll, cruzan filas que
-        // ya han salido de pantalla, y resolverlas como vacías las dejaría
-        // sin marcar sin que se note.
-        val cells = visibleCells()
-        if (cells.isEmpty()) return emptyList()
-        val columns = columnCount(cells) ?: return emptyList()
-        // Se ancla en una celda visible cualquiera en vez de suponer cuántas
-        // filas ocupa lo que va antes de los assets. En Carpetas ese preludio
-        // son las subcarpetas más un separador — de altura variable — y darlo
-        // por hecho desplazaría todas las filas.
-        val reference = cells.first()
-        val referenceRowStart = (reference.index - headerCount()) - reference.column
-        val first = referenceRowStart + (rowKey - reference.row) * columns
-        if (first < 0) return emptyList()
-        return (first until first + columns).mapNotNull(idAt)
-    }
-
-    /**
-     * Columnas de la rejilla. `LazyGridLayoutInfo` no las publica, así que se
-     * deducen de la distancia entre los primeros ítems de dos filas
-     * consecutivas — exacto y ajeno a que la última fila esté a medias. El
-     * máximo de columnas visibles solo sirve de respaldo, porque si lo único
-     * en pantalla es una fila parcial se queda corto.
-     */
-    private fun columnCount(cells: List<LazyGridItemInfo>): Int? {
-        if (cells.isEmpty()) return null
-        val rowStarts = cells.filter { it.column == 0 }.sortedBy { it.row }
-        for (i in 0 until rowStarts.size - 1) {
-            val current = rowStarts[i]
-            val next = rowStarts[i + 1]
-            if (next.row == current.row + 1) return next.index - current.index
-        }
-        return cells.maxOf { it.column } + 1
-    }
 }
 
 /**
@@ -176,16 +133,7 @@ private class TimelineDragSelectAdapter(
         return if (idAt(cell.ordinal) == null) null else cell
     }
 
-    override fun rowAt(position: Offset): DragSelectRow? {
-        val entryIndex = entryIndexAt(position.y) ?: return null
-        val ordinals = rowOrdinalsOf(rows(), entryIndex) ?: return null
-        return DragSelectRow(rowKey = entryIndex, ordinals = ordinals)
-    }
-
     override fun idsAtOrdinal(ordinal: Int): List<String> = listOfNotNull(idAt(ordinal))
-
-    override fun idsInRow(rowKey: Int): List<String> =
-        rowOrdinalsOf(rows(), rowKey)?.mapNotNull(idAt).orEmpty()
 }
 
 /** [DragSelectAdapter] para el `LazyColumn` de filas del timeline. */

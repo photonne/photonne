@@ -332,7 +332,6 @@ internal fun GroupedAssetGrid(
             isSelected = { it in selectedIds },
             onPatch = dragSelect.onPatch,
             haptics = haptics,
-            railStartPx = dragSelect.railStartPx,
             config = dragSelect.config.copy(
                 autoScrollTopInset = contentPadding.calculateTopPadding(),
                 autoScrollBottomInset = contentPadding.calculateBottomPadding()
@@ -428,7 +427,6 @@ internal data class GroupedGridDragSelect(
     val headerCount: Int,
     val idAt: (ordinal: Int) -> String?,
     val enabled: Boolean = true,
-    val railStartPx: Float = 0f,
     val config: DragSelectConfig = DragSelectConfig.Default
 )
 
