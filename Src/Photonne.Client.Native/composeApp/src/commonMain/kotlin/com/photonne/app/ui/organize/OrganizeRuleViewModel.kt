@@ -161,14 +161,28 @@ class OrganizeRuleViewModel(
         _state.update { it.copy(reviewGroups = null) }
     }
 
-    fun move(onDone: (MoveOutcome) -> Unit) {
+    /**
+     * Mueve las coincidencias de la regla. Con [onlyIds] — la revisión ha
+     * quitado fotos — se mueve por ids en vez de dejar que el servidor
+     * resuelva la regla otra vez, que volvería a incluir lo descartado.
+     *
+     * Sin edición se sigue resolviendo en el servidor: una regla de 5.000
+     * fotos no necesita viajar como 5.000 ids.
+     */
+    fun move(onlyIds: List<String>? = null, onDone: (MoveOutcome) -> Unit) {
         val current = _state.value
         val rule = buildSmartRule(current.conditions, current.matchAll)
         val target = current.targetFolderId
         if (rule == null || target == null || !current.canMove) return
         _state.update { it.copy(isMoving = true, error = null) }
         viewModelScope.launch {
-            runCatching { organize.moveByRule(rule, target, current.organizeByYear) }
+            runCatching {
+                if (onlyIds.isNullOrEmpty()) {
+                    organize.moveByRule(rule, target, current.organizeByYear)
+                } else {
+                    organize.moveAssets(target, onlyIds, current.organizeByYear)
+                }
+            }
                 .onSuccess { outcome ->
                     _state.update { it.copy(isMoving = false, reviewGroups = null) }
                     onDone(outcome)

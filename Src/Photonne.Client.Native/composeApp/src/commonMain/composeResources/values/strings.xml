@@ -1148,6 +1148,8 @@
     <string name="organize_move_pick_destination">Elige un destino</string>
     <string name="organize_move_no_matches">Sin coincidencias</string>
     <string name="organize_move_action_count">Mover %1$d fotos</string>
+    <string name="organize_review_exclude">Quitar del movimiento</string>
+    <string name="organize_review_include">Volver a incluir</string>
     <string name="organize_move_review_title">Se moverán %1$d fotos</string>
     <string name="organize_move_review_subtitle_by_year">Se repartirán en carpetas por año</string>
     <string name="organize_move_review_subtitle_default">Revisa qué se va a mover</string>

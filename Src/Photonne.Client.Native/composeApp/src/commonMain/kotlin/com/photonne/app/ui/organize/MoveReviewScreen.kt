@@ -20,6 +20,24 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TriStateCheckbox
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
+import com.photonne.app.resources.organize_review_exclude
+import com.photonne.app.resources.organize_review_include
+import com.photonne.app.ui.selection.GroupSelectionState
+import com.photonne.app.ui.selection.selectionStateOf
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -82,10 +100,28 @@ fun MoveReviewScreen(
     isMoving: Boolean,
     organizeByYear: Boolean,
     onBack: () -> Unit,
-    onConfirm: () -> Unit,
+    /**
+     * Confirma el movimiento. Recibe null cuando no se ha quitado nada — el
+     * llamante puede entonces usar su camino original (en el flujo por
+     * condiciones, resolver en el servidor en vez de enviar miles de ids).
+     */
+    onConfirm: (keptIds: List<String>?) -> Unit,
 ) {
     val hazeState = remember { HazeState() }
     val gridState = rememberLazyGridState()
+    // Quitar de la selección aquí es lo único que separa "revisar" de "mirar":
+    // el movimiento es físico y no se deshace, así que la última pantalla antes
+    // de confirmarlo tiene que dejar corregir.
+    var excluded by remember(groups) { mutableStateOf(emptySet<String>()) }
+    val keptTotal = movedTotal - excluded.size
+    fun toggleAsset(id: String) {
+        excluded = if (id in excluded) excluded - id else excluded + id
+    }
+    fun toggleYear(group: YearGroup) {
+        val ids = group.assetIds
+        excluded = if (ids.all { it in excluded }) excluded - ids.toSet()
+        else excluded + ids
+    }
 
     // El "atrás" del sistema lo encadena el handler único de App.kt, como con el
     // visor y el recuerdo abierto.
@@ -121,24 +157,27 @@ fun MoveReviewScreen(
                         span = { GridItemSpan(maxLineSpan) },
                         key = "year-${group.year}",
                     ) {
-                        YearHeader(year = group.year, count = group.count)
+                        YearHeader(
+                            year = group.year,
+                            count = group.count - group.assetIds.count { it in excluded },
+                            state = excluded.selectionStateOf(group.assetIds),
+                            onToggle = { toggleYear(group) },
+                        )
                     }
                     items(group.assetIds, key = { it }) { id ->
-                        AsyncImage(
-                            model = "$baseUrl/api/assets/$id/thumbnail?size=Small",
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                        ReviewCell(
+                            id = id,
+                            baseUrl = baseUrl,
+                            excluded = id in excluded,
+                            enabled = !isMoving,
+                            onToggle = { toggleAsset(id) },
                         )
                     }
                 }
             }
 
             SubscreenFloatingChrome(
-                title = stringResource(Res.string.organize_move_review_title, movedTotal),
+                title = stringResource(Res.string.organize_move_review_title, keptTotal),
                 onBack = { if (!isMoving) onBack() },
                 scroll = SubscreenScroll(
                     firstVisibleItemIndex = { gridState.firstVisibleItemIndex },
@@ -159,10 +198,15 @@ fun MoveReviewScreen(
             )
 
             ConfirmMoveCapsule(
-                label = stringResource(Res.string.organize_move_action_count, movedTotal),
-                enabled = !isMoving && movedTotal > 0,
+                label = stringResource(Res.string.organize_move_action_count, keptTotal),
+                enabled = !isMoving && keptTotal > 0,
                 isMoving = isMoving,
-                onClick = onConfirm,
+                onClick = {
+                    onConfirm(
+                        if (excluded.isEmpty()) null
+                        else groups.flatMap { it.assetIds }.filterNot { it in excluded }
+                    )
+                },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -225,10 +269,79 @@ private fun ConfirmMoveCapsule(
     }
 }
 
+/**
+ * Una foto de la revisión. Tocarla la quita del movimiento (o la devuelve): se
+ * atenúa y muestra una marca, en vez de desaparecer, para que se pueda
+ * recuperar sin salir y volver a entrar.
+ */
 @Composable
-private fun YearHeader(year: Int, count: Int) {
+private fun ReviewCell(
+    id: String,
+    baseUrl: String,
+    excluded: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
+    val includedLabel = stringResource(Res.string.organize_review_exclude)
+    val excludedLabel = stringResource(Res.string.organize_review_include)
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .toggleable(
+                value = !excluded,
+                enabled = enabled,
+                onValueChange = { onToggle() },
+                role = Role.Checkbox,
+            )
+            .semantics {
+                contentDescription = if (excluded) excludedLabel else includedLabel
+            },
+    ) {
+        AsyncImage(
+            model = "$baseUrl/api/assets/$id/thumbnail?size=Small",
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().alpha(if (excluded) 0.35f else 1f),
+        )
+        if (excluded) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(20.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.RemoveCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YearHeader(
+    year: Int,
+    count: Int,
+    state: GroupSelectionState,
+    onToggle: () -> Unit,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp, start = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                // Marcado = el año entero se va a mover.
+                value = state == GroupSelectionState.None,
+                onValueChange = { onToggle() },
+                role = Role.Checkbox,
+            )
+            .padding(top = 12.dp, bottom = 4.dp, start = 8.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -241,6 +354,19 @@ private fun YearHeader(year: Int, count: Int) {
             stringResource(Res.string.organize_year_photo_count, count),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        // Quitar un año entero de un toque: en un movimiento por condiciones,
+        // descartar "todo 2019" es la corrección más habitual.
+        TriStateCheckbox(
+            state = when (state) {
+                // OJO: aquí "seleccionado" es lo que SE VA A MOVER, y el
+                // conjunto que se guarda es el de EXCLUIDOS. Van invertidos.
+                GroupSelectionState.All -> ToggleableState.Off
+                GroupSelectionState.None -> ToggleableState.On
+                GroupSelectionState.Partial -> ToggleableState.Indeterminate
+            },
+            onClick = onToggle,
         )
     }
 }
