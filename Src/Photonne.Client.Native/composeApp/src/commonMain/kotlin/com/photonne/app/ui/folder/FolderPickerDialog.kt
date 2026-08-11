@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -166,10 +164,15 @@ fun FolderPickerDialog(
                 },
                 singleLine = true,
             )
+            // El árbol es lo ÚNICO elástico de la hoja: se queda con el espacio que
+            // sobre (y scrollea dentro) en vez de reservarse una altura fija. Con una
+            // altura fija, todo lo que va detrás —organizar por año, los chips y la
+            // fila Cancelar/Mover— se desbordaba por debajo del borde de la hoja, y
+            // como aquí no hay scroll exterior el botón quedaba inalcanzable.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 200.dp, max = 460.dp),
+                    .weight(1f, fill = false),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 val empty = personalNodes.isEmpty() && sharedNodes.isEmpty()
@@ -223,10 +226,10 @@ fun FolderPickerDialog(
                         )
                     }
                 }
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
+            }
+            // Fuera del bloque elástico: un error dentro se recortaba junto al árbol.
+            if (errorMessage != null) {
+                Text(errorMessage, color = MaterialTheme.colorScheme.error)
             }
             if (showOrganizeByDate) {
                 Row(
