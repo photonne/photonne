@@ -47,8 +47,16 @@ data class OrganizeRuleUiState(
 ) {
     val activeConditions: List<SmartCondition> get() = conditions.filterNot { it.isEmpty }
     val hasConditions: Boolean get() = activeConditions.isNotEmpty()
+
+    /**
+     * OJO con [isPreviewing]: mientras la previsualización va en camino,
+     * [previewCount] es todavía el de la regla ANTERIOR. Sin este candado se
+     * podía tocar "Mover" en los 400 ms del debounce y acabar revisando (y
+     * moviendo) una regla distinta de la que dice el recuento en pantalla.
+     */
     val canMove: Boolean
-        get() = hasConditions && targetFolderId != null && (previewCount ?: 0) > 0 && !isMoving
+        get() = hasConditions && targetFolderId != null && (previewCount ?: 0) > 0 &&
+            !isPreviewing && !isMoving
 }
 
 /**
@@ -127,6 +135,10 @@ class OrganizeRuleViewModel(
                             previewSampleIds = result.sampleAssetIds,
                             yearBreakdown = result.yearBreakdown,
                             isPreviewing = false,
+                            // Un preview bueno cancela el error del anterior: si no,
+                            // un fallo puntual de red dejaba el texto rojo clavado
+                            // bajo las condiciones el resto de la sesión.
+                            error = null,
                         )
                     }
                 }
@@ -150,7 +162,22 @@ class OrganizeRuleViewModel(
         _state.update { it.copy(isLoadingReview = true, error = null) }
         viewModelScope.launch {
             runCatching { organize.reviewRule(rule) }
-                .onSuccess { groups -> _state.update { it.copy(isLoadingReview = false, reviewGroups = groups) } }
+                .onSuccess { groups ->
+                    // Sin coincidencias no se abre la revisión: una rejilla vacía
+                    // con el botón activo confirmaba un movimiento de 0 fotos y
+                    // volvía a la bandeja como si hubiera movido algo.
+                    if (groups.isEmpty()) {
+                        _state.update {
+                            it.copy(
+                                isLoadingReview = false,
+                                previewCount = 0,
+                                error = UiError("Ya no hay fotos que coincidan con estas condiciones."),
+                            )
+                        }
+                    } else {
+                        _state.update { it.copy(isLoadingReview = false, reviewGroups = groups) }
+                    }
+                }
                 .onFailure { error ->
                     _state.update { it.copy(isLoadingReview = false, error = errorFactory.from(error, "No se pudo cargar la revisión")) }
                 }

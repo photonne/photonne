@@ -3973,7 +3973,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     if (moreSubscreen == MoreSubscreen.OrganizeRule) {
         organizeRuleState.reviewGroups?.let { groups ->
             com.photonne.app.ui.organize.MoveReviewScreen(
-                movedTotal = organizeRuleState.previewCount ?: groups.sumOf { it.count },
+                // El total sale de los grupos que se están revisando, NO del
+                // previewCount: si divergen, `keptTotal` (total − quitadas) se
+                // desmadra y puede deshabilitar el botón con fotos en pantalla.
+                movedTotal = groups.sumOf { it.count },
                 groups = groups,
                 baseUrl = apiBaseUrl,
                 isMoving = organizeRuleState.isMoving,
