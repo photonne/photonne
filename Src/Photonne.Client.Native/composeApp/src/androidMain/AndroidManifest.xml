@@ -15,6 +15,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Rearms the periodic backup after a reboot without waiting for the
+         user to open the app. WorkManager's own reschedule receiver usually
+         covers this, but the explicit receiver survives the cases where its
+         job database was dropped (OEM cleaners, backup restores). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Media read + ACCESS_MEDIA_LOCATION are required to read the ORIGINAL
          (un-redacted) bytes of gallery photos/videos. Since Android 10 the
          platform strips GPS EXIF from media handed to apps without these,
@@ -62,6 +68,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/photonne_file_paths" />
         </provider>
+
+        <!-- Not exported: BOOT_COMPLETED / MY_PACKAGE_REPLACED are protected
+             system broadcasts, which reach non-exported receivers just fine. -->
+        <receiver
+            android:name=".data.devicebackup.BackupScheduleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- WorkManager vends this service; we only override it to declare the
              dataSync foreground type so setForeground() works on Android 14+.
