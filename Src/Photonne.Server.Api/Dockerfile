@@ -69,7 +69,13 @@ COPY ["Src/Photonne.Client.Web/Photonne.Client.Web.csproj", "Src/Photonne.Client
 RUN dotnet restore "Src/Photonne.Server.Api/Photonne.Server.Api.csproj"
 COPY . .
 WORKDIR "/src/Src/Photonne.Server.Api"
-RUN dotnet publish "Photonne.Server.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false /p:PublishReadyToRun=false -m:1
+# ImageSharp 4.x valida la licencia al compilar. En CI llega como secret de
+# BuildKit (id sixlabors_lic, ver docker-image.yml); en un build local sin el
+# secret, el csproj cae al sixlabors.lic de la raíz del contexto si existe.
+RUN --mount=type=secret,id=sixlabors_lic \
+    LIC=""; \
+    if [ -f /run/secrets/sixlabors_lic ]; then LIC="/p:SixLaborsLicenseFile=/run/secrets/sixlabors_lic"; fi; \
+    dotnet publish "Photonne.Server.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false /p:PublishReadyToRun=false $LIC -m:1
 
 FROM base AS final
 WORKDIR /app

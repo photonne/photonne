@@ -437,3 +437,6 @@ FodyWeavers.xsd
 # Visual Code
 .vscode/
 .DS_Store
+
+# Licencia de Six Labors (ImageSharp) — nunca commitear
+/sixlabors.lic

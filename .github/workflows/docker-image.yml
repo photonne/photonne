@@ -64,6 +64,10 @@ jobs:
           outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/photonne,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=api-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=api-${{ matrix.arch }}
+          # Licencia de ImageSharp 4.x: montada como secret de BuildKit para que
+          # no quede en capas ni en la caché; el Dockerfile la pasa a MSBuild.
+          secrets: |
+            sixlabors_lic=${{ secrets.SIXLABORS_LICENSE_KEY }}
 
       - name: Export digest
         run: |

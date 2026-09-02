@@ -5,6 +5,10 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <!-- ImageSharp 4.x valida la licencia al compilar. El paquete solo busca sixlabors.lic
+             hacia abajo desde este directorio, así que apuntamos al de la raíz del repo
+             (git-ignored). En CI la ruta llega por /p:SixLaborsLicenseFile desde un secret. -->
+        <SixLaborsLicenseFile Condition="'$(SixLaborsLicenseFile)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\sixlabors.lic')">$(MSBuildThisFileDirectory)..\..\sixlabors.lic</SixLaborsLicenseFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,8 +24,7 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
-        <!-- ImageSharp 4.x exige clave de licencia de Six Labors para compilar; nos quedamos en la última 3.x. -->
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="4.1.1" />
         <PackageReference Include="MetadataExtractor" Version="2.9.3" />
         <PackageReference Include="Xabe.FFmpeg" Version="6.0.2" />
         <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
