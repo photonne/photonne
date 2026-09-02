@@ -144,6 +144,12 @@ class BackupRunner(
             pending += folderPending
         }
 
+        // A scheduled pass may only get JobScheduler's ~10-minute window (FGS
+        // promotion can be denied while the app is backgrounded), so upload
+        // the small files first: more items land per window and one giant
+        // video can't starve everything queued behind it.
+        if (origin == BackupOrigin.Background) pending.sortBy { it.sizeBytes }
+
         progress.update {
             it.copy(
                 phase = BackupPhase.Uploading,
