@@ -2,6 +2,9 @@
 
 package com.photonne.app.data.devicebackup
 
+import com.photonne.app.data.api.LocalReachabilityProbe
+import com.photonne.app.data.api.ServerUrlStore
+import kotlin.concurrent.Volatile
 import kotlinx.cinterop.ExperimentalForeignApi
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
@@ -30,6 +33,20 @@ object IosBackupBridge : KoinComponent {
 
     /** Must match `BGTaskSchedulerPermittedIdentifiers` in Info.plist. */
     const val TASK_IDENTIFIER = "com.photonne.app.backup"
+
+    /** Set by [requestStop] when the BGTask budget expires. Cancelling the
+     *  Swift `Task` does NOT propagate into a Kotlin suspend function, so the
+     *  expiration handler flips this flag instead and the pass polls it
+     *  between files. */
+    @Volatile
+    private var stopRequested = false
+
+    /** Called from Swift's `expirationHandler`: asks the running pass to stop
+     *  cooperatively (in-flight files finish, nothing new starts). */
+    fun requestStop() {
+        stopRequested = true
+        NSLog("[IosBackup] stop requested — finishing in-flight files and bailing")
+    }
 
     /** Earliest the OS may wake us up — same 15-min floor as Android. */
     private const val MIN_DELAY_SECONDS = 15.0 * 60.0
@@ -63,9 +80,19 @@ object IosBackupBridge : KoinComponent {
             return true
         }
 
+        // A BGTask wake may land on a process whose UI never composed, so the
+        // LAN reachability probe hasn't run and the effective URL resolves to
+        // the public one. Probe once so a local-only server is reachable.
+        val urlStore: ServerUrlStore = get()
+        if (!urlStore.isLocalReachable() && !urlStore.getLocal().isNullOrEmpty()) {
+            runCatching { get<LocalReachabilityProbe>().runProbe() }
+                .onFailure { NSLog("[IosBackup] reachability probe failed: ${it.message}") }
+        }
+
         val runner: BackupRunner = get()
+        stopRequested = false
         return try {
-            val outcome = runner.runBackup(folders)
+            val outcome = runner.runBackup(folders, shouldContinue = { !stopRequested })
             NSLog(
                 "[IosBackup] done — total=${outcome.total} uploaded=${outcome.uploaded} " +
                     "skipped=${outcome.skipped} failed=${outcome.failed}"

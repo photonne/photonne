@@ -61,18 +61,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             return
         }
 
-        // Wrap the suspend call in a Task. iOS gives us a budget (~30s for
-        // BGAppRefresh, longer for BGProcessing) — when it runs out, the
-        // expirationHandler fires and we should bail.
-        let work = Task {
-            let success = (try? await IosBackupBridge.shared.runBackup().boolValue) ?? false
-            task.setTaskCompleted(success: success)
+        // iOS gives us a budget (minutes, for BGProcessing) — when it runs
+        // out, the expirationHandler fires. Cancelling the Swift Task would
+        // NOT reach the Kotlin suspend function, so instead we flip a
+        // cooperative flag the pass polls between files: runBackup then
+        // returns on its own and completes the task exactly once, below.
+        task.expirationHandler = {
+            NSLog("[BackupTask] expiration handler fired — requesting cooperative stop")
+            IosBackupBridge.shared.requestStop()
         }
 
-        task.expirationHandler = {
-            NSLog("[BackupTask] expiration handler fired — cancelling work")
-            work.cancel()
-            task.setTaskCompleted(success: false)
+        Task {
+            let success = (try? await IosBackupBridge.shared.runBackup().boolValue) ?? false
+            task.setTaskCompleted(success: success)
         }
     }
 }
