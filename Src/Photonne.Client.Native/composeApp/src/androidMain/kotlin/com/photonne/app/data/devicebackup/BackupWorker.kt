@@ -13,6 +13,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.photonne.app.data.api.LocalReachabilityProbe
+import com.photonne.app.data.api.ServerUrlStore
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.backup_notification_channel
 import com.photonne.app.resources.backup_notification_channel_progress
@@ -52,6 +54,12 @@ class BackupWorker(
     private val selectionKey: String?
         get() = inputData.getString(KEY_SELECTION)
 
+    /** True when this run was fired by the MediaStore content trigger (a new
+     *  photo/video landed). Such a run must re-arm the trigger when it ends —
+     *  content triggers are consumed by firing. */
+    private val isNewMediaRun: Boolean
+        get() = inputData.getBoolean(KEY_NEW_MEDIA, false)
+
     override suspend fun doWork(): Result {
         val koin = runCatching { GlobalContext.get() }.getOrNull()
         if (koin == null) {
@@ -79,11 +87,28 @@ class BackupWorker(
             return Result.success()
         }
 
-        // Promote to a foreground service before the (potentially long) pass so
-        // the OS keeps us alive and prioritized while the app is backgrounded.
-        if (isForeground) {
+        // A process spawned by WorkManager has no UI, so nothing has started
+        // the LAN reachability probe and the effective URL silently resolves
+        // to the public one. For a local-only server that means every request
+        // throws and the pass retries forever. One probe up front is enough —
+        // the effective URL is re-read on every request.
+        val urlStore: ServerUrlStore = koin.get()
+        if (!urlStore.isLocalReachable() && !urlStore.getLocal().isNullOrEmpty()) {
+            runCatching { koin.get<LocalReachabilityProbe>().runProbe() }
+                .onFailure { Log.w(TAG, "Reachability probe failed; using public URL", it) }
+        }
+
+        // An explicit "Subir ahora" promotes to a foreground service right away
+        // — the user is watching and expects the progress notification from the
+        // first second. A scheduled pass promotes lazily instead (see
+        // [mirrorProgress]): only once it knows there are real uploads queued,
+        // so the silent every-15-min no-op never flashes a notification.
+        val promoted = if (isForeground) {
             runCatching { setForeground(progressForegroundInfo(BackupPhase.Verifying, 0, 0)) }
                 .onFailure { Log.w(TAG, "Could not enter foreground; running normally", it) }
+                .isSuccess
+        } else {
+            false
         }
 
         val runner: BackupRunner = koin.get()
@@ -100,8 +125,9 @@ class BackupWorker(
         return try {
             val outcome = coroutineScope {
                 // Mirror the shared progress bus into the ongoing notification.
-                // Cancelled as soon as the pass returns.
-                val mirror = if (isForeground) launch { mirrorProgress(progress) } else null
+                // Cancelled as soon as the pass returns. Runs for every pass:
+                // it also owns the lazy FGS promotion of scheduled runs.
+                val mirror = launch { mirrorProgress(progress, promoted) }
                 try {
                     runner.runBackup(
                         folders = folders,
@@ -115,7 +141,7 @@ class BackupWorker(
                         only = selection
                     )
                 } finally {
-                    mirror?.cancel()
+                    mirror.cancel()
                 }
             }
             Log.i(
@@ -124,18 +150,40 @@ class BackupWorker(
                     "uploaded=${outcome.uploaded} skipped=${outcome.skipped} " +
                     "failed=${outcome.failed}"
             )
+            // A scheduled pass that still has retryable work left (network
+            // blips, the ~10-min plain-job window running out mid-file) asks
+            // WorkManager to come back with backoff instead of sleeping until
+            // the end of the next 15-min period. Permanent failures don't
+            // count — retrying those would burn radio forever for nothing.
+            val retryableFailures = outcome.failuresByReason
+                .filterKeys { it.isRetryable }.values.sum()
+            val willRetry = !isForeground && retryableFailures > 0
             // Silent when everything went fine; one notification when files
-            // were left behind, so "background sync quietly failing" stops
-            // being invisible.
-            if (outcome.failed > 0) {
+            // were left behind for good, so "background sync quietly failing"
+            // stops being invisible. Suppressed while retries are pending —
+            // otherwise every backoff attempt would re-alert.
+            if (outcome.failed > 0 && !willRetry) {
                 runCatching { notifyFailures(outcome.failed) }
                     .onFailure { Log.w(TAG, "Could not post failure notification", it) }
             }
-            // Even partial failures shouldn't poison the schedule — the failed
-            // items get retried via the server-side enrichment retry surface
-            // or the next periodic run, and a Worker.Result.failure() would
-            // disable the WorkManager backoff we don't want.
-            Result.success()
+            if (willRetry) {
+                Log.i(TAG, "$retryableFailures retryable failure(s) left; requesting retry")
+                Result.retry()
+            } else {
+                // This very run consumed the content trigger; re-arm it so the
+                // NEXT photo wakes us too. APPEND_OR_REPLACE because the worker
+                // still holds the unique name as "running" here — KEEP would
+                // no-op. Only on the terminal attempt: re-arming on a retry()
+                // would append one chain link per backoff attempt.
+                if (isNewMediaRun) {
+                    (koin.get<BackgroundSyncScheduler>() as? BackgroundSyncSchedulerAndroid)
+                        ?.armNewMediaTrigger(
+                            stateStore.backgroundSyncPreferences(),
+                            androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE
+                        )
+                }
+                Result.success()
+            }
         } catch (ex: Throwable) {
             Log.e(TAG, "Background backup crashed", ex)
             // retry() lets WorkManager re-run with its own backoff (10s base).
@@ -155,8 +203,19 @@ class BackupWorker(
      * Follows the shared progress bus and re-posts the ongoing notification,
      * throttled to whole-percent steps so a fast batch doesn't spam the
      * notification manager. Runs until cancelled by [doWork].
+     *
+     * For a pass that didn't start promoted ([initiallyPromoted] false, i.e.
+     * every scheduled run) it also owns the lazy FGS promotion: the pass stays
+     * a plain job while it verifies — that's a silent no-op most 15-min windows
+     * — and promotes to a dataSync foreground service the moment real uploads
+     * are queued, so a big backlog gets FGS lifetime instead of JobScheduler's
+     * ~10-min window. Android 12+ denies FGS starts while the app is in the
+     * background; then the pass keeps running as a plain job and relies on
+     * `Result.retry()` + the ledger to finish across windows.
      */
-    private suspend fun mirrorProgress(bus: BackupProgressBus) {
+    private suspend fun mirrorProgress(bus: BackupProgressBus, initiallyPromoted: Boolean) {
+        var promoted = initiallyPromoted
+        var promotionAttempted = initiallyPromoted
         var lastPct = -1
         bus.activity.collect { activity ->
             if (activity == null) return@collect
@@ -168,6 +227,19 @@ class BackupWorker(
             } else {
                 done = activity.done
                 total = activity.total
+            }
+            if (!promoted) {
+                if (activity.phase != BackupPhase.Uploading || activity.total == 0) return@collect
+                if (!promotionAttempted) {
+                    promotionAttempted = true
+                    promoted = runCatching {
+                        setForeground(progressForegroundInfo(activity.phase, done, total))
+                    }.onFailure {
+                        Log.w(TAG, "FGS promotion denied; staying within the plain job window", it)
+                    }.isSuccess
+                }
+                // Without the FGS there is no notification to keep updated.
+                if (!promoted) return@collect
             }
             val pct = if (total > 0) done * 100 / total else 0
             if (pct == lastPct) return@collect
@@ -285,6 +357,7 @@ class BackupWorker(
         const val UNIQUE_WORK_NAME = "photonne.backup.periodic"
         const val ONE_TIME_WORK_NAME = "photonne.backup.once"
         const val FOREGROUND_WORK_NAME = "photonne.backup.foreground"
+        const val NEW_MEDIA_WORK_NAME = "photonne.backup.newmedia"
 
         /** Input-data flag: run as a prioritized foreground service with a
          *  progress notification (set by an explicit "Subir ahora"). */
@@ -293,6 +366,10 @@ class BackupWorker(
         /** Input-data key naming the ledger row that holds the URIs to upload.
          *  Absent means "the whole folder". */
         const val KEY_SELECTION = "selectionKey"
+
+        /** Input-data flag: this run was fired by the MediaStore content
+         *  trigger and must re-arm it on completion. */
+        const val KEY_NEW_MEDIA = "newMedia"
 
         private const val CHANNEL_ID = "photonne.backup"
         private const val FAILURE_NOTIFICATION_ID = 4001

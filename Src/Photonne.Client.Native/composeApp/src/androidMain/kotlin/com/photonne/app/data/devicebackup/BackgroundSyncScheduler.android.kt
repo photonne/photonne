@@ -1,6 +1,7 @@
 package com.photonne.app.data.devicebackup
 
 import android.content.Context
+import android.provider.MediaStore
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -34,6 +35,7 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
         if (!prefs.enabled) {
             Log.i(TAG, "Cancelling periodic backup work")
             workManager.cancelUniqueWork(BackupWorker.UNIQUE_WORK_NAME)
+            workManager.cancelUniqueWork(BackupWorker.NEW_MEDIA_WORK_NAME)
             return
         }
 
@@ -66,6 +68,48 @@ class BackgroundSyncSchedulerAndroid(private val appContext: Context) : Backgrou
             "Scheduled periodic backup — requireWifi=${prefs.requireWifi} " +
                 "requireCharging=${prefs.requireCharging}"
         )
+
+        // KEEP: a pending trigger stays armed, and once it has fired and run,
+        // finished unique work doesn't block a fresh enqueue. Constraint
+        // changes reach the trigger on its next re-arm cycle — REPLACE here
+        // would kill a triggered pass mid-upload every time the app starts.
+        armNewMediaTrigger(prefs)
+    }
+
+    /**
+     * One-shot request that fires when MediaStore reports new or changed
+     * images/videos, so a photo just taken starts uploading within seconds
+     * instead of waiting out a 15-min periodic window.
+     *
+     * Content-URI triggers only exist on one-time requests and are consumed
+     * when they fire, so the request is re-armed after every triggered run —
+     * [BackupWorker] does that on completion with APPEND_OR_REPLACE (it still
+     * holds the unique name as "running" at that point, so KEEP would no-op).
+     */
+    fun armNewMediaTrigger(
+        prefs: BackgroundSyncPreferences,
+        policy: ExistingWorkPolicy = ExistingWorkPolicy.KEEP
+    ) {
+        if (!prefs.enabled) return
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(
+                if (prefs.requireWifi) NetworkType.UNMETERED else NetworkType.CONNECTED
+            )
+            .setRequiresCharging(prefs.requireCharging)
+            .setRequiresBatteryNotLow(true)
+            .addContentUriTrigger(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true)
+            .addContentUriTrigger(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true)
+            // Batch a burst (a photo session) into one pass instead of one
+            // wake per shot; never sit on a change for more than two minutes.
+            .setTriggerContentUpdateDelay(15, TimeUnit.SECONDS)
+            .setTriggerContentMaxDelay(2, TimeUnit.MINUTES)
+            .build()
+        val request = OneTimeWorkRequestBuilder<BackupWorker>()
+            .setConstraints(constraints)
+            .setInputData(workDataOf(BackupWorker.KEY_NEW_MEDIA to true))
+            .build()
+        workManager.enqueueUniqueWork(BackupWorker.NEW_MEDIA_WORK_NAME, policy, request)
+        Log.i(TAG, "Armed new-media trigger (policy=$policy)")
     }
 
     override fun requestImmediateSync(prefs: BackgroundSyncPreferences) {
