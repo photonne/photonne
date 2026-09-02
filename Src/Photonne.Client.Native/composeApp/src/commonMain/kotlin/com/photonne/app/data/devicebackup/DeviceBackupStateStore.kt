@@ -98,19 +98,23 @@ class DeviceBackupStateStore(private val settings: Settings) {
     }
 
     // ─── Background sync preferences ─────────────────────────────────────────
-    // These drive the platform scheduler (WorkManager / BGTaskScheduler) when
-    // the user has opted into automatic backups. Defaults are conservative:
-    // off, Wi-Fi-only, charging-only — so enabling auto backup the first time
-    // never accidentally eats the user's cellular plan or battery.
+    // These drive the platform scheduler (WorkManager / BGTaskScheduler).
+    // Turning backup on means "keep my photos backed up", so auto-backup
+    // defaults to ON whenever the master switch is on — an explicit toggle
+    // still wins because it persists its own value. Wi-Fi-only stays the
+    // default (never eat the cellular plan by surprise), but charging-only
+    // does not: with it, a normal phone only ever syncs overnight, which
+    // reads as "backup doesn't work".
 
-    fun isAutoBackupEnabled(): Boolean = settings.getBoolean(KEY_AUTO_BACKUP, false)
+    fun isAutoBackupEnabled(): Boolean =
+        settings.getBoolean(KEY_AUTO_BACKUP, isBackupEnabled())
     fun setAutoBackupEnabled(enabled: Boolean) =
         settings.putBoolean(KEY_AUTO_BACKUP, enabled)
 
     fun requireWifi(): Boolean = settings.getBoolean(KEY_REQUIRE_WIFI, true)
     fun setRequireWifi(value: Boolean) = settings.putBoolean(KEY_REQUIRE_WIFI, value)
 
-    fun requireCharging(): Boolean = settings.getBoolean(KEY_REQUIRE_CHARGING, true)
+    fun requireCharging(): Boolean = settings.getBoolean(KEY_REQUIRE_CHARGING, false)
     fun setRequireCharging(value: Boolean) =
         settings.putBoolean(KEY_REQUIRE_CHARGING, value)
 
@@ -121,10 +125,12 @@ class DeviceBackupStateStore(private val settings: Settings) {
     fun isTurboEnabled(): Boolean = settings.getBoolean(KEY_TURBO, false)
     fun setTurboEnabled(value: Boolean) = settings.putBoolean(KEY_TURBO, value)
 
-    /** Snapshots all background-sync preferences for the scheduler. */
+    /** Snapshots all background-sync preferences for the scheduler. `enabled`
+     *  folds in the master switch so callers can hand it straight to
+     *  [BackgroundSyncScheduler.apply]: backup off ⇒ no scheduled work. */
     fun backgroundSyncPreferences(): BackgroundSyncPreferences =
         BackgroundSyncPreferences(
-            enabled = isAutoBackupEnabled(),
+            enabled = isAutoBackupEnabled() && isBackupEnabled(),
             requireWifi = requireWifi(),
             requireCharging = requireCharging(),
             turbo = isTurboEnabled()

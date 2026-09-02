@@ -105,7 +105,7 @@ data class DeviceBackupUiState(
     val backgroundSync: BackgroundSyncPreferences = BackgroundSyncPreferences(
         enabled = false,
         requireWifi = true,
-        requireCharging = true
+        requireCharging = false
     )
 ) {
     val selectedCount: Int get() = entries.count { it.isSelected }
@@ -356,13 +356,16 @@ class DeviceBackupViewModel(
         repository.setBackupEnabled(enabled)
         _state.update { it.copy(isBackupEnabled = enabled) }
         if (enabled) ensureLoaded()
-        // Toggling the master switch off also disables auto-backup at the
-        // OS scheduler so the worker doesn't keep waking up for nothing.
-        if (!enabled) {
-            repository.setAutoBackupEnabled(false)
-            val prefs = repository.backgroundSyncPreferences()
-            _state.update { it.copy(backgroundSync = prefs) }
-            backgroundScheduler.apply(prefs)
+        // The master switch drives the OS schedule too: turning backup on arms
+        // the background sync (auto-backup defaults to on) and kicks a first
+        // pass; turning it off cancels the scheduled work WITHOUT erasing the
+        // user's explicit auto-backup choice — prefs.enabled already folds the
+        // master switch in.
+        val prefs = repository.backgroundSyncPreferences()
+        _state.update { it.copy(backgroundSync = prefs) }
+        backgroundScheduler.apply(prefs)
+        if (enabled && prefs.enabled) {
+            backgroundScheduler.requestImmediateSync(prefs)
         }
     }
 
