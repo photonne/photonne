@@ -1,0 +1,4 @@
+-- v3 → v4: file name on each identity row, so the (size, mtime-seconds)
+-- fingerprint bridge additionally requires a name match — a bare
+-- fingerprint can collide across distinct files and seed a wrong hash.
+ALTER TABLE deviceIdentity ADD COLUMN displayName TEXT;

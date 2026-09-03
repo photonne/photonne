@@ -243,7 +243,8 @@ class DeviceLibraryStore(
                         dateModifiedMillis = item.dateModifiedMillis,
                         sha256 = sha,
                         assetId = null,
-                        checkedAtMillis = null
+                        checkedAtMillis = null,
+                        displayName = item.displayName
                     )
                 }
             }
@@ -319,7 +320,8 @@ class DeviceLibraryStore(
                     dateModifiedMillis = item.dateModifiedMillis,
                     sha256 = ledgerRow.sha256,
                     assetId = ledgerAssetId ?: identity?.assetId,
-                    checkedAtMillis = ledgerRow.lastVerifiedAtMillis
+                    checkedAtMillis = ledgerRow.lastVerifiedAtMillis,
+                    displayName = item.displayName
                 )
             }
 

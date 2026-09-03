@@ -14,7 +14,10 @@ data class DeviceIdentity(
     val dateModifiedMillis: Long,
     val sha256: String?,
     val assetId: String?,
-    val checkedAtMillis: Long?
+    val checkedAtMillis: Long?,
+    /** File name at write time — the fingerprint bridge's third factor.
+     *  Null only on rows written before the v4 migration. */
+    val displayName: String? = null
 ) {
     /**
      * True while the row still describes the on-disk file. iOS never
@@ -52,7 +55,8 @@ class DeviceIdentityMap(private val database: PhotonneDatabase) {
                     dateModifiedMillis = identity.dateModifiedMillis,
                     sha256 = identity.sha256,
                     assetId = identity.assetId,
-                    checkedAtMillis = identity.checkedAtMillis
+                    checkedAtMillis = identity.checkedAtMillis,
+                    displayName = identity.displayName
                 )
             }
         }
@@ -73,7 +77,8 @@ class DeviceIdentityMap(private val database: PhotonneDatabase) {
         dateModifiedMillis = dateModifiedMillis,
         sha256 = sha256,
         assetId = assetId,
-        checkedAtMillis = checkedAtMillis
+        checkedAtMillis = checkedAtMillis,
+        displayName = displayName
     )
 
     private companion object {

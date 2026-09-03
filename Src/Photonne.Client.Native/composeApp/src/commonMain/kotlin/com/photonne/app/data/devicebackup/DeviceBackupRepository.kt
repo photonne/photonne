@@ -319,9 +319,20 @@ class DeviceBackupRepository(
 
         val byFingerprint = HashMap<String, DeviceIdentity>()
         identities.values.forEach { identity ->
-            if (identity.sha256 != null && identity.sizeBytes > 0L) {
-                byFingerprint["${identity.sizeBytes}|${identity.dateModifiedMillis / 1000}"] =
-                    identity
+            // The fingerprint bridge needs all THREE factors — size, mtime
+            // second AND file name. A bare (size, mtime) pair can collide
+            // across distinct files (batch exports writing same-size files
+            // in the same second), and seeding a wrong sha here would mark
+            // a never-uploaded file as Synced — a silent hole in the backup
+            // that "Liberar espacio" could then turn into data loss. Rows
+            // from before the v4 migration have no name and never bridge;
+            // they still seed through the exact-uri path.
+            if (identity.sha256 != null && identity.sizeBytes > 0L &&
+                identity.displayName != null
+            ) {
+                val key =
+                    "${identity.sizeBytes}|${identity.dateModifiedMillis / 1000}|${identity.displayName}"
+                byFingerprint[key] = identity
             }
         }
         for (entry in missing) {
@@ -331,7 +342,9 @@ class DeviceBackupRepository(
             val identity = identities[entry.uri]?.takeIf {
                 it.sha256 != null && it.sizeBytes == media.sizeBytes &&
                     it.dateModifiedMillis / 1000 == media.dateModifiedMillis / 1000
-            } ?: byFingerprint["${media.sizeBytes}|${media.dateModifiedMillis / 1000}"]
+            } ?: byFingerprint[
+                "${media.sizeBytes}|${media.dateModifiedMillis / 1000}|${media.displayName}"
+            ]
             val sha = identity?.sha256 ?: continue
             ledger.setHash(folderUri, entry.uri, sha)
             entries[entry.uri] = entry.copy(sha256 = sha)

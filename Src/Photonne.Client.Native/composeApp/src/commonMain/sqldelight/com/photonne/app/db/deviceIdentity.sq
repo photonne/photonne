@@ -19,13 +19,21 @@
 -- Account-scoped exactly like backupLedger: BackupLedger.ensureScope
 -- wipes this table in the same transaction, so identities never leak
 -- across servers/users.
+-- NOTE: displayName is declared last because it arrived via migration
+-- (3.sqm) and ALTER TABLE appends columns — the declared order here must
+-- match the on-disk order of migrated databases. It hardens the
+-- (size, mtime) fingerprint bridge: a bare fingerprint can collide
+-- across distinct files (batch exports writing same-size files in the
+-- same second), and seeding a wrong sha256 silently marks a never-
+-- uploaded file as Synced.
 CREATE TABLE deviceIdentity (
     uri TEXT NOT NULL PRIMARY KEY,
     sizeBytes INTEGER NOT NULL,
     dateModifiedMillis INTEGER NOT NULL,
     sha256 TEXT,
     assetId TEXT,
-    checkedAtMillis INTEGER
+    checkedAtMillis INTEGER,
+    displayName TEXT
 );
 
 selectAllIdentities:
@@ -33,9 +41,9 @@ SELECT * FROM deviceIdentity;
 
 upsertIdentity:
 INSERT OR REPLACE INTO deviceIdentity(
-    uri, sizeBytes, dateModifiedMillis, sha256, assetId, checkedAtMillis
+    uri, sizeBytes, dateModifiedMillis, sha256, assetId, checkedAtMillis, displayName
 )
-VALUES (?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 deleteIdentitiesByUris:
 DELETE FROM deviceIdentity WHERE uri IN ?;
