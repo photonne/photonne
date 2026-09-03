@@ -1,7 +1,9 @@
 package com.photonne.app.data.devicelibrary
 
 import com.photonne.app.data.api.PhotonneApi
+import com.photonne.app.data.api.PhotonneApiException
 import com.photonne.app.data.devicebackup.BackupLedger
+import kotlinx.coroutines.CancellationException
 import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMedia
 import com.photonne.app.data.devicebackup.DeviceMediaType
@@ -252,16 +254,40 @@ class DeviceLibraryStore(
             // Check phase: one bulk round-trip per 500 distinct hashes. A
             // failed batch keeps checkedAtMillis null so only the (cheap)
             // check is retried later — the hash work is already banked.
+            // Servers older than /check-checksums answer 404: degrade to the
+            // per-hash legacy lookup for the rest of the pass, mirroring
+            // DeviceBackupRepository — otherwise identity resolution (and
+            // with it device/server dedup) never works on those deployments.
             val candidates = hashed + toRecheck
             if (candidates.isEmpty()) return
             val assetBySha = HashMap<String, String>()
             var checkFailed = false
+            var bulkSupported = true
             candidates.mapTo(LinkedHashSet()) { it.sha256!! }
                 .chunked(CHECKSUM_BATCH)
                 .forEach { batch ->
-                    runCatching { api.checkChecksums(batch) }
-                        .onSuccess { assetBySha.putAll(it) }
-                        .onFailure { checkFailed = true }
+                    if (bulkSupported) {
+                        try {
+                            assetBySha.putAll(api.checkChecksums(batch))
+                            return@forEach
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: PhotonneApiException) {
+                            if (ex.status != 404) {
+                                checkFailed = true
+                                return@forEach
+                            }
+                            bulkSupported = false
+                        } catch (ex: Exception) {
+                            checkFailed = true
+                            return@forEach
+                        }
+                    }
+                    batch.forEach { sha ->
+                        runCatching { api.assetExistsByChecksum(sha) }
+                            .onSuccess { assetId -> if (assetId != null) assetBySha[sha] = assetId }
+                            .onFailure { checkFailed = true }
+                    }
                 }
             val resolved = candidates.map { candidate ->
                 val assetId = assetBySha[candidate.sha256]
@@ -275,8 +301,12 @@ class DeviceLibraryStore(
             runCatching { identityMap.upsertAll(resolved) }
 
             // Republish so freshly-established identities dedup right away.
+            // Through refreshOverlay, NOT the snapshot captured before the
+            // hashing/network work: seconds have passed and the library may
+            // have changed underneath (a deletion mid-resolution would come
+            // back as a dead cell if we republished the stale list).
             if (hashed.isNotEmpty() || resolved.any { it.assetId != null }) {
-                rebuildItems(media.values.toList())
+                refreshOverlay()
             }
         }
     }
