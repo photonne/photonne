@@ -12,8 +12,9 @@ import androidx.compose.runtime.Composable
  *
  * - **Android** (11+) launches [android.provider.MediaStore.createTrashRequest]
  *   through the activity-result IntentSender dance; items land in
- *   MediaStore's 30-day trash. Pre-11 has no system trash — a direct
- *   delete is attempted and typically refused without write access.
+ *   MediaStore's 30-day trash. Pre-11 has neither system trash nor a
+ *   consent dialog, so the request is refused (false) — a silent
+ *   permanent delete on a single tap is worse than a dead button.
  * - **iOS** runs `PHAssetChangeRequest.deleteAssets`, which moves the
  *   assets to Photos' "Recently Deleted" (30 days) behind the system
  *   confirmation sheet.

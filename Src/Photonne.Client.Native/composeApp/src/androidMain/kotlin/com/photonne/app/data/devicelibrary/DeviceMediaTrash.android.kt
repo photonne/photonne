@@ -38,15 +38,12 @@ actual fun rememberDeviceMediaTrasher(
                 )
                 launcher.launch(IntentSenderRequest.Builder(request.intentSender).build())
             } else {
-                // Android 10-: no system trash and no consent flow. A direct
-                // delete only succeeds for media this app owns — report
-                // honestly instead of pretending.
-                val deleted = parsed.all { uri ->
-                    runCatching {
-                        context.contentResolver.delete(uri, null, null) > 0
-                    }.getOrDefault(false)
-                }
-                currentOnResult.value(deleted)
+                // Android 10-: no system trash and no system consent dialog.
+                // The contract promises the OS confirms (callers fire this
+                // straight from a tap, stacking no dialog of their own), so
+                // deleting here would PERMANENTLY destroy a photo on a single
+                // accidental tap. Refuse instead of destroying.
+                currentOnResult.value(false)
             }
         }
     }
