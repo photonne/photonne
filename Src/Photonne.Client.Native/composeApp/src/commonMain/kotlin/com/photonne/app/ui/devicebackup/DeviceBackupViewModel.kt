@@ -244,12 +244,19 @@ class DeviceBackupViewModel(
             viewModelScope.launch {
                 deviceLibrary.changes().conflate().collect {
                     delay(MEDIA_CHANGE_COALESCE_MILLIS)
+                    // A pass in flight must not CONSUME the event — photos
+                    // taken during a 20-minute upload would never get their
+                    // ledger row (nor their pending badge) until an unrelated
+                    // media change. Wait the pass out instead; conflate keeps
+                    // at most one further emission queued behind us.
+                    while (_state.value.isCheckingHashes || _state.value.isSyncing ||
+                        _state.value.isLoading
+                    ) {
+                        delay(PASS_WAIT_POLL_MILLIS)
+                    }
                     val current = _state.value
                     if (!current.isBackupEnabled) return@collect
                     if (current.folders.isEmpty()) return@collect
-                    if (current.isCheckingHashes || current.isSyncing || current.isLoading) {
-                        return@collect
-                    }
                     refreshFolderContents(current.folders, fullVerify = false)
                 }
             }
@@ -1177,6 +1184,10 @@ class DeviceBackupViewModel(
          *  are also content://, but under provider authorities — only the
          *  media authority takes this prefix. */
         const val MEDIASTORE_ITEM_URI_PREFIX = "content://media/"
+
+        /** Poll cadence while a media-change rescan waits out an active
+         *  verify/upload pass instead of dropping the event. */
+        const val PASS_WAIT_POLL_MILLIS = 1_000L
 
         /** How long we keep the optimistic "starting…" state before assuming
          *  the worker never got off the ground. */
