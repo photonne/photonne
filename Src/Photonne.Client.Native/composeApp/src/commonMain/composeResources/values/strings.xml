@@ -167,6 +167,7 @@
     <string name="asset_action_download">Descargar</string>
     <string name="asset_action_archive">Archivar</string>
     <string name="asset_action_trash">Mover a la papelera</string>
+    <string name="asset_action_delete_device">Eliminar del dispositivo</string>
     <string name="asset_action_edit_description">Editar descripción</string>
     <string name="asset_action_edit_date">Editar fecha de captura</string>
     <string name="asset_action_open_in_maps">Abrir en Mapas</string>

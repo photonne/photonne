@@ -3166,6 +3166,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
             if (ctx != null) rememberedCtx.value = ctx
         }
         val displayCtx = ctx ?: rememberedCtx.value
+        // Device-trash for LOCAL entries: the platform shows its own consent
+        // dialog; on success the library refreshes immediately (ahead of the
+        // change observer) and the viewer closes, mirroring the server-trash
+        // flow above.
+        val deviceLibraryStore: com.photonne.app.data.devicelibrary.DeviceLibraryStore =
+            koinInject()
+        val deviceMediaTrasher =
+            com.photonne.app.data.devicelibrary.rememberDeviceMediaTrasher { trashed ->
+                if (trashed) {
+                    deviceLibraryStore.requestRefresh()
+                    assetDetail = null
+                }
+            }
         AnimatedVisibility(
             visible = isDetailVisible,
             // Match the shared-element morph duration so AnimatedVisibility
@@ -3217,6 +3230,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                         },
                         onShare = { item -> actionsViewModel.shareDirectly(listOf(item.id)) },
                         onDownload = { item -> actionsViewModel.download(listOf(item.id)) },
+                        onDeleteFromDevice = { item ->
+                            item.localUri?.let { deviceMediaTrasher(listOf(it)) }
+                        },
                         onOpenAsset = { item ->
                             // Open a related asset as its own single-item viewer;
                             // key(displayCtx) forces a fresh screen + detail load.

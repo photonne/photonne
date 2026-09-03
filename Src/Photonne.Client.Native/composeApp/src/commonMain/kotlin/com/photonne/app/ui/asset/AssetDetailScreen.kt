@@ -156,6 +156,7 @@ import com.photonne.app.resources.asset_action_edit_description
 import com.photonne.app.resources.asset_action_faces
 import com.photonne.app.resources.asset_action_more
 import com.photonne.app.resources.asset_action_open_in_maps
+import com.photonne.app.resources.asset_action_delete_device
 import com.photonne.app.resources.asset_action_trash
 import com.photonne.app.resources.asset_metadata_location
 import com.photonne.app.resources.asset_metadata_open_map
@@ -205,6 +206,13 @@ fun AssetDetailScreen(
     onOpenAsset: (TimelineItem) -> Unit = {},
     onShare: (TimelineItem) -> Unit = {},
     onDownload: (TimelineItem) -> Unit = {},
+    /**
+     * Moves a DEVICE-LOCAL entry to the system trash (MediaStore trash /
+     * Photos "Recently Deleted"). The platform shows its own consent
+     * dialog, so the button fires this directly with no in-app confirm.
+     * Null hides the action (host without device-library support).
+     */
+    onDeleteFromDevice: ((TimelineItem) -> Unit)? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val viewModel: AssetDetailViewModel = koinViewModel()
@@ -870,6 +878,9 @@ fun AssetDetailScreen(
                                 viewModel.archive(currentItem.id) { id ->
                                     onAssetArchived(id)
                                 }
+                            },
+                            onDeleteFromDevice = onDeleteFromDevice?.let { handler ->
+                                { handler(currentItem) }
                             }
                         )
                     }
@@ -2496,6 +2507,7 @@ private fun AssetActionsBottomBar(
     onEditDate: () -> Unit,
     onOpenFaces: () -> Unit,
     onArchive: () -> Unit,
+    onDeleteFromDevice: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Cápsula flotante, misma geometría que la nav y que la barra de selección:
@@ -2550,6 +2562,18 @@ private fun AssetActionsBottomBar(
                         contentDescription = stringResource(Res.string.asset_action_details),
                         tint = Color.White
                     )
+                }
+                if (onDeleteFromDevice != null) {
+                    // Straight to the platform flow — the OS shows its own
+                    // confirmation (see rememberDeviceMediaTrasher).
+                    IconButton(onClick = onDeleteFromDevice) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription =
+                                stringResource(Res.string.asset_action_delete_device),
+                            tint = Color.White
+                        )
+                    }
                 }
             } else {
                 IconButton(onClick = onToggleFavorite) {

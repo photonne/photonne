@@ -133,6 +133,13 @@ class DeviceLibraryStore(
         }
     }
 
+    /** Fire-and-forget [refresh] — for callers that just changed the
+     *  library (e.g. a device-trash) and want the UI ahead of the
+     *  change observer's coalesced reload. */
+    fun requestRefresh() {
+        scope.launch { refresh() }
+    }
+
     /** Marks the permission prompt as shown BEFORE launching it, so a
      *  dismissed dialog can't retrigger the auto-prompt in a loop. */
     fun markPrompted() {

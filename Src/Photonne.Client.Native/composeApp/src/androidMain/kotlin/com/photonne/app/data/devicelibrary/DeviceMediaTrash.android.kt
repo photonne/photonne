@@ -1,0 +1,53 @@
+package com.photonne.app.data.devicelibrary
+
+import android.app.Activity
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.platform.LocalContext
+
+@Composable
+actual fun rememberDeviceMediaTrasher(
+    onResult: (trashed: Boolean) -> Unit
+): (uris: List<String>) -> Unit {
+    val context = LocalContext.current
+    val currentOnResult = rememberUpdatedState(onResult)
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        currentOnResult.value(result.resultCode == Activity.RESULT_OK)
+    }
+    return remember(launcher, context) {
+        trasher@{ uris ->
+            val parsed = uris.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+            if (parsed.isEmpty()) {
+                currentOnResult.value(false)
+                return@trasher
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // System trash (30 days) behind the system's own consent
+                // dialog; the launcher result says whether the user agreed.
+                val request = MediaStore.createTrashRequest(
+                    context.contentResolver, parsed, true
+                )
+                launcher.launch(IntentSenderRequest.Builder(request.intentSender).build())
+            } else {
+                // Android 10-: no system trash and no consent flow. A direct
+                // delete only succeeds for media this app owns — report
+                // honestly instead of pretending.
+                val deleted = parsed.all { uri ->
+                    runCatching {
+                        context.contentResolver.delete(uri, null, null) > 0
+                    }.getOrDefault(false)
+                }
+                currentOnResult.value(deleted)
+            }
+        }
+    }
+}
