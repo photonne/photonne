@@ -30,6 +30,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 data class DeviceLibraryUiState(
     val access: DeviceLibraryAccess = DeviceLibraryAccess.NotDetermined,
@@ -320,9 +323,7 @@ class DeviceLibraryStore(
                 )
             }
 
-            val instant = Instant.fromEpochMilliseconds(
-                item.dateCreatedMillis ?: item.dateModifiedMillis
-            )
+            val instant = naiveLocalInstant(item.dateCreatedMillis ?: item.dateModifiedMillis)
             TimelineItem(
                 id = "device:${item.uri}",
                 fileName = item.displayName,
@@ -330,7 +331,7 @@ class DeviceLibraryStore(
                 else "${item.relativePath}/${item.displayName}",
                 fileSize = item.sizeBytes,
                 fileCreatedAt = instant,
-                fileModifiedAt = Instant.fromEpochMilliseconds(item.dateModifiedMillis),
+                fileModifiedAt = naiveLocalInstant(item.dateModifiedMillis),
                 extension = item.displayName.substringAfterLast('.', missingDelimiterValue = ""),
                 scannedAt = instant,
                 type = if (item.type == DeviceMediaType.Video) "VIDEO" else "IMAGE",
@@ -357,6 +358,25 @@ class DeviceLibraryStore(
     }
 
     private companion object {
+        /**
+         * Re-frames a real epoch instant into the timeline's NAIVE-LOCAL
+         * convention: the server stores capture dates as the photo's own
+         * wall-clock labelled UTC (see CaptureLocalDate.kt), so every
+         * server `fileCreatedAt` compares as wall-clock-as-UTC. Device
+         * items must speak the same frame or the two sources sort ±(tz
+         * offset) apart — the same photo would JUMP position the moment
+         * its server copy hydrates, and midnight-adjacent photos would
+         * bucket into a different month than the server put them in
+         * (where the intra-month dedup can no longer see them). The
+         * device's current zone approximates the wall clock at capture;
+         * only photos taken in another timezone keep a residual offset,
+         * and those converge once identity dedup replaces them.
+         */
+        fun naiveLocalInstant(epochMillis: Long): Instant =
+            Instant.fromEpochMilliseconds(epochMillis)
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .toInstant(TimeZone.UTC)
+
         const val KEY_PROMPTED = "device_library.prompted"
         const val CHANGE_COALESCE_MILLIS = 1_000L
 
