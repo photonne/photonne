@@ -91,6 +91,10 @@ actual class DeviceLibrary {
         }
     }
 
+    /** iOS models the whole Camera Roll as one virtual folder — the
+     *  backup picker keeps its authorize-then-add flow, no buckets. */
+    actual suspend fun listBuckets(): List<DeviceBucket> = emptyList()
+
     actual fun changes(): Flow<Unit> = callbackFlow {
         val observer = object : NSObject(), PHPhotoLibraryChangeObserverProtocol {
             override fun photoLibraryDidChange(changeInstance: PHChange) {

@@ -20,6 +20,8 @@ actual class DeviceLibrary {
 
     actual suspend fun loadAll(): List<DeviceMedia> = emptyList()
 
+    actual suspend fun listBuckets(): List<DeviceBucket> = emptyList()
+
     actual fun changes(): Flow<Unit> = emptyFlow()
 }
 

@@ -120,6 +120,35 @@ actual class DeviceLibrary(private val context: Context) {
         }
     }
 
+    actual suspend fun listBuckets(): List<DeviceBucket> = withContext(Dispatchers.IO) {
+        if (!accessState().canRead) return@withContext emptyList()
+        // No portable GROUP BY through ContentResolver — a two-column sweep
+        // over both collections aggregates client-side in one pass each.
+        val counts = LinkedHashMap<String, Pair<String, Int>>()
+        listOf(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        ).forEach { collection ->
+            runCatching {
+                context.contentResolver.query(
+                    collection,
+                    arrayOf(COLUMN_BUCKET_ID, COLUMN_BUCKET_DISPLAY_NAME),
+                    null, null, null
+                )?.use { c ->
+                    while (c.moveToNext()) {
+                        val id = c.getString(0) ?: continue
+                        val name = c.getString(1) ?: continue
+                        val previous = counts[id]
+                        counts[id] = name to ((previous?.second ?: 0) + 1)
+                    }
+                }
+            }
+        }
+        counts.map { (id, entry) ->
+            DeviceBucket(id = id, displayName = entry.first, itemCount = entry.second)
+        }.sortedByDescending { it.itemCount }
+    }
+
     actual fun changes(): Flow<Unit> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
@@ -144,6 +173,7 @@ private fun defaultMimeFor(type: DeviceMediaType): String =
 // constants only reached MediaStore.MediaColumns at API 29 and this
 // module still supports minSdk 26.
 private const val COLUMN_DATE_TAKEN = "datetaken"
+private const val COLUMN_BUCKET_ID = "bucket_id"
 private const val COLUMN_BUCKET_DISPLAY_NAME = "bucket_display_name"
 
 // Manifest.permission constant exists from compileSdk 34; inlined so the

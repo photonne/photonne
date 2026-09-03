@@ -1,8 +1,33 @@
 package com.photonne.app.data.devicelibrary
 
 import androidx.compose.runtime.Composable
+import com.photonne.app.data.devicebackup.DeviceFolderRef
 import com.photonne.app.data.devicebackup.DeviceMedia
 import kotlinx.coroutines.flow.Flow
+
+/**
+ * Scheme of the backup-folder refs that denote a MediaStore bucket
+ * (Camera, WhatsApp Images…) instead of a SAF tree grant:
+ * `mediastore:bucket:<bucketId>`. Android's DeviceGallery resolves
+ * both kinds — legacy SAF folders keep backing up untouched.
+ */
+const val DEVICE_BUCKET_URI_PREFIX = "mediastore:bucket:"
+
+/**
+ * One system-index folder ("bucket") of the device library, as offered
+ * by the backup-source picker. Android-only in practice: iOS models
+ * the whole Camera Roll as a single virtual folder and desktop has no
+ * device library, so both list no buckets.
+ */
+data class DeviceBucket(
+    val id: String,
+    val displayName: String,
+    val itemCount: Int
+) {
+    /** The backup-folder ref this bucket maps to. */
+    fun toFolderRef(): DeviceFolderRef =
+        DeviceFolderRef(uri = "$DEVICE_BUCKET_URI_PREFIX$id", displayName = displayName)
+}
 
 /**
  * Access level to the device's media library. Android can't reliably
@@ -62,6 +87,13 @@ expect class DeviceLibrary {
      * reloading.
      */
     fun changes(): Flow<Unit>
+
+    /**
+     * The library's folders as the system indexes them, largest first —
+     * the backup-source picker's data. Empty when access isn't granted
+     * or the platform has no bucket concept (iOS, desktop).
+     */
+    suspend fun listBuckets(): List<DeviceBucket>
 }
 
 /**

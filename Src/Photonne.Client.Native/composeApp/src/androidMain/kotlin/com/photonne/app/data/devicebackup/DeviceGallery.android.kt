@@ -3,7 +3,10 @@ package com.photonne.app.data.devicebackup
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
+import android.provider.MediaStore
+import com.photonne.app.data.devicelibrary.DEVICE_BUCKET_URI_PREFIX
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -41,6 +44,11 @@ actual class DeviceGallery(private val context: Context) {
 
     actual suspend fun restoreFolder(uri: String): DeviceFolderRef? =
         withContext(Dispatchers.IO) {
+            // MediaStore-bucket refs (the D5 selection model) don't hold a SAF
+            // grant — they ride the media-read permission instead.
+            if (uri.startsWith(DEVICE_BUCKET_URI_PREFIX)) {
+                return@withContext restoreBucket(uri)
+            }
             val parsed = runCatching { Uri.parse(uri) }.getOrNull() ?: return@withContext null
             val granted = context.contentResolver.persistedUriPermissions.any {
                 it.uri == parsed && it.isReadPermission
@@ -57,6 +65,15 @@ actual class DeviceGallery(private val context: Context) {
     actual suspend fun deleteFile(media: DeviceMedia): Boolean =
         withContext(Dispatchers.IO) {
             val uri = runCatching { Uri.parse(media.uri) }.getOrNull() ?: return@withContext false
+            if (uri.authority == MediaStore.AUTHORITY) {
+                // MediaStore items (bucket-based folders): a direct delete only
+                // succeeds for media this app owns; on refusal the UI reports
+                // it honestly. The consent-dialog flow (createTrashRequest)
+                // needs an Activity, which this repository-level path lacks.
+                return@withContext runCatching {
+                    context.contentResolver.delete(uri, null, null) > 0
+                }.getOrDefault(false)
+            }
             // SAF files picked through a tree URI can be deleted via
             // DocumentsContract when the user granted write access; older
             // grants only have read, in which case this returns false and
@@ -68,12 +85,119 @@ actual class DeviceGallery(private val context: Context) {
 
     actual suspend fun listMedia(folder: DeviceFolderRef): List<DeviceMedia> =
         withContext(Dispatchers.IO) {
+            if (folder.uri.startsWith(DEVICE_BUCKET_URI_PREFIX)) {
+                return@withContext listBucketMedia(folder)
+            }
             val parsed = Uri.parse(folder.uri)
             val root = DocumentFile.fromTreeUri(context, parsed) ?: return@withContext emptyList()
             val collected = mutableListOf<DeviceMedia>()
             walk(root, relativePath = "", out = collected)
             collected.sortedByDescending { it.dateModifiedMillis }
         }
+
+    // ─── MediaStore buckets ──────────────────────────────────────────────────
+
+    private fun hasMediaReadAccess(): Boolean {
+        fun granted(perm: String) =
+            context.checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            granted(android.Manifest.permission.READ_MEDIA_IMAGES) ||
+                granted(android.Manifest.permission.READ_MEDIA_VIDEO)
+        } else {
+            granted(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
+
+    private fun restoreBucket(uri: String): DeviceFolderRef? {
+        if (!hasMediaReadAccess()) return null
+        val bucketId = uri.removePrefix(DEVICE_BUCKET_URI_PREFIX)
+        if (bucketId.isEmpty()) return null
+        val name = bucketDisplayName(bucketId) ?: return null
+        return DeviceFolderRef(uri = uri, displayName = name)
+    }
+
+    /** Current display name of the bucket, or null when no media claims the
+     *  id any more (folder deleted or emptied — same "gone stale" semantics
+     *  as a revoked SAF grant). */
+    private fun bucketDisplayName(bucketId: String): String? {
+        val projection = arrayOf(COLUMN_BUCKET_DISPLAY_NAME)
+        val selection = "$COLUMN_BUCKET_ID = ?"
+        listOf(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        ).forEach { collection ->
+            runCatching {
+                context.contentResolver
+                    .query(collection, projection, selection, arrayOf(bucketId), null)
+                    ?.use { c -> if (c.moveToFirst()) return c.getString(0) }
+            }
+        }
+        return null
+    }
+
+    /** One indexed MediaStore query per collection — same speed class as the
+     *  timeline's DeviceLibrary, replacing the recursive SAF walk. */
+    private fun listBucketMedia(folder: DeviceFolderRef): List<DeviceMedia> {
+        if (!hasMediaReadAccess()) return emptyList()
+        val bucketId = folder.uri.removePrefix(DEVICE_BUCKET_URI_PREFIX)
+        val out = ArrayList<DeviceMedia>(512)
+        queryBucket(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            DeviceMediaType.Image, bucketId, folder.displayName, out
+        )
+        queryBucket(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            DeviceMediaType.Video, bucketId, folder.displayName, out
+        )
+        out.sortByDescending { it.dateModifiedMillis }
+        return out
+    }
+
+    private fun queryBucket(
+        collection: Uri,
+        type: DeviceMediaType,
+        bucketId: String,
+        bucketName: String,
+        into: MutableList<DeviceMedia>
+    ) {
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_MODIFIED,
+            COLUMN_DATE_TAKEN
+        )
+        runCatching {
+            context.contentResolver.query(
+                collection, projection, "$COLUMN_BUCKET_ID = ?", arrayOf(bucketId), null
+            )?.use { c ->
+                val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val nameCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val mimeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                val modifiedCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                val takenCol = c.getColumnIndexOrThrow(COLUMN_DATE_TAKEN)
+                while (c.moveToNext()) {
+                    val name = c.getString(nameCol) ?: continue
+                    val mime = c.getString(mimeCol) ?: continue
+                    into += DeviceMedia(
+                        uri = android.content.ContentUris
+                            .withAppendedId(collection, c.getLong(idCol)).toString(),
+                        displayName = name,
+                        relativePath = bucketName,
+                        mimeType = mime,
+                        sizeBytes = c.getLong(sizeCol),
+                        // DATE_MODIFIED is epoch SECONDS — normalized to ms
+                        // like every other fingerprint in the app.
+                        dateModifiedMillis = c.getLong(modifiedCol) * 1000L,
+                        type = type,
+                        dateCreatedMillis = c.getLong(takenCol).takeIf { it > 0L }
+                    )
+                }
+            }
+        }
+    }
 
     private fun walk(
         node: DocumentFile,
@@ -139,6 +263,14 @@ actual class DeviceGallery(private val context: Context) {
             input.use { hashUpTo(it, sizeBytes, digest) }
             digest.digest().toHexLower()
         }
+
+    private companion object {
+        // Plain column names, stable since API 1 on both collections; the
+        // typed constants only reached MediaStore.MediaColumns at API 29.
+        const val COLUMN_BUCKET_ID = "bucket_id"
+        const val COLUMN_BUCKET_DISPLAY_NAME = "bucket_display_name"
+        const val COLUMN_DATE_TAKEN = "datetaken"
+    }
 
     /** Feeds at most [limit] bytes of [stream] into [digest] (or the whole
      *  stream when [limit] <= 0), matching the upload's Content-Length bound. */
