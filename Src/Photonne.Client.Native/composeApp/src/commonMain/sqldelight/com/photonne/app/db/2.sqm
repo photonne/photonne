@@ -1,0 +1,11 @@
+-- v2 → v3: persistent device↔server identity map (see deviceIdentity.sq).
+-- Keyed by the device-library uri; wiped together with backupLedger on
+-- account-scope changes.
+CREATE TABLE deviceIdentity (
+    uri TEXT NOT NULL PRIMARY KEY,
+    sizeBytes INTEGER NOT NULL,
+    dateModifiedMillis INTEGER NOT NULL,
+    sha256 TEXT,
+    assetId TEXT,
+    checkedAtMillis INTEGER
+);

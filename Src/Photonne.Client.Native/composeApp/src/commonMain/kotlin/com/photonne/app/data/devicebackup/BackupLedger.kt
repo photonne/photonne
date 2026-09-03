@@ -82,6 +82,10 @@ class BackupLedger(private val database: PhotonneDatabase) {
         if (current == scope) return
         queries.transaction {
             queries.clearAll()
+            // The device↔server identity map is scoped to the same account:
+            // its assetIds belong to one server/user pair just like the
+            // ledger's verdicts, so both wipe atomically together.
+            database.deviceIdentityQueries.clearIdentities()
             queries.upsertMeta(META_SCOPE, scope)
         }
     }
@@ -89,6 +93,7 @@ class BackupLedger(private val database: PhotonneDatabase) {
     fun clear() {
         queries.transaction {
             queries.clearAll()
+            database.deviceIdentityQueries.clearIdentities()
             queries.clearMeta()
         }
     }
