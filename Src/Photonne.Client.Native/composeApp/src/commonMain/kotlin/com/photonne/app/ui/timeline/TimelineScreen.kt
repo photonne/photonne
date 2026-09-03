@@ -70,7 +70,9 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
-import com.photonne.app.ui.devicebackup.DeviceBackupViewModel
+import com.photonne.app.data.devicelibrary.DeviceLibraryAccess
+import com.photonne.app.data.devicelibrary.DeviceLibraryStore
+import com.photonne.app.data.devicelibrary.rememberDeviceLibraryAccessRequester
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
 import com.photonne.app.ui.grid.GroupedGridDragSelect
@@ -109,7 +111,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
-import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -122,7 +123,7 @@ fun TimelineScreen(
     state: TimelineUiState,
     /**
      * Opens the asset viewer with [items] (server entries possibly
-     * interleaved with device-pending ones from the Backup module) at
+     * interleaved with device-local ones from the device library) at
      * the given [mergedIndex]. The pager and detail viewer handle
      * local items in-place via their `localUri`/`localThumbnailModel`
      * fields, so the same viewer covers both kinds.
@@ -253,15 +254,27 @@ fun TimelineScreen(
 
     val zoomStore: TimelineZoomStore = koinInject()
     val zoomLevel by zoomStore.value.collectAsState()
-    val deviceBackupViewModel: DeviceBackupViewModel = koinViewModel()
-    val deviceBackupState by deviceBackupViewModel.state.collectAsState()
-
-    // Only mix device entries in once backup is enabled — otherwise the
-    // timeline reflects only what's actually on the server.
-    val localItems = remember(deviceBackupState.entries, deviceBackupState.isBackupEnabled) {
-        if (!deviceBackupState.isBackupEnabled) emptyList()
-        else deviceBackupViewModel.deviceTimelineItems()
+    // The device library is a first-class timeline source: the WHOLE local
+    // gallery, read instantly from the platform's media index, with no
+    // backup or network dependency (see DeviceLibraryStore). Server state
+    // hydrates on top and dedups per bucket.
+    val deviceLibrary: DeviceLibraryStore = koinInject()
+    val deviceLibraryState by deviceLibrary.state.collectAsState()
+    LaunchedEffect(Unit) { deviceLibrary.ensureStarted() }
+    val requestLibraryAccess = rememberDeviceLibraryAccessRequester(
+        onResult = deviceLibrary::onAccessResult
+    )
+    // First entry into the timeline prompts for the media permission, like
+    // any gallery app; a dismissal/denial is persisted and never re-nagged.
+    LaunchedEffect(deviceLibraryState.access, deviceLibraryState.hasPrompted) {
+        if (deviceLibraryState.access == DeviceLibraryAccess.NotDetermined &&
+            !deviceLibraryState.hasPrompted
+        ) {
+            deviceLibrary.markPrompted()
+            requestLibraryAccess()
+        }
     }
+    val localItems = deviceLibraryState.items
     // Whether the Recuerdos strip belongs in the timeline at all. It stays
     // mounted while selecting and instead collapses smoothly (see the
     // AnimatedVisibility below) so entering selection no longer makes the
@@ -300,8 +313,13 @@ fun TimelineScreen(
                 if (isYearView) onEnsureYearSummaries(yearSample)
             }
             when {
-                state.isInitialLoading -> TimelineSkeleton(cellMinSize = effectiveCellMinSize)
-                state.isEmpty -> TimelineEmptyState(onOpenUpload = onOpenUpload)
+                // Device photos short-circuit both gates: with a local
+                // library available the grid renders NOW — offline, with the
+                // server still loading, or with an empty server account.
+                state.isInitialLoading && localItems.isEmpty() ->
+                    TimelineSkeleton(cellMinSize = effectiveCellMinSize)
+                state.isEmpty && localItems.isEmpty() ->
+                    TimelineEmptyState(onOpenUpload = onOpenUpload)
                 // Year view before its summaries arrive: full-screen skeleton
                 // (the ensure effect below fires the fetch).
                 isYearView && state.yearSummaries == null ->
@@ -1099,8 +1117,7 @@ fun TimelineScreen(
                         currentZoom = zoomLevel,
                         onZoomSelected = zoomStore::update,
                         onOpenSearch = onOpenSearch,
-                        deviceLoading = deviceBackupState.isBackupEnabled &&
-                            deviceBackupState.isLoading,
+                        deviceLoading = deviceLibraryState.isLoading,
                         hazeState = gridHazeState,
                         modifier = Modifier
                             .align(Alignment.TopCenter)

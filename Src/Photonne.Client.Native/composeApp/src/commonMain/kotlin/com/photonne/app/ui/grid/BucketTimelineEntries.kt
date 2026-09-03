@@ -53,11 +53,16 @@ internal data class BucketRange(
  *
  * - Loaded buckets contribute real cells (server items merged with that
  *   month's local items via [mergeTimelineWithLocal]).
- * - Unloaded buckets contribute a single [TimelineEntry.SkeletonBucket]
- *   whose count reserves EXACT height (uniform grid → height is a pure
- *   function of the count, so hydration never shifts scroll). Local items of
- *   an unloaded month stay hidden until it loads — dedup against the server
- *   needs the server's items.
+ * - Unloaded buckets with NO local items contribute a single
+ *   [TimelineEntry.SkeletonBucket] whose count reserves EXACT height
+ *   (uniform grid → height is a pure function of the count, so hydration
+ *   never shifts scroll).
+ * - Unloaded buckets WITH local items render those local items immediately
+ *   — photos already on the phone must never wait for the network — plus a
+ *   skeleton for the server-count remainder, so the reserved height tracks
+ *   the merged result as closely as the overlap allows. The month is
+ *   isolated into its own pager run: swiping across it would silently skip
+ *   the server-only photos that haven't arrived yet.
  * - Months that exist only on the device become synthetic loaded buckets.
  * - Headers follow [grouping]: one per year, one per month (from the bucket
  *   key, so header and bucket can never disagree), or one per local day
@@ -125,14 +130,31 @@ internal fun buildBucketEntries(
         val local = localByMonth[bucketKey].orEmpty()
 
         if (server != null && !server.isLoaded) {
-            if (server.count == 0) continue
-            order += bucketKey
-            emitGroupHeader(
-                key = monthOrYearKey(bucketKey, grouping),
-                title = monthOrYearLabel(bucketKey, grouping)
+            if (local.isEmpty()) {
+                if (server.count == 0) continue
+                order += bucketKey
+                emitGroupHeader(
+                    key = monthOrYearKey(bucketKey, grouping),
+                    title = monthOrYearLabel(bucketKey, grouping)
+                )
+                entries += TimelineEntry.SkeletonBucket(bucketKey = bucketKey, count = server.count)
+                // An unloaded month interrupts pager continuity.
+                runId++
+                continue
+            }
+            // Local-first: the month's device photos render NOW; the server's
+            // contribution hydrates in place when the bucket loads. Bump the
+            // run before AND after so this partial month never joins a
+            // neighbouring run — its server-side photos are still missing.
+            runId++
+            emitBucketCells(
+                bucketKey = bucketKey,
+                items = local.sortedByDescending { it.fileCreatedAt }
             )
-            entries += TimelineEntry.SkeletonBucket(bucketKey = bucketKey, count = server.count)
-            // An unloaded month interrupts pager continuity.
+            val remainder = server.count - local.size
+            if (remainder > 0) {
+                entries += TimelineEntry.SkeletonBucket(bucketKey = bucketKey, count = remainder)
+            }
             runId++
             continue
         }
