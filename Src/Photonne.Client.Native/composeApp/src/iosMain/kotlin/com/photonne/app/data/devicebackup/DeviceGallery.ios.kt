@@ -71,7 +71,7 @@ actual class DeviceGallery {
 
     actual val isSupported: Boolean = true
 
-    actual suspend fun restoreFolder(uri: String): DeviceFolderRef? =
+    actual suspend fun restoreFolder(uri: String, fallbackName: String?): DeviceFolderRef? =
         withContext(Dispatchers.Default) {
             if (uri != USER_LIBRARY_URI) return@withContext null
             val status = PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelReadWrite)

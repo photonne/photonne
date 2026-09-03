@@ -446,7 +446,9 @@ class DeviceBackupViewModel(
             // Each saved folder is re-resolved from its persisted bookmark;
             // one gone stale shouldn't take the others down with it.
             val resumed = saved.mapNotNull { folder ->
-                val restored = runCatching { repository.restoreFolder(folder.uri) }.getOrNull()
+                val restored = runCatching {
+                    repository.restoreFolder(folder.uri, fallbackName = folder.displayName)
+                }.getOrNull()
                 if (restored == null) repository.forgetFolder(folder.uri)
                 restored
             }

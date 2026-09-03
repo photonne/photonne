@@ -42,12 +42,12 @@ actual class DeviceGallery(private val context: Context) {
 
     actual val isSupported: Boolean = true
 
-    actual suspend fun restoreFolder(uri: String): DeviceFolderRef? =
+    actual suspend fun restoreFolder(uri: String, fallbackName: String?): DeviceFolderRef? =
         withContext(Dispatchers.IO) {
             // MediaStore-bucket refs (the D5 selection model) don't hold a SAF
             // grant — they ride the media-read permission instead.
             if (uri.startsWith(DEVICE_BUCKET_URI_PREFIX)) {
-                return@withContext restoreBucket(uri)
+                return@withContext restoreBucket(uri, fallbackName)
             }
             val parsed = runCatching { Uri.parse(uri) }.getOrNull() ?: return@withContext null
             val granted = context.contentResolver.persistedUriPermissions.any {
@@ -102,23 +102,37 @@ actual class DeviceGallery(private val context: Context) {
             context.checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             granted(android.Manifest.permission.READ_MEDIA_IMAGES) ||
-                granted(android.Manifest.permission.READ_MEDIA_VIDEO)
+                granted(android.Manifest.permission.READ_MEDIA_VIDEO) ||
+                // Android 14+ partial access ("select photos") arrives as this
+                // grant ALONE, with the full ones denied. It still reads the
+                // user-selected subset through MediaStore, and — critically —
+                // restoreFolder() treats "no access" as a revoked source and
+                // permanently forgets the bucket plus its ledger. A partial
+                // grant must never trigger that.
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                    granted("android.permission.READ_MEDIA_VISUAL_USER_SELECTED"))
         } else {
             granted(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
 
-    private fun restoreBucket(uri: String): DeviceFolderRef? {
-        if (!hasMediaReadAccess()) return null
+    private fun restoreBucket(uri: String, fallbackName: String?): DeviceFolderRef? {
         val bucketId = uri.removePrefix(DEVICE_BUCKET_URI_PREFIX)
         if (bucketId.isEmpty()) return null
-        val name = bucketDisplayName(bucketId) ?: return null
-        return DeviceFolderRef(uri = uri, displayName = name)
+        // A bucket source rides the APP-WIDE media permission, not a
+        // per-folder grant, so there is no real "revoked" state to report:
+        // a missing permission is transient (the user can re-grant), and an
+        // emptied bucket (the app's own free-space flow can drain it) will
+        // refill with the next photo. Returning null for either would make
+        // the caller permanently forget the source plus its ledger — so a
+        // bucket ref ALWAYS restores; enumeration simply yields nothing
+        // until the bucket has media and the permission is back.
+        val name = if (hasMediaReadAccess()) bucketDisplayName(bucketId) else null
+        return DeviceFolderRef(uri = uri, displayName = name ?: fallbackName ?: bucketId)
     }
 
     /** Current display name of the bucket, or null when no media claims the
-     *  id any more (folder deleted or emptied — same "gone stale" semantics
-     *  as a revoked SAF grant). */
+     *  id right now (emptied bucket, permission missing). */
     private fun bucketDisplayName(bucketId: String): String? {
         val projection = arrayOf(COLUMN_BUCKET_DISPLAY_NAME)
         val selection = "$COLUMN_BUCKET_ID = ?"

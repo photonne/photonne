@@ -35,7 +35,7 @@ actual class DeviceGallery {
 
     actual val isSupported: Boolean = true
 
-    actual suspend fun restoreFolder(uri: String): DeviceFolderRef? =
+    actual suspend fun restoreFolder(uri: String, fallbackName: String?): DeviceFolderRef? =
         withContext(Dispatchers.IO) {
             runCatching {
                 val file = File(URI(uri))

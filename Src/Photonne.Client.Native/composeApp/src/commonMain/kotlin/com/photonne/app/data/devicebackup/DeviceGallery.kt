@@ -25,11 +25,15 @@ import androidx.compose.runtime.Composable
 expect class DeviceGallery {
     /**
      * Reload a folder previously picked by the user from its persisted
-     * `uri`. Returns null when the saved bookmark can no longer be
-     * resolved (e.g. the SAF permission was revoked or the iOS
-     * security-scoped bookmark went stale).
+     * `uri`. Returns null ONLY when the source is genuinely revoked
+     * (SAF permission gone, iOS security-scoped bookmark stale) — the
+     * caller reacts to null by permanently forgetting the folder and
+     * its ledger, so transient states (media permission not yet granted,
+     * a MediaStore bucket momentarily empty) must return a ref instead.
+     * [fallbackName] is the display name the caller had persisted, used
+     * when the platform can't re-derive one right now.
      */
-    suspend fun restoreFolder(uri: String): DeviceFolderRef?
+    suspend fun restoreFolder(uri: String, fallbackName: String? = null): DeviceFolderRef?
 
     /**
      * Walk [folder] recursively and return every image/video found.

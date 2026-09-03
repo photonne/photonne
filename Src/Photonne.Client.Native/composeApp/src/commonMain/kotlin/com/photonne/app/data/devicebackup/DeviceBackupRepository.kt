@@ -92,8 +92,8 @@ class DeviceBackupRepository(
             UploadConcurrency(photo = PHOTO_CONCURRENCY, video = VIDEO_CONCURRENCY)
         }
 
-    suspend fun restoreFolder(uri: String): DeviceFolderRef? =
-        gallery.restoreFolder(uri)
+    suspend fun restoreFolder(uri: String, fallbackName: String? = null): DeviceFolderRef? =
+        gallery.restoreFolder(uri, fallbackName)
 
     suspend fun listMedia(folder: DeviceFolderRef): List<DeviceMedia> =
         gallery.listMedia(folder)
