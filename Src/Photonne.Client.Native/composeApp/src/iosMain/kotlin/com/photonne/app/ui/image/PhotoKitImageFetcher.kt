@@ -8,6 +8,7 @@ import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
+import coil3.size.Dimension
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -75,14 +76,30 @@ internal object PhotoKitThumbnails {
  */
 @OptIn(ExperimentalForeignApi::class)
 internal class PhotoKitImageFetcher(
-    private val localIdentifier: String
+    private val localIdentifier: String,
+    private val options: Options
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult? {
         if (localIdentifier.isEmpty()) return null
         val asset = resolveAsset(localIdentifier) ?: return null
-        val image = requestThumbnail(asset, allowNetwork = false)
-            ?: requestThumbnail(asset, allowNetwork = true)
+        // Two consumers, one fetcher: grid cells measure well under the
+        // shared 512 px cache size and ride the prefetched entries; the
+        // full-screen detail viewer measures (much) larger — or not at
+        // all — and gets a request at its real size instead of a blurry
+        // upscale. Detail requests still try local first, but a photo
+        // the user explicitly opened is worth an iCloud download.
+        val requestedPx = requestedMaxPx()
+        val isDetail = requestedPx == 0 || requestedPx > DETAIL_THRESHOLD_PX
+        val targetPx = if (isDetail) {
+            (if (requestedPx == 0) DETAIL_MAX_PX else requestedPx)
+                .coerceAtMost(DETAIL_MAX_PX)
+                .toDouble()
+        } else {
+            PhotoKitThumbnails.TARGET_SIZE_PX
+        }
+        val image = requestThumbnail(asset, targetPx, allowNetwork = false)
+            ?: requestThumbnail(asset, targetPx, allowNetwork = true)
             ?: return null
         val jpeg = UIImageJPEGRepresentation(image, JPEG_QUALITY) ?: return null
         val bytes = jpeg.toByteArray()
@@ -102,14 +119,23 @@ internal class PhotoKitImageFetcher(
         return result.firstObject as? PHAsset
     }
 
-    private suspend fun requestThumbnail(asset: PHAsset, allowNetwork: Boolean): UIImage? =
+    /** Largest pixel dimension Coil measured for the target view, or 0
+     *  when the request is unsized (Size.ORIGINAL / no constraints). */
+    private fun requestedMaxPx(): Int {
+        val width = (options.size.width as? Dimension.Pixels)?.px ?: 0
+        val height = (options.size.height as? Dimension.Pixels)?.px ?: 0
+        return maxOf(width, height)
+    }
+
+    private suspend fun requestThumbnail(
+        asset: PHAsset,
+        targetPx: Double,
+        allowNetwork: Boolean
+    ): UIImage? =
         suspendCancellableCoroutine { cont ->
             val requestId = PhotoKitThumbnails.manager.requestImageForAsset(
                 asset = asset,
-                targetSize = CGSizeMake(
-                    PhotoKitThumbnails.TARGET_SIZE_PX,
-                    PhotoKitThumbnails.TARGET_SIZE_PX
-                ),
+                targetSize = CGSizeMake(targetPx, targetPx),
                 contentMode = PHImageContentModeAspectFill,
                 options = PhotoKitThumbnails.requestOptions(allowNetwork),
                 resultHandler = { image, _ ->
@@ -135,8 +161,19 @@ internal class PhotoKitImageFetcher(
             // string form so PhotoKit recognises it verbatim.
             val localId = data.toString().substringAfter(':', "")
             if (localId.isEmpty() || localId == USER_LIBRARY_AUTHORITY) return null
-            return PhotoKitImageFetcher(localId)
+            return PhotoKitImageFetcher(localId, options)
         }
+    }
+
+    private companion object {
+        /** Above this measured size the request is treated as the detail
+         *  viewer, not a grid cell — comfortably past any grid cell on a
+         *  3x phone, comfortably under a full portrait screen. */
+        const val DETAIL_THRESHOLD_PX = 800
+
+        /** Cap for detail decodes: retina-sharp full screen and 2-3x of
+         *  pinch headroom without decoding 48 MP into memory. */
+        const val DETAIL_MAX_PX = 2048
     }
 }
 
