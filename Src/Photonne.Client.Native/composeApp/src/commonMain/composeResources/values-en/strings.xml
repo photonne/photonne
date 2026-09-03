@@ -167,6 +167,7 @@
     <string name="backup_bucket_picker_hint">Choose which phone folders get backed up to the server.</string>
     <string name="backup_bucket_added">Added</string>
     <string name="backup_bucket_item_count">%1$d items</string>
+    <string name="backup_bucket_other_folder">Choose another folder…</string>
     <string name="asset_action_edit_description">Edit description</string>
     <string name="asset_action_edit_date">Edit capture date</string>
     <string name="asset_action_open_in_maps">Open in Maps</string>

@@ -125,6 +125,7 @@ import com.photonne.app.data.devicelibrary.DeviceBucket
 import com.photonne.app.data.devicelibrary.DeviceLibrary
 import com.photonne.app.resources.backup_bucket_added
 import com.photonne.app.resources.backup_bucket_item_count
+import com.photonne.app.resources.backup_bucket_other_folder
 import com.photonne.app.resources.backup_bucket_picker_hint
 import com.photonne.app.resources.backup_bucket_picker_title
 import com.photonne.app.resources.backup_source_add
@@ -419,6 +420,12 @@ fun BackupScreen(
             buckets = buckets,
             addedUris = remember(state.folders) { state.folders.mapTo(HashSet()) { it.uri } },
             onAdd = { bucket -> viewModel.onFolderPicked(bucket.toFolderRef()) },
+            // Folders MediaStore doesn't index (.nomedia trees, nested SAF
+            // sources) stay reachable through the classic picker.
+            onPickOther = {
+                bucketChoices = null
+                pickFolder()
+            },
             onDismiss = { bucketChoices = null }
         )
     }
@@ -963,6 +970,7 @@ private fun DeviceBucketPickerSheet(
     buckets: List<DeviceBucket>,
     addedUris: Set<String>,
     onAdd: (DeviceBucket) -> Unit,
+    onPickOther: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1029,6 +1037,27 @@ private fun DeviceBucketPickerSheet(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+            item("pick-other") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onPickOther)
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.size(16.dp))
+                    Text(
+                        stringResource(Res.string.backup_bucket_other_folder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

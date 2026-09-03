@@ -172,6 +172,7 @@
     <string name="backup_bucket_picker_hint">Elige qué carpetas del teléfono se copian al servidor.</string>
     <string name="backup_bucket_added">Añadido</string>
     <string name="backup_bucket_item_count">%1$d elementos</string>
+    <string name="backup_bucket_other_folder">Elegir otra carpeta…</string>
     <string name="asset_action_edit_description">Editar descripción</string>
     <string name="asset_action_edit_date">Editar fecha de captura</string>
     <string name="asset_action_open_in_maps">Abrir en Mapas</string>
