@@ -21,4 +21,5 @@ actual fun platformModule() = module {
     }
     single { AssetSharing() }
     single { com.photonne.app.data.devicebackup.DeviceGallery() }
+    single { com.photonne.app.data.devicelibrary.DeviceLibrary() }
 }

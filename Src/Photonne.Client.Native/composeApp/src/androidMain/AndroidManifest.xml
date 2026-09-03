@@ -29,6 +29,11 @@
          which needs ACCESS_MEDIA_LOCATION + a media read grant. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Android 14+ partial access ("select photos"): declared so the system
+         permission dialog offers the option and the grant survives; the
+         timeline then shows the user-selected subset (DeviceLibraryAccess
+         .Partial) instead of nothing. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />

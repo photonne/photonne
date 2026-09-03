@@ -95,4 +95,5 @@ actual fun platformModule() = module {
     }
     single { AssetSharing(androidContext()) }
     single { com.photonne.app.data.devicebackup.DeviceGallery(androidContext()) }
+    single { com.photonne.app.data.devicelibrary.DeviceLibrary(androidContext()) }
 }
