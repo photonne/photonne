@@ -148,6 +148,13 @@ fun commonModule(config: PhotonneAppConfig) = module {
             ledger = get()
         )
     }
+    single {
+        com.photonne.app.data.devicelibrary.DeviceLibraryStore(
+            library = get(),
+            ledger = get(),
+            settings = get()
+        )
+    }
     single { com.photonne.app.data.devicebackup.EnrichmentRepository(get()) }
     single { com.photonne.app.data.devicebackup.BackupProgressBus() }
     single {

@@ -125,6 +125,11 @@ class BackupLedger(private val database: PhotonneDatabase) {
         queries.selectByFolder(folderUri).executeAsList()
             .associate { it.uri to it.toEntry() }
 
+    /** Every row across all folders — the device-library overlay joins these
+     *  against the MediaStore/PhotoKit enumeration by uri and fingerprint. */
+    fun allEntries(): List<LedgerEntry> =
+        queries.selectAll().executeAsList().map { it.toEntry() }
+
     fun countsByState(folderUri: String): Map<LedgerState, Long> =
         queries.countByState(folderUri).executeAsList()
             .associate { LedgerState.fromDb(it.syncState) to it.total }

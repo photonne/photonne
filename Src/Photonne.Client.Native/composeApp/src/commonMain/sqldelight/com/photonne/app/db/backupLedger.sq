@@ -40,6 +40,9 @@ CREATE TABLE ledgerMeta (
 selectByFolder:
 SELECT * FROM backupLedger WHERE folderUri = ?;
 
+selectAll:
+SELECT * FROM backupLedger;
+
 selectByState:
 SELECT * FROM backupLedger WHERE folderUri = ? AND syncState = ?;
 
