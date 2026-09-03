@@ -163,6 +163,10 @@
     <string name="asset_action_archive">Archive</string>
     <string name="asset_action_trash">Move to trash</string>
     <string name="asset_action_delete_device">Delete from device</string>
+    <string name="backup_bucket_picker_title">Device folders</string>
+    <string name="backup_bucket_picker_hint">Choose which phone folders get backed up to the server.</string>
+    <string name="backup_bucket_added">Added</string>
+    <string name="backup_bucket_item_count">%1$d items</string>
     <string name="asset_action_edit_description">Edit description</string>
     <string name="asset_action_edit_date">Edit capture date</string>
     <string name="asset_action_open_in_maps">Open in Maps</string>

@@ -168,6 +168,10 @@
     <string name="asset_action_archive">Archivar</string>
     <string name="asset_action_trash">Mover a la papelera</string>
     <string name="asset_action_delete_device">Eliminar del dispositivo</string>
+    <string name="backup_bucket_picker_title">Carpetas del dispositivo</string>
+    <string name="backup_bucket_picker_hint">Elige qué carpetas del teléfono se copian al servidor.</string>
+    <string name="backup_bucket_added">Añadido</string>
+    <string name="backup_bucket_item_count">%1$d elementos</string>
     <string name="asset_action_edit_description">Editar descripción</string>
     <string name="asset_action_edit_date">Editar fecha de captura</string>
     <string name="asset_action_open_in_maps">Abrir en Mapas</string>

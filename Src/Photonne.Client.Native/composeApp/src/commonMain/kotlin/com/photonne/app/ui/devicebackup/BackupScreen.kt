@@ -116,8 +116,21 @@ import com.photonne.app.resources.backup_status_waiting_charging
 import com.photonne.app.resources.backup_status_waiting_wifi
 import com.photonne.app.resources.backup_status_waiting_wifi_charging
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.rememberCoroutineScope
+import com.photonne.app.data.devicelibrary.DeviceBucket
+import com.photonne.app.data.devicelibrary.DeviceLibrary
+import com.photonne.app.resources.backup_bucket_added
+import com.photonne.app.resources.backup_bucket_item_count
+import com.photonne.app.resources.backup_bucket_picker_hint
+import com.photonne.app.resources.backup_bucket_picker_title
 import com.photonne.app.resources.backup_source_add
 import com.photonne.app.resources.backup_source_remove
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 /**
  * The Backup tab's landing screen. Order matters here: the master switch, then
@@ -150,6 +163,21 @@ fun BackupScreen(
         gallery = gallery,
         onPicked = viewModel::onFolderPicked
     )
+    // The backup source is a COPY policy over the same library the timeline
+    // shows: where the platform lists buckets (Android + media permission),
+    // adding an origin opens an in-app picker over MediaStore's folders —
+    // no SAF tree dance, and the resulting refs enumerate at index speed.
+    // No buckets (iOS's single Camera Roll, permission missing) falls back
+    // to the classic platform folder picker.
+    val deviceLibrary: DeviceLibrary = koinInject()
+    val pickerScope = rememberCoroutineScope()
+    var bucketChoices by remember { mutableStateOf<List<DeviceBucket>?>(null) }
+    val addBackupSource: () -> Unit = {
+        pickerScope.launch {
+            val buckets = runCatching { deviceLibrary.listBuckets() }.getOrDefault(emptyList())
+            if (buckets.isEmpty()) pickFolder() else bucketChoices = buckets
+        }
+    }
     // Android 13+ suppresses the worker's progress/failure notifications without
     // this grant, so ask exactly when the user opts into backups.
     val notifications = rememberNotificationPermission()
@@ -269,7 +297,7 @@ fun BackupScreen(
                 ),
                 actionLabel = if (state.folders.isEmpty())
                     stringResource(Res.string.backup_source_pick) else null,
-                onClick = pickFolder
+                onClick = addBackupSource
             )
         }
 
@@ -368,6 +396,15 @@ fun BackupScreen(
                     Text(stringResource(Res.string.device_backup_free_space_cancel))
                 }
             }
+        )
+    }
+
+    bucketChoices?.let { buckets ->
+        DeviceBucketPickerSheet(
+            buckets = buckets,
+            addedUris = remember(state.folders) { state.folders.mapTo(HashSet()) { it.uri } },
+            onAdd = { bucket -> viewModel.onFolderPicked(bucket.toFolderRef()) },
+            onDismiss = { bucketChoices = null }
         )
     }
     }
@@ -896,5 +933,89 @@ private fun IconPill(icon: ImageVector) {
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(22.dp)
         )
+    }
+}
+
+/**
+ * In-app backup-source picker over the device library's buckets
+ * (Camera, WhatsApp Images, Screenshots…), largest first. Tapping a
+ * row adds it as an origin and the sheet stays open so several can be
+ * added in one visit; already-added buckets show a check instead.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeviceBucketPickerSheet(
+    buckets: List<DeviceBucket>,
+    addedUris: Set<String>,
+    onAdd: (DeviceBucket) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            item("header") {
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        stringResource(Res.string.backup_bucket_picker_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(Res.string.backup_bucket_picker_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+            items(buckets, key = { "bucket-${it.id}" }) { bucket ->
+                val added = bucket.toFolderRef().uri in addedUris
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !added) { onAdd(bucket) }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.size(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            bucket.displayName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            stringResource(
+                                Res.string.backup_bucket_item_count, bucket.itemCount
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (added) {
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = stringResource(Res.string.backup_bucket_added),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }
