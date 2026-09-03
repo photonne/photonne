@@ -2,6 +2,8 @@ package com.photonne.app.data.devicebackup
 
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.api.PhotonneApiException
+import com.photonne.app.data.devicelibrary.DeviceIdentity
+import com.photonne.app.data.devicelibrary.DeviceIdentityMap
 import com.photonne.app.data.upload.UploadRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -34,7 +36,8 @@ class DeviceBackupRepository(
     private val api: PhotonneApi,
     private val uploads: UploadRepository,
     private val stateStore: DeviceBackupStateStore,
-    private val ledger: BackupLedger
+    private val ledger: BackupLedger,
+    private val identityMap: DeviceIdentityMap
 ) {
 
     val isSupported: Boolean get() = gallery.isSupported
@@ -153,6 +156,15 @@ class DeviceBackupRepository(
     ): Map<String, DeviceMediaSyncState> {
         val entries = ledger.reconcile(folder.uri, scanned).toMutableMap()
         val mediaByUri = scanned.associateBy { it.uri }
+
+        // 1b. Seed hashes from the device↔server identity map before paying
+        //     for any hashing: whatever the timeline's viewport resolver (or
+        //     a previous ledger, via the bridge) already hashed transfers
+        //     over — by uri for MediaStore-bucket folders, whose uris match
+        //     the map's keys exactly, and by (size, mtime-seconds)
+        //     fingerprint for legacy SAF uris. On a folder freshly added
+        //     this can collapse the initial hash pass to nothing.
+        seedHashesFromIdentityMap(folder.uri, entries, mediaByUri)
 
         // 2. Hash anything the ledger doesn't have a valid hash for. Files
         //    hash in parallel (bounded — hashing is CPU+IO, not network), but
@@ -280,6 +292,42 @@ class DeviceBackupRepository(
         }
 
         return entries.mapValues { (_, entry) -> entry.toSyncState() }
+    }
+
+    /** See the 1b step in [verifyAgainstServer]. Seeded entries keep their
+     *  UNKNOWN state on purpose: only the bulk server check hands out
+     *  verdicts — this transfers the hash work, not the conclusion. */
+    private fun seedHashesFromIdentityMap(
+        folderUri: String,
+        entries: MutableMap<String, LedgerEntry>,
+        mediaByUri: Map<String, DeviceMedia>
+    ) {
+        val missing = entries.values.filter {
+            it.sha256 == null && it.state != LedgerState.Ignored
+        }
+        if (missing.isEmpty()) return
+        val identities = runCatching { identityMap.all() }.getOrNull() ?: return
+        if (identities.isEmpty()) return
+
+        val byFingerprint = HashMap<String, DeviceIdentity>()
+        identities.values.forEach { identity ->
+            if (identity.sha256 != null && identity.sizeBytes > 0L) {
+                byFingerprint["${identity.sizeBytes}|${identity.dateModifiedMillis / 1000}"] =
+                    identity
+            }
+        }
+        for (entry in missing) {
+            val media = mediaByUri[entry.uri] ?: continue
+            // Seconds precision on the mtime — SAF carries millis, MediaStore
+            // only seconds; same normalization as the store's ledger bridge.
+            val identity = identities[entry.uri]?.takeIf {
+                it.sha256 != null && it.sizeBytes == media.sizeBytes &&
+                    it.dateModifiedMillis / 1000 == media.dateModifiedMillis / 1000
+            } ?: byFingerprint["${media.sizeBytes}|${media.dateModifiedMillis / 1000}"]
+            val sha = identity?.sha256 ?: continue
+            ledger.setHash(folderUri, entry.uri, sha)
+            entries[entry.uri] = entry.copy(sha256 = sha)
+        }
     }
 
     /**

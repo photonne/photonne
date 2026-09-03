@@ -145,7 +145,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
             api = get(),
             uploads = get(),
             stateStore = get(),
-            ledger = get()
+            ledger = get(),
+            identityMap = get()
         )
     }
     single { com.photonne.app.data.devicelibrary.DeviceIdentityMap(get()) }
