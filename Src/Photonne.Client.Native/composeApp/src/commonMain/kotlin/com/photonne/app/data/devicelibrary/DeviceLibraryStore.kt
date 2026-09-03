@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -77,6 +78,7 @@ class DeviceLibraryStore(
     private val identityMap: DeviceIdentityMap,
     private val gallery: DeviceGallery,
     private val api: PhotonneApi,
+    private val progressBus: com.photonne.app.data.devicebackup.BackupProgressBus,
     private val settings: Settings
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -114,6 +116,25 @@ class DeviceLibraryStore(
                 delay(CHANGE_COALESCE_MILLIS)
                 refresh()
             }
+        }
+        scope.launch {
+            // The badge overlay reads the LEDGER, whose verdicts land while a
+            // verify/upload pass runs — typically right AFTER the initial
+            // rebuild. Re-apply the overlay whenever the pass reports ledger
+            // writes; the enumeration itself is reused, so this is cheap.
+            progressBus.ledgerRevision.drop(1).conflate().collect {
+                delay(CHANGE_COALESCE_MILLIS)
+                refreshOverlay()
+            }
+        }
+    }
+
+    /** Re-applies the identity + ledger overlay over the cached enumeration
+     *  (no MediaStore/PhotoKit re-scan). */
+    private suspend fun refreshOverlay() {
+        refreshMutex.withLock {
+            val media = mediaByUri.values.toList()
+            if (media.isNotEmpty()) rebuildItems(media)
         }
     }
 
@@ -318,10 +339,13 @@ class DeviceLibraryStore(
                 localThumbnailModel = item.uri,
                 localUri = item.uri,
                 localServerAssetId = identity?.assetId ?: ledgerAssetId,
-                // Only CONFIRMED verdicts badge. Unknown rows are just
-                // "photos on this phone" — claiming Pending for a whole
-                // unverified library would drown the grid in badges.
+                // A ledger row only exists for files under a BACKUP folder,
+                // so Unknown there already means "awaiting verification →
+                // pending" (the pre-library timeline badged it too). Files
+                // outside the backup scope have no row and stay badge-less —
+                // the full library never drowns in badges.
                 localSyncBadge = when (ledgerRow?.state) {
+                    LedgerState.Unknown -> LocalSyncBadge.Pending
                     LedgerState.NotSynced -> LocalSyncBadge.Pending
                     LedgerState.Failed -> LocalSyncBadge.Failed
                     else -> null

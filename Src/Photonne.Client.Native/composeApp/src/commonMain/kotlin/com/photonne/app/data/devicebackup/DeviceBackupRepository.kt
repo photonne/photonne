@@ -37,7 +37,8 @@ class DeviceBackupRepository(
     private val uploads: UploadRepository,
     private val stateStore: DeviceBackupStateStore,
     private val ledger: BackupLedger,
-    private val identityMap: DeviceIdentityMap
+    private val identityMap: DeviceIdentityMap,
+    private val progress: BackupProgressBus
 ) {
 
     val isSupported: Boolean get() = gallery.isSupported
@@ -165,6 +166,9 @@ class DeviceBackupRepository(
         //     fingerprint for legacy SAF uris. On a folder freshly added
         //     this can collapse the initial hash pass to nothing.
         seedHashesFromIdentityMap(folder.uri, entries, mediaByUri)
+        // Reconcile + seeding may have created rows (fresh UNKNOWNs are what
+        // the timeline badges as "pending" for backup-covered files).
+        progress.bumpLedger()
 
         // 2. Hash anything the ledger doesn't have a valid hash for. Files
         //    hash in parallel (bounded — hashing is CPU+IO, not network), but
@@ -288,6 +292,10 @@ class DeviceBackupRepository(
                         )
                     }
                 }
+                // Verdicts just landed — let ledger observers (the pending
+                // screen AND the timeline's badge overlay) re-read now
+                // instead of at the end of a potentially long pass.
+                progress.bumpLedger()
             }
         }
 

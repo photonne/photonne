@@ -146,7 +146,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
             uploads = get(),
             stateStore = get(),
             ledger = get(),
-            identityMap = get()
+            identityMap = get(),
+            progress = get()
         )
     }
     single { com.photonne.app.data.devicelibrary.DeviceIdentityMap(get()) }
@@ -157,6 +158,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
             identityMap = get(),
             gallery = get(),
             api = get(),
+            progressBus = get(),
             settings = get()
         )
     }
