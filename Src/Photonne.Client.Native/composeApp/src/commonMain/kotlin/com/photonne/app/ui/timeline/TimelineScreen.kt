@@ -75,6 +75,7 @@ import com.photonne.app.data.devicelibrary.DeviceLibraryStore
 import com.photonne.app.data.devicelibrary.rememberDeviceLibraryAccessRequester
 import com.photonne.app.ui.grid.BucketEntriesResult
 import com.photonne.app.ui.grid.GroupedAssetGrid
+import com.photonne.app.ui.image.DeviceThumbnailPrefetcher
 import com.photonne.app.ui.grid.GroupedGridDragSelect
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.grid.dragselect.rememberDragSelectState
@@ -395,9 +396,19 @@ fun TimelineScreen(
                                 // so flooding the queue is what caused the
                                 // mid-scrub jank).
                                 delay(SETTLE_DEBOUNCE_MS)
-                                onBucketsVisible(
+                                val expanded =
                                     expandWithNeighborBuckets(visible, bucketEntries.bucketOrder)
-                                )
+                                onBucketsVisible(expanded)
+                                // Same settled window, second consumer: keep the
+                                // on/near-viewport device thumbnails warm so
+                                // cells paint from cache (PhotoKit pre-decodes
+                                // on iOS; no-op on Android). Off-main — the
+                                // platform may hit its media DB to resolve URIs.
+                                withContext(Dispatchers.Default) {
+                                    DeviceThumbnailPrefetcher.setWindow(
+                                        localThumbnailUris(expanded, bucketEntries)
+                                    )
+                                }
                             }
                     }
 
@@ -1137,6 +1148,24 @@ fun TimelineScreen(
             }
         }
     }
+}
+
+/** Local-item URIs inside [bucketKeys], in display order — the settled
+ *  prefetch window handed to [DeviceThumbnailPrefetcher]. */
+private fun localThumbnailUris(
+    bucketKeys: List<String>,
+    entries: BucketEntriesResult
+): List<String> {
+    if (bucketKeys.isEmpty()) return emptyList()
+    val keys = bucketKeys.toHashSet()
+    val out = ArrayList<String>()
+    entries.loadedRanges.forEach { range ->
+        if (range.bucketKey !in keys) return@forEach
+        for (i in range.range) {
+            entries.mergedItems[i].localThumbnailModel?.let { out += it }
+        }
+    }
+    return out
 }
 
 /** Rows scrolled past before the back-to-top pill can appear — kept low so it

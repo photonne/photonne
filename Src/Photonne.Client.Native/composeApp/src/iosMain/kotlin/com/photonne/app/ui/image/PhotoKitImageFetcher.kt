@@ -17,8 +17,8 @@ import okio.FileSystem
 import platform.CoreGraphics.CGSizeMake
 import platform.Foundation.NSData
 import platform.Photos.PHAsset
+import platform.Photos.PHCachingImageManager
 import platform.Photos.PHImageContentModeAspectFill
-import platform.Photos.PHImageManager
 import platform.Photos.PHImageRequestOptions
 import platform.Photos.PHImageRequestOptionsDeliveryModeHighQualityFormat
 import platform.Photos.PHImageRequestOptionsResizeModeFast
@@ -29,27 +29,49 @@ import kotlin.coroutines.resume
 
 private const val PHOTOKIT_SCHEME = "photokit"
 private const val USER_LIBRARY_AUTHORITY = "userLibrary"
-private const val TARGET_SIZE_PX = 512.0
 private const val JPEG_QUALITY = 0.85
 
 /**
+ * The single [PHCachingImageManager] behind every PhotoKit thumbnail:
+ * the grid's fetches and the viewport prefetcher must share one
+ * instance, or the prefetcher would warm a cache the fetcher never
+ * reads. One fixed target size keeps every request a cache hit against
+ * the prefetched entries.
+ */
+@OptIn(ExperimentalForeignApi::class)
+internal object PhotoKitThumbnails {
+    val manager = PHCachingImageManager()
+
+    const val TARGET_SIZE_PX = 512.0
+
+    fun requestOptions(allowNetwork: Boolean) = PHImageRequestOptions().apply {
+        // Exactly one callback — no degraded previews to filter, no
+        // follow-up that never arrives.
+        deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat
+        resizeMode = PHImageRequestOptionsResizeModeFast
+        networkAccessAllowed = allowNetwork
+    }
+}
+
+/**
  * Coil fetcher that resolves `photokit:<localIdentifier>` URIs to
- * sized JPEG thumbnails via PhotoKit. The Backup grid hands us these
- * URIs from the iOS `DeviceGallery`; without this fetcher the cells
- * render empty because Coil's built-in fetchers only know how to
- * handle `file://` and `http(s)://` data.
+ * sized JPEG thumbnails via PhotoKit. The timeline's device-library
+ * items and the Backup grid both hand us these URIs; without this
+ * fetcher the cells render empty because Coil's built-in fetchers only
+ * know how to handle `file://` and `http(s)://` data.
  *
  * Coil registers a default `String → Uri` mapper, so anything pulled
  * into `AsyncImage` as a String is already a `coil3.Uri` by the time
  * fetchers run — we type the factory against [Uri] and gate on the
  * scheme rather than trying to intercept the raw String.
  *
- * Uses `requestImageForAsset` with `aspectFill` at a single fixed
- * thumbnail size — large enough for both the grid cell and the
- * detail preview while still much cheaper than the full-resolution
- * image. `HighQualityFormat` delivery gives us exactly one callback
- * so we don't have to filter degraded previews or worry about a
- * follow-up that never arrives when an iCloud download fails.
+ * Requests go through the shared [PhotoKitThumbnails] caching manager
+ * and are LOCAL-FIRST: the common path never touches the network, so a
+ * cell is as fast as Photos' own thumbnail cache. Only when the local
+ * attempt returns nothing (iCloud-offloaded original with "optimise
+ * storage") does a second request retry with network access — off the
+ * scrolling hot path by construction, since it only ever runs for that
+ * minority of assets.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal class PhotoKitImageFetcher(
@@ -59,7 +81,9 @@ internal class PhotoKitImageFetcher(
     override suspend fun fetch(): FetchResult? {
         if (localIdentifier.isEmpty()) return null
         val asset = resolveAsset(localIdentifier) ?: return null
-        val image = requestThumbnail(asset) ?: return null
+        val image = requestThumbnail(asset, allowNetwork = false)
+            ?: requestThumbnail(asset, allowNetwork = true)
+            ?: return null
         val jpeg = UIImageJPEGRepresentation(image, JPEG_QUALITY) ?: return null
         val bytes = jpeg.toByteArray()
         if (bytes.isEmpty()) return null
@@ -78,27 +102,22 @@ internal class PhotoKitImageFetcher(
         return result.firstObject as? PHAsset
     }
 
-    private suspend fun requestThumbnail(asset: PHAsset): UIImage? =
+    private suspend fun requestThumbnail(asset: PHAsset, allowNetwork: Boolean): UIImage? =
         suspendCancellableCoroutine { cont ->
-            val opts = PHImageRequestOptions().apply {
-                deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat
-                resizeMode = PHImageRequestOptionsResizeModeFast
-                // Photos backed by iCloud may need a download; without
-                // this flag the request fails for unsynced assets on
-                // devices with optimised storage enabled.
-                networkAccessAllowed = true
-            }
-            val requestId = PHImageManager.defaultManager().requestImageForAsset(
+            val requestId = PhotoKitThumbnails.manager.requestImageForAsset(
                 asset = asset,
-                targetSize = CGSizeMake(TARGET_SIZE_PX, TARGET_SIZE_PX),
+                targetSize = CGSizeMake(
+                    PhotoKitThumbnails.TARGET_SIZE_PX,
+                    PhotoKitThumbnails.TARGET_SIZE_PX
+                ),
                 contentMode = PHImageContentModeAspectFill,
-                options = opts,
+                options = PhotoKitThumbnails.requestOptions(allowNetwork),
                 resultHandler = { image, _ ->
                     if (cont.isActive) cont.resume(image)
                 }
             )
             cont.invokeOnCancellation {
-                PHImageManager.defaultManager().cancelImageRequest(requestId)
+                PhotoKitThumbnails.manager.cancelImageRequest(requestId)
             }
         }
 
