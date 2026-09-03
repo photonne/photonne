@@ -41,7 +41,16 @@ data class DeviceMedia(
      * Android — SAF only surfaces last-modified. Sent with the upload so
      * the server can preserve the device-side dates.
      */
-    val dateCreatedMillis: Long? = null
+    val dateCreatedMillis: Long? = null,
+    /**
+     * Pixel dimensions where the platform exposes them cheaply (iOS
+     * `PHAsset.pixelWidth/Height`). On iOS they are the ONLY dedup
+     * signal available without hashing: sizeBytes stays 0 and filenames
+     * are synthetic there, so the timeline's fallback dedup keys on
+     * (capture second, width, height) instead.
+     */
+    val width: Int? = null,
+    val height: Int? = null
 )
 
 /**

@@ -172,11 +172,21 @@ internal fun mergeTimelineWithLocal(
         it.checksum?.takeIf { c -> c.isNotBlank() }
     }
     val serverDedupKeys = server.mapTo(HashSet()) { dedupKey(it.fileName, it.fileSize) }
+    // Last-resort key for SIZELESS locals (iOS: PhotoKit exposes neither
+    // file size nor real filename cheaply, so the two keys above can never
+    // match, and an iCloud-offloaded original can't even be hashed for a
+    // checksum): capture second + pixel dimensions. Both sides speak the
+    // naive-local time frame, so the seconds line up. Only emitted when
+    // the dimensions are known — second-plus-null-dims would false-match.
+    val serverMoments = server.mapNotNullTo(HashSet()) { momentKey(it) }
     val dedupedLocal = local.filter { item ->
         val assetId = item.localServerAssetId
         if (assetId != null && assetId in serverIds) return@filter false
         val checksum = item.checksum
         if (!checksum.isNullOrBlank() && checksum in serverChecksums) return@filter false
+        if (item.fileSize == 0L && momentKey(item)?.let { it in serverMoments } == true) {
+            return@filter false
+        }
         dedupKey(item.fileName, item.fileSize) !in serverDedupKeys
     }
     if (dedupedLocal.isEmpty()) return server
@@ -199,6 +209,13 @@ internal fun mergeTimelineWithLocal(
 }
 
 private fun dedupKey(fileName: String, fileSize: Long): String = "$fileName|$fileSize"
+
+/** (capture second, width, height, kind) — null when dimensions are unknown. */
+private fun momentKey(item: TimelineItem): String? {
+    val width = item.width ?: return null
+    val height = item.height ?: return null
+    return "${item.fileCreatedAt.epochSeconds}|$width|$height|${item.isVideo}"
+}
 
 /**
  * Finds the grid-entry index of the header that matches [target] (or the

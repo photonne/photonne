@@ -338,6 +338,8 @@ class DeviceLibraryStore(
                 scannedAt = instant,
                 type = if (item.type == DeviceMediaType.Video) "VIDEO" else "IMAGE",
                 checksum = identity?.sha256 ?: ledgerRow?.sha256,
+                width = item.width,
+                height = item.height,
                 hasThumbnails = false,
                 localThumbnailModel = item.uri,
                 localUri = item.uri,

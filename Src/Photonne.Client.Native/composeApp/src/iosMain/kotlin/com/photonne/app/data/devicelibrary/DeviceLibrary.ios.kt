@@ -84,7 +84,9 @@ actual class DeviceLibrary {
                     sizeBytes = 0L,
                     dateModifiedMillis = modified ?: created ?: 0L,
                     type = type,
-                    dateCreatedMillis = created
+                    dateCreatedMillis = created,
+                    width = asset.pixelWidth.toInt().takeIf { it > 0 },
+                    height = asset.pixelHeight.toInt().takeIf { it > 0 }
                 )
             }
             out
