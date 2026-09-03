@@ -42,8 +42,16 @@ expect class DeviceGallery {
      * Stream the file's bytes through SHA-256 in fixed-size chunks
      * without holding the full payload in memory. Required for files
      * up to the server's 200 MB cap.
+     *
+     * [allowNetwork] only matters on iOS, where an iCloud-offloaded
+     * original ("optimise storage") needs a download before it can be
+     * hashed: the backup pipeline allows it (it must upload the bytes
+     * anyway), while the timeline's identity resolver passes false and
+     * treats the failure as "not resolvable right now" — browsing a
+     * month must never trigger original downloads. Android and desktop
+     * always read locally and ignore the flag.
      */
-    suspend fun computeSha256(media: DeviceMedia): String
+    suspend fun computeSha256(media: DeviceMedia, allowNetwork: Boolean = true): String
 
     /**
      * Opens [media] as a streaming [kotlinx.io.Source] and runs [block]

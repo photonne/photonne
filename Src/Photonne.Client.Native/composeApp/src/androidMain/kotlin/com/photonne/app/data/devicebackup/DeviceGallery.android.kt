@@ -107,7 +107,7 @@ actual class DeviceGallery(private val context: Context) {
         }
     }
 
-    actual suspend fun computeSha256(media: DeviceMedia): String =
+    actual suspend fun computeSha256(media: DeviceMedia, allowNetwork: Boolean): String =
         withContext(Dispatchers.IO) {
             val digest = MessageDigest.getInstance("SHA-256")
             val isVideo = media.type == DeviceMediaType.Video

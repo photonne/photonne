@@ -153,10 +153,11 @@ internal fun groupTimelineEntries(
  * already typed as [TimelineItem] — the latter carry
  * `localUri`/`localThumbnailModel`). The merge:
  *
- * 1. Dedups local items against server items by SHA-256 (when both
- *    sides know it) and, as a fallback, by `(fileName, fileSize)`.
- *    This stops Unknown device entries from double-rendering when the
- *    server already has the photo.
+ * 1. Dedups local items against server items — by established server
+ *    assetId first (the identity map's ground truth), then by SHA-256
+ *    (when both sides know it) and, as a last resort, by
+ *    `(fileName, fileSize)`. This stops device entries from
+ *    double-rendering when the server already has the photo.
  * 2. Interleaves the survivors with the server list, preserving
  *    descending `fileCreatedAt` order so click callbacks resolve back
  *    to the right entry via the merged list's index.
@@ -166,11 +167,14 @@ internal fun mergeTimelineWithLocal(
     local: List<TimelineItem>
 ): List<TimelineItem> {
     if (local.isEmpty()) return server
+    val serverIds = server.mapTo(HashSet()) { it.id }
     val serverChecksums = server.mapNotNullTo(HashSet()) {
         it.checksum?.takeIf { c -> c.isNotBlank() }
     }
     val serverDedupKeys = server.mapTo(HashSet()) { dedupKey(it.fileName, it.fileSize) }
     val dedupedLocal = local.filter { item ->
+        val assetId = item.localServerAssetId
+        if (assetId != null && assetId in serverIds) return@filter false
         val checksum = item.checksum
         if (!checksum.isNullOrBlank() && checksum in serverChecksums) return@filter false
         dedupKey(item.fileName, item.fileSize) !in serverDedupKeys

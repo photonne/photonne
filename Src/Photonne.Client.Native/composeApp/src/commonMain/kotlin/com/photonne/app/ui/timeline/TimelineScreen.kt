@@ -399,15 +399,18 @@ fun TimelineScreen(
                                 val expanded =
                                     expandWithNeighborBuckets(visible, bucketEntries.bucketOrder)
                                 onBucketsVisible(expanded)
-                                // Same settled window, second consumer: keep the
-                                // on/near-viewport device thumbnails warm so
+                                // Same settled window, two more consumers: keep
+                                // the on/near-viewport device thumbnails warm so
                                 // cells paint from cache (PhotoKit pre-decodes
-                                // on iOS; no-op on Android). Off-main — the
-                                // platform may hit its media DB to resolve URIs.
+                                // on iOS; no-op on Android), and resolve any
+                                // missing device↔server identities exactly where
+                                // the user is looking (hash + bulk check, banked
+                                // forever). Off-main — the platform may hit its
+                                // media DB to resolve URIs.
                                 withContext(Dispatchers.Default) {
-                                    DeviceThumbnailPrefetcher.setWindow(
-                                        localThumbnailUris(expanded, bucketEntries)
-                                    )
+                                    val window = localThumbnailUris(expanded, bucketEntries)
+                                    DeviceThumbnailPrefetcher.setWindow(window)
+                                    deviceLibrary.requestIdentityResolution(window)
                                 }
                             }
                     }

@@ -70,7 +70,7 @@ actual class DeviceGallery {
             out.sortedByDescending { it.dateModifiedMillis }
         }
 
-    actual suspend fun computeSha256(media: DeviceMedia): String =
+    actual suspend fun computeSha256(media: DeviceMedia, allowNetwork: Boolean): String =
         withContext(Dispatchers.IO) {
             val digest = MessageDigest.getInstance("SHA-256")
             val file = File(URI(media.uri))

@@ -31,7 +31,15 @@ data class TimelineItem(
     // emits these, so they're @Transient to stay out of serialization.
     @Transient val localThumbnailModel: String? = null,
     @Transient val localUri: String? = null,
-    @Transient val localSyncBadge: LocalSyncBadge? = null
+    @Transient val localSyncBadge: LocalSyncBadge? = null,
+    /**
+     * For device-local entries whose server identity is established
+     * (device↔server identity map): the server asset this file IS.
+     * The bucket merge dedups on it — stronger than the checksum or
+     * (fileName, fileSize) heuristics, which need the server side to
+     * happen to expose comparable values.
+     */
+    @Transient val localServerAssetId: String? = null
 ) {
     val isVideo: Boolean get() = type.equals("VIDEO", ignoreCase = true)
     val isLocalOnly: Boolean get() = localUri != null

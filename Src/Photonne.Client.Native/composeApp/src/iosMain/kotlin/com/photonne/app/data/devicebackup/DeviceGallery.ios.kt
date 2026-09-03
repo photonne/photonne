@@ -107,13 +107,13 @@ actual class DeviceGallery {
         }
     }
 
-    actual suspend fun computeSha256(media: DeviceMedia): String {
+    actual suspend fun computeSha256(media: DeviceMedia, allowNetwork: Boolean): String {
         val asset = resolveAsset(media.uri)
             ?: throw DeviceGalleryUnavailable("Asset not found for ${media.displayName}")
         val resource = primaryResource(asset)
             ?: throw DeviceGalleryUnavailable("No data resource for ${media.displayName}")
         val digest = Sha256()
-        streamResourceData(resource) { data ->
+        streamResourceData(resource, allowNetwork) { data ->
             val len = data.length.toInt()
             if (len == 0) return@streamResourceData
             val src = data.bytes ?: return@streamResourceData
@@ -272,13 +272,15 @@ private fun defaultMimeFor(type: DeviceMediaType): String =
 @OptIn(ExperimentalForeignApi::class)
 private suspend fun streamResourceData(
     resource: PHAssetResource,
+    allowNetwork: Boolean = true,
     onChunk: (NSData) -> Unit
 ) = suspendCancellableCoroutine { cont ->
     val options = PHAssetResourceRequestOptions().apply {
         // Photos backed by iCloud may need a download; without this
         // flag the request fails immediately for unsynced assets on
-        // devices with optimised storage enabled.
-        networkAccessAllowed = true
+        // devices with optimised storage enabled. The identity resolver
+        // passes false on purpose — see DeviceGallery.computeSha256.
+        networkAccessAllowed = allowNetwork
     }
     PHAssetResourceManager.defaultManager().requestDataForAssetResource(
         resource = resource,

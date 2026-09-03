@@ -148,10 +148,14 @@ fun commonModule(config: PhotonneAppConfig) = module {
             ledger = get()
         )
     }
+    single { com.photonne.app.data.devicelibrary.DeviceIdentityMap(get()) }
     single {
         com.photonne.app.data.devicelibrary.DeviceLibraryStore(
             library = get(),
             ledger = get(),
+            identityMap = get(),
+            gallery = get(),
+            api = get(),
             settings = get()
         )
     }

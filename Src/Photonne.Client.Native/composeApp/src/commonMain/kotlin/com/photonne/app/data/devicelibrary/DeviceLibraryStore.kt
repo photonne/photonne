@@ -1,6 +1,8 @@
 package com.photonne.app.data.devicelibrary
 
+import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.devicebackup.BackupLedger
+import com.photonne.app.data.devicebackup.DeviceGallery
 import com.photonne.app.data.devicebackup.DeviceMedia
 import com.photonne.app.data.devicebackup.DeviceMediaType
 import com.photonne.app.data.devicebackup.LedgerEntry
@@ -11,6 +13,9 @@ import com.russhwolf.settings.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +24,10 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 data class DeviceLibraryUiState(
@@ -42,24 +50,48 @@ data class DeviceLibraryUiState(
  * enumeration, and reloads (coalesced) whenever the platform media
  * index reports a change — take a photo, switch to the app, it's there.
  *
- * Sync knowledge is an overlay, never a prerequisite: rows the backup
- * ledger already knows contribute their SHA-256 (so the bucket merge
- * dedups the local copy against the server item) and a badge for
- * confirmed pending/failed files. Unmatched files simply render with
- * no badge — display never waits for hashing, verification, or the
- * network. Ledger rows are keyed by the backup flow's SAF uris on
- * Android, so the join also tries a (size, mtime-seconds) fingerprint
- * to bridge them to MediaStore uris; on iOS both flows share the
- * `photokit:` scheme and the uri join is exact.
+ * Sync knowledge is an overlay, never a prerequisite — display never
+ * waits for hashing, verification, or the network. Two layered sources:
+ *
+ * 1. **The identity map** ([DeviceIdentityMap]): persisted, keyed by
+ *    library uri, fingerprint-invalidated. `assetId` is ground truth
+ *    for the bucket merge's dedup; `sha256` backs the checksum dedup.
+ * 2. **The backup ledger**: knowledge the backup flow already paid for.
+ *    Rows are keyed by the backup's SAF uris on Android, so the join
+ *    also tries a (size, mtime-seconds) fingerprint to bridge them to
+ *    MediaStore uris; on iOS both flows share the `photokit:` scheme
+ *    and the uri join is exact. Bridged matches are PERSISTED into the
+ *    identity map, so the bridge is paid once and identities survive a
+ *    ledger folder-clear. Confirmed pending/failed verdicts become the
+ *    cell badges.
+ *
+ * Gaps are filled lazily by [requestIdentityResolution]: the timeline
+ * hands over the settled viewport window, and items with no identity
+ * yet are hashed locally (never via iCloud download) and checked
+ * against the server in bulk — identity resolves exactly where the
+ * user looks, once, forever.
  */
 class DeviceLibraryStore(
     private val library: DeviceLibrary,
     private val ledger: BackupLedger,
+    private val identityMap: DeviceIdentityMap,
+    private val gallery: DeviceGallery,
+    private val api: PhotonneApi,
     private val settings: Settings
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val refreshMutex = Mutex()
+    private val resolveMutex = Mutex()
     private var started = false
+
+    /** Last enumeration, uri-keyed in display order — the resolver needs
+     *  the [DeviceMedia] back to hash it. */
+    private var mediaByUri: Map<String, DeviceMedia> = emptyMap()
+
+    /** URIs whose local-only hash failed this session (iCloud-offloaded
+     *  original, unreadable file). Skipped until next launch instead of
+     *  retrying on every viewport visit. Guarded by [resolveMutex]. */
+    private val unresolvable = mutableSetOf<String>()
 
     private val _state = MutableStateFlow(
         DeviceLibraryUiState(hasPrompted = settings.getBoolean(KEY_PROMPTED, false))
@@ -95,9 +127,9 @@ class DeviceLibraryStore(
             }
             _state.update { it.copy(access = access, isLoading = true) }
             val media = runCatching { library.loadAll() }.getOrDefault(emptyList())
-            val overlay = runCatching { ledger.allEntries() }.getOrDefault(emptyList())
-            val items = buildItems(media, overlay)
-            _state.update { it.copy(items = items, isLoading = false) }
+            mediaByUri = media.associateBy { it.uri }
+            rebuildItems(media)
+            _state.update { it.copy(isLoading = false) }
         }
     }
 
@@ -114,23 +146,152 @@ class DeviceLibraryStore(
         scope.launch { refresh() }
     }
 
-    private fun buildItems(
-        media: List<DeviceMedia>,
-        overlay: List<LedgerEntry>
-    ): List<TimelineItem> {
-        val byUri = HashMap<String, LedgerEntry>(overlay.size)
-        val byFingerprint = HashMap<String, LedgerEntry>(overlay.size)
-        for (entry in overlay) {
-            byUri[entry.uri] = entry
+    /**
+     * Establishes server identities for [uris] where missing: hash
+     * locally (bounded, never downloading iCloud originals), bulk-check
+     * against the server, persist, and refresh the published items so
+     * the merge dedups immediately. Fire-and-forget — the timeline
+     * calls this with each settled viewport window.
+     */
+    fun requestIdentityResolution(uris: List<String>) {
+        if (uris.isEmpty()) return
+        scope.launch { resolveIdentities(uris) }
+    }
+
+    private suspend fun resolveIdentities(uris: List<String>) {
+        resolveMutex.withLock {
+            val media = mediaByUri
+            val identities = runCatching { identityMap.all() }.getOrDefault(emptyMap())
+            val now = Clock.System.now().toEpochMilliseconds()
+
+            val toHash = ArrayList<DeviceMedia>()
+            val toRecheck = ArrayList<DeviceIdentity>()
+            for (uri in uris.distinct()) {
+                val item = media[uri] ?: continue
+                if (uri in unresolvable) continue
+                val identity = identities[uri]?.takeIf { it.matchesFingerprint(item) }
+                when {
+                    identity?.assetId != null -> Unit // established — nothing to do
+                    identity?.sha256 != null -> {
+                        // Hashed but unmatched last time. Re-ask lazily so an
+                        // upload from another device is eventually noticed
+                        // (checkedAtMillis null = the check itself failed —
+                        // retry on next visit).
+                        val checkedAt = identity.checkedAtMillis
+                        if (checkedAt == null || now - checkedAt >= RECHECK_MILLIS) {
+                            toRecheck += identity
+                        }
+                    }
+                    else -> toHash += item
+                }
+            }
+            if (toHash.isEmpty() && toRecheck.isEmpty()) return
+
+            // Hash phase: local-only, bounded. Failures (typically an
+            // iCloud-offloaded original) are parked for the session.
+            val semaphore = Semaphore(HASH_CONCURRENCY)
+            val hashResults = coroutineScope {
+                toHash.map { item ->
+                    async {
+                        semaphore.withPermit {
+                            item to runCatching {
+                                gallery.computeSha256(item, allowNetwork = false)
+                            }.getOrNull()
+                        }
+                    }
+                }.awaitAll()
+            }
+            val hashed = ArrayList<DeviceIdentity>(hashResults.size)
+            hashResults.forEach { (item, sha) ->
+                if (sha == null) {
+                    unresolvable += item.uri
+                } else {
+                    hashed += DeviceIdentity(
+                        uri = item.uri,
+                        sizeBytes = item.sizeBytes,
+                        dateModifiedMillis = item.dateModifiedMillis,
+                        sha256 = sha,
+                        assetId = null,
+                        checkedAtMillis = null
+                    )
+                }
+            }
+
+            // Check phase: one bulk round-trip per 500 distinct hashes. A
+            // failed batch keeps checkedAtMillis null so only the (cheap)
+            // check is retried later — the hash work is already banked.
+            val candidates = hashed + toRecheck
+            if (candidates.isEmpty()) return
+            val assetBySha = HashMap<String, String>()
+            var checkFailed = false
+            candidates.mapTo(LinkedHashSet()) { it.sha256!! }
+                .chunked(CHECKSUM_BATCH)
+                .forEach { batch ->
+                    runCatching { api.checkChecksums(batch) }
+                        .onSuccess { assetBySha.putAll(it) }
+                        .onFailure { checkFailed = true }
+                }
+            val resolved = candidates.map { candidate ->
+                val assetId = assetBySha[candidate.sha256]
+                candidate.copy(
+                    assetId = assetId,
+                    checkedAtMillis = if (assetId == null && checkFailed) {
+                        candidate.checkedAtMillis
+                    } else now
+                )
+            }
+            runCatching { identityMap.upsertAll(resolved) }
+
+            // Republish so freshly-established identities dedup right away.
+            if (hashed.isNotEmpty() || resolved.any { it.assetId != null }) {
+                rebuildItems(media.values.toList())
+            }
+        }
+    }
+
+    /**
+     * Maps the enumeration to published [TimelineItem]s under the
+     * identity + ledger overlay, persisting any ledger knowledge the
+     * identity map doesn't have yet.
+     */
+    private fun rebuildItems(media: List<DeviceMedia>) {
+        val ledgerRows = runCatching { ledger.allEntries() }.getOrDefault(emptyList())
+        val identities = runCatching { identityMap.all() }.getOrDefault(emptyMap())
+
+        val ledgerByUri = HashMap<String, LedgerEntry>(ledgerRows.size)
+        val ledgerByFingerprint = HashMap<String, LedgerEntry>(ledgerRows.size)
+        for (entry in ledgerRows) {
+            ledgerByUri[entry.uri] = entry
             // Seconds precision: SAF lastModified carries millis, MediaStore
             // DATE_MODIFIED only seconds — rounding makes them comparable.
             if (entry.sizeBytes > 0L) {
-                byFingerprint["${entry.sizeBytes}|${entry.dateModifiedMillis / 1000}"] = entry
+                ledgerByFingerprint["${entry.sizeBytes}|${entry.dateModifiedMillis / 1000}"] =
+                    entry
             }
         }
-        return media.map { item ->
-            val ledgerRow = byUri[item.uri]
-                ?: byFingerprint["${item.sizeBytes}|${item.dateModifiedMillis / 1000}"]
+
+        val bridged = ArrayList<DeviceIdentity>()
+        val items = media.map { item ->
+            val identity = identities[item.uri]?.takeIf { it.matchesFingerprint(item) }
+            val ledgerRow = ledgerByUri[item.uri]
+                ?: ledgerByFingerprint["${item.sizeBytes}|${item.dateModifiedMillis / 1000}"]
+            val ledgerAssetId = ledgerRow?.assetId
+                ?.takeIf { it.isNotEmpty() && ledgerRow.state == LedgerState.Synced }
+
+            // Bank what the backup flow already knows and the map doesn't.
+            if (ledgerRow?.sha256 != null &&
+                (identity?.sha256 == null || (identity.assetId == null && ledgerAssetId != null))
+            ) {
+                bridged += DeviceIdentity(
+                    uri = item.uri,
+                    sizeBytes = item.sizeBytes,
+                    dateModifiedMillis = item.dateModifiedMillis,
+                    sha256 = ledgerRow.sha256,
+                    assetId = ledgerAssetId ?: identity?.assetId,
+                    checkedAtMillis = ledgerRow.lastVerifiedAtMillis
+                )
+            }
+
             val instant = Instant.fromEpochMilliseconds(
                 item.dateCreatedMillis ?: item.dateModifiedMillis
             )
@@ -145,10 +306,11 @@ class DeviceLibraryStore(
                 extension = item.displayName.substringAfterLast('.', missingDelimiterValue = ""),
                 scannedAt = instant,
                 type = if (item.type == DeviceMediaType.Video) "VIDEO" else "IMAGE",
-                checksum = ledgerRow?.sha256,
+                checksum = identity?.sha256 ?: ledgerRow?.sha256,
                 hasThumbnails = false,
                 localThumbnailModel = item.uri,
                 localUri = item.uri,
+                localServerAssetId = identity?.assetId ?: ledgerAssetId,
                 // Only CONFIRMED verdicts badge. Unknown rows are just
                 // "photos on this phone" — claiming Pending for a whole
                 // unverified library would drown the grid in badges.
@@ -159,10 +321,23 @@ class DeviceLibraryStore(
                 }
             )
         }
+        runCatching { identityMap.upsertAll(bridged) }
+        _state.update { it.copy(items = items) }
     }
 
     private companion object {
         const val KEY_PROMPTED = "device_library.prompted"
         const val CHANGE_COALESCE_MILLIS = 1_000L
+
+        /** Parallel local hashes during identity resolution — low on
+         *  purpose: this runs while the user is browsing. */
+        const val HASH_CONCURRENCY = 2
+
+        /** Mirrors the server's cap on /check-checksums (1000) with the
+         *  same headroom the backup verifier uses. */
+        const val CHECKSUM_BATCH = 500
+
+        /** How long an "unmatched" verdict is trusted before re-asking. */
+        const val RECHECK_MILLIS = 24 * 60 * 60 * 1000L
     }
 }
