@@ -258,7 +258,7 @@ fun BackupScreen(
                     onUploadNow = viewModel::syncAllPending,
                     onOpenPending = onOpenPending,
                     onOpenEnrichment = onOpenEnrichment,
-                    onRecheck = viewModel::refreshSyncStates,
+                    onRecheck = { viewModel.refreshSyncStates() },
                     onStop = viewModel::stopCurrentPass,
                     onFreeSpace = { showFreeSpaceConfirm = true }
                 )

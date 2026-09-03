@@ -21,10 +21,12 @@ import com.photonne.app.data.devicebackup.LastBackupRun
 import kotlinx.datetime.Clock
 import com.photonne.app.data.error.UiError
 import com.photonne.app.data.error.UiErrorFactory
+import com.photonne.app.data.devicelibrary.DeviceLibrary
 import com.photonne.app.data.models.TimelineItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -187,6 +189,7 @@ data class SyncProgress(
 
 class DeviceBackupViewModel(
     private val repository: DeviceBackupRepository,
+    private val deviceLibrary: DeviceLibrary,
     private val backgroundScheduler: BackgroundSyncScheduler,
     private val progressBus: BackupProgressBus,
     private val errorFactory: UiErrorFactory,
@@ -228,6 +231,28 @@ class DeviceBackupViewModel(
             // Show the last scan instantly (cache), then re-scan to reconcile.
             seedFromCache()
             ensureLoaded()
+        }
+
+        // A new photo reaches the timeline the instant the platform indexes
+        // it, so its backup state has to catch up in the same breath: re-scan
+        // the backed-up folders (coalesced) on every media-index change. The
+        // reconcile writes the fresh UNKNOWN ledger rows — which is what the
+        // timeline badges as pending — and the follow-up verify runs in
+        // incremental mode: it hashes and asks about ONLY the new/changed
+        // files, never the full-ledger sweep.
+        if (repository.isSupported) {
+            viewModelScope.launch {
+                deviceLibrary.changes().conflate().collect {
+                    delay(MEDIA_CHANGE_COALESCE_MILLIS)
+                    val current = _state.value
+                    if (!current.isBackupEnabled) return@collect
+                    if (current.folders.isEmpty()) return@collect
+                    if (current.isCheckingHashes || current.isSyncing || current.isLoading) {
+                        return@collect
+                    }
+                    refreshFolderContents(current.folders, fullVerify = false)
+                }
+            }
         }
     }
 
@@ -437,7 +462,12 @@ class DeviceBackupViewModel(
      * existing grid stays visible during the re-scan — only the
      * initial load (empty entries) shows a spinner.
      */
-    private fun refreshFolderContents(folders: List<DeviceFolderRef>) {
+    private fun refreshFolderContents(
+        folders: List<DeviceFolderRef>,
+        /** False on the media-change trigger: verify only new/changed files
+         *  instead of re-asking the server about the whole ledger. */
+        fullVerify: Boolean = true
+    ) {
         val showSpinner = _state.value.entries.isEmpty()
         if (showSpinner) {
             _state.update { it.copy(isLoading = true, error = null) }
@@ -474,7 +504,7 @@ class DeviceBackupViewModel(
                     seedSyncStatesFromLedger(folders)
                     // …then reconcile against the server. Cheap now: only
                     // new/changed files hash, the rest is 1-2 bulk calls.
-                    maybeAutoVerify()
+                    maybeAutoVerify(fullReconcile = fullVerify)
                     // Persist the fresh scan so the next launch can seed the
                     // timeline instantly from cache.
                     withContext(Dispatchers.Default) {
@@ -553,7 +583,7 @@ class DeviceBackupViewModel(
      * for the whole folder instead of one per file. Cancelling mid-pass
      * loses nothing: hashes and verdicts persist as they are computed.
      */
-    fun refreshSyncStates() {
+    fun refreshSyncStates(fullReconcile: Boolean = true) {
         val folders = _state.value.folders
         if (folders.isEmpty()) return
         if (_state.value.isCheckingHashes) return
@@ -582,7 +612,8 @@ class DeviceBackupViewModel(
                                 )
                             }
                         },
-                        shouldContinue = { _state.value.isCheckingHashes }
+                        shouldContinue = { _state.value.isCheckingHashes },
+                        fullReconcile = fullReconcile
                     )
                     hashedSoFar = _state.value.hashProgress?.hashedCount ?: alreadyHashed
                 }
@@ -642,11 +673,11 @@ class DeviceBackupViewModel(
      * The ledger makes this cheap enough to run on every screen entry, so
      * the pending count is always real instead of "Unknown until you ask".
      */
-    private fun maybeAutoVerify() {
+    private fun maybeAutoVerify(fullReconcile: Boolean = true) {
         val current = _state.value
         if (!current.isBackupEnabled) return
         if (current.isCheckingHashes || current.isSyncing) return
-        refreshSyncStates()
+        refreshSyncStates(fullReconcile)
     }
 
     /** Selects everything not yet on the server and uploads it — the status
@@ -1095,6 +1126,10 @@ class DeviceBackupViewModel(
     private companion object {
         /** Minimum gap between ledger re-reads while a worker pass uploads. */
         const val LEDGER_REFRESH_INTERVAL_MILLIS = 500L
+
+        /** Coalesce for media-index-change re-scans (a camera burst, a bulk
+         *  save) — one folder re-scan ~2 s after the first signal. */
+        const val MEDIA_CHANGE_COALESCE_MILLIS = 2_000L
 
         /** How long we keep the optimistic "starting…" state before assuming
          *  the worker never got off the ground. */
