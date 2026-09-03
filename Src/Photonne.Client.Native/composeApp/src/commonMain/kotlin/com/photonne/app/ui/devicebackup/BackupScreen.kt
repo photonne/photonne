@@ -182,6 +182,14 @@ fun BackupScreen(
     // this grant, so ask exactly when the user opts into backups.
     val notifications = rememberNotificationPermission()
     var showFreeSpaceConfirm by remember { mutableStateOf(false) }
+    // Free-space over MediaStore-backed entries (bucket sources) rides the
+    // SYSTEM's permanent-delete consent flow — a bare delete is rejected for
+    // media the app doesn't own. The launched uris wait here for the result.
+    var pendingFreeUris by remember { mutableStateOf<List<String>>(emptyList()) }
+    val freeSpaceDeleter = com.photonne.app.data.devicelibrary.rememberDeviceMediaDeleter { ok ->
+        if (ok) viewModel.applyFreedDeviceUris(pendingFreeUris)
+        pendingFreeUris = emptyList()
+    }
     var settingsExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Feedback goes through the app-wide snackbar like everywhere else, instead
@@ -383,6 +391,13 @@ fun BackupScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showFreeSpaceConfirm = false
+                    // MediaStore-backed entries → system consent flow;
+                    // SAF/PhotoKit entries → the in-process path as always.
+                    val deviceUris = viewModel.syncedMediaStoreUris()
+                    if (deviceUris.isNotEmpty()) {
+                        pendingFreeUris = deviceUris
+                        freeSpaceDeleter(deviceUris)
+                    }
                     viewModel.freeUpSyncedSpace()
                 }) {
                     Text(

@@ -27,3 +27,17 @@ import androidx.compose.runtime.Composable
 expect fun rememberDeviceMediaTrasher(
     onResult: (trashed: Boolean) -> Unit
 ): (uris: List<String>) -> Unit
+
+/**
+ * Companion to [rememberDeviceMediaTrasher] for the "free up space"
+ * flow: a PERMANENT delete behind the platform's own consent dialog,
+ * because trashing keeps occupying storage for 30 days and frees
+ * nothing. Android 11+ uses `MediaStore.createDeleteRequest`; iOS has
+ * no permanent-delete API, so assets go to "Recently Deleted" like the
+ * trasher (that is iOS's free-space semantics); pre-Android-11 and
+ * desktop refuse (false).
+ */
+@Composable
+expect fun rememberDeviceMediaDeleter(
+    onResult: (deleted: Boolean) -> Unit
+): (uris: List<String>) -> Unit

@@ -1045,10 +1045,50 @@ class DeviceBackupViewModel(
      * the caller has already shown a confirmation dialog — by the
      * time this fires, the user has agreed to the deletion.
      */
+    /** Synced entries whose files live in MediaStore (bucket sources) —
+     *  freeing THOSE goes through the system's consent flow
+     *  (rememberDeviceMediaDeleter), because API 29+ rejects a bare
+     *  delete on media the app doesn't own. */
+    fun syncedMediaStoreUris(): List<String> = _state.value.entries
+        .filter {
+            it.syncState is DeviceMediaSyncState.Synced &&
+                it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
+        }
+        .map { it.media.uri }
+
+    /** The system's delete flow just removed [uris] (free-space on bucket
+     *  sources): drop them from the grid and report the freed bytes. The
+     *  next media-change rescan reconciles their ledger rows away. */
+    fun applyFreedDeviceUris(uris: List<String>) {
+        if (uris.isEmpty()) return
+        val uriSet = uris.toSet()
+        val freedBytes = _state.value.entries
+            .filter { it.media.uri in uriSet }
+            .sumOf { it.media.sizeBytes }
+        _state.update { current ->
+            current.copy(entries = current.entries.filterNot { it.media.uri in uriSet })
+        }
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    statusMessage = getString(
+                        Res.string.device_backup_free_space_done,
+                        humanBytes(freedBytes),
+                        uris.size
+                    )
+                )
+            }
+        }
+    }
+
     fun freeUpSyncedSpace() {
         if (_state.value.isFreeingSpace || _state.value.isSyncing) return
         val targets = _state.value.entries.filter {
-            it.syncState is DeviceMediaSyncState.Synced
+            // MediaStore-backed entries are freed through the system consent
+            // flow (see syncedMediaStoreUris) — a bare delete would fail for
+            // every file the app doesn't own.
+            it.syncState is DeviceMediaSyncState.Synced &&
+                !it.media.uri.startsWith(MEDIASTORE_ITEM_URI_PREFIX)
         }
         if (targets.isEmpty()) return
 
@@ -1132,6 +1172,11 @@ class DeviceBackupViewModel(
         /** Coalesce for media-index-change re-scans (a camera burst, a bulk
          *  save) — one folder re-scan ~2 s after the first signal. */
         const val MEDIA_CHANGE_COALESCE_MILLIS = 2_000L
+
+        /** Android MediaStore item uris (bucket sources). SAF document uris
+         *  are also content://, but under provider authorities — only the
+         *  media authority takes this prefix. */
+        const val MEDIASTORE_ITEM_URI_PREFIX = "content://media/"
 
         /** How long we keep the optimistic "starting…" state before assuming
          *  the worker never got off the ground. */

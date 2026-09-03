@@ -48,3 +48,29 @@ actual fun rememberDeviceMediaTrasher(
         }
     }
 }
+
+@Composable
+actual fun rememberDeviceMediaDeleter(
+    onResult: (deleted: Boolean) -> Unit
+): (uris: List<String>) -> Unit {
+    val context = LocalContext.current
+    val currentOnResult = rememberUpdatedState(onResult)
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        currentOnResult.value(result.resultCode == Activity.RESULT_OK)
+    }
+    return remember(launcher, context) {
+        deleter@{ uris ->
+            val parsed = uris.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+            if (parsed.isEmpty() || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                // Pre-R has no consent flow — refuse rather than destroy
+                // silently (same stance as the trasher).
+                currentOnResult.value(false)
+                return@deleter
+            }
+            val request = MediaStore.createDeleteRequest(context.contentResolver, parsed)
+            launcher.launch(IntentSenderRequest.Builder(request.intentSender).build())
+        }
+    }
+}
