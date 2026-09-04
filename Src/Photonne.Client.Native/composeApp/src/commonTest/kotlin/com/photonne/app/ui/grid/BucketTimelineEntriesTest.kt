@@ -127,15 +127,37 @@ class BucketTimelineEntriesTest {
     }
 
     @Test
-    fun local_items_of_unloaded_months_stay_hidden_until_load() {
+    fun local_items_of_unloaded_months_render_immediately_with_skeleton_remainder() {
         val result = buildBucketEntries(
             buckets = listOf(skeleton("2026-02", 30)),
             localItems = listOf(item("local-feb", "2026-02-25T10:00:00Z", localUri = "uri")),
             grouping = TimelineGrouping.Month
         )
 
-        assertTrue(result.mergedItems.isEmpty())
-        assertEquals(30, result.entries.filterIsInstance<TimelineEntry.SkeletonBucket>().single().count)
+        // Local-first: photos already on the phone never wait for the network.
+        // The skeleton only reserves the server-count remainder so hydration
+        // doesn't shift scroll.
+        assertEquals(listOf("local-feb"), result.mergedItems.map { it.id })
+        assertEquals(29, result.entries.filterIsInstance<TimelineEntry.SkeletonBucket>().single().count)
+    }
+
+    @Test
+    fun partial_local_month_is_isolated_from_neighbouring_pager_runs() {
+        val result = buildBucketEntries(
+            buckets = listOf(
+                loaded("2026-03", item("mar-1", "2026-03-05T10:00:00Z")),
+                skeleton("2026-02", 30),
+                loaded("2026-01", item("jan-1", "2026-01-05T10:00:00Z"))
+            ),
+            localItems = listOf(item("local-feb", "2026-02-25T10:00:00Z", localUri = "uri")),
+            grouping = TimelineGrouping.Month
+        )
+
+        // Swiping the pager inside the half-hydrated February must not bleed
+        // into March or January: the server-only photos in between are still
+        // missing, so each of the three months lives in its own run.
+        val runIds = result.loadedRanges.map { it.runId }
+        assertEquals(3, runIds.distinct().size)
     }
 
     @Test
