@@ -70,20 +70,27 @@ public class AssetIndexingService
 
             // Check by checksum (handles renames/moves) — only for internal assets to avoid
             // accidentally matching unrelated files from different sources.
+            // Disk is the source of truth: a checksum match is the SAME asset only
+            // when its recorded file is gone from disk (a move/rename). If the
+            // original still exists, this file is a physical copy and gets its own
+            // row — visible in its own folder, surfaced by Duplicates later.
             Asset? existingByChecksum = null;
             if (!externalLibraryId.HasValue)
             {
-                existingByChecksum = await _dbContext.Assets
+                var checksumMatches = await _dbContext.Assets
                     .Include(a => a.Thumbnails)
                     .Include(a => a.Exif)
-                    .FirstOrDefaultAsync(a => a.Checksum == checksum && a.DeletedAt == null, ct);
+                    .Where(a => a.Checksum == checksum && a.DeletedAt == null && a.ExternalLibraryId == null)
+                    .ToListAsync(ct);
 
-                if (existingByChecksum != null && existingByChecksum.Thumbnails.Any())
+                foreach (var candidate in checksumMatches)
                 {
-                    Console.WriteLine($"[INDEX-FILE] Already indexed by checksum: {storedPath}");
-                    await RefreshFileSnapshotIfChangedAsync(existingByChecksum, physicalPath, ct);
-                    await EnqueueMissingEnrichmentAsync(existingByChecksum, ct);
-                    return existingByChecksum;
+                    var candidatePhysical = await _settingsService.ResolvePhysicalPathAsync(candidate.FullPath);
+                    if (!File.Exists(candidatePhysical))
+                    {
+                        existingByChecksum = candidate;
+                        break;
+                    }
                 }
             }
 
@@ -114,10 +121,13 @@ public class AssetIndexingService
             }
             else if (existingByChecksum != null)
             {
-                // File moved/renamed — update path
+                // File moved/renamed — update path. A prior scan may have marked
+                // the old path missing before the move was detected.
                 existingByChecksum.FullPath = storedPath;
                 existingByChecksum.FileName = fileInfo.Name;
                 existingByChecksum.FileModifiedAt = fileInfo.LastWriteTimeUtc;
+                existingByChecksum.FileSize = fileInfo.Length;
+                existingByChecksum.IsFileMissing = false;
                 asset = existingByChecksum;
                 isNew = false;
             }
@@ -192,7 +202,12 @@ public class AssetIndexingService
             // Backup contract satisfied: file + Asset row + checksum are persisted.
             // Enqueue the enrichment tasks; the worker runs EXIF/thumbnails/media
             // recognition/ML in the background. We don't gate the return on them.
-            await EnqueueEnrichmentAsync(asset, ct);
+            // A moved asset that already carries thumbnails keeps them — only the
+            // missing pieces are (re)queued.
+            if (isNew || !asset.Thumbnails.Any())
+                await EnqueueEnrichmentAsync(asset, ct);
+            else
+                await EnqueueMissingEnrichmentAsync(asset, ct);
 
             Console.WriteLine($"[INDEX-FILE] Indexed successfully: {storedPath} (id={asset.Id})");
             return asset;
