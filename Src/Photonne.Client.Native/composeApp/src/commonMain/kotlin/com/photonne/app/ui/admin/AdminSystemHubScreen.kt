@@ -3,16 +3,20 @@ package com.photonne.app.ui.admin
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.runtime.Composable
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.admin_system_backup
 import com.photonne.app.resources.admin_system_backup_subtitle
+import com.photonne.app.resources.admin_system_enrichment_failures
+import com.photonne.app.resources.admin_system_enrichment_failures_subtitle
 import com.photonne.app.resources.admin_system_run_tasks
 import com.photonne.app.resources.admin_system_run_tasks_subtitle
 import org.jetbrains.compose.resources.stringResource
 
 enum class AdminSystemEntry {
     RunTasks,
+    EnrichmentFailures,
     Backup,
 }
 
@@ -29,6 +33,12 @@ fun AdminSystemHubScreen(
             stringResource(Res.string.admin_system_run_tasks),
             stringResource(Res.string.admin_system_run_tasks_subtitle),
             Icons.Outlined.PlayArrow
+        ),
+        AdminHubEntry(
+            AdminSystemEntry.EnrichmentFailures.name,
+            stringResource(Res.string.admin_system_enrichment_failures),
+            stringResource(Res.string.admin_system_enrichment_failures_subtitle),
+            Icons.Outlined.ReportProblem
         ),
         AdminHubEntry(
             AdminSystemEntry.Backup.name,

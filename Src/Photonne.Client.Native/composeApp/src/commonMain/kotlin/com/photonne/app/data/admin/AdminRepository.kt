@@ -1,5 +1,8 @@
 package com.photonne.app.data.admin
 
+import com.photonne.app.data.api.AdminEnrichmentFailuresPage
+import com.photonne.app.data.api.AdminEnrichmentTaskActionResponse
+import com.photonne.app.data.api.AdminRetryAllFailuresResponse
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.AdminResetPasswordRequest
 import com.photonne.app.data.models.AdminStatsResponse
@@ -276,6 +279,23 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun resumeMaintenanceTaskStream(id: String): Flow<MaintenanceStreamEvent> =
         api.resumeMaintenanceTaskStream(id)
+
+    // --- Enrichment failures registry ---
+
+    suspend fun enrichmentFailures(
+        type: String? = null,
+        cursor: String? = null,
+        pageSize: Int = 50
+    ): AdminEnrichmentFailuresPage = api.adminEnrichmentFailures(type, cursor, pageSize)
+
+    suspend fun retryEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse =
+        api.adminRetryEnrichmentFailure(taskId)
+
+    suspend fun retryAllEnrichmentFailures(type: String? = null): AdminRetryAllFailuresResponse =
+        api.adminRetryAllEnrichmentFailures(type)
+
+    suspend fun suppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse =
+        api.adminSuppressEnrichmentFailure(taskId)
 
     // --- Backup / restore ---
 

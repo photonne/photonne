@@ -793,6 +793,22 @@
     <string name="admin_system_embedding_subtitle">Calcular embeddings para búsqueda semántica</string>
     <string name="admin_system_backup">Copia de seguridad</string>
     <string name="admin_system_backup_subtitle">Exportar e importar la base de datos</string>
+    <string name="admin_system_enrichment_failures">Assets con problemas</string>
+    <string name="admin_system_enrichment_failures_subtitle">Fallos de metadatos, miniaturas y análisis con su causa</string>
+
+    <!-- Admin enrichment failures registry -->
+    <string name="admin_enrichment_failures_empty">Ningún asset con problemas</string>
+    <string name="admin_enrichment_failures_load_error">No se pudo cargar el registro: %1$s</string>
+    <string name="admin_enrichment_failures_total">%1$d tarea(s) con problemas</string>
+    <string name="admin_enrichment_failures_filter_all">Todas</string>
+    <string name="admin_enrichment_failures_retry">Reintentar</string>
+    <string name="admin_enrichment_failures_retry_all">Reintentar todo</string>
+    <string name="admin_enrichment_failures_retrying_all">Reintentando…</string>
+    <string name="admin_enrichment_failures_suppress">Descartar</string>
+    <string name="admin_enrichment_failures_badge_permanent">Permanente</string>
+    <string name="admin_enrichment_failures_badge_suppressed">Descartado</string>
+    <string name="admin_enrichment_failures_attempts">%1$d intento(s)</string>
+    <string name="admin_enrichment_failures_load_more">Cargar más</string>
 
     <!-- Shared task UI (chips above the progress bar) -->
     <string name="admin_task_chip_running">En curso</string>

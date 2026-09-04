@@ -252,6 +252,43 @@ data class RetryAllTasksResponse(
     val retried: Int
 )
 
+// Admin failures registry DTOs — mirror /api/admin/enrichment/failures shape.
+@Serializable
+data class AdminEnrichmentFailureDto(
+    val taskId: String,
+    val assetId: String,
+    val fileName: String = "",
+    @Serializable(with = com.photonne.app.data.models.FlexibleInstantSerializer::class)
+    val fileCreatedAt: Instant? = null,
+    val ownerId: String? = null,
+    val ownerName: String? = null,
+    val taskType: String,
+    val status: String,
+    val errorMessage: String? = null,
+    val attemptCount: Int = 0,
+    val isPermanent: Boolean = false,
+    val lastAttemptAt: String? = null
+)
+
+@Serializable
+data class AdminEnrichmentFailuresPage(
+    val items: List<AdminEnrichmentFailureDto> = emptyList(),
+    val nextCursor: String? = null,
+    val total: Int = 0,
+    val countsByType: Map<String, Int> = emptyMap()
+)
+
+@Serializable
+data class AdminEnrichmentTaskActionResponse(
+    val taskId: String,
+    val status: String
+)
+
+@Serializable
+data class AdminRetryAllFailuresResponse(
+    val retried: Int = 0
+)
+
 @Serializable
 internal data class ExistsByChecksumBody(val assetId: String = "")
 
@@ -444,6 +481,22 @@ interface PhotonneApi {
 
     /** Resets all Failed enrichment tasks of an asset and re-enqueues them. */
     suspend fun retryAllEnrichmentTasks(assetId: String): RetryAllTasksResponse
+
+    /** Admin-wide registry of Failed/Suppressed enrichment tasks across all users. */
+    suspend fun adminEnrichmentFailures(
+        type: String? = null,
+        cursor: String? = null,
+        pageSize: Int = 50
+    ): AdminEnrichmentFailuresPage
+
+    /** Resets one Failed/Suppressed task back to Pending and re-enqueues it (admin). */
+    suspend fun adminRetryEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse
+
+    /** Resets every Failed task (optionally of one type) back to Pending (admin). */
+    suspend fun adminRetryAllEnrichmentFailures(type: String? = null): AdminRetryAllFailuresResponse
+
+    /** Marks one Failed task as Suppressed so no sweep ever retries the asset again (admin). */
+    suspend fun adminSuppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse
     /**
      * Looks up an existing asset by SHA-256 checksum on the server.
      * Returns the asset id when the user already has a matching file
@@ -3278,6 +3331,64 @@ class PhotonneApiClient(
             throw PhotonneApiException(
                 status = response.status.value,
                 message = "Retry all enrichment tasks failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminEnrichmentFailures(
+        type: String?,
+        cursor: String?,
+        pageSize: Int
+    ): AdminEnrichmentFailuresPage {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/enrichment/failures") {
+            parameter("pageSize", pageSize)
+            if (type != null) parameter("type", type)
+            if (cursor != null) parameter("cursor", cursor)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Enrichment failures fetch failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminRetryEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/admin/enrichment/failures/$taskId/retry")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Retry enrichment failure failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminRetryAllEnrichmentFailures(type: String?): AdminRetryAllFailuresResponse {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/admin/enrichment/failures/retry-all") {
+                if (type != null) parameter("type", type)
+            }
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Retry all enrichment failures failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminSuppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse {
+        val response: HttpResponse =
+            client.post("$baseUrl/api/admin/enrichment/failures/$taskId/suppress")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = parseErrorMessage(response)
+                    ?: "Suppress enrichment failure failed (${response.status.value})"
             )
         }
         return response.body()

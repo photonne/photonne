@@ -39,6 +39,7 @@ import com.photonne.app.data.auth.AuthRepository
 import com.photonne.app.resources.organize_skipped_done
 import com.photonne.app.resources.action_undo
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_system_enrichment_failures
 import com.photonne.app.resources.account_section_appearance
 import com.photonne.app.resources.account_section_profile
 import com.photonne.app.resources.account_section_security
@@ -263,6 +264,7 @@ private enum class MoreSubscreen {
     AdminSystemHub,
     AdminSystemRunTasks,
     AdminSystemDuplicates,
+    AdminSystemEnrichmentFailures,
     AdminSystemBackup
 }
 
@@ -297,6 +299,7 @@ private fun isAdminRunTasksDetail(subscreen: MoreSubscreen?): Boolean = when (su
 private fun isAdminSystemSubpage(subscreen: MoreSubscreen?): Boolean = when (subscreen) {
     MoreSubscreen.AdminSystemRunTasks,
     MoreSubscreen.AdminSystemDuplicates,
+    MoreSubscreen.AdminSystemEnrichmentFailures,
     MoreSubscreen.AdminSystemBackup -> true
     else -> false
 }
@@ -338,6 +341,7 @@ private fun adminSystemSubpageMeta(
 ): Pair<org.jetbrains.compose.resources.StringResource, Unit> = when (subscreen) {
     MoreSubscreen.AdminSystemRunTasks -> Res.string.admin_system_run_tasks to Unit
     MoreSubscreen.AdminSystemDuplicates -> Res.string.admin_system_duplicates to Unit
+    MoreSubscreen.AdminSystemEnrichmentFailures -> Res.string.admin_system_enrichment_failures to Unit
     MoreSubscreen.AdminSystemBackup -> Res.string.admin_system_backup to Unit
     else -> Res.string.admin_section_system to Unit
 }
@@ -382,6 +386,7 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSettingsVersion -> MoreSubscreen.AdminSettingsHub
     MoreSubscreen.AdminSystemDuplicates -> MoreSubscreen.AdminSystemRunTasks
     MoreSubscreen.AdminSystemRunTasks,
+    MoreSubscreen.AdminSystemEnrichmentFailures,
     MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
     MoreSubscreen.OrganizeRule -> MoreSubscreen.OrganizeInbox
     MoreSubscreen.Upload,
@@ -418,6 +423,25 @@ private fun com.photonne.app.data.models.MapPoint.toSyntheticTimelineItem():
         type = "Image",
         hasThumbnails = hasThumbnail
     )
+
+/** Same trick for a failures-registry row: the viewer re-queries the
+ * asset detail by id, so the registry's id + capture date are enough. */
+private fun com.photonne.app.data.api.AdminEnrichmentFailureDto.toSyntheticTimelineItem():
+    com.photonne.app.data.models.TimelineItem {
+    val date = fileCreatedAt ?: kotlinx.datetime.Instant.DISTANT_PAST
+    return com.photonne.app.data.models.TimelineItem(
+        id = assetId,
+        fileName = fileName,
+        fullPath = "",
+        fileSize = 0L,
+        fileCreatedAt = date,
+        fileModifiedAt = date,
+        extension = "",
+        scannedAt = date,
+        type = "Image",
+        hasThumbnails = false
+    )
+}
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -664,6 +688,9 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
     }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
+    // Type filter the failures registry opens with when reached from a
+    // notification actionUrl ("/admin/enrichment-failures?type=Exif").
+    var adminEnrichmentInitialType by remember { mutableStateOf<String?>(null) }
     // An open memory, shown as an album. An overlay rather than a MoreSubscreen:
     // it's reached from the Fotos strip too, not just from Más → Recuerdos, so it
     // can't hang off the Más hierarchy.
@@ -983,6 +1010,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.AdminSettingsVersion,
         MoreSubscreen.AdminSystemRunTasks,
         MoreSubscreen.AdminSystemDuplicates,
+        MoreSubscreen.AdminSystemEnrichmentFailures,
         MoreSubscreen.AdminSystemBackup -> true
         else -> false
     }
@@ -2765,6 +2793,19 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                         trashTab = com.photonne.app.ui.library.TrashTab.Shared
                                         moreSubscreen = MoreSubscreen.Trash
                                     }
+                                    path == "/admin/enrichment-failures" ||
+                                        path.endsWith("/admin/enrichment-failures") -> {
+                                        adminEnrichmentInitialType = url
+                                            .substringAfter('?', "")
+                                            .split('&')
+                                            .firstOrNull { it.startsWith("type=") }
+                                            ?.substringAfter('=')
+                                            ?.takeIf { it.isNotBlank() }
+                                        moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
+                                    }
+                                    path == "/people" || path.endsWith("/people") -> {
+                                        moreSubscreen = MoreSubscreen.People
+                                    }
                                 }
                             }
                         )
@@ -3084,6 +3125,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 moreSubscreen = when (entry) {
                                     com.photonne.app.ui.admin.AdminSystemEntry.RunTasks ->
                                         MoreSubscreen.AdminSystemRunTasks
+                                    com.photonne.app.ui.admin.AdminSystemEntry.EnrichmentFailures -> {
+                                        adminEnrichmentInitialType = null
+                                        MoreSubscreen.AdminSystemEnrichmentFailures
+                                    }
                                     com.photonne.app.ui.admin.AdminSystemEntry.Backup ->
                                         MoreSubscreen.AdminSystemBackup
                                 }
@@ -3116,6 +3161,29 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                             onChromeVisibleChange = { subscreenChromeVisible = it },
                             viewModel = adminDuplicatesViewModel
                         )
+                    MoreSubscreen.AdminSystemEnrichmentFailures -> {
+                        val vm: com.photonne.app.ui.admin.AdminEnrichmentFailuresViewModel =
+                            koinViewModel()
+                        com.photonne.app.ui.admin.AdminEnrichmentFailuresScreen(
+                            title = stringResource(Res.string.admin_system_enrichment_failures),
+                            initialType = adminEnrichmentInitialType,
+                            onBack = { moreSubscreen = MoreSubscreen.AdminSystemHub },
+                            onChromeVisibleChange = { subscreenChromeVisible = it },
+                            viewModel = vm,
+                            onOpenAsset = { failure ->
+                                assetDetail = AssetDetailContext(
+                                    items = listOf(failure.toSyntheticTimelineItem()),
+                                    startIndex = 0,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { id, isFav ->
+                                        timelineViewModel.setFavorite(id, isFav)
+                                    }
+                                )
+                            }
+                        )
+                    }
                     MoreSubscreen.AdminSystemBackup ->
                         com.photonne.app.ui.admin.AdminBackupScreen(
                             title = stringResource(Res.string.admin_system_backup),

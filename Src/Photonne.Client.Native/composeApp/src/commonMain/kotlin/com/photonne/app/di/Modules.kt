@@ -57,6 +57,7 @@ import com.photonne.app.ui.actions.AssetSelectionActionsViewModel
 import com.photonne.app.ui.admin.AdminBackupViewModel
 import com.photonne.app.ui.admin.DeviceConnectionViewModel
 import com.photonne.app.ui.admin.AdminDuplicatesViewModel
+import com.photonne.app.ui.admin.AdminEnrichmentFailuresViewModel
 import com.photonne.app.ui.admin.AdminFaceRecognitionSettingsViewModel
 import com.photonne.app.ui.admin.AdminImageEmbeddingSettingsViewModel
 import com.photonne.app.ui.admin.AdminObjectDetectionSettingsViewModel
@@ -247,6 +248,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
     viewModelOf(::AdminTextRecognitionSettingsViewModel)
     viewModelOf(::AdminImageEmbeddingSettingsViewModel)
     viewModelOf(::AdminRunTasksViewModel)
+    viewModelOf(::AdminEnrichmentFailuresViewModel)
     viewModelOf(::DeviceConnectionViewModel)
     viewModel { AdminBackupViewModel(get(), get<AssetSharing>()) }
 }
