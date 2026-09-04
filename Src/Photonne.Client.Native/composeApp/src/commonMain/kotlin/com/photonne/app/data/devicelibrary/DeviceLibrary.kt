@@ -71,15 +71,24 @@ enum class DeviceLibraryAccess {
 expect class DeviceLibrary {
     val isSupported: Boolean
 
+    /**
+     * Whether the platform indexes media into folders the user can scope
+     * the timeline (and the backup picker) by. Only Android: iOS models
+     * the library as one Camera Roll and desktop has no library, so a
+     * [DeviceLibraryScope] is meaningless there and its UI stays hidden.
+     */
+    val supportsBuckets: Boolean
+
     /** Current access level; cheap enough to call on every screen entry. */
     fun accessState(): DeviceLibraryAccess
 
     /**
-     * Enumerates every image/video the system index exposes, newest
-     * first by capture date. Metadata only — no hashing, no byte reads,
-     * no network. Returns empty when access isn't granted.
+     * Enumerates the image/video slice of the system index that [scope]
+     * selects (everything, on platforms without buckets), newest first
+     * by capture date. Metadata only — no hashing, no byte reads, no
+     * network. Returns empty when access isn't granted.
      */
-    suspend fun loadAll(): List<DeviceMedia>
+    suspend fun loadAll(scope: DeviceLibraryScope): List<DeviceMedia>
 
     /**
      * Emits whenever the platform media index changes (new photo taken,

@@ -186,6 +186,7 @@ import com.photonne.app.resources.selection_label_trash
 import com.photonne.app.resources.tab_albums
 import com.photonne.app.resources.tab_folders
 import com.photonne.app.resources.tab_search
+import com.photonne.app.resources.timeline_scope_action
 import com.photonne.app.resources.tab_more
 import com.photonne.app.resources.tab_timeline
 import com.photonne.app.resources.timeline_device_loading
@@ -702,6 +703,9 @@ fun TimelineTopBar(
     currentZoom: com.photonne.app.data.settings.TimelineZoomLevel,
     onZoomSelected: (com.photonne.app.data.settings.TimelineZoomLevel) -> Unit,
     onOpenSearch: (() -> Unit)? = null,
+    /** Opens the device-library scope sheet (which local folders show in
+     *  the timeline). Null where the platform has no buckets (iOS). */
+    onOpenLibraryScope: (() -> Unit)? = null,
     deviceLoading: Boolean = false,
     /**
      * Fuente de blur de la píldora, pasada explícitamente por el timeline (es la
@@ -804,6 +808,15 @@ fun TimelineTopBar(
                     current = currentZoom,
                     onSelect = onZoomSelected
                 )
+                if (onOpenLibraryScope != null) {
+                    IconButton(onClick = onOpenLibraryScope) {
+                        Icon(
+                            Icons.Outlined.Tune,
+                            contentDescription =
+                                stringResource(Res.string.timeline_scope_action)
+                        )
+                    }
+                }
                 IconButton(onClick = onJumpToDate) {
                     Icon(
                         Icons.Outlined.CalendarMonth,

@@ -16,9 +16,11 @@ actual class DeviceLibrary {
 
     actual val isSupported: Boolean = false
 
+    actual val supportsBuckets: Boolean = false
+
     actual fun accessState(): DeviceLibraryAccess = DeviceLibraryAccess.Unsupported
 
-    actual suspend fun loadAll(): List<DeviceMedia> = emptyList()
+    actual suspend fun loadAll(scope: DeviceLibraryScope): List<DeviceMedia> = emptyList()
 
     actual suspend fun listBuckets(): List<DeviceBucket> = emptyList()
 

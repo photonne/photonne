@@ -46,6 +46,9 @@ actual class DeviceLibrary {
 
     actual val isSupported: Boolean = true
 
+    /** PhotoKit has no per-asset folder concept — no buckets, no scoping. */
+    actual val supportsBuckets: Boolean = false
+
     actual fun accessState(): DeviceLibraryAccess =
         when (PHPhotoLibrary.authorizationStatusForAccessLevel(PHAccessLevelReadWrite)) {
             PHAuthorizationStatusAuthorized -> DeviceLibraryAccess.Full
@@ -54,7 +57,9 @@ actual class DeviceLibrary {
             else -> DeviceLibraryAccess.Denied
         }
 
-    actual suspend fun loadAll(): List<DeviceMedia> {
+    actual suspend fun loadAll(scope: DeviceLibraryScope): List<DeviceMedia> {
+        // The scope is ignored on purpose (supportsBuckets = false): there
+        // are no folders to scope by, so the whole Camera Roll always shows.
         if (!accessState().canRead) return emptyList()
         return withContext(Dispatchers.Default) {
             val options = PHFetchOptions().apply {

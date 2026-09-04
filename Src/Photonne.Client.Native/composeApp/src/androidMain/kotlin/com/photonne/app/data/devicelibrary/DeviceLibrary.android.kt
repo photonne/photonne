@@ -40,6 +40,8 @@ actual class DeviceLibrary(private val context: Context) {
 
     actual val isSupported: Boolean = true
 
+    actual val supportsBuckets: Boolean = true
+
     actual fun accessState(): DeviceLibraryAccess {
         fun granted(perm: String) =
             context.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
@@ -58,28 +60,61 @@ actual class DeviceLibrary(private val context: Context) {
         }
     }
 
-    actual suspend fun loadAll(): List<DeviceMedia> = withContext(Dispatchers.IO) {
-        if (!accessState().canRead) return@withContext emptyList()
-        val out = ArrayList<DeviceMedia>(4096)
-        queryCollection(
-            collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            type = DeviceMediaType.Image,
-            into = out
-        )
-        queryCollection(
-            collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            type = DeviceMediaType.Video,
-            into = out
-        )
-        // Two independent cursors — interleave them into one newest-first
-        // stream by the same capture instant the timeline buckets on.
-        out.sortByDescending { it.dateCreatedMillis ?: it.dateModifiedMillis }
-        out
-    }
+    actual suspend fun loadAll(scope: DeviceLibraryScope): List<DeviceMedia> =
+        withContext(Dispatchers.IO) {
+            if (!accessState().canRead) return@withContext emptyList()
+            // An explicit empty pick shows nothing — `IN ()` isn't valid SQL.
+            if (scope is DeviceLibraryScope.Buckets && scope.bucketIds.isEmpty()) {
+                return@withContext emptyList()
+            }
+            val filter = scopeFilter(scope)
+            val out = ArrayList<DeviceMedia>(4096)
+            queryCollection(
+                collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                type = DeviceMediaType.Image,
+                filter = filter,
+                into = out
+            )
+            queryCollection(
+                collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                type = DeviceMediaType.Video,
+                filter = filter,
+                into = out
+            )
+            // Two independent cursors — interleave them into one newest-first
+            // stream by the same capture instant the timeline buckets on.
+            out.sortByDescending { it.dateCreatedMillis ?: it.dateModifiedMillis }
+            out
+        }
+
+    /**
+     * Translates the timeline scope into a MediaStore WHERE clause, so a
+     * narrowed timeline never materializes the excluded rows (a WhatsApp
+     * folder alone can be tens of thousands).
+     */
+    private fun scopeFilter(scope: DeviceLibraryScope): Pair<String, Array<String>>? =
+        when (scope) {
+            DeviceLibraryScope.All -> null
+            DeviceLibraryScope.CameraOnly ->
+                // The DCIM tree is where Android's spec sends camera output.
+                // RELATIVE_PATH only exists from API 29; before scoped storage
+                // the absolute DATA path is still reliable.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    "$COLUMN_RELATIVE_PATH LIKE ?" to arrayOf("DCIM/%")
+                } else {
+                    "$COLUMN_DATA LIKE ?" to arrayOf("%/DCIM/%")
+                }
+            is DeviceLibraryScope.Buckets -> {
+                val ids = scope.bucketIds.toTypedArray()
+                val placeholders = ids.joinToString(",") { "?" }
+                "$COLUMN_BUCKET_ID IN ($placeholders)" to ids
+            }
+        }
 
     private fun queryCollection(
         collection: Uri,
         type: DeviceMediaType,
+        filter: Pair<String, Array<String>>?,
         into: MutableList<DeviceMedia>
     ) {
         val projection = arrayOf(
@@ -92,7 +127,9 @@ actual class DeviceLibrary(private val context: Context) {
             COLUMN_BUCKET_DISPLAY_NAME
         )
         runCatching {
-            context.contentResolver.query(collection, projection, null, null, null)?.use { c ->
+            context.contentResolver.query(
+                collection, projection, filter?.first, filter?.second, null
+            )?.use { c ->
                 val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val nameCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val mimeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
@@ -175,6 +212,10 @@ private fun defaultMimeFor(type: DeviceMediaType): String =
 private const val COLUMN_DATE_TAKEN = "datetaken"
 private const val COLUMN_BUCKET_ID = "bucket_id"
 private const val COLUMN_BUCKET_DISPLAY_NAME = "bucket_display_name"
+// Scope-filter columns: RELATIVE_PATH is API 29+, DATA is the pre-scoped-
+// storage absolute path (deprecated there, but this branch only runs 26-28).
+private const val COLUMN_RELATIVE_PATH = "relative_path"
+private const val COLUMN_DATA = "_data"
 
 // Manifest.permission constant exists from compileSdk 34; inlined so the
 // reference doesn't trip older lint configs.

@@ -84,7 +84,8 @@ class DeviceLibraryStore(
     private val gallery: DeviceGallery,
     private val api: PhotonneApi,
     private val progressBus: com.photonne.app.data.devicebackup.BackupProgressBus,
-    private val settings: Settings
+    private val settings: Settings,
+    private val scopeStore: DeviceLibraryScopeStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val refreshMutex = Mutex()
@@ -105,6 +106,14 @@ class DeviceLibraryStore(
     )
     val state: StateFlow<DeviceLibraryUiState> = _state.asStateFlow()
 
+    /** Whether the scope UI makes sense on this platform (see
+     *  [DeviceLibrary.supportsBuckets]). */
+    val supportsBuckets: Boolean get() = library.supportsBuckets
+
+    /** The library's folders for the scope sheet — the same enumeration
+     *  the backup picker uses. */
+    suspend fun listBuckets(): List<DeviceBucket> = library.listBuckets()
+
     /**
      * Idempotent bootstrap, called from the timeline's composition (main
      * thread): first load plus the change-observer loop. Kept lazy so a
@@ -121,6 +130,11 @@ class DeviceLibraryStore(
                 delay(CHANGE_COALESCE_MILLIS)
                 refresh()
             }
+        }
+        scope.launch {
+            // Scope changes re-enumerate: the narrowing lives in the platform
+            // query itself (see DeviceLibrary.loadAll), not in a post-filter.
+            scopeStore.value.drop(1).collect { refresh() }
         }
         scope.launch {
             // The badge overlay reads the LEDGER, whose verdicts land while a
@@ -152,7 +166,8 @@ class DeviceLibraryStore(
                 return
             }
             _state.update { it.copy(access = access, isLoading = true) }
-            val media = runCatching { library.loadAll() }.getOrDefault(emptyList())
+            val media = runCatching { library.loadAll(scopeStore.value.value) }
+                .getOrDefault(emptyList())
             mediaByUri = media.associateBy { it.uri }
             rebuildItems(media)
             _state.update { it.copy(isLoading = false) }

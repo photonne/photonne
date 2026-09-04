@@ -152,6 +152,7 @@ fun commonModule(config: PhotonneAppConfig) = module {
         )
     }
     single { com.photonne.app.data.devicelibrary.DeviceIdentityMap(get()) }
+    single { com.photonne.app.data.devicelibrary.DeviceLibraryScopeStore(get()) }
     single {
         com.photonne.app.data.devicelibrary.DeviceLibraryStore(
             library = get(),
@@ -160,7 +161,8 @@ fun commonModule(config: PhotonneAppConfig) = module {
             gallery = get(),
             api = get(),
             progressBus = get(),
-            settings = get()
+            settings = get(),
+            scopeStore = get()
         )
     }
     single { com.photonne.app.data.devicebackup.EnrichmentRepository(get()) }

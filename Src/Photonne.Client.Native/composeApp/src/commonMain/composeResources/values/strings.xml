@@ -45,6 +45,19 @@
     <string name="timeline_zoom_day_large">Día — grande</string>
     <string name="timeline_zoom_day_medium">Día — medio</string>
     <string name="timeline_zoom_day_small">Día — pequeño</string>
+    <string name="timeline_scope_action">Carpetas visibles</string>
+    <string name="timeline_scope_sheet_title">Fotos del dispositivo</string>
+    <string name="timeline_scope_sheet_hint">Elige qué carpetas de este dispositivo aparecen en el timeline. No afecta a la copia de seguridad.</string>
+    <string name="timeline_scope_all">Todo el dispositivo</string>
+    <string name="timeline_scope_all_hint">Incluye WhatsApp, capturas y otras apps</string>
+    <string name="timeline_scope_camera">Solo cámara</string>
+    <string name="timeline_scope_camera_hint">Lo que guardan las apps de cámara (DCIM)</string>
+    <string name="timeline_scope_custom">Carpetas concretas</string>
+    <string name="timeline_scope_custom_hint">Marca las carpetas que quieres ver</string>
+    <string name="timeline_scope_backed_up">Con copia</string>
+    <string name="timeline_scope_notice">Solo se muestran las fotos de la cámara</string>
+    <string name="timeline_scope_notice_change">Cambiar</string>
+    <string name="timeline_scope_notice_dismiss">Descartar</string>
 
     <plurals name="selection_count">
         <item quantity="one">%1$d seleccionado</item>

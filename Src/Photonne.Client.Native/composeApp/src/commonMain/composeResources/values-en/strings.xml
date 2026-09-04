@@ -41,6 +41,19 @@
     <string name="timeline_zoom_day_large">Day — large</string>
     <string name="timeline_zoom_day_medium">Day — medium</string>
     <string name="timeline_zoom_day_small">Day — small</string>
+    <string name="timeline_scope_action">Visible folders</string>
+    <string name="timeline_scope_sheet_title">Device photos</string>
+    <string name="timeline_scope_sheet_hint">Choose which folders on this device show up in the timeline. This doesn\'t affect backup.</string>
+    <string name="timeline_scope_all">Whole device</string>
+    <string name="timeline_scope_all_hint">Includes WhatsApp, screenshots and other apps</string>
+    <string name="timeline_scope_camera">Camera only</string>
+    <string name="timeline_scope_camera_hint">What camera apps save (DCIM)</string>
+    <string name="timeline_scope_custom">Specific folders</string>
+    <string name="timeline_scope_custom_hint">Pick the folders you want to see</string>
+    <string name="timeline_scope_backed_up">Backed up</string>
+    <string name="timeline_scope_notice">Showing camera photos only</string>
+    <string name="timeline_scope_notice_change">Change</string>
+    <string name="timeline_scope_notice_dismiss">Dismiss</string>
 
     <plurals name="selection_count">
         <item quantity="one">%1$d selected</item>

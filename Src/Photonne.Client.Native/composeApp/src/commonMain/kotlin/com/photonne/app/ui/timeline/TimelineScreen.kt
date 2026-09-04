@@ -30,11 +30,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -70,7 +73,11 @@ import com.photonne.app.resources.Res
 import com.photonne.app.resources.timeline_empty_action_upload
 import com.photonne.app.resources.timeline_empty_subtitle
 import com.photonne.app.resources.timeline_empty_title
+import com.photonne.app.data.devicebackup.DeviceBackupStateStore
+import com.photonne.app.data.devicelibrary.DeviceBucket
 import com.photonne.app.data.devicelibrary.DeviceLibraryAccess
+import com.photonne.app.data.devicelibrary.DeviceLibraryScope
+import com.photonne.app.data.devicelibrary.DeviceLibraryScopeStore
 import com.photonne.app.data.devicelibrary.DeviceLibraryStore
 import com.photonne.app.data.devicelibrary.rememberDeviceLibraryAccessRequester
 import com.photonne.app.ui.grid.BucketEntriesResult
@@ -117,6 +124,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.photonne.app.resources.backup_timeline_pending_row
+import com.photonne.app.resources.timeline_scope_notice
+import com.photonne.app.resources.timeline_scope_notice_change
+import com.photonne.app.resources.timeline_scope_notice_dismiss
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -276,16 +286,36 @@ fun TimelineScreen(
         }
     }
     val localItems = deviceLibraryState.items
+    // Which slice of the device library shows (Solo cámara by default) — a
+    // visibility preference, independent from the backup-folder list.
+    val scopeStore: DeviceLibraryScopeStore = koinInject()
+    val libraryScope by scopeStore.value.collectAsState()
+    val scopeNoticeDismissed by scopeStore.noticeDismissed.collectAsState()
+    val backupStateStore: DeviceBackupStateStore = koinInject()
+    var scopeSheetOpen by remember { mutableStateOf(false) }
+    var scopeBuckets by remember { mutableStateOf<List<DeviceBucket>?>(null) }
+    var backedUpUris by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Opening the sheet is discovering the setting — the one-time notice has
+    // done its job whichever entry point got them here.
+    val openScopeSheet: () -> Unit = {
+        scopeStore.dismissNotice()
+        scopeSheetOpen = true
+    }
+    val scopeUiAvailable = deviceLibrary.supportsBuckets && deviceLibraryState.access.canRead
     // Whether the Recuerdos strip belongs in the timeline at all. It stays
     // mounted while selecting and instead collapses smoothly (see the
     // AnimatedVisibility below) so entering selection no longer makes the
     // whole grid jump up by the strip's height.
     val hasMemoriesHeader = memories.isNotEmpty() && onOpenMemory != null
     val showBackupRow = backupPendingCount > 0 && onOpenBackup != null
+    // The camera-only default must never be silent: until acknowledged, a
+    // quiet strip says the timeline is filtered and where to change it.
+    val showScopeNotice = scopeUiAvailable && !scopeNoticeDismissed &&
+        libraryScope != DeviceLibraryScope.All
     // ONE header item, whatever it holds. The scrubber and the zoom transition
     // index off `headerItemCount`, so a second item here would shift every row
-    // they compute — the backup row rides inside the same slot instead.
-    val hasHeader = hasMemoriesHeader || showBackupRow
+    // they compute — the backup and scope rows ride inside the same slot instead.
+    val hasHeader = hasMemoriesHeader || showBackupRow || showScopeNotice
     // Year view renders the compressed per-year summaries (a few sampled
     // rows per year, count in the header); every other zoom level renders
     // the full bucket timeline. Both flatten into the same entries shape.
@@ -962,6 +992,12 @@ fun TimelineScreen(
                                             exit = shrinkVertically() + fadeOut()
                                         ) {
                                             Column {
+                                                if (showScopeNotice) {
+                                                    LibraryScopeNoticeRow(
+                                                        onChange = openScopeSheet,
+                                                        onDismiss = scopeStore::dismissNotice
+                                                    )
+                                                }
                                                 if (showBackupRow) {
                                                     BackupPendingRow(
                                                         count = backupPendingCount,
@@ -1131,6 +1167,7 @@ fun TimelineScreen(
                         currentZoom = zoomLevel,
                         onZoomSelected = zoomStore::update,
                         onOpenSearch = onOpenSearch,
+                        onOpenLibraryScope = if (scopeUiAvailable) openScopeSheet else null,
                         deviceLoading = deviceLibraryState.isLoading,
                         hazeState = gridHazeState,
                         modifier = Modifier
@@ -1147,6 +1184,26 @@ fun TimelineScreen(
                         .align(Alignment.TopCenter)
                         .windowInsetsPadding(WindowInsets.statusBars),
                     onRetry = onRefresh,
+                )
+            }
+            if (scopeSheetOpen) {
+                // (Re)load on every open — folders and the backup list may
+                // have changed. The previous enumeration stays shown while
+                // the refresh runs, so re-opens never flash a spinner.
+                LaunchedEffect(Unit) {
+                    withContext(Dispatchers.Default) {
+                        backedUpUris = runCatching { backupStateStore.savedFolders() }
+                            .getOrDefault(emptyList()).map { it.uri }.toSet()
+                        scopeBuckets = runCatching { deviceLibrary.listBuckets() }
+                            .getOrDefault(emptyList())
+                    }
+                }
+                TimelineLibraryScopeSheet(
+                    scope = libraryScope,
+                    buckets = scopeBuckets,
+                    backedUpUris = backedUpUris,
+                    onSelect = scopeStore::update,
+                    onDismiss = { scopeSheetOpen = false }
                 )
             }
         }
@@ -1436,5 +1493,49 @@ private fun BackupPendingRow(count: Int, onClick: () -> Unit) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
+    }
+}
+
+/**
+ * One-time "the timeline is filtered" strip, shown until acknowledged.
+ * Same quiet styling as [BackupPendingRow]: the camera-only default must
+ * be discoverable, but never compete with the photos.
+ */
+@Composable
+private fun LibraryScopeNoticeRow(onChange: () -> Unit, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onChange)
+            .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.PhotoLibrary,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.size(12.dp))
+        Text(
+            text = stringResource(Res.string.timeline_scope_notice),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onChange) {
+            Text(stringResource(Res.string.timeline_scope_notice_change))
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(Res.string.timeline_scope_notice_dismiss),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
