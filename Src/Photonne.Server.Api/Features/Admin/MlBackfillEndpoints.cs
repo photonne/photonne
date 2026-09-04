@@ -220,11 +220,25 @@ internal static class MlBackfillRunner
             // the same first N IDs (their *CompletedAt is still null until the
             // processor finishes them) and EnqueueAsync would dedup them all,
             // making the loop terminate after one batch.
+            // Also exclude assets whose latest attempt exhausted the retry
+            // backoff (Failed with NextRetryAt null): EnqueueAsync mints a
+            // fresh row per call, so without this gate the nightly backfill
+            // would grant a poisoned asset 5 new attempts every night, forever.
             query = query.Where(a => !db.AssetEnrichmentTasks.Any(j =>
                 j.AssetId == a.Id &&
                 j.TaskType == jobType &&
-                (j.Status == EnrichmentStatus.Pending || j.Status == EnrichmentStatus.Processing)));
+                (j.Status == EnrichmentStatus.Pending ||
+                 j.Status == EnrichmentStatus.Processing ||
+                 (j.Status == EnrichmentStatus.Failed && j.NextRetryAt == null))));
         }
+
+        // Dismissed assets stay out even on an explicit reprocess-all: the
+        // admin said "don't try this one again" and only the failures
+        // registry's per-asset retry overrides that.
+        query = query.Where(a => !db.AssetEnrichmentTasks.Any(j =>
+            j.AssetId == a.Id &&
+            j.TaskType == jobType &&
+            j.Status == EnrichmentStatus.Suppressed));
 
         return query;
     }

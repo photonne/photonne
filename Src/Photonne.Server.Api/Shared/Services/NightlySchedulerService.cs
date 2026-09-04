@@ -471,7 +471,7 @@ public class NightlySchedulerService : BackgroundService
 
     /// <summary>Sends the same notification to every active admin user. Used by
     /// nightly tasks so administrators see a daily summary in the bell menu.</summary>
-    private async Task NotifyAdminsAsync(NotificationType type, string title, string message, CancellationToken ct)
+    private async Task NotifyAdminsAsync(NotificationType type, string title, string message, CancellationToken ct, string? actionUrl = null)
     {
         try
         {
@@ -485,7 +485,7 @@ public class NightlySchedulerService : BackgroundService
                 .ToListAsync(ct);
 
             foreach (var adminId in adminIds)
-                await notifications.CreateAsync(adminId, type, title, message);
+                await notifications.CreateAsync(adminId, type, title, message, actionUrl);
         }
         catch (Exception ex)
         {
@@ -578,6 +578,14 @@ public class NightlySchedulerService : BackgroundService
             .Select(a => new { a.Id, a.FullPath, a.FileName })
             .ToListAsync(ct);
 
+        // Same permanent-failure gate as the metadata sweep: assets whose
+        // Thumbnails enrichment exhausted its retries (or was dismissed) are
+        // skipped instead of failing again every night.
+        var exclusions = await EnrichmentSweepRecorder.GetExclusionsAsync(
+            dbContext, AssetEnrichmentType.Thumbnails, ct);
+        var permanentlyFailed = assets.Count(a => exclusions.Poisoned.Contains(a.Id));
+        assets = assets.Where(a => !exclusions.Contains(a.Id)).ToList();
+
         foreach (var asset in assets)
         {
             if (ct.IsCancellationRequested) break;
@@ -593,6 +601,10 @@ public class NightlySchedulerService : BackgroundService
                 var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
                 if (!File.Exists(physicalPath))
                 {
+                    Console.WriteLine($"[NIGHTLY] Thumbnail error for asset {asset.Id}: file not found at {asset.FullPath}");
+                    await EnrichmentSweepRecorder.RecordFailureAsync(
+                        dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
+                        $"Fichero no encontrado: {asset.FullPath}", ct);
                     failed++;
                     continue;
                 }
@@ -607,26 +619,44 @@ public class NightlySchedulerService : BackgroundService
                     dbContext.AssetThumbnails.AddRange(result);
                     await dbContext.SaveChangesAsync(ct);
                     generated += result.Count;
+                    await EnrichmentSweepRecorder.RecordSuccessAsync(
+                        dbContext, asset.Id, AssetEnrichmentType.Thumbnails, ct);
                 }
                 else
                 {
+                    await EnrichmentSweepRecorder.RecordFailureAsync(
+                        dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
+                        "El generador no produjo miniaturas", ct);
                     failed++;
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[NIGHTLY] Thumbnail error for asset {asset.Id}: {ex.Message}");
+                try
+                {
+                    // Fresh scope: dbContext may hold the half-tracked changes
+                    // that just blew up, and re-saving them would fail again.
+                    using var failScope = _scopeFactory.CreateScope();
+                    var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    await EnrichmentSweepRecorder.RecordFailureAsync(
+                        failDb, asset.Id, AssetEnrichmentType.Thumbnails, ex.Message, ct);
+                }
+                catch { /* never let bookkeeping mask the sweep */ }
                 failed++;
             }
         }
 
-        Console.WriteLine($"[NIGHTLY] Thumbnails done — generated:{generated} skipped:{skipped} failed:{failed}.");
+        Console.WriteLine($"[NIGHTLY] Thumbnails done — generated:{generated} skipped:{skipped} failed:{failed} permanent:{permanentlyFailed}.");
 
+        var thumbnailsSummary = $"Generadas {generated}, omitidas {skipped}, fallidas {failed}."
+            + (permanentlyFailed > 0 ? $" Con error permanente: {permanentlyFailed}." : string.Empty);
         await NotifyAdminsAsync(
             failed > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
             "Tarea nocturna: miniaturas",
-            $"Generadas {generated}, omitidas {skipped}, fallidas {failed}.",
-            ct);
+            thumbnailsSummary,
+            ct,
+            actionUrl: failed > 0 || permanentlyFailed > 0 ? "/admin/enrichment-failures?type=Thumbnails" : null);
     }
 
     private async Task RunMetadataAsync(IServiceProvider rootProvider, bool overwriteAll, CancellationToken ct)
@@ -653,6 +683,15 @@ public class NightlySchedulerService : BackgroundService
                 ExifDate = a.Exif != null ? a.Exif.DateTimeOriginal : null
             })
             .ToListAsync(ct);
+
+        // Assets whose Exif enrichment already exhausted its retries (or was
+        // dismissed by an admin) are left out so a broken file stops failing
+        // every single night; only a manual retry from the failures registry
+        // brings them back.
+        var exclusions = await EnrichmentSweepRecorder.GetExclusionsAsync(
+            dbContext, AssetEnrichmentType.Exif, ct);
+        var permanentlyFailed = assets.Count(a => exclusions.Poisoned.Contains(a.Id));
+        assets = assets.Where(a => !exclusions.Contains(a.Id)).ToList();
 
         await Parallel.ForEachAsync(
             assets,
@@ -692,6 +731,10 @@ public class NightlySchedulerService : BackgroundService
                     var physicalPath = await innerSettings.ResolvePhysicalPathAsync(asset.FullPath);
                     if (!File.Exists(physicalPath))
                     {
+                        Console.WriteLine($"[NIGHTLY] Metadata error for asset {asset.Id}: file not found at {asset.FullPath}");
+                        await EnrichmentSweepRecorder.RecordFailureAsync(
+                            innerDb, asset.Id, AssetEnrichmentType.Exif,
+                            $"Fichero no encontrado: {asset.FullPath}", innerCt);
                         Interlocked.Increment(ref failed);
                         return;
                     }
@@ -737,10 +780,15 @@ public class NightlySchedulerService : BackgroundService
                         }
 
                         await innerDb.SaveChangesAsync(innerCt);
+                        await EnrichmentSweepRecorder.RecordSuccessAsync(
+                            innerDb, asset.Id, AssetEnrichmentType.Exif, innerCt);
                         Interlocked.Increment(ref extracted);
                     }
                     else
                     {
+                        await EnrichmentSweepRecorder.RecordFailureAsync(
+                            innerDb, asset.Id, AssetEnrichmentType.Exif,
+                            "El extractor EXIF no devolvió datos (formato no soportado o fichero corrupto)", innerCt);
                         Interlocked.Increment(ref failed);
                     }
                 }
@@ -748,17 +796,30 @@ public class NightlySchedulerService : BackgroundService
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[NIGHTLY] Metadata error for asset {asset.Id}: {ex.Message}");
+                    try
+                    {
+                        // Fresh scope: innerDb may hold the half-tracked changes
+                        // that just blew up, and re-saving them would fail again.
+                        using var failScope = _scopeFactory.CreateScope();
+                        var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                        await EnrichmentSweepRecorder.RecordFailureAsync(
+                            failDb, asset.Id, AssetEnrichmentType.Exif, ex.Message, innerCt);
+                    }
+                    catch { /* never let bookkeeping mask the sweep */ }
                     Interlocked.Increment(ref failed);
                 }
             });
 
-        Console.WriteLine($"[NIGHTLY] Metadata done — extracted:{extracted} skipped:{skipped} failed:{failed}.");
+        Console.WriteLine($"[NIGHTLY] Metadata done — extracted:{extracted} skipped:{skipped} failed:{failed} permanent:{permanentlyFailed}.");
 
+        var metadataSummary = $"Extraídos {extracted}, omitidos {skipped}, fallidos {failed}."
+            + (permanentlyFailed > 0 ? $" Con error permanente: {permanentlyFailed}." : string.Empty);
         await NotifyAdminsAsync(
             failed > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
             "Tarea nocturna: metadatos",
-            $"Extraídos {extracted}, omitidos {skipped}, fallidos {failed}.",
-            ct);
+            metadataSummary,
+            ct,
+            actionUrl: failed > 0 || permanentlyFailed > 0 ? "/admin/enrichment-failures?type=Exif" : null);
     }
 
     private static TimeZoneInfo ResolveTimezone(string ianaId)

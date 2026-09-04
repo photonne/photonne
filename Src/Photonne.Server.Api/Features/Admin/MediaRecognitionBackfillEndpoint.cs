@@ -132,7 +132,9 @@ public class MediaRecognitionBackfillEndpoint : IEndpoint
             .Where(a => !db.AssetEnrichmentTasks.Any(j =>
                 j.AssetId == a.Id &&
                 j.TaskType == AssetEnrichmentType.MediaRecognition &&
-                (j.Status == EnrichmentStatus.Pending || j.Status == EnrichmentStatus.Processing)));
+                (j.Status == EnrichmentStatus.Pending ||
+                 j.Status == EnrichmentStatus.Processing ||
+                 j.Status == EnrichmentStatus.Suppressed)));
     }
 
     private static async Task<int> ReadGlobalBatchSizeAsync(SettingsService settings)

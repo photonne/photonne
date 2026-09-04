@@ -94,6 +94,16 @@ public class ExtractMetadataEndpoint : IEndpoint
                     })
                     .ToListAsync(taskCt);
 
+                // Dismissed assets never run; permanently-failed ones only run
+                // when the admin explicitly asked for a full overwrite (that is
+                // the manual-retry gesture for the whole library).
+                var exclusions = await EnrichmentSweepRecorder.GetExclusionsAsync(
+                    dbContext, AssetEnrichmentType.Exif, taskCt);
+                var permanentlyFailed = overwrite ? 0 : assets.Count(a => exclusions.Poisoned.Contains(a.Id));
+                assets = assets
+                    .Where(a => overwrite ? !exclusions.Suppressed.Contains(a.Id) : !exclusions.Contains(a.Id))
+                    .ToList();
+
                 var totalAssets = assets.Count;
                 int processed = 0, extracted = 0, skipped = 0, failed = 0;
 
@@ -163,6 +173,9 @@ public class ExtractMetadataEndpoint : IEndpoint
 
                                 if (!File.Exists(physicalPath))
                                 {
+                                    await EnrichmentSweepRecorder.RecordFailureAsync(
+                                        innerDb, asset.Id, AssetEnrichmentType.Exif,
+                                        $"Fichero no encontrado: {asset.FullPath}", ct);
                                     Interlocked.Increment(ref failed);
                                 }
                                 else
@@ -211,11 +224,16 @@ public class ExtractMetadataEndpoint : IEndpoint
                                         }
 
                                         await innerDb.SaveChangesAsync(ct);
+                                        await EnrichmentSweepRecorder.RecordSuccessAsync(
+                                            innerDb, asset.Id, AssetEnrichmentType.Exif, ct);
 
                                         Interlocked.Increment(ref extracted);
                                     }
                                     else
                                     {
+                                        await EnrichmentSweepRecorder.RecordFailureAsync(
+                                            innerDb, asset.Id, AssetEnrichmentType.Exif,
+                                            "El extractor EXIF no devolvió datos (formato no soportado o fichero corrupto)", ct);
                                         Interlocked.Increment(ref failed);
                                     }
                                 }
@@ -225,6 +243,16 @@ public class ExtractMetadataEndpoint : IEndpoint
                         catch (Exception ex)
                         {
                             Console.WriteLine($"[METADATA] Error procesando asset {asset.Id}: {ex.Message}");
+                            try
+                            {
+                                // Fresh scope: innerDb may hold the half-tracked
+                                // changes that just blew up.
+                                using var failScope = serviceProvider.CreateScope();
+                                var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                                await EnrichmentSweepRecorder.RecordFailureAsync(
+                                    failDb, asset.Id, AssetEnrichmentType.Exif, ex.Message, ct);
+                            }
+                            catch { /* never let bookkeeping mask the sweep */ }
                             Interlocked.Increment(ref failed);
                         }
 
@@ -240,7 +268,7 @@ public class ExtractMetadataEndpoint : IEndpoint
                     });
 
                 var finalStats = Snapshot();
-                var completionMsg = BuildCompletionMessage(finalStats);
+                var completionMsg = BuildCompletionMessage(finalStats, permanentlyFailed);
                 Send(new MetadataProgressUpdate
                 {
                     Message = completionMsg,
@@ -253,7 +281,9 @@ public class ExtractMetadataEndpoint : IEndpoint
 
                 if (userId != Guid.Empty)
                     await notificationService.CreateAsync(userId, NotificationType.JobCompleted,
-                        "Metadatos extraídos", completionMsg);
+                        "Metadatos extraídos", completionMsg,
+                        actionUrl: finalStats.Failed > 0 || permanentlyFailed > 0
+                            ? "/admin/enrichment-failures?type=Exif" : null);
             }
             catch (OperationCanceledException)
             {
@@ -296,7 +326,7 @@ public class ExtractMetadataEndpoint : IEndpoint
         }
     }
 
-    private static string BuildCompletionMessage(MetadataJobStatistics stats)
+    private static string BuildCompletionMessage(MetadataJobStatistics stats, int permanentlyFailed)
     {
         var parts = new List<string>();
         if (stats.Extracted > 0)
@@ -305,6 +335,8 @@ public class ExtractMetadataEndpoint : IEndpoint
             parts.Add($"{stats.Skipped} omitidos");
         if (stats.Failed > 0)
             parts.Add($"{stats.Failed} fallidos");
+        if (permanentlyFailed > 0)
+            parts.Add($"{permanentlyFailed} con error permanente");
         var summary = parts.Count > 0 ? string.Join(", ", parts) : "nada que hacer";
         return $"Completado — {summary}.";
     }

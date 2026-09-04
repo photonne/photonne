@@ -84,6 +84,16 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                     .Select(a => new { a.Id, a.FullPath, a.FileName })
                     .ToListAsync(taskCt);
 
+                // Dismissed assets never run; permanently-failed ones only run
+                // when the admin explicitly asked to regenerate everything (that
+                // is the manual-retry gesture for the whole library).
+                var exclusions = await EnrichmentSweepRecorder.GetExclusionsAsync(
+                    dbContext, AssetEnrichmentType.Thumbnails, taskCt);
+                var permanentlyFailed = regenerate ? 0 : assets.Count(a => exclusions.Poisoned.Contains(a.Id));
+                assets = assets
+                    .Where(a => regenerate ? !exclusions.Suppressed.Contains(a.Id) : !exclusions.Contains(a.Id))
+                    .ToList();
+
                 var stats = new ThumbnailJobStatistics { TotalAssets = assets.Count };
 
                 Send(new ThumbnailProgressUpdate
@@ -119,6 +129,9 @@ public class GenerateThumbnailsEndpoint : IEndpoint
 
                             if (!File.Exists(physicalPath))
                             {
+                                await EnrichmentSweepRecorder.RecordFailureAsync(
+                                    dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
+                                    $"Fichero no encontrado: {asset.FullPath}", taskCt);
                                 stats.Failed++;
                             }
                             else
@@ -137,9 +150,14 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                                     await dbContext.SaveChangesAsync(taskCt);
 
                                     stats.Generated += generated.Count;
+                                    await EnrichmentSweepRecorder.RecordSuccessAsync(
+                                        dbContext, asset.Id, AssetEnrichmentType.Thumbnails, taskCt);
                                 }
                                 else
                                 {
+                                    await EnrichmentSweepRecorder.RecordFailureAsync(
+                                        dbContext, asset.Id, AssetEnrichmentType.Thumbnails,
+                                        "El generador no produjo miniaturas", taskCt);
                                     stats.Failed++;
                                 }
                             }
@@ -149,6 +167,16 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[THUMBNAILS] Error procesando asset {asset.Id}: {ex.Message}");
+                        try
+                        {
+                            // Fresh scope: dbContext may hold the half-tracked
+                            // changes that just blew up.
+                            using var failScope = serviceProvider.CreateScope();
+                            var failDb = failScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                            await EnrichmentSweepRecorder.RecordFailureAsync(
+                                failDb, asset.Id, AssetEnrichmentType.Thumbnails, ex.Message, taskCt);
+                        }
+                        catch { /* never let bookkeeping mask the sweep */ }
                         stats.Failed++;
                     }
 
@@ -165,7 +193,7 @@ public class GenerateThumbnailsEndpoint : IEndpoint
                     });
                 }
 
-                var completionMsg = BuildCompletionMessage(stats, regenerate);
+                var completionMsg = BuildCompletionMessage(stats, permanentlyFailed);
                 Send(new ThumbnailProgressUpdate
                 {
                     Message = completionMsg,
@@ -178,7 +206,9 @@ public class GenerateThumbnailsEndpoint : IEndpoint
 
                 if (userId != Guid.Empty)
                     await notificationService.CreateAsync(userId, NotificationType.JobCompleted,
-                        "Miniaturas generadas", completionMsg);
+                        "Miniaturas generadas", completionMsg,
+                        actionUrl: stats.Failed > 0 || permanentlyFailed > 0
+                            ? "/admin/enrichment-failures?type=Thumbnails" : null);
             }
             catch (OperationCanceledException)
             {
@@ -221,7 +251,7 @@ public class GenerateThumbnailsEndpoint : IEndpoint
         }
     }
 
-    private static string BuildCompletionMessage(ThumbnailJobStatistics stats, bool regenerate)
+    private static string BuildCompletionMessage(ThumbnailJobStatistics stats, int permanentlyFailed)
     {
         var parts = new List<string>();
         if (stats.Generated > 0)
@@ -230,6 +260,8 @@ public class GenerateThumbnailsEndpoint : IEndpoint
             parts.Add($"{stats.Skipped} omitidas");
         if (stats.Failed > 0)
             parts.Add($"{stats.Failed} fallidas");
+        if (permanentlyFailed > 0)
+            parts.Add($"{permanentlyFailed} con error permanente");
         var summary = parts.Count > 0 ? string.Join(", ", parts) : "nada que hacer";
         return $"Completado — {summary}.";
     }

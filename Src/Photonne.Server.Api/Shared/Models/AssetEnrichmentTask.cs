@@ -36,6 +36,11 @@ public enum EnrichmentStatus
     Processing,
     Completed,
     Failed,
+
+    // Dismissed by an admin ("don't retry this asset again"). Excluded from the
+    // worker, the nightly sweeps and every backfill; keeps ErrorMessage and
+    // AttemptCount as an audit trail. Only a manual retry revives it.
+    Suppressed = 4,
 }
 
 public class AssetEnrichmentTask
