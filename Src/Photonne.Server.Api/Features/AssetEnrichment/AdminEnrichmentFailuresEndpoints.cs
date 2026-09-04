@@ -74,10 +74,10 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
 
     private async Task<IResult> HandleList(
         [FromQuery] string? type,
-        [FromQuery] int pageSize,
         [FromQuery] string? cursor,
         [FromServices] ApplicationDbContext dbContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] int pageSize = 50)
     {
         AssetEnrichmentType? parsedType = null;
         if (!string.IsNullOrWhiteSpace(type))
@@ -92,7 +92,7 @@ public class AdminEnrichmentFailuresEndpoints : IEndpoint
             parsedType = value;
         }
 
-        var capped = Math.Clamp(pageSize <= 0 ? 50 : pageSize, 1, 200);
+        var capped = Math.Clamp(pageSize, 1, 200);
 
         var open = OpenProblems(dbContext);
 
