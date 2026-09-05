@@ -52,9 +52,14 @@ class NotificationsViewModel(
         startUnreadPolling()
     }
 
-    /** Loads (or reloads) page 1 with the current `unreadOnly` filter. */
+    /**
+     * Reloads page 1 with the current `unreadOnly` filter. Always refetches:
+     * this ViewModel outlives the screen (it also feeds the bell badge), so a
+     * load-once guard would show the previous visit's stale list until a manual
+     * pull-to-refresh. Old items stay visible while the reload is in flight.
+     */
     fun ensureLoaded() {
-        if (_state.value.loaded || _state.value.isLoading) return
+        if (_state.value.isLoading) return
         load(page = 1)
     }
 

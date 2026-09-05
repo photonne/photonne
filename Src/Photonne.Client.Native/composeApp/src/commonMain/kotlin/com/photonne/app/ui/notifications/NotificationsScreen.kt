@@ -98,6 +98,14 @@ fun NotificationsScreen(
     val reservedTop = subscreenChromeReservedTop()
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
+    // LazyColumn ancla el scroll a la clave del primer item visible: cuando una
+    // recarga antepone notificaciones nuevas, quedarían fuera de pantalla por
+    // arriba. Los items solo cambian por acciones explícitas (entrar, refrescar,
+    // paginar, filtrar), así que volver arriba es siempre lo esperado.
+    val firstItemId = state.items.firstOrNull()?.id
+    LaunchedEffect(firstItemId) {
+        if (firstItemId != null) listState.scrollToItem(0)
+    }
     Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         ErrorBanner(
