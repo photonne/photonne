@@ -54,6 +54,11 @@
     <string name="timeline_scope_notice">Showing camera photos only</string>
     <string name="timeline_scope_notice_change">Change</string>
     <string name="timeline_scope_notice_dismiss">Dismiss</string>
+    <string name="device_folders_title">My device</string>
+    <string name="device_folders_card_subtitle">%1$d folders · %2$d items</string>
+    <string name="device_folders_empty_title">No folders with photos</string>
+    <string name="device_folders_empty_subtitle">No images or videos were found on this device.</string>
+    <string name="device_folders_add_backup">Add to backup</string>
 
     <plurals name="selection_count">
         <item quantity="one">%1$d selected</item>

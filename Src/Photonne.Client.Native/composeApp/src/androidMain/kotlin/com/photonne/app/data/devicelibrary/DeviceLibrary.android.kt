@@ -159,9 +159,17 @@ actual class DeviceLibrary(private val context: Context) {
 
     actual suspend fun listBuckets(): List<DeviceBucket> = withContext(Dispatchers.IO) {
         if (!accessState().canRead) return@withContext emptyList()
-        // No portable GROUP BY through ContentResolver — a two-column sweep
-        // over both collections aggregates client-side in one pass each.
-        val counts = LinkedHashMap<String, Pair<String, Int>>()
+        // No portable GROUP BY through ContentResolver — a plain sweep over
+        // both collections aggregates client-side in one pass each. The same
+        // pass tracks each bucket's newest item, so folder-style listings get
+        // a cover thumbnail without a per-bucket LIMIT-1 query.
+        class Agg(val name: String) {
+            var count = 0
+            var latestUri: String? = null
+            var latestMillis = Long.MIN_VALUE
+        }
+
+        val buckets = LinkedHashMap<String, Agg>()
         listOf(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI
@@ -169,20 +177,40 @@ actual class DeviceLibrary(private val context: Context) {
             runCatching {
                 context.contentResolver.query(
                     collection,
-                    arrayOf(COLUMN_BUCKET_ID, COLUMN_BUCKET_DISPLAY_NAME),
+                    arrayOf(
+                        COLUMN_BUCKET_ID,
+                        COLUMN_BUCKET_DISPLAY_NAME,
+                        MediaStore.MediaColumns._ID,
+                        COLUMN_DATE_TAKEN,
+                        MediaStore.MediaColumns.DATE_MODIFIED
+                    ),
                     null, null, null
                 )?.use { c ->
                     while (c.moveToNext()) {
                         val id = c.getString(0) ?: continue
                         val name = c.getString(1) ?: continue
-                        val previous = counts[id]
-                        counts[id] = name to ((previous?.second ?: 0) + 1)
+                        val agg = buckets.getOrPut(id) { Agg(name) }
+                        agg.count++
+                        // Same capture instant loadAll sorts by: DATE_TAKEN is
+                        // epoch millis, DATE_MODIFIED epoch seconds.
+                        val takenMillis = c.getLong(3).takeIf { it > 0L }
+                            ?: (c.getLong(4) * 1000L)
+                        if (takenMillis > agg.latestMillis) {
+                            agg.latestMillis = takenMillis
+                            agg.latestUri = ContentUris
+                                .withAppendedId(collection, c.getLong(2)).toString()
+                        }
                     }
                 }
             }
         }
-        counts.map { (id, entry) ->
-            DeviceBucket(id = id, displayName = entry.first, itemCount = entry.second)
+        buckets.map { (id, agg) ->
+            DeviceBucket(
+                id = id,
+                displayName = agg.name,
+                itemCount = agg.count,
+                latestUri = agg.latestUri
+            )
         }.sortedByDescending { it.itemCount }
     }
 

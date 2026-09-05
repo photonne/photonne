@@ -110,9 +110,23 @@ class DeviceLibraryStore(
      *  [DeviceLibrary.supportsBuckets]). */
     val supportsBuckets: Boolean get() = library.supportsBuckets
 
-    /** The library's folders for the scope sheet — the same enumeration
-     *  the backup picker uses. */
+    /** The library's folders for the scope sheet and the "Mi dispositivo"
+     *  listing — the same enumeration the backup picker uses. */
     suspend fun listBuckets(): List<DeviceBucket> = library.listBuckets()
+
+    /**
+     * One bucket's assets as render-ready items under the same identity +
+     * ledger overlay the timeline gets. Deliberately IGNORES the timeline's
+     * [DeviceLibraryScope]: the folder browser is where a hidden WhatsApp
+     * folder must remain findable, or narrowing the timeline would orphan
+     * everything outside it. Off-main; a fresh enumeration per call.
+     */
+    suspend fun loadBucketItems(bucketId: String): List<TimelineItem> {
+        val media = runCatching {
+            library.loadAll(DeviceLibraryScope.Buckets(setOf(bucketId)))
+        }.getOrDefault(emptyList())
+        return buildItems(media)
+    }
 
     /**
      * Idempotent bootstrap, called from the timeline's composition (main
@@ -332,6 +346,12 @@ class DeviceLibraryStore(
      * identity map doesn't have yet.
      */
     private fun rebuildItems(media: List<DeviceMedia>) {
+        _state.update { it.copy(items = buildItems(media)) }
+    }
+
+    /** The overlay mapping itself, shared by the timeline's published list
+     *  and the per-bucket loads of the device folder browser. */
+    private fun buildItems(media: List<DeviceMedia>): List<TimelineItem> {
         val ledgerRows = runCatching { ledger.allEntries() }.getOrDefault(emptyList())
         val identities = runCatching { identityMap.all() }.getOrDefault(emptyMap())
 
@@ -403,7 +423,7 @@ class DeviceLibraryStore(
             )
         }
         runCatching { identityMap.upsertAll(bridged) }
-        _state.update { it.copy(items = items) }
+        return items
     }
 
     private companion object {

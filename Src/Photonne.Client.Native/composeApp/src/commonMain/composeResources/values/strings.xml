@@ -58,6 +58,11 @@
     <string name="timeline_scope_notice">Solo se muestran las fotos de la cámara</string>
     <string name="timeline_scope_notice_change">Cambiar</string>
     <string name="timeline_scope_notice_dismiss">Descartar</string>
+    <string name="device_folders_title">Mi dispositivo</string>
+    <string name="device_folders_card_subtitle">%1$d carpetas · %2$d elementos</string>
+    <string name="device_folders_empty_title">Sin carpetas con fotos</string>
+    <string name="device_folders_empty_subtitle">No se han encontrado imágenes ni vídeos en este dispositivo.</string>
+    <string name="device_folders_add_backup">Añadir a la copia de seguridad</string>
 
     <plurals name="selection_count">
         <item quantity="one">%1$d seleccionado</item>

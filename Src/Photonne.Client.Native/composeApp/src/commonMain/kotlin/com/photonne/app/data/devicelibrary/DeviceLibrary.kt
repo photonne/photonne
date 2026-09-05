@@ -22,7 +22,10 @@ const val DEVICE_BUCKET_URI_PREFIX = "mediastore:bucket:"
 data class DeviceBucket(
     val id: String,
     val displayName: String,
-    val itemCount: Int
+    val itemCount: Int,
+    /** Item URI of the bucket's newest asset, as a row-thumbnail model
+     *  for folder-style listings; null where tracking it isn't cheap. */
+    val latestUri: String? = null
 ) {
     /** The backup-folder ref this bucket maps to. */
     fun toFolderRef(): DeviceFolderRef =

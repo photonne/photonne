@@ -232,6 +232,8 @@ private enum class MoreSubscreen {
     UnsupportedFiles,
     OrganizeInbox,
     OrganizeRule,
+    DeviceFolders,
+    DeviceFolderDetail,
     Memories,
     ExploreScenes,
     ExploreObjects,
@@ -389,7 +391,9 @@ private fun parentMoreSubscreen(subscreen: MoreSubscreen): MoreSubscreen? = when
     MoreSubscreen.AdminSystemEnrichmentFailures,
     MoreSubscreen.AdminSystemBackup -> MoreSubscreen.AdminSystemHub
     MoreSubscreen.OrganizeRule -> MoreSubscreen.OrganizeInbox
+    MoreSubscreen.DeviceFolderDetail -> MoreSubscreen.DeviceFolders
     MoreSubscreen.Upload,
+    MoreSubscreen.DeviceFolders,
     MoreSubscreen.CreateSmartAlbum,
     MoreSubscreen.DeviceBackup,
     MoreSubscreen.Favorites,
@@ -688,6 +692,11 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         mutableStateListOf<com.photonne.app.data.models.FolderSummary>()
     }
     var assetDetail by remember { mutableStateOf<AssetDetailContext?>(null) }
+    // The bucket the "Mi dispositivo" detail subscreen shows. Survives going
+    // back to the bucket list (harmless), reset on every open.
+    var deviceFolderBucket by remember {
+        mutableStateOf<com.photonne.app.data.devicelibrary.DeviceBucket?>(null)
+    }
     // Type filter the failures registry opens with when reached from a
     // notification actionUrl ("/admin/enrichment-failures?type=Exif").
     var adminEnrichmentInitialType by remember { mutableStateOf<String?>(null) }
@@ -962,6 +971,8 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
         MoreSubscreen.ExploreScenes,
         MoreSubscreen.ExploreObjects,
         MoreSubscreen.Memories,
+        MoreSubscreen.DeviceFolders,
+        MoreSubscreen.DeviceFolderDetail,
         MoreSubscreen.Map -> true
         MoreSubscreen.OrganizeInbox -> !organizeInboxState.isSelectionActive
         MoreSubscreen.Favorites -> !favoritesState.isSelectionActive
@@ -1950,6 +1961,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                     foldersViewModel.selectFolder(folder.id)
                                 },
                                 onOpenOrganize = { moreSubscreen = MoreSubscreen.OrganizeInbox },
+                                // Como People/Map desde Álbumes: capa modal sobre la
+                                // pestaña, sin cambiar de tab. La tarjeta solo se
+                                // muestra donde hay buckets, así que el callback
+                                // puede ser incondicional.
+                                onOpenDeviceFolders = {
+                                    moreSubscreen = MoreSubscreen.DeviceFolders
+                                },
                                 onOpenFilters = { showFoldersFilters = true },
                                 onCreateFolder = foldersCreate,
                                 immersive = foldersImmersive,
@@ -2568,6 +2586,35 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                 onChromeVisibleChange = { subscreenChromeVisible = it }
                             )
                         }
+                    }
+                    MoreSubscreen.DeviceFolders -> com.photonne.app.ui.folder.DeviceFoldersScreen(
+                        backedUpUris = remember(deviceBackupState.folders) {
+                            deviceBackupState.folders.map { it.uri }.toSet()
+                        },
+                        onAddToBackup = deviceBackupViewModel::onFolderPicked,
+                        onOpenBucket = { bucket ->
+                            deviceFolderBucket = bucket
+                            moreSubscreen = MoreSubscreen.DeviceFolderDetail
+                        },
+                        onBack = { moreSubscreen = null },
+                        onChromeVisibleChange = { subscreenChromeVisible = it }
+                    )
+                    MoreSubscreen.DeviceFolderDetail -> deviceFolderBucket?.let { bucket ->
+                        com.photonne.app.ui.folder.DeviceFolderDetailScreen(
+                            bucket = bucket,
+                            onOpenAsset = { items, index ->
+                                assetDetail = AssetDetailContext(
+                                    items = items,
+                                    startIndex = index,
+                                    source = AssetDetailContext.Source.Timeline,
+                                    hasMore = false,
+                                    onLoadMore = {},
+                                    onFavoriteChanged = { _, _ -> }
+                                )
+                            },
+                            onBack = { moreSubscreen = MoreSubscreen.DeviceFolders },
+                            onChromeVisibleChange = { subscreenChromeVisible = it }
+                        )
                     }
                     MoreSubscreen.Favorites -> com.photonne.app.ui.library.FavoritesScreen(
                         state = favoritesState,

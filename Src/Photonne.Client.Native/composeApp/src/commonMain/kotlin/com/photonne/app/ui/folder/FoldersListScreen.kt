@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -48,7 +49,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,9 +62,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.photonne.app.data.devicelibrary.DeviceBucket
+import com.photonne.app.data.devicelibrary.DeviceLibraryStore
 import com.photonne.app.data.models.FolderSummary
 import com.photonne.app.resources.Res
 import com.photonne.app.resources.albums_count_format
+import com.photonne.app.resources.device_folders_card_subtitle
+import com.photonne.app.resources.device_folders_title
 import com.photonne.app.resources.organize_inbox_card_subtitle
 import com.photonne.app.resources.organize_inbox_count_format
 import com.photonne.app.resources.organize_inbox_title
@@ -102,6 +109,7 @@ import com.photonne.app.resources.folders_title
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -109,6 +117,9 @@ fun FoldersListScreen(
     onFolderClick: (FolderSummary) -> Unit,
     onFolderLongPress: (FolderSummary) -> Unit,
     onOpenOrganize: () -> Unit,
+    /** Opens the "Mi dispositivo" bucket browser. Null where the platform
+     *  has no buckets (iOS/desktop) — the entry card then never shows. */
+    onOpenDeviceFolders: (() -> Unit)? = null,
     onOpenFilters: () -> Unit = {},
     onCreateFolder: (() -> Unit)? = null,
     /**
@@ -137,6 +148,20 @@ fun FoldersListScreen(
     val showInbox = state.organizePendingCount > 0 &&
         !state.hasActiveQuery &&
         (state.scope == FoldersScope.All || state.scope == FoldersScope.Personal)
+    // "Mi dispositivo" entry: the local library browsed by system folder.
+    // Orthogonal to the server-folder scope filter (it's not a server
+    // folder), so it survives every scope — only a search hides it.
+    val deviceLibrary: DeviceLibraryStore = koinInject()
+    var deviceBuckets by remember { mutableStateOf<List<DeviceBucket>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        if (deviceLibrary.supportsBuckets) {
+            deviceBuckets = runCatching { deviceLibrary.listBuckets() }
+                .getOrDefault(emptyList())
+        }
+    }
+    val showDeviceCard = onOpenDeviceFolders != null &&
+        deviceBuckets.isNotEmpty() &&
+        !state.hasActiveQuery
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -165,8 +190,24 @@ fun FoldersListScreen(
                     listState = listState,
                     hazeState = hazeState,
                     chromeTopReserve = reservedTop,
-                    inboxHeader = if (showInbox) {
-                        { OrganizeInboxCard(count = state.organizePendingCount, onClick = onOpenOrganize) }
+                    inboxHeader = if (showInbox || showDeviceCard) {
+                        {
+                            Column {
+                                if (showInbox) {
+                                    OrganizeInboxCard(
+                                        count = state.organizePendingCount,
+                                        onClick = onOpenOrganize
+                                    )
+                                }
+                                if (showDeviceCard) {
+                                    DeviceFoldersCard(
+                                        folderCount = deviceBuckets.size,
+                                        itemCount = deviceBuckets.sumOf { it.itemCount },
+                                        onClick = onOpenDeviceFolders!!
+                                    )
+                                }
+                            }
+                        }
                     } else null,
                     immersive = immersive,
                     onChromeVisibleChange = onChromeVisibleChange
@@ -614,6 +655,60 @@ private fun OrganizeInboxCard(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
+}
+
+/**
+ * Permanent entry into the "Mi dispositivo" bucket browser. Quiet on
+ * purpose (surface tint, not the inbox's primaryContainer): it's ambient
+ * navigation that lives here forever, not an actionable backlog.
+ */
+@Composable
+private fun DeviceFoldersCard(
+    folderCount: Int,
+    itemCount: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Smartphone,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(28.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(Res.string.device_folders_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = stringResource(
+                    Res.string.device_folders_card_subtitle, folderCount, itemCount
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
