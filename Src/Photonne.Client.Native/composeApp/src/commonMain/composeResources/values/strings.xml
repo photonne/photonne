@@ -154,6 +154,8 @@
     <string name="share_option_max_views">Limitar el número de vistas</string>
     <string name="share_option_max_views_field">Vistas máximas</string>
     <string name="share_option_allow_downloads">Permitir descargas</string>
+    <string name="share_option_allow_upload">Permitir que suban fotos</string>
+    <string name="share_option_allow_upload_hint">Cualquiera con el enlace podrá añadir fotos al álbum sin cuenta</string>
     <string name="share_option_expiry">Fecha de expiración</string>
     <string name="share_option_expiry_pick">Elegir fecha</string>
     <string name="share_option_expiry_change">Cambiar</string>
@@ -166,6 +168,8 @@
     <string name="share_attribute_max_views_format">máx %1$d</string>
     <string name="share_attribute_no_downloads">sin descargas</string>
     <string name="share_attribute_views_format">%1$d vistas</string>
+    <string name="share_attribute_upload">solicitud de fotos</string>
+    <string name="share_attribute_uploads_format">%1$d recibidas</string>
     <string name="share_attribute_expiry_format">expira %1$s</string>
     <string name="share_link_fallback_title">Enlace</string>
     <string name="my_links_empty_title">Aún no has compartido enlaces</string>

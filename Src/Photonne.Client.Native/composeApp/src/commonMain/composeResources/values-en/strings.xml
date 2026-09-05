@@ -150,6 +150,8 @@
     <string name="share_option_max_views">Limit number of views</string>
     <string name="share_option_max_views_field">Max views</string>
     <string name="share_option_allow_downloads">Allow downloads</string>
+    <string name="share_option_allow_upload">Let people upload photos</string>
+    <string name="share_option_allow_upload_hint">Anyone with the link can add photos to the album without an account</string>
     <string name="share_option_expiry">Expiration date</string>
     <string name="share_option_expiry_pick">Pick a date</string>
     <string name="share_option_expiry_change">Change</string>
@@ -162,6 +164,8 @@
     <string name="share_attribute_max_views_format">max %1$d</string>
     <string name="share_attribute_no_downloads">no downloads</string>
     <string name="share_attribute_views_format">%1$d views</string>
+    <string name="share_attribute_upload">photo request</string>
+    <string name="share_attribute_uploads_format">%1$d received</string>
     <string name="share_attribute_expiry_format">expires %1$s</string>
     <string name="share_link_fallback_title">Link</string>
     <string name="my_links_empty_title">You haven't shared any links yet</string>

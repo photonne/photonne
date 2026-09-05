@@ -3630,12 +3630,13 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 showCreateShare = false
                 albumSharesViewModel.clearError()
             },
-            onConfirm = { expiresAt, password, allowDownload, maxViews ->
+            onConfirm = { expiresAt, password, allowDownload, maxViews, allowUpload ->
                 albumSharesViewModel.createLink(
                     expiresAt = expiresAt,
                     password = password,
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
                 showCreateShare = false
             }
@@ -3651,13 +3652,14 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                 editingShareLink = null
                 albumSharesViewModel.clearError()
             },
-            onConfirm = { expiresAt, password, allowDownload, maxViews ->
+            onConfirm = { expiresAt, password, allowDownload, maxViews, allowUpload ->
                 albumSharesViewModel.editLink(
                     token = link.token,
                     expiresAt = expiresAt,
                     password = password,
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
                 editingShareLink = null
             }

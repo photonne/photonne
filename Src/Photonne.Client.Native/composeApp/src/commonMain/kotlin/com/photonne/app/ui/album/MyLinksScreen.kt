@@ -60,6 +60,8 @@ import com.photonne.app.resources.share_attribute_expiry_format
 import com.photonne.app.resources.share_attribute_max_views_format
 import com.photonne.app.resources.share_attribute_no_downloads
 import com.photonne.app.resources.share_attribute_password
+import com.photonne.app.resources.share_attribute_upload
+import com.photonne.app.resources.share_attribute_uploads_format
 import com.photonne.app.resources.share_attribute_views_format
 import com.photonne.app.resources.share_link_fallback_title
 import com.photonne.app.resources.share_revoke_confirm_message
@@ -167,13 +169,14 @@ fun MyLinksScreen(
                 editing = null
                 viewModel.clearError()
             },
-            onConfirm = { expiresAt, password, allowDownload, maxViews ->
+            onConfirm = { expiresAt, password, allowDownload, maxViews, allowUpload ->
                 viewModel.editLink(
                     token = link.token,
                     expiresAt = expiresAt,
                     password = password,
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
                 editing = null
             }
@@ -270,12 +273,18 @@ private fun MyLinkRow(
                 Res.string.share_attribute_max_views_format,
                 link.maxViews ?: 0
             )
+            val uploadAttr = stringResource(Res.string.share_attribute_upload)
+            val uploadsAttr = stringResource(Res.string.share_attribute_uploads_format, link.uploadCount)
             val attrs = buildList {
                 if (link.hasPassword) add(passwordAttr)
                 link.expiresAt?.let { add("$expiryPrefix ${formatDate(it)}") }
                 link.maxViews?.let { add(maxViewsAttr) }
                 add(viewsAttr)
                 if (!link.allowDownload) add(noDownloadsAttr)
+                if (link.allowUpload) {
+                    add(uploadAttr)
+                    if (link.uploadCount > 0) add(uploadsAttr)
+                }
             }
             Text(
                 text = attrs.joinToString(" · "),

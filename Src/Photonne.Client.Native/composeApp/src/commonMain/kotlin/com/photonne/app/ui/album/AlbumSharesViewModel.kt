@@ -48,7 +48,8 @@ class AlbumSharesViewModel(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ) {
         val albumId = _state.value.albumId ?: return
         if (_state.value.isMutating) return
@@ -60,7 +61,8 @@ class AlbumSharesViewModel(
                     expiresAt = expiresAt,
                     password = password,
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
             }
                 .onSuccess { link ->
@@ -88,7 +90,8 @@ class AlbumSharesViewModel(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ) {
         if (_state.value.isMutating) return
         _state.update { it.copy(isMutating = true, error = null) }
@@ -99,7 +102,8 @@ class AlbumSharesViewModel(
                     expiresAt = expiresAt,
                     password = password,
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
             }
                 .onSuccess { result ->
@@ -110,7 +114,8 @@ class AlbumSharesViewModel(
                                     expiresAt = result.expiresAt,
                                     hasPassword = result.hasPassword,
                                     allowDownload = result.allowDownload,
-                                    maxViews = result.maxViews
+                                    maxViews = result.maxViews,
+                                    allowUpload = result.allowUpload
                                 ) else link
                             },
                             isMutating = false

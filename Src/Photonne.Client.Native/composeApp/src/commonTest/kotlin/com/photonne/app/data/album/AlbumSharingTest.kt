@@ -99,7 +99,8 @@ class AlbumSharingTest {
             expiresAt = null,
             password = "hunter2",
             allowDownload = true,
-            maxViews = 10
+            maxViews = 10,
+            allowUpload = false
         )
         assertTrue(link.hasPassword)
         assertEquals(10, link.maxViews)

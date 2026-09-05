@@ -307,7 +307,8 @@ internal data class CreateShareRequest(
     val expiresAt: String? = null,
     val password: String? = null,
     val allowDownload: Boolean = true,
-    val maxViews: Int? = null
+    val maxViews: Int? = null,
+    val allowUpload: Boolean = false
 )
 
 @Serializable
@@ -315,7 +316,8 @@ internal data class UpdateShareRequest(
     val expiresAt: String? = null,
     val password: String? = null,
     val allowDownload: Boolean = true,
-    val maxViews: Int? = null
+    val maxViews: Int? = null,
+    val allowUpload: Boolean = false
 )
 
 @Serializable
@@ -523,14 +525,16 @@ interface PhotonneApi {
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ): AlbumShareLink
     suspend fun updateShare(
         token: String,
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ): ShareUpdateResult
     suspend fun revokeShare(token: String)
     suspend fun getShareableUsers(): List<ShareableUser>
@@ -1846,7 +1850,8 @@ class PhotonneApiClient(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ): AlbumShareLink {
         val response: HttpResponse = client.post("$baseUrl/api/share") {
             contentType(ContentType.Application.Json)
@@ -1856,7 +1861,8 @@ class PhotonneApiClient(
                     expiresAt = expiresAt?.toString(),
                     password = password?.takeIf { it.isNotBlank() },
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
             )
         }
@@ -1876,7 +1882,8 @@ class PhotonneApiClient(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ): ShareUpdateResult {
         val response: HttpResponse = client.patch("$baseUrl/api/share/$token") {
             contentType(ContentType.Application.Json)
@@ -1885,7 +1892,8 @@ class PhotonneApiClient(
                     expiresAt = expiresAt?.toString(),
                     password = password,
                     allowDownload = allowDownload,
-                    maxViews = maxViews
+                    maxViews = maxViews,
+                    allowUpload = allowUpload
                 )
             )
         }

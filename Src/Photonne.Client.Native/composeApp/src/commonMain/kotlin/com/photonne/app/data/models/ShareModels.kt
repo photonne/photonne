@@ -13,6 +13,8 @@ data class AlbumShareLink(
     val allowDownload: Boolean = true,
     val maxViews: Int? = null,
     val viewCount: Int = 0,
+    val allowUpload: Boolean = false,
+    val uploadCount: Int = 0,
     val shareUrl: String = ""
 )
 
@@ -22,7 +24,8 @@ data class ShareUpdateResult(
     @Serializable(with = FlexibleInstantSerializer::class) val expiresAt: Instant? = null,
     val hasPassword: Boolean = false,
     val allowDownload: Boolean = true,
-    val maxViews: Int? = null
+    val maxViews: Int? = null,
+    val allowUpload: Boolean = false
 )
 
 /**
@@ -39,6 +42,8 @@ data class SentShareLink(
     val allowDownload: Boolean = true,
     val maxViews: Int? = null,
     val viewCount: Int = 0,
+    val allowUpload: Boolean = false,
+    val uploadCount: Int = 0,
     val assetId: String? = null,
     val assetFileName: String? = null,
     val assetType: String? = null,
@@ -64,6 +69,8 @@ data class SentShareLink(
         allowDownload = allowDownload,
         maxViews = maxViews,
         viewCount = viewCount,
+        allowUpload = allowUpload,
+        uploadCount = uploadCount,
         shareUrl = shareUrl
     )
 }

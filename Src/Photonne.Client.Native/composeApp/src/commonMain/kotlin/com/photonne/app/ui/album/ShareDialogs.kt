@@ -59,11 +59,15 @@ import com.photonne.app.resources.share_action_revoke
 import com.photonne.app.resources.share_attribute_expiry_format
 import com.photonne.app.resources.share_attribute_no_downloads
 import com.photonne.app.resources.share_attribute_password
+import com.photonne.app.resources.share_attribute_upload
+import com.photonne.app.resources.share_attribute_uploads_format
 import com.photonne.app.resources.share_attribute_views_format
 import com.photonne.app.resources.share_create_title
 import com.photonne.app.resources.share_edit_title
 import com.photonne.app.resources.share_empty
 import com.photonne.app.resources.share_option_allow_downloads
+import com.photonne.app.resources.share_option_allow_upload
+import com.photonne.app.resources.share_option_allow_upload_hint
 import com.photonne.app.resources.share_option_expiry
 import com.photonne.app.resources.share_option_expiry_change
 import com.photonne.app.resources.share_option_expiry_pick
@@ -179,12 +183,18 @@ private fun ShareLinkRow(
             val noDownloadsAttr = stringResource(Res.string.share_attribute_no_downloads)
             val viewsAttr = stringResource(Res.string.share_attribute_views_format, link.viewCount)
             val expiryFormat = stringResource(Res.string.share_attribute_expiry_format, "")
+            val uploadAttr = stringResource(Res.string.share_attribute_upload)
+            val uploadsAttr = stringResource(Res.string.share_attribute_uploads_format, link.uploadCount)
             val attrs = buildList {
                 if (link.hasPassword) add(passwordAttr)
                 link.expiresAt?.let { add(expiryFormat.trim() + " " + formatExpiry(it)) }
                 link.maxViews?.let { add("max $it") }
                 add(viewsAttr)
                 if (!link.allowDownload) add(noDownloadsAttr)
+                if (link.allowUpload) {
+                    add(uploadAttr)
+                    if (link.uploadCount > 0) add(uploadsAttr)
+                }
             }
             Text(
                 text = attrs.joinToString(" · "),
@@ -229,12 +239,14 @@ fun CreateShareDialog(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ) -> Unit
 ) {
     var passwordEnabled by remember { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
     var allowDownload by remember { mutableStateOf(true) }
+    var allowUpload by remember { mutableStateOf(false) }
     var maxViewsEnabled by remember { mutableStateOf(false) }
     var maxViews by remember { mutableStateOf("") }
     var expiryEnabled by remember { mutableStateOf(false) }
@@ -268,6 +280,19 @@ fun CreateShareDialog(
                 onCheckedChange = { allowDownload = it },
                 enabled = !isSubmitting
             )
+            ToggleRow(
+                label = stringResource(Res.string.share_option_allow_upload),
+                checked = allowUpload,
+                onCheckedChange = { allowUpload = it },
+                enabled = !isSubmitting
+            )
+            if (allowUpload) {
+                Text(
+                    stringResource(Res.string.share_option_allow_upload_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             ToggleRow(
                 label = stringResource(Res.string.share_option_password),
                 checked = passwordEnabled,
@@ -337,7 +362,8 @@ fun CreateShareDialog(
                             if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
                             if (passwordEnabled) password else null,
                             allowDownload,
-                            if (maxViewsEnabled) maxViews.toIntOrNull() else null
+                            if (maxViewsEnabled) maxViews.toIntOrNull() else null,
+                            allowUpload
                         )
                     },
                     enabled = canSubmit
@@ -403,10 +429,12 @@ fun EditShareDialog(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ) -> Unit
 ) {
     var allowDownload by remember(link.token) { mutableStateOf(link.allowDownload) }
+    var allowUpload by remember(link.token) { mutableStateOf(link.allowUpload) }
     var expiryEnabled by remember(link.token) { mutableStateOf(link.expiresAt != null) }
     var expiryDate by remember(link.token) {
         mutableStateOf(
@@ -448,6 +476,19 @@ fun EditShareDialog(
                 onCheckedChange = { allowDownload = it },
                 enabled = !isSubmitting
             )
+            ToggleRow(
+                label = stringResource(Res.string.share_option_allow_upload),
+                checked = allowUpload,
+                onCheckedChange = { allowUpload = it },
+                enabled = !isSubmitting
+            )
+            if (allowUpload) {
+                Text(
+                    stringResource(Res.string.share_option_allow_upload_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Text(
                 stringResource(Res.string.share_option_password),
@@ -547,7 +588,8 @@ fun EditShareDialog(
                             if (expiryEnabled) expiryDate?.let(::endOfDayInstant) else null,
                             passwordPayload,
                             allowDownload,
-                            if (maxViewsEnabled) maxViews.toIntOrNull() else null
+                            if (maxViewsEnabled) maxViews.toIntOrNull() else null,
+                            allowUpload
                         )
                     },
                     enabled = canSubmit

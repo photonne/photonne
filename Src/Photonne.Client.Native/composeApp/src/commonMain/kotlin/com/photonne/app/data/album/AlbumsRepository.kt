@@ -67,13 +67,15 @@ class AlbumsRepository(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ): AlbumShareLink = api.createAlbumShare(
         albumId = albumId,
         expiresAt = expiresAt,
         password = password,
         allowDownload = allowDownload,
-        maxViews = maxViews
+        maxViews = maxViews,
+        allowUpload = allowUpload
     )
 
     suspend fun updateShare(
@@ -81,13 +83,15 @@ class AlbumsRepository(
         expiresAt: Instant?,
         password: String?,
         allowDownload: Boolean,
-        maxViews: Int?
+        maxViews: Int?,
+        allowUpload: Boolean
     ): ShareUpdateResult = api.updateShare(
         token = token,
         expiresAt = expiresAt,
         password = password,
         allowDownload = allowDownload,
-        maxViews = maxViews
+        maxViews = maxViews,
+        allowUpload = allowUpload
     )
 
     suspend fun revokeShare(token: String) {
