@@ -36,6 +36,12 @@ class DeviceLibraryScopeStoreTest {
             DeviceLibraryScopeStore(settings).value.value
         )
 
+        store.update(DeviceLibraryScope.SyncedOnly)
+        assertEquals(
+            DeviceLibraryScope.SyncedOnly,
+            DeviceLibraryScopeStore(settings).value.value
+        )
+
         store.update(DeviceLibraryScope.CameraOnly)
         assertEquals(
             DeviceLibraryScope.CameraOnly,

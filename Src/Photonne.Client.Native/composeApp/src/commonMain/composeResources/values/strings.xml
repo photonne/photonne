@@ -52,6 +52,8 @@
     <string name="timeline_scope_all_hint">Incluye WhatsApp, capturas y otras apps</string>
     <string name="timeline_scope_camera">Solo cámara</string>
     <string name="timeline_scope_camera_hint">Lo que guardan las apps de cámara (DCIM)</string>
+    <string name="timeline_scope_synced">Solo sincronizados</string>
+    <string name="timeline_scope_synced_hint">Oculta lo que aún no está en el servidor</string>
     <string name="timeline_scope_custom">Carpetas concretas</string>
     <string name="timeline_scope_custom_hint">Marca las carpetas que quieres ver</string>
     <string name="timeline_scope_backed_up">Con copia</string>

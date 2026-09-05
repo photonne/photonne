@@ -180,8 +180,15 @@ class DeviceLibraryStore(
                 return
             }
             _state.update { it.copy(access = access, isLoading = true) }
-            val media = runCatching { library.loadAll(scopeStore.value.value) }
-                .getOrDefault(emptyList())
+            // SyncedOnly never touches the platform: no local side at all, on
+            // every platform alike (iOS ignores scopes it can't express, so
+            // deciding here is what keeps the semantics uniform).
+            val libraryScope = scopeStore.value.value
+            val media = if (libraryScope == DeviceLibraryScope.SyncedOnly) {
+                emptyList()
+            } else {
+                runCatching { library.loadAll(libraryScope) }.getOrDefault(emptyList())
+            }
             mediaByUri = media.associateBy { it.uri }
             rebuildItems(media)
             _state.update { it.copy(isLoading = false) }

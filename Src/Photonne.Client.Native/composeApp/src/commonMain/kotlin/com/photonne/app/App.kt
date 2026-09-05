@@ -1768,7 +1768,7 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
     // Canal único de feedback: el toast de "descarga guardada" que el VM de acciones
     // ya componía en statusMessage pero que no se pintaba en ninguna parte.
     LaunchedEffect(actionsState.statusMessage) {
-        actionsState.statusMessage?.let { message ->
+        actionsState.statusMessage?.let { message -> 
             snackbarController.show(message)
             actionsViewModel.dismissMessage()
         }

@@ -32,6 +32,14 @@ sealed interface DeviceLibraryScope {
 
     /** An explicit set of MediaStore buckets, as picked by the user. */
     data class Buckets(val bucketIds: Set<String>) : DeviceLibraryScope
+
+    /**
+     * No local side at all: the timeline shows only what the server has.
+     * The most restrictive mode — you lose the just-shot photo appearing
+     * before backup runs, in exchange for "everything here is safe".
+     * [DeviceLibraryStore] short-circuits it before touching the platform.
+     */
+    data object SyncedOnly : DeviceLibraryScope
 }
 
 /**
@@ -74,6 +82,10 @@ class DeviceLibraryScopeStore(private val settings: Settings) {
                 settings.putString(KEY_MODE, MODE_BUCKETS)
                 settings.putString(KEY_BUCKETS, json.encodeToString(scope.bucketIds.toList()))
             }
+            DeviceLibraryScope.SyncedOnly -> {
+                settings.putString(KEY_MODE, MODE_SYNCED)
+                settings.remove(KEY_BUCKETS)
+            }
         }
         _value.value = scope
     }
@@ -86,6 +98,7 @@ class DeviceLibraryScopeStore(private val settings: Settings) {
 
     private fun load(): DeviceLibraryScope = when (settings.getStringOrNull(KEY_MODE)) {
         MODE_ALL -> DeviceLibraryScope.All
+        MODE_SYNCED -> DeviceLibraryScope.SyncedOnly
         MODE_BUCKETS -> settings.getStringOrNull(KEY_BUCKETS)
             ?.let { raw ->
                 runCatching { json.decodeFromString<List<String>>(raw) }.getOrNull()
@@ -103,5 +116,6 @@ class DeviceLibraryScopeStore(private val settings: Settings) {
         const val MODE_ALL = "all"
         const val MODE_CAMERA = "camera"
         const val MODE_BUCKETS = "buckets"
+        const val MODE_SYNCED = "synced"
     }
 }

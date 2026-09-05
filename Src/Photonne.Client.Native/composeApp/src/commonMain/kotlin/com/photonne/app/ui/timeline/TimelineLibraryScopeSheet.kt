@@ -40,6 +40,8 @@ import com.photonne.app.resources.timeline_scope_custom
 import com.photonne.app.resources.timeline_scope_custom_hint
 import com.photonne.app.resources.timeline_scope_sheet_hint
 import com.photonne.app.resources.timeline_scope_sheet_title
+import com.photonne.app.resources.timeline_scope_synced
+import com.photonne.app.resources.timeline_scope_synced_hint
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -95,6 +97,14 @@ fun TimelineLibraryScopeSheet(
                     hint = stringResource(Res.string.timeline_scope_all_hint),
                     selected = scope == DeviceLibraryScope.All,
                     onClick = { onSelect(DeviceLibraryScope.All) }
+                )
+            }
+            item("mode-synced") {
+                ScopeModeRow(
+                    title = stringResource(Res.string.timeline_scope_synced),
+                    hint = stringResource(Res.string.timeline_scope_synced_hint),
+                    selected = scope == DeviceLibraryScope.SyncedOnly,
+                    onClick = { onSelect(DeviceLibraryScope.SyncedOnly) }
                 )
             }
             item("mode-custom") {

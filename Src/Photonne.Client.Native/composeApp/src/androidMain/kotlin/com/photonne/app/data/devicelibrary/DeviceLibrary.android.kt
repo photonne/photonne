@@ -67,6 +67,9 @@ actual class DeviceLibrary(private val context: Context) {
             if (scope is DeviceLibraryScope.Buckets && scope.bucketIds.isEmpty()) {
                 return@withContext emptyList()
             }
+            // Normally short-circuited upstream (DeviceLibraryStore); honored
+            // here too so the contract holds for any direct caller.
+            if (scope == DeviceLibraryScope.SyncedOnly) return@withContext emptyList()
             val filter = scopeFilter(scope)
             val out = ArrayList<DeviceMedia>(4096)
             queryCollection(
@@ -95,6 +98,8 @@ actual class DeviceLibrary(private val context: Context) {
     private fun scopeFilter(scope: DeviceLibraryScope): Pair<String, Array<String>>? =
         when (scope) {
             DeviceLibraryScope.All -> null
+            // Filtered out before the query ever runs (see loadAll).
+            DeviceLibraryScope.SyncedOnly -> null
             DeviceLibraryScope.CameraOnly ->
                 // The DCIM tree is where Android's spec sends camera output.
                 // RELATIVE_PATH only exists from API 29; before scoped storage

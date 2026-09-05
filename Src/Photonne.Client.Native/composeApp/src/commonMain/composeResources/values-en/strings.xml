@@ -48,6 +48,8 @@
     <string name="timeline_scope_all_hint">Includes WhatsApp, screenshots and other apps</string>
     <string name="timeline_scope_camera">Camera only</string>
     <string name="timeline_scope_camera_hint">What camera apps save (DCIM)</string>
+    <string name="timeline_scope_synced">Synced only</string>
+    <string name="timeline_scope_synced_hint">Hides what isn\'t on the server yet</string>
     <string name="timeline_scope_custom">Specific folders</string>
     <string name="timeline_scope_custom_hint">Pick the folders you want to see</string>
     <string name="timeline_scope_backed_up">Backed up</string>
