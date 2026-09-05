@@ -808,6 +808,12 @@ fun TimelineTopBar(
                     current = currentZoom,
                     onSelect = onZoomSelected
                 )
+                IconButton(onClick = onJumpToDate) {
+                    Icon(
+                        Icons.Outlined.CalendarMonth,
+                        contentDescription = stringResource(Res.string.action_jump_to_date)
+                    )
+                }
                 if (onOpenLibraryScope != null) {
                     IconButton(onClick = onOpenLibraryScope) {
                         Icon(
@@ -816,12 +822,6 @@ fun TimelineTopBar(
                                 stringResource(Res.string.timeline_scope_action)
                         )
                     }
-                }
-                IconButton(onClick = onJumpToDate) {
-                    Icon(
-                        Icons.Outlined.CalendarMonth,
-                        contentDescription = stringResource(Res.string.action_jump_to_date)
-                    )
                 }
             }
           }
