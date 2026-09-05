@@ -540,6 +540,9 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.UserId, e.IsRead });
+            entity.Property(e => e.GroupKey).HasMaxLength(100);
+            entity.Property(e => e.GroupCount).HasDefaultValue(1);
+            entity.HasIndex(e => new { e.UserId, e.GroupKey });
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
         });
 

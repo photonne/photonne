@@ -20,4 +20,13 @@ public class Notification
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? ActionUrl { get; set; }
+
+    /// <summary>
+    /// Aggregation key: while a notification with the same (UserId, GroupKey)
+    /// remains unread, new events with that key fold into it (bumping
+    /// <see cref="GroupCount"/> and <see cref="CreatedAt"/>) instead of
+    /// inserting a new row. Null = never aggregates.
+    /// </summary>
+    public string? GroupKey { get; set; }
+    public int GroupCount { get; set; } = 1;
 }

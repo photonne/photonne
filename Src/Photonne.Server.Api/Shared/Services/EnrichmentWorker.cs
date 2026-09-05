@@ -221,14 +221,24 @@ public class EnrichmentWorker : BackgroundService
                 .FirstOrDefaultAsync(ct);
             if (ownerId is null || ownerId == Guid.Empty) return;
 
+            // The per-asset breakdown (with retry/suppress) lives in the admin
+            // failures registry, so only admins get a click-through.
+            var ownerIsAdmin = await dbContext.Users
+                .AnyAsync(u => u.Id == ownerId.Value && u.Role == "Admin", ct);
+
             var notifications = sp.GetRequiredService<INotificationService>();
             var label = TaskTypeLabel(task.TaskType);
             var reason = ex.Message.Length > 200 ? ex.Message[..200] + "…" : ex.Message;
-            await notifications.CreateAsync(
+            var attempts = task.AttemptCount;
+            await notifications.CreateOrAggregateAsync(
                 ownerId.Value,
                 NotificationType.JobFailed,
-                $"Enriquecimiento fallido: {label}",
-                $"No se pudo procesar un asset ({label}) tras {task.AttemptCount} intentos. Causa: {reason}");
+                groupKey: $"enrichment-failed:{task.TaskType}",
+                title: $"Enriquecimiento fallido: {label}",
+                message: count => count == 1
+                    ? $"No se pudo procesar un asset ({label}) tras {attempts} intentos. Causa: {reason}"
+                    : $"{count} assets no se han podido procesar ({label}). Último error: {reason}",
+                actionUrl: ownerIsAdmin ? $"/admin/enrichment-failures?type={task.TaskType}" : null);
         }
         catch (Exception notifyEx)
         {

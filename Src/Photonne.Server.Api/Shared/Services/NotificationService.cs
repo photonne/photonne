@@ -17,26 +17,8 @@ public class NotificationService : INotificationService
 
     public async Task CreateAsync(Guid userId, NotificationType type, string title, string message, string? actionUrl = null)
     {
-        // Respect global master switch
-        var enabled = await _settings.GetSettingAsync("NotificationSettings.Enabled", Guid.Empty, "true");
-        if (!enabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+        if (!await IsTypeEnabledAsync(type))
             return;
-
-        // Respect per-type toggle
-        var typeKey = type switch
-        {
-            NotificationType.JobCompleted => "NotificationSettings.JobCompleted.Enabled",
-            NotificationType.JobFailed    => "NotificationSettings.JobFailed.Enabled",
-            NotificationType.ShareViewed  => "NotificationSettings.ShareViewed.Enabled",
-            NotificationType.SharedAssetsDeleted => "NotificationSettings.SharedAssetsDeleted.Enabled",
-            _                             => null
-        };
-        if (typeKey is not null)
-        {
-            var typeEnabled = await _settings.GetSettingAsync(typeKey, Guid.Empty, "true");
-            if (!typeEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
-                return;
-        }
 
         _db.Notifications.Add(new Notification
         {
@@ -53,6 +35,70 @@ public class NotificationService : INotificationService
 
         // Respect per-user cap — trim oldest notifications if over the limit
         await EnforcePerUserCapAsync(userId);
+    }
+
+    public async Task CreateOrAggregateAsync(Guid userId, NotificationType type, string groupKey, string title, Func<int, string> message, string? actionUrl = null)
+    {
+        if (!await IsTypeEnabledAsync(type))
+            return;
+
+        // Only the unread row aggregates: once the user reads it, the next
+        // event opens a fresh notification (and a fresh count) so nothing new
+        // hides behind an already-seen entry.
+        var existing = await _db.Notifications
+            .Where(n => n.UserId == userId && n.GroupKey == groupKey && !n.IsRead)
+            .OrderByDescending(n => n.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (existing is not null)
+        {
+            existing.GroupCount++;
+            existing.Title = title;
+            existing.Message = message(existing.GroupCount);
+            existing.CreatedAt = DateTime.UtcNow;
+            existing.ActionUrl = actionUrl ?? existing.ActionUrl;
+            await _db.SaveChangesAsync();
+            return;
+        }
+
+        _db.Notifications.Add(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Type = type,
+            Title = title,
+            Message = message(1),
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow,
+            ActionUrl = actionUrl,
+            GroupKey = groupKey,
+            GroupCount = 1
+        });
+        await _db.SaveChangesAsync();
+
+        await EnforcePerUserCapAsync(userId);
+    }
+
+    /// <summary>Global master switch + per-type toggle from settings.</summary>
+    private async Task<bool> IsTypeEnabledAsync(NotificationType type)
+    {
+        var enabled = await _settings.GetSettingAsync("NotificationSettings.Enabled", Guid.Empty, "true");
+        if (!enabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var typeKey = type switch
+        {
+            NotificationType.JobCompleted => "NotificationSettings.JobCompleted.Enabled",
+            NotificationType.JobFailed    => "NotificationSettings.JobFailed.Enabled",
+            NotificationType.ShareViewed  => "NotificationSettings.ShareViewed.Enabled",
+            NotificationType.SharedAssetsDeleted => "NotificationSettings.SharedAssetsDeleted.Enabled",
+            _                             => null
+        };
+        if (typeKey is null)
+            return true;
+
+        var typeEnabled = await _settings.GetSettingAsync(typeKey, Guid.Empty, "true");
+        return typeEnabled.Equals("true", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
