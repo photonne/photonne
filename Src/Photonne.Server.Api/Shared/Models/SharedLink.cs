@@ -31,4 +31,14 @@ public class SharedLink
     /// <summary>Number of times this link has been successfully accessed.</summary>
     public int ViewCount { get; set; } = 0;
 
+    /// <summary>
+    /// Whether anonymous visitors may upload photos to the shared album
+    /// ("solicitud de fotos"). Uploads land under the creator's
+    /// PhotoRequests folder and are added to the album.
+    /// </summary>
+    public bool AllowUpload { get; set; } = false;
+
+    /// <summary>Number of assets uploaded by visitors through this link.</summary>
+    public int UploadCount { get; set; } = 0;
+
 }

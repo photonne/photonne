@@ -84,6 +84,20 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         });
     });
+
+    // Subida pública por enlace ("solicitud de fotos"). Activa SIEMPRE, no solo en
+    // demo: el endpoint es anónimo, así que el token opaco + este límite por IP son
+    // la única barrera contra abuso.
+    options.AddPolicy("share-upload", http =>
+    {
+        var key = http.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
 });
 
 // Add services to the container.

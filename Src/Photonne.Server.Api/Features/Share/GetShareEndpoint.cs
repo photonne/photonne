@@ -92,6 +92,7 @@ public class GetShareEndpoint : IEndpoint
                 Token = token,
 
                 AllowDownload = link.AllowDownload,
+                AllowUpload = link.AllowUpload,
                 Album = new SharedAlbumDto
                 {
                     Name = album.Name,
@@ -118,6 +119,7 @@ public class SharedContentResponse
     public bool RequiresPassword { get; set; }
     public bool WrongPassword { get; set; }
     public bool AllowDownload { get; set; } = true;
+    public bool AllowUpload { get; set; }
     public SharedAlbumDto? Album { get; set; }
     public List<SharedAssetDto>? Assets { get; set; }
     public DateTime? ExpiresAt { get; set; }

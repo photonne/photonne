@@ -518,6 +518,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PasswordHash).HasMaxLength(200);
             entity.Property(e => e.AllowDownload).HasDefaultValue(true);
             entity.Property(e => e.ViewCount).HasDefaultValue(0);
+            entity.Property(e => e.AllowUpload).HasDefaultValue(false);
+            entity.Property(e => e.UploadCount).HasDefaultValue(0);
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);
             entity.Property(e => e.ExpiresAt).HasColumnType("timestamp without time zone").HasConversion(NullableUtcConverter);
         });

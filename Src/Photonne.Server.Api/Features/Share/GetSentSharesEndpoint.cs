@@ -66,6 +66,8 @@ public class GetSentSharesEndpoint : IEndpoint
                 AllowDownload = l.AllowDownload,
                 MaxViews = l.MaxViews,
                 ViewCount = l.ViewCount,
+                AllowUpload = l.AllowUpload,
+                UploadCount = l.UploadCount,
                 AssetId = l.AssetId,
                 AssetFileName = l.Asset?.FileName,
                 AssetType = l.Asset?.Type.ToString(),
@@ -90,6 +92,8 @@ public class SentShareLinkDto
     public bool AllowDownload { get; set; } = true;
     public int? MaxViews { get; set; }
     public int ViewCount { get; set; }
+    public bool AllowUpload { get; set; }
+    public int UploadCount { get; set; }
     public Guid? AssetId { get; set; }
     public string? AssetFileName { get; set; }
     public string? AssetType { get; set; }

@@ -37,6 +37,7 @@ public class UpdateShareEndpoint : IEndpoint
         link.ExpiresAt = request.ExpiresAt;
         link.AllowDownload = request.AllowDownload;
         link.MaxViews = request.MaxViews;
+        link.AllowUpload = request.AllowUpload;
 
         // null  → keep existing password unchanged
         // ""    → remove password
@@ -56,7 +57,8 @@ public class UpdateShareEndpoint : IEndpoint
             ExpiresAt = link.ExpiresAt,
             HasPassword = link.PasswordHash != null,
             AllowDownload = link.AllowDownload,
-            MaxViews = link.MaxViews
+            MaxViews = link.MaxViews,
+            AllowUpload = link.AllowUpload
         });
     }
 }
@@ -68,6 +70,7 @@ public class UpdateShareRequest
     public string? Password { get; set; }
     public bool AllowDownload { get; set; } = true;
     public int? MaxViews { get; set; }
+    public bool AllowUpload { get; set; } = false;
 }
 
 public class UpdateShareResponse
@@ -77,4 +80,5 @@ public class UpdateShareResponse
     public bool HasPassword { get; set; }
     public bool AllowDownload { get; set; }
     public int? MaxViews { get; set; }
+    public bool AllowUpload { get; set; }
 }

@@ -246,13 +246,13 @@ public class UploadAssetsEndpoint : IEndpoint
         return sanitized == null ? basePath : $"{basePath}/{sanitized}";
     }
 
-    private AssetType GetAssetType(string extension)
+    internal static AssetType GetAssetType(string extension)
     {
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp", ".heic", ".heif" };
         return imageExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? AssetType.Image : AssetType.Video;
     }
 
-    private static async Task<Folder?> EnsureFolderRecordAsync(
+    internal static async Task<Folder?> EnsureFolderRecordAsync(
         ApplicationDbContext dbContext,
         Guid userId,
         string folderPath,

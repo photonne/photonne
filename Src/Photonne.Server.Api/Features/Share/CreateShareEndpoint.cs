@@ -56,7 +56,8 @@ public class CreateShareEndpoint : IEndpoint
                 ? SharePasswordHasher.Hash(request.Password)
                 : null,
             AllowDownload = request.AllowDownload,
-            MaxViews = request.MaxViews
+            MaxViews = request.MaxViews,
+            AllowUpload = request.AllowUpload
         };
 
         dbContext.SharedLinks.Add(link);
@@ -93,6 +94,8 @@ public class CreateShareEndpoint : IEndpoint
         AllowDownload = link.AllowDownload,
         MaxViews = link.MaxViews,
         ViewCount = link.ViewCount,
+        AllowUpload = link.AllowUpload,
+        UploadCount = link.UploadCount,
         ShareUrl = !string.IsNullOrEmpty(publicBaseUrl)
             ? $"{publicBaseUrl}/share/{link.Token}"
             : $"/share/{link.Token}"
@@ -106,6 +109,7 @@ public class CreateShareRequest
     public string? Password { get; set; }
     public bool AllowDownload { get; set; } = true;
     public int? MaxViews { get; set; }
+    public bool AllowUpload { get; set; } = false;
 }
 
 public class ShareLinkResponse
@@ -118,6 +122,8 @@ public class ShareLinkResponse
     public bool AllowDownload { get; set; } = true;
     public int? MaxViews { get; set; }
     public int ViewCount { get; set; }
+    public bool AllowUpload { get; set; }
+    public int UploadCount { get; set; }
     /// <summary>
     /// Absolute URL (based on <c>ServerSettings.PublicUrl</c> when configured, otherwise
     /// the current request's base URL) that end users can open to view the shared content.
