@@ -127,3 +127,33 @@
         padding: 4px 4px 4px 12px;
         background: rgba(0,0,0,0.5);
     }
+
+    /* ── Solicitud de fotos ─────────────────────────────── */
+    .share-upload-card {
+        /* Alineada con .share-album-grid-wrap (1400px de ancho, 24px de aire) */
+        max-width: 1352px;
+        width: calc(100% - 48px);
+        box-sizing: border-box;
+        margin: 24px auto 0;
+        padding: 20px 24px;
+        border: 1px dashed var(--mud-palette-lines-default, rgba(0,0,0,0.2));
+        border-radius: 12px;
+        background: var(--mud-palette-surface, #fff);
+    }
+
+    .share-upload-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 20px;
+        border-radius: 20px;
+        background: var(--mud-palette-primary, #594ae2);
+        color: var(--mud-palette-primary-text, #fff);
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .share-upload-btn:hover {
+        filter: brightness(1.1);
+    }

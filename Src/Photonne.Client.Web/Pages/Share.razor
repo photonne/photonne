@@ -99,6 +99,52 @@ else if (_content.Album != null)
             </div>
         </div>
 
+        @* ── Solicitud de fotos ───────────────────────────────────────────── *@
+        @if (_content.AllowUpload)
+        {
+            <div class="share-upload-card">
+                @if (_uploading)
+                {
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Subiendo tus fotos…</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@_uploadedCount de @_uploadTotal</MudText>
+                    <MudProgressLinear Color="Color.Primary" Class="mt-2"
+                                       Value="@(_uploadTotal == 0 ? 0 : _uploadedCount * 100.0 / _uploadTotal)" />
+                }
+                else
+                {
+                    @if (_uploadDoneCount > 0)
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mb-3">
+                            ¡Gracias! @( _uploadDoneCount == 1 ? "Tu foto se ha añadido" : $"Tus {_uploadDoneCount} fotos se han añadido" ) al álbum.
+                        </MudAlert>
+                    }
+                    @if (_uploadFailedCount > 0)
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-3">
+                            @( _uploadFailedCount == 1 ? "1 foto no se pudo subir." : $"{_uploadFailedCount} fotos no se pudieron subir." ) Inténtalo de nuevo.
+                        </MudAlert>
+                    }
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">¿Estuviste allí?</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">Añade tus fotos y vídeos a este álbum.</MudText>
+                    <MudTextField @bind-Value="_uploaderName"
+                                  Label="Tu nombre (opcional)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Style="max-width:320px;"
+                                  Class="mb-3" />
+                    <div>
+                        <InputFile id="share-upload-input" OnChange="OnFilesSelected" multiple
+                                   accept="image/*,video/*" hidden />
+                        <label for="share-upload-input" class="share-upload-btn">
+                            <MudIcon Icon="@Icons.Material.Outlined.AddPhotoAlternate" Size="Size.Small"
+                                     Style="vertical-align:middle; margin-right:6px;" />
+                            @(_uploadDoneCount > 0 ? "Subir más fotos" : "Elegir fotos")
+                        </label>
+                    </div>
+                }
+            </div>
+        }
+
         @* ── Grid ─────────────────────────────────────────────────────────── *@
         @if (assets.Any())
         {
@@ -167,6 +213,13 @@ else if (_content.Album != null)
     private bool _wrongPassword = false;
     private string _password = string.Empty;
 
+    private string _uploaderName = string.Empty;
+    private bool _uploading = false;
+    private int _uploadTotal = 0;
+    private int _uploadedCount = 0;
+    private int _uploadDoneCount = 0;
+    private int _uploadFailedCount = 0;
+
     private string _pageTitle => _content?.Album?.Name ?? "Álbum compartido";
 
     protected override async Task OnInitializedAsync()
@@ -217,6 +270,46 @@ else if (_content.Album != null)
     private void SelectAsset(SharedAssetInfo asset)
     {
         _selectedAsset = asset;
+    }
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles(maximumFileCount: 500);
+        if (files.Count == 0) return;
+
+        _uploading = true;
+        _uploadTotal = files.Count;
+        _uploadedCount = 0;
+        _uploadDoneCount = 0;
+        _uploadFailedCount = 0;
+        StateHasChanged();
+
+        // Secuencial a propósito: el servidor limita por IP y los móviles de los
+        // invitados agradecen no abrir 50 streams a la vez.
+        foreach (var file in files)
+        {
+            try
+            {
+                var ok = await ShareService.UploadAssetAsync(
+                    Token, file, _uploaderName,
+                    string.IsNullOrEmpty(_password) ? null : _password);
+                if (ok) _uploadDoneCount++;
+                else _uploadFailedCount++;
+            }
+            catch
+            {
+                _uploadFailedCount++;
+            }
+            _uploadedCount++;
+            StateHasChanged();
+        }
+
+        _uploading = false;
+
+        // Recarga el álbum para que el invitado vea sus fotos ya dentro.
+        if (_uploadDoneCount > 0)
+            await LoadContentAsync(string.IsNullOrEmpty(_password) ? null : _password);
+        StateHasChanged();
     }
 
     private async Task DownloadAll()

@@ -11,6 +11,7 @@ public class SharedContentResponse
     public bool RequiresPassword { get; set; }
     public bool WrongPassword { get; set; }
     public bool AllowDownload { get; set; } = true;
+    public bool AllowUpload { get; set; }
     public SharedAssetInfo? Asset { get; set; }
     public SharedAlbumInfo? Album { get; set; }
     public List<SharedAssetInfo>? Assets { get; set; }
