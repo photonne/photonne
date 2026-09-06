@@ -27,6 +27,7 @@ class AdminRunTaskCatalogTest {
         "reverse-geocode",
         "detect-trips",
         "generate-memories",
+        "indexing-coverage",
     )
 
     @Test
@@ -47,7 +48,7 @@ class AdminRunTaskCatalogTest {
 
     @Test
     fun theTwentyTasksAreThere() {
-        assertEquals(20, AdminRunTask.entries.size)
+        assertEquals(21, AdminRunTask.entries.size)
     }
 
     @Test
@@ -87,7 +88,7 @@ class AdminRunTaskCatalogTest {
     fun maintenanceTasksAreKeyedByKindNotByType() {
         val maintenance = AdminRunTask.entries.filter { it.maintenanceKind != null }
 
-        assertEquals(9, maintenance.size)
+        assertEquals(10, maintenance.size)
         for (task in maintenance) {
             assertEquals(task.maintenanceKind, task.progressKey)
         }

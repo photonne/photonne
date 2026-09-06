@@ -26,6 +26,7 @@ import com.photonne.app.resources.admin_settings_nightly_batch_size_hint
 import com.photonne.app.resources.admin_settings_nightly_thumbnails
 import com.photonne.app.resources.admin_settings_task_backfill_batch
 import com.photonne.app.resources.admin_settings_nightly_timezone
+import com.photonne.app.resources.admin_settings_nightly_indexing_coverage
 import com.photonne.app.resources.admin_settings_nightly_trash_cleanup
 import org.jetbrains.compose.resources.stringResource
 
@@ -53,6 +54,7 @@ class AdminNightlySettingsViewModel(
         "NightlyTaskSettings.ImageEmbedding.Mode",
         "NightlyTaskSettings.FaceClustering.Enabled",
         "NightlyTaskSettings.TrashCleanup.Enabled",
+        "NightlyTaskSettings.IndexingCoverage.Enabled",
         BACKFILL_BATCH_SIZE_KEY,
     )
 
@@ -69,6 +71,7 @@ class AdminNightlySettingsViewModel(
         }
         put("NightlyTaskSettings.FaceClustering.Enabled", "true")
         put("NightlyTaskSettings.TrashCleanup.Enabled", "false")
+        put("NightlyTaskSettings.IndexingCoverage.Enabled", "false")
         put(BACKFILL_BATCH_SIZE_KEY, "500")
     }
 
@@ -158,6 +161,15 @@ fun AdminNightlySettingsScreen(
         ) {
             viewModel.set(
                 "NightlyTaskSettings.TrashCleanup.Enabled",
+                if (it) "true" else "false"
+            )
+        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_settings_nightly_indexing_coverage),
+            checked = state.get("NightlyTaskSettings.IndexingCoverage.Enabled").equals("true", true)
+        ) {
+            viewModel.set(
+                "NightlyTaskSettings.IndexingCoverage.Enabled",
                 if (it) "true" else "false"
             )
         }

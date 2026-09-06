@@ -2850,6 +2850,10 @@ private fun AuthenticatedApp(user: AuthState.Authenticated) {
                                             ?.takeIf { it.isNotBlank() }
                                         moreSubscreen = MoreSubscreen.AdminSystemEnrichmentFailures
                                     }
+                                    path == "/admin/stats" ||
+                                        path.endsWith("/admin/stats") -> {
+                                        moreSubscreen = MoreSubscreen.AdminStats
+                                    }
                                     path == "/people" || path.endsWith("/people") -> {
                                         moreSubscreen = MoreSubscreen.People
                                     }

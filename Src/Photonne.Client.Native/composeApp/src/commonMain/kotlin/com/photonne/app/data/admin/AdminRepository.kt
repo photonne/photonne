@@ -2,6 +2,7 @@ package com.photonne.app.data.admin
 
 import com.photonne.app.data.api.AdminEnrichmentFailuresPage
 import com.photonne.app.data.api.AdminEnrichmentTaskActionResponse
+import com.photonne.app.data.api.AdminIndexingCoverageResponse
 import com.photonne.app.data.api.AdminRetryAllFailuresResponse
 import com.photonne.app.data.api.PhotonneApi
 import com.photonne.app.data.models.AdminResetPasswordRequest
@@ -296,6 +297,9 @@ class AdminRepository(private val api: PhotonneApi) {
 
     suspend fun suppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse =
         api.adminSuppressEnrichmentFailure(taskId)
+
+    suspend fun getIndexingCoverage(): AdminIndexingCoverageResponse =
+        api.adminIndexingCoverage()
 
     // --- Backup / restore ---
 

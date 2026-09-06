@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Image
@@ -94,7 +95,9 @@ import com.photonne.app.resources.admin_run_tasks_section_new_photos_subtitle
 import com.photonne.app.resources.admin_run_tasks_section_repair
 import com.photonne.app.resources.admin_run_tasks_section_repair_subtitle
 import com.photonne.app.resources.admin_maintenance_action_empty_trash
+import com.photonne.app.resources.admin_maintenance_action_coverage
 import com.photonne.app.resources.admin_maintenance_action_missing
+import com.photonne.app.resources.admin_maintenance_desc_coverage
 import com.photonne.app.resources.admin_maintenance_action_orphans
 import com.photonne.app.resources.admin_maintenance_action_purge_missing
 import com.photonne.app.resources.admin_maintenance_action_recalculate
@@ -372,6 +375,15 @@ enum class AdminRunTask(
         section = AdminRunTaskSection.Repair,
         backgroundType = MaintenanceTaskType,
         maintenanceKind = "missing-files",
+    ),
+    IndexingCoverage(
+        titleRes = Res.string.admin_maintenance_action_coverage,
+        subtitleRes = Res.string.admin_maintenance_desc_coverage,
+        icon = Icons.Outlined.FactCheck,
+        backfillKind = null,
+        section = AdminRunTaskSection.Repair,
+        backgroundType = MaintenanceTaskType,
+        maintenanceKind = "indexing-coverage",
     ),
     RecalculateSizes(
         titleRes = Res.string.admin_maintenance_action_recalculate,

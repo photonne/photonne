@@ -506,6 +506,16 @@
     <string name="admin_stats_total_photos">Total photos</string>
     <string name="admin_stats_total_videos">Total videos</string>
     <string name="admin_stats_total_storage">Total storage</string>
+    <string name="admin_stats_coverage_title">Indexing coverage</string>
+    <string name="admin_stats_coverage_total">Files on disk</string>
+    <string name="admin_stats_coverage_indexed">Indexed</string>
+    <string name="admin_stats_coverage_unsupported">Unsupported</string>
+    <string name="admin_stats_coverage_unindexed">Unindexed</string>
+    <string name="admin_stats_coverage_verified_at">Verified: %1$s</string>
+    <string name="admin_stats_coverage_never">Not verified yet. Run "Indexing coverage" in System › Run tasks.</string>
+    <string name="admin_stats_coverage_offline">%1$d unreachable external library(ies) were left unverified</string>
+    <string name="admin_stats_coverage_show_list">Show unindexed files (%1$d)</string>
+    <string name="admin_stats_coverage_truncated">Showing the first %1$d</string>
     <string name="admin_stats_per_user">Per-user usage</string>
     <string name="admin_stats_per_user_breakdown">No per-user usage data available.</string>
 
@@ -706,6 +716,7 @@
     <string name="admin_settings_nightly_embedding">Smart search (embeddings)</string>
     <string name="admin_settings_nightly_clustering">Re-cluster faces after model runs</string>
     <string name="admin_settings_nightly_trash_cleanup">Empty expired trash (retention &amp; quota)</string>
+    <string name="admin_settings_nightly_indexing_coverage">Verify indexing coverage</string>
     <string name="admin_settings_nightly_mode">Processing mode</string>
 
     <string name="admin_settings_notifications">Notifications</string>
@@ -864,6 +875,8 @@
     <!-- Maintenance -->
     <string name="admin_maintenance_action_orphans">Clean orphan thumbnails</string>
     <string name="admin_maintenance_desc_orphans">Removes thumbnail files that no longer match any asset.</string>
+    <string name="admin_maintenance_action_coverage">Indexing coverage</string>
+    <string name="admin_maintenance_desc_coverage">Walks the disk with the indexer's own criteria and checks every file is indexed.</string>
     <string name="admin_maintenance_action_missing">Mark missing files</string>
     <string name="admin_maintenance_desc_missing">Scans indexed assets and marks those no longer on disk as missing.</string>
     <string name="admin_maintenance_action_recalculate">Recalculate sizes</string>

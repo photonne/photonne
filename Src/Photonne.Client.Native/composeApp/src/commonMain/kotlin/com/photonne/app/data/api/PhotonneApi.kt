@@ -289,6 +289,21 @@ data class AdminRetryAllFailuresResponse(
     val retried: Int = 0
 )
 
+// Mirror of GET /api/admin/indexing-coverage — the last persisted snapshot of
+// the indexing-coverage maintenance task.
+@Serializable
+data class AdminIndexingCoverageResponse(
+    val hasResult: Boolean = false,
+    val verifiedAtUtc: String? = null,
+    val totalFiles: Int = 0,
+    val indexed: Int = 0,
+    val unsupported: Int = 0,
+    val unindexed: Int = 0,
+    val unindexedPaths: List<String> = emptyList(),
+    val unindexedTruncated: Boolean = false,
+    val offlineLibraries: Int = 0
+)
+
 @Serializable
 internal data class ExistsByChecksumBody(val assetId: String = "")
 
@@ -499,6 +514,9 @@ interface PhotonneApi {
 
     /** Marks one Failed task as Suppressed so no sweep ever retries the asset again (admin). */
     suspend fun adminSuppressEnrichmentFailure(taskId: String): AdminEnrichmentTaskActionResponse
+
+    /** Last persisted result of the indexing-coverage verification (admin). */
+    suspend fun adminIndexingCoverage(): AdminIndexingCoverageResponse
     /**
      * Looks up an existing asset by SHA-256 checksum on the server.
      * Returns the asset id when the user already has a matching file
@@ -3397,6 +3415,17 @@ class PhotonneApiClient(
                 status = response.status.value,
                 message = parseErrorMessage(response)
                     ?: "Suppress enrichment failure failed (${response.status.value})"
+            )
+        }
+        return response.body()
+    }
+
+    override suspend fun adminIndexingCoverage(): AdminIndexingCoverageResponse {
+        val response: HttpResponse = client.get("$baseUrl/api/admin/indexing-coverage")
+        if (response.status != HttpStatusCode.OK) {
+            throw PhotonneApiException(
+                status = response.status.value,
+                message = "Indexing coverage fetch failed (${response.status.value})"
             )
         }
         return response.body()

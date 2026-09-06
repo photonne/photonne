@@ -521,6 +521,16 @@
     <string name="admin_stats_total_photos">Fotos totales</string>
     <string name="admin_stats_total_videos">Vídeos totales</string>
     <string name="admin_stats_total_storage">Almacenamiento total</string>
+    <string name="admin_stats_coverage_title">Cobertura de indexación</string>
+    <string name="admin_stats_coverage_total">Ficheros en disco</string>
+    <string name="admin_stats_coverage_indexed">Indexados</string>
+    <string name="admin_stats_coverage_unsupported">No soportados</string>
+    <string name="admin_stats_coverage_unindexed">Sin indexar</string>
+    <string name="admin_stats_coverage_verified_at">Verificado: %1$s</string>
+    <string name="admin_stats_coverage_never">Aún sin verificar. Lanza «Cobertura de indexación» en Sistema › Ejecutar tareas.</string>
+    <string name="admin_stats_coverage_offline">%1$d biblioteca(s) externa(s) no disponibles quedaron sin verificar</string>
+    <string name="admin_stats_coverage_show_list">Ver ficheros sin indexar (%1$d)</string>
+    <string name="admin_stats_coverage_truncated">Mostrando los primeros %1$d</string>
     <string name="admin_stats_per_user">Uso por usuario</string>
     <string name="admin_stats_per_user_breakdown">No hay datos de uso por usuario disponibles.</string>
 
@@ -721,6 +731,7 @@
     <string name="admin_settings_nightly_embedding">Búsqueda inteligente (embeddings)</string>
     <string name="admin_settings_nightly_clustering">Reagrupar caras tras los modelos</string>
     <string name="admin_settings_nightly_trash_cleanup">Vaciar papelera caducada (retención y cuota)</string>
+    <string name="admin_settings_nightly_indexing_coverage">Verificar cobertura de indexación</string>
     <string name="admin_settings_nightly_mode">Modo de proceso</string>
 
     <string name="admin_settings_notifications">Notificaciones</string>
@@ -908,6 +919,8 @@
     <!-- Maintenance -->
     <string name="admin_maintenance_action_orphans">Limpiar miniaturas huérfanas</string>
     <string name="admin_maintenance_desc_orphans">Elimina archivos de miniaturas que ya no tienen asset asociado.</string>
+    <string name="admin_maintenance_action_coverage">Cobertura de indexación</string>
+    <string name="admin_maintenance_desc_coverage">Recorre el disco con el criterio del indexador y comprueba que cada fichero esté indexado.</string>
     <string name="admin_maintenance_action_missing">Marcar archivos ausentes</string>
     <string name="admin_maintenance_desc_missing">Recorre los assets indexados y marca como ausentes los que ya no estén en disco.</string>
     <string name="admin_maintenance_action_recalculate">Recalcular tamaños</string>

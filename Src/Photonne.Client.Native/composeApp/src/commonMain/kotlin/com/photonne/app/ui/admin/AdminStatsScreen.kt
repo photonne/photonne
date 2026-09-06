@@ -1,12 +1,15 @@
 package com.photonne.app.ui.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,13 +25,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.photonne.app.data.models.AdminUserUsage
 import com.photonne.app.ui.error.ErrorBanner
 import com.photonne.app.resources.Res
+import com.photonne.app.resources.admin_stats_coverage_indexed
+import com.photonne.app.resources.admin_stats_coverage_never
+import com.photonne.app.resources.admin_stats_coverage_offline
+import com.photonne.app.resources.admin_stats_coverage_show_list
+import com.photonne.app.resources.admin_stats_coverage_title
+import com.photonne.app.resources.admin_stats_coverage_total
+import com.photonne.app.resources.admin_stats_coverage_truncated
+import com.photonne.app.resources.admin_stats_coverage_unindexed
+import com.photonne.app.resources.admin_stats_coverage_unsupported
+import com.photonne.app.resources.admin_stats_coverage_verified_at
 import com.photonne.app.resources.admin_stats_per_user
 import com.photonne.app.resources.admin_stats_per_user_breakdown
 import com.photonne.app.resources.admin_stats_total_photos
@@ -103,6 +118,11 @@ fun AdminStatsScreen(
                         photoBytes = totalPhotoBytes,
                         videoBytes = totalVideoBytes
                     )
+                }
+                state.coverage?.let { coverage ->
+                    item {
+                        IndexingCoverageCard(coverage)
+                    }
                 }
                 if (data.users.size >= 2) {
                     item {
@@ -256,6 +276,112 @@ private fun StatRow(label: String, value: String) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Text(value, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/**
+ * The last indexing-coverage verification: files on disk vs. indexed, with the
+ * offending paths one tap away when anything is left unindexed. Data comes
+ * from the persisted snapshot, so it also says WHEN it was verified.
+ */
+@Composable
+private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexingCoverageResponse) {
+    var showPaths by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                stringResource(Res.string.admin_stats_coverage_title),
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(Modifier.height(8.dp))
+
+            if (!coverage.hasResult) {
+                Text(
+                    stringResource(Res.string.admin_stats_coverage_never),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                return@Column
+            }
+
+            StatRow(stringResource(Res.string.admin_stats_coverage_total), coverage.totalFiles.toString())
+            StatRow(stringResource(Res.string.admin_stats_coverage_indexed), coverage.indexed.toString())
+            StatRow(stringResource(Res.string.admin_stats_coverage_unsupported), coverage.unsupported.toString())
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(Res.string.admin_stats_coverage_unindexed),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    coverage.unindexed.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (coverage.unindexed > 0) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary
+                )
+            }
+
+            if (coverage.offlineLibraries > 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(Res.string.admin_stats_coverage_offline, coverage.offlineLibraries),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            coverage.verifiedAtUtc?.let { verified ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(
+                        Res.string.admin_stats_coverage_verified_at,
+                        verified.take(16).replace('T', ' ')
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (coverage.unindexedPaths.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(Res.string.admin_stats_coverage_show_list, coverage.unindexed),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPaths = !showPaths }
+                )
+                if (showPaths) {
+                    Spacer(Modifier.height(4.dp))
+                    coverage.unindexedPaths.forEach { path ->
+                        Text(
+                            path,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (coverage.unindexedTruncated) {
+                        Text(
+                            stringResource(
+                                Res.string.admin_stats_coverage_truncated,
+                                coverage.unindexedPaths.size
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
