@@ -163,6 +163,7 @@ public static class DependencyInjection
         // Registrar UserInitializationService
         builder.Services.AddScoped<UserInitializationService>();
         builder.Services.AddScoped<AssetIndexingService>();
+        builder.Services.AddScoped<UnsupportedFileIndexingService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
         builder.Services.AddSingleton<BackgroundTaskManager>();
 
