@@ -30,14 +30,20 @@ public partial class MaintenanceService
     /// so each user needs a scope of their own (see MaintenanceService.Memories).</summary>
     private readonly IServiceScopeFactory _scopeFactory;
 
+    /// <summary>The indexer's discovery engine, reused verbatim by the
+    /// indexing-coverage task so both always agree on what counts as a file.</summary>
+    private readonly DirectoryScanner _scanner;
+
     public MaintenanceService(
         ApplicationDbContext dbContext,
         SettingsService settingsService,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        DirectoryScanner scanner)
     {
         _dbContext = dbContext;
         _settingsService = settingsService;
         _scopeFactory = scopeFactory;
+        _scanner = scanner;
     }
 
     /// <summary>Runs the task identified by <paramref name="kind"/> (the URL slug).
@@ -60,6 +66,7 @@ public partial class MaintenanceService
         "reverse-geocode" => ReverseGeocodeAsync(onProgress, ct),
         "detect-trips" => DetectTripsAsync(onProgress, ct),
         "generate-memories" => GenerateMemoriesAsync(onProgress, ct),
+        "indexing-coverage" => ComputeIndexingCoverageAsync(onProgress, ct),
         _ => null
     };
 

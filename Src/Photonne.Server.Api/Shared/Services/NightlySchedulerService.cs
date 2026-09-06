@@ -32,6 +32,7 @@ namespace Photonne.Server.Api.Shared.Services;
 ///   InterpolateLocations.Enabled  — infer coordinates from nearby geotagged photos (default: true)
 ///   ReverseGeocode.Enabled        — resolve place names for geolocated assets (default: true)
 ///   Memories.Enabled              — regenerate the per-user Recuerdos feed (default: true)
+///   IndexingCoverage.Enabled      — verify every physical file is indexed (default: false)
 ///   LastRunDate                   — ISO date "yyyy-MM-dd" of last successful run (written by this service)
 /// </summary>
 public class NightlySchedulerService : BackgroundService
@@ -159,6 +160,7 @@ public class NightlySchedulerService : BackgroundService
         var geocodeEnabled = await settings.GetSettingAsync("NightlyTaskSettings.ReverseGeocode.Enabled", Guid.Empty, "true");
         var interpolateEnabled = await settings.GetSettingAsync("NightlyTaskSettings.InterpolateLocations.Enabled", Guid.Empty, "true");
         var tripsEnabled = await settings.GetSettingAsync("NightlyTaskSettings.TripDetection.Enabled", Guid.Empty, "true");
+        var coverageEnabled = await settings.GetSettingAsync("NightlyTaskSettings.IndexingCoverage.Enabled", Guid.Empty, "false");
 
         if (metaEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMetadataAsync(serviceProvider, metaMode == "all", ct);
@@ -206,6 +208,41 @@ public class NightlySchedulerService : BackgroundService
         // so they want the night's clustering to have already landed.
         if (memoriesEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
             await RunMemoriesAsync(ct);
+
+        // Coverage check at the very end so it verifies the night's final state.
+        if (coverageEnabled.Equals("true", StringComparison.OrdinalIgnoreCase))
+            await RunIndexingCoverageAsync(ct);
+    }
+
+    /// <summary>Walks the disk with the indexer's own discovery criteria and
+    /// persists how many physical files are indexed / unsupported / unindexed.
+    /// Alerts the admins only when something is actually left unindexed.</summary>
+    private async Task RunIndexingCoverageAsync(CancellationToken ct)
+    {
+        Console.WriteLine("[NIGHTLY] Indexing coverage started.");
+        using var scope = _scopeFactory.CreateScope();
+        var maintenance = scope.ServiceProvider.GetRequiredService<Features.Maintenance.MaintenanceService>();
+        try
+        {
+            var result = await maintenance.ComputeIndexingCoverageAsync(null, ct);
+            Console.WriteLine($"[NIGHTLY] Indexing coverage done — {result.Message}");
+            await NotifyAdminsAsync(
+                result.Affected > 0 ? NotificationType.JobFailed : NotificationType.JobCompleted,
+                "Tarea nocturna: cobertura de indexación",
+                result.Message,
+                ct,
+                actionUrl: result.Affected > 0 ? "/admin/stats" : null);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NIGHTLY] Indexing coverage error: {ex.Message}");
+            await NotifyAdminsAsync(
+                NotificationType.JobFailed,
+                "Tarea nocturna: cobertura de indexación",
+                $"Error verificando la cobertura: {Truncate(ex.Message, 200)}",
+                ct);
+        }
     }
 
     /// <summary>Fills in coordinates for photos shot alongside geotagged ones —
