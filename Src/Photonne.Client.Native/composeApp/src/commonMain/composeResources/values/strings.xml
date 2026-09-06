@@ -522,6 +522,9 @@
     <string name="admin_stats_total_videos">Vídeos totales</string>
     <string name="admin_stats_total_storage">Almacenamiento total</string>
     <string name="admin_stats_coverage_title">Cobertura de indexación</string>
+    <string name="admin_stats_coverage_summary">Cobertura</string>
+    <string name="admin_stats_coverage_summary_complete">Los %1$d ficheros indexables están indexados</string>
+    <string name="admin_stats_coverage_summary_partial">%1$d de %2$d ficheros indexables están indexados</string>
     <string name="admin_stats_coverage_total">Ficheros en disco</string>
     <string name="admin_stats_coverage_indexed">Indexados</string>
     <string name="admin_stats_coverage_unsupported">No soportados</string>

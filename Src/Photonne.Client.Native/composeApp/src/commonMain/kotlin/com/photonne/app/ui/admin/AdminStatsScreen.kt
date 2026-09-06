@@ -38,6 +38,9 @@ import com.photonne.app.resources.admin_stats_coverage_indexed
 import com.photonne.app.resources.admin_stats_coverage_never
 import com.photonne.app.resources.admin_stats_coverage_offline
 import com.photonne.app.resources.admin_stats_coverage_show_list
+import com.photonne.app.resources.admin_stats_coverage_summary
+import com.photonne.app.resources.admin_stats_coverage_summary_complete
+import com.photonne.app.resources.admin_stats_coverage_summary_partial
 import com.photonne.app.resources.admin_stats_coverage_title
 import com.photonne.app.resources.admin_stats_coverage_total
 import com.photonne.app.resources.admin_stats_coverage_truncated
@@ -328,6 +331,44 @@ private fun IndexingCoverageCard(coverage: com.photonne.app.data.api.AdminIndexi
                         else MaterialTheme.colorScheme.primary
                 )
             }
+
+            // Bottom line so nobody has to do the math: covered indexables over
+            // total indexables. Unsupported files are left out of the ratio —
+            // they can never be indexed, so they'd only dilute the verdict.
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+            val indexable = coverage.indexed + coverage.unindexed
+            val complete = coverage.unindexed == 0
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(Res.string.admin_stats_coverage_summary),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
+                val tenths = coverage.indexed * 1000L / indexable.coerceAtLeast(1)
+                Text(
+                    text = when {
+                        complete -> "100 %"
+                        tenths % 10 == 0L -> "${tenths / 10} %"
+                        else -> "${tenths / 10},${tenths % 10} %"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (complete) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error
+                )
+            }
+            Text(
+                text = if (complete)
+                    stringResource(Res.string.admin_stats_coverage_summary_complete, indexable)
+                else
+                    stringResource(Res.string.admin_stats_coverage_summary_partial, coverage.indexed, indexable),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             if (coverage.offlineLibraries > 0) {
                 Spacer(Modifier.height(4.dp))

@@ -507,6 +507,9 @@
     <string name="admin_stats_total_videos">Total videos</string>
     <string name="admin_stats_total_storage">Total storage</string>
     <string name="admin_stats_coverage_title">Indexing coverage</string>
+    <string name="admin_stats_coverage_summary">Coverage</string>
+    <string name="admin_stats_coverage_summary_complete">All %1$d indexable files are indexed</string>
+    <string name="admin_stats_coverage_summary_partial">%1$d of %2$d indexable files are indexed</string>
     <string name="admin_stats_coverage_total">Files on disk</string>
     <string name="admin_stats_coverage_indexed">Indexed</string>
     <string name="admin_stats_coverage_unsupported">Unsupported</string>
