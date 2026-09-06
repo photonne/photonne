@@ -11,6 +11,16 @@
         text-align: center;
     }
 
+    /* El Style de MudTextField cae en el .mud-input interior, pero el hijo directo
+       de esta columna flex es el .mud-input-control, que crece por defecto: se
+       tragaba el alto libre y empujaba el botón Acceder al borde inferior (fuera
+       de pantalla en móvil con el teclado abierto). */
+    .share-center ::deep .mud-input-control {
+        flex-grow: 0;
+        max-width: 320px;
+        width: 100%;
+    }
+
     /* ── Album hero ─────────────────────────────────────── */
     .share-album-view {
         display: flex;
