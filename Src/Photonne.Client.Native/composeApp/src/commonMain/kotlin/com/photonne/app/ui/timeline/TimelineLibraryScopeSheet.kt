@@ -83,14 +83,10 @@ fun TimelineLibraryScopeSheet(
                     Spacer(Modifier.height(8.dp))
                 }
             }
-            item("mode-camera") {
-                ScopeModeRow(
-                    title = stringResource(Res.string.timeline_scope_camera),
-                    hint = stringResource(Res.string.timeline_scope_camera_hint),
-                    selected = scope == DeviceLibraryScope.CameraOnly,
-                    onClick = { onSelect(DeviceLibraryScope.CameraOnly) }
-                )
-            }
+            // Un dial de cuánto se ve del dispositivo, de más a menos: todo →
+            // cámara → concretas → nada. "Carpetas concretas" despliega sus
+            // checkboxes debajo, así que "Nada" (el cero del dial) cierra la
+            // lista aun quedando bajo el despliegue al cambiar de idea.
             item("mode-all") {
                 ScopeModeRow(
                     title = stringResource(Res.string.timeline_scope_all),
@@ -99,12 +95,12 @@ fun TimelineLibraryScopeSheet(
                     onClick = { onSelect(DeviceLibraryScope.All) }
                 )
             }
-            item("mode-synced") {
+            item("mode-camera") {
                 ScopeModeRow(
-                    title = stringResource(Res.string.timeline_scope_synced),
-                    hint = stringResource(Res.string.timeline_scope_synced_hint),
-                    selected = scope == DeviceLibraryScope.SyncedOnly,
-                    onClick = { onSelect(DeviceLibraryScope.SyncedOnly) }
+                    title = stringResource(Res.string.timeline_scope_camera),
+                    hint = stringResource(Res.string.timeline_scope_camera_hint),
+                    selected = scope == DeviceLibraryScope.CameraOnly,
+                    onClick = { onSelect(DeviceLibraryScope.CameraOnly) }
                 )
             }
             item("mode-custom") {
@@ -187,6 +183,14 @@ fun TimelineLibraryScopeSheet(
                         }
                     }
                 }
+            }
+            item("mode-synced") {
+                ScopeModeRow(
+                    title = stringResource(Res.string.timeline_scope_synced),
+                    hint = stringResource(Res.string.timeline_scope_synced_hint),
+                    selected = scope == DeviceLibraryScope.SyncedOnly,
+                    onClick = { onSelect(DeviceLibraryScope.SyncedOnly) }
+                )
             }
         }
     }
