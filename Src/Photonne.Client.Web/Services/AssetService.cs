@@ -36,6 +36,22 @@ public class AssetService : IAssetService
         }
     }
 
+    public async Task<List<TimelineBucket>> GetTimelineBucketsAsync(CancellationToken cancellationToken = default)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.GetFromJsonAsync<List<TimelineBucket>>(
+            "/api/assets/timeline/buckets", cancellationToken);
+        return response ?? new List<TimelineBucket>();
+    }
+
+    public async Task<List<TimelineItem>> GetBucketItemsAsync(string yearMonth, CancellationToken cancellationToken = default)
+    {
+        await SetAuthHeaderAsync();
+        var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>(
+            $"/api/assets/timeline/buckets/{Uri.EscapeDataString(yearMonth)}", cancellationToken);
+        return response ?? new List<TimelineItem>();
+    }
+
     public async Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150)
     {
         await SetAuthHeaderAsync();

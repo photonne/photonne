@@ -30,6 +30,13 @@ public class TimelineItem
         ? (double)Width.Value / Height.Value
         : 1.0;
 
+    // El servidor no manda estos flags: se derivan igual que en el cliente KMP.
+    public bool IsVideo => string.Equals(Type, "Video", StringComparison.OrdinalIgnoreCase);
+    // La mitad .mov de un Live Photo nunca llega como item propio; el still
+    // lleva el tag y el clip vive en /api/assets/{id}/motion.
+    public bool IsLivePhoto => !IsVideo &&
+        Tags.Any(t => string.Equals(t, "LivePhoto", StringComparison.OrdinalIgnoreCase));
+
     // Cuando el asset es local (leído del dispositivo vía File System Access API),
     // se usa esta URL (blob: o data:) en lugar de llamar al servidor.
     public string? LocalThumbnailUrl { get; set; }

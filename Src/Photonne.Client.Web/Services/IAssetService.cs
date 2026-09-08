@@ -5,6 +5,10 @@ namespace Photonne.Client.Web.Services;
 public interface IAssetService
 {
     Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150);
+    /// <summary>Esqueleto del timeline: un bucket por mes con conteo exacto, más nuevo primero.</summary>
+    Task<List<TimelineBucket>> GetTimelineBucketsAsync(CancellationToken cancellationToken = default);
+    /// <summary>Contenido completo de un mes ("yyyy-MM"), orden capturedAt desc.</summary>
+    Task<List<TimelineItem>> GetBucketItemsAsync(string yearMonth, CancellationToken cancellationToken = default);
     Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500, CancellationToken cancellationToken = default);
     Task<List<TimelineIndexItem>> GetTimelineIndexAsync();
     Task<List<TimelineItem>> GetDeviceAssetsAsync();
