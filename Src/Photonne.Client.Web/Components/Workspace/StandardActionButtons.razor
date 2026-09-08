@@ -5,28 +5,28 @@
    al lado (ExtraActions del WorkspaceCollection). *@
 
 <MudTooltip Text="Favorito">
-    <MudIconButton Icon="@Icons.Material.Outlined.FavoriteBorder" Size="Size.Small"
+    <MudIconButton Icon="@Icons.Material.Outlined.FavoriteBorder" Size="Size.Small" aria-label="Favorito"
                    Disabled="Actions.Busy" OnClick="Actions.ToggleFavoritesAsync" />
 </MudTooltip>
 <MudTooltip Text="Añadir a álbum">
-    <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Size="Size.Small"
+    <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Size="Size.Small" aria-label="Añadir a álbum"
                    Disabled="Actions.Busy" OnClick="Actions.AddToAlbumAsync" />
 </MudTooltip>
 <MudTooltip Text="Mover a carpeta">
-    <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Size="Size.Small"
+    <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Size="Size.Small" aria-label="Mover a carpeta"
                    Disabled="Actions.Busy" OnClick="Actions.MoveToFolderAsync" />
 </MudTooltip>
 <MudTooltip Text="Archivar">
-    <MudIconButton Icon="@Icons.Material.Outlined.Archive" Size="Size.Small"
+    <MudIconButton Icon="@Icons.Material.Outlined.Archive" Size="Size.Small" aria-label="Archivar"
                    Disabled="Actions.Busy" OnClick="Actions.ArchiveAsync" />
 </MudTooltip>
 <MudTooltip Text="Descargar ZIP">
-    <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
+    <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small" aria-label="Descargar ZIP"
                    Disabled="Actions.Busy" OnClick="Actions.DownloadZipAsync" />
 </MudTooltip>
 <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
 <MudTooltip Text="Mover a la papelera">
-    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
+    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" aria-label="Mover a la papelera" Color="Color.Error"
                    Disabled="Actions.Busy" OnClick="Actions.TrashAsync" />
 </MudTooltip>
 

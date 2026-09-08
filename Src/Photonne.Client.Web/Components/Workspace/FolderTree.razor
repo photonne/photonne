@@ -60,7 +60,8 @@
                 <span @onclick:stopPropagation="true">
                     <MudIconButton Icon="@(expanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
                                    Size="Size.Small"
-                                   OnClick="() => ToggleExpand(folder.Id)" />
+                                   OnClick="() => ToggleExpand(folder.Id)"
+                                   aria-label="@(expanded ? $"Contraer {folder.Name}" : $"Expandir {folder.Name}")" />
                 </span>
             }
             else

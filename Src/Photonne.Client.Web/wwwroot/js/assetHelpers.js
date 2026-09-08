@@ -23,6 +23,48 @@ function downloadAsset(url, filename) {
     setTimeout(() => document.body.removeChild(a), 100);
 }
 
+// Contención del foco en overlays (el visor de assets): captura Tab y cicla
+// entre los focusables del elemento para que el foco no escape a la página de
+// detrás.
+window.focusTrap = (() => {
+    let el = null;
+    let handler = null;
+
+    function focusables() {
+        return Array.from(el.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+            'textarea:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])'
+        )).filter(n => n.offsetParent !== null || n === el);
+    }
+
+    return {
+        activate(element) {
+            this.deactivate();
+            el = element;
+            handler = e => {
+                if (e.key !== 'Tab' || !el) return;
+                const items = focusables();
+                if (items.length === 0) { e.preventDefault(); return; }
+                const first = items[0];
+                const last = items[items.length - 1];
+                if (e.shiftKey && (document.activeElement === first || document.activeElement === el)) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            };
+            document.addEventListener('keydown', handler, true);
+        },
+        deactivate() {
+            if (handler) document.removeEventListener('keydown', handler, true);
+            el = null;
+            handler = null;
+        }
+    };
+})();
+
 window.assetTransition = {
     _rect: null,
 

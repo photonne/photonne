@@ -2,6 +2,7 @@
 @using Photonne.Client.Web.Services
 @inject IAssetService AssetService
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @* Visor overlay del workspace: se monta sobre la rejilla (sin navegación de
    ruta, así el scroll no se pierde). Imagen = thumbnail Large (1280px, rápida
@@ -118,7 +119,14 @@
         if (firstRender)
         {
             await _root.FocusAsync();
+            await JS.InvokeVoidAsync("focusTrap.activate", _root);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("focusTrap.deactivate"); }
+        catch (JSDisconnectedException) { }
     }
 
     private async Task HandleKey(KeyboardEventArgs e)

@@ -1,0 +1,47 @@
+@* Ayuda de atajos de teclado (se abre con "?"). Documenta los atajos que ya
+   implementan workspaceGrid.js, AssetViewer y globalShortcuts.js. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Atajos de teclado</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="mb-1">Globales</MudText>
+        <MudSimpleTable Dense="true" Class="mb-4">
+            <tbody>
+                <tr><td><kbd>/</kbd></td><td>Ir a buscar</td></tr>
+                <tr><td><kbd>?</kbd></td><td>Esta ayuda</td></tr>
+            </tbody>
+        </MudSimpleTable>
+
+        <MudText Typo="Typo.subtitle2" Class="mb-1">En la rejilla de fotos</MudText>
+        <MudSimpleTable Dense="true" Class="mb-4">
+            <tbody>
+                <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Mover el foco entre fotos</td></tr>
+                <tr><td><kbd>Espacio</kbd></td><td>Seleccionar / deseleccionar la foto con foco</td></tr>
+                <tr><td><kbd>Enter</kbd></td><td>Abrir la foto con foco</td></tr>
+                <tr><td><kbd>Shift</kbd> + <kbd>←→↑↓</kbd> o <kbd>Shift</kbd> + clic</td><td>Extender la selección en rango</td></tr>
+                <tr><td><kbd>Ctrl/Cmd</kbd> + clic</td><td>Añadir o quitar de la selección</td></tr>
+                <tr><td>Arrastrar con el ratón</td><td>Pintar selección sobre las celdas</td></tr>
+                <tr><td><kbd>F</kbd></td><td>Favorito (con selección activa)</td></tr>
+                <tr><td><kbd>Supr</kbd> / <kbd>Retroceso</kbd></td><td>Enviar la selección a la papelera</td></tr>
+                <tr><td><kbd>Esc</kbd></td><td>Limpiar la selección</td></tr>
+            </tbody>
+        </MudSimpleTable>
+
+        <MudText Typo="Typo.subtitle2" Class="mb-1">En el visor</MudText>
+        <MudSimpleTable Dense="true">
+            <tbody>
+                <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Foto anterior / siguiente</td></tr>
+                <tr><td><kbd>Esc</kbd></td><td>Cerrar el visor</td></tr>
+            </tbody>
+        </MudSimpleTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Close()">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = null!;
+}
