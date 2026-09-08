@@ -4,13 +4,19 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -40,13 +46,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -316,6 +326,10 @@ fun AssetGridCell(
     // arrastre en banda ni se enteran) y el onClick decide con ellos. Solo se
     // instala el observador si alguien escucha clics modificados.
     val wantsModifiedClicks = onRangeClick != null || onToggleClick != null
+    // Hover de escritorio: revela el checkbox de selección sobre la celda. En
+    // táctil el hover no existe y nada de esto llega a montarse.
+    val hoverInteraction = remember { MutableInteractionSource() }
+    val isHovered by hoverInteraction.collectIsHoveredAsState()
     val pressModifiers = remember { PressModifiersHolder() }
     val clickAction: () -> Unit = if (!wantsModifiedClicks) onClick else {
         {
@@ -370,6 +384,8 @@ fun AssetGridCell(
                 }
             }
             .combinedClickable(onClick = clickAction, onLongClick = onLongClick)
+            .hoverable(hoverInteraction)
+            .pointerHoverIcon(PointerIcon.Hand)
             .let { base -> if (secondaryClick != null) base.onSecondaryClick(secondaryClick) else base }
             .semantics {
                 contentDescription = cellDescription
@@ -453,6 +469,32 @@ fun AssetGridCell(
                     modifier = Modifier.size(14.dp)
                 )
             }
+        }
+        // Hover de ratón: scrim superior sutil + checkbox hueco para entrar en
+        // selección con un clic, como en Google Photos web. El toggle reutiliza
+        // el mismo camino que Ctrl+clic (o el clic derecho como reserva).
+        val hoverToggle = onToggleClick ?: secondaryClick
+        if (isHovered && !isSelected && hoverToggle != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent)
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(4.dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.White, CircleShape)
+                    .clickable(onClick = hoverToggle)
+            )
         }
     }
 }

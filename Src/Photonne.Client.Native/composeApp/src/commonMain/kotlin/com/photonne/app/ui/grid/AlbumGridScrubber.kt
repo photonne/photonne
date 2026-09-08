@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -141,11 +143,13 @@ internal fun AlbumGridScrubber(
         }
     }
 
-    // Visible while scrolling/scrubbing; fades out shortly after.
+    // Visible while scrolling/scrubbing; fades out shortly after. Hovering the
+    // right-edge rail with a mouse also reveals it.
+    var railHovered by remember { mutableStateOf(false) }
     val active = isDragging || gridState.isScrollInProgress
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(active) {
-        if (active) {
+    LaunchedEffect(active, railHovered) {
+        if (active || railHovered) {
             visible = true
         } else {
             delay(1500)
@@ -171,6 +175,29 @@ internal fun AlbumGridScrubber(
         }
 
         val usableTrack by rememberUpdatedState(usableTrackPx)
+        // Carril de ratón DETRÁS del mango (hermano anterior): hover revela el
+        // scrubber y pulsar/arrastrar mueve en absoluto. En táctil es inerte.
+        ScrubberMouseRail(
+            railWidth = HandleTouchWidth,
+            touchHeightPx = touchHeightPx,
+            usableTrackPx = usableTrackPx,
+            onHoverChange = { railHovered = it },
+            onScrubStart = { fraction ->
+                dragFraction = fraction
+                isDragging = true
+                onDraggingChangeLatest(true)
+            },
+            onScrub = { fraction -> dragFraction = fraction },
+            onScrubEnd = {
+                isDragging = false
+                onDraggingChangeLatest(false)
+                scope.launch {
+                    val index = headerCountLatest + cellIndexForFraction(dragFraction)
+                    runCatching { gridState.scrollToItem(index) }
+                }
+            },
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
         // Drag-on-the-handle only, delta-based (the pointer input sits on the
         // element that moves). Keyed on Unit; every mutable input is read through
         // a rememberUpdatedState holder so the gesture survives recompositions.
@@ -180,6 +207,7 @@ internal fun AlbumGridScrubber(
                 .offset(handleOffset)
                 .width(HandleTouchWidth)
                 .height(HandleTouchHeight)
+                .pointerHoverIcon(PointerIcon.Hand)
                 .then(
                     if (visible) {
                         Modifier.pointerInput(Unit) {

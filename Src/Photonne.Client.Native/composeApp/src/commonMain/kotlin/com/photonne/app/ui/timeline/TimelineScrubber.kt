@@ -36,10 +36,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.photonne.app.ui.grid.ScrubberMouseRail
 import com.photonne.app.ui.grid.TimelineRowEntry
 import com.photonne.app.ui.main.ScrubberYearMarker
 import com.photonne.app.ui.main.ScrubberYearMarkers
@@ -162,11 +165,16 @@ internal fun TimelineScrubber(
         }
     }
 
-    // Visible while scrolling/scrubbing; fades out shortly after.
+    // Visible while scrolling/scrubbing; fades out shortly after. Hovering the
+    // right-edge rail with a mouse also reveals it (and wins over atTop: quien
+    // lleva el puntero ahí es porque quiere saltar).
+    var railHovered by remember { mutableStateOf(false) }
     val active = isDragging || gridState.isScrollInProgress
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(active, atTop) {
-        if (atTop && !isDragging) {
+    LaunchedEffect(active, atTop, railHovered) {
+        if (railHovered) {
+            visible = true
+        } else if (atTop && !isDragging) {
             visible = false
         } else if (active) {
             visible = true
@@ -196,6 +204,29 @@ internal fun TimelineScrubber(
         }
 
         val usableTrack by rememberUpdatedState(usableTrackPx)
+        // Carril de ratón DETRÁS del mango (hermano anterior): hover revela el
+        // scrubber y pulsar/arrastrar mueve en absoluto. En táctil es inerte.
+        ScrubberMouseRail(
+            railWidth = HandleTouchWidth,
+            touchHeightPx = touchHeightPx,
+            usableTrackPx = usableTrackPx,
+            onHoverChange = { railHovered = it },
+            onScrubStart = { fraction ->
+                dragFraction = fraction
+                isDragging = true
+                onDraggingChange(true)
+            },
+            onScrub = { fraction -> dragFraction = fraction },
+            onScrubEnd = {
+                isDragging = false
+                onDraggingChange(false)
+                scope.launch {
+                    val row = rowIndexForFraction(prefix, dragFraction)
+                    runCatching { gridState.scrollToItem(row + headerCount) }
+                }
+            },
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
         // Drag-on-the-handle only. Delta-based: the pointer input sits on
         // the element that moves, so absolute positions would feed back
         // into themselves. Keyed on Unit on purpose — every mutable input
@@ -207,6 +238,7 @@ internal fun TimelineScrubber(
                 .offset(handleOffset)
                 .width(HandleTouchWidth)
                 .height(HandleTouchHeight)
+                .pointerHoverIcon(PointerIcon.Hand)
                 .then(
                     if (visible) {
                         Modifier.pointerInput(Unit) {
