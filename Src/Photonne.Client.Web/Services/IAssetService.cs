@@ -48,6 +48,7 @@ public interface IAssetService
     Task UnarchiveAssetsAsync(UnarchiveAssetsRequest request);
     Task UnarchiveAllAsync();
     Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50);
+    Task<List<MapPoint>> GetMapPointsAsync();
     /// <summary>Grupos de duplicados exactos (mismo checksum) del usuario, mayores primero.</summary>
     Task<List<UserDuplicateGroup>> GetMyDuplicatesAsync();
     Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption);

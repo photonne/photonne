@@ -1,0 +1,48 @@
+.map-page {
+    height: calc(100vh - 64px);
+    box-sizing: border-box;
+}
+
+.map-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.map-container {
+    position: absolute;
+    inset: 0;
+}
+
+.map-empty-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1100; /* por encima de los controles de Leaflet (1000) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--mud-palette-background) 82%, transparent);
+}
+
+.map-cluster-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(420px, 90%);
+    z-index: 1100; /* por encima de los controles de Leaflet (1000) */
+    display: flex;
+    flex-direction: column;
+    background: var(--mud-palette-surface);
+    border-left: 1px solid var(--mud-palette-lines-default);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
+}
+
+.map-cluster-grid {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}

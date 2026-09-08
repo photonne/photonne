@@ -498,6 +498,12 @@ public class AssetService : IAssetService
         return result ?? new List<TimelineItem>();
     }
 
+    public async Task<List<MapPoint>> GetMapPointsAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<List<MapPoint>>("/api/assets/map/points");
+        return result ?? new List<MapPoint>();
+    }
+
     public async Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption)
     {
         var response = await _httpClient.PatchAsJsonAsync($"/api/assets/{assetId}/description", new { caption });

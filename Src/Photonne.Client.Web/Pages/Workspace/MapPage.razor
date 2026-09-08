@@ -1,0 +1,164 @@
+@page "/mapa"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject LayoutService LayoutService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Mapa de fotos geolocalizadas: /api/assets/map/points + Leaflet con
+   markercluster (mapHelpers.js, clustering en cliente). Clic en un marcador
+   abre el visor; clic en un cluster abre un panel lateral con sus miniaturas.
+   mapHelpers es singleton: SIEMPRE destroyMap al salir (persiste centro/zoom
+   en sessionStorage y re-entrar restaura). *@
+
+<PageTitle>Mapa - Photonne</PageTitle>
+
+<div class="map-page pa-4 d-flex flex-column">
+    <PageHeader Title="Mapa">
+        <TitleExtras>
+            @if (_points != null)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@_points.Count fotos con ubicación</MudChip>
+            }
+        </TitleExtras>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mb-2" />
+    }
+
+    <div class="map-body">
+        <div id="photonne-map" class="map-container"></div>
+
+        @if (_points is { Count: 0 })
+        {
+            <div class="map-empty-overlay">
+                <EmptyState Icon="@Icons.Material.Outlined.LocationOff"
+                            Title="Sin fotos con ubicación"
+                            Description="Cuando tus fotos lleven coordenadas GPS en el EXIF aparecerán aquí sobre el mapa." />
+            </div>
+        }
+
+        @if (_clusterPoints != null)
+        {
+            <div class="map-cluster-panel">
+                <div class="d-flex align-center gap-2 pa-3">
+                    <MudText Typo="Typo.subtitle1" Class="flex-1">@_clusterPoints.Count fotos en esta zona</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                   OnClick="() => _clusterPoints = null" aria-label="Cerrar panel" />
+                </div>
+                <div class="map-cluster-grid media-thumb-grid pa-3 pt-0">
+                    @foreach (var point in _clusterPoints)
+                    {
+                        <div class="media-thumb-cell" @key="point.Id" @onclick="() => OpenAssetAsync(point.Id)">
+                            @if (point.ThumbnailUrl != null)
+                            {
+                                <img src="@point.ThumbnailUrl" alt="" loading="lazy" decoding="async" />
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_viewerItem != null)
+{
+    <AssetViewer Items="_viewerItems"
+                 Initial="_viewerItem"
+                 OnClose="() => _viewerItem = null" />
+}
+
+@code {
+    private DotNetObjectReference<MapPage>? _selfRef;
+    private List<MapPoint>? _points;
+    private List<MapPoint>? _clusterPoints;
+    private bool _loading = true;
+    private bool _mapInitialized;
+    private TimelineItem? _viewerItem;
+    private IReadOnlyList<TimelineItem> _viewerItems = Array.Empty<TimelineItem>();
+
+    protected override void OnInitialized()
+    {
+        LayoutService.OnMajorUpdate += HandleThemeChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _selfRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("mapHelpers.initMap", "photonne-map",
+            40.4168, -3.7038, 5, LayoutService.IsDarkMode ? "dark" : "light");
+        _mapInitialized = true;
+
+        try
+        {
+            _points = await AssetService.GetMapPointsAsync();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+
+        if (_points.Count > 0)
+        {
+            await JS.InvokeVoidAsync("mapHelpers.loadAllPoints", _points, _selfRef);
+            var restored = await JS.InvokeAsync<bool>("mapHelpers.wasStateRestored");
+            if (!restored)
+            {
+                await JS.InvokeVoidAsync("mapHelpers.fitBounds",
+                    _points.Min(p => p.Latitude), _points.Min(p => p.Longitude),
+                    _points.Max(p => p.Latitude), _points.Max(p => p.Longitude));
+            }
+        }
+    }
+
+    [JSInvokable]
+    public Task OnAssetClick(string assetId) =>
+        Guid.TryParse(assetId, out var id) ? OpenAssetAsync(id) : Task.CompletedTask;
+
+    [JSInvokable]
+    public void OnClusterClick(string[] assetIds)
+    {
+        if (_points == null) return;
+        var ids = assetIds.Select(s => Guid.TryParse(s, out var g) ? g : Guid.Empty).ToHashSet();
+        _clusterPoints = _points
+            .Where(p => ids.Contains(p.Id))
+            .OrderByDescending(p => p.Date)
+            .ToList();
+        StateHasChanged();
+    }
+
+    /// <summary>Abre el visor con el asset real (así los vídeos reproducen bien).</summary>
+    private async Task OpenAssetAsync(Guid id)
+    {
+        var item = await AssetService.GetAssetByIdAsync(id);
+        if (item == null) return;
+        _viewerItems = new[] { item };
+        _viewerItem = item;
+        StateHasChanged();
+    }
+
+    private void HandleThemeChanged()
+    {
+        if (!_mapInitialized) return;
+        _ = JS.InvokeVoidAsync("mapHelpers.setStyle", LayoutService.IsDarkMode ? "dark" : "light");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        LayoutService.OnMajorUpdate -= HandleThemeChanged;
+        if (_mapInitialized)
+        {
+            try { await JS.InvokeVoidAsync("mapHelpers.destroyMap"); }
+            catch (JSDisconnectedException) { }
+        }
+        _selfRef?.Dispose();
+    }
+}
