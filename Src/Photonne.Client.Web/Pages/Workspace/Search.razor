@@ -1,0 +1,144 @@
+@page "/buscar"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject ISearchCatalogService Catalog
+@inject IFolderService FolderService
+
+<PageTitle>Buscar - Photonne</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex align-center gap-3 mb-2">
+        <MudTextField T="string" @bind-Value="_query"
+                      Placeholder="@(_semantic ? "Describe lo que buscas: «perro en la playa al atardecer»…" : "Nombre, ruta o etiqueta…")"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="flex-1"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Immediate="true" OnKeyDown="HandleKey" />
+        <MudSwitch T="bool" @bind-Value="_semantic" Color="Color.Tertiary" Label="Semántica" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RunSearch">Buscar</MudButton>
+    </div>
+
+    @if (!_semantic)
+    {
+        <div class="d-flex flex-wrap align-center gap-2 mb-3">
+            <MudDatePicker Label="Desde" @bind-Date="_from" Margin="Margin.Dense" Clearable="true" Style="max-width:160px" />
+            <MudDatePicker Label="Hasta" @bind-Date="_to" Margin="Margin.Dense" Clearable="true" Style="max-width:160px" />
+            <MudSelect T="Guid" MultiSelection="true" Dense="true" Label="Personas" Margin="Margin.Dense"
+                       Style="min-width:180px" SelectedValues="_personIds"
+                       SelectedValuesChanged="values => _personIds = values.ToList()">
+                @foreach (var person in _people)
+                {
+                    <MudSelectItem T="Guid" Value="person.Id">@person.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" MultiSelection="true" Dense="true" Label="Objetos" Margin="Margin.Dense"
+                       Style="min-width:180px" SelectedValues="_objectLabels"
+                       SelectedValuesChanged="values => _objectLabels = values.ToList()">
+                @foreach (var label in _objects)
+                {
+                    <MudSelectItem T="string" Value="label.Label">@label.Label (@label.AssetCount)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" MultiSelection="true" Dense="true" Label="Escenas" Margin="Margin.Dense"
+                       Style="min-width:180px" SelectedValues="_sceneLabels"
+                       SelectedValuesChanged="values => _sceneLabels = values.ToList()">
+                @foreach (var label in _scenes)
+                {
+                    <MudSelectItem T="string" Value="label.Label">@label.Label (@label.AssetCount)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField T="string" @bind-Value="_ocr" Label="Texto en imagen (OCR)"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:220px" />
+        </div>
+    }
+
+    @if (_semanticUnavailable)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            La búsqueda semántica no está disponible ahora mismo (servicio de embeddings caído o desactivado).
+        </MudAlert>
+    }
+
+    @if (_generation == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.Search"
+                    Title="Busca en tu biblioteca"
+                    Description="Texto, fechas, personas, objetos, escenas u OCR — o activa la semántica y descríbelo con tus palabras. Los resultados se seleccionan y gestionan como en Fotos." />
+    }
+    else
+    {
+        <WorkspaceCollection @key="_generation"
+                             Source="LoadPage"
+                             EmptyIcon="@Icons.Material.Outlined.SearchOff"
+                             EmptyTitle="Sin resultados"
+                             EmptyDescription="Prueba con otros términos o menos filtros." />
+    }
+</div>
+
+@code {
+    private string? _query;
+    private bool _semantic;
+    private DateTime? _from;
+    private DateTime? _to;
+    private List<Guid> _personIds = new();
+    private List<string> _objectLabels = new();
+    private List<string> _sceneLabels = new();
+    private string? _ocr;
+    private bool _semanticUnavailable;
+    // Cada búsqueda remonta el WorkspaceCollection vía @key.
+    private int _generation;
+
+    private List<PersonSummary> _people = new();
+    private List<LabelSummary> _objects = new();
+    private List<LabelSummary> _scenes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _people = await Catalog.GetPeopleAsync();
+        _objects = await Catalog.GetObjectLabelsAsync();
+        _scenes = await Catalog.GetSceneLabelsAsync();
+    }
+
+    private bool HasAnyFilter =>
+        !string.IsNullOrWhiteSpace(_query) || _from != null || _to != null ||
+        _personIds.Count > 0 || _objectLabels.Count > 0 || _sceneLabels.Count > 0 ||
+        !string.IsNullOrWhiteSpace(_ocr);
+
+    private void HandleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") RunSearch();
+    }
+
+    private void RunSearch()
+    {
+        _semanticUnavailable = false;
+        if (!HasAnyFilter) return;
+        _generation++;
+    }
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        if (_semantic)
+        {
+            try
+            {
+                var items = await AssetService.SemanticSearchAsync(_query ?? string.Empty, limit: 100);
+                return new WorkspaceCollection.CollectionPage(items, false, null);
+            }
+            catch
+            {
+                _semanticUnavailable = true;
+                StateHasChanged();
+                return new WorkspaceCollection.CollectionPage(new List<TimelineItem>(), false, null);
+            }
+        }
+
+        var offset = cursor as int? ?? 0;
+        var (results, hasMore) = await AssetService.SearchAssetsAsync(
+            _query, _from, _to, folder: null, pageSize: 100,
+            personIds: _personIds, objectLabels: _objectLabels, sceneLabels: _sceneLabels,
+            textQuery: _ocr, offset: offset);
+        return new WorkspaceCollection.CollectionPage(results, hasMore, offset + results.Count);
+    }
+}

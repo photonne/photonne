@@ -329,9 +329,9 @@ public class AssetService : IAssetService
     }
 
     public async Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(
-        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null)
+        string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null, int offset = 0)
     {
-        var url = $"/api/assets/search?pageSize={pageSize}";
+        var url = $"/api/assets/search?pageSize={pageSize}&offset={offset}";
         if (!string.IsNullOrWhiteSpace(q))
             url += $"&q={Uri.EscapeDataString(q)}";
         if (!string.IsNullOrWhiteSpace(textQuery))

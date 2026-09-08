@@ -34,7 +34,7 @@ public interface IAssetService
     Task PurgeSharedTrashAsync(IEnumerable<Guid> assetIds);
     Task<List<string>> AddAssetTagsAsync(Guid assetId, List<string> tags);
     Task<List<string>> RemoveAssetTagAsync(Guid assetId, string tag);
-    Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null);
+    Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null, int offset = 0);
     // CLIP-based natural-language search. Returns assets ordered by semantic
     // similarity to the free-text query — works in any language M-CLIP was
     // distilled on (Spanish included).
