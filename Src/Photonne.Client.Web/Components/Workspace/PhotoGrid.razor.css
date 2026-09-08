@@ -1,0 +1,48 @@
+.photo-grid {
+    width: 100%;
+}
+
+.pg-month-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    height: 52px;
+    padding: 14px 2px 8px;
+    box-sizing: border-box;
+    position: sticky;
+    top: var(--mud-appbar-height, 64px);
+    z-index: 3;
+    background: var(--mud-palette-background);
+}
+
+.pg-month-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+.pg-month-count {
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.pg-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.pg-skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg,
+        var(--mud-palette-surface) 25%,
+        var(--mud-palette-background-gray) 50%,
+        var(--mud-palette-surface) 75%);
+    background-size: 200% 100%;
+    animation: pg-shimmer 1.8s infinite ease-in-out;
+}
+
+@keyframes pg-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

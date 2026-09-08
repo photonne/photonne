@@ -1,0 +1,217 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Rejilla del workspace sobre el modelo de buckets: una <section> por mes con
+   la altura reservada (estimada por conteo hasta hidratar, exacta después),
+   content-visibility:auto para que el navegador no pinte lo lejano, e
+   hidratación bajo demanda vía IntersectionObserver (workspaceGrid.js). *@
+
+<div class="photo-grid" @ref="_containerRef">
+    @if (_sections == null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_sections.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.PhotoLibrary"
+                    Title="Todavía no hay fotos"
+                    Description="Cuando subas o sincronices fotos aparecerán aquí." />
+    }
+    else
+    {
+        @foreach (var section in _sections)
+        {
+            <section class="pg-month" data-bucket="@section.Key" @key="section.Key">
+                <div class="pg-month-header">
+                    <span class="pg-month-title">@FormatMonth(section.Key)</span>
+                    <span class="pg-month-count">@section.Count</span>
+                </div>
+                <div class="pg-month-body"
+                     style="content-visibility:auto;contain-intrinsic-size:auto @(Px(section.ContentHeight))">
+                    @if (section.Layout != null && section.Items != null)
+                    {
+                        @foreach (var row in section.Layout.Rows)
+                        {
+                            <div class="pg-row" style="height:@(Px(row.Height))">
+                                @for (var i = row.StartIndex; i < row.StartIndex + row.Count; i++)
+                                {
+                                    var item = section.Items[i];
+                                    <PhotoCell @key="item.Id"
+                                               Item="item"
+                                               Width="CellWidth(item, row.Height)"
+                                               Height="row.Height"
+                                               OnClick="HandleItemClick" />
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="pg-skeleton" style="height:@(Px(section.ContentHeight))"></div>
+                    }
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private const double TargetRowHeight = 200;
+    private const double Spacing = 4;
+    private const double MonthHeaderHeight = 52;
+
+    [Parameter] public EventCallback<TimelineItem> OnItemClick { get; set; }
+
+    private sealed class Section
+    {
+        public required string Key { get; init; }
+        public required int Count { get; init; }
+        public double ContentHeight { get; set; }
+        public List<TimelineItem>? Items { get; set; }
+        public JustifiedLayout.Result? Layout { get; set; }
+        public bool Hydrating { get; set; }
+    }
+
+    private List<Section>? _sections;
+    private ElementReference _containerRef;
+    private DotNetObjectReference<PhotoGrid>? _selfRef;
+    private int _jsId = -1;
+    private double _containerWidth = 1200;
+    private bool _sectionsObserved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var buckets = await AssetService.GetTimelineBucketsAsync();
+        _sections = buckets.Select(b => new Section
+        {
+            Key = b.Key,
+            Count = b.Count,
+            ContentHeight = JustifiedLayout.EstimateHeight(b.Count, _containerWidth, TargetRowHeight, Spacing)
+        }).ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            _jsId = await JS.InvokeAsync<int>("workspaceGrid.init", _containerRef, _selfRef);
+        }
+
+        if (!_sectionsObserved && _jsId >= 0 && _sections is { Count: > 0 })
+        {
+            _sectionsObserved = true;
+            await JS.InvokeVoidAsync("workspaceGrid.observeSections", _jsId);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnContainerResized(double width)
+    {
+        if (Math.Abs(width - _containerWidth) < 1 || width <= 0) return Task.CompletedTask;
+        _containerWidth = width;
+        if (_sections != null)
+        {
+            foreach (var section in _sections)
+            {
+                RecomputeLayout(section);
+            }
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task OnBucketApproaching(string key)
+    {
+        var section = _sections?.FirstOrDefault(s => s.Key == key);
+        if (section == null || section.Items != null || section.Hydrating) return;
+
+        section.Hydrating = true;
+        List<TimelineItem> items;
+        try
+        {
+            items = await AssetService.GetBucketItemsAsync(key);
+        }
+        catch
+        {
+            // Red caída o bucket fallido: se reintentará cuando el observer
+            // vuelva a disparar (el usuario se aleja y vuelve).
+            section.Hydrating = false;
+            return;
+        }
+
+        var oldHeight = section.ContentHeight;
+        section.Items = items;
+        RecomputeLayout(section);
+        section.Hydrating = false;
+        StateHasChanged();
+
+        // Tras el render, si el mes quedó por encima del viewport el delta de
+        // altura movería el contenido visible: compensar el scroll.
+        var delta = section.ContentHeight - oldHeight;
+        if (Math.Abs(delta) >= 1)
+        {
+            await Task.Yield();
+            await JS.InvokeVoidAsync("workspaceGrid.compensateIfAbove", _jsId, key, delta);
+        }
+    }
+
+    private void RecomputeLayout(Section section)
+    {
+        if (section.Items != null)
+        {
+            var aspects = section.Items
+                .Select(i => i.Width.HasValue && i.Height is > 0
+                    ? (double)i.Width.Value / i.Height.Value
+                    : JustifiedLayout.FallbackAspect)
+                .ToList();
+            section.Layout = JustifiedLayout.Compute(aspects, _containerWidth, TargetRowHeight, Spacing);
+            section.ContentHeight = section.Layout.TotalHeight;
+        }
+        else
+        {
+            section.ContentHeight = JustifiedLayout.EstimateHeight(
+                section.Count, _containerWidth, TargetRowHeight, Spacing);
+        }
+    }
+
+    private Task HandleItemClick(TimelineItem item) => OnItemClick.InvokeAsync(item);
+
+    private double CellWidth(TimelineItem item, double rowHeight)
+    {
+        var aspect = item.Width.HasValue && item.Height is > 0
+            ? (double)item.Width.Value / item.Height.Value
+            : JustifiedLayout.FallbackAspect;
+        return Math.Clamp(aspect, 0.4, 3.0) * rowHeight;
+    }
+
+    private static string Px(double v) =>
+        v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "px";
+
+    private static string FormatMonth(string key)
+    {
+        // key = "yyyy-MM"
+        var parts = key.Split('-');
+        if (parts.Length == 2 && int.TryParse(parts[0], out var year) && int.TryParse(parts[1], out var month)
+            && month is >= 1 and <= 12)
+        {
+            var name = new DateTime(year, month, 1).ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-ES"));
+            return char.ToUpper(name[0]) + name[1..];
+        }
+        return key;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsId >= 0)
+        {
+            try { await JS.InvokeVoidAsync("workspaceGrid.dispose", _jsId); }
+            catch (JSDisconnectedException) { }
+        }
+        _selfRef?.Dispose();
+    }
+}
