@@ -137,8 +137,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
                 if (!string.IsNullOrEmpty(accessToken))
                 {
+                    // Sólo rutas de streaming de medios: los reproductores externos
+                    // (libvlc en desktop) no pueden enviar cabeceras Authorization.
                     var path = context.HttpContext.Request.Path;
-                    if (path.StartsWithSegments("/api/assets/pending", StringComparison.OrdinalIgnoreCase))
+                    var allowed = path.StartsWithSegments("/api/assets/pending", StringComparison.OrdinalIgnoreCase)
+                        || (path.StartsWithSegments("/api/assets", StringComparison.OrdinalIgnoreCase)
+                            && (path.Value!.EndsWith("/content", StringComparison.OrdinalIgnoreCase)
+                                || path.Value.EndsWith("/motion", StringComparison.OrdinalIgnoreCase)));
+                    if (allowed)
                     {
                         context.Token = accessToken;
                     }
