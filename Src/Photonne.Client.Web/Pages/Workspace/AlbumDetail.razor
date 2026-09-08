@@ -39,6 +39,10 @@
                 }
             </div>
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                @if (_album.IsOwner || _album.CanManagePermissions)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.PersonAdd" OnClick="ShareAsync">Compartir…</MudMenuItem>
+                }
                 @if (_album.IsOwner)
                 {
                     <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="RenameAsync">Renombrar</MudMenuItem>
@@ -115,6 +119,24 @@
     {
         await AlbumsService.SetCoverAsync(AlbumId, assetId);
         Snackbar.Add("Portada actualizada", Severity.Success);
+    }
+
+    private async Task ShareAsync()
+    {
+        if (_album == null) return;
+        var parameters = new DialogParameters<SharePermissionsDialog>
+        {
+            { d => d.Kind, "albums" },
+            { d => d.TargetId, AlbumId },
+            { d => d.TargetName, _album.Name }
+        };
+        var dialog = await DialogService.ShowAsync<SharePermissionsDialog>("Compartir", parameters);
+        var result = await dialog.Result;
+        if (result is { Data: true })
+        {
+            // Recontar sharedWithCount y flags.
+            _album = await AlbumsService.GetAlbumAsync(AlbumId);
+        }
     }
 
     private async Task RenameAsync()

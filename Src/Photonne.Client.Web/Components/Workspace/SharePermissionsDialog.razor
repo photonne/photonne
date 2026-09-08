@@ -1,0 +1,158 @@
+@using Photonne.Client.Web.Services
+@inject ISharingService SharingService
+@inject ISnackbar Snackbar
+
+@* Diálogo de compartición común a álbumes y carpetas (Kind = "albums" |
+   "folders"): filas de permisos con la matriz leer/escribir/borrar/gestionar
+   guardadas al cambiar, y alta de usuarios desde /api/users/shareable. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Compartir «@TargetName»</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_permissions == null || _users == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            @if (_permissions.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">
+                    Aún no está compartido con nadie.
+                </MudText>
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Class="mb-3">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Leer</th>
+                            <th>Escribir</th>
+                            <th>Borrar</th>
+                            <th>Gestionar</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var permission in _permissions)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <span>@permission.Username</span>
+                                        <span class="mud-text-secondary" style="font-size:0.72rem">@permission.Email</span>
+                                    </div>
+                                </td>
+                                <td><MudCheckBox T="bool" Value="permission.CanRead" Dense="true"
+                                                 ValueChanged="v => SaveAsync(permission, p => p.CanRead = v)" /></td>
+                                <td><MudCheckBox T="bool" Value="permission.CanWrite" Dense="true"
+                                                 ValueChanged="v => SaveAsync(permission, p => p.CanWrite = v)" /></td>
+                                <td><MudCheckBox T="bool" Value="permission.CanDelete" Dense="true"
+                                                 ValueChanged="v => SaveAsync(permission, p => p.CanDelete = v)" /></td>
+                                <td><MudCheckBox T="bool" Value="permission.CanManagePermissions" Dense="true"
+                                                 ValueChanged="v => SaveAsync(permission, p => p.CanManagePermissions = v)" /></td>
+                                <td>
+                                    <MudIconButton Icon="@Icons.Material.Outlined.PersonRemove" Size="Size.Small"
+                                                   OnClick="() => RemoveAsync(permission)" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+
+            @if (AvailableUsers.Count > 0)
+            {
+                <div class="d-flex align-center gap-2">
+                    <MudSelect T="Guid?" @bind-Value="_newUserId" Dense="true" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Label="Añadir usuario" Class="flex-1">
+                        @foreach (var user in AvailableUsers)
+                        {
+                            <MudSelectItem T="Guid?" Value="@((Guid?)user.Id)">@user.Username (@user.Email)</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="_newUserId == null || _busy"
+                               OnClick="AddAsync">
+                        Compartir
+                    </MudButton>
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Close(DialogResult.Ok(_changed))">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    /// <summary>"albums" o "folders".</summary>
+    [Parameter, EditorRequired] public string Kind { get; set; } = "albums";
+    [Parameter, EditorRequired] public Guid TargetId { get; set; }
+    [Parameter] public string TargetName { get; set; } = string.Empty;
+
+    private List<SharePermission>? _permissions;
+    private List<ShareableUser>? _users;
+    private Guid? _newUserId;
+    private bool _busy;
+    private bool _changed;
+
+    private List<ShareableUser> AvailableUsers =>
+        _users == null || _permissions == null
+            ? new List<ShareableUser>()
+            : _users.Where(u => _permissions.All(p => p.UserId != u.Id)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await SharingService.GetShareableUsersAsync();
+        _permissions = await SharingService.GetPermissionsAsync(Kind, TargetId);
+    }
+
+    private async Task AddAsync()
+    {
+        if (_newUserId == null || _permissions == null) return;
+        _busy = true;
+        try
+        {
+            await SharingService.SetPermissionAsync(Kind, TargetId, new SetPermissionRequest
+            {
+                UserId = _newUserId.Value,
+                CanRead = true
+            });
+            _permissions = await SharingService.GetPermissionsAsync(Kind, TargetId);
+            _newUserId = null;
+            _changed = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsync(SharePermission permission, Action<SharePermission> mutate)
+    {
+        mutate(permission);
+        await SharingService.SetPermissionAsync(Kind, TargetId, new SetPermissionRequest
+        {
+            UserId = permission.UserId,
+            CanRead = permission.CanRead,
+            CanWrite = permission.CanWrite,
+            CanDelete = permission.CanDelete,
+            CanManagePermissions = permission.CanManagePermissions
+        });
+        _changed = true;
+    }
+
+    private async Task RemoveAsync(SharePermission permission)
+    {
+        if (_permissions == null) return;
+        await SharingService.RemovePermissionAsync(Kind, TargetId, permission.UserId);
+        _permissions.Remove(permission);
+        _changed = true;
+        Snackbar.Add($"Se dejó de compartir con {permission.Username}", Severity.Normal);
+    }
+}
