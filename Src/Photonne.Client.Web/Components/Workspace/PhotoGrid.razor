@@ -23,6 +23,19 @@
     }
     else
     {
+        @if (_scrubberMap != null)
+        {
+            <div class="pg-scrubber @(_scrubbing ? "active" : "")" @ref="_railRef">
+                @foreach (var (year, fraction) in _scrubberMap.YearMarkers)
+                {
+                    <span class="pg-scrub-year" style="top:@(Pct(fraction))">@year</span>
+                }
+                @if (_scrubbing && _scrubLabel != null)
+                {
+                    <div class="pg-scrub-bubble" style="top:@(Pct(_scrubFraction))">@_scrubLabel</div>
+                }
+            </div>
+        }
         @foreach (var section in _sections)
         {
             <section class="pg-month" data-bucket="@section.Key" @key="section.Key">
@@ -106,6 +119,13 @@
 
     private List<Section>? _sections;
     private ElementReference _containerRef;
+    private ElementReference _railRef;
+    private BucketScrubberMap? _scrubberMap;
+    private bool _scrubberAttached;
+    private bool _scrubbing;
+    private double _scrubFraction;
+    private string? _scrubLabel;
+    private string? _scrubKey;
     private DotNetObjectReference<PhotoGrid>? _selfRef;
     private int _jsId = -1;
     private double _containerWidth = 1200;
@@ -210,6 +230,7 @@
     protected override async Task OnInitializedAsync()
     {
         var buckets = await AssetService.GetTimelineBucketsAsync();
+        _scrubberMap = BucketScrubberMap.Build(buckets);
         _sections = buckets.Select(b => new Section
         {
             Key = b.Key,
@@ -231,7 +252,41 @@
             _sectionsObserved = true;
             await JS.InvokeVoidAsync("workspaceGrid.observeSections", _jsId);
         }
+
+        if (!_scrubberAttached && _jsId >= 0 && _scrubberMap != null)
+        {
+            _scrubberAttached = true;
+            await JS.InvokeVoidAsync("workspaceGrid.attachScrubber", _jsId, _railRef);
+        }
     }
+
+    [JSInvokable]
+    public async Task OnScrubMove(double fraction)
+    {
+        if (_scrubberMap == null) return;
+        _scrubbing = true;
+        _scrubFraction = fraction;
+        var key = _scrubberMap.KeyForFraction(fraction);
+        _scrubLabel = FormatMonth(key);
+        if (key != _scrubKey)
+        {
+            _scrubKey = key;
+            // Saltar al mes: la hidratación la dispara el propio observer.
+            await JS.InvokeVoidAsync("workspaceGrid.scrollToBucket", _jsId, key);
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnScrubEnd()
+    {
+        _scrubbing = false;
+        _scrubKey = null;
+        StateHasChanged();
+    }
+
+    private static string Pct(double fraction) =>
+        (fraction * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
 
     [JSInvokable]
     public Task OnContainerResized(double width)

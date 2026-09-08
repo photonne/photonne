@@ -145,6 +145,37 @@ window.workspaceGrid = (() => {
             }
         },
 
+        // Scrubber lateral: arrastrar (o clicar) sobre el carril reporta la
+        // fracción [0,1]; los listeners de move/up van a window para que el
+        // arrastre no se corte al salirse del carril.
+        attachScrubber(id, rail) {
+            const st = states.get(id);
+            if (!st || !rail) return;
+            rail.addEventListener('pointerdown', e => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                const rect = rail.getBoundingClientRect();
+                const fractionOf = ev =>
+                    Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height));
+                st.dotnetRef.invokeMethodAsync('OnScrubMove', fractionOf(e));
+                const move = ev => st.dotnetRef.invokeMethodAsync('OnScrubMove', fractionOf(ev));
+                const up = () => {
+                    window.removeEventListener('pointermove', move);
+                    window.removeEventListener('pointerup', up);
+                    st.dotnetRef.invokeMethodAsync('OnScrubEnd');
+                };
+                window.addEventListener('pointermove', move);
+                window.addEventListener('pointerup', up);
+            });
+        },
+
+        scrollToBucket(id, key) {
+            const st = states.get(id);
+            if (!st) return;
+            st.container.querySelector(`[data-bucket="${CSS.escape(key)}"]`)
+                ?.scrollIntoView({ block: 'start' });
+        },
+
         dispose(id) {
             const st = states.get(id);
             if (st) {

@@ -15,6 +15,51 @@
     background: var(--mud-palette-background);
 }
 
+/* Scrubber lateral: carril fijo a la derecha, revelado al hover o arrastre. */
+.pg-scrubber {
+    position: fixed;
+    top: calc(var(--mud-appbar-height, 64px) + 8px);
+    bottom: 8px;
+    right: 0;
+    width: 48px;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    cursor: ns-resize;
+    user-select: none;
+    touch-action: none;
+}
+
+.pg-scrubber:hover,
+.pg-scrubber.active {
+    opacity: 1;
+    background: linear-gradient(to left, var(--mud-palette-background), transparent);
+}
+
+.pg-scrub-year {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    font-size: 0.68rem;
+    color: var(--mud-palette-text-secondary);
+    pointer-events: none;
+}
+
+.pg-scrub-bubble {
+    position: absolute;
+    right: 44px;
+    transform: translateY(-50%);
+    padding: 4px 12px;
+    border-radius: 14px;
+    background: var(--mud-palette-surface);
+    box-shadow: var(--mud-elevation-4);
+    color: var(--mud-palette-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 .pg-month-check {
     width: 22px;
     height: 22px;
