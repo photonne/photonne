@@ -56,8 +56,17 @@ los endpoints (el cliente KMP los consume).
   thumbnail/content/motion son endpoints anónimos protegidos solo por GUID no
   adivinable. Endurecerlos exige tocar servidor + KMP + web + service worker a
   la vez y queda para una fase de seguridad propia.
-- Backlog de fase C: panel permanente de carpetas y vistas de carpeta/álbum,
-  CRUD de álbumes y editor smart, bandeja de organizar (sugerencias + reglas),
-  duplicados, búsqueda + semántica, subida drag & drop, scrubber, mapa,
-  navegación por teclado en la rejilla (flechas/Espacio/Supr), sugerencia de
-  fecha en el panel de info, y jubilar el timeline clásico por cursor.
+- Fase C completada (2026-09-08): álbumes (CRUD + smart con editor de reglas y
+  preview + compartición), carpetas (árbol persistente + gestión + permisos),
+  colecciones (favoritas/archivadas/papelera), búsqueda con filtros y
+  semántica, organizar (sugerencias + reglas + bandeja con badge), duplicados,
+  subida drag & drop con fechas preservadas, scrubber por buckets y navegación
+  completa por teclado. Piezas transversales: `BatchActions`/`IAssetGridHost`,
+  `FlatPhotoGrid`/`WorkspaceCollection`, `SmartRuleEditor`, `FolderTree`,
+  `SharePermissionsDialog`, `IdThumbGrid`/`IdReviewDialog`.
+- Backlog restante: endurecer los endpoints de media anónimos (deuda de
+  seguridad transversal), jubilar el timeline clásico por cursor, editar la
+  regla de un álbum smart existente y la condición de tags de usuario en el
+  editor (ambas requieren API nueva: PUT de regla y catálogo de ids de tag),
+  grupos anidados/"not" en el editor de reglas, sugerencia de fecha en el
+  panel de info, y mapa/personas como vistas web.
