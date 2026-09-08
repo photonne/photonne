@@ -3,6 +3,7 @@ package com.photonne.app.ui.devicebackup
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -45,6 +46,7 @@ import com.photonne.app.resources.device_backup_preview_back
 import com.photonne.app.resources.device_backup_preview_open_detail
 import com.photonne.app.resources.device_backup_preview_video_unsupported
 import com.photonne.app.ui.asset.VideoPlayer
+import com.photonne.app.ui.asset.VideoUnavailableHelpAction
 import com.photonne.app.ui.asset.ZoomablePagerImage
 import com.photonne.app.ui.asset.isVideoPlaybackSupported
 import com.photonne.app.ui.platform.OrientationController
@@ -234,12 +236,15 @@ private fun DeviceAssetPage(
                     modifier = Modifier.fillMaxSize()
                 )
                 if (!isVideoPlaybackSupported && isCurrent) {
-                    Text(
-                        text = stringResource(Res.string.device_backup_preview_video_unsupported),
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = stringResource(Res.string.device_backup_preview_video_unsupported),
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        VideoUnavailableHelpAction()
+                    }
                 }
             }
             else -> {

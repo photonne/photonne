@@ -141,6 +141,7 @@ kotlin {
                 implementation(libs.ktor.client.cio)
                 implementation(libs.multiplatform.settings.no.arg)
                 implementation(libs.sqldelight.sqlite.driver)
+                implementation(libs.vlcj)
             }
         }
     }

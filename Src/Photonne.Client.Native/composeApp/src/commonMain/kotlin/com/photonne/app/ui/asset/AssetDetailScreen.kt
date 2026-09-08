@@ -1062,12 +1062,15 @@ private fun AssetPage(
                         onTap = onToggleChrome
                     )
                     if (item.isVideo && !isVideoPlaybackSupported) {
-                        Text(
-                            text = "Reproducción de vídeo no disponible en este sistema",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Reproducción de vídeo no disponible en este sistema",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                            VideoUnavailableHelpAction()
+                        }
                     }
                 }
             }
@@ -1097,11 +1100,14 @@ private fun AssetPage(
                     modifier = Modifier.fillMaxSize()
                 )
                 if (!isVideoPlaybackSupported) {
-                    Text(
-                        text = "Reproducción de vídeo no disponible en este sistema",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Reproducción de vídeo no disponible en este sistema",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        VideoUnavailableHelpAction()
+                    }
                 }
             }
             item.isLivePhoto && isVideoPlaybackSupported -> {
