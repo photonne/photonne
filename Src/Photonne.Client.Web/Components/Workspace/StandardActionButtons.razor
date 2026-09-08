@@ -1,0 +1,35 @@
+@using Photonne.Client.Web.Services
+
+@* Botonera estándar de la barra de selección, compartida por todas las
+   superficies del workspace. Las vistas con acciones propias añaden las suyas
+   al lado (ExtraActions del WorkspaceCollection). *@
+
+<MudTooltip Text="Favorito">
+    <MudIconButton Icon="@Icons.Material.Outlined.FavoriteBorder" Size="Size.Small"
+                   Disabled="Actions.Busy" OnClick="Actions.ToggleFavoritesAsync" />
+</MudTooltip>
+<MudTooltip Text="Añadir a álbum">
+    <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Size="Size.Small"
+                   Disabled="Actions.Busy" OnClick="Actions.AddToAlbumAsync" />
+</MudTooltip>
+<MudTooltip Text="Mover a carpeta">
+    <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Size="Size.Small"
+                   Disabled="Actions.Busy" OnClick="Actions.MoveToFolderAsync" />
+</MudTooltip>
+<MudTooltip Text="Archivar">
+    <MudIconButton Icon="@Icons.Material.Outlined.Archive" Size="Size.Small"
+                   Disabled="Actions.Busy" OnClick="Actions.ArchiveAsync" />
+</MudTooltip>
+<MudTooltip Text="Descargar ZIP">
+    <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
+                   Disabled="Actions.Busy" OnClick="Actions.DownloadZipAsync" />
+</MudTooltip>
+<MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
+<MudTooltip Text="Mover a la papelera">
+    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
+                   Disabled="Actions.Busy" OnClick="Actions.TrashAsync" />
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired] public BatchActions Actions { get; set; } = null!;
+}

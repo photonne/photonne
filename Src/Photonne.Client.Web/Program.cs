@@ -116,6 +116,8 @@ builder.Services.AddScoped<IMaintenanceService>(sp =>
 // ── Indexación y colas ──────────────────────────────────────────────────────
 builder.Services.AddScoped<IIndexService, IndexService>();
 builder.Services.AddScoped<IAlbumsService, AlbumsService>();
+// Transient: cada página del workspace tiene su instancia con su rejilla.
+builder.Services.AddTransient<BatchActions>();
 builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();
 builder.Services.AddScoped<IMetadataQueueService, MetadataQueueService>();
 builder.Services.AddScoped<IDateRestoreService, DateRestoreService>();

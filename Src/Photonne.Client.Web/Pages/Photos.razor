@@ -2,20 +2,15 @@
 @using Photonne.Client.Web.Components.Workspace
 @using Photonne.Client.Web.Models
 @using Photonne.Client.Web.Services
-@inject IAssetService AssetService
-@inject IFolderService FolderService
-@inject IAlbumsService AlbumsService
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
-@inject IJSRuntime JS
+@inject BatchActions Actions
+@implements IDisposable
 
 <PageTitle>Fotos - Photonne</PageTitle>
 
-@* Workspace de usuario (ADR-003): rejilla por buckets con selección múltiple
-   y acciones en lote. El visor con panel de info llega en los commits
-   siguientes del núcleo. *@
+@* Workspace de usuario (ADR-003): rejilla por buckets con selección múltiple,
+   acciones en lote compartidas (BatchActions) y visor con panel de info. *@
 
-<PhotoGrid @ref="_grid" Selection="_selection" OnItemClick="OpenViewer" OnShortcut="HandleShortcut" />
+<PhotoGrid @ref="_grid" Selection="_selection" OnItemClick="OpenViewer" OnShortcut="Actions.HandleShortcutAsync" />
 
 @if (_viewerItem != null && _grid != null)
 {
@@ -42,52 +37,32 @@
 
 <SelectionBar Selection="_selection">
     <Actions>
-        <MudTooltip Text="Favorito">
-            <MudIconButton Icon="@Icons.Material.Outlined.FavoriteBorder" Size="Size.Small"
-                           Disabled="_busy" OnClick="ToggleFavoritesAsync" />
-        </MudTooltip>
-        <MudTooltip Text="Añadir a álbum">
-            <MudIconButton Icon="@Icons.Material.Outlined.AddToPhotos" Size="Size.Small"
-                           Disabled="_busy" OnClick="AddToAlbumAsync" />
-        </MudTooltip>
-        <MudTooltip Text="Mover a carpeta">
-            <MudIconButton Icon="@Icons.Material.Outlined.DriveFileMove" Size="Size.Small"
-                           Disabled="_busy" OnClick="MoveToFolderAsync" />
-        </MudTooltip>
-        <MudTooltip Text="Archivar">
-            <MudIconButton Icon="@Icons.Material.Outlined.Archive" Size="Size.Small"
-                           Disabled="_busy" OnClick="ArchiveAsync" />
-        </MudTooltip>
-        <MudTooltip Text="Descargar ZIP">
-            <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
-                           Disabled="_busy" OnClick="DownloadZipAsync" />
-        </MudTooltip>
-        <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
-        <MudTooltip Text="Mover a la papelera">
-            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
-                           Disabled="_busy" OnClick="TrashAsync" />
-        </MudTooltip>
+        <StandardActionButtons Actions="Actions" />
     </Actions>
 </SelectionBar>
 
 @code {
     private readonly SelectionState _selection = new();
     private PhotoGrid? _grid;
-    private bool _busy;
-
-    private List<Guid> SelectedIds => _selection.Selected.ToList();
-
-    private Task HandleShortcut(string action) => action switch
-    {
-        "delete" => TrashAsync(),
-        "favorite" => ToggleFavoritesAsync(),
-        _ => Task.CompletedTask
-    };
 
     private TimelineItem? _viewerItem;
     private TimelineItem? _viewerCurrent;
     private bool _infoOpen;
     private IReadOnlyList<TimelineItem> _viewerItems = Array.Empty<TimelineItem>();
+
+    protected override void OnInitialized()
+    {
+        Actions.Selection = _selection;
+        Actions.StateChanged += StateHasChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _grid != null)
+        {
+            Actions.Grid = _grid;
+        }
+    }
 
     private Task OpenViewer(TimelineItem item)
     {
@@ -106,6 +81,11 @@
         _viewerItems = Array.Empty<TimelineItem>();
     }
 
+    private void HandleViewerItemChanged(TimelineItem item)
+    {
+        _grid?.UpdateAssets(new[] { item.Id }, i => i.IsFavorite = item.IsFavorite);
+    }
+
     private async Task HandleDateChanged()
     {
         // La fecha mueve el asset de sitio en el timeline: rehidratar su mes
@@ -117,182 +97,8 @@
         }
     }
 
-    private void HandleViewerItemChanged(TimelineItem item)
+    public void Dispose()
     {
-        _grid?.UpdateAssets(new[] { item.Id }, i => i.IsFavorite = item.IsFavorite);
-    }
-
-    /// <summary>Meses ("yyyy-MM") a los que pertenecen los ids, para rehidratar tras Deshacer.</summary>
-    private List<string> MonthsOf(IReadOnlyCollection<Guid> ids) =>
-        _grid == null
-            ? new List<string>()
-            : _grid.ItemsByIds(ids).Select(i => i.FileCreatedAt.ToString("yyyy-MM")).Distinct().ToList();
-
-    private async Task ToggleFavoritesAsync()
-    {
-        if (_grid == null || _busy) return;
-        var items = _grid.ItemsByIds(SelectedIds);
-        if (items.Count == 0) return;
-        // Si a alguna le falta el corazón, la acción es "marcar las que faltan";
-        // solo cuando todas lo tienen ya, se desmarca todo. El endpoint es un
-        // toggle de uno en uno (sin lote), así que se filtra antes de llamar.
-        var marking = items.Any(i => !i.IsFavorite);
-        var targets = items.Where(i => i.IsFavorite != marking).Select(i => i.Id).ToList();
-        _busy = true;
-        try
-        {
-            foreach (var id in targets)
-            {
-                await AssetService.ToggleFavoriteAsync(id);
-            }
-            _grid.UpdateAssets(targets, i => i.IsFavorite = marking);
-            Snackbar.Add(marking
-                ? $"{targets.Count} marcadas como favoritas"
-                : $"{targets.Count} quitadas de favoritas", Severity.Success);
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task ArchiveAsync()
-    {
-        if (_grid == null || _busy) return;
-        var ids = SelectedIds;
-        var months = MonthsOf(ids);
-        _busy = true;
-        try
-        {
-            await AssetService.ArchiveAssetsAsync(new ArchiveAssetsRequest { AssetIds = ids });
-            _grid.RemoveAssets(ids);
-            _selection.Clear();
-            AddUndoSnackbar($"{ids.Count} archivadas", async () =>
-            {
-                await AssetService.UnarchiveAssetsAsync(new UnarchiveAssetsRequest { AssetIds = ids });
-                if (_grid != null) await _grid.RehydrateMonthsAsync(months);
-            });
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task TrashAsync()
-    {
-        if (_grid == null || _busy) return;
-        var ids = SelectedIds;
-        var months = MonthsOf(ids);
-        _busy = true;
-        try
-        {
-            await AssetService.DeleteAssetsAsync(new DeleteAssetsRequest { AssetIds = ids });
-            _grid.RemoveAssets(ids);
-            _selection.Clear();
-            AddUndoSnackbar($"{ids.Count} movidas a la papelera", async () =>
-            {
-                await AssetService.RestoreAssetsAsync(new RestoreAssetsRequest { AssetIds = ids });
-                if (_grid != null) await _grid.RehydrateMonthsAsync(months);
-            });
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task MoveToFolderAsync()
-    {
-        if (_busy) return;
-        var ids = SelectedIds;
-        var parameters = new DialogParameters<MoveToFolderDialog>
-        {
-            { d => d.AssetIds, ids }
-        };
-        var dialog = await DialogService.ShowAsync<MoveToFolderDialog>("Mover a carpeta", parameters);
-        var result = await dialog.Result;
-        if (result is not { Canceled: false } || result.Data is not MoveToFolderDialog.Result choice) return;
-
-        _busy = true;
-        try
-        {
-            await FolderService.MoveFolderAssetsAsync(new MoveFolderAssetsRequest
-            {
-                SourceFolderId = null,
-                TargetFolderId = choice.TargetFolderId,
-                AssetIds = ids,
-                OrganizeByCaptureYear = choice.OrganizeByCaptureYear
-            });
-            _selection.Clear();
-            Snackbar.Add($"{ids.Count} movidas de carpeta", Severity.Success);
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task AddToAlbumAsync()
-    {
-        if (_busy) return;
-        var ids = SelectedIds;
-        var parameters = new DialogParameters<AlbumPickerDialog>
-        {
-            { d => d.AssetCount, ids.Count }
-        };
-        var dialog = await DialogService.ShowAsync<AlbumPickerDialog>("Añadir a álbum", parameters);
-        var result = await dialog.Result;
-        if (result is not { Canceled: false } || result.Data is not AlbumSummary album) return;
-
-        _busy = true;
-        try
-        {
-            await AlbumsService.AddAssetsAsync(album.Id, ids);
-            _selection.Clear();
-            Snackbar.Add($"{ids.Count} añadidas a «{album.Name}»", Severity.Success);
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task DownloadZipAsync()
-    {
-        if (_busy) return;
-        var ids = SelectedIds;
-        _busy = true;
-        try
-        {
-            var bytes = await AssetService.DownloadZipAsync(ids);
-            if (bytes is { Length: > 0 })
-            {
-                await JS.InvokeVoidAsync("downloadFileFromBytes",
-                    $"photonne-{DateTime.Now:yyyyMMdd-HHmm}.zip", "application/zip", bytes);
-            }
-            else
-            {
-                Snackbar.Add("No se pudo generar el ZIP", Severity.Error);
-            }
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private void AddUndoSnackbar(string message, Func<Task> undo)
-    {
-        Snackbar.Add(message, Severity.Success, config =>
-        {
-            config.Action = "Deshacer";
-            config.ActionColor = Color.Primary;
-            config.OnClick = async _ =>
-            {
-                await undo();
-                Snackbar.Add("Deshecho", Severity.Normal);
-            };
-        });
+        Actions.StateChanged -= StateHasChanged;
     }
 }

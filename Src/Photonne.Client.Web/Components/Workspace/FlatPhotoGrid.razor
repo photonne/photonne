@@ -1,0 +1,231 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@implements IAssetGridHost
+
+@* Rejilla justificada de UNA colección plana (álbum, carpeta, favoritas,
+   papelera, búsqueda, bandeja de organizar): mismo layout, celdas, selección
+   (modificadores + pintado + Escape + atajos) que la rejilla de buckets, sin
+   esqueleto de meses. La carga la posee el host: aquí llegan Items y, si hay
+   paginación, un centinela dispara LoadMore al acercarse. *@
+
+<div class="flat-grid" @ref="_containerRef">
+    @if (Items.Count == 0 && !HasMore)
+    {
+        <EmptyState Icon="@EmptyIcon" Title="@EmptyTitle" Description="@EmptyDescription" />
+    }
+    else
+    {
+        @if (_layout != null)
+        {
+            @foreach (var row in _layout.Rows)
+            {
+                <div class="pg-row" style="height:@(Px(row.Height))">
+                    @for (var i = row.StartIndex; i < row.StartIndex + row.Count; i++)
+                    {
+                        var item = Items[i];
+                        <PhotoCell @key="item.Id"
+                                   Item="item"
+                                   Width="CellWidth(item, row.Height)"
+                                   Height="row.Height"
+                                   IsSelected="Selection?.IsSelected(item.Id) ?? false"
+                                   Selectable="Selection != null"
+                                   OnClick="e => HandleCellClick(item, e)"
+                                   OnToggle="() => Selection?.Toggle(item.Id)" />
+                    }
+                </div>
+            }
+        }
+        @if (HasMore)
+        {
+            <div data-loadmore class="fg-loadmore">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private const double TargetRowHeight = 200;
+    private const double Spacing = 4;
+
+    [Parameter, EditorRequired] public List<TimelineItem> Items { get; set; } = new();
+    [Parameter] public bool HasMore { get; set; }
+    [Parameter] public EventCallback LoadMore { get; set; }
+    [Parameter] public SelectionState? Selection { get; set; }
+    [Parameter] public EventCallback<TimelineItem> OnItemClick { get; set; }
+    [Parameter] public EventCallback<string> OnShortcut { get; set; }
+    /// <summary>El host recarga la colección tras un Deshacer.</summary>
+    [Parameter] public EventCallback OnReloadRequested { get; set; }
+    [Parameter] public string EmptyIcon { get; set; } = Icons.Material.Outlined.PhotoLibrary;
+    [Parameter] public string EmptyTitle { get; set; } = "Nada por aquí";
+    [Parameter] public string? EmptyDescription { get; set; }
+
+    private ElementReference _containerRef;
+    private DotNetObjectReference<FlatPhotoGrid>? _selfRef;
+    private int _jsId = -1;
+    private double _containerWidth = 1200;
+    private JustifiedLayout.Result? _layout;
+    private bool _paintSelects = true;
+    private bool _loadingMore;
+    private SelectionState? _subscribedSelection;
+
+    public IReadOnlyList<TimelineItem> VisibleItems => Items;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_subscribedSelection, Selection))
+        {
+            if (_subscribedSelection != null) _subscribedSelection.Changed -= OnSelectionChanged;
+            _subscribedSelection = Selection;
+            if (_subscribedSelection != null) _subscribedSelection.Changed += OnSelectionChanged;
+        }
+        RecomputeLayout();
+    }
+
+    private void OnSelectionChanged() => StateHasChanged();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            _jsId = await JS.InvokeAsync<int>("workspaceGrid.initFlat", _containerRef, _selfRef);
+        }
+        if (_jsId >= 0 && HasMore)
+        {
+            await JS.InvokeVoidAsync("workspaceGrid.observeSentinel", _jsId);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnContainerResized(double width)
+    {
+        if (Math.Abs(width - _containerWidth) < 1 || width <= 0) return Task.CompletedTask;
+        _containerWidth = width;
+        RecomputeLayout();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task OnLoadMoreVisible()
+    {
+        if (_loadingMore || !HasMore) return;
+        _loadingMore = true;
+        try
+        {
+            await LoadMore.InvokeAsync();
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    [JSInvokable]
+    public void OnEscapePressed() => Selection?.Clear();
+
+    [JSInvokable]
+    public async Task OnGridShortcut(string action)
+    {
+        if (Selection is not { IsActive: true }) return;
+        await OnShortcut.InvokeAsync(action);
+    }
+
+    [JSInvokable]
+    public void OnPaintSelectStart(string assetId)
+    {
+        if (Selection == null || !Guid.TryParse(assetId, out var id)) return;
+        _paintSelects = !Selection.IsSelected(id);
+        Selection.SetSelected(new[] { id }, _paintSelects);
+    }
+
+    [JSInvokable]
+    public void OnPaintSelect(string assetId)
+    {
+        if (Selection == null || !Guid.TryParse(assetId, out var id)) return;
+        Selection.SetSelected(new[] { id }, _paintSelects);
+    }
+
+    // ── IAssetGridHost ────────────────────────────────────────────────────
+    public IReadOnlyList<TimelineItem> ItemsByIds(IReadOnlyCollection<Guid> ids)
+    {
+        var idSet = ids as ISet<Guid> ?? ids.ToHashSet();
+        return Items.Where(i => idSet.Contains(i.Id)).ToList();
+    }
+
+    public void RemoveAssets(IReadOnlyCollection<Guid> ids)
+    {
+        var idSet = ids as ISet<Guid> ?? ids.ToHashSet();
+        if (Items.RemoveAll(i => idSet.Contains(i.Id)) > 0)
+        {
+            RecomputeLayout();
+            StateHasChanged();
+        }
+    }
+
+    public void UpdateAssets(IReadOnlyCollection<Guid> ids, Action<TimelineItem> mutate)
+    {
+        var idSet = ids as ISet<Guid> ?? ids.ToHashSet();
+        foreach (var item in Items.Where(i => idSet.Contains(i.Id)))
+        {
+            mutate(item);
+        }
+        StateHasChanged();
+    }
+
+    public Task RestoreViewAsync(IReadOnlyCollection<Guid> ids, IReadOnlyCollection<string> monthKeys) =>
+        OnReloadRequested.InvokeAsync();
+
+    // ──────────────────────────────────────────────────────────────────────
+
+    private Task HandleCellClick(TimelineItem item, MouseEventArgs e)
+    {
+        if (Selection == null) return OnItemClick.InvokeAsync(item);
+        if (e.ShiftKey)
+        {
+            Selection.SelectRange(item.Id, Items.Select(i => i.Id).ToList());
+            return Task.CompletedTask;
+        }
+        if (e.CtrlKey || e.MetaKey || Selection.IsActive)
+        {
+            Selection.Toggle(item.Id);
+            return Task.CompletedTask;
+        }
+        return OnItemClick.InvokeAsync(item);
+    }
+
+    private void RecomputeLayout()
+    {
+        var aspects = Items
+            .Select(i => i.Width.HasValue && i.Height is > 0
+                ? (double)i.Width.Value / i.Height.Value
+                : JustifiedLayout.FallbackAspect)
+            .ToList();
+        _layout = JustifiedLayout.Compute(aspects, _containerWidth, TargetRowHeight, Spacing);
+    }
+
+    private double CellWidth(TimelineItem item, double rowHeight)
+    {
+        var aspect = item.Width.HasValue && item.Height is > 0
+            ? (double)item.Width.Value / item.Height.Value
+            : JustifiedLayout.FallbackAspect;
+        return Math.Clamp(aspect, 0.4, 3.0) * rowHeight;
+    }
+
+    private static string Px(double v) =>
+        v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "px";
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_subscribedSelection != null) _subscribedSelection.Changed -= OnSelectionChanged;
+        if (_jsId >= 0)
+        {
+            try { await JS.InvokeVoidAsync("workspaceGrid.dispose", _jsId); }
+            catch (JSDisconnectedException) { }
+        }
+        _selfRef?.Dispose();
+    }
+}

@@ -1,0 +1,145 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject BatchActions Actions
+@implements IDisposable
+
+@* Superficie completa de una colección plana: FlatPhotoGrid + barra de
+   selección con las acciones estándar (y extras de la vista) + visor con
+   panel de info. Lo usan álbum, carpeta, favoritas/archivadas/papelera,
+   búsqueda y la bandeja de organizar; la carga la aporta el host vía Source
+   (cursor opaco: DateTime para cursor-paging, int para offset, null = fin). *@
+
+<FlatPhotoGrid @ref="_grid"
+               Items="_items"
+               HasMore="_hasMore"
+               LoadMore="LoadNextPageAsync"
+               Selection="@(AllowSelection ? _selection : null)"
+               OnItemClick="OpenViewer"
+               OnShortcut="Actions.HandleShortcutAsync"
+               OnReloadRequested="ReloadAsync"
+               EmptyIcon="@EmptyIcon"
+               EmptyTitle="@EmptyTitle"
+               EmptyDescription="@EmptyDescription" />
+
+@if (_viewerItem != null)
+{
+    <AssetViewer Items="_items"
+                 Initial="_viewerItem"
+                 OnClose="() => _viewerItem = null"
+                 OnItemChanged="item => _grid?.UpdateAssets(new[] { item.Id }, i => i.IsFavorite = item.IsFavorite)"
+                 OnCurrentChanged="item => _viewerCurrent = item">
+        <TopbarExtras>
+            <MudIconButton Icon="@(_infoOpen ? Icons.Material.Filled.Info : Icons.Material.Outlined.Info)"
+                           Style="color:#fff"
+                           OnClick="() => _infoOpen = !_infoOpen"
+                           aria-label="Información" />
+            @ViewerExtras?.Invoke(_viewerCurrent ?? _viewerItem)
+        </TopbarExtras>
+        <BodyExtras>
+            @if (_infoOpen)
+            {
+                <AssetInfoPanel AssetId="(_viewerCurrent ?? _viewerItem).Id" OnDateChanged="ReloadAsync" />
+            }
+        </BodyExtras>
+    </AssetViewer>
+}
+
+@if (AllowSelection)
+{
+    <SelectionBar Selection="_selection">
+        <Actions>
+            @if (StandardActions)
+            {
+                <StandardActionButtons Actions="Actions" />
+            }
+            @ExtraActions
+        </Actions>
+    </SelectionBar>
+}
+
+@code {
+    public sealed record CollectionPage(List<TimelineItem> Items, bool HasMore, object? NextCursor);
+
+    /// <summary>Carga una página; cursor null = primera. Devuelve HasMore=false para colecciones de una sola carga.</summary>
+    [Parameter, EditorRequired] public Func<object?, Task<CollectionPage>> Source { get; set; } = null!;
+    [Parameter] public bool StandardActions { get; set; } = true;
+    [Parameter] public bool AllowSelection { get; set; } = true;
+    /// <summary>Acciones propias de la vista, junto a (o en lugar de) las estándar.</summary>
+    [Parameter] public RenderFragment? ExtraActions { get; set; }
+    /// <summary>Botones extra en la barra del visor, por asset actual.</summary>
+    [Parameter] public RenderFragment<TimelineItem>? ViewerExtras { get; set; }
+    [Parameter] public string EmptyIcon { get; set; } = Icons.Material.Outlined.PhotoLibrary;
+    [Parameter] public string EmptyTitle { get; set; } = "Nada por aquí";
+    [Parameter] public string? EmptyDescription { get; set; }
+
+    private readonly SelectionState _selection = new();
+    private FlatPhotoGrid? _grid;
+    private List<TimelineItem> _items = new();
+    private bool _hasMore;
+    private object? _cursor;
+    private bool _loading;
+    private TimelineItem? _viewerItem;
+    private TimelineItem? _viewerCurrent;
+    private bool _infoOpen;
+
+    /// <summary>Expuestos al host para acciones propias (Restaurar, Excluir…).</summary>
+    public SelectionState Selection => _selection;
+    public BatchActions Batch => Actions;
+    public IReadOnlyList<TimelineItem> Items => _items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Actions.Selection = _selection;
+        Actions.StateChanged += StateHasChanged;
+        await ReloadAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // La rejilla existe tras el primer render: engancharla a las acciones.
+        if (firstRender && _grid != null)
+        {
+            Actions.Grid = _grid;
+        }
+    }
+
+    public async Task ReloadAsync()
+    {
+        _cursor = null;
+        _items = new List<TimelineItem>();
+        _hasMore = false;
+        await LoadNextPageAsync(first: true);
+    }
+
+    private Task LoadNextPageAsync() => LoadNextPageAsync(first: false);
+
+    private async Task LoadNextPageAsync(bool first)
+    {
+        if (_loading || (!first && !_hasMore)) return;
+        _loading = true;
+        try
+        {
+            var page = await Source(_cursor);
+            _items.AddRange(page.Items);
+            _hasMore = page.HasMore;
+            _cursor = page.NextCursor;
+            StateHasChanged();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task OpenViewer(TimelineItem item)
+    {
+        _viewerItem = item;
+        _viewerCurrent = item;
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        Actions.StateChanged -= StateHasChanged;
+    }
+}

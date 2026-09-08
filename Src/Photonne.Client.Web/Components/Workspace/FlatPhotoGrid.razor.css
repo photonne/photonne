@@ -1,0 +1,15 @@
+.flat-grid {
+    width: 100%;
+}
+
+.pg-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.fg-loadmore {
+    display: flex;
+    justify-content: center;
+    padding: 24px 0;
+}

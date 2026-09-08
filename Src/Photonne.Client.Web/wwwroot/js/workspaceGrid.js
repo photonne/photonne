@@ -120,6 +120,31 @@ window.workspaceGrid = (() => {
             }
         },
 
+        // Variante para colecciones planas (álbum, carpeta, papelera, búsqueda):
+        // mismo resize/pintado/teclas, y en vez de observar buckets observa un
+        // único centinela [data-loadmore] para la paginación.
+        initFlat(container, dotnetRef) {
+            const id = this.init(container, dotnetRef);
+            const st = states.get(id);
+            st.io.disconnect();
+            st.io = new IntersectionObserver(entries => {
+                if (entries.some(e => e.isIntersecting)) {
+                    dotnetRef.invokeMethodAsync('OnLoadMoreVisible');
+                }
+            }, { rootMargin: '900px 0px' });
+            return id;
+        },
+
+        observeSentinel(id) {
+            const st = states.get(id);
+            if (!st) return;
+            const sentinel = st.container.querySelector('[data-loadmore]');
+            if (sentinel && !st.observed.has(sentinel)) {
+                st.observed.add(sentinel);
+                st.io.observe(sentinel);
+            }
+        },
+
         dispose(id) {
             const st = states.get(id);
             if (st) {

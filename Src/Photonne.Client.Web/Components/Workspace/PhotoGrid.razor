@@ -3,6 +3,7 @@
 @inject IAssetService AssetService
 @inject IJSRuntime JS
 @implements IAsyncDisposable
+@implements IAssetGridHost
 
 @* Rejilla del workspace sobre el modelo de buckets: una <section> por mes con
    la altura reservada (estimada por conteo hasta hidratar, exacta después),
@@ -176,6 +177,10 @@
         }
         StateHasChanged();
     }
+
+    /// <summary>IAssetGridHost: el Deshacer restaura rehidratando los meses afectados.</summary>
+    public Task RestoreViewAsync(IReadOnlyCollection<Guid> ids, IReadOnlyCollection<string> monthKeys) =>
+        RehydrateMonthsAsync(monthKeys);
 
     /// <summary>
     /// Vacía y vuelve a pedir meses concretos — el "Deshacer" de papelera y
