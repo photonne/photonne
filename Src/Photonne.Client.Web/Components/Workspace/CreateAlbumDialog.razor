@@ -3,8 +3,8 @@
 @inject IAlbumsService AlbumsService
 @inject ISnackbar Snackbar
 
-@* Crear álbum. El modo Smart (con editor de reglas y preview) se añade en el
-   commit del editor; de momento solo el manual. *@
+@* Crear álbum manual o smart. El smart lleva el editor de reglas con preview
+   en vivo; su regla queda fijada al crear (el API no permite editarla luego). *@
 
 <MudDialog>
     <TitleContent>
@@ -14,12 +14,28 @@
         <MudTextField @bind-Value="_name" Label="Nombre" Variant="Variant.Outlined"
                       Margin="Margin.Dense" AutoFocus="true" />
         <MudTextField @bind-Value="_description" Label="Descripción (opcional)" Variant="Variant.Outlined"
-                      Margin="Margin.Dense" Lines="2" Class="mt-2" />
+                      Margin="Margin.Dense" Lines="2" Class="mt-2 mb-2" />
+
+        <MudTabs @bind-ActivePanelIndex="_tab" Class="mt-2">
+            <MudTabPanel Text="Manual">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary pa-2">
+                    Añadirás fotos a mano desde la selección del timeline.
+                </MudText>
+            </MudTabPanel>
+            <MudTabPanel Text="Smart">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary pa-2">
+                    El contenido lo decide una regla, siempre al día. La regla se
+                    fija al crear el álbum.
+                </MudText>
+                <SmartRuleEditor Preview="rule => AlbumsService.PreviewRuleAsync(rule)"
+                                 RuleChanged="rule => _rule = rule" />
+            </MudTabPanel>
+        </MudTabs>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Cancel()">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                   Disabled="string.IsNullOrWhiteSpace(_name) || _busy"
+                   Disabled="!CanCreate || _busy"
                    OnClick="CreateAsync">
             Crear
         </MudButton>
@@ -31,16 +47,23 @@
 
     private string _name = string.Empty;
     private string? _description;
+    private int _tab;
+    private SmartRuleNode? _rule;
     private bool _busy;
+
+    private bool CanCreate =>
+        !string.IsNullOrWhiteSpace(_name) && (_tab == 0 || _rule != null);
 
     private async Task CreateAsync()
     {
-        if (string.IsNullOrWhiteSpace(_name)) return;
+        if (!CanCreate) return;
         _busy = true;
         try
         {
             var created = await AlbumsService.CreateAlbumAsync(
-                _name.Trim(), string.IsNullOrWhiteSpace(_description) ? null : _description.Trim());
+                _name.Trim(),
+                string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                _tab == 1 ? _rule : null);
             if (created != null)
             {
                 MudDialog.Close(DialogResult.Ok(created));

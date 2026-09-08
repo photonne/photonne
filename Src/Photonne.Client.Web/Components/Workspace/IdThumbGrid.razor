@@ -1,0 +1,39 @@
+@* Rejilla uniforme de cuadrados construida SOLO con ids de asset (la
+   miniatura sale de la URL directa): la usan el preview del editor de reglas
+   y las revisiones de Organizar, cuyos endpoints devuelven assetIds sin
+   items. Con Selection, cada cuadrado alterna su inclusión (deseleccionar =
+   excluir del movimiento). *@
+
+<div class="idg">
+    @foreach (var id in Ids)
+    {
+        var isSelected = Selected == null || Selected.Contains(id);
+        <div class="idg-cell @(Selected != null && !isSelected ? "excluded" : "")"
+             style="width:@(Size)px;height:@(Size)px"
+             @onclick="() => Toggle(id)">
+            <img src="@ThumbUrl(id)" alt="" loading="lazy" decoding="async" draggable="false" />
+            @if (Selected != null)
+            {
+                <span class="idg-mark">@(isSelected ? "✓" : "✕")</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Guid> Ids { get; set; } = Array.Empty<Guid>();
+    /// <summary>Conjunto mutable de incluidos; null = solo visual, sin toggling.</summary>
+    [Parameter] public HashSet<Guid>? Selected { get; set; }
+    [Parameter] public EventCallback SelectionChanged { get; set; }
+    [Parameter] public int Size { get; set; } = 96;
+
+    private async Task Toggle(Guid id)
+    {
+        if (Selected == null) return;
+        if (!Selected.Add(id)) Selected.Remove(id);
+        await SelectionChanged.InvokeAsync();
+    }
+
+    private static string ThumbUrl(Guid id) =>
+        $"{ApiConfig.BaseUrl}/api/assets/{id}/thumbnail?size=Small";
+}

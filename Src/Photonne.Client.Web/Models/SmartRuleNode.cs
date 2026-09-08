@@ -41,5 +41,6 @@ public class SmartRuleNode
     public string? MediaType { get; set; }
     public string? Query { get; set; }
 
+    [JsonIgnore]
     public bool IsLogical => Op != null;
 }

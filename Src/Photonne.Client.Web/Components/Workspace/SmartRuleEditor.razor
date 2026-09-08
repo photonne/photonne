@@ -1,0 +1,295 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject ISearchCatalogService Catalog
+@inject IFolderService FolderService
+
+@* Editor de SmartRuleNode compartido por álbumes smart y Organizar-por-reglas:
+   un grupo raíz (Todas=AND / Cualquiera=OR) con hojas de condición tipadas y
+   preview en vivo con contador + muestra (el host aporta el endpoint de
+   preview vía Preview). v1 plano a propósito: sin grupos anidados ni "not",
+   y la condición de tags de usuario queda fuera (el API no expone catálogo de
+   ids de tag); las estructurales (LivePhoto, Portrait…) sí están. *@
+
+<div class="sre">
+    <div class="d-flex align-center gap-3 mb-2">
+        <MudText Typo="Typo.subtitle2">Cumplir</MudText>
+        <MudSelect T="string" @bind-Value="_rootOp" Dense="true" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" Style="max-width:180px"
+                   SelectedValuesChanged="_ => NotifyChanged()">
+            <MudSelectItem Value="@("AND")">todas las condiciones</MudSelectItem>
+            <MudSelectItem Value="@("OR")">cualquier condición</MudSelectItem>
+        </MudSelect>
+        <MudSpacer />
+        <MudMenu Label="Añadir condición" StartIcon="@Icons.Material.Outlined.Add"
+                 Variant="Variant.Outlined" Dense="true">
+            @foreach (var (type, label) in TypeLabels)
+            {
+                <MudMenuItem OnClick="() => AddLeaf(type)">@label</MudMenuItem>
+            }
+        </MudMenu>
+    </div>
+
+    @if (_leaves.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Añade al menos una condición.
+        </MudText>
+    }
+
+    @foreach (var leaf in _leaves)
+    {
+        <MudPaper Outlined="true" Class="pa-3 mb-2">
+            <div class="d-flex align-center gap-2 mb-1">
+                <MudText Typo="Typo.subtitle2">@TypeLabels[leaf.Type]</MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Outlined.Close" Size="Size.Small"
+                               OnClick="() => RemoveLeaf(leaf)" />
+            </div>
+            @switch (leaf.Type)
+            {
+                case "daterange":
+                    <div class="d-flex gap-3">
+                        <MudDatePicker Label="Desde" @bind-Date="leaf.From" Margin="Margin.Dense"
+                                       PickerClosed="NotifyChanged" Clearable="true" />
+                        <MudDatePicker Label="Hasta" @bind-Date="leaf.To" Margin="Margin.Dense"
+                                       PickerClosed="NotifyChanged" Clearable="true" />
+                    </div>
+                    break;
+                case "folder":
+                    <MudSelect T="Guid" MultiSelection="true" Dense="true" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Label="Carpetas"
+                               SelectedValues="leaf.Guids"
+                               SelectedValuesChanged="values => { leaf.Guids = values.ToList(); NotifyChanged(); }">
+                        @foreach (var folder in _folders)
+                        {
+                            <MudSelectItem T="Guid" Value="folder.Id">@folder.Path</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSwitch T="bool" @bind-Value="leaf.IncludeSubfolders" Color="Color.Primary"
+                               Label="Incluir subcarpetas" Class="mt-1" />
+                    break;
+                case "person":
+                    <MudSelect T="Guid" MultiSelection="true" Dense="true" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Label="Personas"
+                               SelectedValues="leaf.Guids"
+                               SelectedValuesChanged="values => { leaf.Guids = values.ToList(); NotifyChanged(); }">
+                        @foreach (var person in _people)
+                        {
+                            <MudSelectItem T="Guid" Value="person.Id">@person.DisplayName</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @MatchSelector(leaf)
+                    break;
+                case "object":
+                case "scene":
+                    var labels = leaf.Type == "object" ? _objectLabels : _sceneLabels;
+                    <MudSelect T="string" MultiSelection="true" Dense="true" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Label="Etiquetas"
+                               SelectedValues="leaf.Labels"
+                               SelectedValuesChanged="values => { leaf.Labels = values.ToList(); NotifyChanged(); }">
+                        @foreach (var label in labels)
+                        {
+                            <MudSelectItem T="string" Value="label.Label">@label.Label (@label.AssetCount)</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @MatchSelector(leaf)
+                    break;
+                case "mediatype":
+                    <MudSelect T="string" @bind-Value="leaf.Text" Dense="true" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" SelectedValuesChanged="_ => NotifyChanged()">
+                        <MudSelectItem Value="@("Image")">Fotos</MudSelectItem>
+                        <MudSelectItem Value="@("Video")">Vídeos</MudSelectItem>
+                    </MudSelect>
+                    break;
+                case "favorite":
+                    <MudSwitch T="bool" Value="leaf.BoolValue"
+                               ValueChanged="value => { leaf.BoolValue = value; NotifyChanged(); }"
+                               Color="Color.Primary" Label="Es favorito" />
+                    break;
+                case "tag":
+                    <MudSelect T="string" @bind-Value="leaf.Text" Dense="true" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Label="Tipo"
+                               SelectedValuesChanged="_ => NotifyChanged()">
+                        @foreach (var tagType in StructuralTagTypes)
+                        {
+                            <MudSelectItem Value="@tagType">@tagType</MudSelectItem>
+                        }
+                    </MudSelect>
+                    break;
+                case "ocr":
+                case "text":
+                    <MudTextField T="string" @bind-Value="leaf.Text" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Immediate="true"
+                                  Placeholder="@(leaf.Type == "ocr" ? "Texto dentro de la imagen…" : "Nombre, ruta o tag…")"
+                                  OnBlur="NotifyChanged" />
+                    break;
+            }
+        </MudPaper>
+    }
+
+    @if (Preview != null && _leaves.Count > 0)
+    {
+        <div class="d-flex align-center gap-2 mt-3 mb-2">
+            <MudText Typo="Typo.subtitle2">
+                @(_previewCount.HasValue ? $"{_previewCount} coincidencias" : "Calculando…")
+            </MudText>
+            @if (_previewLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+        </div>
+        <IdThumbGrid Ids="_previewSample" Size="72" />
+    }
+</div>
+
+@code {
+    /// <summary>Preview del host (álbum u organizar); null = sin preview.</summary>
+    [Parameter] public Func<SmartRuleNode, Task<SmartRulePreview?>>? Preview { get; set; }
+    /// <summary>Regla actual (null si no hay condiciones válidas).</summary>
+    [Parameter] public EventCallback<SmartRuleNode?> RuleChanged { get; set; }
+
+    private static readonly Dictionary<string, string> TypeLabels = new()
+    {
+        ["daterange"] = "Rango de fechas",
+        ["folder"] = "Carpeta",
+        ["person"] = "Persona",
+        ["mediatype"] = "Tipo de medio",
+        ["favorite"] = "Favorito",
+        ["tag"] = "Etiqueta estructural",
+        ["object"] = "Objeto detectado",
+        ["scene"] = "Escena",
+        ["text"] = "Nombre / ruta / tag",
+        ["ocr"] = "Texto en imagen (OCR)"
+    };
+
+    private static readonly string[] StructuralTagTypes =
+        { "LivePhoto", "Burst", "Panorama", "Screenshot", "HDR", "Portrait" };
+
+    private sealed class Leaf
+    {
+        public required string Type { get; init; }
+        public DateTime? From { get; set; }
+        public DateTime? To { get; set; }
+        public List<Guid> Guids { get; set; } = new();
+        public List<string> Labels { get; set; } = new();
+        public bool IncludeSubfolders { get; set; } = true;
+        public bool BoolValue { get; set; } = true;
+        public string? Text { get; set; }
+        public string Match { get; set; } = "any";
+    }
+
+    private readonly List<Leaf> _leaves = new();
+    private string _rootOp = "AND";
+    private List<PersonSummary> _people = new();
+    private List<LabelSummary> _objectLabels = new();
+    private List<LabelSummary> _sceneLabels = new();
+    private List<Models.FolderItem> _folders = new();
+    private int? _previewCount;
+    private List<Guid> _previewSample = new();
+    private bool _previewLoading;
+    private int _previewVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _people = await Catalog.GetPeopleAsync();
+        _objectLabels = await Catalog.GetObjectLabelsAsync();
+        _sceneLabels = await Catalog.GetSceneLabelsAsync();
+        _folders = await FolderService.GetFoldersAsync();
+    }
+
+    private RenderFragment MatchSelector(Leaf leaf) => __builder =>
+    {
+        <MudSelect T="string" @bind-Value="leaf.Match" Dense="true" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" Style="max-width:200px" Class="mt-1"
+                   SelectedValuesChanged="_ => NotifyChanged()">
+            <MudSelectItem Value="@("any")">cualquiera de ellas</MudSelectItem>
+            <MudSelectItem Value="@("all")">todas ellas</MudSelectItem>
+        </MudSelect>
+    };
+
+    private void AddLeaf(string type)
+    {
+        _leaves.Add(new Leaf { Type = type, Text = type == "mediatype" ? "Image" : null });
+        NotifyChanged();
+    }
+
+    private void RemoveLeaf(Leaf leaf)
+    {
+        _leaves.Remove(leaf);
+        NotifyChanged();
+    }
+
+    /// <summary>Construye la regla actual, o null si no hay hojas útiles.</summary>
+    public SmartRuleNode? BuildRule()
+    {
+        var nodes = _leaves.Select(ToNode).Where(n => n != null).Cast<SmartRuleNode>().ToList();
+        if (nodes.Count == 0) return null;
+        if (nodes.Count == 1) return nodes[0];
+        return new SmartRuleNode { Op = _rootOp, Conditions = nodes };
+    }
+
+    private static SmartRuleNode? ToNode(Leaf leaf) => leaf.Type switch
+    {
+        "daterange" when leaf.From != null || leaf.To != null =>
+            new SmartRuleNode { Type = "dateRange", From = leaf.From, To = leaf.To },
+        "folder" when leaf.Guids.Count > 0 =>
+            new SmartRuleNode { Type = "folder", FolderIds = leaf.Guids, IncludeSubfolders = leaf.IncludeSubfolders },
+        "person" when leaf.Guids.Count > 0 =>
+            new SmartRuleNode { Type = "person", PersonIds = leaf.Guids, Match = leaf.Match },
+        "object" when leaf.Labels.Count > 0 =>
+            new SmartRuleNode { Type = "object", Labels = leaf.Labels, Match = leaf.Match },
+        "scene" when leaf.Labels.Count > 0 =>
+            new SmartRuleNode { Type = "scene", Labels = leaf.Labels, Match = leaf.Match },
+        "mediatype" when !string.IsNullOrEmpty(leaf.Text) =>
+            new SmartRuleNode { Type = "mediaType", MediaType = leaf.Text },
+        "favorite" =>
+            new SmartRuleNode { Type = "favorite", Value = leaf.BoolValue },
+        "tag" when !string.IsNullOrEmpty(leaf.Text) =>
+            new SmartRuleNode { Type = "tag", TagType = leaf.Text },
+        "ocr" when !string.IsNullOrWhiteSpace(leaf.Text) =>
+            new SmartRuleNode { Type = "ocr", Query = leaf.Text!.Trim() },
+        "text" when !string.IsNullOrWhiteSpace(leaf.Text) =>
+            new SmartRuleNode { Type = "text", Query = leaf.Text!.Trim() },
+        _ => null
+    };
+
+    private async void NotifyChanged()
+    {
+        var rule = BuildRule();
+        await RuleChanged.InvokeAsync(rule);
+        if (Preview == null) return;
+
+        // Debounce ligero: la versión invalida respuestas viejas.
+        var version = ++_previewVersion;
+        if (rule == null)
+        {
+            _previewCount = null;
+            _previewSample = new List<Guid>();
+            StateHasChanged();
+            return;
+        }
+        _previewLoading = true;
+        StateHasChanged();
+        await Task.Delay(350);
+        if (version != _previewVersion) return;
+        try
+        {
+            var preview = await Preview(rule);
+            if (version != _previewVersion) return;
+            _previewCount = preview?.Count;
+            _previewSample = preview?.SampleAssetIds ?? new List<Guid>();
+        }
+        catch
+        {
+            _previewCount = null;
+        }
+        finally
+        {
+            if (version == _previewVersion)
+            {
+                _previewLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+}
