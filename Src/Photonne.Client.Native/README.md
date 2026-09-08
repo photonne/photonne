@@ -18,12 +18,9 @@ composeApp/
 ├── src/commonTest         # Tests con MockEngine de Ktor
 ├── src/androidMain        # MainActivity, EncryptedSharedPreferences, OkHttp engine
 ├── src/iosMain            # MainViewController, NSUserDefaults, Darwin engine
-└── src/desktopMain        # Main.kt, java.util.prefs, CIO engine
+└── src/desktopMain        # Main.kt, settings cifrados (llavero del SO), CIO engine, vlcj
 iosApp/                    # Wrapper Xcode para empaquetar el framework iOS
 ```
-
-La decisión arquitectónica está documentada en
-[`docs/ADR-001-kotlin-multiplatform.md`](docs/ADR-001-kotlin-multiplatform.md).
 
 ## Cromo flotante (cápsulas de cristal esmerilado)
 
@@ -177,7 +174,11 @@ Desde `Src/Photonne.Client.Native/`:
 
 ## Configuración del API
 
-La URL del API se resuelve en este orden:
+La URL del servidor la gobierna el asistente de inicio de sesión: el usuario
+la escribe en el paso 1 (URL pública + URL local opcional) y `ServerUrlStore`
+la persiste y elige la efectiva según la sonda de alcanzabilidad local
+(`LocalReachabilityProbe`). Los valores de build son solo el PRERRELLENO del
+campo cuando aún no hay URL guardada:
 
 1. `-PApiBaseUrl=...` al ejecutar Gradle (Desktop y Android).
 2. `PHOTONNE_API_BASE_URL` como variable de entorno (Desktop).
