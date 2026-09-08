@@ -1,10 +1,18 @@
 package com.photonne.app.ui.asset
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 
-// Desktop has no video engine wired up yet (see VideoPlayer.desktop.kt), so a
-// Live Photo simply stays a still here — the caller keeps showing the image.
+/**
+ * Mismo motor vlcj que VideoPlayer, en modo "la foto cobra vida": silencioso y
+ * sin controles. `finished` llega en un hilo nativo de libvlc, así que el aviso
+ * de fin se reencola en el scope de composición antes de tocar estado Compose.
+ */
 @Composable
 actual fun MotionPhotoPlayer(
     url: String,
@@ -13,7 +21,23 @@ actual fun MotionPhotoPlayer(
     loop: Boolean,
     onPlaybackEnded: () -> Unit
 ) {
-    // No engine here; the Live Photo branch is gated on isVideoPlaybackSupported
-    // (false on desktop) so this is never reached in practice. Params accepted
-    // only to satisfy the expect signature.
+    val scope = rememberCoroutineScope()
+    val playbackEnded = rememberUpdatedState(onPlaybackEnded)
+    val playback = remember(url, headers, loop) {
+        DesktopVideoPlayback(
+            url = authorizedMediaUrl(url, headers),
+            autoPlay = true,
+            muted = true,
+            loop = loop,
+            onFinished = {
+                if (!loop) {
+                    scope.launch { playbackEnded.value() }
+                }
+            }
+        )
+    }
+    DisposableEffect(playback) {
+        onDispose { playback.release() }
+    }
+    VideoSurface(playback, modifier)
 }
