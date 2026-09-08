@@ -184,9 +184,19 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Photonne"
             packageVersion = photonneVersion
+            // Módulos jlink que las libs cargan por reflexión y el detector no
+            // ve: java.sql (driver JDBC de SQLite), java.prefs (geometría de
+            // ventana y migración), jdk.unsupported (JNA: vlcj y java-keyring),
+            // java.naming (logback/JNA en algunos entornos).
+            modules("java.sql", "java.prefs", "java.naming", "jdk.unsupported")
             macOS { iconFile.set(project.file("icons/photonne.icns")) }
             windows { iconFile.set(project.file("icons/photonne.ico")) }
             linux { iconFile.set(project.file("icons/photonne.png")) }
+        }
+        buildTypes.release.proguard {
+            // Sin ProGuard: vlcj/JNA, Ktor, SQLDelight y Koin dependen de
+            // reflexión y no llevamos reglas; el tamaño no compensa el riesgo.
+            isEnabled.set(false)
         }
         jvmArgs += "-Dphotonne.api.baseUrl=$apiBaseUrl"
     }

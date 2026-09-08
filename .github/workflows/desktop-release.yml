@@ -1,0 +1,74 @@
+# Empaqueta la app de escritorio (DMG / MSI / DEB) en los tres SO y adjunta los
+# instaladores a la release de GitHub que dispara el workflow. También se puede
+# lanzar a mano (workflow_dispatch): entonces los instaladores quedan como
+# artifacts del run, sin release a la que subirlos.
+#
+# Sin firma ni notarización (documentado en docs/desktop-install.md): en macOS
+# la app se abre con clic derecho > Abrir la primera vez; en Windows,
+# SmartScreen avisará.
+name: Desktop release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # subir assets a la release
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact-glob: composeApp/build/compose/binaries/main-release/dmg/*.dmg
+          - os: windows-latest
+            artifact-glob: composeApp/build/compose/binaries/main-release/msi/*.msi
+          - os: ubuntu-latest
+            artifact-glob: composeApp/build/compose/binaries/main-release/deb/*.deb
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: Src/Photonne.Client.Native
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        if: runner.os != 'Windows'
+        run: chmod +x ./gradlew
+
+      - name: Package installer
+        run: ./gradlew :composeApp:packageReleaseDistributionForCurrentOS --stacktrace
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: photonne-desktop-${{ runner.os }}
+          path: Src/Photonne.Client.Native/${{ matrix.artifact-glob }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach installer to release
+        if: github.event_name == 'release'
+        working-directory: Src/Photonne.Client.Native
+        shell: bash
+        run: gh release upload "$TAG" ${{ matrix.artifact-glob }} --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
