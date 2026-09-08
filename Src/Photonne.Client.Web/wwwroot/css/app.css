@@ -493,3 +493,10 @@ body.timeline-page .mud-main-content {
     background: var(--mud-palette-primary) !important;
     color: var(--mud-palette-primary-text) !important;
 }
+
+/* ---- Workspace /fotos ---- */
+/* Mientras se pinta selección con el ratón (workspaceGrid.js). */
+body.pg-painting {
+    user-select: none;
+    cursor: crosshair;
+}

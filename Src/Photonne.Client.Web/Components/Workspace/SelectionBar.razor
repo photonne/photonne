@@ -1,0 +1,28 @@
+@using Photonne.Client.Web.Services
+
+@* Barra de acciones contextual del workspace: aparece flotando abajo cuando
+   hay selección. Las acciones concretas las inyecta la página vía Actions
+   (llegan con las operaciones en lote). *@
+
+@if (Selection.IsActive)
+{
+    <div class="selection-bar">
+        <MudPaper Elevation="8" Class="selection-bar-paper d-flex align-center gap-2 px-4 py-2">
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="() => Selection.Clear()"
+                           aria-label="Limpiar selección" />
+            <MudText Typo="Typo.subtitle2" Class="mr-2">@Selection.Count seleccionadas</MudText>
+            @Actions
+        </MudPaper>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public SelectionState Selection { get; set; } = null!;
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    protected override void OnInitialized() => Selection.Changed += StateHasChanged;
+
+    public void Dispose() => Selection.Changed -= StateHasChanged;
+}

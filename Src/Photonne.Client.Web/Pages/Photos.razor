@@ -1,10 +1,29 @@
 @page "/fotos"
 @using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Services
+@implements IDisposable
 
 <PageTitle>Fotos - Photonne</PageTitle>
 
 @* Workspace de usuario (ADR-003): rejilla de toda la biblioteca sobre el
-   modelo de buckets. El visor y la selección en lote llegan en los commits
-   del núcleo; de momento la celda no navega. *@
+   modelo de buckets, con selección múltiple (clic/Shift/Ctrl/arrastre/Escape).
+   Las acciones en lote y el visor llegan en los siguientes commits. *@
 
-<PhotoGrid />
+<PhotoGrid @ref="_grid" Selection="_selection" OnItemClick="OpenViewer" />
+
+<SelectionBar Selection="_selection" />
+
+@code {
+    private readonly SelectionState _selection = new();
+    private PhotoGrid? _grid;
+
+    private Task OpenViewer(Models.TimelineItem item)
+    {
+        // El visor llega en el commit del núcleo siguiente.
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+    }
+}

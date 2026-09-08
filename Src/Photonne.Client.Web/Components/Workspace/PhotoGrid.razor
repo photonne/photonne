@@ -26,6 +26,26 @@
         {
             <section class="pg-month" data-bucket="@section.Key" @key="section.Key">
                 <div class="pg-month-header">
+                    @if (Selection != null && section.Items != null)
+                    {
+                        var (any, all) = Selection.StateOf(_idsBySection.GetValueOrDefault(section.Key) ?? new List<Guid>());
+                        <button type="button"
+                                class="pg-month-check @(all ? "all" : any ? "partial" : "")"
+                                aria-label="Seleccionar mes"
+                                @onclick="() => ToggleMonth(section, all)">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" fill="@(any ? "var(--mud-palette-primary)" : "none")" stroke="currentColor" stroke-width="2"/>
+                                @if (all)
+                                {
+                                    <path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                }
+                                else if (any)
+                                {
+                                    <path d="M7.5 12h9" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+                                }
+                            </svg>
+                        </button>
+                    }
                     <span class="pg-month-title">@FormatMonth(section.Key)</span>
                     <span class="pg-month-count">@section.Count</span>
                 </div>
@@ -43,7 +63,10 @@
                                                Item="item"
                                                Width="CellWidth(item, row.Height)"
                                                Height="row.Height"
-                                               OnClick="HandleItemClick" />
+                                               IsSelected="Selection?.IsSelected(item.Id) ?? false"
+                                               Selectable="Selection != null"
+                                               OnClick="e => HandleCellClick(item, e)"
+                                               OnToggle="() => Selection?.Toggle(item.Id)" />
                                 }
                             </div>
                         }
@@ -64,6 +87,8 @@
     private const double MonthHeaderHeight = 52;
 
     [Parameter] public EventCallback<TimelineItem> OnItemClick { get; set; }
+    /// <summary>Estado de selección compartido con la página; null = rejilla solo lectura.</summary>
+    [Parameter] public SelectionState? Selection { get; set; }
 
     private sealed class Section
     {
@@ -81,6 +106,79 @@
     private int _jsId = -1;
     private double _containerWidth = 1200;
     private bool _sectionsObserved;
+    // Ids por mes hidratado, para el checkbox tri-estado y el orden del rango.
+    private readonly Dictionary<string, List<Guid>> _idsBySection = new();
+    // true = el pintado por arrastre selecciona; false = deselecciona (según
+    // el estado de la celda donde empezó).
+    private bool _paintSelects = true;
+    private SelectionState? _subscribedSelection;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_subscribedSelection, Selection))
+        {
+            if (_subscribedSelection != null) _subscribedSelection.Changed -= OnSelectionChanged;
+            _subscribedSelection = Selection;
+            if (_subscribedSelection != null) _subscribedSelection.Changed += OnSelectionChanged;
+        }
+    }
+
+    private void OnSelectionChanged() => StateHasChanged();
+
+    /// <summary>Orden visible plano de los meses hidratados (para Shift+clic).</summary>
+    public IReadOnlyList<Guid> VisibleOrder =>
+        _sections == null
+            ? Array.Empty<Guid>()
+            : _sections.Where(s => s.Items != null)
+                .SelectMany(s => _idsBySection.GetValueOrDefault(s.Key) ?? new List<Guid>())
+                .ToList();
+
+    /// <summary>Items hidratados en orden visible (los usa el visor).</summary>
+    public IReadOnlyList<TimelineItem> VisibleItems =>
+        _sections == null
+            ? Array.Empty<TimelineItem>()
+            : _sections.Where(s => s.Items != null).SelectMany(s => s.Items!).ToList();
+
+    /// <summary>
+    /// Retira assets de la rejilla tras una acción que los saca del timeline
+    /// (papelera, archivar, mover no los saca — siguen visibles). Recalcula el
+    /// layout de los meses afectados.
+    /// </summary>
+    public void RemoveAssets(IReadOnlyCollection<Guid> ids)
+    {
+        if (_sections == null || ids.Count == 0) return;
+        var idSet = ids as ISet<Guid> ?? ids.ToHashSet();
+        foreach (var section in _sections)
+        {
+            if (section.Items == null) continue;
+            var removed = section.Items.RemoveAll(i => idSet.Contains(i.Id));
+            if (removed > 0)
+            {
+                _idsBySection[section.Key] = section.Items.Select(i => i.Id).ToList();
+                RecomputeLayout(section);
+            }
+        }
+        StateHasChanged();
+    }
+
+    /// <summary>Aplica una mutación in situ (favorito) y repinta.</summary>
+    public void UpdateAssets(IReadOnlyCollection<Guid> ids, Action<TimelineItem> mutate)
+    {
+        if (_sections == null || ids.Count == 0) return;
+        var idSet = ids as ISet<Guid> ?? ids.ToHashSet();
+        foreach (var item in _sections.Where(s => s.Items != null).SelectMany(s => s.Items!))
+        {
+            if (idSet.Contains(item.Id)) mutate(item);
+        }
+        StateHasChanged();
+    }
+
+    /// <summary>Items hidratados seleccionables de un conjunto de ids.</summary>
+    public IReadOnlyList<TimelineItem> ItemsByIds(IReadOnlyCollection<Guid> ids)
+    {
+        var idSet = ids as ISet<Guid> ?? ids.ToHashSet();
+        return VisibleItems.Where(i => idSet.Contains(i.Id)).ToList();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,6 +244,7 @@
 
         var oldHeight = section.ContentHeight;
         section.Items = items;
+        _idsBySection[section.Key] = items.Select(i => i.Id).ToList();
         RecomputeLayout(section);
         section.Hydrating = false;
         StateHasChanged();
@@ -179,7 +278,55 @@
         }
     }
 
-    private Task HandleItemClick(TimelineItem item) => OnItemClick.InvokeAsync(item);
+    private Task HandleCellClick(TimelineItem item, MouseEventArgs e)
+    {
+        if (Selection == null) return OnItemClick.InvokeAsync(item);
+
+        if (e.ShiftKey)
+        {
+            Selection.SelectRange(item.Id, VisibleOrder);
+            return Task.CompletedTask;
+        }
+        if (e.CtrlKey || e.MetaKey || Selection.IsActive)
+        {
+            Selection.Toggle(item.Id);
+            return Task.CompletedTask;
+        }
+        return OnItemClick.InvokeAsync(item);
+    }
+
+    private async Task ToggleMonth(Section section, bool allSelected)
+    {
+        if (Selection == null) return;
+        if (section.Items == null)
+        {
+            // Mes sin hidratar: hidratarlo primero y seleccionarlo entero.
+            await OnBucketApproaching(section.Key);
+            if (section.Items == null) return;
+        }
+        var ids = _idsBySection.GetValueOrDefault(section.Key);
+        if (ids != null) Selection.SetSelected(ids, !allSelected);
+    }
+
+    [JSInvokable]
+    public void OnEscapePressed() => Selection?.Clear();
+
+    [JSInvokable]
+    public void OnPaintSelectStart(string assetId)
+    {
+        if (Selection == null || !Guid.TryParse(assetId, out var id)) return;
+        // Pintar desde una celda seleccionada deselecciona; desde una sin
+        // seleccionar, selecciona. El modo se mantiene todo el arrastre.
+        _paintSelects = !Selection.IsSelected(id);
+        Selection.SetSelected(new[] { id }, _paintSelects);
+    }
+
+    [JSInvokable]
+    public void OnPaintSelect(string assetId)
+    {
+        if (Selection == null || !Guid.TryParse(assetId, out var id)) return;
+        Selection.SetSelected(new[] { id }, _paintSelects);
+    }
 
     private double CellWidth(TimelineItem item, double rowHeight)
     {
@@ -207,6 +354,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        if (_subscribedSelection != null) _subscribedSelection.Changed -= OnSelectionChanged;
         if (_jsId >= 0)
         {
             try { await JS.InvokeVoidAsync("workspaceGrid.dispose", _jsId); }

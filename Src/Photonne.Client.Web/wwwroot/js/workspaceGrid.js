@@ -8,6 +8,14 @@ window.workspaceGrid = (() => {
     const states = new Map();
     let nextId = 1;
 
+    // Traga el click sintético que sigue a un arrastre de pintado para que no
+    // haga un toggle extra en Blazor. Auto-limpieza por si no llega ninguno.
+    function suppressNextClick() {
+        const handler = e => { e.stopPropagation(); e.preventDefault(); };
+        document.addEventListener('click', handler, { once: true, capture: true });
+        setTimeout(() => document.removeEventListener('click', handler, { capture: true }), 400);
+    }
+
     return {
         init(container, dotnetRef) {
             const id = nextId++;
@@ -15,6 +23,49 @@ window.workspaceGrid = (() => {
                 container,
                 dotnetRef,
                 observed: new WeakSet(),
+                // Escape limpia la selección (solo mientras la rejilla vive).
+                keyHandler: e => {
+                    if (e.key === 'Escape') dotnetRef.invokeMethodAsync('OnEscapePressed');
+                },
+                // Pintado con ratón: arrastrar desde una celda selecciona (o
+                // deselecciona, según el estado de la celda inicial — lo
+                // decide .NET) todas las celdas por las que pasa el puntero.
+                // Con modificadores no arranca: Shift/Ctrl son clic de rango/toggle.
+                mouseDownHandler: e => {
+                    if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                    const cell = e.target.closest('[data-asset-id]');
+                    if (!cell) return;
+                    const startId = cell.dataset.assetId;
+                    const sx = e.clientX, sy = e.clientY;
+                    let active = false;
+                    const sent = new Set();
+                    const move = ev => {
+                        if (!active) {
+                            if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
+                            active = true;
+                            sent.add(startId);
+                            dotnetRef.invokeMethodAsync('OnPaintSelectStart', startId);
+                            document.body.classList.add('pg-painting');
+                        }
+                        ev.preventDefault();
+                        const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-asset-id]');
+                        const overId = over?.dataset.assetId;
+                        if (overId && !sent.has(overId)) {
+                            sent.add(overId);
+                            dotnetRef.invokeMethodAsync('OnPaintSelect', overId);
+                        }
+                    };
+                    const up = () => {
+                        document.removeEventListener('mousemove', move);
+                        document.removeEventListener('mouseup', up);
+                        if (active) {
+                            document.body.classList.remove('pg-painting');
+                            suppressNextClick();
+                        }
+                    };
+                    document.addEventListener('mousemove', move);
+                    document.addEventListener('mouseup', up);
+                },
                 io: new IntersectionObserver(entries => {
                     for (const e of entries) {
                         if (e.isIntersecting) {
@@ -28,6 +79,8 @@ window.workspaceGrid = (() => {
                 })
             };
             st.ro.observe(container);
+            document.addEventListener('keydown', st.keyHandler);
+            container.addEventListener('mousedown', st.mouseDownHandler);
             states.set(id, st);
             return id;
         },
@@ -62,6 +115,8 @@ window.workspaceGrid = (() => {
             if (st) {
                 st.io.disconnect();
                 st.ro.disconnect();
+                document.removeEventListener('keydown', st.keyHandler);
+                st.container.removeEventListener('mousedown', st.mouseDownHandler);
                 states.delete(id);
             }
         }

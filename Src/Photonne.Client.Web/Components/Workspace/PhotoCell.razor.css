@@ -20,6 +20,68 @@
     opacity: 1;
 }
 
+.photo-cell.selected {
+    outline: 3px solid var(--mud-palette-primary);
+    outline-offset: -3px;
+    border-radius: 8px;
+}
+
+.photo-cell.selected img {
+    transform: scale(0.92);
+    border-radius: 6px;
+}
+
+.photo-cell img {
+    transition: opacity 0.25s ease, transform 0.15s ease;
+}
+
+/* Scrim superior sutil que revela el círculo de selección al hover. */
+.pc-scrim {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: linear-gradient(rgba(0, 0, 0, 0.35), transparent);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.photo-cell:hover .pc-scrim {
+    opacity: 1;
+}
+
+.pc-check {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.photo-cell:hover .pc-check,
+.photo-cell.selected .pc-check,
+body.pg-painting .pc-check {
+    opacity: 1;
+}
+
+.pc-check svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.pc-check-fill {
+    fill: var(--mud-palette-primary);
+}
+
 .pc-badge {
     position: absolute;
     width: 20px;
