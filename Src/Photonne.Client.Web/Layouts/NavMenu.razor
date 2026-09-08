@@ -15,45 +15,55 @@
     }
     else
     {
-        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard" IconColor="Color.Inherit">
-            Panel
-        </MudNavLink>
-
-        <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
-            Usuarios
-        </MudNavLink>
-
-        <MudNavLink Href="/admin/libraries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FolderSpecial" IconColor="Color.Inherit">
-            Bibliotecas externas
-        </MudNavLink>
-
-        <MudNavLink Href="/admin/stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.QueryStats" IconColor="Color.Inherit">
-            Estadísticas
-        </MudNavLink>
-
-        <MudNavGroup Title="Tareas" Icon="@Icons.Material.Outlined.PlaylistPlay" Expanded="true">
-            <MudNavLink Href="/admin/system/tasks" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Tune">Colas y tareas</MudNavLink>
-            <MudNavLink Href="/admin/system/maintenance" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.CleaningServices">Mantenimiento</MudNavLink>
-            <MudNavLink Href="/admin/system/backup" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Backup">Copia de seguridad</MudNavLink>
-        </MudNavGroup>
-
-        <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
-            Utilidades
+        <MudNavLink Href="/fotos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhotoLibrary" IconColor="Color.Inherit">
+            Fotos
         </MudNavLink>
 
         <MudNavLink Href="/notifications" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Notifications" IconColor="Color.Inherit">
             Notificaciones
         </MudNavLink>
 
-        <MudNavLink Href="/shared-trash" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.DeleteSweep" IconColor="Color.Inherit">
-            Papelera compartida
-        </MudNavLink>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudDivider Class="my-2" />
 
-        <MudDivider Class="my-2" />
+                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard" IconColor="Color.Inherit">
+                    Panel
+                </MudNavLink>
 
-        <MudNavLink Href="/admin/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Settings" IconColor="Color.Inherit">
-            Ajustes del servidor
-        </MudNavLink>
+                <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.People" IconColor="Color.Inherit">
+                    Usuarios
+                </MudNavLink>
+
+                <MudNavLink Href="/admin/libraries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.FolderSpecial" IconColor="Color.Inherit">
+                    Bibliotecas externas
+                </MudNavLink>
+
+                <MudNavLink Href="/admin/stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.QueryStats" IconColor="Color.Inherit">
+                    Estadísticas
+                </MudNavLink>
+
+                <MudNavGroup Title="Tareas" Icon="@Icons.Material.Outlined.PlaylistPlay" Expanded="true">
+                    <MudNavLink Href="/admin/system/tasks" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Tune">Colas y tareas</MudNavLink>
+                    <MudNavLink Href="/admin/system/maintenance" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.CleaningServices">Mantenimiento</MudNavLink>
+                    <MudNavLink Href="/admin/system/backup" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Backup">Copia de seguridad</MudNavLink>
+                </MudNavGroup>
+
+                <MudNavLink Href="/utilities" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Build" IconColor="Color.Inherit">
+                    Utilidades
+                </MudNavLink>
+
+                <MudNavLink Href="/shared-trash" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.DeleteSweep" IconColor="Color.Inherit">
+                    Papelera compartida
+                </MudNavLink>
+
+                <MudDivider Class="my-2" />
+
+                <MudNavLink Href="/admin/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Settings" IconColor="Color.Inherit">
+                    Ajustes del servidor
+                </MudNavLink>
+            </Authorized>
+        </AuthorizeView>
     }
 </MudNavMenu>
 </div>
