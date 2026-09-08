@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -81,6 +82,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.util.PlatformVerticalScrollbar
 
 @Composable
 fun NotificationsScreen(
@@ -187,6 +189,10 @@ fun NotificationsScreen(
             }
         }
     }
+        PlatformVerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+        )
         SubscreenFloatingChrome(
             title = title,
             onBack = onBack,

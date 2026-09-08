@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -72,6 +73,7 @@ import com.photonne.app.resources.unsupported_files_title
 import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import com.photonne.app.ui.util.PlatformVerticalScrollbar
 
 /**
  * Library shortcut shown on the More tab. Each entry resolves to a
@@ -334,6 +336,10 @@ fun MoreScreen(
             }
         }
     }
+        PlatformVerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+        )
 
         SubscreenFloatingChrome(
             title = stringResource(Res.string.tab_more),

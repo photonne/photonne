@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -111,6 +112,7 @@ import dev.chrisbanes.haze.hazeSource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import com.photonne.app.ui.util.PlatformVerticalScrollbar
 
 @Composable
 fun FoldersListScreen(
@@ -359,7 +361,8 @@ private fun FolderListContent(
                 )
             }
         else -> when (state.viewMode) {
-            FolderViewMode.List -> LazyColumn(
+            FolderViewMode.List -> Box(Modifier.fillMaxSize()) {
+                LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(
@@ -379,6 +382,11 @@ private fun FolderListContent(
                         onLongPress = { onFolderLongPress(folder) }
                     )
                 }
+            }
+                PlatformVerticalScrollbar(
+                    state = listState,
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                )
             }
             FolderViewMode.Grid -> LazyVerticalGrid(
                 state = gridState,
