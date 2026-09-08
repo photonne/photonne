@@ -1,0 +1,64 @@
+@page "/archivadas"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Services
+
+<PageTitle>Archivadas - Photonne</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex align-center mb-3 gap-3">
+        <MudText Typo="Typo.h5">Archivadas</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Unarchive"
+                   OnClick="UnarchiveAllAsync">
+            Desarchivar todo
+        </MudButton>
+    </div>
+    <WorkspaceCollection @ref="_collection"
+                         Source="LoadPage"
+                         EmptyIcon="@Icons.Material.Outlined.Archive"
+                         EmptyTitle="Nada archivado"
+                         EmptyDescription="Lo que archives desaparece del timeline y vive aquí.">
+        <ExtraActions>
+            <MudTooltip Text="Desarchivar">
+                <MudIconButton Icon="@Icons.Material.Outlined.Unarchive" Size="Size.Small"
+                               OnClick="UnarchiveSelectedAsync" />
+            </MudTooltip>
+        </ExtraActions>
+    </WorkspaceCollection>
+</div>
+
+@code {
+    [Inject] private IAssetService AssetService { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+
+    private WorkspaceCollection? _collection;
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        var page = await AssetService.GetArchivedPageAsync(cursor as DateTime?);
+        return new WorkspaceCollection.CollectionPage(page.Items, page.HasMore, page.NextCursor);
+    }
+
+    private async Task UnarchiveSelectedAsync()
+    {
+        if (_collection == null || !_collection.Selection.IsActive) return;
+        var ids = _collection.Selection.Selected.ToList();
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await AssetService.UnarchiveAssetsAsync(new UnarchiveAssetsRequest { AssetIds = ids });
+            _collection.RemoveFromView(ids);
+            Snackbar.Add($"{ids.Count} desarchivadas", Severity.Success);
+        });
+    }
+
+    private async Task UnarchiveAllAsync()
+    {
+        if (_collection == null) return;
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await AssetService.UnarchiveAllAsync();
+            await _collection.ReloadAsync();
+            Snackbar.Add("Todo desarchivado", Severity.Success);
+        });
+    }
+}

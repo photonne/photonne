@@ -87,6 +87,13 @@
     public BatchActions Batch => Actions;
     public IReadOnlyList<TimelineItem> Items => _items;
 
+    /// <summary>Retira de la vista tras una acción propia del host y limpia la selección.</summary>
+    public void RemoveFromView(IReadOnlyCollection<Guid> ids)
+    {
+        _grid?.RemoveAssets(ids);
+        _selection.Clear();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         Actions.Selection = _selection;

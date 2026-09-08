@@ -26,6 +26,7 @@ public interface IAssetService
     Task DeleteAssetsAsync(DeleteAssetsRequest request);
     Task RestoreAssetsAsync(RestoreAssetsRequest request);
     Task PurgeAssetsAsync(PurgeAssetsRequest request);
+    Task<TimelinePageResult> GetTrashPageAsync(DateTime? cursor = null, int pageSize = 150);
     Task RestoreTrashAsync();
     Task EmptyTrashAsync();
     Task<SharedTrashPage> GetSharedTrashAsync(DateTime? cursor = null, int pageSize = 150);

@@ -46,6 +46,15 @@ public class AssetService : IAssetService
         public List<YearBreakdownGroup> Groups { get; set; } = new();
     }
 
+    public async Task<TimelinePageResult> GetTrashPageAsync(DateTime? cursor = null, int pageSize = 150)
+    {
+        var url = $"/api/assets/trash?pageSize={pageSize}";
+        if (cursor.HasValue)
+            url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
+        var response = await _httpClient.GetFromJsonAsync<TimelinePageResult>(url);
+        return response ?? new TimelinePageResult();
+    }
+
     public async Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150)
     {
         var url = $"/api/assets/timeline?pageSize={pageSize}";

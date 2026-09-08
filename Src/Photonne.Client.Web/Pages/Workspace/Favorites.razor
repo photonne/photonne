@@ -1,0 +1,23 @@
+@page "/favoritas"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Services
+
+<PageTitle>Favoritas - Photonne</PageTitle>
+
+<div class="pa-4">
+    <MudText Typo="Typo.h5" Class="mb-3">Favoritas</MudText>
+    <WorkspaceCollection Source="LoadPage"
+                         EmptyIcon="@Icons.Material.Outlined.FavoriteBorder"
+                         EmptyTitle="Sin favoritas todavía"
+                         EmptyDescription="Marca fotos con el corazón (o la tecla F) y aparecerán aquí." />
+</div>
+
+@code {
+    [Inject] private IAssetService AssetService { get; set; } = null!;
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        var page = await AssetService.GetFavoritesPageAsync(cursor as DateTime?);
+        return new WorkspaceCollection.CollectionPage(page.Items, page.HasMore, page.NextCursor);
+    }
+}

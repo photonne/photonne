@@ -19,6 +19,29 @@
             Fotos
         </MudNavLink>
 
+        <MudNavLink Href="/buscar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Search" IconColor="Color.Inherit">
+            Buscar
+        </MudNavLink>
+
+        <MudNavLink Href="/albumes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.PhotoAlbum" IconColor="Color.Inherit">
+            Álbumes
+        </MudNavLink>
+
+        <MudNavLink Href="/carpetas" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Folder" IconColor="Color.Inherit">
+            Carpetas
+        </MudNavLink>
+
+        <MudNavLink Href="/organizar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.AutoAwesomeMotion" IconColor="Color.Inherit">
+            Organizar
+        </MudNavLink>
+
+        <MudNavGroup Title="Colecciones" Icon="@Icons.Material.Outlined.Collections" Expanded="false">
+            <MudNavLink Href="/favoritas" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.FavoriteBorder">Favoritas</MudNavLink>
+            <MudNavLink Href="/archivadas" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Archive">Archivadas</MudNavLink>
+            <MudNavLink Href="/papelera" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Delete">Papelera</MudNavLink>
+            <MudNavLink Href="/duplicados" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.ContentCopy">Duplicados</MudNavLink>
+        </MudNavGroup>
+
         <MudNavLink Href="/notifications" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.Notifications" IconColor="Color.Inherit">
             Notificaciones
         </MudNavLink>

@@ -1,0 +1,106 @@
+@page "/papelera"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Services
+
+<PageTitle>Papelera - Photonne</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex align-center mb-3 gap-3">
+        <MudText Typo="Typo.h5">Papelera</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.RestoreFromTrash"
+                   OnClick="RestoreAllAsync">
+            Restaurar todo
+        </MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteForever"
+                   OnClick="EmptyTrashAsync">
+            Vaciar papelera
+        </MudButton>
+    </div>
+    <WorkspaceCollection @ref="_collection"
+                         Source="LoadPage"
+                         StandardActions="false"
+                         EmptyIcon="@Icons.Material.Outlined.Delete"
+                         EmptyTitle="La papelera está vacía">
+        <ExtraActions>
+            <MudTooltip Text="Restaurar">
+                <MudIconButton Icon="@Icons.Material.Outlined.RestoreFromTrash" Size="Size.Small"
+                               OnClick="RestoreSelectedAsync" />
+            </MudTooltip>
+            <MudTooltip Text="Eliminar definitivamente">
+                <MudIconButton Icon="@Icons.Material.Outlined.DeleteForever" Size="Size.Small" Color="Color.Error"
+                               OnClick="PurgeSelectedAsync" />
+            </MudTooltip>
+        </ExtraActions>
+    </WorkspaceCollection>
+</div>
+
+@code {
+    [Inject] private IAssetService AssetService { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+
+    private WorkspaceCollection? _collection;
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        var page = await AssetService.GetTrashPageAsync(cursor as DateTime?);
+        return new WorkspaceCollection.CollectionPage(page.Items, page.HasMore, page.NextCursor);
+    }
+
+    private async Task RestoreSelectedAsync()
+    {
+        if (_collection == null || !_collection.Selection.IsActive) return;
+        var ids = _collection.Selection.Selected.ToList();
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await AssetService.RestoreAssetsAsync(new RestoreAssetsRequest { AssetIds = ids });
+            _collection.RemoveFromView(ids);
+            Snackbar.Add($"{ids.Count} restauradas", Severity.Success);
+        });
+    }
+
+    private async Task PurgeSelectedAsync()
+    {
+        if (_collection == null || !_collection.Selection.IsActive) return;
+        var ids = _collection.Selection.Selected.ToList();
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar definitivamente",
+            $"Se eliminarán {ids.Count} elementos para siempre. Esta acción no se puede deshacer.",
+            yesText: "Eliminar", cancelText: "Cancelar");
+        if (confirmed != true) return;
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await AssetService.PurgeAssetsAsync(new PurgeAssetsRequest { AssetIds = ids });
+            _collection.RemoveFromView(ids);
+            Snackbar.Add($"{ids.Count} eliminadas definitivamente", Severity.Success);
+        });
+    }
+
+    private async Task RestoreAllAsync()
+    {
+        if (_collection == null) return;
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await AssetService.RestoreTrashAsync();
+            await _collection.ReloadAsync();
+            Snackbar.Add("Papelera restaurada", Severity.Success);
+        });
+    }
+
+    private async Task EmptyTrashAsync()
+    {
+        if (_collection == null) return;
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Vaciar papelera",
+            "Se eliminará TODO el contenido de la papelera para siempre. Esta acción no se puede deshacer.",
+            yesText: "Vaciar", cancelText: "Cancelar");
+        if (confirmed != true) return;
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await AssetService.EmptyTrashAsync();
+            await _collection.ReloadAsync();
+            Snackbar.Add("Papelera vaciada", Severity.Success);
+        });
+    }
+}
