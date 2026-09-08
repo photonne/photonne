@@ -1,0 +1,12 @@
+@* Contenido compartido de "página no encontrada": lo usan la ruta /not-found
+   y el bloque <NotFound> del Router en App.razor. *@
+
+<EmptyState Icon="@Icons.Material.Outlined.SearchOff"
+            Title="Página no encontrada"
+            Description="Lo sentimos, la página que buscas no existe.">
+    <Actions>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary">
+            Volver al inicio
+        </MudButton>
+    </Actions>
+</EmptyState>

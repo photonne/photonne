@@ -26,7 +26,11 @@
 
         <div class="d-flex align-center" style="cursor: pointer;" @onclick="@(() => Navigation.NavigateTo("/"))">
             <img src="@(LayoutService.IsDarkMode ? "dark/logo.png" : "light/logo.png")" alt="Photonne" style="height: 32px; width: auto;" />
-            <MudText Typo="Typo.subtitle2" Class="ml-2 d-none d-sm-flex mud-text-secondary">Admin</MudText>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudText Typo="Typo.subtitle2" Class="ml-2 d-none d-sm-flex mud-text-secondary">Admin</MudText>
+                </Authorized>
+            </AuthorizeView>
         </div>
 
         <MudSpacer />

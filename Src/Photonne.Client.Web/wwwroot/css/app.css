@@ -6,59 +6,15 @@ html, body {
 }
 
 /* ── Disable native long-press callout / context menu on selectable cells ── */
-.asset-select-container,
-.album-card-container,
-.album-list-item,
-.memories-sheet-cell,
-.folder-card-container,
-.folder-list-item,
-.map-drawer-cell,
-.media-thumb-cell,
-.asset-detail-content {
+.media-thumb-cell {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
 }
-.asset-select-container img,
-.album-card-container img,
-.album-list-item img,
-.memories-sheet-cell img,
-.folder-card-container img,
-.folder-list-item img,
-.map-drawer-cell img,
 .media-thumb-cell img {
     pointer-events: none;
     -webkit-user-drag: none;
     -webkit-touch-callout: none;
-}
-
-/* ── Force selection checkbox icon to white in both light/dark themes ── */
-.asset-select-checkbox .mud-icon-root,
-.asset-select-checkbox svg,
-.album-select-checkbox .mud-icon-root,
-.album-select-checkbox svg,
-.folder-select-checkbox .mud-icon-root,
-.folder-select-checkbox svg,
-.map-select-checkbox .mud-icon-root,
-.map-select-checkbox svg {
-    color: white !important;
-    fill: white !important;
-}
-
-/* ── Timeline page: disable scroll on body/MudBlazor wrappers ── */
-/* Must stay global — targets body and MudBlazor layout ancestors */
-body.timeline-page {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-body.timeline-page .mud-layout {
-    overflow: hidden !important;
-    height: 100vh !important;
-}
-body.timeline-page .mud-main-content {
-    overflow: hidden !important;
-    height: 100vh !important;
-    position: relative !important;
 }
 
 #app {
@@ -152,17 +108,6 @@ body.timeline-page .mud-main-content {
     background: var(--mud-palette-surface);
 }
 
-/* ── Album hero breadcrumb (siempre blanco sobre la imagen) ─ */
-.album-hero-content .mud-breadcrumb-item a,
-.album-hero-content .mud-breadcrumb-item span,
-.album-hero-content .mud-breadcrumb-separator {
-    color: rgba(255, 255, 255, 0.85) !important;
-}
-
-.album-hero-content .mud-breadcrumb-item a:hover {
-    color: white !important;
-}
-
 /* ── Dialog actions con margen generoso ─────────────────── */
 .mud-dialog-actions {
     padding: 12px 24px 20px !important;
@@ -254,58 +199,6 @@ body.timeline-page .mud-main-content {
     .page-pad {
         padding: 24px;
     }
-}
-
-/* ── Section header padding (admin/settings) ─────────── */
-/* Push page content down to clear the mobile section-header bar.
-   This must stay global because it targets elements outside the BottomNavBar component scope. */
-@media (max-width: 959.98px) {
-    body:has(.ph-section-header) .page-content {
-        padding-top: 48px !important;
-    }
-}
-
-/* ── Section tabs (Albums / Folders / Links) ───────────── */
-.ph-section-tabs {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    padding-bottom: 4px;
-    margin-bottom: 12px;
-}
-.ph-section-tabs::-webkit-scrollbar { display: none; }
-.ph-section-tab {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    white-space: nowrap;
-    text-decoration: none;
-    color: var(--mud-palette-text-secondary);
-    background: color-mix(in srgb, var(--mud-palette-text-primary) 8%, transparent);
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    transition: background 0.15s, color 0.15s;
-}
-.ph-section-tab--active {
-    color: var(--mud-palette-primary-text);
-    background: var(--mud-palette-primary);
-    font-weight: 600;
-}
-
-/* ── Photonne brand name – logo gold gradient ────────────── */
-.ph-brand-name {
-    background: linear-gradient(90deg, #ffffff 0%, #FFD166 55%, #E8A820 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 /* ── Login layout background ─────────────────────────────── */
@@ -477,21 +370,6 @@ body.timeline-page .mud-main-content {
         opacity: 0;
         pointer-events: none;
     }
-}
-
-.folder-view-toggle {
-    gap: 8px;
-    border: none !important;
-    box-shadow: none !important;
-}
-.folder-view-toggle .mud-toggle-item {
-    border-radius: 20px !important;
-    background: var(--mud-palette-action-default-hover);
-    flex: 1;
-}
-.folder-view-toggle .mud-toggle-item-selected {
-    background: var(--mud-palette-primary) !important;
-    color: var(--mud-palette-primary-text) !important;
 }
 
 /* ---- Workspace /fotos ---- */

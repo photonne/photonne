@@ -1,7 +1,7 @@
 {
-  "name": "Photonne Admin",
-  "short_name": "Photonne Admin",
-  "description": "Panel de administración de Photonne",
+  "name": "Photonne",
+  "short_name": "Photonne",
+  "description": "Tu biblioteca de fotos",
   "start_url": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
@@ -16,24 +16,24 @@
   ],
   "shortcuts": [
     {
-      "name": "Usuarios",
-      "short_name": "Usuarios",
-      "description": "Gestionar usuarios",
-      "url": "/admin/users",
+      "name": "Fotos",
+      "short_name": "Fotos",
+      "description": "Tu timeline de fotos",
+      "url": "/fotos",
       "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Tareas",
-      "short_name": "Tareas",
-      "description": "Colas y tareas del servidor",
-      "url": "/admin/system/tasks",
+      "name": "Buscar",
+      "short_name": "Buscar",
+      "description": "Buscar en tu biblioteca",
+      "url": "/buscar",
       "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Estadísticas",
-      "short_name": "Estadísticas",
-      "description": "Estadísticas del servidor",
-      "url": "/admin/stats",
+      "name": "Álbumes",
+      "short_name": "Álbumes",
+      "description": "Tus álbumes",
+      "url": "/albumes",
       "icons": [{ "src": "dark/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
