@@ -216,11 +216,19 @@ public class AssetService : IAssetService
         }
     }
 
-    public async Task<UploadResponse?> UploadAssetAsync(string fileName, Stream content, CancellationToken cancellationToken = default)
+    public async Task<UploadResponse?> UploadAssetAsync(string fileName, Stream content, DateTimeOffset? lastModified = null, CancellationToken cancellationToken = default)
     {
         using var multipartContent = new MultipartFormDataContent();
         using var streamContent = new StreamContent(content);
         multipartContent.Add(streamContent, "file", fileName);
+        if (lastModified.HasValue)
+        {
+            // El servidor espera epoch millis como STRING (igual que el KMP) y
+            // los aplica al fichero final para que la fecha real sobreviva.
+            var millis = lastModified.Value.ToUnixTimeMilliseconds().ToString();
+            multipartContent.Add(new StringContent(millis), "fileModifiedAt");
+            multipartContent.Add(new StringContent(millis), "fileCreatedAt");
+        }
 
         var response = await _httpClient.PostAsync("/api/assets/upload", multipartContent, cancellationToken);
         

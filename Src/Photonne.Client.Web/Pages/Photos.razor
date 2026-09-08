@@ -41,6 +41,18 @@
     </Actions>
 </SelectionBar>
 
+@if (_uploadOpen)
+{
+    <UploadPanel OnClose="() => _uploadOpen = false" OnUploaded="HandleUploaded" />
+}
+else
+{
+    <MudFab Class="upload-fab" Color="Color.Primary"
+            StartIcon="@Icons.Material.Outlined.CloudUpload"
+            aria-label="Subir"
+            OnClick="() => _uploadOpen = true" />
+}
+
 @code {
     private readonly SelectionState _selection = new();
     private PhotoGrid? _grid;
@@ -84,6 +96,16 @@
     private void HandleViewerItemChanged(TimelineItem item)
     {
         _grid?.UpdateAssets(new[] { item.Id }, i => i.IsFavorite = item.IsFavorite);
+    }
+
+    private bool _uploadOpen;
+
+    private async Task HandleUploaded(IReadOnlyCollection<string> months)
+    {
+        if (_grid != null && months.Count > 0)
+        {
+            await _grid.RehydrateMonthsAsync(months);
+        }
     }
 
     private async Task HandleDateChanged()

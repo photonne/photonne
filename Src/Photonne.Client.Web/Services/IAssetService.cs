@@ -18,7 +18,7 @@ public interface IAssetService
     Task<AssetDetail?> GetAssetDetailAsync(Guid id);
     Task<AssetDetail?> GetPendingAssetDetailAsync(string path);
     Task<List<TimelineItem>> GetAssetsByFolderAsync(Guid? folderId);
-    Task<UploadResponse?> UploadAssetAsync(string fileName, Stream content, CancellationToken cancellationToken = default);
+    Task<UploadResponse?> UploadAssetAsync(string fileName, Stream content, DateTimeOffset? lastModified = null, CancellationToken cancellationToken = default);
     Task<HashSet<string>> CheckExistingAsync(IEnumerable<(string Name, long Size)> files, CancellationToken cancellationToken = default);
     Task<Guid?> ExistsByChecksumAsync(string checksum, CancellationToken cancellationToken = default);
     Task<SyncAssetResponse?> SyncAssetAsync(string path, CancellationToken cancellationToken = default);

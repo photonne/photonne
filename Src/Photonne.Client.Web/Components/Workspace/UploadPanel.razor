@@ -1,0 +1,140 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+
+@* Panel de subida del workspace: zona de arrastre (el InputFile transparente
+   la cubre, así el drop de ficheros es nativo del navegador, sin JS), cola
+   secuencial con estado por fichero, pre-dedup por nombre+tamaño y fechas
+   originales preservadas (lastModified del navegador → epoch millis). *@
+
+<MudPaper Elevation="8" Class="upload-panel pa-4">
+    <div class="d-flex align-center mb-2">
+        <MudText Typo="Typo.subtitle1">Subir fotos y vídeos</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="() => OnClose.InvokeAsync()" />
+    </div>
+
+    <label class="upload-drop @(_queue.Any(q => q.Status == UploadStatus.Uploading) ? "busy" : "")">
+        <InputFile OnChange="OnFilesPicked" multiple
+                   accept="image/*,video/*,.heic,.heif,.mov,.mp4,.m4v,.avi,.mkv" />
+        <MudIcon Icon="@Icons.Material.Outlined.CloudUpload" Size="Size.Large" />
+        <span>Arrastra aquí tus archivos o haz clic para elegirlos</span>
+        <span class="upload-hint">Las fechas originales se conservan</span>
+    </label>
+
+    @if (_queue.Count > 0)
+    {
+        <div class="upload-queue mt-3">
+            @foreach (var entry in _queue)
+            {
+                <div class="upload-row">
+                    <span class="upload-name" title="@entry.Name">@entry.Name</span>
+                    <span class="upload-status @entry.Status.ToString().ToLowerInvariant()">
+                        @StatusLabel(entry)
+                    </span>
+                </div>
+            }
+        </div>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+            @_queue.Count(q => q.Status == UploadStatus.Done) de @_queue.Count subidos
+            @if (_queue.Any(q => q.Status == UploadStatus.Duplicate))
+            {
+                <text> · @_queue.Count(q => q.Status == UploadStatus.Duplicate) ya existían</text>
+            }
+        </MudText>
+    }
+</MudPaper>
+
+@code {
+    private const long MaxFileBytes = 4L * 1024 * 1024 * 1024;
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Meses ("yyyy-MM") con subidas nuevas, para rehidratar la rejilla.</summary>
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> OnUploaded { get; set; }
+
+    private enum UploadStatus { Queued, Uploading, Done, Duplicate, Error, TooBig }
+
+    private sealed class QueueEntry
+    {
+        public required string Name { get; init; }
+        public required IBrowserFile File { get; init; }
+        public UploadStatus Status { get; set; } = UploadStatus.Queued;
+    }
+
+    private readonly List<QueueEntry> _queue = new();
+    private bool _working;
+
+    private async Task OnFilesPicked(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles(maximumFileCount: 500);
+        // Pre-dedup barato por nombre+tamaño contra el servidor.
+        var existing = await AssetService.CheckExistingAsync(
+            files.Select(f => (f.Name, f.Size)));
+        foreach (var file in files)
+        {
+            var entry = new QueueEntry { Name = file.Name, File = file };
+            if (file.Size > MaxFileBytes) entry.Status = UploadStatus.TooBig;
+            else if (existing.Contains($"{file.Name}|{file.Size}")) entry.Status = UploadStatus.Duplicate;
+            _queue.Add(entry);
+        }
+        await ProcessQueueAsync();
+    }
+
+    private async Task ProcessQueueAsync()
+    {
+        if (_working) return;
+        _working = true;
+        var uploadedMonths = new HashSet<string>();
+        try
+        {
+            foreach (var entry in _queue.Where(q => q.Status == UploadStatus.Queued).ToList())
+            {
+                entry.Status = UploadStatus.Uploading;
+                StateHasChanged();
+                try
+                {
+                    await using var stream = entry.File.OpenReadStream(MaxFileBytes);
+                    var response = await AssetService.UploadAssetAsync(
+                        entry.File.Name, stream, entry.File.LastModified);
+                    entry.Status = response == null
+                        ? UploadStatus.Error
+                        : response.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase)
+                            ? UploadStatus.Duplicate
+                            : UploadStatus.Done;
+                    if (entry.Status == UploadStatus.Done)
+                    {
+                        uploadedMonths.Add(entry.File.LastModified.ToString("yyyy-MM"));
+                    }
+                }
+                catch
+                {
+                    entry.Status = UploadStatus.Error;
+                }
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            _working = false;
+        }
+        var done = _queue.Count(q => q.Status == UploadStatus.Done);
+        if (done > 0)
+        {
+            Snackbar.Add($"{done} archivos subidos", Severity.Success);
+            await OnUploaded.InvokeAsync(uploadedMonths);
+        }
+    }
+
+    private static string StatusLabel(QueueEntry entry) => entry.Status switch
+    {
+        UploadStatus.Queued => "En cola",
+        UploadStatus.Uploading => "Subiendo…",
+        UploadStatus.Done => "✓ Subido",
+        UploadStatus.Duplicate => "Ya existía",
+        UploadStatus.Error => "Error",
+        UploadStatus.TooBig => "Demasiado grande",
+        _ => ""
+    };
+}

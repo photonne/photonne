@@ -1,0 +1,73 @@
+.upload-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 84px;
+    width: 380px;
+    max-width: 92vw;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 1350;
+    border-radius: 14px;
+}
+
+.upload-drop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 28px 16px;
+    border: 2px dashed var(--mud-palette-lines-default);
+    border-radius: 12px;
+    cursor: pointer;
+    color: var(--mud-palette-text-secondary);
+    text-align: center;
+}
+
+.upload-drop:hover {
+    border-color: var(--mud-palette-primary);
+    color: var(--mud-palette-primary);
+}
+
+/* El InputFile cubre toda la zona: clic y drop nativos, sin JS. */
+.upload-drop ::deep input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-hint {
+    font-size: 0.72rem;
+    opacity: 0.7;
+}
+
+.upload-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 30vh;
+    overflow-y: auto;
+}
+
+.upload-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.8rem;
+}
+
+.upload-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.upload-status {
+    flex-shrink: 0;
+    color: var(--mud-palette-text-secondary);
+}
+
+.upload-status.done { color: var(--mud-palette-success); }
+.upload-status.error, .upload-status.toobig { color: var(--mud-palette-error); }
+.upload-status.uploading { color: var(--mud-palette-primary); }
