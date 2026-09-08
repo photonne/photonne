@@ -1,0 +1,147 @@
+@page "/duplicados"
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Duplicados - Photonne</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex align-center mb-2 gap-3 flex-wrap">
+        <MudText Typo="Typo.h5">Duplicados</MudText>
+        @if (_groups != null && _groups.Count > 0)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                @_groups.Count grupos · @FormatSize(WastedBytes) recuperables
+            </MudChip>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.AutoFixHigh"
+                       OnClick="KeepOldestEverywhere">
+                Conservar el más antiguo en todos
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Error"
+                       StartIcon="@Icons.Material.Outlined.Delete"
+                       Disabled="_toTrash.Count == 0 || _busy"
+                       OnClick="TrashSelectedAsync">
+                A la papelera (@_toTrash.Count)
+            </MudButton>
+        }
+    </div>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+        Copias exactas (mismo contenido, distinta carpeta). Marca cuál conservar en cada
+        grupo; el resto va a la papelera — reversible desde allí.
+    </MudText>
+
+    @if (_groups == null)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_groups.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Outlined.CheckCircleOutline"
+                    Title="Sin duplicados"
+                    Description="No hay copias exactas en tu biblioteca." />
+    }
+    else
+    {
+        @foreach (var group in _groups)
+        {
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2">
+                    @group.Assets.Count copias · @FormatSize(group.Assets.FirstOrDefault()?.FileSize ?? 0) cada una
+                </MudText>
+                <div class="dup-row">
+                    @foreach (var asset in group.Assets)
+                    {
+                        var marked = _toTrash.Contains(asset.Id);
+                        <div class="dup-cell @(marked ? "marked" : "")" @onclick="() => KeepThis(group, asset)">
+                            <img src="@asset.ThumbnailUrl" alt="" loading="lazy" />
+                            <div class="dup-meta">
+                                <span class="dup-path" title="@asset.FullPath">@FolderOf(asset)</span>
+                                <span class="dup-date">@asset.FileCreatedAt.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <span class="dup-flag">@(marked ? "A papelera" : "Conservar")</span>
+                        </div>
+                    }
+                </div>
+            </MudPaper>
+        }
+    }
+</div>
+
+@code {
+    private List<UserDuplicateGroup>? _groups;
+    private readonly HashSet<Guid> _toTrash = new();
+    private bool _busy;
+
+    private long WastedBytes => _groups?.Sum(g =>
+        (long)(g.Assets.Count - 1) * (g.Assets.FirstOrDefault()?.FileSize ?? 0)) ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _groups = await AssetService.GetMyDuplicatesAsync();
+    }
+
+    /// <summary>Clic en una copia = conservarla: el resto del grupo se marca.</summary>
+    private void KeepThis(UserDuplicateGroup group, TimelineItem keeper)
+    {
+        foreach (var asset in group.Assets)
+        {
+            if (asset.Id == keeper.Id) _toTrash.Remove(asset.Id);
+            else _toTrash.Add(asset.Id);
+        }
+    }
+
+    private void KeepOldestEverywhere()
+    {
+        if (_groups == null) return;
+        foreach (var group in _groups)
+        {
+            var keeper = group.Assets.OrderBy(a => a.FileCreatedAt).First();
+            KeepThis(group, keeper);
+        }
+    }
+
+    private async Task TrashSelectedAsync()
+    {
+        if (_toTrash.Count == 0 || _busy) return;
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Mover duplicados a la papelera",
+            $"Se moverán {_toTrash.Count} copias a la papelera (recuperables desde allí).",
+            yesText: "Mover", cancelText: "Cancelar");
+        if (confirmed != true) return;
+        _busy = true;
+        try
+        {
+            var ids = _toTrash.ToList();
+            await AssetService.DeleteAssetsAsync(new DeleteAssetsRequest { AssetIds = ids });
+            Snackbar.Add($"{ids.Count} duplicadas a la papelera", Severity.Success);
+            _toTrash.Clear();
+            _groups = await AssetService.GetMyDuplicatesAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string FolderOf(TimelineItem asset)
+    {
+        var idx = asset.FullPath.LastIndexOf('/');
+        return idx > 0 ? asset.FullPath[..idx] : asset.FullPath;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        var order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.#} {sizes[order]}";
+    }
+}

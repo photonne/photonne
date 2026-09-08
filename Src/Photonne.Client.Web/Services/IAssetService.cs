@@ -48,6 +48,8 @@ public interface IAssetService
     Task UnarchiveAssetsAsync(UnarchiveAssetsRequest request);
     Task UnarchiveAllAsync();
     Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50);
+    /// <summary>Grupos de duplicados exactos (mismo checksum) del usuario, mayores primero.</summary>
+    Task<List<UserDuplicateGroup>> GetMyDuplicatesAsync();
     Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption);
     Task<CaptureDateUpdateResult?> UpdateCaptureDateAsync(Guid assetId, DateTimeOffset dateTaken, bool writeToFile);
     Task<TimelineNeighborsResult> GetTimelineNeighborsAsync(Guid assetId, int before = 50, int after = 50);

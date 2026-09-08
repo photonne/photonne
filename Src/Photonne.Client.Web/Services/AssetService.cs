@@ -46,6 +46,12 @@ public class AssetService : IAssetService
         public List<YearBreakdownGroup> Groups { get; set; } = new();
     }
 
+    public async Task<List<UserDuplicateGroup>> GetMyDuplicatesAsync()
+    {
+        var response = await _httpClient.GetFromJsonAsync<List<UserDuplicateGroup>>("/api/utilities/duplicates");
+        return response ?? new List<UserDuplicateGroup>();
+    }
+
     public async Task<TimelinePageResult> GetTrashPageAsync(DateTime? cursor = null, int pageSize = 150)
     {
         var url = $"/api/assets/trash?pageSize={pageSize}";
