@@ -18,27 +18,9 @@ public class AssetService : IAssetService
         _getTokenFunc = getTokenFunc;
     }
 
-    private async Task SetAuthHeaderAsync()
-    {
-        string? token = null;
-        if (_getTokenFunc != null)
-        {
-            token = await _getTokenFunc();
-        }
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-        else
-        {
-            _httpClient.DefaultRequestHeaders.Authorization = null;
-        }
-    }
 
     public async Task<List<TimelineBucket>> GetTimelineBucketsAsync(CancellationToken cancellationToken = default)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.GetFromJsonAsync<List<TimelineBucket>>(
             "/api/assets/timeline/buckets", cancellationToken);
         return response ?? new List<TimelineBucket>();
@@ -46,7 +28,6 @@ public class AssetService : IAssetService
 
     public async Task<List<TimelineItem>> GetBucketItemsAsync(string yearMonth, CancellationToken cancellationToken = default)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>(
             $"/api/assets/timeline/buckets/{Uri.EscapeDataString(yearMonth)}", cancellationToken);
         return response ?? new List<TimelineItem>();
@@ -54,7 +35,6 @@ public class AssetService : IAssetService
 
     public async Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/timeline?pageSize={pageSize}";
         if (cursor.HasValue)
             url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
@@ -64,7 +44,6 @@ public class AssetService : IAssetService
 
     public async Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500, CancellationToken cancellationToken = default)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/timeline" +
                   $"?from={Uri.EscapeDataString(from.ToUniversalTime().ToString("o"))}" +
                   $"&cursor={Uri.EscapeDataString(to.ToUniversalTime().ToString("o"))}" +
@@ -75,21 +54,18 @@ public class AssetService : IAssetService
 
     public async Task<List<TimelineIndexItem>> GetTimelineIndexAsync()
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.GetFromJsonAsync<List<TimelineIndexItem>>("/api/assets/timeline/index");
         return response ?? new List<TimelineIndexItem>();
     }
 
     public async Task<List<TimelineItem>> GetDeviceAssetsAsync()
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>("/api/assets/device");
         return response ?? new List<TimelineItem>();
     }
 
     public async Task<TimelineItem?> GetAssetByIdAsync(Guid id)
     {
-        await SetAuthHeaderAsync();
         var detail = await GetAssetDetailAsync(id);
         if (detail == null) return null;
         return new TimelineItem
@@ -112,8 +88,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<AssetDetailResponse>($"/api/assets/{id}");
+                var response = await _httpClient.GetFromJsonAsync<AssetDetailResponse>($"/api/assets/{id}");
             return MapResponseToDetail(response);
         }
         catch
@@ -126,8 +101,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<AssetDetailResponse>($"/api/assets/pending/detail?path={System.Net.WebUtility.UrlEncode(path)}");
+                var response = await _httpClient.GetFromJsonAsync<AssetDetailResponse>($"/api/assets/pending/detail?path={System.Net.WebUtility.UrlEncode(path)}");
             return MapResponseToDetail(response);
         }
         catch
@@ -200,8 +174,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var url = folderId.HasValue 
+                var url = folderId.HasValue 
                 ? $"/api/folders/{folderId}/assets" 
                 : "/api/assets/timeline";
             var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>(url);
@@ -215,7 +188,6 @@ public class AssetService : IAssetService
 
     public async Task<UploadResponse?> UploadAssetAsync(string fileName, Stream content, CancellationToken cancellationToken = default)
     {
-        await SetAuthHeaderAsync();
         using var multipartContent = new MultipartFormDataContent();
         using var streamContent = new StreamContent(content);
         multipartContent.Add(streamContent, "file", fileName);
@@ -234,8 +206,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.PostAsync($"/api/assets/sync?path={System.Net.WebUtility.UrlEncode(path)}", null, cancellationToken);
+                var response = await _httpClient.PostAsync($"/api/assets/sync?path={System.Net.WebUtility.UrlEncode(path)}", null, cancellationToken);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<SyncAssetResponse>(cancellationToken: cancellationToken);
@@ -298,28 +269,24 @@ public class AssetService : IAssetService
 
     public async Task DeleteAssetsAsync(DeleteAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/assets/delete", request);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task RestoreAssetsAsync(RestoreAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/assets/restore", request);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task PurgeAssetsAsync(PurgeAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/assets/purge", request);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task<List<string>> AddAssetTagsAsync(Guid assetId, List<string> tags)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync($"/api/assets/{assetId}/tags", new AddTagsRequest { Tags = tags });
         response.EnsureSuccessStatusCode();
 
@@ -329,7 +296,6 @@ public class AssetService : IAssetService
 
     public async Task<List<string>> RemoveAssetTagAsync(Guid assetId, string tag)
     {
-        await SetAuthHeaderAsync();
         var encodedTag = System.Net.WebUtility.UrlEncode(tag);
         var response = await _httpClient.DeleteAsync($"/api/assets/{assetId}/tags/{encodedTag}");
         response.EnsureSuccessStatusCode();
@@ -341,7 +307,6 @@ public class AssetService : IAssetService
     public async Task<(List<TimelineItem> Items, bool HasMore)> SearchAssetsAsync(
         string? q, DateTime? from, DateTime? to, string? folder, int pageSize = 100, IReadOnlyCollection<Guid>? personIds = null, IReadOnlyCollection<string>? objectLabels = null, IReadOnlyCollection<string>? sceneLabels = null, string? textQuery = null)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/search?pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(q))
             url += $"&q={Uri.EscapeDataString(q)}";
@@ -382,7 +347,6 @@ public class AssetService : IAssetService
     public async Task<List<TimelineItem>> SemanticSearchAsync(string query, int limit = 50, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query)) return new();
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/search/semantic?q={Uri.EscapeDataString(query)}&limit={limit}";
         var response = await _httpClient.GetFromJsonAsync<SemanticSearchResult>(url, ct);
         return response?.Items.Select(i => i.Asset).ToList() ?? new();
@@ -392,8 +356,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var url = test ? "/api/assets/memories?test=true" : "/api/assets/memories";
+                var url = test ? "/api/assets/memories?test=true" : "/api/assets/memories";
             var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>(url);
             return response ?? new();
         }
@@ -405,7 +368,6 @@ public class AssetService : IAssetService
 
     public async Task<bool> ToggleFavoriteAsync(Guid assetId)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsync($"/api/assets/{assetId}/favorite", null);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<FavoriteToggleResult>();
@@ -414,7 +376,6 @@ public class AssetService : IAssetService
 
     public async Task<TimelinePageResult> GetFavoritesPageAsync(DateTime? cursor = null, int pageSize = 150)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/favorites?pageSize={pageSize}";
         if (cursor.HasValue)
             url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
@@ -424,7 +385,6 @@ public class AssetService : IAssetService
 
     public async Task<byte[]?> DownloadZipAsync(List<Guid> assetIds, string? fileName = null)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/assets/download-zip",
             new DownloadZipRequest { AssetIds = assetIds, FileName = fileName });
         if (!response.IsSuccessStatusCode)
@@ -434,7 +394,6 @@ public class AssetService : IAssetService
 
     public async Task<TimelinePageResult> GetArchivedPageAsync(DateTime? cursor = null, int pageSize = 150)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/archived?pageSize={pageSize}";
         if (cursor.HasValue)
             url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
@@ -444,42 +403,36 @@ public class AssetService : IAssetService
 
     public async Task ArchiveAssetsAsync(ArchiveAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/assets/archive", request);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task UnarchiveAssetsAsync(UnarchiveAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/assets/unarchive", request);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task UnarchiveAllAsync()
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsync("/api/assets/archive/unarchive-all", null);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task RestoreTrashAsync()
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsync("/api/assets/trash/restore-all", null);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task EmptyTrashAsync()
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsync("/api/assets/trash/empty", null);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task<SharedTrashPage> GetSharedTrashAsync(DateTime? cursor = null, int pageSize = 150)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/shared-trash?pageSize={pageSize}";
         if (cursor.HasValue)
             url += $"&cursor={Uri.EscapeDataString(cursor.Value.ToUniversalTime().ToString("o"))}";
@@ -489,7 +442,6 @@ public class AssetService : IAssetService
 
     public async Task RestoreSharedTrashAsync(IEnumerable<Guid> assetIds)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync(
             "/api/assets/shared-trash/restore", new { assetIds = assetIds.ToList() });
         response.EnsureSuccessStatusCode();
@@ -497,7 +449,6 @@ public class AssetService : IAssetService
 
     public async Task PurgeSharedTrashAsync(IEnumerable<Guid> assetIds)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync(
             "/api/assets/shared-trash/purge", new { assetIds = assetIds.ToList() });
         response.EnsureSuccessStatusCode();
@@ -505,14 +456,12 @@ public class AssetService : IAssetService
 
     public async Task<List<TimelineItem>> GetLargeFilesAsync(int count = 50)
     {
-        await SetAuthHeaderAsync();
         var result = await _httpClient.GetFromJsonAsync<List<TimelineItem>>($"/api/utilities/large-files?count={count}");
         return result ?? new List<TimelineItem>();
     }
 
     public async Task<string?> UpdateDescriptionAsync(Guid assetId, string? caption)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PatchAsJsonAsync($"/api/assets/{assetId}/description", new { caption });
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<DescriptionUpdateResult>();
@@ -521,7 +470,6 @@ public class AssetService : IAssetService
 
     public async Task<CaptureDateUpdateResult?> UpdateCaptureDateAsync(Guid assetId, DateTimeOffset dateTaken, bool writeToFile)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PatchAsJsonAsync(
             $"/api/assets/{assetId}/date", new { dateTaken, writeToFile });
         response.EnsureSuccessStatusCode();
@@ -530,7 +478,6 @@ public class AssetService : IAssetService
 
     public async Task<TimelineNeighborsResult> GetTimelineNeighborsAsync(Guid assetId, int before = 50, int after = 50)
     {
-        await SetAuthHeaderAsync();
         var url = $"/api/assets/{assetId}/timeline-neighbors?before={before}&after={after}";
         var response = await _httpClient.GetFromJsonAsync<TimelineNeighborsResult>(url);
         return response ?? new TimelineNeighborsResult();
@@ -542,8 +489,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var body = new
+                var body = new
             {
                 files = files.Select(f => new { name = f.Name, size = f.Size }).ToList()
             };
@@ -562,8 +508,7 @@ public class AssetService : IAssetService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetAsync($"/api/assets/exists/{checksum}", cancellationToken);
+                var response = await _httpClient.GetAsync($"/api/assets/exists/{checksum}", cancellationToken);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
             if (!response.IsSuccessStatusCode) return null;
             var result = await response.Content.ReadFromJsonAsync<ChecksumExistsResult>(cancellationToken: cancellationToken);

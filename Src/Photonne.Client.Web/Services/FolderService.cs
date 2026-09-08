@@ -15,30 +15,12 @@ public class FolderService : IFolderService
         _getTokenFunc = getTokenFunc;
     }
 
-    private async Task SetAuthHeaderAsync()
-    {
-        string? token = null;
-        if (_getTokenFunc != null)
-        {
-            token = await _getTokenFunc();
-        }
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-        else
-        {
-            _httpClient.DefaultRequestHeaders.Authorization = null;
-        }
-    }
 
     public async Task<List<FolderItem>> GetFoldersAsync()
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<List<FolderItem>>("/api/folders");
+                var response = await _httpClient.GetFromJsonAsync<List<FolderItem>>("/api/folders");
             return response ?? new List<FolderItem>();
         }
         catch
@@ -51,8 +33,7 @@ public class FolderService : IFolderService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<FolderItem>($"/api/folders/{id}");
+                var response = await _httpClient.GetFromJsonAsync<FolderItem>($"/api/folders/{id}");
             return response;
         }
         catch
@@ -65,8 +46,7 @@ public class FolderService : IFolderService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<List<FolderItem>>("/api/folders/tree");
+                var response = await _httpClient.GetFromJsonAsync<List<FolderItem>>("/api/folders/tree");
             return response ?? new List<FolderItem>();
         }
         catch
@@ -79,8 +59,7 @@ public class FolderService : IFolderService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<List<FolderItem>>("/api/utilities/folders/tree");
+                var response = await _httpClient.GetFromJsonAsync<List<FolderItem>>("/api/utilities/folders/tree");
             return response ?? new List<FolderItem>();
         }
         catch
@@ -93,8 +72,7 @@ public class FolderService : IFolderService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>($"/api/folders/{folderId}/assets");
+                var response = await _httpClient.GetFromJsonAsync<List<TimelineItem>>($"/api/folders/{folderId}/assets");
             return response ?? new List<TimelineItem>();
         }
         catch
@@ -105,7 +83,6 @@ public class FolderService : IFolderService
 
     public async Task<FolderItem> CreateFolderAsync(CreateFolderRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/folders", request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<FolderItem>() ?? throw new Exception("Failed to create folder");
@@ -113,7 +90,6 @@ public class FolderService : IFolderService
 
     public async Task<FolderItem> UpdateFolderAsync(Guid folderId, UpdateFolderRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PutAsJsonAsync($"/api/folders/{folderId}", request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<FolderItem>() ?? throw new Exception("Failed to update folder");
@@ -121,21 +97,18 @@ public class FolderService : IFolderService
 
     public async Task DeleteFolderAsync(Guid folderId)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.DeleteAsync($"/api/folders/{folderId}");
         response.EnsureSuccessStatusCode();
     }
 
     public async Task MoveFolderAssetsAsync(MoveFolderAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/folders/assets/move", request);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task RemoveFolderAssetsAsync(RemoveFolderAssetsRequest request)
     {
-        await SetAuthHeaderAsync();
         var response = await _httpClient.PostAsJsonAsync("/api/folders/assets/remove", request);
         response.EnsureSuccessStatusCode();
     }
@@ -144,8 +117,7 @@ public class FolderService : IFolderService
     {
         try
         {
-            await SetAuthHeaderAsync();
-            return await _httpClient.GetFromJsonAsync<FolderItem?>($"/api/folders/library/{libraryId}/root");
+                return await _httpClient.GetFromJsonAsync<FolderItem?>($"/api/folders/library/{libraryId}/root");
         }
         catch
         {

@@ -22,9 +22,13 @@ builder.Services.AddScoped(sp =>
     {
         InnerHandler = new HttpClientHandler()
     };
-    var errorHandler = new ApiErrorHandler(notifier)
+    var authHeaderHandler = new AuthHeaderHandler(() => sp.GetRequiredService<IAuthService>())
     {
         InnerHandler = refreshHandler
+    };
+    var errorHandler = new ApiErrorHandler(notifier)
+    {
+        InnerHandler = authHeaderHandler
     };
     return new HttpClient(errorHandler)
     {
