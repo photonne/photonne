@@ -20,6 +20,12 @@
     opacity: 1;
 }
 
+.photo-cell.focused {
+    outline: 3px solid var(--mud-palette-tertiary);
+    outline-offset: 1px;
+    border-radius: 8px;
+}
+
 .photo-cell.selected {
     outline: 3px solid var(--mud-palette-primary);
     outline-offset: -3px;

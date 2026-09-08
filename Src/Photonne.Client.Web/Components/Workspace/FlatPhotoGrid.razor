@@ -30,6 +30,7 @@
                                    Width="CellWidth(item, row.Height)"
                                    Height="row.Height"
                                    IsSelected="Selection?.IsSelected(item.Id) ?? false"
+                                   Focused="_focusedId == item.Id"
                                    Selectable="Selection != null"
                                    OnClick="e => HandleCellClick(item, e)"
                                    OnToggle="() => Selection?.Toggle(item.Id)" />
@@ -124,8 +125,46 @@
         }
     }
 
+    private Guid? _focusedId;
+
     [JSInvokable]
-    public void OnEscapePressed() => Selection?.Clear();
+    public void OnEscapePressed()
+    {
+        _focusedId = null;
+        Selection?.Clear();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnGridNavKey(string key, bool shift)
+    {
+        if (key == "space")
+        {
+            if (_focusedId != null) Selection?.Toggle(_focusedId.Value);
+            return;
+        }
+        if (key == "enter")
+        {
+            var item = _focusedId == null ? null : Items.FirstOrDefault(i => i.Id == _focusedId);
+            if (item != null) await OnItemClick.InvokeAsync(item);
+            return;
+        }
+
+        if (_layout == null) return;
+        var rows = _layout.Rows
+            .Select(r => (IReadOnlyList<Guid>)Items.Skip(r.StartIndex).Take(r.Count).Select(i => i.Id).ToList())
+            .ToList();
+        var next = GridKeyboardNav.Move(rows, _focusedId, key);
+        if (next == null) return;
+        var moved = next != _focusedId;
+        _focusedId = next;
+        if (moved)
+        {
+            if (shift) Selection?.SelectRange(next.Value, Items.Select(i => i.Id).ToList());
+            await JS.InvokeVoidAsync("workspaceGrid.scrollToAsset", _jsId, next.Value.ToString());
+        }
+        StateHasChanged();
+    }
 
     [JSInvokable]
     public async Task OnGridShortcut(string action)

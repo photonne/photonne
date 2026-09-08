@@ -35,6 +35,13 @@ window.workspaceGrid = (() => {
                         dotnetRef.invokeMethodAsync('OnGridShortcut', 'delete');
                     } else if (e.key === 'f' || e.key === 'F') {
                         dotnetRef.invokeMethodAsync('OnGridShortcut', 'favorite');
+                    } else if (e.key.startsWith('Arrow') || e.key === ' ' || e.key === 'Enter') {
+                        // Navegación con foco. PageUp/Down/Home/End siguen
+                        // haciendo scroll normal.
+                        e.preventDefault();
+                        const nav = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up',
+                                      ArrowDown: 'down', ' ': 'space', Enter: 'enter' }[e.key];
+                        if (nav) dotnetRef.invokeMethodAsync('OnGridNavKey', nav, e.shiftKey);
                     }
                 },
                 // Pintado con ratón: arrastrar desde una celda selecciona (o
@@ -167,6 +174,13 @@ window.workspaceGrid = (() => {
                 window.addEventListener('pointermove', move);
                 window.addEventListener('pointerup', up);
             });
+        },
+
+        scrollToAsset(id, assetId) {
+            const st = states.get(id);
+            if (!st) return;
+            st.container.querySelector(`[data-asset-id="${CSS.escape(assetId)}"]`)
+                ?.scrollIntoView({ block: 'nearest' });
         },
 
         scrollToBucket(id, key) {

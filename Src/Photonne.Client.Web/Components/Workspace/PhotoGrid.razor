@@ -78,6 +78,7 @@
                                                Width="CellWidth(item, row.Height)"
                                                Height="row.Height"
                                                IsSelected="Selection?.IsSelected(item.Id) ?? false"
+                                               Focused="_focusedId == item.Id"
                                                Selectable="Selection != null"
                                                OnClick="e => HandleCellClick(item, e)"
                                                OnToggle="() => Selection?.Toggle(item.Id)" />
@@ -391,8 +392,61 @@
         if (ids != null) Selection.SetSelected(ids, !allSelected);
     }
 
+    private Guid? _focusedId;
+
     [JSInvokable]
-    public void OnEscapePressed() => Selection?.Clear();
+    public void OnEscapePressed()
+    {
+        _focusedId = null;
+        Selection?.Clear();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnGridNavKey(string key, bool shift)
+    {
+        if (_sections == null) return;
+        if (key == "space")
+        {
+            if (_focusedId != null) Selection?.Toggle(_focusedId.Value);
+            return;
+        }
+        if (key == "enter")
+        {
+            var item = _focusedId == null ? null : VisibleItems.FirstOrDefault(i => i.Id == _focusedId);
+            if (item != null) await OnItemClick.InvokeAsync(item);
+            return;
+        }
+
+        var rows = BuildNavRows();
+        var next = GridKeyboardNav.Move(rows, _focusedId, key);
+        if (next == null) return;
+        var moved = next != _focusedId;
+        _focusedId = next;
+        if (moved)
+        {
+            if (shift) Selection?.SelectRange(next.Value, VisibleOrder);
+            await JS.InvokeVoidAsync("workspaceGrid.scrollToAsset", _jsId, next.Value.ToString());
+        }
+        StateHasChanged();
+    }
+
+    private List<IReadOnlyList<Guid>> BuildNavRows()
+    {
+        var rows = new List<IReadOnlyList<Guid>>();
+        if (_sections == null) return rows;
+        foreach (var section in _sections)
+        {
+            if (section.Items == null || section.Layout == null) continue;
+            foreach (var row in section.Layout.Rows)
+            {
+                rows.Add(section.Items
+                    .Skip(row.StartIndex).Take(row.Count)
+                    .Select(i => i.Id).ToList());
+            }
+        }
+        return rows;
+    }
 
     [JSInvokable]
     public async Task OnGridShortcut(string action)

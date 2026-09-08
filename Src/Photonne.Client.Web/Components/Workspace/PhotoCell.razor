@@ -9,7 +9,7 @@
    círculo de selección aparece al hover (o fijo si está seleccionada) y su
    clic solo alterna, sin abrir el visor. *@
 
-<div class="photo-cell @(_loaded ? "loaded" : "") @(IsSelected ? "selected" : "")"
+<div class="photo-cell @(_loaded ? "loaded" : "") @(IsSelected ? "selected" : "") @(Focused ? "focused" : "")"
      data-asset-id="@Item.Id"
      style="width:@(Fmt(Width))px;height:@(Fmt(Height))px;background-color:@(Item.DominantColor ?? "#2a2a2c")"
      title="@Item.FileName"
@@ -58,6 +58,8 @@
     [Parameter] public double Width { get; set; }
     [Parameter] public double Height { get; set; }
     [Parameter] public bool IsSelected { get; set; }
+    /// <summary>Foco de la navegación por teclado (anillo visual).</summary>
+    [Parameter] public bool Focused { get; set; }
     [Parameter] public bool Selectable { get; set; } = true;
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     [Parameter] public EventCallback OnToggle { get; set; }
