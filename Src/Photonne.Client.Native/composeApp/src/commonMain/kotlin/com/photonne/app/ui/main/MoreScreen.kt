@@ -74,6 +74,14 @@ import com.photonne.app.resources.utilities_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import com.photonne.app.ui.util.PlatformVerticalScrollbar
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.photonne.app.data.version.AppVersionStore
+import com.photonne.app.data.version.clientUpdateUrl
+import com.photonne.app.data.version.isNewerVersion
+import com.photonne.app.ui.util.openExternalUrl
+import org.koin.compose.koinInject
 
 /**
  * Library shortcut shown on the More tab. Each entry resolves to a
@@ -178,6 +186,13 @@ fun MoreScreen(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     val reservedTop = subscreenChromeReservedTop()
+    // Aviso de actualización: servidor y clientes versionan juntos, así que un
+    // servidor por delante implica un cliente publicado más nuevo. Solo en las
+    // plataformas con URL de descarga (escritorio).
+    val versionStore: AppVersionStore = koinInject()
+    val serverVersion by versionStore.serverVersion.collectAsState()
+    val updateAvailable = clientUpdateUrl != null &&
+        isNewerVersion(serverVersion, PhotonneVersion)
 
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -297,6 +312,35 @@ fun MoreScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 OutlinedButton(onClick = onLogout) { Text(stringResource(Res.string.action_logout)) }
+            }
+        }
+
+        if (updateAvailable) {
+            item("update") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Hay una versión nueva de Photonne (v${serverVersion.orEmpty()})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        TextButton(onClick = { clientUpdateUrl?.let(::openExternalUrl) }) {
+                            Text("Descargar actualización")
+                        }
+                    }
+                }
             }
         }
 
