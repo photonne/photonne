@@ -5,6 +5,8 @@
 @inject IAssetService AssetService
 @inject ISearchCatalogService Catalog
 @inject IFolderService FolderService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Buscar - Photonne</PageTitle>
 
@@ -87,8 +89,11 @@
     private List<string> _sceneLabels = new();
     private string? _ocr;
     private bool _semanticUnavailable;
-    // Cada búsqueda remonta el WorkspaceCollection vía @key.
+    // Cada búsqueda remonta el WorkspaceCollection vía @key. La URL es la
+    // fuente de verdad: RunSearch navega y la búsqueda se lanza al sincronizar
+    // desde ella (así atrás/recargar/compartir reproducen la búsqueda).
     private int _generation;
+    private string _executedQuery = string.Empty;
 
     private List<PersonSummary> _people = new();
     private List<LabelSummary> _objects = new();
@@ -96,9 +101,53 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Navigation.LocationChanged += HandleLocationChanged;
         _people = await Catalog.GetPeopleAsync();
         _objects = await Catalog.GetObjectLabelsAsync();
         _scenes = await Catalog.GetSceneLabelsAsync();
+        SyncFromUrl();
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= HandleLocationChanged;
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (Navigation.ToBaseRelativePath(e.Location).StartsWith("buscar", StringComparison.OrdinalIgnoreCase))
+        {
+            SyncFromUrl();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Puebla los campos desde la URL y ejecuta si la búsqueda cambió.</summary>
+    private void SyncFromUrl()
+    {
+        var state = SearchQueryState.Parse(new Uri(Navigation.Uri).Query);
+        var canonical = state.ToQueryString();
+        if (!state.HasAnyFilter)
+        {
+            // Atrás hasta /buscar sin filtros: volver al estado inicial.
+            if (_executedQuery.Length > 0)
+            {
+                _executedQuery = string.Empty;
+                _generation = 0;
+            }
+            return;
+        }
+        if (canonical == _executedQuery) return;
+
+        _query = state.Query;
+        _semantic = state.Semantic;
+        _from = state.From;
+        _to = state.To;
+        _personIds = state.PersonIds.ToList();
+        _objectLabels = state.ObjectLabels.ToList();
+        _sceneLabels = state.SceneLabels.ToList();
+        _ocr = state.Ocr;
+
+        _executedQuery = canonical;
+        _semanticUnavailable = false;
+        _generation++;
     }
 
     private bool HasAnyFilter =>
@@ -113,9 +162,27 @@
 
     private void RunSearch()
     {
-        _semanticUnavailable = false;
         if (!HasAnyFilter) return;
-        _generation++;
+        var state = new SearchQueryState
+        {
+            Query = _query,
+            Semantic = _semantic,
+            From = _from,
+            To = _to,
+            PersonIds = _personIds,
+            ObjectLabels = _objectLabels,
+            SceneLabels = _sceneLabels,
+            Ocr = _ocr
+        };
+        var canonical = state.ToQueryString();
+        if (canonical == _executedQuery)
+        {
+            // Misma búsqueda: re-lanzar sin tocar el historial.
+            _semanticUnavailable = false;
+            _generation++;
+            return;
+        }
+        Navigation.NavigateTo("/buscar?" + canonical);
     }
 
     private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)

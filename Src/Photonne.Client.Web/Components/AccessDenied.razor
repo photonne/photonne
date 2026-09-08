@@ -1,0 +1,11 @@
+@* Respaldo visual de las páginas admin (App.razor ya redirige a los no-admin). *@
+
+<EmptyState Icon="@Icons.Material.Outlined.Lock"
+            Title="Acceso denegado"
+            Description="Solo los administradores pueden acceder a esta página.">
+    <Actions>
+        <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary">
+            Volver al inicio
+        </MudButton>
+    </Actions>
+</EmptyState>

@@ -9,10 +9,7 @@
 <div class="page-pad">
     @if (!_isAuthorized)
     {
-        <div class="mt-8">
-            <MudText Typo="Typo.h5">Acceso Denegado</MudText>
-            <MudText Typo="Typo.body1">Solo los administradores pueden acceder a esta página.</MudText>
-        </div>
+        <AccessDenied />
     }
     else if (_loading)
     {
