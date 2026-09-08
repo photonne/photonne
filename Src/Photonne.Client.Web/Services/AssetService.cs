@@ -33,6 +33,19 @@ public class AssetService : IAssetService
         return response ?? new List<TimelineItem>();
     }
 
+    public async Task<List<YearBreakdownGroup>> GetYearBreakdownAsync(IReadOnlyCollection<Guid> assetIds)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/assets/year-breakdown", new { assetIds });
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<YearBreakdownResponse>();
+        return payload?.Groups ?? new List<YearBreakdownGroup>();
+    }
+
+    private sealed class YearBreakdownResponse
+    {
+        public List<YearBreakdownGroup> Groups { get; set; } = new();
+    }
+
     public async Task<TimelinePageResult> GetTimelinePageAsync(DateTime? cursor = null, int pageSize = 150)
     {
         var url = $"/api/assets/timeline?pageSize={pageSize}";

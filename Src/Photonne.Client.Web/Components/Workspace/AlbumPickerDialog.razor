@@ -1,0 +1,98 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAlbumsService AlbumsService
+
+@* Picker de álbum para "Añadir a álbum": lista los álbumes escribibles (los
+   smart quedan fuera: su contenido lo decide la regla) y permite crear uno
+   nuevo inline. Devuelve el AlbumSummary elegido como DialogResult. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Añadir @AssetCount elementos a un álbum</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_albums == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <div class="apd-list">
+                @foreach (var album in _albums.Where(a => a.AcceptsAssets))
+                {
+                    <div class="apd-item @(_selected?.Id == album.Id ? "selected" : "")"
+                         @onclick="() => _selected = album">
+                        @if (!string.IsNullOrEmpty(album.CoverThumbnailUrl))
+                        {
+                            <img src="@album.CoverThumbnailUrl" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Outlined.PhotoAlbum" Class="apd-placeholder" />
+                        }
+                        <div class="apd-meta">
+                            <span class="apd-name">@album.Name</span>
+                            <span class="apd-count">@album.AssetCount elementos</span>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="d-flex align-center gap-2 mt-3">
+                <MudTextField @bind-Value="_newAlbumName"
+                              Placeholder="Nuevo álbum…"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="flex-1" />
+                <MudButton OnClick="CreateAlbum"
+                           Disabled="string.IsNullOrWhiteSpace(_newAlbumName) || _creating">
+                    Crear
+                </MudButton>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancelar</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="_selected == null"
+                   OnClick="() => MudDialog.Close(DialogResult.Ok(_selected))">
+            Añadir
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public int AssetCount { get; set; }
+
+    private List<AlbumSummary>? _albums;
+    private AlbumSummary? _selected;
+    private string _newAlbumName = string.Empty;
+    private bool _creating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _albums = await AlbumsService.GetAlbumsAsync();
+    }
+
+    private async Task CreateAlbum()
+    {
+        if (string.IsNullOrWhiteSpace(_newAlbumName) || _albums == null) return;
+        _creating = true;
+        try
+        {
+            var created = await AlbumsService.CreateAlbumAsync(_newAlbumName.Trim());
+            if (created != null)
+            {
+                created.CanWrite = true;
+                _albums.Insert(0, created);
+                _selected = created;
+                _newAlbumName = string.Empty;
+            }
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+}

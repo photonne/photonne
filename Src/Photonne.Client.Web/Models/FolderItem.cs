@@ -14,6 +14,7 @@ public class FolderItem
     public List<Guid> PreviewAssetIds { get; set; } = new();
     public bool IsShared { get; set; }
     public bool IsOwner { get; set; }
+    public bool CanWrite { get; set; }
     public int SharedWithCount { get; set; }
     public Guid? ExternalLibraryId { get; set; }
     public List<FolderItem> SubFolders { get; set; } = new();

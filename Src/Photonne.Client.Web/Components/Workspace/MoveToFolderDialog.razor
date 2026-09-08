@@ -1,0 +1,123 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IFolderService FolderService
+@inject IAssetService AssetService
+
+@* Diálogo de "Mover a carpeta": árbol propio del usuario (canWrite), toggle
+   de organizar por año con el desglose previo del servidor, y devuelve
+   (targetFolderId, organizeByCaptureYear) como DialogResult. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Mover @AssetIds.Count elementos a…</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_folders == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (_folders.Count == 0)
+        {
+            <MudText Typo="Typo.body2">No tienes carpetas con permiso de escritura.</MudText>
+        }
+        else
+        {
+            <div class="mtf-tree">
+                @foreach (var root in _folders)
+                {
+                    @RenderNode(root, 0)
+                }
+            </div>
+            <MudSwitch T="bool" @bind-Value="_byYear" Color="Color.Primary" Class="mt-3"
+                       Label="Organizar en subcarpetas por año" />
+            @if (_byYear && _yearBreakdown != null)
+            {
+                <MudText Typo="Typo.caption" Class="mt-1">
+                    Se repartirán en: @string.Join(", ", _yearBreakdown.Select(g => $"{g.Year} ({g.Count})"))
+                </MudText>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancelar</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="_selectedId == null"
+                   OnClick="Confirm">
+            Mover aquí
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public IReadOnlyCollection<Guid> AssetIds { get; set; } = Array.Empty<Guid>();
+
+    public sealed record Result(Guid TargetFolderId, bool OrganizeByCaptureYear);
+    private sealed record YearGroup(int Year, int Count);
+
+    private List<FolderItem>? _folders;
+    private Guid? _selectedId;
+    private bool _byYear;
+    private List<YearGroup>? _yearBreakdown;
+    private readonly HashSet<Guid> _expanded = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Árbol del propio usuario: los destinos válidos para mover.
+        _folders = await FolderService.GetMyFolderTreeAsync();
+        // Expandir el primer nivel por defecto.
+        foreach (var f in _folders) _expanded.Add(f.Id);
+
+        var breakdown = await AssetService.GetYearBreakdownAsync(AssetIds);
+        _yearBreakdown = breakdown
+            .Select(g => new YearGroup(g.Year, g.AssetIds.Count))
+            .OrderByDescending(g => g.Year)
+            .ToList();
+    }
+
+    private RenderFragment RenderNode(FolderItem folder, int depth) => __builder =>
+    {
+        var hasChildren = folder.SubFolders.Count > 0;
+        var expanded = _expanded.Contains(folder.Id);
+        <div class="mtf-node @(_selectedId == folder.Id ? "selected" : "")"
+             style="padding-left:@(depth * 20)px"
+             @onclick="() => _selectedId = folder.Id">
+            @if (hasChildren)
+            {
+                <span @onclick:stopPropagation="true">
+                    <MudIconButton Icon="@(expanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                                   Size="Size.Small"
+                                   OnClick="() => ToggleExpand(folder.Id)" />
+                </span>
+            }
+            else
+            {
+                <span class="mtf-spacer"></span>
+            }
+            <MudIcon Icon="@Icons.Material.Outlined.Folder" Size="Size.Small" Class="mr-2" />
+            <span class="mtf-name">@folder.Name</span>
+            <span class="mtf-count">@folder.AssetCount</span>
+        </div>
+        @if (hasChildren && expanded)
+        {
+            foreach (var child in folder.SubFolders)
+            {
+                @RenderNode(child, depth + 1)
+            }
+        }
+    };
+
+    private void ToggleExpand(Guid id)
+    {
+        if (!_expanded.Add(id)) _expanded.Remove(id);
+    }
+
+    private void Confirm()
+    {
+        if (_selectedId.HasValue)
+        {
+            MudDialog.Close(DialogResult.Ok(new Result(_selectedId.Value, _byYear)));
+        }
+    }
+}

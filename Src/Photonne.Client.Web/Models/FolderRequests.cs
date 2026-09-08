@@ -18,6 +18,8 @@ public class MoveFolderAssetsRequest
     public Guid? SourceFolderId { get; set; }
     public Guid TargetFolderId { get; set; }
     public List<Guid> AssetIds { get; set; } = new();
+    // Crea/reutiliza subcarpetas por año de captura bajo el destino.
+    public bool OrganizeByCaptureYear { get; set; }
 }
 
 public class RemoveFolderAssetsRequest

@@ -93,7 +93,8 @@
     private sealed class Section
     {
         public required string Key { get; init; }
-        public required int Count { get; init; }
+        // Mutable: papelera/archivar cambian el contenido real del mes.
+        public required int Count { get; set; }
         public double ContentHeight { get; set; }
         public List<TimelineItem>? Items { get; set; }
         public JustifiedLayout.Result? Layout { get; set; }
@@ -154,6 +155,7 @@
             var removed = section.Items.RemoveAll(i => idSet.Contains(i.Id));
             if (removed > 0)
             {
+                section.Count = section.Items.Count;
                 _idsBySection[section.Key] = section.Items.Select(i => i.Id).ToList();
                 RecomputeLayout(section);
             }
@@ -171,6 +173,24 @@
             if (idSet.Contains(item.Id)) mutate(item);
         }
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Vacía y vuelve a pedir meses concretos — el "Deshacer" de papelera y
+    /// archivar restaura en servidor y rehidrata aquí.
+    /// </summary>
+    public async Task RehydrateMonthsAsync(IEnumerable<string> monthKeys)
+    {
+        if (_sections == null) return;
+        foreach (var key in monthKeys.Distinct().ToList())
+        {
+            var section = _sections.FirstOrDefault(s => s.Key == key);
+            if (section == null) continue;
+            section.Items = null;
+            section.Layout = null;
+            _idsBySection.Remove(key);
+            await OnBucketApproaching(key);
+        }
     }
 
     /// <summary>Items hidratados seleccionables de un conjunto de ids.</summary>
@@ -244,6 +264,7 @@
 
         var oldHeight = section.ContentHeight;
         section.Items = items;
+        section.Count = items.Count;
         _idsBySection[section.Key] = items.Select(i => i.Id).ToList();
         RecomputeLayout(section);
         section.Hydrating = false;

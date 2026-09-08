@@ -1,0 +1,39 @@
+.mtf-tree {
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.mtf-node {
+    display: flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.mtf-node:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.mtf-node.selected {
+    background: var(--mud-palette-primary-hover);
+    outline: 1px solid var(--mud-palette-primary);
+}
+
+.mtf-spacer {
+    display: inline-block;
+    width: 30px;
+}
+
+.mtf-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mtf-count {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+    margin-left: 8px;
+}

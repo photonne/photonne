@@ -1,0 +1,52 @@
+.apd-list {
+    max-height: 42vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.apd-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.apd-item:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.apd-item.selected {
+    background: var(--mud-palette-primary-hover);
+    outline: 1px solid var(--mud-palette-primary);
+}
+
+.apd-item img,
+.apd-placeholder {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.apd-meta {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.apd-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.apd-count {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+}

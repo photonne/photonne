@@ -9,6 +9,8 @@ public interface IAssetService
     Task<List<TimelineBucket>> GetTimelineBucketsAsync(CancellationToken cancellationToken = default);
     /// <summary>Contenido completo de un mes ("yyyy-MM"), orden capturedAt desc.</summary>
     Task<List<TimelineItem>> GetBucketItemsAsync(string yearMonth, CancellationToken cancellationToken = default);
+    /// <summary>Desglose por año de captura de un lote (previa de "organizar por año").</summary>
+    Task<List<YearBreakdownGroup>> GetYearBreakdownAsync(IReadOnlyCollection<Guid> assetIds);
     Task<TimelinePageResult> GetTimelineSectionAsync(DateTime from, DateTime to, int pageSize = 500, CancellationToken cancellationToken = default);
     Task<List<TimelineIndexItem>> GetTimelineIndexAsync();
     Task<List<TimelineItem>> GetDeviceAssetsAsync();
