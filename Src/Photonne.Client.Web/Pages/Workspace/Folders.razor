@@ -1,0 +1,202 @@
+@page "/carpetas"
+@page "/carpetas/{FolderId:guid}"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IFolderService FolderService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Carpetas - Photonne</PageTitle>
+
+<div class="folders-layout">
+    <aside class="folders-tree pa-3">
+        <div class="d-flex align-center mb-2">
+            <MudText Typo="Typo.subtitle1">Carpetas</MudText>
+            <MudSpacer />
+            <MudTooltip Text="Nueva carpeta">
+                <MudIconButton Icon="@Icons.Material.Outlined.CreateNewFolder" Size="Size.Small"
+                               OnClick="CreateFolderAsync" />
+            </MudTooltip>
+        </div>
+        @if (_tree == null)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <FolderTree Folders="_tree"
+                        SelectedId="FolderId"
+                        OnSelect="OpenFolder" />
+        }
+    </aside>
+
+    <section class="folders-content pa-4">
+        @if (FolderId == null)
+        {
+            <EmptyState Icon="@Icons.Material.Outlined.Folder"
+                        Title="Elige una carpeta"
+                        Description="Selecciona una carpeta del árbol para ver su contenido." />
+        }
+        else if (_current != null)
+        {
+            <div class="d-flex align-center mb-1 gap-2">
+                <div class="flex-1">
+                    <MudText Typo="Typo.h5">@_current.Name</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@_current.Path</MudText>
+                </div>
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    @if (_current.CanWrite)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="EditFolderAsync">Renombrar / mover</MudMenuItem>
+                    }
+                    @if (_current.IsOwner || _current.IsShared)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Outlined.PersonAdd" OnClick="ShareAsync">Compartir…</MudMenuItem>
+                    }
+                    @if (_current.CanWrite)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="DeleteFolderAsync">Eliminar carpeta</MudMenuItem>
+                    }
+                </MudMenu>
+            </div>
+
+            <WorkspaceCollection @ref="_collection"
+                                 @key="FolderId"
+                                 Source="LoadPage"
+                                 EmptyIcon="@Icons.Material.Outlined.Folder"
+                                 EmptyTitle="Carpeta vacía">
+                <ExtraActions>
+                    @if (_current.CanWrite)
+                    {
+                        <MudTooltip Text="Quitar de la carpeta (sin borrar)">
+                            <MudIconButton Icon="@Icons.Material.Outlined.RemoveCircleOutline" Size="Size.Small"
+                                           OnClick="RemoveFromFolderAsync" />
+                        </MudTooltip>
+                    }
+                </ExtraActions>
+            </WorkspaceCollection>
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter] public Guid? FolderId { get; set; }
+
+    private List<FolderItem>? _tree;
+    private FolderItem? _current;
+    private WorkspaceCollection? _collection;
+
+    private void OpenFolder(FolderItem folder) =>
+        Navigation.NavigateTo($"/carpetas/{folder.Id}");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tree = await FolderService.GetFolderTreeAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _current = FolderId.HasValue ? await FolderService.GetFolderByIdAsync(FolderId.Value) : null;
+    }
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        if (FolderId == null) return new WorkspaceCollection.CollectionPage(new List<TimelineItem>(), false, null);
+        var items = await FolderService.GetFolderAssetsAsync(FolderId.Value);
+        return new WorkspaceCollection.CollectionPage(items, false, null);
+    }
+
+    private async Task RefreshTreeAsync()
+    {
+        _tree = await FolderService.GetFolderTreeAsync();
+        StateHasChanged();
+    }
+
+    private async Task CreateFolderAsync()
+    {
+        var parameters = new DialogParameters<FolderEditDialog>
+        {
+            { d => d.InitialParentId, FolderId }
+        };
+        var dialog = await DialogService.ShowAsync<FolderEditDialog>("Nueva carpeta", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && result.Data is FolderEditDialog.Result data)
+        {
+            var created = await FolderService.CreateFolderAsync(new CreateFolderRequest
+            {
+                Name = data.Name,
+                ParentFolderId = data.ParentFolderId
+            });
+            await RefreshTreeAsync();
+            Navigation.NavigateTo($"/carpetas/{created.Id}");
+        }
+    }
+
+    private async Task EditFolderAsync()
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<FolderEditDialog>
+        {
+            { d => d.Folder, _current }
+        };
+        var dialog = await DialogService.ShowAsync<FolderEditDialog>("Editar carpeta", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && result.Data is FolderEditDialog.Result data)
+        {
+            await FolderService.UpdateFolderAsync(_current.Id, new UpdateFolderRequest
+            {
+                Name = data.Name,
+                ParentFolderId = data.ParentFolderId
+            });
+            await RefreshTreeAsync();
+            _current = await FolderService.GetFolderByIdAsync(_current.Id);
+            Snackbar.Add("Carpeta actualizada", Severity.Success);
+        }
+    }
+
+    private async Task DeleteFolderAsync()
+    {
+        if (_current == null) return;
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar carpeta",
+            $"«{_current.Name}» y todo su contenido irán a la papelera. ¿Continuar?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+        if (confirmed != true) return;
+        await FolderService.DeleteFolderAsync(_current.Id);
+        await RefreshTreeAsync();
+        Navigation.NavigateTo("/carpetas");
+        Snackbar.Add("Carpeta enviada a la papelera", Severity.Success);
+    }
+
+    private async Task ShareAsync()
+    {
+        if (_current == null) return;
+        var parameters = new DialogParameters<SharePermissionsDialog>
+        {
+            { d => d.Kind, "folders" },
+            { d => d.TargetId, _current.Id },
+            { d => d.TargetName, _current.Name }
+        };
+        var dialog = await DialogService.ShowAsync<SharePermissionsDialog>("Compartir", parameters);
+        await dialog.Result;
+        _current = await FolderService.GetFolderByIdAsync(_current.Id);
+    }
+
+    private async Task RemoveFromFolderAsync()
+    {
+        if (_collection == null || _current == null || !_collection.Selection.IsActive) return;
+        var ids = _collection.Selection.Selected.ToList();
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await FolderService.RemoveFolderAssetsAsync(new RemoveFolderAssetsRequest
+            {
+                FolderId = _current.Id,
+                AssetIds = ids
+            });
+            _collection.RemoveFromView(ids);
+            Snackbar.Add($"{ids.Count} quitadas de la carpeta", Severity.Success);
+        });
+    }
+}

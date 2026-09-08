@@ -3,9 +3,9 @@
 @inject IFolderService FolderService
 @inject IAssetService AssetService
 
-@* Diálogo de "Mover a carpeta": árbol propio del usuario (canWrite), toggle
-   de organizar por año con el desglose previo del servidor, y devuelve
-   (targetFolderId, organizeByCaptureYear) como DialogResult. *@
+@* Diálogo de "Mover a carpeta": árbol propio del usuario (FolderTree
+   compartido), toggle de organizar por año con el desglose previo del
+   servidor, y devuelve (targetFolderId, organizeByCaptureYear). *@
 
 <MudDialog>
     <TitleContent>
@@ -22,11 +22,10 @@
         }
         else
         {
-            <div class="mtf-tree">
-                @foreach (var root in _folders)
-                {
-                    @RenderNode(root, 0)
-                }
+            <div style="max-height:45vh;overflow-y:auto">
+                <FolderTree Folders="_folders"
+                            SelectedId="_selectedId"
+                            OnSelect="folder => _selectedId = folder.Id" />
             </div>
             <MudSwitch T="bool" @bind-Value="_byYear" Color="Color.Primary" Class="mt-3"
                        Label="Organizar en subcarpetas por año" />
@@ -60,57 +59,17 @@
     private Guid? _selectedId;
     private bool _byYear;
     private List<YearGroup>? _yearBreakdown;
-    private readonly HashSet<Guid> _expanded = new();
 
     protected override async Task OnInitializedAsync()
     {
         // Árbol del propio usuario: los destinos válidos para mover.
         _folders = await FolderService.GetMyFolderTreeAsync();
-        // Expandir el primer nivel por defecto.
-        foreach (var f in _folders) _expanded.Add(f.Id);
 
         var breakdown = await AssetService.GetYearBreakdownAsync(AssetIds);
         _yearBreakdown = breakdown
             .Select(g => new YearGroup(g.Year, g.AssetIds.Count))
             .OrderByDescending(g => g.Year)
             .ToList();
-    }
-
-    private RenderFragment RenderNode(FolderItem folder, int depth) => __builder =>
-    {
-        var hasChildren = folder.SubFolders.Count > 0;
-        var expanded = _expanded.Contains(folder.Id);
-        <div class="mtf-node @(_selectedId == folder.Id ? "selected" : "")"
-             style="padding-left:@(depth * 20)px"
-             @onclick="() => _selectedId = folder.Id">
-            @if (hasChildren)
-            {
-                <span @onclick:stopPropagation="true">
-                    <MudIconButton Icon="@(expanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
-                                   Size="Size.Small"
-                                   OnClick="() => ToggleExpand(folder.Id)" />
-                </span>
-            }
-            else
-            {
-                <span class="mtf-spacer"></span>
-            }
-            <MudIcon Icon="@Icons.Material.Outlined.Folder" Size="Size.Small" Class="mr-2" />
-            <span class="mtf-name">@folder.Name</span>
-            <span class="mtf-count">@folder.AssetCount</span>
-        </div>
-        @if (hasChildren && expanded)
-        {
-            foreach (var child in folder.SubFolders)
-            {
-                @RenderNode(child, depth + 1)
-            }
-        }
-    };
-
-    private void ToggleExpand(Guid id)
-    {
-        if (!_expanded.Add(id)) _expanded.Remove(id);
     }
 
     private void Confirm()

@@ -1,0 +1,87 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IFolderService FolderService
+
+@* Crear o editar (renombrar/mover) una carpeta. Para mover, el destino se
+   elige en el árbol; "(raíz)" = sin padre. Al editar, la propia carpeta y su
+   subárbol quedan excluidos como destino. Devuelve (name, parentFolderId). *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar carpeta" : "Nueva carpeta")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nombre" Variant="Variant.Outlined"
+                      Margin="Margin.Dense" AutoFocus="true" />
+        <MudText Typo="Typo.overline" Class="mt-3">Ubicación</MudText>
+        <div class="d-flex align-center gap-2 mb-1">
+            <MudCheckBox T="bool" @bind-Value="_atRoot" Dense="true" Label="En la raíz" />
+        </div>
+        @if (!_atRoot)
+        {
+            @if (_folders == null)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else
+            {
+                <div style="max-height:35vh;overflow-y:auto">
+                    <FolderTree Folders="_folders"
+                                SelectedId="_parentId"
+                                ExcludeIds="_excluded"
+                                OnSelect="folder => _parentId = folder.Id" />
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="string.IsNullOrWhiteSpace(_name) || (!_atRoot && _parentId == null)"
+                   OnClick="Confirm">
+            Guardar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    /// <summary>Carpeta a editar; null = crear.</summary>
+    [Parameter] public FolderItem? Folder { get; set; }
+    /// <summary>Padre inicial al crear (carpeta seleccionada en la página).</summary>
+    [Parameter] public Guid? InitialParentId { get; set; }
+
+    public sealed record Result(string Name, Guid? ParentFolderId);
+
+    private bool IsEdit => Folder != null;
+    private string _name = string.Empty;
+    private Guid? _parentId;
+    private bool _atRoot;
+    private List<FolderItem>? _folders;
+    private HashSet<Guid>? _excluded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _name = Folder?.Name ?? string.Empty;
+        _parentId = Folder?.ParentFolderId ?? InitialParentId;
+        _atRoot = _parentId == null;
+        _folders = await FolderService.GetMyFolderTreeAsync();
+        if (Folder != null)
+        {
+            // Una carpeta no puede moverse dentro de sí misma.
+            _excluded = new HashSet<Guid>();
+            CollectSubtree(Folder, _excluded);
+        }
+    }
+
+    private static void CollectSubtree(FolderItem folder, HashSet<Guid> into)
+    {
+        into.Add(folder.Id);
+        foreach (var child in folder.SubFolders) CollectSubtree(child, into);
+    }
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(new Result(_name.Trim(), _atRoot ? null : _parentId)));
+    }
+}

@@ -1,9 +1,8 @@
-.mtf-tree {
-    max-height: 45vh;
+.ftree {
     overflow-y: auto;
 }
 
-.mtf-node {
+.ftree-node {
     display: flex;
     align-items: center;
     padding: 2px 8px;
@@ -11,28 +10,33 @@
     cursor: pointer;
 }
 
-.mtf-node:hover {
+.ftree-node:hover {
     background: var(--mud-palette-action-default-hover);
 }
 
-.mtf-node.selected {
+.ftree-node.selected {
     background: var(--mud-palette-primary-hover);
     outline: 1px solid var(--mud-palette-primary);
 }
 
-.mtf-spacer {
+.ftree-node.disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.ftree-spacer {
     display: inline-block;
     width: 30px;
 }
 
-.mtf-name {
+.ftree-name {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.mtf-count {
+.ftree-count {
     font-size: 0.75rem;
     color: var(--mud-palette-text-secondary);
     margin-left: 8px;

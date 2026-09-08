@@ -1,0 +1,80 @@
+@using Photonne.Client.Web.Models
+
+@* Árbol de carpetas recursivo compartido (diálogo de mover, página de
+   Carpetas, selector de destino al editar carpeta). Expansión local, selección
+   de una carpeta, y filtro opcional canWrite. *@
+
+<div class="ftree">
+    @foreach (var root in Folders)
+    {
+        @RenderNode(root, 0)
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<FolderItem> Folders { get; set; } = new();
+    [Parameter] public Guid? SelectedId { get; set; }
+    [Parameter] public EventCallback<FolderItem> OnSelect { get; set; }
+    /// <summary>Atenúa (y no deja seleccionar) las carpetas sin permiso de escritura.</summary>
+    [Parameter] public bool WritableOnly { get; set; }
+    /// <summary>Ids a excluir del árbol (p. ej. la carpeta que se está moviendo y su subárbol).</summary>
+    [Parameter] public HashSet<Guid>? ExcludeIds { get; set; }
+
+    private readonly HashSet<Guid> _expanded = new();
+    private bool _initialized;
+
+    protected override void OnParametersSet()
+    {
+        if (!_initialized && Folders.Count > 0)
+        {
+            _initialized = true;
+            foreach (var folder in Folders) _expanded.Add(folder.Id);
+        }
+    }
+
+    private RenderFragment RenderNode(FolderItem folder, int depth) => __builder =>
+    {
+        if (ExcludeIds != null && ExcludeIds.Contains(folder.Id)) return;
+        var children = ExcludeIds == null
+            ? folder.SubFolders
+            : folder.SubFolders.Where(f => !ExcludeIds.Contains(f.Id)).ToList();
+        var hasChildren = children.Count > 0;
+        var expanded = _expanded.Contains(folder.Id);
+        var selectable = !WritableOnly || folder.CanWrite;
+        <div class="ftree-node @(SelectedId == folder.Id ? "selected" : "") @(selectable ? "" : "disabled")"
+             style="padding-left:@(depth * 18)px"
+             @onclick="() => SelectAsync(folder, selectable)">
+            @if (hasChildren)
+            {
+                <span @onclick:stopPropagation="true">
+                    <MudIconButton Icon="@(expanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                                   Size="Size.Small"
+                                   OnClick="() => ToggleExpand(folder.Id)" />
+                </span>
+            }
+            else
+            {
+                <span class="ftree-spacer"></span>
+            }
+            <MudIcon Icon="@(folder.IsShared ? Icons.Material.Outlined.FolderShared : Icons.Material.Outlined.Folder)"
+                     Size="Size.Small" Class="mr-2" />
+            <span class="ftree-name">@folder.Name</span>
+            <span class="ftree-count">@folder.AssetCount</span>
+        </div>
+        @if (hasChildren && expanded)
+        {
+            foreach (var child in children)
+            {
+                @RenderNode(child, depth + 1)
+            }
+        }
+    };
+
+    private Task SelectAsync(FolderItem folder, bool selectable) =>
+        selectable ? OnSelect.InvokeAsync(folder) : Task.CompletedTask;
+
+    private void ToggleExpand(Guid id)
+    {
+        if (!_expanded.Add(id)) _expanded.Remove(id);
+    }
+}

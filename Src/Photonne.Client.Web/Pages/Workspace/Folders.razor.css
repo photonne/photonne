@@ -1,0 +1,30 @@
+.folders-layout {
+    display: flex;
+    min-height: calc(100vh - 64px);
+    align-items: stretch;
+}
+
+.folders-tree {
+    width: 300px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--mud-palette-lines-default);
+    overflow-y: auto;
+}
+
+.folders-content {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .folders-layout {
+        flex-direction: column;
+    }
+
+    .folders-tree {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        max-height: 40vh;
+    }
+}
