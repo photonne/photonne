@@ -1,0 +1,167 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject IJSRuntime JS
+
+@* Visor overlay del workspace: se monta sobre la rejilla (sin navegación de
+   ruta, así el scroll no se pierde). Imagen = thumbnail Large (1280px, rápida
+   y cacheada; el original queda a un clic), vídeo = <video> nativo sobre
+   /content (range OK), Live Photo = still que cobra vida al mantener el ratón
+   encima. ←/→ navegan el orden visible, Escape cierra. *@
+
+<div class="asset-viewer" tabindex="0" @ref="_root" @onkeydown="HandleKey">
+    <div class="av-backdrop" @onclick="() => OnClose.InvokeAsync()"></div>
+
+    <div class="av-stage">
+        @if (Current.IsVideo)
+        {
+            <video key="@Current.Id" src="@Current.ContentUrl" controls autoplay playsinline
+                   class="av-media"></video>
+        }
+        else if (Current.IsLivePhoto)
+        {
+            <div class="av-live @(_livePlaying ? "playing" : "")"
+                 @onmouseenter="() => _livePlaying = true"
+                 @onmouseleave="() => _livePlaying = false">
+                <img src="@LargeUrl(Current)" alt="@Current.FileName" class="av-media" />
+                @if (_livePlaying)
+                {
+                    <video src="@MotionUrl(Current)" autoplay loop muted playsinline
+                           class="av-media av-live-video"
+                           @onerror="() => _livePlaying = false"></video>
+                }
+                <span class="av-live-hint">LIVE · mantén el cursor para reproducir</span>
+            </div>
+        }
+        else
+        {
+            <img key="@Current.Id" src="@LargeUrl(Current)" alt="@Current.FileName" class="av-media" />
+        }
+    </div>
+
+    @if (_index > 0)
+    {
+        <button type="button" class="av-nav av-prev" aria-label="Anterior" @onclick="() => Step(-1)">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Large" />
+        </button>
+    }
+    @if (_index < Items.Count - 1)
+    {
+        <button type="button" class="av-nav av-next" aria-label="Siguiente" @onclick="() => Step(1)">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Large" />
+        </button>
+    }
+
+    <div class="av-topbar">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Style="color:#fff"
+                       OnClick="() => OnClose.InvokeAsync()" aria-label="Cerrar" />
+        <div class="av-title">
+            <span class="av-filename">@Current.FileName</span>
+            <span class="av-date">@Current.FileCreatedAt.ToString("d 'de' MMMM 'de' yyyy, HH:mm", new System.Globalization.CultureInfo("es-ES"))</span>
+        </div>
+        <div class="av-actions">
+            <MudIconButton Icon="@(Current.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                           Style="@(Current.IsFavorite ? "color:#ff5d8f" : "color:#fff")"
+                           OnClick="ToggleFavoriteAsync" aria-label="Favorito" />
+            <MudIconButton Icon="@Icons.Material.Outlined.Download" Style="color:#fff"
+                           OnClick="DownloadAsync" aria-label="Descargar original" />
+            @TopbarExtras
+        </div>
+    </div>
+
+    <div class="av-counter">@(_index + 1) / @Items.Count</div>
+
+    @BodyExtras
+
+    @* Precarga silenciosa de los vecinos para que ←/→ sea instantáneo. *@
+    <div class="av-preload" aria-hidden="true">
+        @if (_index > 0 && !Items[_index - 1].IsVideo)
+        {
+            <img src="@LargeUrl(Items[_index - 1])" alt="" />
+        }
+        @if (_index < Items.Count - 1 && !Items[_index + 1].IsVideo)
+        {
+            <img src="@LargeUrl(Items[_index + 1])" alt="" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TimelineItem> Items { get; set; } = null!;
+    [Parameter, EditorRequired] public TimelineItem Initial { get; set; } = null!;
+    [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Se dispara al mutar un asset (favorito) para que la rejilla repinte.</summary>
+    [Parameter] public EventCallback<TimelineItem> OnItemChanged { get; set; }
+    /// <summary>Se dispara al cambiar de asset con ←/→ (el panel de info lo sigue).</summary>
+    [Parameter] public EventCallback<TimelineItem> OnCurrentChanged { get; set; }
+    [Parameter] public RenderFragment? TopbarExtras { get; set; }
+    [Parameter] public RenderFragment? BodyExtras { get; set; }
+
+    private ElementReference _root;
+    private int _index;
+    private bool _livePlaying;
+
+    private TimelineItem Current => Items[Math.Clamp(_index, 0, Items.Count - 1)];
+
+    protected override void OnInitialized()
+    {
+        var idx = -1;
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (Items[i].Id == Initial.Id) { idx = i; break; }
+        }
+        _index = idx >= 0 ? idx : 0;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _root.FocusAsync();
+        }
+    }
+
+    private async Task HandleKey(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape":
+                await OnClose.InvokeAsync();
+                break;
+            case "ArrowLeft":
+                await Step(-1);
+                break;
+            case "ArrowRight":
+                await Step(1);
+                break;
+        }
+    }
+
+    private async Task Step(int delta)
+    {
+        var next = _index + delta;
+        if (next < 0 || next >= Items.Count) return;
+        _index = next;
+        _livePlaying = false;
+        await OnCurrentChanged.InvokeAsync(Current);
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        var item = Current;
+        var isFavorite = await AssetService.ToggleFavoriteAsync(item.Id);
+        item.IsFavorite = isFavorite;
+        await OnItemChanged.InvokeAsync(item);
+    }
+
+    private async Task DownloadAsync()
+    {
+        await JS.InvokeVoidAsync("downloadAsset", $"{Current.ContentUrl}?download=true", Current.FileName);
+    }
+
+    private static string LargeUrl(TimelineItem item) =>
+        $"{ApiConfig.BaseUrl}/api/assets/{item.Id}/thumbnail?size=Large";
+
+    private static string MotionUrl(TimelineItem item) =>
+        $"{ApiConfig.BaseUrl}/api/assets/{item.Id}/motion";
+}

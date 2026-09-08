@@ -17,6 +17,14 @@
 
 <PhotoGrid @ref="_grid" Selection="_selection" OnItemClick="OpenViewer" />
 
+@if (_viewerItem != null && _grid != null)
+{
+    <AssetViewer Items="_viewerItems"
+                 Initial="_viewerItem"
+                 OnClose="CloseViewer"
+                 OnItemChanged="HandleViewerItemChanged" />
+}
+
 <SelectionBar Selection="_selection">
     <Actions>
         <MudTooltip Text="Favorito">
@@ -54,10 +62,27 @@
 
     private List<Guid> SelectedIds => _selection.Selected.ToList();
 
+    private TimelineItem? _viewerItem;
+    private IReadOnlyList<TimelineItem> _viewerItems = Array.Empty<TimelineItem>();
+
     private Task OpenViewer(TimelineItem item)
     {
-        // El visor llega en el commit siguiente del núcleo.
+        // Snapshot del orden visible al abrir: navegar dentro del visor no
+        // depende de hidrataciones posteriores de la rejilla.
+        _viewerItems = _grid?.VisibleItems ?? Array.Empty<TimelineItem>();
+        _viewerItem = item;
         return Task.CompletedTask;
+    }
+
+    private void CloseViewer()
+    {
+        _viewerItem = null;
+        _viewerItems = Array.Empty<TimelineItem>();
+    }
+
+    private void HandleViewerItemChanged(TimelineItem item)
+    {
+        _grid?.UpdateAssets(new[] { item.Id }, i => i.IsFavorite = item.IsFavorite);
     }
 
     /// <summary>Meses ("yyyy-MM") a los que pertenecen los ids, para rehidratar tras Deshacer.</summary>

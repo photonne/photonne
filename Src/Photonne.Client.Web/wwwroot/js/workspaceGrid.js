@@ -24,8 +24,11 @@ window.workspaceGrid = (() => {
                 dotnetRef,
                 observed: new WeakSet(),
                 // Escape limpia la selección (solo mientras la rejilla vive).
+                // Con el visor abierto no: su propio onkeydown lo cierra.
                 keyHandler: e => {
-                    if (e.key === 'Escape') dotnetRef.invokeMethodAsync('OnEscapePressed');
+                    if (e.key === 'Escape' && !document.querySelector('.asset-viewer')) {
+                        dotnetRef.invokeMethodAsync('OnEscapePressed');
+                    }
                 },
                 // Pintado con ratón: arrastrar desde una celda selecciona (o
                 // deselecciona, según el estado de la celda inicial — lo
