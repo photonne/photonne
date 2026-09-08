@@ -22,7 +22,22 @@
     <AssetViewer Items="_viewerItems"
                  Initial="_viewerItem"
                  OnClose="CloseViewer"
-                 OnItemChanged="HandleViewerItemChanged" />
+                 OnItemChanged="HandleViewerItemChanged"
+                 OnCurrentChanged="item => _viewerCurrent = item">
+        <TopbarExtras>
+            <MudIconButton Icon="@(_infoOpen ? Icons.Material.Filled.Info : Icons.Material.Outlined.Info)"
+                           Style="color:#fff"
+                           OnClick="() => _infoOpen = !_infoOpen"
+                           aria-label="Información" />
+        </TopbarExtras>
+        <BodyExtras>
+            @if (_infoOpen)
+            {
+                <AssetInfoPanel AssetId="(_viewerCurrent ?? _viewerItem).Id"
+                                OnDateChanged="HandleDateChanged" />
+            }
+        </BodyExtras>
+    </AssetViewer>
 }
 
 <SelectionBar Selection="_selection">
@@ -63,6 +78,8 @@
     private List<Guid> SelectedIds => _selection.Selected.ToList();
 
     private TimelineItem? _viewerItem;
+    private TimelineItem? _viewerCurrent;
+    private bool _infoOpen;
     private IReadOnlyList<TimelineItem> _viewerItems = Array.Empty<TimelineItem>();
 
     private Task OpenViewer(TimelineItem item)
@@ -71,13 +88,26 @@
         // depende de hidrataciones posteriores de la rejilla.
         _viewerItems = _grid?.VisibleItems ?? Array.Empty<TimelineItem>();
         _viewerItem = item;
+        _viewerCurrent = item;
         return Task.CompletedTask;
     }
 
     private void CloseViewer()
     {
         _viewerItem = null;
+        _viewerCurrent = null;
         _viewerItems = Array.Empty<TimelineItem>();
+    }
+
+    private async Task HandleDateChanged()
+    {
+        // La fecha mueve el asset de sitio en el timeline: rehidratar su mes
+        // (el destino se recogerá en la siguiente hidratación natural).
+        var current = _viewerCurrent ?? _viewerItem;
+        if (_grid != null && current != null)
+        {
+            await _grid.RehydrateMonthsAsync(new[] { current.FileCreatedAt.ToString("yyyy-MM") });
+        }
     }
 
     private void HandleViewerItemChanged(TimelineItem item)

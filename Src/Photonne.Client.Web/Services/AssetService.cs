@@ -173,6 +173,8 @@ public class AssetService : IAssetService
                 AssetId = t.AssetId
             }).ToList(),
             Tags = response.Tags,
+            UserTags = response.UserTags,
+            AutoTags = response.AutoTags,
             SyncStatus = response.SyncStatus,
             IsFavorite = response.IsFavorite,
             IsArchived = response.IsArchived,

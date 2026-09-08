@@ -19,6 +19,8 @@ public class AssetDetailResponse
     public ExifDataResponse? Exif { get; set; }
     public List<ThumbnailInfoResponse> Thumbnails { get; set; } = new();
     public List<string> Tags { get; set; } = new();
+    public List<string> UserTags { get; set; } = new();
+    public List<string> AutoTags { get; set; } = new();
     public AssetSyncStatus SyncStatus { get; set; } = AssetSyncStatus.Synced;
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }

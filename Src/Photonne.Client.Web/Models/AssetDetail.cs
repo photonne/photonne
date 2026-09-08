@@ -19,6 +19,9 @@ public class AssetDetail
     public ExifData? Exif { get; set; }
     public List<ThumbnailInfo> Thumbnails { get; set; } = new();
     public List<string> Tags { get; set; } = new();
+    // Separados: los de usuario se editan, los automáticos (ML) solo se leen.
+    public List<string> UserTags { get; set; } = new();
+    public List<string> AutoTags { get; set; } = new();
     public AssetSyncStatus SyncStatus { get; set; } = AssetSyncStatus.Pending;
     public bool IsFavorite { get; set; }
     public bool IsArchived { get; set; }

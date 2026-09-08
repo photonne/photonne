@@ -1,0 +1,222 @@
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IAssetService AssetService
+@inject ISnackbar Snackbar
+
+@* Panel lateral de información del visor: EXIF, carpeta, descripción y fecha
+   editables, y tags de usuario (añadir/quitar; los automáticos solo lectura).
+   Se recarga al cambiar AssetId (navegación ←/→ del visor). *@
+
+<aside class="info-panel" @onkeydown:stopPropagation="true" @onclick:stopPropagation="true">
+    @if (_detail == null)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Información</MudText>
+
+        <MudText Typo="Typo.overline">Descripción</MudText>
+        <MudTextField T="string"
+                      @bind-Value="_caption"
+                      Placeholder="Añade una descripción…"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Lines="2"
+                      OnBlur="SaveCaptionAsync" />
+        @if (!string.IsNullOrWhiteSpace(_detail.AiDescription))
+        {
+            <MudText Typo="Typo.caption" Class="ip-ai">✨ @_detail.AiDescription</MudText>
+        }
+
+        <MudText Typo="Typo.overline" Class="mt-4">Fecha de captura</MudText>
+        @if (_editingDate)
+        {
+            <div class="d-flex align-center gap-2">
+                <input type="datetime-local" class="ip-date-input" @bind="_editedDate" step="60" />
+                <MudIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Primary"
+                               OnClick="SaveDateAsync" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               OnClick="() => _editingDate = false" />
+            </div>
+            <MudCheckBox T="bool" @bind-Value="_writeDateToFile" Dense="true"
+                         Label="Escribir también en el archivo" />
+        }
+        else
+        {
+            <div class="d-flex align-center gap-1">
+                <MudText Typo="Typo.body2">
+                    @_detail.FileCreatedAt.ToString("d 'de' MMMM 'de' yyyy, HH:mm", Es)
+                </MudText>
+                @if (!_detail.IsReadOnly)
+                {
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" OnClick="StartEditDate" />
+                }
+            </div>
+        }
+
+        <MudText Typo="Typo.overline" Class="mt-4">Detalles</MudText>
+        <dl class="ip-facts">
+            <dt>Archivo</dt><dd>@_detail.FileName (@_detail.FileSizeFormatted)</dd>
+            @if (_detail.Exif is { Width: not null, Height: not null })
+            {
+                <dt>Dimensiones</dt><dd>@_detail.Exif.Width × @_detail.Exif.Height</dd>
+            }
+            @if (!string.IsNullOrWhiteSpace(CameraLine))
+            {
+                <dt>Cámara</dt><dd>@CameraLine</dd>
+            }
+            @if (!string.IsNullOrWhiteSpace(ExposureLine))
+            {
+                <dt>Exposición</dt><dd>@ExposureLine</dd>
+            }
+            @if (!string.IsNullOrWhiteSpace(_detail.FolderPath))
+            {
+                <dt>Carpeta</dt><dd class="ip-path">@_detail.FolderPath</dd>
+            }
+            @if (_detail.Exif is { Latitude: not null, Longitude: not null })
+            {
+                <dt>Ubicación</dt>
+                <dd>
+                    <a href="https://www.openstreetmap.org/?mlat=@Inv(_detail.Exif.Latitude.Value)&mlon=@Inv(_detail.Exif.Longitude.Value)#map=15/@Inv(_detail.Exif.Latitude.Value)/@Inv(_detail.Exif.Longitude.Value)"
+                       target="_blank" rel="noopener">
+                        @Inv(_detail.Exif.Latitude.Value), @Inv(_detail.Exif.Longitude.Value)
+                    </a>
+                </dd>
+            }
+        </dl>
+
+        <MudText Typo="Typo.overline" Class="mt-4">Etiquetas</MudText>
+        <div class="ip-tags">
+            @foreach (var tag in _detail.UserTags)
+            {
+                <MudChip T="string" Size="Size.Small" OnClose="() => RemoveTagAsync(tag)">@tag</MudChip>
+            }
+            @foreach (var tag in _detail.AutoTags)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Disabled="true">@tag</MudChip>
+            }
+        </div>
+        @if (!_detail.IsReadOnly)
+        {
+            <MudTextField T="string"
+                          @bind-Value="_newTag"
+                          Placeholder="Añadir etiqueta…"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          OnKeyDown="HandleTagKey" />
+        }
+    }
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public Guid AssetId { get; set; }
+    /// <summary>La fecha cambió: la página decide si rehidrata la rejilla.</summary>
+    [Parameter] public EventCallback OnDateChanged { get; set; }
+
+    private static readonly System.Globalization.CultureInfo Es = new("es-ES");
+
+    private AssetDetail? _detail;
+    private Guid _loadedId;
+    private string? _caption;
+    private string _newTag = string.Empty;
+    private bool _editingDate;
+    private DateTime _editedDate;
+    private bool _writeDateToFile = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AssetId == _loadedId) return;
+        _loadedId = AssetId;
+        _detail = null;
+        _editingDate = false;
+        _detail = await AssetService.GetAssetDetailAsync(AssetId);
+        _caption = _detail?.Caption;
+    }
+
+    private async Task SaveCaptionAsync()
+    {
+        if (_detail == null || _detail.IsReadOnly) return;
+        var trimmed = string.IsNullOrWhiteSpace(_caption) ? null : _caption.Trim();
+        if (trimmed == _detail.Caption) return;
+        var saved = await AssetService.UpdateDescriptionAsync(_detail.Id, trimmed);
+        _detail.Caption = saved;
+        _caption = saved;
+        Snackbar.Add("Descripción guardada", Severity.Success);
+    }
+
+    private void StartEditDate()
+    {
+        if (_detail == null) return;
+        _editedDate = _detail.FileCreatedAt;
+        _editingDate = true;
+    }
+
+    private async Task SaveDateAsync()
+    {
+        if (_detail == null) return;
+        // El servidor persiste la HORA DE PARED tal cual (naive): se envía la
+        // fecha elegida marcada como UTC, sin convertir con la zona del
+        // navegador — ver UpdateCaptureDateEndpoint.
+        var wallClock = new DateTimeOffset(
+            DateTime.SpecifyKind(_editedDate, DateTimeKind.Unspecified), TimeSpan.Zero);
+        var result = await AssetService.UpdateCaptureDateAsync(_detail.Id, wallClock, _writeDateToFile);
+        if (result != null)
+        {
+            _detail.FileCreatedAt = _editedDate;
+            _editingDate = false;
+            Snackbar.Add(result.FileWritten
+                ? "Fecha actualizada (también en el archivo)"
+                : "Fecha actualizada", Severity.Success);
+            await OnDateChanged.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add("No se pudo actualizar la fecha", Severity.Error);
+        }
+    }
+
+    private async Task HandleTagKey(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter" || _detail == null || string.IsNullOrWhiteSpace(_newTag)) return;
+        var merged = await AssetService.AddAssetTagsAsync(_detail.Id, new List<string> { _newTag.Trim() });
+        if (!_detail.UserTags.Contains(_newTag.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            _detail.UserTags.Add(_newTag.Trim());
+        }
+        _detail.Tags = merged;
+        _newTag = string.Empty;
+    }
+
+    private async Task RemoveTagAsync(string tag)
+    {
+        if (_detail == null) return;
+        var merged = await AssetService.RemoveAssetTagAsync(_detail.Id, tag);
+        _detail.UserTags.RemoveAll(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase));
+        _detail.Tags = merged;
+    }
+
+    private string? CameraLine => _detail?.Exif == null
+        ? null
+        : string.Join(" ", new[] { _detail.Exif.CameraMake, _detail.Exif.CameraModel }
+            .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    private string? ExposureLine
+    {
+        get
+        {
+            var e = _detail?.Exif;
+            if (e == null) return null;
+            var parts = new List<string>();
+            if (e.Iso.HasValue) parts.Add($"ISO {e.Iso}");
+            if (e.Aperture.HasValue) parts.Add($"f/{Inv(e.Aperture.Value)}");
+            if (e.ShutterSpeed.HasValue) parts.Add($"{Inv(e.ShutterSpeed.Value)}s");
+            if (e.FocalLength.HasValue) parts.Add($"{Inv(e.FocalLength.Value)}mm");
+            return parts.Count > 0 ? string.Join(" · ", parts) : null;
+        }
+    }
+
+    private static string Inv(double v) =>
+        v.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+}
