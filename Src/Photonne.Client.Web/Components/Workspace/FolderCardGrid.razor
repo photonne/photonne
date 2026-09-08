@@ -1,0 +1,68 @@
+@using Photonne.Client.Web.Models
+
+@* Rejilla de tarjetas de subcarpeta (preview con collage de miniaturas,
+   nombre, contador y badges). Solo navega — las acciones de escritura viven
+   en el menú de la carpeta abierta, porque el servidor no expone CanWrite
+   en las subcarpetas de /api/folders/{id}. *@
+
+<div class="fcg">
+    @foreach (var folder in Folders)
+    {
+        <div class="fcg-card" role="link" tabindex="0"
+             aria-label="@($"Abrir carpeta {folder.Name}")"
+             @key="folder.Id"
+             @onclick="() => OnOpen.InvokeAsync(folder)"
+             @onkeydown="e => HandleKeyAsync(e, folder)">
+            <div class="fcg-preview">
+                @if (folder.PreviewThumbnailUrls.Count >= 4)
+                {
+                    <div class="fcg-collage">
+                        @foreach (var url in folder.PreviewThumbnailUrls.Take(4))
+                        {
+                            <img src="@url" alt="" loading="lazy" />
+                        }
+                    </div>
+                }
+                else if (folder.ThumbnailUrl != null)
+                {
+                    <img class="fcg-single" src="@folder.ThumbnailUrl" alt="" loading="lazy" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Outlined.Folder" Class="fcg-placeholder" />
+                }
+                <div class="fcg-badges">
+                    @if (folder.IsShared)
+                    {
+                        <MudTooltip Text="@SharedTooltip(folder)">
+                            <MudIcon Icon="@Icons.Material.Outlined.FolderShared" Size="Size.Small" />
+                        </MudTooltip>
+                    }
+                    @if (folder.ExternalLibraryId != null)
+                    {
+                        <MudTooltip Text="Biblioteca externa">
+                            <MudIcon Icon="@Icons.Material.Outlined.Storage" Size="Size.Small" />
+                        </MudTooltip>
+                    }
+                </div>
+            </div>
+            <div class="fcg-meta">
+                <span class="fcg-name" title="@folder.Name">@folder.Name</span>
+                <span class="fcg-count">@folder.AssetCount</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<FolderItem> Folders { get; set; } = new();
+    [Parameter] public EventCallback<FolderItem> OnOpen { get; set; }
+
+    private Task HandleKeyAsync(KeyboardEventArgs e, FolderItem folder) =>
+        e.Key is "Enter" or " " ? OnOpen.InvokeAsync(folder) : Task.CompletedTask;
+
+    private static string SharedTooltip(FolderItem folder) =>
+        folder.SharedWithCount > 0
+            ? $"Compartida con {folder.SharedWithCount} {(folder.SharedWithCount == 1 ? "persona" : "personas")}"
+            : "Compartida";
+}

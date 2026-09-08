@@ -16,6 +16,14 @@
     min-width: 0;
 }
 
+::deep .folders-crumbs {
+    padding: 0;
+}
+
+::deep .folders-crumbs .mud-breadcrumb-item {
+    font-size: 0.75rem;
+}
+
 @media (max-width: 900px) {
     .folders-layout {
         flex-direction: column;

@@ -11,7 +11,14 @@
    paginación, un centinela dispara LoadMore al acercarse. *@
 
 <div class="flat-grid" @ref="_containerRef">
-    @if (Items.Count == 0 && !HasMore)
+    @if (Items.Count == 0 && Loading)
+    {
+        @for (var i = 0; i < 3; i++)
+        {
+            <div class="fg-skeleton-row pg-skeleton"></div>
+        }
+    }
+    else if (Items.Count == 0 && !HasMore)
     {
         <EmptyState Icon="@EmptyIcon" Title="@EmptyTitle" Description="@EmptyDescription" />
     }
@@ -53,6 +60,8 @@
 
     [Parameter, EditorRequired] public List<TimelineItem> Items { get; set; } = new();
     [Parameter] public bool HasMore { get; set; }
+    /// <summary>Primera carga en curso: skeleton en vez del estado vacío.</summary>
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public EventCallback LoadMore { get; set; }
     [Parameter] public SelectionState? Selection { get; set; }
     [Parameter] public EventCallback<TimelineItem> OnItemClick { get; set; }

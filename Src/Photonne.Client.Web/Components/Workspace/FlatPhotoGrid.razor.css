@@ -13,3 +13,23 @@
     justify-content: center;
     padding: 24px 0;
 }
+
+.fg-skeleton-row {
+    height: 200px;
+    margin-bottom: 4px;
+}
+
+.pg-skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg,
+        var(--mud-palette-surface) 25%,
+        var(--mud-palette-background-gray) 50%,
+        var(--mud-palette-surface) 75%);
+    background-size: 200% 100%;
+    animation: fg-shimmer 1.8s infinite ease-in-out;
+}
+
+@keyframes fg-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

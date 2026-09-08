@@ -12,6 +12,7 @@
 <FlatPhotoGrid @ref="_grid"
                Items="_items"
                HasMore="_hasMore"
+               Loading="_loading"
                LoadMore="LoadNextPageAsync"
                Selection="@(AllowSelection ? _selection : null)"
                OnItemClick="OpenViewer"

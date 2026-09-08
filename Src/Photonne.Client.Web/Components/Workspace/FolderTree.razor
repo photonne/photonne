@@ -1,4 +1,5 @@
 @using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
 
 @* Árbol de carpetas recursivo compartido (diálogo de mover, página de
    Carpetas, selector de destino al editar carpeta). Expansión local, selección
@@ -22,6 +23,7 @@
 
     private readonly HashSet<Guid> _expanded = new();
     private bool _initialized;
+    private Guid? _lastSelected;
 
     protected override void OnParametersSet()
     {
@@ -29,6 +31,15 @@
         {
             _initialized = true;
             foreach (var folder in Folders) _expanded.Add(folder.Id);
+        }
+        // Deep-link o navegación por tarjetas: expandir la ruta al seleccionado.
+        if (SelectedId != _lastSelected)
+        {
+            _lastSelected = SelectedId;
+            if (SelectedId.HasValue)
+            {
+                _expanded.UnionWith(FolderTreeHelper.AncestorIds(Folders, SelectedId.Value));
+            }
         }
     }
 

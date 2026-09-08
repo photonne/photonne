@@ -44,7 +44,7 @@
             <div class="d-flex align-center mb-1 gap-2">
                 <div class="flex-1">
                     <MudText Typo="Typo.h5">@_current.Name</MudText>
-                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@_current.Path</MudText>
+                    <MudBreadcrumbs Items="Breadcrumbs" Class="pa-0 folders-crumbs" />
                 </div>
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     @if (_current.CanWrite)
@@ -61,6 +61,12 @@
                     }
                 </MudMenu>
             </div>
+
+            @if (_current.SubFolders.Count > 0)
+            {
+                <FolderCardGrid Folders="_current.SubFolders" OnOpen="OpenFolder" />
+                <MudDivider Class="my-3" />
+            }
 
             <WorkspaceCollection @ref="_collection"
                                  @key="FolderId"
@@ -90,6 +96,26 @@
 
     private void OpenFolder(FolderItem folder) =>
         Navigation.NavigateTo($"/carpetas/{folder.Id}");
+
+    /// <summary>Ruta clicable raíz→carpeta actual, derivada del árbol ya cargado.</summary>
+    private List<BreadcrumbItem> Breadcrumbs
+    {
+        get
+        {
+            var crumbs = new List<BreadcrumbItem> { new("Carpetas", href: "/carpetas") };
+            if (_tree != null && FolderId.HasValue)
+            {
+                var path = FolderTreeHelper.PathTo(_tree, FolderId.Value);
+                for (var i = 0; i < path.Count; i++)
+                {
+                    var last = i == path.Count - 1;
+                    crumbs.Add(new BreadcrumbItem(path[i].Name,
+                        href: last ? null : $"/carpetas/{path[i].Id}", disabled: last));
+                }
+            }
+            return crumbs;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
