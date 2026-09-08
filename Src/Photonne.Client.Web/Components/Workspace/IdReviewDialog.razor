@@ -1,0 +1,51 @@
+@* Revisión de un lote por ids (sugerencia de Organizar o resultado de una
+   regla, agrupado por años): todo incluido de entrada, clic excluye/incluye.
+   Devuelve la lista final de ids como DialogResult. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div style="max-height:60vh;overflow-y:auto">
+            @foreach (var group in Groups)
+            {
+                @if (Groups.Count > 1)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">@group.Label (@group.Ids.Count)</MudText>
+                }
+                <IdThumbGrid Ids="group.Ids" Selected="_selected" Size="88"
+                             SelectionChanged="StateHasChanged" />
+            }
+        </div>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
+            @_selected.Count de @TotalCount incluidos — clic sobre una miniatura para excluirla.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="_selected.Count == 0"
+                   OnClick="() => MudDialog.Close(DialogResult.Ok(_selected.ToList()))">
+            @ConfirmText (@_selected.Count)
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public sealed record Group(string Label, List<Guid> Ids);
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public List<Group> Groups { get; set; } = new();
+    [Parameter] public string ConfirmText { get; set; } = "Continuar";
+
+    private HashSet<Guid> _selected = new();
+
+    private int TotalCount => Groups.Sum(g => g.Ids.Count);
+
+    protected override void OnInitialized()
+    {
+        _selected = Groups.SelectMany(g => g.Ids).ToHashSet();
+    }
+}

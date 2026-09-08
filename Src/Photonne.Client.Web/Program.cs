@@ -118,6 +118,7 @@ builder.Services.AddScoped<IIndexService, IndexService>();
 builder.Services.AddScoped<IAlbumsService, AlbumsService>();
 builder.Services.AddScoped<ISearchCatalogService, SearchCatalogService>();
 builder.Services.AddScoped<ISharingService, SharingService>();
+builder.Services.AddScoped<IOrganizeService, OrganizeService>();
 // Transient: cada página del workspace tiene su instancia con su rejilla.
 builder.Services.AddTransient<BatchActions>();
 builder.Services.AddScoped<IThumbnailQueueService, ThumbnailQueueService>();

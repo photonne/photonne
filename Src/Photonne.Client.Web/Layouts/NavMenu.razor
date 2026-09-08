@@ -1,5 +1,7 @@
 @implements IDisposable
 @inject NavigationManager Navigation
+@inject Photonne.Client.Web.Services.IOrganizeService OrganizeService
+@inject Photonne.Client.Web.Services.IAuthService AuthService
 
 <div class="nav-wrapper">
 <MudNavMenu Class="mt-4">
@@ -32,7 +34,13 @@
         </MudNavLink>
 
         <MudNavLink Href="/organizar" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Outlined.AutoAwesomeMotion" IconColor="Color.Inherit">
-            Organizar
+            <div class="d-flex align-center gap-2">
+                <span>Organizar</span>
+                @if (_organizeCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="nav-count-chip">@_organizeCount</MudChip>
+                }
+            </div>
         </MudNavLink>
 
         <MudNavGroup Title="Colecciones" Icon="@Icons.Material.Outlined.Collections" Expanded="false">
@@ -95,13 +103,42 @@
     private bool IsSettingsSection
         => new Uri(Navigation.Uri).AbsolutePath.Trim('/').StartsWith("settings", StringComparison.OrdinalIgnoreCase);
 
-    protected override void OnInitialized()
+    private int _organizeCount;
+
+    protected override async Task OnInitializedAsync()
     {
         Navigation.LocationChanged += HandleLocationChanged;
+        await RefreshOrganizeCountAsync();
     }
 
-    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private async Task RefreshOrganizeCountAsync()
     {
+        try
+        {
+            if (await AuthService.IsAuthenticatedAsync())
+            {
+                _organizeCount = (await OrganizeService.GetCountAsync()).Count;
+            }
+        }
+        catch
+        {
+            // El badge es cosmético: sin red o sin permiso, simplemente no sale.
+        }
+    }
+
+    private bool _wasInOrganize;
+
+    private async void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Refrescar el contador solo AL SALIR de /organizar (los movimientos
+        // hechos allí lo cambian); el resto de navegaciones no piden nada.
+        var inOrganize = new Uri(e.Location).AbsolutePath
+            .StartsWith("/organizar", StringComparison.OrdinalIgnoreCase);
+        if (_wasInOrganize && !inOrganize)
+        {
+            await RefreshOrganizeCountAsync();
+        }
+        _wasInOrganize = inOrganize;
         StateHasChanged();
     }
 

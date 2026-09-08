@@ -1,0 +1,218 @@
+@page "/organizar"
+@using Photonne.Client.Web.Components.Workspace
+@using Photonne.Client.Web.Models
+@using Photonne.Client.Web.Services
+@inject IOrganizeService OrganizeService
+@inject IFolderService FolderService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Organizar - Photonne</PageTitle>
+
+<div class="pa-4">
+    <div class="d-flex align-center mb-1 gap-3">
+        <MudText Typo="Typo.h5">Para organizar</MudText>
+        @if (_count != null)
+        {
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_count.Count pendientes</MudChip>
+            @if (_count.Oldest != null && _count.Newest != null)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    de @_count.Oldest.Value.ToString("MMM yyyy", Es) a @_count.Newest.Value.ToString("MMM yyyy", Es)
+                </MudText>
+            }
+        }
+    </div>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+        Lo que sube el backup automático espera aquí hasta que lo archives en una carpeta.
+    </MudText>
+
+    @* ── Sugerencias ─────────────────────────────────────────────────── *@
+    @if (_suggestions is { Count: > 0 })
+    {
+        <MudText Typo="Typo.h6" Class="mb-2">Sugerencias</MudText>
+        <div class="org-suggestions mb-4">
+            @foreach (var suggestion in _suggestions)
+            {
+                <MudPaper Outlined="true" Class="org-card pa-3">
+                    <div class="d-flex gap-3">
+                        @if (suggestion.CoverAssetId != null)
+                        {
+                            <img class="org-cover" loading="lazy" alt=""
+                                 src="@($"{ApiConfig.BaseUrl}/api/assets/{suggestion.CoverAssetId}/thumbnail?size=Small")" />
+                        }
+                        <div class="flex-1">
+                            <MudText Typo="Typo.subtitle1">@suggestion.Title</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @suggestion.KindLabel · @suggestion.Count elementos
+                                @if (suggestion.From != null)
+                                {
+                                    <text> · @suggestion.From@(suggestion.To != null && suggestion.To != suggestion.From ? $" – {suggestion.To}" : "")</text>
+                                }
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                   OnClick="() => ReviewAndMoveAsync(suggestion)">
+                            Revisar y mover
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text"
+                                   OnClick="() => DismissAsync(suggestion)">
+                            Descartar
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            }
+        </div>
+    }
+
+    @* ── Por reglas ──────────────────────────────────────────────────── *@
+    <MudExpansionPanels Class="mb-4">
+        <MudExpansionPanel Text="Mover por condiciones (reglas)">
+            <SmartRuleEditor Preview="PreviewRuleAsync"
+                             RuleChanged="rule => _rule = rule" />
+            @if (_rulePreview is { YearBreakdown.Count: > 0 })
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Por años: @string.Join(", ", _rulePreview.YearBreakdown.Select(y => $"{y.Year} ({y.Count})"))
+                </MudText>
+            }
+            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="_rule == null || (_rulePreview?.Count ?? 0) == 0"
+                       OnClick="ReviewRuleAsync">
+                Revisar y mover
+            </MudButton>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+    @* ── Bandeja completa ────────────────────────────────────────────── *@
+    <MudText Typo="Typo.h6" Class="mb-2">Bandeja</MudText>
+    <WorkspaceCollection @ref="_collection"
+                         @key="_inboxGeneration"
+                         Source="LoadPage"
+                         EmptyIcon="@Icons.Material.Outlined.CheckCircleOutline"
+                         EmptyTitle="Todo organizado"
+                         EmptyDescription="No hay nada pendiente de archivar.">
+        <ExtraActions>
+            <MudTooltip Text="Excluir de esta bandeja (no volverá a aparecer)">
+                <MudIconButton Icon="@Icons.Material.Outlined.VisibilityOff" Size="Size.Small"
+                               OnClick="ExcludeSelectedAsync" />
+            </MudTooltip>
+        </ExtraActions>
+    </WorkspaceCollection>
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Es = new("es-ES");
+
+    private OrganizeCount? _count;
+    private List<OrganizeSuggestion>? _suggestions;
+    private WorkspaceCollection? _collection;
+    private SmartRuleNode? _rule;
+    private OrganizeRulePreview? _rulePreview;
+    private int _inboxGeneration = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _count = await OrganizeService.GetCountAsync();
+        _suggestions = await OrganizeService.GetSuggestionsAsync();
+    }
+
+    private async Task<WorkspaceCollection.CollectionPage> LoadPage(object? cursor)
+    {
+        var page = await OrganizeService.GetInboxPageAsync(cursor as DateTime?);
+        return new WorkspaceCollection.CollectionPage(page.Items, page.HasMore, page.NextCursor);
+    }
+
+    private async Task<SmartRulePreview?> PreviewRuleAsync(SmartRuleNode rule)
+    {
+        _rulePreview = await OrganizeService.PreviewRuleAsync(rule);
+        StateHasChanged();
+        return _rulePreview == null
+            ? null
+            : new SmartRulePreview { Count = _rulePreview.Count, SampleAssetIds = _rulePreview.SampleAssetIds };
+    }
+
+    private async Task RefreshAsync()
+    {
+        _count = await OrganizeService.GetCountAsync();
+        _suggestions = await OrganizeService.GetSuggestionsAsync();
+        _inboxGeneration++;
+        StateHasChanged();
+    }
+
+    /// <summary>Revisión (excluir miniaturas) → destino → mover. Común a sugerencias y reglas.</summary>
+    private async Task ReviewThenMoveAsync(string title, List<IdReviewDialog.Group> groups)
+    {
+        var reviewParams = new DialogParameters<IdReviewDialog>
+        {
+            { d => d.Title, title },
+            { d => d.Groups, groups },
+            { d => d.ConfirmText, "Elegir destino" }
+        };
+        var reviewDialog = await DialogService.ShowAsync<IdReviewDialog>(title, reviewParams,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var reviewResult = await reviewDialog.Result;
+        if (reviewResult is not { Canceled: false } || reviewResult.Data is not List<Guid> chosen || chosen.Count == 0)
+            return;
+
+        var moveParams = new DialogParameters<MoveToFolderDialog>
+        {
+            { d => d.AssetIds, chosen }
+        };
+        var moveDialog = await DialogService.ShowAsync<MoveToFolderDialog>("Mover a carpeta", moveParams);
+        var moveResult = await moveDialog.Result;
+        if (moveResult is not { Canceled: false } || moveResult.Data is not MoveToFolderDialog.Result target)
+            return;
+
+        await FolderService.MoveFolderAssetsAsync(new MoveFolderAssetsRequest
+        {
+            SourceFolderId = null,
+            TargetFolderId = target.TargetFolderId,
+            AssetIds = chosen,
+            OrganizeByCaptureYear = target.OrganizeByCaptureYear
+        });
+        Snackbar.Add($"{chosen.Count} movidas", Severity.Success);
+        await RefreshAsync();
+    }
+
+    private Task ReviewAndMoveAsync(OrganizeSuggestion suggestion) =>
+        ReviewThenMoveAsync(suggestion.Title,
+            new List<IdReviewDialog.Group> { new(suggestion.Title, suggestion.AssetIds) });
+
+    private async Task ReviewRuleAsync()
+    {
+        if (_rule == null) return;
+        var groups = await OrganizeService.ReviewRuleAsync(_rule);
+        if (groups.Count == 0)
+        {
+            Snackbar.Add("La regla no coincide con nada pendiente", Severity.Info);
+            return;
+        }
+        await ReviewThenMoveAsync("Resultado de la regla",
+            groups.OrderByDescending(g => g.Year)
+                .Select(g => new IdReviewDialog.Group(g.Year.ToString(), g.AssetIds))
+                .ToList());
+    }
+
+    private async Task DismissAsync(OrganizeSuggestion suggestion)
+    {
+        var updated = await OrganizeService.SetExcludedAsync(suggestion.AssetIds, true);
+        Snackbar.Add($"Sugerencia descartada ({updated} excluidas de la bandeja)", Severity.Normal);
+        await RefreshAsync();
+    }
+
+    private async Task ExcludeSelectedAsync()
+    {
+        if (_collection == null || !_collection.Selection.IsActive) return;
+        var ids = _collection.Selection.Selected.ToList();
+        await _collection.Batch.RunAsync(async () =>
+        {
+            await OrganizeService.SetExcludedAsync(ids, true);
+            _collection.RemoveFromView(ids);
+            Snackbar.Add($"{ids.Count} excluidas de la bandeja", Severity.Success);
+        });
+        _count = await OrganizeService.GetCountAsync();
+    }
+}
