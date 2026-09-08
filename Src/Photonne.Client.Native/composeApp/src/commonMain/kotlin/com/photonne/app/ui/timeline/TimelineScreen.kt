@@ -62,6 +62,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -668,6 +672,43 @@ fun TimelineScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .pointerInput(Unit) {
+                                // Ctrl/Cmd+rueda (escritorio): sube o baja un nivel
+                                // de zoom por muesca. Acumula delta con umbral e
+                                // intervalo mínimo para que un trackpad (muchos
+                                // deltas pequeños) no atraviese la escalera entera
+                                // de golpe. Consumido en Initial para que la lista
+                                // no haga scroll a la vez.
+                                var wheelAccum = 0f
+                                var lastLevelChange = 0L
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        if (event.type != PointerEventType.Scroll) continue
+                                        val mods = event.keyboardModifiers
+                                        if (!mods.isCtrlPressed && !mods.isMetaPressed) continue
+                                        val change = event.changes.firstOrNull() ?: continue
+                                        event.changes.forEach { it.consume() }
+                                        wheelAccum += change.scrollDelta.y
+                                        val now = change.uptimeMillis
+                                        if (kotlin.math.abs(wheelAccum) >= 1f &&
+                                            now - lastLevelChange > 200
+                                        ) {
+                                            // Rueda arriba (delta negativo) = acercar
+                                            // = celdas más grandes.
+                                            val dir = if (wheelAccum < 0f) 1 else -1
+                                            val zl = zoomLatest.value
+                                            TimelineZoomLevel.entries
+                                                .getOrNull(zl.ordinal + dir)
+                                                ?.let {
+                                                    zoomStore.update(it)
+                                                    lastLevelChange = now
+                                                }
+                                            wheelAccum = 0f
+                                        }
+                                    }
+                                }
+                            }
                             .pointerInput(Unit) {
                                 detectTimelinePinch(
                                     onZoomStart = { centroid ->
