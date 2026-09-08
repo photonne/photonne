@@ -15,7 +15,7 @@
    y acciones en lote. El visor con panel de info llega en los commits
    siguientes del núcleo. *@
 
-<PhotoGrid @ref="_grid" Selection="_selection" OnItemClick="OpenViewer" />
+<PhotoGrid @ref="_grid" Selection="_selection" OnItemClick="OpenViewer" OnShortcut="HandleShortcut" />
 
 @if (_viewerItem != null && _grid != null)
 {
@@ -76,6 +76,13 @@
     private bool _busy;
 
     private List<Guid> SelectedIds => _selection.Selected.ToList();
+
+    private Task HandleShortcut(string action) => action switch
+    {
+        "delete" => TrashAsync(),
+        "favorite" => ToggleFavoritesAsync(),
+        _ => Task.CompletedTask
+    };
 
     private TimelineItem? _viewerItem;
     private TimelineItem? _viewerCurrent;

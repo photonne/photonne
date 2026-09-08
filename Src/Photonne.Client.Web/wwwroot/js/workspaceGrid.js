@@ -23,11 +23,18 @@ window.workspaceGrid = (() => {
                 container,
                 dotnetRef,
                 observed: new WeakSet(),
-                // Escape limpia la selección (solo mientras la rejilla vive).
-                // Con el visor abierto no: su propio onkeydown lo cierra.
+                // Atajos de la rejilla: Escape limpia, Supr manda a la papelera,
+                // F alterna favorito — solo sin el visor abierto y fuera de
+                // campos de texto (ahí las teclas son del campo).
                 keyHandler: e => {
-                    if (e.key === 'Escape' && !document.querySelector('.asset-viewer')) {
+                    if (document.querySelector('.asset-viewer')) return;
+                    if (e.target.closest?.('input, textarea, [contenteditable]')) return;
+                    if (e.key === 'Escape') {
                         dotnetRef.invokeMethodAsync('OnEscapePressed');
+                    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                        dotnetRef.invokeMethodAsync('OnGridShortcut', 'delete');
+                    } else if (e.key === 'f' || e.key === 'F') {
+                        dotnetRef.invokeMethodAsync('OnGridShortcut', 'favorite');
                     }
                 },
                 // Pintado con ratón: arrastrar desde una celda selecciona (o

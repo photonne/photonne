@@ -89,6 +89,8 @@
     [Parameter] public EventCallback<TimelineItem> OnItemClick { get; set; }
     /// <summary>Estado de selección compartido con la página; null = rejilla solo lectura.</summary>
     [Parameter] public SelectionState? Selection { get; set; }
+    /// <summary>Atajo de teclado sobre la selección activa: "delete" | "favorite".</summary>
+    [Parameter] public EventCallback<string> OnShortcut { get; set; }
 
     private sealed class Section
     {
@@ -331,6 +333,14 @@
 
     [JSInvokable]
     public void OnEscapePressed() => Selection?.Clear();
+
+    [JSInvokable]
+    public async Task OnGridShortcut(string action)
+    {
+        // Los atajos operan sobre la selección; sin selección no hacen nada.
+        if (Selection is not { IsActive: true }) return;
+        await OnShortcut.InvokeAsync(action);
+    }
 
     [JSInvokable]
     public void OnPaintSelectStart(string assetId)
