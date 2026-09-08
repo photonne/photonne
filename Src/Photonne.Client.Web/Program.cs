@@ -10,6 +10,10 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Configurar HttpClient para la API
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+// Las URLs de miniatura/contenido se construyen fuera del HttpClient (van en
+// <img src>); sin esto, un ApiBaseUrl remoto (dev contra otro servidor) las
+// dejaba apuntando al origen local. En producción queda vacío → relativas.
+ApiConfig.BaseUrl = builder.Configuration["ApiBaseUrl"]?.TrimEnd('/') ?? string.Empty;
 builder.Services.AddScoped<ApiErrorNotifier>();
 builder.Services.AddScoped(sp =>
 {
