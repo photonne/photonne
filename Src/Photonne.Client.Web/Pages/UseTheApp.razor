@@ -9,15 +9,25 @@
     <MudPaper Class="pa-8" Elevation="0" Outlined="true" Style="max-width: 460px; width: 100%; text-align: center;">
         <MudIcon Icon="@Icons.Material.Outlined.PhoneIphone" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-3" />
 
-        <MudText Typo="Typo.h5" Class="mb-2">Esta web es el panel de administración</MudText>
+        <MudText Typo="Typo.h5" Class="mb-2">Photonne también es una app</MudText>
         <MudText Typo="Typo.body1" Class="mud-text-secondary mb-4">
-            Tu cuenta no tiene permisos de administrador. Para ver y gestionar tus
-            fotos y vídeos, usa la app de Photonne para móvil o escritorio.
+            Tus fotos están aquí mismo, en la web. Y para el día a día en el
+            móvil (con copia de seguridad automática de la cámara) o en el
+            escritorio, tienes la app nativa de Photonne.
         </MudText>
+
+        <MudButton Href="/fotos"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.PhotoLibrary"
+                   FullWidth="true"
+                   Class="mb-2">
+            Ir a mis fotos
+        </MudButton>
 
         <MudButton Href="https://github.com/photonne/photonne"
                    Target="_blank"
-                   Variant="Variant.Filled"
+                   Variant="Variant.Outlined"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Outlined.GetApp"
                    FullWidth="true"
