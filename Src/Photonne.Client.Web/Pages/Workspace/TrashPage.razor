@@ -5,18 +5,18 @@
 <PageTitle>Papelera - Photonne</PageTitle>
 
 <div class="pa-4">
-    <div class="d-flex align-center mb-3 gap-3">
-        <MudText Typo="Typo.h5">Papelera</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.RestoreFromTrash"
-                   OnClick="RestoreAllAsync">
-            Restaurar todo
-        </MudButton>
-        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteForever"
-                   OnClick="EmptyTrashAsync">
-            Vaciar papelera
-        </MudButton>
-    </div>
+    <PageHeader Title="Papelera">
+        <Actions>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.RestoreFromTrash"
+                       OnClick="RestoreAllAsync">
+                Restaurar todo
+            </MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteForever"
+                       OnClick="EmptyTrashAsync">
+                Vaciar papelera
+            </MudButton>
+        </Actions>
+    </PageHeader>
     <WorkspaceCollection @ref="_collection"
                          Source="LoadPage"
                          StandardActions="false"

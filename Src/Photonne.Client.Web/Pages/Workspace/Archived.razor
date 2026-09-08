@@ -5,14 +5,14 @@
 <PageTitle>Archivadas - Photonne</PageTitle>
 
 <div class="pa-4">
-    <div class="d-flex align-center mb-3 gap-3">
-        <MudText Typo="Typo.h5">Archivadas</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Unarchive"
-                   OnClick="UnarchiveAllAsync">
-            Desarchivar todo
-        </MudButton>
-    </div>
+    <PageHeader Title="Archivadas">
+        <Actions>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Unarchive"
+                       OnClick="UnarchiveAllAsync">
+                Desarchivar todo
+            </MudButton>
+        </Actions>
+    </PageHeader>
     <WorkspaceCollection @ref="_collection"
                          Source="LoadPage"
                          EmptyIcon="@Icons.Material.Outlined.Archive"

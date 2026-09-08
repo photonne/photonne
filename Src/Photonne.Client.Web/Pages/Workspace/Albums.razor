@@ -8,14 +8,14 @@
 <PageTitle>Álbumes - Photonne</PageTitle>
 
 <div class="pa-4">
-    <div class="d-flex align-center mb-4 gap-3">
-        <MudText Typo="Typo.h5">Álbumes</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Outlined.Add" OnClick="CreateAlbumAsync">
-            Nuevo álbum
-        </MudButton>
-    </div>
+    <PageHeader Title="Álbumes">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Add" OnClick="CreateAlbumAsync">
+                Nuevo álbum
+            </MudButton>
+        </Actions>
+    </PageHeader>
 
     @if (_albums == null)
     {

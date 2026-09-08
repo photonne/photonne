@@ -21,7 +21,7 @@
                            OnClick="@(() => Navigation.NavigateTo("/albumes"))" />
             <div class="flex-1">
                 <div class="d-flex align-center gap-2">
-                    <MudText Typo="Typo.h5">@_album.Name</MudText>
+                    <h1 class="mud-typography mud-typography-h5 ma-0" tabindex="-1">@_album.Name</h1>
                     @if (_album.IsSmart)
                     {
                         <MudTooltip Text="Álbum smart: su contenido lo decide la regla definida al crearlo">

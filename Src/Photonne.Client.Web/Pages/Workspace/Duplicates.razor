@@ -8,26 +8,31 @@
 <PageTitle>Duplicados - Photonne</PageTitle>
 
 <div class="pa-4">
-    <div class="d-flex align-center mb-2 gap-3 flex-wrap">
-        <MudText Typo="Typo.h5">Duplicados</MudText>
-        @if (_groups != null && _groups.Count > 0)
-        {
-            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
-                @_groups.Count grupos · @FormatSize(WastedBytes) recuperables
-            </MudChip>
-            <MudSpacer />
-            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.AutoFixHigh"
-                       OnClick="KeepOldestEverywhere">
-                Conservar el más antiguo en todos
-            </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Error"
-                       StartIcon="@Icons.Material.Outlined.Delete"
-                       Disabled="_toTrash.Count == 0 || _busy"
-                       OnClick="TrashSelectedAsync">
-                A la papelera (@_toTrash.Count)
-            </MudButton>
-        }
-    </div>
+    <PageHeader Title="Duplicados">
+        <TitleExtras>
+            @if (_groups != null && _groups.Count > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                    @_groups.Count grupos · @FormatSize(WastedBytes) recuperables
+                </MudChip>
+            }
+        </TitleExtras>
+        <Actions>
+            @if (_groups != null && _groups.Count > 0)
+            {
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.AutoFixHigh"
+                           OnClick="KeepOldestEverywhere">
+                    Conservar el más antiguo en todos
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.Delete"
+                           Disabled="_toTrash.Count == 0 || _busy"
+                           OnClick="TrashSelectedAsync">
+                    A la papelera (@_toTrash.Count)
+                </MudButton>
+            }
+        </Actions>
+    </PageHeader>
     <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
         Copias exactas (mismo contenido, distinta carpeta). Marca cuál conservar en cada
         grupo; el resto va a la papelera — reversible desde allí.

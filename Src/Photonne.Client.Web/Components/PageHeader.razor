@@ -1,0 +1,29 @@
+@* Cabecera de página compartida. El título es un h1 real (con las clases de
+   tipografía Mud para heredar el estilo h5): es lo que hace funcionar el
+   FocusOnNavigate Selector="h1" de App.razor tras cada navegación. *@
+
+<div class="d-flex align-center gap-3 mb-3 flex-wrap">
+    <div class="flex-1" style="min-width: 0;">
+        <div class="d-flex align-center gap-2 flex-wrap">
+            <h1 class="mud-typography mud-typography-h5 ma-0" tabindex="-1">@Title</h1>
+            @TitleExtras
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Subtitle))
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">@Subtitle</MudText>
+        }
+        @Breadcrumb
+    </div>
+    @Actions
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    /// <summary>Chips o extras en línea junto al título.</summary>
+    [Parameter] public RenderFragment? TitleExtras { get; set; }
+    /// <summary>Breadcrumb u otra línea secundaria bajo el título.</summary>
+    [Parameter] public RenderFragment? Breadcrumb { get; set; }
+    /// <summary>Botones a la derecha de la cabecera.</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

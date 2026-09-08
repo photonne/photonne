@@ -454,7 +454,9 @@
             else
             {
                 <MudListItem>
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No hay notificaciones.</MudText>
+                    <EmptyState Dense="true"
+                                Icon="@Icons.Material.Outlined.NotificationsNone"
+                                Title="No hay notificaciones" />
                 </MudListItem>
             }
         </MudList>

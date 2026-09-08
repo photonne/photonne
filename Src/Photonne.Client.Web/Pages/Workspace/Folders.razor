@@ -41,26 +41,28 @@
         }
         else if (_current != null)
         {
-            <div class="d-flex align-center mb-1 gap-2">
-                <div class="flex-1">
-                    <MudText Typo="Typo.h5">@_current.Name</MudText>
+            <PageHeader Title="@_current.Name">
+                <Breadcrumb>
                     <MudBreadcrumbs Items="Breadcrumbs" Class="pa-0 folders-crumbs" />
-                </div>
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                    @if (_current.CanWrite)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="EditFolderAsync">Renombrar / mover</MudMenuItem>
-                    }
-                    @if (_current.IsOwner || _current.IsShared)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Outlined.PersonAdd" OnClick="ShareAsync">Compartir…</MudMenuItem>
-                    }
-                    @if (_current.CanWrite)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="DeleteFolderAsync">Eliminar carpeta</MudMenuItem>
-                    }
-                </MudMenu>
-            </div>
+                </Breadcrumb>
+                <Actions>
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                             aria-label="Acciones de carpeta">
+                        @if (_current.CanWrite)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Edit" OnClick="EditFolderAsync">Renombrar / mover</MudMenuItem>
+                        }
+                        @if (_current.IsOwner || _current.IsShared)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.PersonAdd" OnClick="ShareAsync">Compartir…</MudMenuItem>
+                        }
+                        @if (_current.CanWrite)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Outlined.Delete" OnClick="DeleteFolderAsync">Eliminar carpeta</MudMenuItem>
+                        }
+                    </MudMenu>
+                </Actions>
+            </PageHeader>
 
             @if (_current.SubFolders.Count > 0)
             {

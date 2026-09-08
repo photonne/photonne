@@ -25,7 +25,8 @@
 }
 else if (_rootFolders.Count == 0)
 {
-    <MudAlert Severity="Severity.Info">No se encontraron carpetas.</MudAlert>
+    <EmptyState Icon="@Icons.Material.Outlined.Folder"
+                Title="No se encontraron carpetas" />
 }
 else
 {

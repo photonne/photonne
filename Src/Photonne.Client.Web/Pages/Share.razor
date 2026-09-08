@@ -14,9 +14,9 @@
 else if (_expired)
 {
     <div class="share-center">
-        <MudIcon Icon="@Icons.Material.Outlined.LinkOff" Style="font-size:64px; opacity:0.4;" />
-        <MudText Typo="Typo.h6" Class="mt-4">Este enlace ha expirado</MudText>
-        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">El propietario puede generar un nuevo enlace.</MudText>
+        <EmptyState Icon="@Icons.Material.Outlined.LinkOff"
+                    Title="Este enlace ha expirado"
+                    Description="El propietario puede generar un nuevo enlace." />
     </div>
 }
 else if (_requiresPassword)
@@ -44,9 +44,9 @@ else if (_requiresPassword)
 else if (_content == null)
 {
     <div class="share-center">
-        <MudIcon Icon="@Icons.Material.Outlined.BrokenImage" Style="font-size:64px; opacity:0.4;" />
-        <MudText Typo="Typo.h6" Class="mt-4">Contenido no encontrado</MudText>
-        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">Es posible que el enlace haya sido revocado.</MudText>
+        <EmptyState Icon="@Icons.Material.Outlined.BrokenImage"
+                    Title="Contenido no encontrado"
+                    Description="Es posible que el enlace haya sido revocado." />
     </div>
 }
 else if (_content.Album != null)

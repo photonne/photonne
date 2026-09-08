@@ -10,22 +10,21 @@
 <PageTitle>Organizar - Photonne</PageTitle>
 
 <div class="pa-4">
-    <div class="d-flex align-center mb-1 gap-3">
-        <MudText Typo="Typo.h5">Para organizar</MudText>
-        @if (_count != null)
-        {
-            <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_count.Count pendientes</MudChip>
-            @if (_count.Oldest != null && _count.Newest != null)
+    <PageHeader Title="Para organizar"
+                Subtitle="Lo que sube el backup automático espera aquí hasta que lo archives en una carpeta.">
+        <TitleExtras>
+            @if (_count != null)
             {
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                    de @_count.Oldest.Value.ToString("MMM yyyy", Es) a @_count.Newest.Value.ToString("MMM yyyy", Es)
-                </MudText>
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_count.Count pendientes</MudChip>
+                @if (_count.Oldest != null && _count.Newest != null)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        de @_count.Oldest.Value.ToString("MMM yyyy", Es) a @_count.Newest.Value.ToString("MMM yyyy", Es)
+                    </MudText>
+                }
             }
-        }
-    </div>
-    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
-        Lo que sube el backup automático espera aquí hasta que lo archives en una carpeta.
-    </MudText>
+        </TitleExtras>
+    </PageHeader>
 
     @* ── Sugerencias ─────────────────────────────────────────────────── *@
     @if (_suggestions is { Count: > 0 })
