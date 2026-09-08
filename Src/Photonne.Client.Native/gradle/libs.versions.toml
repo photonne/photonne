@@ -19,6 +19,7 @@ coil = "3.0.4"
 haze = "1.5.4"
 uuid = "0.8.4"
 vlcj = "4.11.0"
+javaKeyring = "1.0.4"
 kotlinTest = "2.1.0"
 
 [libraries]
@@ -72,6 +73,7 @@ haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
+java-keyring = { module = "com.github.javakeyring:java-keyring", version.ref = "javaKeyring" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
 

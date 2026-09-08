@@ -142,6 +142,7 @@ kotlin {
                 implementation(libs.multiplatform.settings.no.arg)
                 implementation(libs.sqldelight.sqlite.driver)
                 implementation(libs.vlcj)
+                implementation(libs.java.keyring)
             }
         }
     }
